@@ -1,0 +1,539 @@
+{
+  "language": "Rust",
+  "repository": "firecrawl/pdf-inspector",
+  "index": 4,
+  "head": "ac275044ed043342e24c1442123aaa3781835436",
+  "base": "e1797b1f482a3fe02296bd9e833230e89cbee8ea",
+  "exit": 1,
+  "signal": null,
+  "ms": 10207,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "napi/Cargo.toml",
+          "napi/package.json",
+          "wasm/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 4,317 functions at e1797b1, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,317 functions at e1797b1, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 81
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/tables/detect_*.rs",
+            "pattern": "detect_*.rs",
+            "roots": [
+              "src/tables"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 13, lines 81",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 81 lines)",
+        "file": "src/extractor/fonts.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "58c8e3d35d60c628",
+        "line": 3342,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn text_score(text: &str) -> TextScore {",
+        "values": {
+          "cc": 16,
+          "lines": 61
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 81",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 81 lines)",
+        "file": "src/extractor/fonts.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "481593091e26ee55",
+        "line": 2519,
+        "matched": {
+          "accepted": false,
+          "file": "src/extractor/fonts.rs",
+          "line": 2519,
+          "text": "pub(crate) fn extract_text_from_operand(",
+          "values": {
+            "cc": 111,
+            "lines": 561
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub(crate) fn extract_text_from_operand(",
+        "values": {
+          "cc": 111,
+          "lines": 567
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 42,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 11,
+        "ms": 9,
+        "name": "lockfile",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 153,
+        "ms": 1930,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 176,
+          "reads": 202
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 1190,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 202,
+          "reads": 202
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 442,
+        "ms": 108,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 101,
+          "measured": 101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 237,
+        "ms": 2397,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 202,
+          "reads": 202
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 88,
+          "measured": 88,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 176,
+          "ms": 2884,
+          "parses": 176,
+          "reads": 176,
+          "shared": 0,
+          "states": 3495
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 276263,
+          "declaration_text_bytes": 480528,
+          "declarations": 9342,
+          "export_leaves": 208,
+          "export_text_bytes": 11646,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 52,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 176,
+          "import_text_bytes": 217752,
+          "imports": 1399,
+          "module_declarations": 286,
+          "module_text_bytes": 31134,
+          "nesting_bytes": 28224,
+          "nesting_entries": 4456,
+          "nestings": 4456,
+          "owner_bytes": 8665,
+          "owners": 705,
+          "path_bytes": 4148,
+          "qualified_paths": 812,
+          "reference_canonical_allocation_ratio": 1.9984179140805647,
+          "reference_canonical_allocation_ratio_milli": 1998,
+          "reference_canonical_allocations": 16421,
+          "reference_canonical_bytes": 202990,
+          "reference_distinct_names": 8217,
+          "reference_name_bytes": 2678194,
+          "reference_representation_after_bytes": 6415312,
+          "reference_representation_before_bytes": 12830624,
+          "references": 400957,
+          "signature_bytes": 552990,
+          "signatures": 9342,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 20,
+        "ms": 2918,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 4679,
+            "distinct_names": 10274,
+            "files": 88,
+            "index_ms": 8,
+            "measure_ms": 1438,
+            "query_ms": 0,
+            "references": 187901
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4663,
+            "distinct_names": 10256,
+            "files": 88,
+            "index_ms": 8,
+            "measure_ms": 1446,
+            "query_ms": 0,
+            "references": 187309
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 95,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 176
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1383,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 4679,
+            "distinct_names": 10274,
+            "files": 88,
+            "index_ms": 8,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 187901
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 4663,
+            "distinct_names": 10256,
+            "files": 88,
+            "index_ms": 8,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 187309
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 3,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 176
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1436,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 654,
+          "modules": 298,
+          "ms": 1,
+          "sources": 298
+        },
+        "held": 0,
+        "ms": 3,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 842,
+          "measured": 814,
+          "ms": 1,
+          "opaque": 28,
+          "surfaces": 6
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "Cargo.toml",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "Cargo.toml has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "napi/package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "napi/package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "20 dead symbol(s) the base already held:\n  src/detector.rs:1589  fn page_has_only_type3_fonts(doc: &Document, page_id: ObjectId) -> bool {\n  src/python.rs:92  fn __repr__(&self) -> String {\n  src/python.rs:114  fn __repr__(&self) -> String {\n  src/python.rs:145  fn __repr__(&self) -> String {\n  src/python.rs:246  fn __repr__(&self) -> String {\n  src/python.rs:278  fn __repr__(&self) -> String {\n  src/python.rs:307  fn __repr__(&self) -> String {\n  src/python.rs:330  fn __repr__(&self) -> String {\n  src/python.rs:364  fn __repr__(&self) -> String {\n  src/python.rs:400  fn __repr__(&self) -> String {\n  src/python.rs:529  fn __repr__(&self) -> String {\n  src/python.rs:558  fn __repr__(&self) -> String {\n  src/python.rs:1109  fn __repr__(&self) -> String {\n  wasm/src/lib.rs:9  const TYPESCRIPT_TYPES: &str = r#\"\n  wasm/src/lib.rs:460  fn processes_pdf_to_markdown() {\n  wasm/src/lib.rs:476  fn reports_document_information() {\n  wasm/src/lib.rs:490  fn rejects_non_pdf_bytes() {\n  wasm/src/lib.rs:495  fn classifies_and_extracts_plain_text() {\n  wasm/src/lib.rs:508  fn extracts_cjk_and_preserves_numeric_page_footer() {\n  wasm/src/lib.rs:515  fn opens_encrypted_pdf_with_password() {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package @firecrawl/pdf-inspector (napi/package.json): its types names no TypeScript source klin supports: index.d.ts names no file the tree holds"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "e1797b1f482a3fe02296bd9e833230e89cbee8ea",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

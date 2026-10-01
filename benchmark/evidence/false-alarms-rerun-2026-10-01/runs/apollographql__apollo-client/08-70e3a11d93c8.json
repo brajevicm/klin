@@ -1,0 +1,724 @@
+{
+  "language": "TypeScript",
+  "repository": "apollographql/apollo-client",
+  "index": 7,
+  "head": "70e3a11d93c8ef8d64aa2a7d12b02b773a57c7ca",
+  "base": "79e7c60fab74e4aec31717eececa582ba9dfd147",
+  "exit": 0,
+  "signal": null,
+  "ms": 14029,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 650
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "COLLABORATORS.md",
+          "CONTRIBUTING.md",
+          "README.md",
+          "ROADMAP.md",
+          "VERSIONING_POLICY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "codegen/package.json",
+          "config/size-limit/package.json",
+          "eslint-local-rules/package.json",
+          "integration-tests/browser-esm/package.json",
+          "integration-tests/codegen/package.json",
+          "integration-tests/cra5/package.json",
+          "integration-tests/next/package.json",
+          "integration-tests/node/package.json",
+          "integration-tests/package.json",
+          "integration-tests/peerdeps-tsc/package.json",
+          "integration-tests/shared/package.json",
+          "integration-tests/type-tests/package.json",
+          "integration-tests/vite-swc/package.json",
+          "integration-tests/vite/package.json",
+          "integration-tests/wrapping-library/package.json",
+          "package.json",
+          "scripts/changesets/categorized/package.json",
+          "scripts/codemods/ac2-to-ac3/package.json",
+          "scripts/codemods/ac3-to-ac4/package.json",
+          "scripts/codemods/data-masking/package.json",
+          "scripts/memory/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "integration-tests/browser-esm/tests",
+          "integration-tests/cra5/tests",
+          "integration-tests/next/tests",
+          "integration-tests/vite-swc/tests",
+          "integration-tests/vite/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 11,419 function(s) at 79e7c60; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 11,419 functions at 79e7c60, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 107
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "scripts/codemods/ac3-to-ac4/src/util/find*.ts",
+            "pattern": "find*.ts",
+            "roots": [
+              "scripts/codemods/ac3-to-ac4/src/util"
+            ]
+          },
+          {
+            "name": "scripts/codemods/ac3-to-ac4/src/util/get*.ts",
+            "pattern": "get*.ts",
+            "roots": [
+              "scripts/codemods/ac3-to-ac4/src/util"
+            ]
+          },
+          {
+            "name": "src/config/jest/*Equal.ts",
+            "pattern": "*Equal.ts",
+            "roots": [
+              "src/config/jest"
+            ]
+          },
+          {
+            "name": "src/dev/load*.ts",
+            "pattern": "load*.ts",
+            "roots": [
+              "src/dev"
+            ]
+          },
+          {
+            "name": "src/errors/*Error.ts",
+            "pattern": "*Error.ts",
+            "roots": [
+              "src/errors"
+            ]
+          },
+          {
+            "name": "src/testing/internal/multipart/mock*.ts",
+            "pattern": "mock*.ts",
+            "roots": [
+              "src/testing/internal/multipart"
+            ]
+          },
+          {
+            "name": "src/testing/matchers/toBe*.ts",
+            "pattern": "toBe*.ts",
+            "roots": [
+              "src/testing/matchers"
+            ]
+          },
+          {
+            "name": "src/testing/matchers/toEmit*.ts",
+            "pattern": "toEmit*.ts",
+            "roots": [
+              "src/testing/matchers"
+            ]
+          },
+          {
+            "name": "src/testing/matchers/toHave*.ts",
+            "pattern": "toHave*.ts",
+            "roots": [
+              "src/testing/matchers"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Array.ts",
+            "pattern": "*Array.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Deep.ts",
+            "pattern": "*Deep.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Definition.ts",
+            "pattern": "*Definition.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Document.ts",
+            "pattern": "*Document.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Field.ts",
+            "pattern": "*Field.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/*Promise.ts",
+            "pattern": "*Promise.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          },
+          {
+            "name": "src/utilities/internal/is*.ts",
+            "pattern": "is*.ts",
+            "roots": [
+              "src/utilities/internal"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 8,
+        "name": "doc-size",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 24,
+        "ms": 73,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 21,
+          "measured": 21,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 219,
+        "ms": 33,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 706,
+          "measured": 706,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1277,
+        "ms": 1637,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 1412
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 704,
+          "measured": 704,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 52,
+        "ms": 2028,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1408,
+          "reads": 1408
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 220,
+          "measured": 220,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3441,
+        "ms": 1083,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 703,
+          "measured": 698,
+          "not_measured": 0,
+          "unreadable": 5
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 159,
+        "ms": 3757,
+        "name": "complexity",
+        "names": null,
+        "notes": 5,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1406,
+          "reads": 1406
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 685,
+          "measured": 680,
+          "not_measured": 0,
+          "unreadable": 5
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1370,
+          "ms": 3087,
+          "parses": 1370,
+          "reads": 1370,
+          "shared": 0,
+          "states": 2042
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 76254,
+          "declaration_text_bytes": 232090,
+          "declarations": 5736,
+          "export_leaves": 1160,
+          "export_text_bytes": 305944,
+          "exported_alias_bytes": 154,
+          "exported_aliases": 22,
+          "exports": 682,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1360,
+          "import_text_bytes": 600556,
+          "imports": 6736,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 60234,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 13254,
+          "reference_canonical_bytes": 161988,
+          "reference_distinct_names": 6627,
+          "reference_name_bytes": 4819496,
+          "reference_representation_after_bytes": 9173664,
+          "reference_representation_before_bytes": 18347328,
+          "references": 573354,
+          "signature_bytes": 569870,
+          "signatures": 4814,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 12,
+        "ms": 3133,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 2868,
+            "distinct_names": 6835,
+            "files": 680,
+            "index_ms": 10,
+            "measure_ms": 1522,
+            "query_ms": 0,
+            "references": 280166
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2868,
+            "distinct_names": 6835,
+            "files": 680,
+            "index_ms": 10,
+            "measure_ms": 1568,
+            "query_ms": 0,
+            "references": 280166
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 55,
+            "ignored_ms": 13,
+            "renames_ms": 0,
+            "walk_ms": 8,
+            "worktree_add_ms": 185,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 6,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 62,
+          "measured": 62,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1370
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1845,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 2868,
+            "distinct_names": 6835,
+            "files": 680,
+            "index_ms": 9,
+            "measure_ms": 0,
+            "query_ms": 1,
+            "references": 280166
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2868,
+            "distinct_names": 6835,
+            "files": 680,
+            "index_ms": 9,
+            "measure_ms": 0,
+            "query_ms": 1,
+            "references": 280166
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 51,
+          "measured": 31,
+          "not_measured": 20,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1370
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1652,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 1572,
+          "modules": 1370,
+          "ms": 2,
+          "sources": 1370
+        },
+        "held": 0,
+        "ms": 7,
+        "name": "public-api",
+        "names": null,
+        "notes": 8,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 12,
+          "items": 1218,
+          "measured": 798,
+          "ms": 3,
+          "opaque": 420,
+          "surfaces": 62
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "CLAUDE.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 650,
+          "words": 648
+        }
+      },
+      {
+        "file": "config/schema.package.json.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "integration-tests/shared/fixture.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/masking/internal/types.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/react/index.react-server.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/testing/core/mocking/mockLink.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "config/schema.package.json.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "integration-tests/shared/fixture.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/masking/internal/types.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/react/index.react-server.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/testing/core/mocking/mockLink.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "12 dead symbol(s) the base already held:\n  codegen/local-state/visitor.ts:70  type FieldDefinitionPrintFn = (\n  docs/shared/MdxProvidedComponents.ts:5  interface HTMLAttributes<T> {\n  eslint-local-rules/require-disable-act-environment.ts:72  function findParentFunction(node: AST.Node): Fn | undefined {\n  scripts/codemods/ac3-to-ac4/src/__testfixtures__/imports.input.ts:8  const providerProps: ApolloProviderProps = {} as any;\n  scripts/codemods/ac3-to-ac4/src/__testfixtures__/imports.input.ts:22  const contextSetter: ContextSetter = (() => {}) as any;\n  scripts/codemods/ac3-to-ac4/src/__testfixtures__/imports.output.ts:9  const providerProps: ApolloProvider.Props = {} as any;\n  scripts/codemods/ac3-to-ac4/src/__testfixtures__/imports.output.ts:18  const contextSetter: SetContextLink.LegacyContextSetter = (() => {}) as any;\n  scripts/codemods/ac3-to-ac4/src/util/getAllExports.ts:9  const __filename = fileURLToPath(import.meta.url);\n  src/masking/__benches__/types.bench.ts:33  type _TypeCacheWarmup = Unmasked<UnrelatedType> | MaybeMasked<UnrelatedType>;\n  src/testing/internal/disposables/enableFakeTimers.ts:4  interface DateConstructor {\n  src/testing/matchers/index.d.ts:178  interface Matchers<R = void, T = {}>\n  src/testing/matchers/index.d.ts:182  interface Expect extends ApolloCustomAsymmetricMatchers {}"
+      },
+      {
+        "file": "package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./react\" — @apollo/client \".\" — leads to more than one TypeScript source file: src/react/index.ts, src/react/index.react-server.ts"
+      },
+      {
+        "file": "package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./utilities/environment\" — @apollo/client \".\" — leads to more than one TypeScript source file: src/utilities/environment/index.ts, src/utilities/environment/index.development.ts, src/utilities/environment/index.production.ts"
+      },
+      {
+        "file": "package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./utilities/internal\" — @apollo/client \".\" — leads to more than one TypeScript source file: src/utilities/internal/index.ts, src/utilities/internal/index.production.ts"
+      },
+      {
+        "file": "package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./utilities/internal/ponyfills\" — @apollo/client \".\" — leads to more than one TypeScript source file: src/utilities/internal/ponyfills/index.ts, src/utilities/internal/ponyfills/index.react-native.ts"
+      },
+      {
+        "file": "package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./utilities/invariant\" — @apollo/client \".\" — leads to more than one TypeScript source file: src/utilities/invariant/index.ts, src/utilities/invariant/index.development.ts"
+      },
+      {
+        "file": "src/testing/core/mocking/mockLink.ts",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": " — @apollo/client \"./testing\" — the module was not measured, so what it exports is unknown"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "20 package(s) or target(s) with no supported public surface:\n  TypeScript package @apollo/client-codemod-migrate-3-to-4 (scripts/codemods/ac3-to-ac4/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/imports.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @apollo/client-graphql-codegen (codegen/package.json): its exports names no TypeScript source klin supports: ./dist/local-state/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package ac2-to-ac3 (scripts/codemods/ac2-to-ac3/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package apollo-client-memory-tests (scripts/memory/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package browser-esm (integration-tests/browser-esm/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package categorized (scripts/changesets/categorized/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package codegen (integration-tests/codegen/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package cra5 (integration-tests/cra5/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package data-masking (scripts/codemods/data-masking/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package eslint-local-rules (eslint-local-rules/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package integration-tests (integration-tests/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package next (integration-tests/next/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package node (integration-tests/node/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package peerdeps-tsc (integration-tests/peerdeps-tsc/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package shared (integration-tests/shared/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package size-limit-apollo-plugin (config/size-limit/package.json): its exports names no TypeScript source klin supports: ./index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package type-tests (integration-tests/type-tests/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package vite (integration-tests/vite/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package vite-swc (integration-tests/vite-swc/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package wrapping-library (integration-tests/wrapping-library/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      },
+      {
+        "file": "src/testing/core/mocking/mockLink.ts",
+        "gate": "public-api",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "79e7c60fab74e4aec31717eececa582ba9dfd147",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

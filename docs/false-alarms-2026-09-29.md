@@ -377,3 +377,153 @@ The journal rows and their labels are in `journal-worksheet.md` and
 | R077 | `mountain-loop/yaak` | `6fc43a60e2` | complexity FAIL | cc at a derived percentile; cc at a derived percentile, the base site already over; lines at a derived percentile; lines at a derived percentile, the base site already over | 4 | not appropriate | The Rust scanners took the quote handling through a shared TagStrings helper, one small branch each. findTemplateTags and replaceTemplateTags are new linear TypeScript scanners at cc 12. |
 | R078 | `mountain-loop/yaak` | `23d369d84e` | dead-symbols FAIL | dead-symbols | 1 | not appropriate | The binding destructured from the dynamic import is used in the tests. |
 | R079 | `mountain-loop/yaak` | `b03c41b767` | complexity FAIL | cc at a derived percentile, the base site already over; lines at a derived percentile, the base site already over | 3 | not appropriate | A dependency bump adds one branch per function for the new git2 API. |
+
+## Rerun after #389, 2026-09-30
+
+#412 ran the same 100 changes again with `{}`, by the procedure of "The run".
+The binary is `klin 0.4.0`, which `benchmark/build-klin` built from
+`1d6dcd6f`, the merge of #416. That commit holds #380 to #388 and #411. Its
+SHA-256 is `dd615a462ba21f8bf022c6f379f7d3c6870353bfc0f0b3c089b5a3fa8f9a8386`.
+The records are in `benchmark/evidence/false-alarms-rerun-2026-09-30/`. Each
+row keeps its id from the first run, and its result is the status of its gate
+in the new record of the same change.
+
+Two limits apply to every number below:
+
+- An agent drafted the labels and agents reviewed them. No person reviewed
+  each row.
+- The replay produced the rules that this rerun measures, so the result is
+  in-sample. It shows what the rules do on these rows, and it supports no
+  claim about other repositories.
+
+No binary ran between #388 and #411, so the rerun does not separate their
+effects. Where a paragraph below names the ticket behind a change, it infers
+that from the gate and the values of the findings.
+
+### Which count
+
+A noise-only commit is a change that failed in the first run and whose rows
+all carry the label `not-appropriate`. The first run has 31 of them.
+
+#389 gives 26 still-failing noise-only commits in its evidence and 25 in its
+acceptance criteria. This rerun measures against 26. The first version of #389
+counted 25, because #382 then carried the `cc 10` floor, and that floor clears
+R065. A later edit on 2026-09-29 moved the floor out of #382 and changed the
+evidence to 26, but the criterion kept 25. The floor is now part of #411, so
+the 26 include R065's commit.
+
+### Results
+
+| Run | PASS | FAIL | ERROR |
+|---|---|---|---|
+| First run, 2026-09-29 | 53 | 45 | 2 |
+| Rerun, 2026-09-30 | 59 | 39 | 2 |
+
+The two ERROR runs are the same two changes as in the first run.
+
+- Of the 26 still-failing noise-only commits, 1 passes:
+  `Open-Dev-Society/OpenStock` `75a9ebb6f5` (R065). Its only finding was
+  `TradingViewWidget` at cc 9 against a derived `cc` ceiling of 6. The floor
+  of 10 lifts that ceiling to 10.
+- The 5 noise-only commits that #380 to #388 were expected to clear all pass:
+  R011, R012 and R050 (`doc-size`), and R073 and R078 (`dead-symbols`). So 6
+  of the 31 noise-only commits pass.
+- No row labeled appropriate lost the finding that its note names. R013 lost
+  only its `MapMode` finding, which its note calls wrong.
+
+The other 25 commits still fail. `complexity` fails in 22 of them, `escapes`
+in 3 and `stubs` in 1. The escapes rows are R034 and R041, best-effort
+`|| true`, which ADR 0062 keeps, and R058, an `eslint-disable` with a stated
+reason, which #389 did not raise. The stubs row is R035, a typo fix in a lone
+`/// FIXME` line.
+
+#415 addresses it, and the next section gives its result.
+
+### Rows that changed in the 26 still-failing commits
+
+| Row | Repository | Commit | Gate | First run | Rerun | What changed |
+|---|---|---|---|---|---|---|
+| R065 | `Open-Dev-Society/OpenStock` | `75a9ebb6f5` | complexity | FAIL, 1 finding | ok | `TradingViewWidget` at cc 9 is under the floor |
+| R049 | `apollographql/apollo-client` | `37f700eb4c` | complexity | FAIL, 2 | FAIL, 1 | the cc 7 callback at `useLazyQuery.ts:616` is under the floor, and the growth of `useLazyQuery` stays |
+| R064 | `Open-Dev-Society/OpenStock` | `e844ac413c` | complexity | FAIL, 4 | FAIL, 3 | `createAlert` at cc 9 is under the floor |
+| R072 | `mountain-loop/yaak` | `0a57d8eb61` | complexity | FAIL, 4 | FAIL, 2 | `convertBase64` and `convertPrompt` at cc 10 are under the floor |
+| R001, R005, R009, R014 | | | doc-size | FAIL | ok | a changelog is no longer judged |
+| R059, R061, R063 | `Open-Dev-Society/OpenStock` | | doc-size | FAIL | not run | the tree has no `AGENTS.md` or `CLAUDE.md` |
+| R015 | `gfx-rs/wgpu` | `5a7601baf4` | escapes | FAIL, 1 | ok | the `expect` in `naga/tests/` is test code, because `naga/build.rs` no longer removes the test root (#385) |
+| R039 | `refactoringhq/tolaria` | `44740e4ae1` | dead-symbols | FAIL, 1 | ok | the bindings that `vi.hoisted` destructures no longer read as dead (#384) |
+
+Each of these commits except R065's still fails on another row.
+
+### Rows that changed in the other commits
+
+- `doc-size` is ok or not run in R003, R007, R023, R046, R051 and R066.
+- `dead-symbols` is ok in R021, R031 and R076.
+- `reachability` is ok in R056.
+- `public-api` in R057 went from ERROR with 26 findings to FAIL with 28. The
+  run, `apollographql/apollo-client` `0c925a4348`, still exits 2, because
+  `complexity` (R054) and `dead-symbols` (R055) of the same run still end in
+  ERROR.
+- The finding count went down in R013 (3 to 2), R044 (4 to 3), R048 (167 to
+  143), R052 (150 to 146), R054 (149 to 132), R068 (30 to 16) and R075 (12
+  to 11). R054 and R068 still end in ERROR, and the other gates still fail.
+  In the `complexity` rows, every finding that went away had `cc` 10 or
+  lower.
+
+R052 shows the limit of #411's test idiom. The rule removed the 4
+`@ts-expect-error` rows in `__tests__` files. 73 `@ts-expect-error` rows stay
+in `integration-tests/type-tests/`, because SPEC 5.4 does not classify those
+files as test code. The label note puts 131 of R052's findings in type tests
+and test files. R052 still fails on its library-source escapes, which the
+label calls appropriate. The first binary named 80 of R052's findings
+`ts-ignore`. The rerun names 74 of them `ts-expect-error` and 2 `ts-ignore`,
+and the other 4 are the test-file findings that went away.
+
+## Rerun on main, 2026-10-01
+
+#414 and #415 merged after the 2026-09-30 rerun, so #412 ran the same 100
+changes again with `{}`, by the procedure of "The run". The binary is
+`klin 0.4.0`, which `benchmark/build-klin` built from `main` at `20f48bb6`,
+the merge of #418. Its SHA-256 is
+`4bb5bd7d72d7c1fb775f29324ac3b54f292dae508c871c08d6b81fa93514c037`. Between
+`1d6dcd6f` and `20f48bb6`, only #414 and #415 change files under `src/`. The
+records are in `benchmark/evidence/false-alarms-rerun-2026-10-01/`. The two
+limits of the 2026-09-30 rerun apply here too: agents drafted and reviewed the
+labels, and the result is in-sample.
+
+| Run | PASS | FAIL | ERROR |
+|---|---|---|---|
+| First run, 2026-09-29 | 53 | 45 | 2 |
+| Rerun, 2026-09-30 | 59 | 39 | 2 |
+| Rerun on main, 2026-10-01 | 60 | 38 | 2 |
+
+- One more noise-only commit passes: `denisidoro/navi` `cc40723617` (R035).
+  #415 keys the `/// FIXME` by file and kind, so the typo fix holds its count.
+  That makes 2 of the 26 still-failing commits and 7 of the 31 noise-only
+  commits.
+- The other 24 still fail. `complexity` fails in 21 of them and `escapes` in
+  3. No noise-only commit fails on `stubs`.
+- No other change moved between PASS, FAIL and ERROR.
+
+With `{}`, no `complexity.test_lines` is pinned, so #414 judges no test code on
+length. Every finding that went away is a test function or a test helper over
+the `lines` ceiling. No finding was added. In R053 the same 6 `stubs` sites
+fail as before, and each now prints its kind, `comment marker`, in place of its
+line text, because #415 keys a marker by file and kind.
+
+| Row | Label | Gate | 2026-09-30 | 2026-10-01 | What went away |
+|---|---|---|---|---|---|
+| R035 | not appropriate | stubs | FAIL, 1 | ok | the `/// FIXME` whose typo was fixed |
+| R042 | not appropriate | complexity | FAIL, 1 | ok | the test helper `fixture`, 62 lines. The commit still fails on R041 |
+| R040 | not appropriate | complexity | FAIL, 2 | FAIL, 1 | the 245-line test body. The growth of `shellSessionArguments` stays |
+| R045 | not appropriate | complexity | FAIL, 3 | FAIL, 2 | the test helper `fixture`, 79 lines |
+| R010 | not appropriate | complexity | FAIL, 5 | FAIL, 4 | one Rust test function, 110 lines |
+| R008 | appropriate | complexity | FAIL, 6 | FAIL, 5 | the 103-line test |
+| R019 | appropriate | complexity | FAIL, 19 | FAIL, 18 | the tiling test |
+| R025 | appropriate | complexity | FAIL, 29 | FAIL, 28 | one Rust test function, 69 lines |
+| R029 | appropriate | complexity | FAIL, 35 | FAIL, 34 | the tiling test |
+| R048 | appropriate | complexity | FAIL, 143 | FAIL, 62 | 79 test bodies |
+| R054 | appropriate | complexity | ERROR, 132 | ERROR, 28 | 104 test bodies |
+| R075 | appropriate | complexity | FAIL, 11 | FAIL, 10 | one test body, 88 lines |
+
+Every row labeled appropriate keeps the finding that its note names. Where a
+note names the test findings, it calls them not appropriate.

@@ -1,0 +1,417 @@
+{
+  "language": "Rust",
+  "repository": "denisidoro/navi",
+  "index": 7,
+  "head": "cc4072361735036afeefef0344c7ba8b5f9ad112",
+  "base": "75eb0609276224a21ae654cd2f5295b2c5c897a1",
+  "exit": 0,
+  "signal": null,
+  "ms": 445,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 180 function(s) at 75eb060; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 180 functions at 75eb060, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 45
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 12,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 18,
+        "ms": 6,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 56,
+          "measured": 56,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 26,
+        "ms": 56,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 104,
+          "reads": 112
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 4,
+        "ms": 26,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 104,
+          "reads": 104
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 9,
+          "measured": 9,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 10,
+        "ms": 6,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 12,
+        "ms": 75,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 104,
+          "reads": 104
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 104,
+          "ms": 80,
+          "parses": 104,
+          "reads": 104,
+          "shared": 0,
+          "states": 90
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 5796,
+          "declaration_text_bytes": 20396,
+          "declarations": 524,
+          "export_leaves": 100,
+          "export_text_bytes": 4440,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 52,
+          "extern_crate_bytes": 60,
+          "extern_crates": 4,
+          "files": 104,
+          "import_text_bytes": 35584,
+          "imports": 436,
+          "module_declarations": 112,
+          "module_text_bytes": 1446,
+          "nesting_bytes": 298,
+          "nesting_entries": 60,
+          "nestings": 60,
+          "owner_bytes": 744,
+          "owners": 104,
+          "path_bytes": 2136,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 1462,
+          "reference_canonical_bytes": 12648,
+          "reference_distinct_names": 731,
+          "reference_name_bytes": 74288,
+          "reference_representation_after_bytes": 180384,
+          "reference_representation_before_bytes": 360768,
+          "references": 11274,
+          "signature_bytes": 23630,
+          "signatures": 524,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 81,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 262,
+            "distinct_names": 763,
+            "files": 52,
+            "index_ms": 0,
+            "measure_ms": 41,
+            "query_ms": 0,
+            "references": 5366
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 262,
+            "distinct_names": 763,
+            "files": 52,
+            "index_ms": 0,
+            "measure_ms": 39,
+            "query_ms": 0,
+            "references": 5366
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 14,
+            "ignored_ms": 7,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 29,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 56,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 104
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 258,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 258,
+          "modules": 114,
+          "ms": 0,
+          "sources": 114
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 96,
+          "measured": 18,
+          "ms": 0,
+          "opaque": 78,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [],
+    "status": "PASS",
+    "summary": "klin: 9 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "75eb0609276224a21ae654cd2f5295b2c5c897a1",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

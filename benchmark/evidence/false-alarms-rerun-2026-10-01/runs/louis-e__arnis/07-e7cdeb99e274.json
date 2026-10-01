@@ -1,0 +1,1270 @@
+{
+  "language": "Rust",
+  "repository": "louis-e/arnis",
+  "index": 6,
+  "head": "e7cdeb99e274f1c3040030bfedd956fdc66278fe",
+  "base": "fc19146b3f72ee4a87d4fd158558eb4e6d6fbe29",
+  "exit": 1,
+  "signal": null,
+  "ms": 16734,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CODE_OF_CONDUCT.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 13,117 functions at fc19146, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 13,117 functions at fc19146, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 51
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/map_*.rs",
+            "pattern": "map_*.rs",
+            "roots": [
+              "src"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/carver.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "8b89136aad04d824",
+        "line": 275,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::too_many_arguments)]",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "1b954c38c1967aed",
+        "line": 276,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::too_many_arguments)]",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/noise.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "ba98d8f0139ced2f",
+        "line": 64,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::too_many_arguments)]",
+        "values": {
+          "count": 2,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/rng.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "d909046038dc893a",
+        "line": 129,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(dead_code)] // vanilla-parity API kept complete",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/rng.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "4e193c0b4e88c35e",
+        "line": 172,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::wrong_self_convention)] // mirrors vanilla's forkPositional().fromHashOf",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "e9f59a561babffa4",
+        "line": 33,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(dead_code)] // kept for debugging dumps",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "039ddf0d62616dc2",
+        "line": 451,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::too_many_arguments)]",
+        "values": {
+          "count": 2,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "9c513e1b898eedb0",
+        "line": 534,
+        "matched": null,
+        "outcome": "new",
+        "text": "let probe_y = floors.first().or(ceils.first()).copied().unwrap();",
+        "values": {
+          "count": 1,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "aab7a466b79ad1dc",
+        "line": 280,
+        "matched": null,
+        "outcome": "new",
+        "text": "let y_lo = cells.iter().map(|&(_, y, _)| y).min().unwrap();",
+        "values": {
+          "count": 1,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "b60bc7534a107790",
+        "line": 281,
+        "matched": null,
+        "outcome": "new",
+        "text": "let y_hi = cells.iter().map(|&(_, y, _)| y).max().unwrap();",
+        "values": {
+          "count": 1,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "864fba00ca16ea12",
+        "line": 313,
+        "matched": null,
+        "outcome": "new",
+        "text": "#[allow(clippy::too_many_arguments)]",
+        "values": {
+          "count": 1,
+          "escape": "allow"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/caves/zone_map.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "6baf5f783d635fb5",
+        "line": 49,
+        "matched": null,
+        "outcome": "new",
+        "text": ".expect(\"render() is only called when --cave-zone-map is set\");",
+        "values": {
+          "count": 1,
+          "escape": "expect"
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/bedrock_block_map.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9ee1678e2418cecb",
+        "line": 1014,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn convert_cave_block(",
+        "values": {
+          "cc": 26,
+          "lines": 127
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/carver.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "611f88c6bd8f2f33",
+        "line": 202,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn cave_chunk(seed: i64, cfg: &Cfg, cx: i32, cz: i32, out: &mut Vec<Ellipsoid>) {",
+        "values": {
+          "cc": 5,
+          "lines": 61
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/carver.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "294f0fe93c538e04",
+        "line": 276,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn create_tunnel(",
+        "values": {
+          "cc": 7,
+          "lines": 98
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/carver.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "823bded3277ce9d4",
+        "line": 394,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn canyon_chunk(seed: i64, cx: i32, cz: i32, out: &mut Vec<Ellipsoid>) {",
+        "values": {
+          "cc": 8,
+          "lines": 75
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1476cf933d8b9fad",
+        "line": 132,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub fn parse(spec: &str) -> Result<Self, String> {",
+        "values": {
+          "cc": 14,
+          "lines": 31
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "be00bb135b1a640d",
+        "line": 220,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(super) fn zone(&self, x: i32, y: i32, z: i32, surf_y: i32) -> Zone {",
+        "values": {
+          "cc": 15,
+          "lines": 41
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "66ef55354cefbc5e",
+        "line": 277,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(super) fn decorate(",
+        "values": {
+          "cc": 125,
+          "lines": 418
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "11abae026664f9ad",
+        "line": 761,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn build_giant_mushroom(",
+        "values": {
+          "cc": 19,
+          "lines": 57
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/decoration.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6d3b54a80d73b6d4",
+        "line": 902,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(super) fn plan_geodes(",
+        "values": {
+          "cc": 31,
+          "lines": 139
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/mod.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d2de5f07ff345153",
+        "line": 149,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub fn carve_region(",
+        "values": {
+          "cc": 58,
+          "lines": 284
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/mod.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a98232084de522a1",
+        "line": 441,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn noise_cells(gen: &CaveGen, region: Rect, surf: &[i32], floor: i32) -> Vec<(i32, i32, i32)> {",
+        "values": {
+          "cc": 8,
+          "lines": 90
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/ores.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "303868740bcec515",
+        "line": 54,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn ore_table() -> Vec<Ore> {",
+        "values": {
+          "cc": 1,
+          "lines": 214
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/ores.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "4dd7d02154422b67",
+        "line": 293,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub fn place_ores(",
+        "values": {
+          "cc": 11,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/ores.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6f2712766b6b934d",
+        "line": 363,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn place_blob(editor: &mut WorldEditor, cx: i32, cy: i32, cz: i32, ore: &Ore, r: &mut XoroRandom) {",
+        "values": {
+          "cc": 13,
+          "lines": 62
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/rng.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c0aa50053b0af167",
+        "line": 183,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn md5_16(msg: &[u8]) -> [u8; 16] {",
+        "values": {
+          "cc": 8,
+          "lines": 67
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "64ce7646c56a20f4",
+        "line": 131,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn load_pack(dir: &Path) -> Result<CavePack, String> {",
+        "values": {
+          "cc": 16,
+          "lines": 37
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b7ef8398f3f7a76a",
+        "line": 217,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn cave_map(base: &str, props: &[(String, String)]) -> Option<(Block, bool)> {",
+        "values": {
+          "cc": 27,
+          "lines": 37
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f75ae5a8de03ff16",
+        "line": 255,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn load_cave_schem(gz_bytes: &[u8]) -> Result<CaveSchem, String> {",
+        "values": {
+          "cc": 33,
+          "lines": 152
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0b110423f8b41efe",
+        "line": 452,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(super) fn stamp_region(",
+        "values": {
+          "cc": 39,
+          "lines": 169
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/schems.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "84ea75a3c43f2ba7",
+        "line": 637,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn place_schem(",
+        "values": {
+          "cc": 47,
+          "lines": 195
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3ccd6499a54f5145",
+        "line": 57,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub(super) fn plan(shape: &CaveShape, decor: &Decor, seed: i64, region: Rect) -> WaterPlan {",
+        "values": {
+          "cc": 10,
+          "lines": 61
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "933feb148aaaf271",
+        "line": 160,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn plan_pool(",
+        "values": {
+          "cc": 19,
+          "lines": 142
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/water.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "05bd139769a4b7c1",
+        "line": 314,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn walk_river(",
+        "values": {
+          "cc": 28,
+          "lines": 122
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/caves/zone_map.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "82467d5ae0432886",
+        "line": 45,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub fn render(args: &Args) -> Result<(), String> {",
+        "values": {
+          "cc": 16,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/args.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "31f024516d11d51b",
+        "line": 623,
+        "matched": {
+          "accepted": false,
+          "file": "src/args.rs",
+          "line": 586,
+          "text": "pub fn validate_args(args: &Args) -> Result<(), String> {",
+          "values": {
+            "cc": 59,
+            "lines": 220
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn validate_args(args: &Args) -> Result<(), String> {",
+        "values": {
+          "cc": 72,
+          "lines": 252
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/bedrock_block_map.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "59e1e58070066cf0",
+        "line": 896,
+        "matched": {
+          "accepted": false,
+          "file": "src/bedrock_block_map.rs",
+          "line": 896,
+          "text": "pub fn to_bedrock_block_with_properties(",
+          "values": {
+            "cc": 24,
+            "lines": 111
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn to_bedrock_block_with_properties(",
+        "values": {
+          "cc": 25,
+          "lines": 114
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/block_definitions.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "999eac8f843ff0fa",
+        "line": 111,
+        "matched": {
+          "accepted": false,
+          "file": "src/block_definitions.rs",
+          "line": 111,
+          "text": "pub fn try_name(&self) -> Option<&str> {",
+          "values": {
+            "cc": 369,
+            "lines": 376
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn try_name(&self) -> Option<&str> {",
+        "values": {
+          "cc": 435,
+          "lines": 442
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/block_definitions.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0d104e4363bd621a",
+        "line": 554,
+        "matched": {
+          "accepted": false,
+          "file": "src/block_definitions.rs",
+          "line": 488,
+          "text": "pub fn properties(&self) -> Option<Value> {",
+          "values": {
+            "cc": 54,
+            "lines": 326
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn properties(&self) -> Option<Value> {",
+        "values": {
+          "cc": 56,
+          "lines": 337
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/data_processing.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "fcd616da9c99b010",
+        "line": 519,
+        "matched": {
+          "accepted": false,
+          "file": "src/data_processing.rs",
+          "line": 519,
+          "text": "pub fn generate_world_with_options(",
+          "values": {
+            "cc": 152,
+            "lines": 1152
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn generate_world_with_options(",
+        "values": {
+          "cc": 158,
+          "lines": 1190
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2aa5243c98591705",
+        "line": 1302,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui.rs",
+          "line": 1302,
+          "text": "fn gui_start_generation(",
+          "values": {
+            "cc": 70,
+            "lines": 618
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn gui_start_generation(",
+        "values": {
+          "cc": 71,
+          "lines": 630
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8fd7a60da297ea72",
+        "line": 117,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 116,
+          "text": "async function applyLocalization(localization) {",
+          "values": {
+            "cc": 4,
+            "lines": 120
+          }
+        },
+        "outcome": "worsened",
+        "text": "async function applyLocalization(localization) {",
+        "values": {
+          "cc": 4,
+          "lines": 121
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "343007b6a2d5acc6",
+        "line": 2724,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 2700,
+          "text": "async function startGeneration() {",
+          "values": {
+            "cc": 33,
+            "lines": 172
+          }
+        },
+        "outcome": "worsened",
+        "text": "async function startGeneration() {",
+        "values": {
+          "cc": 33,
+          "lines": 174
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/luanti_block_map.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e89cc9d91089bd63",
+        "line": 254,
+        "matched": {
+          "accepted": false,
+          "file": "src/luanti_block_map.rs",
+          "line": 165,
+          "text": "fn to_mineclonia_node(block: Block, props: Option<&Value>) -> LuantiNode {",
+          "values": {
+            "cc": 358,
+            "lines": 413
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn to_mineclonia_node(block: Block, props: Option<&Value>) -> LuantiNode {",
+        "values": {
+          "cc": 424,
+          "lines": 501
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/main.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "08c6cf92d2b1c698",
+        "line": 148,
+        "matched": {
+          "accepted": false,
+          "file": "src/main.rs",
+          "line": 147,
+          "text": "fn run_cli() {",
+          "values": {
+            "cc": 59,
+            "lines": 552
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn run_cli() {",
+        "values": {
+          "cc": 62,
+          "lines": 566
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 24,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 51,
+        "ms": 7,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 236,
+          "measured": 236,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 12,
+        "footprint": null,
+        "graph": null,
+        "held": 257,
+        "ms": 2639,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 410,
+          "reads": 460
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 234,
+          "measured": 234,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 2181,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 456,
+          "reads": 456
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 10,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 234,
+          "measured": 233,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 34,
+        "footprint": null,
+        "graph": null,
+        "held": 869,
+        "ms": 4665,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 456,
+          "reads": 456
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 211,
+          "measured": 211,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 410,
+          "ms": 4268,
+          "parses": 410,
+          "reads": 410,
+          "shared": 0,
+          "states": 6049
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 246085,
+          "declaration_text_bytes": 625874,
+          "declarations": 13724,
+          "export_leaves": 94,
+          "export_text_bytes": 5622,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 54,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 410,
+          "import_text_bytes": 412712,
+          "imports": 3329,
+          "module_declarations": 765,
+          "module_text_bytes": 62492,
+          "nesting_bytes": 33685,
+          "nesting_entries": 4479,
+          "nestings": 4479,
+          "owner_bytes": 20426,
+          "owners": 2026,
+          "path_bytes": 10935,
+          "qualified_paths": 1391,
+          "reference_canonical_allocation_ratio": 1.9570455735987429,
+          "reference_canonical_allocation_ratio_milli": 1957,
+          "reference_canonical_allocations": 26152,
+          "reference_canonical_bytes": 278288,
+          "reference_distinct_names": 13363,
+          "reference_name_bytes": 2996165,
+          "reference_representation_after_bytes": 8133168,
+          "reference_representation_before_bytes": 16266336,
+          "references": 508323,
+          "signature_bytes": 736245,
+          "signatures": 13724,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 4,
+        "ms": 4318,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 7022,
+            "distinct_names": 14636,
+            "files": 211,
+            "index_ms": 11,
+            "measure_ms": 2159,
+            "query_ms": 0,
+            "references": 240984
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 6702,
+            "distinct_names": 14043,
+            "files": 199,
+            "index_ms": 10,
+            "measure_ms": 2111,
+            "query_ms": 0,
+            "references": 230621
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 22,
+            "ignored_ms": 11,
+            "renames_ms": 0,
+            "walk_ms": 12,
+            "worktree_add_ms": 328,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 410
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 2216,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 7022,
+            "distinct_names": 14636,
+            "files": 211,
+            "index_ms": 11,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 240984
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 6702,
+            "distinct_names": 14043,
+            "files": 199,
+            "index_ms": 10,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 230621
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 410
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 3452,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 2446,
+          "modules": 767,
+          "ms": 4,
+          "sources": 767
+        },
+        "held": 0,
+        "ms": 6,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "src/gui/js/libs/jquery-ui-1.10.3.custom.js",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the JavaScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "4 dead symbol(s) the base already held:\n  src/luanti_block_map.rs:146  fn conv_slab(props: Option<&Value>, bottom: &'static str, top: &'static str) -> LuantiNode {\n  src/main.rs:72  static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;\n  src/world_editor/java.rs:1360  fn merge_compound_list(chunk: &mut Chunk, chunk_to_modify: &ChunkToModify, key: &str) {\n  src/world_editor/mod.rs:2574  fn single_item(id: &str, slot: i8, count: i8) -> HashMap<String, Value> {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  Rust package arnis (Cargo.toml): has no library target, and a binary has no public surface"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "fc19146b3f72ee4a87d4fd158558eb4e6d6fbe29",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

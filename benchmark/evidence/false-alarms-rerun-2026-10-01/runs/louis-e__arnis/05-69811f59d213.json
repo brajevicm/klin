@@ -1,0 +1,635 @@
+{
+  "language": "Rust",
+  "repository": "louis-e/arnis",
+  "index": 4,
+  "head": "69811f59d213b2316ac80accc3e260be6e852850",
+  "base": "788d5e9ca9ded85a88229dbdc0b4e886e5582b6c",
+  "exit": 1,
+  "signal": null,
+  "ms": 16966,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CODE_OF_CONDUCT.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 13,336 functions at 788d5e9, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 13,336 functions at 788d5e9, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 51
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/map_*.rs",
+            "pattern": "map_*.rs",
+            "roots": [
+              "src"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/bbox.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "64697d80424cacbb",
+        "line": 1524,
+        "matched": null,
+        "outcome": "new",
+        "text": "function describeTool(btn) {",
+        "values": {
+          "cc": 13,
+          "lines": 61
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/bbox.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "be234c664c5a040f",
+        "line": 464,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/bbox.js",
+          "line": 453,
+          "text": "$(document).ready(function () {",
+          "values": {
+            "cc": 13,
+            "lines": 1651
+          }
+        },
+        "outcome": "worsened",
+        "text": "$(document).ready(function () {",
+        "values": {
+          "cc": 14,
+          "lines": 1842
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/bbox.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5d210986ea0e6c4a",
+        "line": 2093,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/bbox.js",
+          "line": 1894,
+          "text": "map.on('draw:created', function (e) {",
+          "values": {
+            "cc": 13,
+            "lines": 77
+          }
+        },
+        "outcome": "worsened",
+        "text": "map.on('draw:created', function (e) {",
+        "values": {
+          "cc": 13,
+          "lines": 79
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9fe06646492121c3",
+        "line": 275,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 333,
+          "text": "function openUpdateModal(opts = {}) {",
+          "values": {
+            "cc": 24,
+            "lines": 51
+          }
+        },
+        "outcome": "worsened",
+        "text": "function openUpdateModal(opts = {}) {",
+        "values": {
+          "cc": 31,
+          "lines": 63
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "19125ad868e768db",
+        "line": 1117,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 1062,
+          "text": "function initSettings() {",
+          "values": {
+            "cc": 5,
+            "lines": 424
+          }
+        },
+        "outcome": "worsened",
+        "text": "function initSettings() {",
+        "values": {
+          "cc": 5,
+          "lines": 438
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5fb52370d0f120ab",
+        "line": 1442,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 1379,
+          "text": "async function openLicense() {",
+          "values": {
+            "cc": 8,
+            "lines": 98
+          }
+        },
+        "outcome": "worsened",
+        "text": "async function openLicense() {",
+        "values": {
+          "cc": 9,
+          "lines": 104
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/main.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "813801289d4ad902",
+        "line": 2014,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/main.js",
+          "line": 1943,
+          "text": "function initTooltips() {",
+          "values": {
+            "cc": 2,
+            "lines": 118
+          }
+        },
+        "outcome": "worsened",
+        "text": "function initTooltips() {",
+        "values": {
+          "cc": 2,
+          "lines": 121
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 51",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 51 lines)",
+        "file": "src/gui/js/preview3d.js",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "07e0d312c9f6b62e",
+        "line": 7,
+        "matched": {
+          "accepted": false,
+          "file": "src/gui/js/preview3d.js",
+          "line": 7,
+          "text": "(function () {",
+          "values": {
+            "cc": 1,
+            "lines": 996
+          }
+        },
+        "outcome": "worsened",
+        "text": "(function () {",
+        "values": {
+          "cc": 1,
+          "lines": 1018
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 24,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 51,
+        "ms": 7,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 237,
+          "measured": 237,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 269,
+        "ms": 2670,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 422,
+          "reads": 473
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 235,
+          "measured": 235,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 2290,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 469,
+          "reads": 469
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 11,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 235,
+          "measured": 234,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 8,
+        "footprint": null,
+        "graph": null,
+        "held": 898,
+        "ms": 4732,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 469,
+          "reads": 469
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 211,
+          "measured": 211,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 422,
+          "ms": 4299,
+          "parses": 422,
+          "reads": 422,
+          "shared": 0,
+          "states": 6288
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 251924,
+          "declaration_text_bytes": 645404,
+          "declarations": 14150,
+          "export_leaves": 94,
+          "export_text_bytes": 5622,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 54,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 422,
+          "import_text_bytes": 422494,
+          "imports": 3410,
+          "module_declarations": 784,
+          "module_text_bytes": 63586,
+          "nesting_bytes": 34186,
+          "nesting_entries": 4564,
+          "nestings": 4564,
+          "owner_bytes": 21108,
+          "owners": 2100,
+          "path_bytes": 11162,
+          "qualified_paths": 1434,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 26864,
+          "reference_canonical_bytes": 285036,
+          "reference_distinct_names": 13432,
+          "reference_name_bytes": 3068920,
+          "reference_representation_after_bytes": 8377376,
+          "reference_representation_before_bytes": 16754752,
+          "references": 523586,
+          "signature_bytes": 754884,
+          "signatures": 14150,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 4,
+        "ms": 4348,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 7075,
+            "distinct_names": 14717,
+            "files": 211,
+            "index_ms": 11,
+            "measure_ms": 2144,
+            "query_ms": 0,
+            "references": 242878
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7075,
+            "distinct_names": 14717,
+            "files": 211,
+            "index_ms": 11,
+            "measure_ms": 2156,
+            "query_ms": 0,
+            "references": 242878
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 27,
+            "ignored_ms": 11,
+            "renames_ms": 0,
+            "walk_ms": 12,
+            "worktree_add_ms": 324,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 422
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 2218,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 7075,
+            "distinct_names": 14717,
+            "files": 211,
+            "index_ms": 10,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 242878
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7075,
+            "distinct_names": 14717,
+            "files": 211,
+            "index_ms": 10,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 242878
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 422
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 3542,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 2504,
+          "modules": 786,
+          "ms": 3,
+          "sources": 786
+        },
+        "held": 0,
+        "ms": 5,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "src/gui/js/libs/jquery-ui-1.10.3.custom.js",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the JavaScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "4 dead symbol(s) the base already held:\n  src/luanti_block_map.rs:147  fn conv_slab(props: Option<&Value>, bottom: &'static str, top: &'static str) -> LuantiNode {\n  src/main.rs:73  static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;\n  src/world_editor/java.rs:1360  fn merge_compound_list(chunk: &mut Chunk, chunk_to_modify: &ChunkToModify, key: &str) {\n  src/world_editor/mod.rs:2614  fn single_item(id: &str, slot: i8, count: i8) -> HashMap<String, Value> {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  Rust package arnis (Cargo.toml): has no library target, and a binary has no public surface"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "788d5e9ca9ded85a88229dbdc0b4e886e5582b6c",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

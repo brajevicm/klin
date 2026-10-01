@@ -1,0 +1,494 @@
+{
+  "language": "TypeScript",
+  "repository": "whyour/qinglong",
+  "index": 9,
+  "head": "f051135fc4abf9f1df806111d0015c210954861d",
+  "base": "2d6c2206b35d2a6bacec946826cd6e4d79ee9a7c",
+  "exit": 0,
+  "signal": null,
+  "ms": 2348,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "README-en.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "test"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,635 function(s) at 2d6c220; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,635 functions at 2d6c220, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 48
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/pages/crontab/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/crontab"
+            ]
+          },
+          {
+            "name": "src/pages/script/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/script"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 32,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 117,
+        "ms": 14,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 268,
+          "measured": 268,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 469,
+        "ms": 287,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 536
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 250,
+          "measured": 250,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 356,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 500,
+          "reads": 500
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 56,
+          "measured": 56,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 220,
+        "ms": 64,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 250,
+          "measured": 249,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 203,
+        "ms": 701,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 500,
+          "reads": 500
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 180,
+          "measured": 179,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 360,
+          "ms": 451,
+          "parses": 360,
+          "reads": 360,
+          "shared": 0,
+          "states": 898
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 33876,
+          "declaration_text_bytes": 135034,
+          "declarations": 2932,
+          "export_leaves": 180,
+          "export_text_bytes": 7696,
+          "exported_alias_bytes": 294,
+          "exported_aliases": 42,
+          "exports": 180,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 358,
+          "import_text_bytes": 157014,
+          "imports": 2284,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 8576,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 2,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 7282,
+          "reference_canonical_bytes": 75472,
+          "reference_distinct_names": 3641,
+          "reference_name_bytes": 695466,
+          "reference_representation_after_bytes": 1641280,
+          "reference_representation_before_bytes": 3282560,
+          "references": 102580,
+          "signature_bytes": 186259,
+          "signatures": 2250,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 9,
+        "ms": 462,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 228,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 223,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 2,
+            "worktree_add_ms": 52,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 360
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 254,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 360
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 810,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 804,
+          "modules": 360,
+          "ms": 0,
+          "sources": 360
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "9 dead symbol(s) the base already held:\n  back/config/util.ts:194  enum FileType {\n  back/config/util.ts:758  function isCentOS(osReleaseInfo: string): boolean {\n  back/config/util.ts:826  async function replaceDomainInFile(\n  back/shared/pLimit.ts:76  constructor() {\n  back/shared/pLimit.ts:188  public async runWithSubscriptionLimit<T>(\n  back/shared/pLimit.ts:197  public async runWithSystemLimit<T>(\n  back/shared/pLimit.ts:206  public async runWithScriptLimit<T>(\n  src/utils/websocket.ts:18  constructor(url: string, options: Partial<typeof WebSocketManager.prototype.options> = {}) {\n  typings.d.ts:12  interface Window {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package @whyour/qinglong (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "2d6c2206b35d2a6bacec946826cd6e4d79ee9a7c",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

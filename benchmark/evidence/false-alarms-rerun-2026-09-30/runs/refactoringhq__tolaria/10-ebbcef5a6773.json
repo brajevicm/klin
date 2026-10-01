@@ -1,0 +1,1112 @@
+{
+  "language": "TypeScript",
+  "repository": "refactoringhq/tolaria",
+  "index": 9,
+  "head": "ebbcef5a67732a8f65bb98f3320eaa1182ab4ace",
+  "base": "7da2f991ec8bd53b42ef4038bb3da9ad01ee07cb",
+  "exit": 0,
+  "signal": null,
+  "ms": 20105,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 3700
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "GEMINI.md",
+          "README.md",
+          "SECURITY.md",
+          "trademarks.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "mcp-server/package.json",
+          "package.json",
+          "src-tauri/Cargo.toml",
+          "src-tauri/gen/apple/assets/mcp-server/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "e2e",
+          "src-tauri/tests",
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 34,727 function(s) at 7da2f99; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 34,727 functions at 7da2f99, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 34
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src-tauri/src/ai_*.rs",
+            "pattern": "ai_*.rs",
+            "roots": [
+              "src-tauri/src"
+            ]
+          },
+          {
+            "name": "src-tauri/src/vault_*.rs",
+            "pattern": "vault_*.rs",
+            "roots": [
+              "src-tauri/src"
+            ]
+          },
+          {
+            "name": "src/components/*Banner.tsx",
+            "pattern": "*Banner.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Bar.tsx",
+            "pattern": "*Bar.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Controls.tsx",
+            "pattern": "*Controls.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Dropdown.tsx",
+            "pattern": "*Dropdown.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Extension.ts",
+            "pattern": "*Extension.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Guard.ts",
+            "pattern": "*Guard.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Icon.tsx",
+            "pattern": "*Icon.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Input.tsx",
+            "pattern": "*Input.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Menu.tsx",
+            "pattern": "*Menu.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Panel.tsx",
+            "pattern": "*Panel.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Recovery.ts",
+            "pattern": "*Recovery.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Section.tsx",
+            "pattern": "*Section.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Selector.tsx",
+            "pattern": "*Selector.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*State.ts",
+            "pattern": "*State.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Sync.ts",
+            "pattern": "*Sync.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Target.ts",
+            "pattern": "*Target.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*Types.ts",
+            "pattern": "*Types.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/*View.tsx",
+            "pattern": "*View.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/Command*.tsx",
+            "pattern": "Command*.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/Tolaria*.tsx",
+            "pattern": "Tolaria*.tsx",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/ai*.ts",
+            "pattern": "ai*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/richEditorMalformed*.ts",
+            "pattern": "richEditorMalformed*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/table*.ts",
+            "pattern": "table*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/tolaria*.ts",
+            "pattern": "tolaria*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/useAi*.ts",
+            "pattern": "useAi*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/useEditor*.ts",
+            "pattern": "useEditor*.ts",
+            "roots": [
+              "src/components"
+            ]
+          },
+          {
+            "name": "src/components/folder-tree/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "src/components/folder-tree"
+            ]
+          },
+          {
+            "name": "src/components/sheet-editor/*Actions.ts",
+            "pattern": "*Actions.ts",
+            "roots": [
+              "src/components/sheet-editor"
+            ]
+          },
+          {
+            "name": "src/components/sheet-editor/*Autocomplete.ts",
+            "pattern": "*Autocomplete.ts",
+            "roots": [
+              "src/components/sheet-editor"
+            ]
+          },
+          {
+            "name": "src/components/sheet-editor/*Focus.ts",
+            "pattern": "*Focus.ts",
+            "roots": [
+              "src/components/sheet-editor"
+            ]
+          },
+          {
+            "name": "src/components/sheet-editor/*Input.ts",
+            "pattern": "*Input.ts",
+            "roots": [
+              "src/components/sheet-editor"
+            ]
+          },
+          {
+            "name": "src/components/sheet-editor/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "src/components/sheet-editor"
+            ]
+          },
+          {
+            "name": "src/components/status-bar/vault*.ts",
+            "pattern": "vault*.ts",
+            "roots": [
+              "src/components/status-bar"
+            ]
+          },
+          {
+            "name": "src/extensions/*Highlight.ts",
+            "pattern": "*Highlight.ts",
+            "roots": [
+              "src/extensions"
+            ]
+          },
+          {
+            "name": "src/hooks/*History.ts",
+            "pattern": "*History.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*Mode.ts",
+            "pattern": "*Mode.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*Navigation.ts",
+            "pattern": "*Navigation.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*Onboarding.ts",
+            "pattern": "*Onboarding.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*Selection.ts",
+            "pattern": "*Selection.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*State.ts",
+            "pattern": "*State.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/*Status.ts",
+            "pattern": "*Status.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/editorParsed*.ts",
+            "pattern": "editorParsed*.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/useNavigation*.ts",
+            "pattern": "useNavigation*.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          },
+          {
+            "name": "src/hooks/commands/*Commands.ts",
+            "pattern": "*Commands.ts",
+            "roots": [
+              "src/hooks/commands"
+            ]
+          },
+          {
+            "name": "src/utils/*Colors.ts",
+            "pattern": "*Colors.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/*Events.ts",
+            "pattern": "*Events.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/*Markdown.ts",
+            "pattern": "*Markdown.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/*Properties.ts",
+            "pattern": "*Properties.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/*Types.ts",
+            "pattern": "*Types.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/*Window.ts",
+            "pattern": "*Window.ts",
+            "roots": [
+              "src/utils"
+            ]
+          },
+          {
+            "name": "src/utils/callout*.ts",
+            "pattern": "callout*.ts",
+            "roots": [
+              "src/utils"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 59,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 134,
+        "ms": 17,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1741,
+          "measured": 1741,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 501,
+        "ms": 2503,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 330,
+          "reads": 3482
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1733,
+          "measured": 1733,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 4,
+        "ms": 2864,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 3466,
+          "reads": 3466
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 742,
+          "measured": 731,
+          "not_measured": 0,
+          "unreadable": 11
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6158,
+        "ms": 1035,
+        "name": "inventory",
+        "names": null,
+        "notes": 11,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1730,
+          "measured": 1717,
+          "not_measured": 0,
+          "unreadable": 13
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1707,
+        "ms": 5628,
+        "name": "complexity",
+        "names": null,
+        "notes": 13,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 3460,
+          "reads": 3460
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1689,
+          "measured": 1676,
+          "not_measured": 0,
+          "unreadable": 13
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 3378,
+          "ms": 4652,
+          "parses": 3378,
+          "reads": 3378,
+          "shared": 0,
+          "states": 25728
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 740794,
+          "declaration_text_bytes": 1988310,
+          "declarations": 34758,
+          "export_leaves": 688,
+          "export_text_bytes": 40576,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 310,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 3352,
+          "import_text_bytes": 1408690,
+          "imports": 14105,
+          "module_declarations": 531,
+          "module_text_bytes": 36105,
+          "nesting_bytes": 14354,
+          "nesting_entries": 2846,
+          "nestings": 2826,
+          "owner_bytes": 6162,
+          "owners": 464,
+          "path_bytes": 125756,
+          "qualified_paths": 780,
+          "reference_canonical_allocation_ratio": 1.999820221487128,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 55619,
+          "reference_canonical_bytes": 912063,
+          "reference_distinct_names": 27812,
+          "reference_name_bytes": 8103390,
+          "reference_representation_after_bytes": 14782192,
+          "reference_representation_before_bytes": 29564384,
+          "references": 923887,
+          "signature_bytes": 2790281,
+          "signatures": 34550,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 10,
+        "ms": 4762,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 17380,
+            "distinct_names": 29946,
+            "files": 1676,
+            "index_ms": 20,
+            "measure_ms": 2344,
+            "query_ms": 2,
+            "references": 437409
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 17378,
+            "distinct_names": 29940,
+            "files": 1676,
+            "index_ms": 20,
+            "measure_ms": 2314,
+            "query_ms": 2,
+            "references": 437373
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 21,
+            "ignored_ms": 11,
+            "renames_ms": 0,
+            "walk_ms": 10,
+            "worktree_add_ms": 288,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 14,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 264,
+          "measured": 264,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 3378
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 2656,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 17380,
+            "distinct_names": 29946,
+            "files": 1676,
+            "index_ms": 19,
+            "measure_ms": 1,
+            "query_ms": 6,
+            "references": 437409
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 17378,
+            "distinct_names": 29940,
+            "files": 1676,
+            "index_ms": 20,
+            "measure_ms": 1,
+            "query_ms": 7,
+            "references": 437373
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 1,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 3378
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 9057,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 8363,
+          "modules": 3587,
+          "ms": 10,
+          "sources": 3587
+        },
+        "held": 0,
+        "ms": 16,
+        "name": "public-api",
+        "names": null,
+        "notes": 3,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 4,
+          "items": 490,
+          "measured": 448,
+          "ms": 1,
+          "opaque": 42,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "AGENTS.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 3700,
+          "words": 3672
+        }
+      },
+      {
+        "file": "src/components/NoteList.rendering.test.tsx",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/components/editorImageInsertion.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/components/note-list/NoteList.searchResponsiveness.test.tsx",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/hooks/editorBlockResolution.preprocess.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useAppSave.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useEditorSaveWithLinks.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useGettingStartedClone.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useOnboarding.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useVaultSwitcher.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/lib/aiAgentStreamCallbacks.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/main.test.ts",
+        "gate": "inventory",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/components/NoteList.rendering.test.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/components/SheetEditor.testUtils.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/components/editorImageInsertion.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/components/note-list/NoteList.searchResponsiveness.test.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/hooks/editorBlockResolution.preprocess.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useAppSave.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useCommandRegistry.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useEditorSaveWithLinks.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useGettingStartedClone.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useOnboarding.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useVaultSwitcher.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/lib/aiAgentStreamCallbacks.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/main.test.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/components/NoteList.rendering.test.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/components/SheetEditor.testUtils.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/components/editorImageInsertion.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/components/note-list/NoteList.searchResponsiveness.test.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/hooks/editorBlockResolution.preprocess.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useAppSave.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useCommandRegistry.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useEditorSaveWithLinks.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useGettingStartedClone.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useOnboarding.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/hooks/useVaultSwitcher.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/lib/aiAgentStreamCallbacks.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "src/main.test.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "10 dead symbol(s) the base already held:\n  src/components/SheetEditor.tsx:67  static getDerivedStateFromError(error: unknown): SheetWorkbookBoundaryState {\n  src/components/SheetEditor.tsx:71  componentDidMount(): void {\n  src/components/SheetEditor.tsx:75  componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {\n  src/components/SheetEditor.tsx:81  componentWillUnmount(): void {\n  src/components/SingleEditorView.tsx:91  static getDerivedStateFromError(error: unknown): Partial<BlockNoteRenderRecoveryState> {\n  src/components/SingleEditorView.tsx:96  componentDidCatch(error: unknown) {\n  src/components/ui/action-tooltip.tsx:35  static getDerivedStateFromError(): ActionTooltipBoundaryState {\n  src/components/ui/action-tooltip.tsx:39  componentDidCatch(error: unknown) {\n  src/test/setup.ts:43  unobserve() {}\n  src/test/setup.ts:50  unobserve() {}"
+      },
+      {
+        "file": "src-tauri/src/vault_watcher.rs",
+        "gate": "public-api",
+        "line": 127,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — tolaria_lib — an inherent impl of VaultWatcherState outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "src-tauri/src/vault_watcher.rs",
+        "gate": "public-api",
+        "line": 343,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — tolaria_lib — an inherent impl of VaultWatcherState outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  TypeScript package mcp-server (src-tauri/gen/apple/assets/mcp-server/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package tolaria (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package tolaria-mcp-server (mcp-server/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "7da2f991ec8bd53b42ef4038bb3da9ad01ee07cb",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

@@ -1,0 +1,853 @@
+{
+  "language": "TypeScript",
+  "repository": "Open-Dev-Society/OpenStock",
+  "index": 8,
+  "head": "3cf500ad4c82161591c881c8c0a8eb244bac08e2",
+  "base": "eac13c65be699336d67c7fd49446acddd39585a8",
+  "exit": 2,
+  "signal": null,
+  "ms": 720,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "API_DOCS.md",
+          "MARKET_SUPPORT.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "__tests__"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 444 function(s) at eac13c6; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 444 functions at eac13c6, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 75
+      }
+    ],
+    "exit": 2,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "__tests__/reset-password-email.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "ba3e6c28a54156c7",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "const sendMailMock = vi.mocked(transporter!.sendMail);",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "app/(marketing)/sponsor/page.tsx",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "ec96a62a1c05d2f9",
+        "line": 187,
+        "matched": null,
+        "outcome": "new",
+        "text": "{TIER_ORDER.map((id) => <th key={id} className=\"text-center\">{SPONSOR_TIERS.find((t) => t.id === id)!.name}</th>)}",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "components/watchlist/CreateAlertModal.tsx",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "af74fbb25aa2d1ca",
+        "line": 36,
+        "matched": null,
+        "outcome": "new",
+        "text": "if (next) setTargetPrice(hasPrice ? currentPrice!.toFixed(2) : '');",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(auth)/sign-in/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5d57123261d7a214",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "const SignIn = () => {",
+        "values": {
+          "cc": 2,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(auth)/sign-up/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f1abcb52546f30b0",
+        "line": 18,
+        "matched": null,
+        "outcome": "new",
+        "text": "const SignUp = () => {",
+        "values": {
+          "cc": 3,
+          "lines": 115
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(marketing)/api-docs/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a5e163bd69f09a6b",
+        "line": 42,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default function ArchitecturePage() {",
+        "values": {
+          "cc": 1,
+          "lines": 88
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(marketing)/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "23a6cb00db5ce49e",
+        "line": 70,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default async function LandingPage() {",
+        "values": {
+          "cc": 5,
+          "lines": 157
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(marketing)/sponsor/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3a2b11b0e88bb550",
+        "line": 31,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default async function SponsorPage() {",
+        "values": {
+          "cc": 5,
+          "lines": 191
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(marketing)/sponsor/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "74629b9d045a1532",
+        "line": 81,
+        "matched": null,
+        "outcome": "new",
+        "text": "{SPONSOR_TIERS.map((tier) => {",
+        "values": {
+          "cc": 11,
+          "lines": 33
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(root)/dashboard/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "027d0677f43fee8e",
+        "line": 21,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default async function Dashboard({ searchParams }: { searchParams: Promise<{ market?: string }> }) {",
+        "values": {
+          "cc": 11,
+          "lines": 68
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "app/(root)/profile/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3e66186ceb8c0208",
+        "line": 19,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default async function ProfilePage() {",
+        "values": {
+          "cc": 8,
+          "lines": 78
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "components/SearchCommand.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "35380526fb901d41",
+        "line": 19,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default function SearchCommand({ initialStocks }: { initialStocks: StockWithWatchlistStatus[] }) {",
+        "values": {
+          "cc": 9,
+          "lines": 95
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "components/shell/Sidebar.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0c6dc548c7b92c13",
+        "line": 24,
+        "matched": null,
+        "outcome": "new",
+        "text": "const Sidebar = ({ user, watchlist }: SidebarProps) => {",
+        "values": {
+          "cc": 9,
+          "lines": 104
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "components/shell/TabBar.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "23f376e489648a53",
+        "line": 34,
+        "matched": null,
+        "outcome": "new",
+        "text": "const TabBar = ({ onMenu }: { onMenu: () => void }) => {",
+        "values": {
+          "cc": 3,
+          "lines": 91
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "components/watchlist/CreateAlertModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c91d9f956326d515",
+        "line": 23,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default function CreateAlertModal({ symbol, currentPrice, currency = 'USD', children, onAlertCreated }: CreateAlertModalProps) {",
+        "values": {
+          "cc": 15,
+          "lines": 96
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "components/watchlist/WatchlistTable.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7bd36dbf970bdf8c",
+        "line": 19,
+        "matched": null,
+        "outcome": "new",
+        "text": "export default function WatchlistTable({ initialRows }: { initialRows: Row[] }) {",
+        "values": {
+          "cc": 2,
+          "lines": 92
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 75",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 75 lines)",
+        "file": "lib/inngest/functions.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "562c1a606bbd0673",
+        "line": 209,
+        "matched": {
+          "accepted": false,
+          "file": "lib/inngest/functions.ts",
+          "line": 207,
+          "text": "async ({ step }) => {",
+          "values": {
+            "cc": 11,
+            "lines": 87
+          }
+        },
+        "outcome": "worsened",
+        "text": "async ({ step }) => {",
+        "values": {
+          "cc": 11,
+          "lines": 121
+        }
+      },
+      {
+        "file": "lib/constants.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "lib/markets.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "ceiling": null,
+        "condition": "where no reference named the declaration exists outside its own declaration",
+        "file": "types/global.d.ts",
+        "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+        "gate": "dead-symbols",
+        "id": "76d01d723016d7ed",
+        "line": 42,
+        "matched": {
+          "accepted": false,
+          "file": "types/global.d.ts",
+          "line": 42,
+          "text": "type SelectFieldProps = {",
+          "values": {
+            "dead": 0
+          }
+        },
+        "outcome": "worsened",
+        "text": "type SelectFieldProps = {",
+        "values": {
+          "dead": 1,
+          "lost_reference": "components/forms/SelectField.tsx"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where no reference named the declaration exists outside its own declaration",
+        "file": "types/global.d.ts",
+        "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+        "gate": "dead-symbols",
+        "id": "25c8b573a98357ce",
+        "line": 58,
+        "matched": {
+          "accepted": false,
+          "file": "types/global.d.ts",
+          "line": 58,
+          "text": "type SearchCommandProps = {",
+          "values": {
+            "dead": 0
+          }
+        },
+        "outcome": "worsened",
+        "text": "type SearchCommandProps = {",
+        "values": {
+          "dead": 1,
+          "lost_reference": "components/SearchCommand.tsx"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where no reference named the declaration exists outside its own declaration",
+        "file": "types/global.d.ts",
+        "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+        "gate": "dead-symbols",
+        "id": "a43e15cb1e12adc0",
+        "line": 134,
+        "matched": {
+          "accepted": false,
+          "file": "types/global.d.ts",
+          "line": 134,
+          "text": "type WatchlistTableProps = {",
+          "values": {
+            "dead": 0
+          }
+        },
+        "outcome": "worsened",
+        "text": "type WatchlistTableProps = {",
+        "values": {
+          "dead": 1,
+          "lost_reference": "components/watchlist/WatchlistTable.tsx"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where no reference named the declaration exists outside its own declaration",
+        "file": "types/global.d.ts",
+        "fix_advice": "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.",
+        "gate": "dead-symbols",
+        "id": "25c8b573a98357ce",
+        "line": 171,
+        "matched": {
+          "accepted": false,
+          "file": "types/global.d.ts",
+          "line": 171,
+          "text": "type SearchCommandProps = {",
+          "values": {
+            "dead": 0
+          }
+        },
+        "outcome": "worsened",
+        "text": "type SearchCommandProps = {",
+        "values": {
+          "dead": 1,
+          "lost_reference": "components/SearchCommand.tsx"
+        }
+      },
+      {
+        "file": "lib/constants.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "lib/markets.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 32,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 42,
+        "ms": 13,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 124,
+          "measured": 124,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 13,
+        "ms": 75,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 219
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 124,
+          "measured": 124,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 73,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 219,
+          "reads": 219
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 88,
+        "ms": 15,
+        "name": "inventory",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 124,
+          "measured": 122,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 16,
+        "footprint": null,
+        "graph": null,
+        "held": 9,
+        "ms": 171,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "ERR",
+        "surface": null,
+        "work": {
+          "parses": 219,
+          "reads": 219
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 111,
+          "measured": 109,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 193,
+          "ms": 114,
+          "parses": 193,
+          "reads": 193,
+          "shared": 0,
+          "states": 420
+        },
+        "findings": 6,
+        "footprint": {
+          "declaration_name_bytes": 10266,
+          "declaration_text_bytes": 35100,
+          "declarations": 722,
+          "export_leaves": 157,
+          "export_text_bytes": 5606,
+          "exported_alias_bytes": 336,
+          "exported_aliases": 48,
+          "exports": 67,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 186,
+          "import_text_bytes": 56759,
+          "imports": 687,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 5148,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.6198102016607354,
+          "reference_canonical_allocation_ratio_milli": 1619,
+          "reference_canonical_allocations": 2731,
+          "reference_canonical_bytes": 26704,
+          "reference_distinct_names": 1686,
+          "reference_name_bytes": 144447,
+          "reference_representation_after_bytes": 332480,
+          "reference_representation_before_bytes": 664960,
+          "references": 20780,
+          "signature_bytes": 40437,
+          "signatures": 722,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 8,
+        "ms": 117,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 424,
+            "distinct_names": 1575,
+            "files": 109,
+            "index_ms": 0,
+            "measure_ms": 69,
+            "query_ms": 0,
+            "references": 11396
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 298,
+            "distinct_names": 1248,
+            "files": 77,
+            "index_ms": 0,
+            "measure_ms": 45,
+            "query_ms": 0,
+            "references": 7910
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 20,
+            "ignored_ms": 11,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 36,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ERR",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 71,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 193
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 12,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 12,
+          "modules": 193,
+          "ms": 0,
+          "sources": 193
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "__tests__/utils.test.ts",
+        "gate": "inventory",
+        "line": 49,
+        "outcome": "deleted",
+        "text": "the test site it('maps India NSE (.NS) to NSE prefix', () => { in __tests__/utils.test.ts went in this window"
+      },
+      {
+        "file": "lib/constants.ts",
+        "gate": "complexity",
+        "outcome": "lost",
+        "text": "the grammar refused it"
+      },
+      {
+        "file": "lib/constants.ts",
+        "gate": "dead-symbols",
+        "outcome": "lost",
+        "text": "the grammar refused it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "9 dead symbol(s) the base already held:\n  app/(root)/about/page.tsx:122  function SocialButton({ href, icon, label }: any) {\n  lib/kit.ts:1  const KIT_API_URL = 'https://api.kit.com/v4';\n  types/global.d.ts:114  type QuoteData = {\n  types/global.d.ts:119  type ProfileData = {\n  types/global.d.ts:124  type FinancialsData = {\n  types/global.d.ts:128  type SelectedStock = {\n  types/global.d.ts:151  type AlertsListProps = {\n  types/global.d.ts:167  type WatchlistNewsProps = {\n  types/global.d.ts:188  type AlertModalProps = {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package Openstock (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "ERROR",
+    "summary": "klin: 9 gate(s), 1 failed, 2 tool errors.",
+    "window": {
+      "after": "the working tree",
+      "before": "eac13c65be699336d67c7fd49446acddd39585a8",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

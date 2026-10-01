@@ -1,0 +1,2919 @@
+{
+  "language": "TypeScript",
+  "repository": "whyour/qinglong",
+  "index": 8,
+  "head": "801a71d7402f5d4b582318ed88ad00633357a531",
+  "base": "f051135fc4abf9f1df806111d0015c210954861d",
+  "exit": 1,
+  "signal": null,
+  "ms": 2727,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "README-en.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "cli/package.json",
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "cli/test/compatibility",
+          "cli/test/helpers",
+          "cli/test/integration",
+          "cli/test/internal",
+          "cli/test/linux",
+          "cli/test/remote",
+          "cli/test/shared",
+          "test"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,635 function(s) at f051135; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,635 functions at f051135, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 48
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/pages/crontab/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/crontab"
+            ]
+          },
+          {
+            "name": "src/pages/script/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/script"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/internal/runtime/containerEnvironment.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "8399fb3279f65cf0",
+        "line": 66,
+        "matched": null,
+        "outcome": "new",
+        "text": ".map((line) => line.split('#', 1)[0]!.trim());",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "913c2e2139e1433b",
+        "line": 182,
+        "matched": null,
+        "outcome": "new",
+        "text": "child.stdout!.on('data', (chunk: Buffer) => {",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "b65de2d5c3e2689c",
+        "line": 186,
+        "matched": null,
+        "outcome": "new",
+        "text": "if (options.captureFd === 3) child.stdio[3]!.on('data', capture);",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "71443524965ffa42",
+        "line": 187,
+        "matched": null,
+        "outcome": "new",
+        "text": "if (options.timeoutControl) child.stdio[3]!.on('data', (chunk: Buffer) => {",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "bfb53f36a84bdc17",
+        "line": 201,
+        "matched": null,
+        "outcome": "new",
+        "text": "child.stderr!.on('data', (chunk: Buffer) =>",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/remote/commands/open.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "8f256856e9336d76",
+        "line": 92,
+        "matched": null,
+        "outcome": "new",
+        "text": "? command.positionals[1]!.replace(/^\\/open\\//, '').replace(/^\\//, '')",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/remote/commands/open.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "2ac82b7d48d9b9ab",
+        "line": 100,
+        "matched": null,
+        "outcome": "new",
+        "text": "? route(command.positionals[0]!.toUpperCase(), endpoint)",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "cli/src/shared/cli/arguments.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "e0b67511f975ef0c",
+        "line": 91,
+        "matched": null,
+        "outcome": "new",
+        "text": "groups.get(parentName!)!.addCommand(command);",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "back/loaders/deps.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0ec4b051cdcf7031",
+        "line": 19,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function linkCommandToDir(commandDir: string) {",
+        "values": {
+          "cc": 11,
+          "lines": 73
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/compatibility/legacy.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7315355f571f7379",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function compatibilityRoute(input: string[]): CompatibilityRoute {",
+        "values": {
+          "cc": 16,
+          "lines": 48
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/compatibility/legacy.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "eb0f203637b99721",
+        "line": 64,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function compatibilityMain(",
+        "values": {
+          "cc": 1,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/compatibility/legacy.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0307b4fed0c0584f",
+        "line": 67,
+        "matched": null,
+        "outcome": "new",
+        "text": "return withCommandCancellation(async (signal) => {",
+        "values": {
+          "cc": 10,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/entrypoints/ql.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0141ed5cba95b38d",
+        "line": 72,
+        "matched": null,
+        "outcome": "new",
+        "text": "function groupHelp(group: 'root' | 'task' | 'local'): string {",
+        "values": {
+          "cc": 17,
+          "lines": 43
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/entrypoints/ql.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3ee2800d22a74b33",
+        "line": 155,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function qlMain(args = process.argv.slice(2)): Promise<number> {",
+        "values": {
+          "cc": 5,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/runner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1be090e83373c776",
+        "line": 12,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function parseExecution(args: string[]): {",
+        "values": {
+          "cc": 12,
+          "lines": 37
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/runner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "43afede57f448cbe",
+        "line": 50,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function runnerMain(",
+        "values": {
+          "cc": 21,
+          "lines": 87
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/shellSession.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ae96fa632c2733fb",
+        "line": 5,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function shellSessionArguments(",
+        "values": {
+          "cc": 3,
+          "lines": 94
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/taskRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7f41e52916f7530d",
+        "line": 116,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function prepareProgram(",
+        "values": {
+          "cc": 18,
+          "lines": 83
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/taskRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "59d7a5e79e66953e",
+        "line": 200,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function executeTask(",
+        "values": {
+          "cc": 60,
+          "lines": 343
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/execution/taskRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e53890249e33e262",
+        "line": 396,
+        "matched": null,
+        "outcome": "new",
+        "text": "const invoke = async (selection?: number[], sink = output) => {",
+        "values": {
+          "cc": 16,
+          "lines": 52
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/integration/cronEntrypoint.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "47fd6fe658053447",
+        "line": 20,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function runCrontab(",
+        "values": {
+          "cc": 16,
+          "lines": 85
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/integration/cronEntrypoint.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7ad699f624706f56",
+        "line": 106,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function installCronEntrypoint(",
+        "values": {
+          "cc": 14,
+          "lines": 70
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/bootstrap.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6b40f8a4c5689991",
+        "line": 12,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function bootstrapPackages(",
+        "values": {
+          "cc": 5,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/bootstrap.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1dd45ebc6138d58c",
+        "line": 160,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function bootstrapPanel(",
+        "values": {
+          "cc": 20,
+          "lines": 100
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/bot.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3e0ce0776e2c5c43",
+        "line": 84,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function prepareBot(context: LocalContext): Promise<{",
+        "values": {
+          "cc": 13,
+          "lines": 85
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/bot.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1e43516fb911c5bc",
+        "line": 170,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function stopBot(context: LocalContext): Promise<void> {",
+        "values": {
+          "cc": 13,
+          "lines": 31
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/check.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "562463ba01633516",
+        "line": 21,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function probe(",
+        "values": {
+          "cc": 1,
+          "lines": 53
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/maintenance.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "20c7fc2acfc508a0",
+        "line": 50,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function maintenance(",
+        "values": {
+          "cc": 16,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/operator.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ccab7c6421e25099",
+        "line": 88,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function stopDirectBackend(context: LocalContext): Promise<void> {",
+        "values": {
+          "cc": 15,
+          "lines": 42
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/operator.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9fec42402b117282",
+        "line": 140,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function startPanel(",
+        "values": {
+          "cc": 6,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/upgrade.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2eb0f1917f445680",
+        "line": 47,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function stageUpgrade(",
+        "values": {
+          "cc": 12,
+          "lines": 91
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/upgrade.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2c2a7a1152645baa",
+        "line": 188,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function replaceAndReload(",
+        "values": {
+          "cc": 18,
+          "lines": 115
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/upgrade.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f867563e497314cd",
+        "line": 304,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function reloadPanel(",
+        "values": {
+          "cc": 15,
+          "lines": 76
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/maintenance/upgradeSelection.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c513c0d64d71047d",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function prepareUpgradeSelection(",
+        "values": {
+          "cc": 13,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/api.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "71cefa61f8f39d37",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "private async credential(): Promise<string> {",
+        "values": {
+          "cc": 6,
+          "lines": 49
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/api.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a8ca89833563e3e9",
+        "line": 64,
+        "matched": null,
+        "outcome": "new",
+        "text": "async call(",
+        "values": {
+          "cc": 11,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/backendProcesses.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5db7f78a6f9f0d70",
+        "line": 6,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function findDirectBackendPids(",
+        "values": {
+          "cc": 15,
+          "lines": 46
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/commandLog.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b09b435be5819579",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function loggedOperation<T>(",
+        "values": {
+          "cc": 12,
+          "lines": 104
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/containerEnvironment.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "68c3e8c70aa913a0",
+        "line": 90,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function prepareContainerEnvironment(",
+        "values": {
+          "cc": 7,
+          "lines": 55
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/containerRuntime.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0318679982255720",
+        "line": 50,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function runContainer(",
+        "values": {
+          "cc": 4,
+          "lines": 116
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/containerRuntime.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "18828e2500b8085e",
+        "line": 69,
+        "matched": null,
+        "outcome": "new",
+        "text": "return await cancellableOperation(signal, async () => {",
+        "values": {
+          "cc": 13,
+          "lines": 77
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/context.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "739a2331fa2f526f",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function createContext(",
+        "values": {
+          "cc": 12,
+          "lines": 88
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/context.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c1fcc6b53aebba3c",
+        "line": 107,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function sourceEnvironment(",
+        "values": {
+          "cc": 12,
+          "lines": 90
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/lifecycle.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bae46927d8f709e0",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function extendedLifecycle(",
+        "values": {
+          "cc": 15,
+          "lines": 45
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "669e7c566f3e834e",
+        "line": 65,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function runProcess(",
+        "values": {
+          "cc": 10,
+          "lines": 183
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f3a93bbf43223a25",
+        "line": 93,
+        "matched": null,
+        "outcome": "new",
+        "text": "return new Promise((resolve, reject) => {",
+        "values": {
+          "cc": 10,
+          "lines": 154
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/runtime/process.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "68f59fb60f49b0df",
+        "line": 210,
+        "matched": null,
+        "outcome": "new",
+        "text": "child.once('close', (code, signal) => {",
+        "values": {
+          "cc": 11,
+          "lines": 33
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/subscription/subscriptionRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a425fc34a3ade897",
+        "line": 140,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function reconcile(",
+        "values": {
+          "cc": 19,
+          "lines": 93
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/subscription/subscriptionRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0f79a872d4206604",
+        "line": 234,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function syncRepository(",
+        "values": {
+          "cc": 14,
+          "lines": 100
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/subscription/subscriptionRunner.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bc2628f3b4e88dba",
+        "line": 335,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function syncRaw(",
+        "values": {
+          "cc": 4,
+          "lines": 52
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/subscription/worker.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2f206ac2bdffa7c3",
+        "line": 16,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function subscriptionWorker(",
+        "values": {
+          "cc": 1,
+          "lines": 92
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/internal/subscription/worker.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "40531ff1a38a33b3",
+        "line": 19,
+        "matched": null,
+        "outcome": "new",
+        "text": "return withCommandCancellation(async (signal) => {",
+        "values": {
+          "cc": 17,
+          "lines": 88
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/api/client.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "beb7665910edc980",
+        "line": 18,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function request(",
+        "values": {
+          "cc": 34,
+          "lines": 106
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/auth/store.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e34d2f614b3fd72e",
+        "line": 17,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function readConfig(): StoredConfig {",
+        "values": {
+          "cc": 18,
+          "lines": 55
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/commands/open.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e05b716f6ead74e9",
+        "line": 80,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function openCommand(",
+        "values": {
+          "cc": 66,
+          "lines": 173
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/commands/openCommands.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8b8e4ed3e994a0de",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": ".map((op) => {",
+        "values": {
+          "cc": 14,
+          "lines": 60
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/commands/subscription.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "323a5637b452b456",
+        "line": 47,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function subscription(",
+        "values": {
+          "cc": 11,
+          "lines": 45
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/remote/commands/task.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "adf4ad2cbbf187ba",
+        "line": 22,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function task(",
+        "values": {
+          "cc": 18,
+          "lines": 55
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/shared/cli/arguments.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "4a75b06adf40cf9d",
+        "line": 37,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function parse(args: string[], registry: CommandRegistry): Invocation {",
+        "values": {
+          "cc": 32,
+          "lines": 115
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/shared/cli/invoke.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9d2b0d2c5a1793b5",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function invoke(",
+        "values": {
+          "cc": 12,
+          "lines": 43
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/shared/cli/options.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "4d9a906c63f52f18",
+        "line": 59,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function assertOptionValues(",
+        "values": {
+          "cc": 15,
+          "lines": 32
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/src/shared/cli/registry.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "86b9897627736952",
+        "line": 40,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function helpFor(",
+        "values": {
+          "cc": 9,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/compatibility/compat.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "22a05a2ac0e6596f",
+        "line": 79,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('legacy maintenance logs output and reports lifecycle without sourcing config twice', async (t) => {",
+        "values": {
+          "cc": 8,
+          "lines": 98
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/compatibility/compat.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "00f0e61ebbc4f79b",
+        "line": 178,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('raw worker and compatibility route share subscription logs and lifecycle', async (t) => {",
+        "values": {
+          "cc": 6,
+          "lines": 105
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/compatibility/compat.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "30d6fdbd5882afe3",
+        "line": 287,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 12,
+          "lines": 130
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "90992ac54a41da62",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('unmodified legacy Shell and TS agree on shell hook state and account modes', async (t) => {",
+        "values": {
+          "cc": 5,
+          "lines": 245
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "546b7801a82405cc",
+        "line": 110,
+        "matched": null,
+        "outcome": "new",
+        "text": "async () => {",
+        "values": {
+          "cc": 5,
+          "lines": 78
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "cf24acd8f264808a",
+        "line": 189,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test('/dev/null preserves legacy stream routing', async () => {",
+        "values": {
+          "cc": 6,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3a2b01686e7ad9e8",
+        "line": 256,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('empty ignored-minute settings match legacy random delay at minute zero', async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 60
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5e3fc4abc77186fc",
+        "line": 317,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('random delay follows legacy dispatch for script arguments and executable commands', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/differential.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "88af37714cb3b1c1",
+        "line": 472,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('later hooks can disable previously enabled shell options without mutating the prior snapshot', async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 55
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/executablePaths.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b2300d86c41071d6",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('legacy Shell and TS resolve executable paths after selecting the working directory', t => {",
+        "values": {
+          "cc": 16,
+          "lines": 84
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/loadingBoundary.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "81ef31debebaccb0",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('standalone public commands load only public modules and never local operators or backend dependencies', async (t) => {",
+        "values": {
+          "cc": 7,
+          "lines": 66
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/integration/unified.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e43a04a49262f7a0",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('unified ql groups and task shortcut preserve help, errors and local execution boundaries', async (t) => {",
+        "values": {
+          "cc": 8,
+          "lines": 90
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/backendProcesses.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "98b350e6d90b0939",
+        "line": 63,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 4,
+          "lines": 78
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/backendProcesses.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "98b350e6d90b0939",
+        "line": 149,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/backendProcesses.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a5f37f290848c300",
+        "line": 155,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(mode, async () => {",
+        "values": {
+          "cc": 6,
+          "lines": 57
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/bootstrap.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "10449b84b3a7d6fc",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function fixture(t) {",
+        "values": {
+          "cc": 3,
+          "lines": 70
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/bootstrap.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "82348b4bb8835ada",
+        "line": 84,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('bootstrap installs prerequisites, uses the configured data directory and starts services in order', async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 71
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/bot.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "225bca541a891a41",
+        "line": 16,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function fixture(t) {",
+        "values": {
+          "cc": 3,
+          "lines": 49
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/bot.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "545b717a8356f348",
+        "line": 66,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('bot prepares local repository and dependencies while preserving user configuration', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 56
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/containerRuntime.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9b74975a154d7525",
+        "line": 181,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 6,
+          "lines": 73
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/contextDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "03ce0e1bc784e6fa",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('all local entrypoints report missing, relative and non-directory roots before doing work', async (t) => {",
+        "values": {
+          "cc": 7,
+          "lines": 56
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/cronEntrypoint.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6da182d0b2cc913c",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('cron bridge scopes environment to the panel table and preserves native reads, failures and unrelated tables', async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 72
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/esmDependencies.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5a485130c719cb08",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('ESM resolves global packages and exported subpaths with native import conditions and local fallback', async (t) => {",
+        "values": {
+          "cc": 5,
+          "lines": 144
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/helperDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "add20ba38a892e3d",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`helper validation and generated wrappers honor locale: ${language}`, async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/hostServices.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d2506a250b0ab0ee",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`host startup registration uses ${manager} and propagates service failures`, async (t) => {",
+        "values": {
+          "cc": 10,
+          "lines": 62
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/languagePreload.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "994707d4a3d3c8d4",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('language hooks receive literal script arguments and temporary adapters are removed', async (t) => {",
+        "values": {
+          "cc": 5,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/local.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b6e39963004446ea",
+        "line": 687,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('lifecycle reports share execution identity and statistics survive a rejected final status', async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 72
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/local.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5a2c17daf92b6e07",
+        "line": 827,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('cancelling after hooks preserves the signal and final task status', async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 57
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/local.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7019b2af221cc8c0",
+        "line": 831,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(`${extension}: ${signal}`, async () => {",
+        "values": {
+          "cc": 2,
+          "lines": 50
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/localApi.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1fb1d8ab9f9adc8d",
+        "line": 41,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('local API preserves every legacy request shape and JSON special characters', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 63
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/localApi.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "53270a6a57e3fae1",
+        "line": 236,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`local API errors preserve language, status and no-replay behavior: ${language}`, async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 53
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/logRetention.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "98c1cf4a7271a39b",
+        "line": 11,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('undated logs use modification calendar date and preserve active references at retention boundary', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 66
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/networkRepository.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6318e2f66824cf9c",
+        "line": 21,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 20,
+          "lines": 314
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/networkRepository.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "880c5b512a35b7bd",
+        "line": 85,
+        "matched": null,
+        "outcome": "new",
+        "text": "const serveGit = (req, res) => {",
+        "values": {
+          "cc": 5,
+          "lines": 68
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operator.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2a161dbfa215ab1c",
+        "line": 196,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('upgrade staging extracts both archives before publishing readiness and rejects archive symlinks', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 90
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operator.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8a181cc9f4edecea",
+        "line": 287,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('check repairs dependencies and notifications, probes loopback and reloads with clean diagnostics', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operator.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9acf07074711e772",
+        "line": 461,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('interrupted reload restores old files and recovery subprocesses ignore the cancelled operation', async (t) => {",
+        "values": {
+          "cc": 5,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operator.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "929b8409c0bf5a18",
+        "line": 598,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('partial overlay backup, removal and replacement failures restore the complete previous installation', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 96
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operator.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "66927f9ebdd3692f",
+        "line": 600,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(phase, async () => {",
+        "values": {
+          "cc": 4,
+          "lines": 92
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operatorDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c9f4bd7e76f5b963",
+        "line": 12,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`upgrade failures preserve files and localize using operation language: ${language}`, async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/operatorDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "02b7cd98020fb09e",
+        "line": 78,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`installed cron bridge localizes failure without exposing values: ${language}`, async (t) => {",
+        "values": {
+          "cc": 4,
+          "lines": 53
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/pathDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0065a5fd86149711",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`path and subscription failures use their own operation language: ${language}`, async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 68
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/preload.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "83ba3c52b57d5b82",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('real language preloaders inject generated environment, hooks and designated accounts', async (t) => {",
+        "values": {
+          "cc": 5,
+          "lines": 102
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/processDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "cfa6711d2874d1ac",
+        "line": 6,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`subprocess failures localize and reap failed writers: ${language}`, async () => {",
+        "values": {
+          "cc": 4,
+          "lines": 59
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "beb992f965659337",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('cancelling random delay returns final JSON without starting the Shell task', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 78
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6874fadcc6aaf382",
+        "line": 18,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(signal, async () => {",
+        "values": {
+          "cc": 1,
+          "lines": 67
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8d8afc101fac3da2",
+        "line": 160,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('runner signals cancel a live Shell session and emit a final JSON result', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 94
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6874fadcc6aaf382",
+        "line": 169,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(signal, async () => {",
+        "values": {
+          "cc": 2,
+          "lines": 83
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "58796165409cd0c4",
+        "line": 255,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('configuration and independent before hooks cancel without starting the task', async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 106
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/runner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e21b704c10027e13",
+        "line": 265,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(`${phase}: ${signal}`, async () => {",
+        "values": {
+          "cc": 3,
+          "lines": 93
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/scriptInventory.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6d40c49d0e3d2d4e",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('no-argument runner lists legacy JS candidates without evaluating scripts or config', async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 63
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/subscriptionFilter.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b0c7279d4bf4faa6",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('subscription filters preserve legacy POSIX classes, escaping, anchors and option-like patterns', async (t) => {",
+        "values": {
+          "cc": 4,
+          "lines": 51
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/subscriptionRunner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e34182a35e9008ca",
+        "line": 32,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('local repository sync copies selected scripts/dependencies and preserves last good version on clone failure', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 56
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/subscriptionRunner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3d8ff79935349e18",
+        "line": 89,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('subscription reconciliation scopes removals to canonical paths and the current subscription', async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 92
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/subscriptionRunner.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "19c3ac21c47d7778",
+        "line": 280,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('subscription copy precedence preserves local dependencies while selected scripts win', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 107
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/taskDelay.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c300146549f625b8",
+        "line": 11,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('delay extension ERE matching agrees with unchanged legacy function', async () => {",
+        "values": {
+          "cc": 3,
+          "lines": 52
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/internal/taskDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "986e66418f6f9be2",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "test(`task validation exposes localized JSON and never starts invalid tasks: ${language}`, async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 80
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/bot-install.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "628f22e02c4e4728",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 3,
+          "lines": 96
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/container-bot.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "dff49441cfd6a204",
+        "line": 32,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 4,
+          "lines": 109
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/container-cron.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3b3f96e73fb7b9f7",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 6,
+          "lines": 86
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/entrypoints.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "89dbcd4b85a25273",
+        "line": 11,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('2.x startup selection survives repeated linking and can return to original Shell', async (t) => {",
+        "values": {
+          "cc": 6,
+          "lines": 130
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/evaluation-entrypoints.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "11c66e5d11c1d664",
+        "line": 6,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function installEvaluationEntrypoints() {",
+        "values": {
+          "cc": 6,
+          "lines": 52
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/host-boot.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e8d9a1ba18f5303e",
+        "line": 9,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 16,
+          "lines": 98
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/image-selection.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2558f823c4db85af",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 6,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/mounted-data.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "720b2980009d1d20",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 1,
+          "lines": 62
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/openapi.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0a8a82b8276ebf5d",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 2,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-account.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a08fb1d2096b531a",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "exports.verifyAccountMaintenance = async function verifyAccountMaintenance(",
+        "values": {
+          "cc": 1,
+          "lines": 50
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-operator.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "cb9e4bbe10fcb8d5",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "exports.verifyOperator = async function verifyOperator(api) {",
+        "values": {
+          "cc": 4,
+          "lines": 63
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-preload.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "da94612d3342475b",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 16,
+          "lines": 129
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-repository.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c796f7a99ba9941d",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "exports.verifyRepository = async function verifyRepository(api, cli) {",
+        "values": {
+          "cc": 6,
+          "lines": 125
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-subscription.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8c031c09dd585ac6",
+        "line": 5,
+        "matched": null,
+        "outcome": "new",
+        "text": "exports.verifySubscription = async function verifySubscription(api, cli) {",
+        "values": {
+          "cc": 8,
+          "lines": 65
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel-upgrade.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ee2ac77b308b5ad4",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 7,
+          "lines": 106
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/panel.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "fe3e5b36a21fe8d7",
+        "line": 11,
+        "matched": null,
+        "outcome": "new",
+        "text": "(async () => {",
+        "values": {
+          "cc": 16,
+          "lines": 204
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/published-archive.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3e0dd0585c17f996",
+        "line": 18,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 80
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/services.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c6705d3646c5e52f",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 87
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/ssh-repository.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b2fd73111bfe678a",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 9,
+          "lines": 133
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/upgrade.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "646d6fa5424d7503",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 87
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/linux/upgrade.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "37f72563bac70a9c",
+        "line": 16,
+        "matched": null,
+        "outcome": "new",
+        "text": "await t.test(manager, async (t) => {",
+        "values": {
+          "cc": 3,
+          "lines": 83
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/apiDiagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e293d110fb586c56",
+        "line": 5,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('API diagnostics preserve resource scope, uncertainty, codes and secret suppression in both languages', async (t) => {",
+        "values": {
+          "cc": 10,
+          "lines": 87
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/cli.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d340eb13f88b7d69",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "async function fixture(t) {",
+        "values": {
+          "cc": 1,
+          "lines": 130
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/cli.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "989bce02f2463341",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "const server = http.createServer(async (req, res) => {",
+        "values": {
+          "cc": 15,
+          "lines": 83
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/cli.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "08c0690b975f9ee5",
+        "line": 175,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('list pagination, exact task operations and log tail preserve the 2.x API contract', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 52
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/openapi.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a5002862ed26d4bd",
+        "line": 105,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('all added named operations reach their registered method/path, including upload/download and anonymous routes', async t => {",
+        "values": {
+          "cc": 12,
+          "lines": 22
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/rawCredentials.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f3399476c04df461",
+        "line": 12,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('raw subscriptions retain legacy netrc authentication and preserve files on denied access', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 74
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/remote/subscription.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8fd81f189603db80",
+        "line": 27,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('subscription management uses panel API, projects credentials out and never invokes local repo/raw', async (t) => {",
+        "values": {
+          "cc": 2,
+          "lines": 100
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/shared/diagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "de653028c9e7226f",
+        "line": 8,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('legacy and worker entrypoints localize invalid input before accessing an installation', () => {",
+        "values": {
+          "cc": 4,
+          "lines": 79
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/shared/diagnostics.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "715e83281011d566",
+        "line": 186,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('legacy and worker failures preserve stderr diagnostics and localize the final JSON', async (t) => {",
+        "values": {
+          "cc": 4,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/shared/helpCoverage.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f809bca58e28b49e",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('every registered command and option is discoverable in both help languages', () => {",
+        "values": {
+          "cc": 10,
+          "lines": 49
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 48",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 48 lines)",
+        "file": "cli/test/shared/i18n.test.cjs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ab683ea710cdee73",
+        "line": 113,
+        "matched": null,
+        "outcome": "new",
+        "text": "test('task, maintenance and subscription failure warnings honor locale without failing completed work', async (t) => {",
+        "values": {
+          "cc": 8,
+          "lines": 103
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 31,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 117,
+        "ms": 15,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 426,
+          "measured": 426,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 8,
+        "footprint": null,
+        "graph": null,
+        "held": 469,
+        "ms": 352,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 694
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 408,
+          "measured": 408,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 446,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 658,
+          "reads": 658
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 56,
+          "measured": 56,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 220,
+        "ms": 116,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 408,
+          "measured": 407,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 143,
+        "footprint": null,
+        "graph": null,
+        "held": 203,
+        "ms": 815,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 658,
+          "reads": 658
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 253,
+          "measured": 252,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 433,
+          "ms": 504,
+          "parses": 433,
+          "reads": 433,
+          "shared": 0,
+          "states": 949
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 36552,
+          "declaration_text_bytes": 144447,
+          "declarations": 3150,
+          "export_leaves": 185,
+          "export_text_bytes": 7953,
+          "exported_alias_bytes": 294,
+          "exported_aliases": 42,
+          "exports": 183,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 431,
+          "import_text_bytes": 181010,
+          "imports": 2608,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 11145,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.855498120300752,
+          "reference_canonical_allocation_ratio_milli": 1855,
+          "reference_canonical_allocations": 7897,
+          "reference_canonical_bytes": 82074,
+          "reference_distinct_names": 4256,
+          "reference_name_bytes": 765232,
+          "reference_representation_after_bytes": 1816448,
+          "reference_representation_before_bytes": 3632896,
+          "references": 113528,
+          "signature_bytes": 203299,
+          "signatures": 2464,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 9,
+        "ms": 516,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1684,
+            "distinct_names": 4289,
+            "files": 252,
+            "index_ms": 2,
+            "measure_ms": 280,
+            "query_ms": 0,
+            "references": 57740
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 225,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 2,
+            "worktree_add_ms": 54,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 433
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 255,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1684,
+            "distinct_names": 4289,
+            "files": 252,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 57740
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1466,
+            "distinct_names": 3672,
+            "files": 179,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 47432
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 0,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 433
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1039,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 1028,
+          "modules": 433,
+          "ms": 1,
+          "sources": 433
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "9 dead symbol(s) the base already held:\n  back/config/util.ts:194  enum FileType {\n  back/config/util.ts:758  function isCentOS(osReleaseInfo: string): boolean {\n  back/config/util.ts:826  async function replaceDomainInFile(\n  back/shared/pLimit.ts:76  constructor() {\n  back/shared/pLimit.ts:188  public async runWithSubscriptionLimit<T>(\n  back/shared/pLimit.ts:197  public async runWithSystemLimit<T>(\n  back/shared/pLimit.ts:206  public async runWithScriptLimit<T>(\n  src/utils/websocket.ts:18  constructor(url: string, options: Partial<typeof WebSocketManager.prototype.options> = {}) {\n  typings.d.ts:12  interface Window {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  TypeScript package @whyour/qinglong (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @whyour/qinglong-cli (cli/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "f051135fc4abf9f1df806111d0015c210954861d",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

@@ -1,0 +1,910 @@
+{
+  "language": "TypeScript",
+  "repository": "mountain-loop/yaak",
+  "index": 2,
+  "head": "0a57d8eb6123e6c87c90f71eedf10bc3630d76b3",
+  "base": "411aa262c7a6e819ca0e77e6e95825c78775013a",
+  "exit": 1,
+  "signal": null,
+  "ms": 9209,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CONTRIBUTING.md",
+          "DEVELOPMENT.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "apps/yaak-client/package.json",
+          "apps/yaak-proxy/package.json",
+          "crates-cli/yaak-cli/Cargo.toml",
+          "crates-proxy/yaak-proxy-lib/Cargo.toml",
+          "crates-proxy/yaak-proxy-lib/package.json",
+          "crates-server/yaak-playground/Cargo.toml",
+          "crates-server/yaak-web/Cargo.toml",
+          "crates-server/yaak-web/package.json",
+          "crates-tauri/yaak-app-client/Cargo.toml",
+          "crates-tauri/yaak-app-client/package.json",
+          "crates-tauri/yaak-app-proxy/Cargo.toml",
+          "crates-tauri/yaak-app-proxy/package.json",
+          "crates-tauri/yaak-fonts/Cargo.toml",
+          "crates-tauri/yaak-fonts/package.json",
+          "crates-tauri/yaak-license/Cargo.toml",
+          "crates-tauri/yaak-license/package.json",
+          "crates-tauri/yaak-mac-window/Cargo.toml",
+          "crates-tauri/yaak-mac-window/package.json",
+          "crates-tauri/yaak-system-appearance/Cargo.toml",
+          "crates-tauri/yaak-tauri-utils/Cargo.toml",
+          "crates-tauri/yaak-window/Cargo.toml",
+          "crates/common/yaak-database/Cargo.toml",
+          "crates/common/yaak-rpc-schema/Cargo.toml",
+          "crates/common/yaak-rpc-schema/package.json",
+          "crates/common/yaak-rpc/Cargo.toml",
+          "crates/yaak-api/Cargo.toml",
+          "crates/yaak-commands/Cargo.toml",
+          "crates/yaak-common/Cargo.toml",
+          "crates/yaak-core/Cargo.toml",
+          "crates/yaak-crypto/Cargo.toml",
+          "crates/yaak-crypto/package.json",
+          "crates/yaak-git/Cargo.toml",
+          "crates/yaak-git/package.json",
+          "crates/yaak-grpc/Cargo.toml",
+          "crates/yaak-http/Cargo.toml",
+          "crates/yaak-lifecycle/Cargo.toml",
+          "crates/yaak-models/Cargo.toml",
+          "crates/yaak-models/package.json",
+          "crates/yaak-plugins/Cargo.toml",
+          "crates/yaak-plugins/package.json",
+          "crates/yaak-proxy/Cargo.toml",
+          "crates/yaak-sse/Cargo.toml",
+          "crates/yaak-sse/package.json",
+          "crates/yaak-sync/Cargo.toml",
+          "crates/yaak-sync/package.json",
+          "crates/yaak-templates/Cargo.toml",
+          "crates/yaak-templates/package.json",
+          "crates/yaak-templates/pkg/package.json",
+          "crates/yaak-tls/Cargo.toml",
+          "crates/yaak-wasm/Cargo.toml",
+          "crates/yaak-wasm/package.json",
+          "crates/yaak-wasm/pkg/package.json",
+          "crates/yaak-ws/Cargo.toml",
+          "crates/yaak-ws/package.json",
+          "crates/yaak/Cargo.toml",
+          "npm/cli-darwin-arm64/package.json",
+          "npm/cli-darwin-x64/package.json",
+          "npm/cli-linux-arm64/package.json",
+          "npm/cli-linux-x64/package.json",
+          "npm/cli-win32-arm64/package.json",
+          "npm/cli-win32-x64/package.json",
+          "npm/cli/package.json",
+          "package.json",
+          "packages/common-lib/package.json",
+          "packages/model-store/package.json",
+          "packages/platform/package.json",
+          "packages/plugin-runtime-types/package.json",
+          "packages/plugin-runtime/package.json",
+          "packages/tailwind-config/package.json",
+          "packages/theme/package.json",
+          "packages/ui/package.json",
+          "plugins-external/faker/package.json",
+          "plugins-external/httpsnippet/package.json",
+          "plugins-external/mcp-server/package.json",
+          "plugins/action-copy-curl/package.json",
+          "plugins/action-copy-grpcurl/package.json",
+          "plugins/action-send-folder/package.json",
+          "plugins/auth-apikey/package.json",
+          "plugins/auth-aws/package.json",
+          "plugins/auth-basic/package.json",
+          "plugins/auth-bearer/package.json",
+          "plugins/auth-digest/package.json",
+          "plugins/auth-jwt/package.json",
+          "plugins/auth-ntlm/package.json",
+          "plugins/auth-oauth1/package.json",
+          "plugins/auth-oauth2/package.json",
+          "plugins/filter-jsonpath/package.json",
+          "plugins/filter-xpath/package.json",
+          "plugins/importer-bruno/package.json",
+          "plugins/importer-curl/package.json",
+          "plugins/importer-insomnia/package.json",
+          "plugins/importer-openapi/package.json",
+          "plugins/importer-postman-environment/package.json",
+          "plugins/importer-postman/package.json",
+          "plugins/importer-yaak/package.json",
+          "plugins/template-function-1password/package.json",
+          "plugins/template-function-cookie/package.json",
+          "plugins/template-function-ctx/package.json",
+          "plugins/template-function-encode/package.json",
+          "plugins/template-function-fs/package.json",
+          "plugins/template-function-hash/package.json",
+          "plugins/template-function-json/package.json",
+          "plugins/template-function-prompt/package.json",
+          "plugins/template-function-random/package.json",
+          "plugins/template-function-regex/package.json",
+          "plugins/template-function-request/package.json",
+          "plugins/template-function-response/package.json",
+          "plugins/template-function-timestamp/package.json",
+          "plugins/template-function-uuid/package.json",
+          "plugins/template-function-xml/package.json",
+          "plugins/themes-yaak/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "crates-cli/yaak-cli/tests",
+          "crates-server/yaak-playground/tests",
+          "crates-server/yaak-web/tests",
+          "crates/yaak-commands/tests",
+          "packages/plugin-runtime/tests",
+          "plugins-external/faker/tests",
+          "plugins/action-copy-curl/tests",
+          "plugins/action-copy-grpcurl/tests",
+          "plugins/auth-basic/tests",
+          "plugins/auth-bearer/tests",
+          "plugins/auth-digest/tests",
+          "plugins/auth-ntlm/tests",
+          "plugins/auth-oauth1/tests",
+          "plugins/auth-oauth2/tests",
+          "plugins/filter-jsonpath/tests",
+          "plugins/importer-bruno/tests",
+          "plugins/importer-curl/tests",
+          "plugins/importer-insomnia/tests",
+          "plugins/importer-openapi/tests",
+          "plugins/importer-postman-environment/tests",
+          "plugins/importer-postman/tests",
+          "plugins/importer-yaak/tests",
+          "plugins/template-function-json/tests",
+          "plugins/template-function-regex/tests",
+          "plugins/template-function-request/tests",
+          "plugins/template-function-timestamp/tests",
+          "plugins/template-function-uuid/tests",
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 8,466 function(s) at 411aa26; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 8,466 functions at 411aa26, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 52
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/yaak-client/commands/open*.tsx",
+            "pattern": "open*.tsx",
+            "roots": [
+              "apps/yaak-client/commands"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Dropdown.tsx",
+            "pattern": "*Dropdown.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Layout.tsx",
+            "pattern": "*Layout.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/*Pane.tsx",
+            "pattern": "*Pane.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Confirm*.tsx",
+            "pattern": "Confirm*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Create*.tsx",
+            "pattern": "Create*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Environment*.tsx",
+            "pattern": "Environment*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Grpc*.tsx",
+            "pattern": "Grpc*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Http*.tsx",
+            "pattern": "Http*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Import*.tsx",
+            "pattern": "Import*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Websocket*.tsx",
+            "pattern": "Websocket*.tsx",
+            "roots": [
+              "apps/yaak-client/components"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/Settings/Settings*.tsx",
+            "pattern": "Settings*.tsx",
+            "roots": [
+              "apps/yaak-client/components/Settings"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/*Row.tsx",
+            "pattern": "*Row.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/*Tag.tsx",
+            "pattern": "*Tag.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/core/Pair*.tsx",
+            "pattern": "Pair*.tsx",
+            "roots": [
+              "apps/yaak-client/components/core"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/components/git/Git*.tsx",
+            "pattern": "Git*.tsx",
+            "roots": [
+              "apps/yaak-client/components/git"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*Actions.ts",
+            "pattern": "*Actions.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*HttpResponse.ts",
+            "pattern": "*HttpResponse.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/*Key.ts",
+            "pattern": "*Key.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/use*.tsx",
+            "pattern": "use*.tsx",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useHttp*.ts",
+            "pattern": "useHttp*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/usePinned*.ts",
+            "pattern": "usePinned*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useRecent*.ts",
+            "pattern": "useRecent*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useResponse*.ts",
+            "pattern": "useResponse*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-client/hooks/useSync*.ts",
+            "pattern": "useSync*.ts",
+            "roots": [
+              "apps/yaak-client/hooks"
+            ]
+          },
+          {
+            "name": "apps/yaak-proxy/hooks/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "apps/yaak-proxy/hooks"
+            ]
+          },
+          {
+            "name": "packages/plugin-runtime-types/src/plugins/*Plugin.ts",
+            "pattern": "*Plugin.ts",
+            "roots": [
+              "packages/plugin-runtime-types/src/plugins"
+            ]
+          },
+          {
+            "name": "packages/ui/src/components/tree/Tree*.tsx",
+            "pattern": "Tree*.tsx",
+            "roots": [
+              "packages/ui/src/components/tree"
+            ]
+          },
+          {
+            "name": "packages/ui/src/hooks/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "packages/ui/src/hooks"
+            ]
+          },
+          {
+            "name": "plugins/themes-yaak/src/themes/material-*.ts",
+            "pattern": "material-*.ts",
+            "roots": [
+              "plugins/themes-yaak/src/themes"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/templates.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e0814c5b88dce692",
+        "line": 24,
+        "matched": null,
+        "outcome": "new",
+        "text": "function parseArgs(input: string): string[] | null {",
+        "values": {
+          "cc": 11,
+          "lines": 24
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 52",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 52 lines)",
+        "file": "plugins/importer-insomnia/src/templates.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "dd6bd0efc640beb1",
+        "line": 170,
+        "matched": null,
+        "outcome": "new",
+        "text": "function convertResponse(args: string[], requestIds: Set<string>): string | null {",
+        "values": {
+          "cc": 15,
+          "lines": 30
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 35,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 112,
+          "measured": 112,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 699,
+        "ms": 44,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1103,
+          "measured": 1103,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 376,
+        "ms": 1269,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 562,
+          "reads": 2206
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1101,
+          "measured": 1101,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 30,
+        "ms": 1078,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 2202,
+          "reads": 2202
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 86,
+          "measured": 86,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 843,
+        "ms": 124,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1099,
+          "measured": 1098,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 550,
+        "ms": 2101,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 2198,
+          "reads": 2198
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1070,
+          "measured": 1069,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 2140,
+          "ms": 2588,
+          "parses": 2140,
+          "reads": 2140,
+          "shared": 0,
+          "states": 4933
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 229129,
+          "declaration_text_bytes": 768377,
+          "declarations": 14431,
+          "export_leaves": 476,
+          "export_text_bytes": 28758,
+          "exported_alias_bytes": 28,
+          "exported_aliases": 4,
+          "exports": 298,
+          "extern_crate_bytes": 32,
+          "extern_crates": 4,
+          "files": 2138,
+          "import_text_bytes": 1262074,
+          "imports": 12160,
+          "module_declarations": 582,
+          "module_text_bytes": 17548,
+          "nesting_bytes": 9486,
+          "nesting_entries": 1296,
+          "nestings": 1296,
+          "owner_bytes": 11144,
+          "owners": 1000,
+          "path_bytes": 91030,
+          "qualified_paths": 318,
+          "reference_canonical_allocation_ratio": 1.9989909965849115,
+          "reference_canonical_allocation_ratio_milli": 1998,
+          "reference_canonical_allocations": 25755,
+          "reference_canonical_bytes": 322833,
+          "reference_distinct_names": 12884,
+          "reference_name_bytes": 3097546,
+          "reference_representation_after_bytes": 6624064,
+          "reference_representation_before_bytes": 13248128,
+          "references": 414004,
+          "signature_bytes": 1160692,
+          "signatures": 14191,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 20,
+        "ms": 2632,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 7221,
+            "distinct_names": 14712,
+            "files": 1069,
+            "index_ms": 9,
+            "measure_ms": 1298,
+            "query_ms": 0,
+            "references": 193942
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7210,
+            "distinct_names": 14699,
+            "files": 1069,
+            "index_ms": 9,
+            "measure_ms": 1294,
+            "query_ms": 0,
+            "references": 193702
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 25,
+            "ignored_ms": 15,
+            "renames_ms": 0,
+            "walk_ms": 11,
+            "worktree_add_ms": 205,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 158,
+          "measured": 158,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1578
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1441,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 3999,
+            "distinct_names": 8301,
+            "files": 788,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 2,
+            "references": 98169
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3988,
+            "distinct_names": 8288,
+            "files": 788,
+            "index_ms": 5,
+            "measure_ms": 0,
+            "query_ms": 2,
+            "references": 97929
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 111,
+          "measured": 59,
+          "not_measured": 52,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2140
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 5794,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 5214,
+          "modules": 2222,
+          "ms": 16,
+          "sources": 2222
+        },
+        "held": 0,
+        "ms": 28,
+        "name": "public-api",
+        "names": null,
+        "notes": 7,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 8,
+          "items": 3782,
+          "measured": 3578,
+          "ms": 8,
+          "opaque": 204,
+          "surfaces": 118
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "packages/plugin-runtime-types/src/index.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "packages/plugin-runtime-types/src/index.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "20 dead symbol(s) the base already held:\n  apps/yaak-client/components/core/Editor/filter/query.ts:132  constructor(private toks: Tok[]) {}\n  apps/yaak-client/components/core/Editor/largeValues.ts:142  constructor(\n  apps/yaak-client/components/core/Editor/largeValues.ts:160  toDOM(view: EditorView) {\n  apps/yaak-client/components/core/Editor/largeValues.ts:241  ignoreEvent() {\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:9  constructor(\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:24  toDOM() {\n  apps/yaak-client/components/core/Editor/twig/pathParameters.ts:37  ignoreEvent() {\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:15  constructor(\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:36  toDOM() {\n  apps/yaak-client/components/core/Editor/twig/templateTags.ts:58  ignoreEvent() {\n  apps/yaak-client/lib/router.ts:9  interface Register {\n  apps/yaak-client/routeTree.gen.ts:102  interface FileRoutesByPath {\n  crates/yaak-templates/src/parser.rs:231  fn debug_pos(&self, x: &str) {\n  packages/platform/src/web/send.ts:234  constructor(\n  packages/platform/src/web/send.ts:284  constructor(\n  packages/theme/src/appearance.ts:8  interface Window {\n  plugins/importer-openapi/src/index.ts:2110  constructor(spec: UnknownRecord) {\n  plugins/importer-openapi/src/index.ts:2184  #mergeAllOfStructure(\n  plugins/importer-openapi/src/index.ts:2204  #mergeSchemaObjects(base: UnknownRecord, overlay: UnknownRecord, depth = 0): UnknownRecord {\n  plugins/importer-openapi/src/index.ts:2259  #resolveLocalReference(ref: string): unknown {"
+      },
+      {
+        "file": "crates/common/yaak-database/src/pool.rs",
+        "gate": "public-api",
+        "line": 53,
+        "outcome": "unresolved",
+        "text": "pub fn single(conn: Connection) -> Self { — yaak_database — an inherent impl of SqlitePool outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "crates/common/yaak-database/src/pool.rs",
+        "gate": "public-api",
+        "line": 59,
+        "outcome": "unresolved",
+        "text": "pub fn get(&self) -> Result<SqliteConn, PoolError> { — yaak_database — an inherent impl of SqlitePool outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "crates/yaak-grpc/src/lib.rs",
+        "gate": "public-api",
+        "line": 15,
+        "outcome": "unresolved",
+        "text": "pub use tonic::metadata::*; — yaak_grpc — tonic::metadata::* globs another crate, whose names klin cannot list"
+      },
+      {
+        "file": "crates/yaak-templates/index.ts",
+        "gate": "public-api",
+        "line": 3,
+        "outcome": "unresolved",
+        "text": "import { escape_template, parse_template, unescape_template } from \"./pkg\"; — @yaakapp-internal/templates \".\" — ./pkg names no TypeScript file the tree holds: crates/yaak-templates/pkg.ts, crates/yaak-templates/pkg.tsx, crates/yaak-templates/pkg/index.ts, crates/yaak-templates/pkg/index.tsx"
+      },
+      {
+        "file": "crates/yaak-wasm/index.ts",
+        "gate": "public-api",
+        "line": 6,
+        "outcome": "unresolved",
+        "text": "export { blob_delete, blob_get, blob_put, boot, prepare_http_send, rpc } from \"./pkg\"; — @yaakapp-internal/wasm \".\" — ./pkg names no TypeScript file the tree holds: crates/yaak-wasm/pkg.ts, crates/yaak-wasm/pkg.tsx, crates/yaak-wasm/pkg/index.ts, crates/yaak-wasm/pkg/index.tsx"
+      },
+      {
+        "file": "crates/yaak-wasm/index.ts",
+        "gate": "public-api",
+        "line": 6,
+        "outcome": "unresolved",
+        "text": "export { blob_delete, blob_get, blob_put, boot, prepare_http_send, rpc } from \"./pkg\"; — @yaakapp-internal/wasm \".\" — ./pkg resolves to no TypeScript module the tree holds, or to more than one"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "52 package(s) or target(s) with no supported public surface:\n  Rust package yaak-cli (crates-cli/yaak-cli/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package @yaak/action-copy-curl (plugins/action-copy-curl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/action-copy-grpcurl (plugins/action-copy-grpcurl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/action-send-folder (plugins/action-send-folder/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-apikey (plugins/auth-apikey/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-aws (plugins/auth-aws/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-basic (plugins/auth-basic/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-bearer (plugins/auth-bearer/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-digest (plugins/auth-digest/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-jwt (plugins/auth-jwt/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-ntlm (plugins/auth-ntlm/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-oauth1 (plugins/auth-oauth1/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/auth-oauth2 (plugins/auth-oauth2/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/faker (plugins-external/faker/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/filter-jsonpath (plugins/filter-jsonpath/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/filter-xpath (plugins/filter-xpath/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/httpsnippet (plugins-external/httpsnippet/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-bruno (plugins/importer-bruno/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-curl (plugins/importer-curl/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @yaak/importer-insomnia (plugins/importer-insomnia/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  … and 32 more"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "411aa262c7a6e819ca0e77e6e95825c78775013a",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}
