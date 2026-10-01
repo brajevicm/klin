@@ -194,7 +194,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let prior = base::whole(at.project, at.laid_whole(), at.shared(), &commit)?;
+    let prior = check::whole_base(at, &commit)?;
     let unread_at_base = || prior.unread_either(&before.files.unreadable);
     let code = coverage_result(
         code,
@@ -216,12 +216,9 @@ fn sweeps(
     names: &mut structural::NameCost,
     layout: &mut Option<base::Layout>,
 ) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || {
-        base::whole(at.project, at.laid_whole(), at.shared(), commit)
-    })?;
-    let unchanged = structural::timed(&mut names.base, || {
-        base::unchanged(at.project, at.shared(), prior, commit)
-    })?;
+    let prior = structural::timed(&mut names.base, || check::whole_base(at, commit))?;
+    let unchanged =
+        structural::timed(&mut names.base, || check::unchanged_base(at, prior, commit))?;
     *layout = prior.layout();
     let mut after = structural::timed(&mut names.after.measure, || {
         measure(at.project.tree(), families, unchanged.as_ref())
@@ -682,7 +679,7 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    check::unread(&unparsed, unread_at_base, at, code, out)
+    check::unread_said(&unparsed, unread_at_base, at, code, out)
 }
 
 fn evaluator() -> Evaluator<'static> {

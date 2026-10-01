@@ -422,7 +422,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     let code = check::lost_said(&lost, at, code, out);
-    Ok(check::unread(
+    Ok(check::unread_said(
         &sweep.unparsed,
         || laid.unread_either(&before.unreadable),
         at,

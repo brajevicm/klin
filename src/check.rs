@@ -17,12 +17,12 @@ use serde_json::{Map, Value};
 use crate::base::{self, Prior, Window};
 use crate::changed::Change;
 use crate::config::Config;
-use crate::coverage::{Coverage, Lost, Unresolved, in_scope};
+use crate::coverage::{Coverage, Lost, Unresolved, held_at, in_scope};
 use crate::error::Error;
 use crate::key::{Key, Languages, Section, SectionShape};
 use crate::project::Project;
 use crate::syntax::Unparsed;
-use crate::syntax::structural::Unsupported;
+use crate::syntax::structural::{Unchanged, Unsupported};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
     lockfile, modules, public_api, reachability, sarif, stubs, surface, syntax,
@@ -211,18 +211,6 @@ impl Context<'_> {
         self.caller == Caller::Hook
     }
 
-    /// The base the runner laid out whole, which a changed run never has: it lays out only the
-    /// changed files. Spec 8.4, ADR 0038.
-    pub fn laid_whole(&self) -> Option<&Prior> {
-        self.prior.filter(|_| self.changes.is_none())
-    }
-
-    /// The changes of a changed run that is not strict, which share the base's view of the files
-    /// they leave alone. Any other run shares nothing. Spec 8.4.
-    pub fn shared(&self) -> Option<&[Change]> {
-        self.changes.filter(|_| !self.strict)
-    }
-
     /// The configuration the run loaded, which every check reads its section from.
     pub fn config(&self) -> &Config {
         &self.project.config
@@ -321,6 +309,27 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
         let _ = writeln!(out.text, "{}", base.line());
     }
     Ok(base)
+}
+
+/// The base laid out whole for this run: the runner's own when it laid the whole base out, which
+/// a changed run never does, and otherwise the run's one checkout. Spec 8.4, ADR 0038.
+pub fn whole_base<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
+    let laid = at.prior.filter(|_| at.changes.is_none());
+    base::whole(at.project, laid, shared(at), commit)
+}
+
+/// The base's view of the files this run leaves alone, which only a changed run that is not
+/// strict shares. Spec 8.4.
+pub fn unchanged_base<'a>(
+    at: &Context<'a>,
+    prior: &'a Prior,
+    commit: &str,
+) -> Result<Option<Unchanged<'a>>, Error> {
+    base::unchanged(at.project, shared(at), prior, commit)
+}
+
+fn shared<'a>(at: &Context<'a>) -> Option<&'a [Change]> {
+    at.changes.filter(|_| !at.strict)
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
@@ -466,7 +475,7 @@ pub fn unresolved_said(
     }
     let held = match at.hook() {
         true => vec![true; now.len()],
-        false => crate::coverage::held_at(now, &base()),
+        false => held_at(now, &base()),
     };
     let (noted, refused): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
     for (word, named) in [("NOTE", &noted), ("FAIL", &refused)] {
@@ -514,7 +523,7 @@ fn listed(word: &str, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str
 /// ratchet. A file the base held and could not read either is a NOTE in every run, because the
 /// change opened no hole there. `base` names those files under today's paths, and is asked only
 /// outside the hook, when a file in scope needs it. ADR 0003, ADR 0021, spec 8.6, 14.
-pub fn unread(
+pub fn unread_said(
     unparsed: &[Unparsed],
     base: impl FnOnce() -> Vec<String>,
     at: &Context,

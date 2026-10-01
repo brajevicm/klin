@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::base;
 use crate::check::{self, Context, Sink};
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -120,12 +119,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         })
         .cloned()
         .collect();
-    let prior = base::whole(at.project, at.laid_whole(), at.shared(), &commit)?;
+    let prior = check::whole_base(at, &commit)?;
     let unread_at_base = || {
         let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
         prior.unread_either(&unreadable)
     };
-    Ok(check::unread(&inside, unread_at_base, at, code, out))
+    Ok(check::unread_said(&inside, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured, resolved and derived. A changed run that is
@@ -134,8 +133,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 /// change what an unchanged file means to a consumer.
 fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
     let project = at.project;
-    let prior = base::whole(at.project, at.laid_whole(), at.shared(), commit)?;
-    let unchanged = base::unchanged(at.project, at.shared(), prior, commit)?;
+    let prior = check::whole_base(at, commit)?;
+    let unchanged = check::unchanged_base(at, prior, commit)?;
     let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
     let before = structural::measure_all(prior.tree(), None)?;
     after.cost = after.cost

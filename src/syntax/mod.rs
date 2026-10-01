@@ -344,7 +344,7 @@ pub struct Rejected<'a> {
 
 /// Which files in scope no grammar read, split against the base. `base` names the base's
 /// unread files under today's paths, and is asked only when a file in scope needs it. `None`
-/// holds every file, which the hook does because an agent cannot fix a grammar.
+/// holds every file.
 pub fn rejected<'a>(
     unparsed: &'a [Unparsed],
     only: Option<&[String]>,

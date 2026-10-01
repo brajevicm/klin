@@ -19,6 +19,7 @@ use serde_json::{Map, Value};
 
 use crate::check::{self, Context, Sink};
 use crate::config::{self, Config};
+use crate::coverage;
 use crate::error::Error;
 use crate::key::{Key, Section};
 use crate::modules::{
@@ -29,7 +30,6 @@ use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
-use crate::{base, coverage};
 
 pub const SECTION: &str = "layering";
 
@@ -238,17 +238,17 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .cloned()
         .collect();
     held_note(&physicals, out);
-    let prior = base::whole(at.project, at.laid_whole(), at.shared(), &commit)?;
+    let prior = check::whole_base(at, &commit)?;
     let unread_at_base = || prior.unread_either(&was_files.unreadable);
-    Ok(check::unread(&unparsed, unread_at_base, at, code, out))
+    Ok(check::unread_said(&unparsed, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured and resolved. A changed run that is not strict
 /// takes the base's facts for every file it did not change, as `dead-symbols` does.
 fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
     let project = at.project;
-    let prior = base::whole(at.project, at.laid_whole(), at.shared(), commit)?;
-    let unchanged = base::unchanged(at.project, at.shared(), prior, commit)?;
+    let prior = check::whole_base(at, commit)?;
+    let unchanged = check::unchanged_base(at, prior, commit)?;
     let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
     let before = structural::measure_all(prior.tree(), None)?;
     after.cost = after.cost

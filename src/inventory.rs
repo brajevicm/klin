@@ -152,7 +152,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
-    Ok(check::unread(
+    Ok(check::unread_said(
         &measured.unparsed,
         || prior.unread_either(&measured.unread_at_base),
         at,
