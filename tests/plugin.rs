@@ -251,17 +251,16 @@ fn the_readme_names_the_codex_hook_trust_step() {
     let readme = text(README);
 
     assert!(
-        readme
-            .contains("Run `/hooks`, review and trust the klin hooks, then start a fresh session."),
+        readme.contains("`/hooks`, review and trust the klin hooks, then start a fresh session."),
         "the README omits the Codex hook trust step"
     );
 }
 
 /// The README leads with one command run from the repository: the installer, then the
 /// installed binary by its full path, because PATH does not hold it until a new terminal. It
-/// offers the three plugins after it as the host-managed alternative, gives the repository
-/// opt-in a plugin user takes, and points any other harness at the harness protocol without
-/// promising that the binary alone connects it. Spec 19.0, 19.1, 19.4, ADR 0053, ADR 0056.
+/// names the three first-class hosts, offers their plugins after it as the host-managed
+/// alternative, gives the repository opt-in a plugin user takes, names the upgrade, and points
+/// any other harness at the integration guide. Spec 19.0, 19.1, 19.4, 19.6, ADR 0053, ADR 0056.
 #[test]
 fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
     let readme = text(README);
@@ -278,17 +277,12 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
          the hook lines look in"
     );
     for said in [
-        "**Claude Code · Codex · Cursor**",
+        "Claude Code · Codex · Cursor",
         "`--host claude`",
-        "### Or use your host's plugin",
-        "A plugin's checks stay quiet until the repository opts in",
+        "echo '{}' > klin.json",
         "`{}` is a complete configuration.",
         "`klin update`",
-        "### Other coding agents",
         "docs/HARNESS_INTEGRATION.md",
-        "harness protocol",
-        "Installing the klin binary alone does not connect another harness.",
-        "does not make that harness first-class",
     ] {
         assert!(readme.contains(said), "the README omits {said}");
     }
@@ -307,7 +301,7 @@ printf '#!/bin/sh\necho "$PWD $*" > "$HOME/ran"\n' > "$HOME/.local/bin/klin"
 chmod +x "$HOME/.local/bin/klin"
 SH"#;
 
-/// The README's install is one command run from the repository, in any shell a person types
+/// The README's install is one command run from the repository root, in any shell a person types
 /// it into, and it runs klin only once the installer succeeded. A download that fails runs no klin, not even one an earlier install
 /// left in `~/.local/bin`. The installed klin runs by its full path, before PATH holds it. #318.
 #[test]
@@ -332,7 +326,7 @@ fn the_readmes_install_runs_klin_only_after_the_installer_succeeded() {
         let run = ran(
             SHELL,
             &["-c", &script],
-            work.root(),
+            &work.path("your-repo"),
             &[("PATH", path.as_str()), ("HOME", home_dir.as_str())],
         );
         let klin_ran = fs::read_to_string(home.path("ran")).unwrap_or_default();
