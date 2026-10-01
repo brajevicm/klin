@@ -8,7 +8,7 @@
 
 **Deterministic quality control for coding agents.**
 
-klin catches new or worsened problems during coding-agent work and returns concrete feedback while the working context is still available.
+klin catches new or worsened problems while the agent still has the context to fix them.
 
 **Works natively with:** Claude Code · Codex · Cursor
 
@@ -36,22 +36,20 @@ From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh) && sh -c "$i" && ~/.local/bin/klin install'
 ```
 
-klin detects the supported hosts already used by the repository. If none are found, it configures Claude Code, Codex, and Cursor.
+Then commit `klin.json` and the generated integration files.
 
-Commit `klin.json` and the generated integration files.
+klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to the final `klin install`.
 
-Only want one host? Append `--host claude`, `--host codex`, or `--host cursor` to the final `klin install` command.
-
-If your shell can't find `klin` after the install, open a new terminal. To update later, run `klin update`, then `klin install`.
+If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
 
 > [!NOTE]
 > **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ### 2. Work normally
 
-Use your coding agent as usual. You don't need to run anything yourself.
+Use your coding agent as usual. You don't need to run anything.
 
-klin marks the start of the turn and checks what changed when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
+When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened problems go back to the agent while the change is still in its context.
 
 ### 3. See what happened
 
@@ -65,15 +63,13 @@ Nothing needs your attention.
 klin caught 1 regression this session. It was fixed after klin flagged it.
 ```
 
-Use `klin stats --all` for individual findings or `klin stats --json` for machine-readable output.
+Add `--all` for individual findings or `--json` for machine-readable output.
 
 ## Native plugins
 
-**Alternative to the CLI setup above.**
+Instead of the CLI setup above, you can run klin through the native plugin system of Claude Code, Codex, or Cursor.
 
-Claude Code, Codex, and Cursor can also run klin through their native plugin systems.
-
-A plugin gives you no `klin` command in your shell. Install the CLI too if you want `klin stats`. If plugin and repository hooks are both present, one copy handles each event and the other stays quiet.
+A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin stats`. If the plugin and the repository hooks are both present, only one of them handles each event.
 
 ### Claude Code
 
@@ -114,19 +110,19 @@ Reload Cursor.
 
 ### Opt the repository in
 
-A plugin stays quiet until the repository opts in. At the repository root, run:
+A plugin does nothing until the repository has a `klin.json`. At the repository root, run:
 
 ```sh
 echo '{}' > klin.json
 ```
 
-`{}` is a complete configuration. klin derives repository facts automatically.
+`{}` is a complete configuration. klin derives everything else from the repository.
 
 ## Why klin
 
-A coding agent can complete the requested task while making something else worse.
+A coding agent can finish the task you asked for and make something else worse.
 
-Most deterministic tools tell you what is wrong **now**. klin adds the change boundary:
+Most deterministic tools tell you what is wrong **now**. klin asks:
 
 **Did this problem appear or get worse during this work?**
 
@@ -137,39 +133,39 @@ improved                8        6       ✓ pass
 worsened                8        9       ✗ fail
 ```
 
-Existing debt does not block adoption. Only new or worsened debt fails. One exception: a build that fails blocks the agent until the code builds again.
+Existing debt does not block adoption. Only new or worsened debt fails. The one exception is a broken build: it blocks the agent until the code builds again.
 
-**Deterministic, not another LLM.** klin measures specific properties and returns concrete evidence instead of asking another model whether the code is "good."
+**Deterministic, not another LLM.** klin measures specific properties and shows concrete evidence.
 
-**No baseline to maintain.** klin reads the before-state from Git, so no baseline file has to stay in sync.
+**No baseline to maintain.** klin reads the before-state from Git, so there is no baseline file to keep in sync.
 
-**Repair now, verify later.** Local hooks return findings while the agent still has context. CI independently checks the committed result.
+**Repair now, verify later.** Local hooks return findings while the agent still has context. CI checks the committed result on its own.
 
-**The agent fixes code, not the bar.** Intentional exceptions are human-reviewed policy in `accepted`.
+**The agent fixes code, not the bar.** Intentional exceptions go in `accepted`, and a person reviews them.
 
 ## What klin catches
 
-- **Complexity creeps up.** A function becomes too complex or too large for the repository's current bar.
+- **Complexity creeps up.** A function grows too complex or too long for the repository's current bar.
 - **Architecture drifts.** Code crosses a layer you defined, closes a new dependency cycle, or breaks a convention you wrote down. These checks need a `layering` or `conventions` section in `klin.json`.
 - **Guardrails get bypassed.** A test gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch. If a test disappears, klin asks the agent about it once.
-- **Work is left unfinished.** The change leaves a new TODO, placeholder, or stub, or adds code that nothing references.
-- **A public contract changes.** An exported Rust or TypeScript surface disappears or its declared contract changes.
+- **Work is left unfinished.** The change adds a TODO, a placeholder, a stub, or code that nothing references.
+- **A public contract changes.** An exported Rust or TypeScript surface disappears or changes its declared contract.
 - **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or has a version the lockfile does not record.
-- **Documentation goes stale.** Code moves, but a Markdown file at the repository root still points to the old path.
+- **Documentation goes stale.** A Markdown file at the repository root still points to a path the code moved away from.
 
-Keep your linters, type checkers, tests, security scanners, static analysis, AI review, and human review. klin adds a deterministic ratchet around the agent's change.
+Keep your linters, type checkers, tests, security scanners, and reviews. klin adds a ratchet around the agent's change.
 
-A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails on any of its results that sit on a line the change touched.
+A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
 
 ### Language support
 
-| Language | What klin checks |
-| --- | --- |
-| Rust, TypeScript | Complexity, escape hatches, unfinished work, unused code, architecture, public API, lockfiles |
-| Go, JavaScript | Complexity, escape hatches, unfinished work, lockfiles |
-| Python | Complexity, escape hatches, unfinished work |
-| Java, Kotlin, Ruby, Swift | Complexity, escape hatches |
-| Shell | Escape hatches |
+| Language                  | What klin checks                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| Rust, TypeScript          | Complexity, escape hatches, unfinished work, unused code, architecture, public API, lockfiles |
+| Go, JavaScript            | Complexity, escape hatches, unfinished work, lockfiles                                        |
+| Python                    | Complexity, escape hatches, unfinished work                                                   |
+| Java, Kotlin, Ruby, Swift | Complexity, escape hatches                                                                    |
+| Shell                     | Escape hatches                                                                                |
 
 Documentation links, text and file conventions, and SARIF input work in any language.
 
@@ -208,8 +204,8 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 ## Privacy and trust
 
 - **No telemetry.** klin reads no secrets and sends nothing anywhere.
-- **You control the build commands.** klin may run the configured or derived build command, and it prints a derived command before running it. Set `"build": false` to disable builds.
-- **State stays in your repository.** klin keeps its working state under `.git/klin`, including up to 80 characters of the prompt's first line by default. Set `"journal": { "prompt": false }` to omit prompt text.
+- **You control the build commands.** klin may run the configured or derived build command. It prints a derived command before it runs it. Set `"build": false` to disable builds.
+- **State stays in your repository.** klin keeps its working state under `.git/klin`. By default this includes up to 80 characters of the prompt's first line. Set `"journal": { "prompt": false }` to leave the prompt text out.
 - **Downloaded binaries are verified.** The plugin checks the pinned release's SHA-256 before it caches and runs the binary. The installer also verifies what it downloads.
 
 [Threat model →](docs/THREAT_MODEL.md)
@@ -218,10 +214,10 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 
 klin works at two levels:
 
-- **Feedback:** hooks only. klin returns findings to the agent and refuses its edits to `klin.json`, but nothing outside the agent's environment checks the result.
+- **Feedback:** hooks only. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks the result.
 - **Enforced:** hooks plus a required CI check on a protected branch. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and `CODEOWNERS` itself.
 
-The Quick start setup reaches Feedback. Add the CI check to reach Enforced.
+The Quick start gets you to Feedback. Add the CI check to get to Enforced.
 
 GitHub Actions:
 
