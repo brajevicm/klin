@@ -1,8 +1,8 @@
-use std::fmt;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::error::Error;
 use crate::reference::{Key, SectionShape, Shape};
 
 const FILENAME: &str = "klin.json";
@@ -60,21 +60,6 @@ pub const JOURNAL: Key = Key {
     default: "the prompt excerpt is recorded",
     shape: crate::reference::Shape::Journal,
 };
-
-#[derive(Debug)]
-pub struct Error(pub String);
-
-impl fmt::Display for Error {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        out.write_str(&self.0)
-    }
-}
-
-impl Error {
-    pub fn unreadable(path: &Path, problem: impl fmt::Display) -> Error {
-        Error(format!("{} could not be read: {problem}", path.display()))
-    }
-}
 
 /// The policy a person wrote, and nothing klin computed. What the file leaves out is derived
 /// from the tree by the run that reads it, through `project::Project`, never here. ADR 0038.

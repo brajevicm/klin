@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 
 use crate::changed::{self, Change, blobs};
 use crate::check::{Context, Sink};
-use crate::config::Error;
+use crate::error::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::project::{self, Project, Tree};
 use crate::state;

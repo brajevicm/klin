@@ -13,7 +13,8 @@ use serde_json::Value;
 
 use crate::base::{self, Prior};
 use crate::changed::Change;
-use crate::config::{Config, Error};
+use crate::config::Config;
+use crate::error::Error;
 use crate::project::Project;
 use crate::reference::{Key, Languages, SectionShape};
 use crate::{

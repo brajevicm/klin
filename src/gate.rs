@@ -11,7 +11,8 @@ use crate::check::{
     self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNBUILT,
     UNPARSED, UNRESOLVED,
 };
-use crate::config::{self, Error};
+use crate::config;
+use crate::error::Error;
 use crate::host::{self, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};

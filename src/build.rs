@@ -4,7 +4,8 @@ use serde_json::Value;
 
 use crate::changed::Change;
 use crate::check::{self, Said};
-use crate::config::{self, Config, Error};
+use crate::config::{self, Config};
+use crate::error::Error;
 use crate::project::Project;
 use crate::scope;
 use crate::shell;

@@ -18,10 +18,12 @@ use regex::Regex;
 use serde_json::{Map, Value};
 
 use crate::check::{Context, Sink};
-use crate::config::{self, Config, Error};
+use crate::config::{self, Config};
 use crate::coverage::Files;
+use crate::error::Error;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};

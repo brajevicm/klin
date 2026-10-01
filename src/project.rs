@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 
 use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
-use crate::config::{Config, Error};
+use crate::config::Config;
+use crate::error::Error;
 use crate::syntax::structural::Extracted;
 use crate::{files, scope, survey};
 

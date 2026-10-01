@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::{self, Error};
+use crate::config;
+use crate::error::Error;
 use crate::host::{ADAPTERS, Adapter, Filter, Hook, HookFile};
 use crate::write;
 

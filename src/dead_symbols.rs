@@ -13,11 +13,13 @@ use serde_json::Value;
 
 use crate::base::{self, Prior};
 use crate::check::{Context, Sink};
-use crate::config::{Config, Error};
+use crate::config::Config;
 use crate::coverage;
+use crate::error::Error;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};

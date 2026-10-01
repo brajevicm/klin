@@ -9,11 +9,12 @@ use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed::Change;
 use crate::check::{self, ContentCost, Context, Sink};
-use crate::config::Error;
 use crate::coverage::{self, Files};
+use crate::error::Error;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::{self, Values};
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
@@ -1110,7 +1111,7 @@ fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
             end: node.end_position().row as u64 + 1,
             cc: 1 + decisions(node, at),
             text: site(node, &at.lines),
-            body: ratchet::body_hash(node.utf8_text(at.source.as_bytes()).unwrap_or_default()),
+            body: record::body_hash(node.utf8_text(at.source.as_bytes()).unwrap_or_default()),
             test: false,
         });
     }

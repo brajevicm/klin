@@ -10,8 +10,8 @@ use serde_json::Value;
 use tree_sitter::{Node, Parser, Tree};
 
 use crate::check::{Context, Records, Sink, UNPARSED};
-use crate::config::Error;
-use crate::ratchet::Values;
+use crate::error::Error;
+use crate::record::Values;
 use crate::reference;
 
 pub mod convention;

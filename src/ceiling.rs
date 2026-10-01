@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use crate::config::{Config, Error};
+use crate::config::Config;
+use crate::error::Error;
 
 /// The value a measure may reach, either a number a person pinned or the lowest step of a dated
 /// schedule that is due today. Every gate reads its ceiling here, so both shapes are accepted

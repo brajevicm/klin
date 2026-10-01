@@ -15,11 +15,12 @@ use serde_json::Value;
 
 use crate::base;
 use crate::check::{Context, Sink};
-use crate::config::Error;
 use crate::coverage::{self, Coverage};
+use crate::error::Error;
 use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 use crate::surface::{self, Contract, Derived, Item, MODULE, Surface};
 use crate::syntax::{self, structural};

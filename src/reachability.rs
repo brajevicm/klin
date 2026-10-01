@@ -14,11 +14,13 @@ use serde_json::{Map, Value};
 
 use crate::base;
 use crate::check::{Context, Sink};
-use crate::config::{Config, Error};
+use crate::config::Config;
 use crate::coverage;
+use crate::error::Error;
 use crate::files;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};

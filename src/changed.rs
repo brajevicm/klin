@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::config::Error;
+use crate::error::Error;
 use crate::git::Repo;
 
 /// A file the working tree changed since the base, with the path it had at the base. A

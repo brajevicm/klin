@@ -113,11 +113,13 @@
           "src/ceiling.rs",
           "src/changed.rs",
           "src/coverage.rs",
+          "src/error.rs",
           "src/git.rs",
           "src/hunks.rs",
           "src/markers.rs",
           "src/modules",
           "src/ratchet.rs",
+          "src/record.rs",
           "src/scope.rs",
           "src/state.rs",
           "src/write.rs"

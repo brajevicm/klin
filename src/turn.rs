@@ -6,7 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Map, Value};
 
 use crate::base::{self, Kind, Window};
-use crate::config::{Config, Error};
+use crate::config::Config;
+use crate::error::Error;
 use crate::git::Repo;
 use crate::handoff;
 use crate::host;

@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
-use crate::config::Error;
+use crate::error::Error;
 use crate::{check, git::Repo, journal, turn};
 
 /// What needs the person's attention, and what klin was worth. The report reads the journal of
