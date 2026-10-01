@@ -40,6 +40,7 @@ mod reference;
 mod sarif;
 mod scope;
 mod shell;
+mod stamp;
 mod state;
 mod stats;
 mod stubs;

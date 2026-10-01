@@ -17,7 +17,7 @@ use crate::error::Error;
 use crate::host::{self, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, state, stats, turn, write};
+use crate::{build, handoff, journal, stamp, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -1254,7 +1254,7 @@ fn capped() -> String {
 
 /// The working tree as the build stamp records it, hashed through the build stamp's own index.
 fn working_tree(root: &Path, at: &Path) -> Option<String> {
-    turn::tree_through(root, &at.join(BUILD_INDEX))
+    stamp::tree_through(root, &at.join(BUILD_INDEX))
 }
 
 /// Record the exact report a follow-up host will echo under the event's session, then deliver
