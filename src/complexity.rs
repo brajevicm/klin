@@ -8,7 +8,8 @@ use tree_sitter::Node;
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed::Change;
-use crate::check::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::holes;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
@@ -383,7 +384,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     for (line, value) in &spec.provenance {
         out.provenance(line.clone(), value.clone());
     }
-    ratchet::noted_as(check::DERIVATION, &spec.notes, out);
+    ratchet::noted_as(contract::DERIVATION, &spec.notes, out);
     let sweep = measure(
         project.tree(),
         &spec.selection,
@@ -397,7 +398,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = out.covered(&sweep.files.coverage(at.only));
     let mut owned = None;
-    let laid = base::laid(at.prior, &mut owned, || check::own_base(at, out))?;
+    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at, out))?;
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
@@ -421,8 +422,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let code = check::lost_said(&lost, at, code, out);
-    Ok(check::unread_said(
+    let code = holes::lost_said(&lost, at, code, out);
+    Ok(holes::unread_said(
         &sweep.unparsed,
         || laid.unread_either(&before.unreadable),
         at,

@@ -55,6 +55,7 @@ use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
 
+use crate::check::catalogue;
 use crate::error::Error;
 
 #[derive(Parser)]
@@ -162,7 +163,7 @@ fn main() -> ExitCode {
 }
 
 fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let sections = &check::sections();
+    let sections = &catalogue::sections();
     match command {
         Check::DocCitations(args) => doc_citations::run(args, sections, start, out),
         Check::DocSize(args) => doc_size::run(args, sections, start, out),
@@ -174,7 +175,7 @@ fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let sections = &check::sections();
+    let sections = &catalogue::sections();
     match command {
         Structural::Complexity(args) => complexity::run(args, sections, start, out),
         Structural::DeadSymbols(args) => dead_symbols::run(args, sections, start, out),
@@ -196,7 +197,7 @@ fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, Error>
 
 fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Tool::Radius(args) => turn::run(args, &check::sections(), start, out),
+        Tool::Radius(args) => turn::run(args, &catalogue::sections(), start, out),
         Tool::Turn(args) => turn::moved(args, start, out),
         Tool::Stats(args) => stats::run(args, start, out),
         Tool::Reference(args) => reference::run(args, out),

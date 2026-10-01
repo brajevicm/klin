@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
@@ -232,7 +232,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     said(&found, out);
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
-    let commit = check::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at, out)?;
     let changes = at.project.changes(&commit)?;
     let renamed = renamed(&changes, &judged);
     let judged: Vec<(&str, &str, &Format)> = judged
@@ -303,7 +303,7 @@ fn said(found: &[(&str, &Format)], out: &mut Sink) {
     let names: Vec<&str> = found.iter().map(|(path, _)| *path).collect();
     out.provenance(
         format!("derived: {SECTION} manifests {}, {RULE}", names.join(", ")),
-        Some(check::derived_entry(
+        Some(contract::derived_entry(
             SECTION,
             Some("manifests"),
             names.into(),

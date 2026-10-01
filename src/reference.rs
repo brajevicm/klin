@@ -9,10 +9,11 @@ use std::fmt::Write;
 
 use serde_json::{Map, Value, json};
 
+use crate::check::catalogue;
 use crate::config;
+use crate::doc_citations;
 use crate::error::Error;
 use crate::key::{Key, Languages, SectionShape, Shape};
-use crate::{check, doc_citations};
 
 const HEAD: &str = "| Key | Holds | Required | Source | Derivation rule | Default |";
 const RULE: &str = "| --- | --- | --- | --- | --- | --- |";
@@ -58,7 +59,7 @@ fn schema_value() -> Value {
     for key in config::KEYS {
         properties.insert(key.name.into(), field(key));
     }
-    for spec in check::CATALOGUE {
+    for spec in catalogue::CATALOGUE {
         properties.insert(spec.section.into(), section(spec));
     }
     json!({
@@ -72,7 +73,7 @@ fn schema_value() -> Value {
     })
 }
 
-fn section(spec: &check::Row) -> Value {
+fn section(spec: &catalogue::Row) -> Value {
     match spec.shape {
         SectionShape::Object => disabled(object(spec.keys, true)),
         SectionShape::DocumentMap(document) => disabled(document_map(document)),
@@ -309,7 +310,7 @@ fn sections(out: &mut String) {
          object holds only a person's policy, and a section reads only the keys its own table \
          names."
     );
-    for spec in check::CATALOGUE {
+    for spec in catalogue::CATALOGUE {
         let _ = writeln!(out, "\n### `{}`\n", spec.section);
         match spec.keys.is_empty() {
             true => {
@@ -367,7 +368,7 @@ fn languages(out: &mut String) {
          These tables report the source extensions each check discovers automatically. They \
          are capabilities of the binary, not selectors accepted in `klin.json`."
     );
-    let named = check::CATALOGUE
+    let named = catalogue::CATALOGUE
         .iter()
         .filter_map(|spec| Some((spec.section, spec.languages?)));
     for (section, rows) in named {

@@ -7,10 +7,11 @@ use serde_json::{Map, Value, json};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
-use crate::check::{
+use crate::check::contract::{
     self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNBUILT,
     UNPARSED, UNRESOLVED,
 };
+use crate::check::{catalogue, holes};
 use crate::config;
 use crate::error::Error;
 use crate::host::{self, Stop};
@@ -42,7 +43,7 @@ const BLOCKED: u8 = 2;
 
 struct Gate {
     name: String,
-    check: &'static check::Row,
+    check: &'static catalogue::Row,
 }
 
 #[derive(Default)]
@@ -51,12 +52,12 @@ struct Plan {
     excluded: Vec<String>,
     /// The checks klin offers that neither the config nor the survey supplies a section for.
     /// Each needs a section a person writes, and none of them runs.
-    needs_a_section: Vec<&'static check::Row>,
+    needs_a_section: Vec<&'static catalogue::Row>,
 }
 
 impl Plan {
     /// The one gate a check runs as when its section is not a list of named entries.
-    fn one(&mut self, check: &'static check::Row) {
+    fn one(&mut self, check: &'static catalogue::Row) {
         self.gates.push(Gate {
             name: check.name.to_string(),
             check,
@@ -118,7 +119,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(_claim) = state::claimed(start, identity) else {
         return Ok(0);
     };
-    let loaded = Project::load(args.config.as_deref(), start, &check::sections());
+    let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
     if !args.hook {
         let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
         return refused(args, judged, out).map(|tally| code(&tally));
@@ -422,8 +423,8 @@ fn ran(
 /// A finished build sorted into what blocks and what is told: the failure text of a build that
 /// ran and failed, the provenance lines, and the note for a command the shell could not find.
 fn sorted(
-    (failure, said): (Option<build::Failure>, Vec<check::Said>),
-) -> (Option<String>, Vec<check::Said>, Option<String>) {
+    (failure, said): (Option<build::Failure>, Vec<contract::Said>),
+) -> (Option<String>, Vec<contract::Said>, Option<String>) {
     match failure {
         Some(build::Failure::Failed(failure)) => (Some(failure), said, None),
         Some(build::Failure::Missing { run, output }) => {
@@ -634,7 +635,7 @@ fn counted(at: &Path, count: &Count) -> bool {
 fn does_not_build(
     args: &Args,
     failure: &str,
-    said: &[check::Said],
+    said: &[contract::Said],
     window: Option<&Window>,
     blocks: &Blocks,
     log: &mut journal::Stop,
@@ -731,7 +732,7 @@ fn unbounded(why: &str, log: &mut journal::Stop) -> Blocks {
 fn reported(
     args: &Args,
     failure: &str,
-    built: &[check::Said],
+    built: &[contract::Said],
     window: Option<&Window>,
     blocks: &Blocks,
     out: &mut String,
@@ -777,7 +778,7 @@ fn built(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-) -> Result<(Option<build::Failure>, Vec<check::Said>), Error> {
+) -> Result<(Option<build::Failure>, Vec<contract::Said>), Error> {
     let plan = build::plan(project)?;
     if plan.entries.is_empty() {
         return Ok((None, plan.said));
@@ -810,7 +811,7 @@ fn judge(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-    built: &[check::Said],
+    built: &[contract::Said],
     unbuilt: Option<&str>,
     out: &mut String,
 ) -> Result<Tally, Error> {
@@ -1026,7 +1027,7 @@ fn finish(
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
 /// its own values beside its row. Spec 4.3.
-fn said(args: &Args, built: &[check::Said], out: &mut String) {
+fn said(args: &Args, built: &[contract::Said], out: &mut String) {
     if args.json {
         return;
     }
@@ -1336,7 +1337,7 @@ fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
 }
 
 fn every_check() -> String {
-    names(check::names())
+    names(catalogue::names())
 }
 
 fn no_gate(project: &Project, plan: &Plan) -> Error {
@@ -1368,7 +1369,7 @@ fn no_gate(project: &Project, plan: &Plan) -> Error {
 
 fn plan(project: &Project) -> Result<Plan, Error> {
     let mut plan = Plan::default();
-    for check in check::CATALOGUE {
+    for check in catalogue::CATALOGUE {
         add(project, check, &mut plan)?;
     }
     distinct(project, &plan)?;
@@ -1379,7 +1380,7 @@ fn plan(project: &Project) -> Result<Plan, Error> {
 /// from what the section's absence means for this check: an Automatic check runs when its facts
 /// are available, and a Policy or Integration check runs nothing until a person writes the
 /// section. Planning derives no expensive number or topology. Spec 4.6, 5.2, ADR 0038.
-fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result<(), Error> {
+fn add(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) -> Result<(), Error> {
     let Some(stated) = project.config.pinned(check.section) else {
         absent(project, check, plan);
         return Ok(());
@@ -1387,7 +1388,7 @@ fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result
     match stated {
         Value::Bool(false) => plan.excluded.push(check.name.to_string()),
         _ if check.gate_per_entry => {
-            for (name, _) in check::named_entries(&project.config, check.section)? {
+            for (name, _) in contract::named_entries(&project.config, check.section)? {
                 plan.gates.push(Gate { name, check });
             }
         }
@@ -1398,7 +1399,7 @@ fn add(project: &Project, check: &'static check::Row, plan: &mut Plan) -> Result
 
 /// The gate a section's absence plans: the check itself for an Automatic check whose facts are
 /// available, and otherwise a check that needs a section a person writes.
-fn absent(project: &Project, check: &'static check::Row, plan: &mut Plan) {
+fn absent(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) {
     match check.activation == Activation::Automatic && (check.available)(project) {
         true => plan.one(check),
         false => plan.needs_a_section.push(check),
@@ -1651,7 +1652,7 @@ fn told(note: &Value) -> bool {
     matches!(
         outcome,
         Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED | UNBUILT)
-    ) || check::is_lost(note)
+    ) || holes::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {

@@ -3,7 +3,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use crate::changed::Change;
-use crate::check::{self, Said};
+use crate::check::contract::{self, Said};
 use crate::config::{self, Config};
 use crate::error::Error;
 use crate::key::{BUILD_ROOT, BUILD_RUN};
@@ -126,7 +126,10 @@ fn derived(project: &Project) -> Plan {
         .collect();
     let line = format!("derived: {BUILD} {}, {RULE}", runs.join(", "));
     let entries = found.into_iter().map(|(entry, _)| entry).collect();
-    let said = vec![(line, Some(check::derived_entry(BUILD, None, value, RULE)))];
+    let said = vec![(
+        line,
+        Some(contract::derived_entry(BUILD, None, value, RULE)),
+    )];
     Plan { entries, said }
 }
 

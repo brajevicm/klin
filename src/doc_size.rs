@@ -14,7 +14,7 @@ use crate::base;
 use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::check::{self, Context, Said, Sink};
+use crate::check::contract::{self, Context, Said, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -391,7 +391,7 @@ fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) {
         };
         listing.said.push((
             format!("derived: {SECTION} {name} {value}, {RULE}"),
-            Some(check::derived_entry(
+            Some(contract::derived_entry(
                 SECTION,
                 Some(name),
                 (*value).into(),

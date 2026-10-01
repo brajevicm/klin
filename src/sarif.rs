@@ -12,7 +12,7 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -26,7 +26,7 @@ use crate::shell;
 pub const SECTION: &str = "sarif";
 
 /// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[check::NAMED, REPORT, RUN, DIFFERENTIAL];
+pub const KEYS: &[Key] = &[contract::NAMED, REPORT, RUN, DIFFERENTIAL];
 
 const REPORT: Key = Key {
     name: "report",
@@ -90,7 +90,7 @@ pub struct Args {
 pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
     let project = Project::load(args.config.as_deref(), start, sections)?;
     let mut worst = 0;
-    for (name, _) in check::named_entries(&project.config, SECTION)? {
+    for (name, _) in contract::named_entries(&project.config, SECTION)? {
         worst = worst.max(gate(
             &context(args, &project, &name),
             &mut Sink::unrecorded(out),
@@ -157,7 +157,7 @@ fn distinct<'a>(places: impl Iterator<Item = &'a str>) -> usize {
 /// The one entry of the section this gate runs under, found by the name the runner gave it.
 /// Spec 8.3.
 fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
-    let entries = check::named_entries(config, SECTION)?;
+    let entries = contract::named_entries(config, SECTION)?;
     let (_, held) = entries
         .into_iter()
         .find(|(name, _)| name == gate)
@@ -167,7 +167,12 @@ fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
         &config.file,
         SECTION,
         held,
-        &[check::NAMED.name, REPORT.name, RUN.name, DIFFERENTIAL.name],
+        &[
+            contract::NAMED.name,
+            REPORT.name,
+            RUN.name,
+            DIFFERENTIAL.name,
+        ],
     )?;
     let report = held
         .get(REPORT.name)
@@ -218,7 +223,7 @@ fn read(
         wrote(root, command, &entry.report)?;
     }
     let data = sarif(&entry.report)?;
-    let changed = Hunks::read(root, &check::base_commit(root, at, out)?, None)?;
+    let changed = Hunks::read(root, &contract::base_commit(root, at, out)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }

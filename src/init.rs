@@ -3,10 +3,11 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::check::catalogue;
 use crate::config::{self, Config};
 use crate::error::Error;
 use crate::project::Project;
-use crate::{check, complexity, doc_size, radius, write};
+use crate::{complexity, doc_size, radius, write};
 
 const FILENAME: &str = "klin.json";
 
@@ -111,7 +112,7 @@ fn pin(
 /// does not exist yet.
 fn loaded(file: &Path, root: &Path, held: bool) -> Result<Config, Error> {
     match held {
-        true => Config::load(Some(file), root, &check::sections()),
+        true => Config::load(Some(file), root, &catalogue::sections()),
         false => Ok(Config::empty(file)),
     }
 }

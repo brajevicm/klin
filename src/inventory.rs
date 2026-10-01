@@ -13,7 +13,8 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior};
-use crate::check::{self, Context, DELETED, Sink};
+use crate::check::contract::{self, Context, DELETED, Sink};
+use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::git::Repo;
@@ -116,7 +117,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let today = today(project)?;
     said(project, out);
-    let commit = check::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at, out)?;
     let mut owned = None;
     let prior = base::laid(at.prior, &mut owned, || {
         base::materialize(project, &commit, None)
@@ -152,7 +153,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
-    Ok(check::unread_said(
+    Ok(holes::unread_said(
         &measured.unparsed,
         || prior.unread_either(&measured.unread_at_base),
         at,
@@ -231,7 +232,7 @@ fn said(project: &Project, out: &mut Sink) {
     }
     out.provenance(
         format!("derived: {TEST_ROOTS} {}, {ROOTS_RULE}", roots.join(", ")),
-        Some(check::derived_entry(
+        Some(contract::derived_entry(
             SECTION,
             Some(TEST_ROOTS),
             roots.clone().into(),

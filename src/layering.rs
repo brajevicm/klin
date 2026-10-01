@@ -17,7 +17,8 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
+use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
 use crate::error::Error;
@@ -187,7 +188,7 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let policy = policy(at.config())?;
-    let commit = check::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at, out)?;
     let (was, now) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();
@@ -218,7 +219,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     )?;
     let was_files = was.covered(&policy);
-    let code = check::lost_said(
+    let code = holes::lost_said(
         &now.covered(&policy).lost(&was_files, at.project, None),
         at,
         code,
@@ -238,17 +239,17 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .cloned()
         .collect();
     held_note(&physicals, out);
-    let prior = check::whole_base(at, &commit)?;
+    let prior = contract::whole_base(at, &commit)?;
     let unread_at_base = || prior.unread_either(&was_files.unreadable);
-    Ok(check::unread_said(&unparsed, unread_at_base, at, code, out))
+    Ok(holes::unread_said(&unparsed, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured and resolved. A changed run that is not strict
 /// takes the base's facts for every file it did not change, as `dead-symbols` does.
 fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
     let project = at.project;
-    let prior = check::whole_base(at, commit)?;
-    let unchanged = check::unchanged_base(at, prior, commit)?;
+    let prior = contract::whole_base(at, commit)?;
+    let unchanged = contract::unchanged_base(at, prior, commit)?;
     let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
     let before = structural::measure_all(prior.tree(), None)?;
     after.cost = after.cost
@@ -946,7 +947,7 @@ fn holes_said(
             )
             .collect()
     };
-    check::unresolved_said(
+    holes::unresolved_said(
         (&named, base),
         (
             "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",

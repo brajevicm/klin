@@ -8,7 +8,7 @@ use std::fmt::Write;
 
 use serde_json::{Map, Value};
 
-use crate::check::{Context, Records, Sink};
+use crate::check::contract::{Context, Records, Sink};
 use crate::config::{self, Config};
 use crate::error::Error;
 use crate::record::Values;

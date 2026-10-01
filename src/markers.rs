@@ -6,7 +6,8 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::changed::Change;
-use crate::check::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::holes;
 use crate::config::Config;
 use crate::coverage::Files;
 use crate::error::Error;
@@ -320,7 +321,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    Ok(check::lost_said(&lost, at, code, out))
+    Ok(holes::lost_said(&lost, at, code, out))
 }
 
 fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {
@@ -328,7 +329,7 @@ fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result
     let prior = match at.prior {
         Some(prior) => prior,
         None => {
-            owned = check::own_base(at, out)?;
+            owned = contract::own_base(at, out)?;
             &owned
         }
     };

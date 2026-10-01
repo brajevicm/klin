@@ -13,7 +13,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
+use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::key::{Key, Section};
@@ -98,7 +99,7 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
-    let commit = check::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at, out)?;
     let (was, now) = sides(at, &commit, out)?;
     out.record(|records| {
         records.graph = Some(was.graph.cost() + now.graph.cost());
@@ -119,12 +120,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         })
         .cloned()
         .collect();
-    let prior = check::whole_base(at, &commit)?;
+    let prior = contract::whole_base(at, &commit)?;
     let unread_at_base = || {
         let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
         prior.unread_either(&unreadable)
     };
-    Ok(check::unread_said(&inside, unread_at_base, at, code, out))
+    Ok(holes::unread_said(&inside, unread_at_base, at, code, out))
 }
 
 /// The base and the working tree, each measured, resolved and derived. A changed run that is
@@ -133,8 +134,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 /// change what an unchanged file means to a consumer.
 fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
     let project = at.project;
-    let prior = check::whole_base(at, commit)?;
-    let unchanged = check::unchanged_base(at, prior, commit)?;
+    let prior = contract::whole_base(at, commit)?;
+    let unchanged = contract::unchanged_base(at, prior, commit)?;
     let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
     let before = structural::measure_all(prior.tree(), None)?;
     after.cost = after.cost
@@ -364,7 +365,7 @@ fn show(values: &Values) -> String {
 /// measured. ADR 0021, spec 8.6.
 fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink) -> u8 {
     let named = holes_of(now);
-    check::unresolved_said(
+    holes::unresolved_said(
         (&named, || holes_of(was)),
         (
             "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",

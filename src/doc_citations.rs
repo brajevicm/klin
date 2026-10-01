@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -125,7 +125,7 @@ fn evaluate(
     if named.is_none() && !at.quiet {
         said(&listing, out);
     }
-    let commit = check::base_commit(&listing.root, at, out)?;
+    let commit = contract::base_commit(&listing.root, at, out)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {
@@ -158,7 +158,7 @@ fn said(listing: &Listing, out: &mut Sink) {
         .collect();
     out.provenance(
         format!("derived: {SECTION} {}, {RULE}", names.join(", ")),
-        Some(check::derived_entry(SECTION, None, names.into(), RULE)),
+        Some(contract::derived_entry(SECTION, None, names.into(), RULE)),
     );
 }
 

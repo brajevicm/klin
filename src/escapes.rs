@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::check::{Context, Sink};
+use crate::check::contract::{Context, Sink};
 use crate::error::Error;
 use crate::key::{Key, Section};
 use crate::markers::{self, Args, Kind, Language, TestCode, TestIdioms};

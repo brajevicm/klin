@@ -6,8 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
+use crate::check::{catalogue, contract};
 use crate::error::Error;
-use crate::{check, git::Repo, journal, turn};
+use crate::{git::Repo, journal, turn};
 
 /// What needs the person's attention, and what klin was worth. The report reads the journal of
 /// 11.4 and nothing else: it re-runs no gate, reads no working tree and keeps no clock of its
@@ -557,10 +558,10 @@ impl Confidence {
     fn note(&mut self, note: &Value) {
         let file = word(note, "file").to_string();
         let held = match word(note, "outcome") {
-            check::UNPARSED => &mut self.unparsed,
-            check::LOST => &mut self.lost,
-            check::NOT_MEASURED => &mut self.not_measured,
-            check::UNRESOLVED => {
+            contract::UNPARSED => &mut self.unparsed,
+            contract::LOST => &mut self.lost,
+            contract::NOT_MEASURED => &mut self.not_measured,
+            contract::UNRESOLVED => {
                 self.unresolved += 1;
                 return;
             }
@@ -1035,7 +1036,7 @@ fn measures(values: &Value) -> Option<String> {
 /// for a gate this binary holds no row for, which keeps a line for a gate klin no longer has
 /// readable. Spec 11.5.
 fn label(gate: &str, many: usize) -> &str {
-    match check::labels(gate) {
+    match catalogue::labels(gate) {
         Some(labels) => labels.count(many),
         None => gate,
     }
@@ -1276,7 +1277,7 @@ fn turn_line(held: &[Regression]) -> Option<String> {
     let public_api = held
         .iter()
         .filter(|one| one.outcome == Outcome::Open)
-        .all(|one| one.gate == check::PUBLIC_API);
+        .all(|one| one.gate == catalogue::PUBLIC_API);
     match (counts.open, counts.caught) {
         (0, 0) => None,
         (0, caught) => Some(caught_this("this turn", caught, counts.fixed)),

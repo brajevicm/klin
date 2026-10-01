@@ -17,7 +17,8 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::check::{self, Context, Sink};
+use crate::check::contract::{self, Context, Sink};
+use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
@@ -305,7 +306,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let mut before = at_the_base(&rules, at, out)?;
     let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
-    Ok(check::unread_said(
+    Ok(holes::unread_said(
         &after.unparsed,
         || before.files.unreadable,
         at,
@@ -860,7 +861,7 @@ fn at_the_base(rules: &[Rule], at: &Context, out: &mut Sink) -> Result<Measured,
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = check::announced(project.root(), at, out)?;
+            let window = contract::announced(project.root(), at, out)?;
             owned = base::materialize(project, &window.before, None)?;
             (&owned, window.before)
         }
