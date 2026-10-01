@@ -4,7 +4,8 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::cache;
-use crate::config::{self, Config, Error};
+use crate::config::{self, Config};
+use crate::error::Error;
 use crate::state;
 use crate::turn;
 

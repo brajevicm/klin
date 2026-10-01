@@ -15,8 +15,9 @@ use std::time::{Duration, Instant};
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
 use crate::changed::Change;
-use crate::config::{Config, Error};
+use crate::config::Config;
 use crate::coverage::Files;
+use crate::error::Error;
 use crate::files::{self, Found};
 use crate::project::Tree;
 pub use crate::syntax::LanguageId;

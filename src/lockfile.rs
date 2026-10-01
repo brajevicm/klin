@@ -10,10 +10,11 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde_json::Value;
 
 use crate::check::{self, Context, Sink};
-use crate::config::Error;
 use crate::coverage::Coverage;
+use crate::error::Error;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::{base, changed};

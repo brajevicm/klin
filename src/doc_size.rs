@@ -15,8 +15,9 @@ use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
 use crate::check::{self, Context, Said, Sink};
-use crate::config::{Config, Error};
+use crate::config::Config;
 use crate::coverage::Coverage;
+use crate::error::Error;
 use crate::project::Project;
 use crate::reference::Key;
 

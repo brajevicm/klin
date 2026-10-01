@@ -1,17 +1,17 @@
+//! The engine every ratcheting gate judges through. It exposes `Section` and `section`,
+//! `no_retired_key`, `Finding`, `accepted`, `noted`, `scoped`, `identity`, `Line`, and
+//! `Evaluator` with its `evaluate` call. Everything else here, the matcher and the reporter
+//! included, is private.
+
 use std::collections::BTreeMap;
 use std::fmt::Write;
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 use serde_json::{Map, Value};
 
 use crate::check::{Context, Records, Sink};
-use crate::config::{self, Config, Error};
-
-/// The engine every ratcheting gate judges through. It exposes `Values`, `Section` and
-/// `section`, `no_retired_key`, `Finding` with the `body_hash` its site is keyed by, `accepted`,
-/// `noted`, `scoped`, `identity`, `Line`, and `Evaluator` with its `evaluate` call. Everything
-/// else here, the matcher and the reporter included, is private.
-pub type Values = Map<String, Value>;
+use crate::config::{self, Config};
+use crate::error::Error;
+use crate::record::Values;
 
 /// The key a finding carries when it matched an accepted entry, which is a record field of spec
 /// 11.2 and not the config key `config::ACCEPTED` of the same spelling.
@@ -94,20 +94,6 @@ pub struct Finding {
     pub text: String,
     pub values: Values,
     pub body: Option<u64>,
-}
-
-/// The key the cross-file pass of spec 4.4 matches on: everything below the first line, with
-/// every run of whitespace collapsed. Dropping that line drops the name, so a rename matches
-/// too, and collapsing whitespace means a move that reindents matches. A declaration that fits
-/// on one line has nothing below it, so the whole line is its key. A declaration that wraps
-/// over several lines keeps its later lines, like the declaration line of ADR 0008 does.
-pub fn body_hash(source: &str) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    let body = source.split_once('\n').map_or(source, |(_, body)| body);
-    for word in body.split_whitespace() {
-        word.hash(&mut hasher);
-    }
-    hasher.finish()
 }
 
 impl Finding {

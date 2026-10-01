@@ -13,12 +13,14 @@ use serde_json::Value;
 use crate::base;
 use crate::changed;
 use crate::check::{self, Context, Sink};
-use crate::config::{Config, Error};
+use crate::config::Config;
 use crate::coverage::Coverage;
+use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
 use crate::project::{Project, Tree};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy, Values};
+use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 
 pub const SECTION: &str = "doc_citations";

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::config::Error;
+use crate::error::Error;
 use crate::git::Repo;
 
 /// How much of an untracked file klin reads to call it binary, which is what git reads.

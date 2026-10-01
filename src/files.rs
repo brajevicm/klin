@@ -3,10 +3,11 @@ use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use crate::config::{Config, Error};
+use crate::config::Config;
+use crate::error::Error;
 use crate::git::Repo;
 use crate::project::Tree;
-use crate::ratchet::Values;
+use crate::record::Values;
 use crate::reference::{Key, SKIP_DIRS};
 use crate::scope;
 

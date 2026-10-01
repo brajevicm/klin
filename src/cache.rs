@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::Error;
+use crate::error::Error;
 use crate::state;
 
 #[derive(clap::Args)]

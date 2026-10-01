@@ -10,7 +10,8 @@ use std::fmt::Write;
 
 use serde_json::{Map, Value, json};
 
-use crate::config::{self, Error};
+use crate::config;
+use crate::error::Error;
 use crate::{check, doc_citations};
 
 /// Every language name a section selects a file set by, with the extensions each name selects.

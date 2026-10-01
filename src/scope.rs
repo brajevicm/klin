@@ -8,8 +8,9 @@ use serde_json::{Map, Value};
 use std::collections::HashSet;
 use std::path::Path;
 
-use crate::config::{Config, Error};
-use crate::ratchet::Values;
+use crate::config::Config;
+use crate::error::Error;
+use crate::record::Values;
 use crate::reference::Key;
 
 pub const IN: Key = Key {

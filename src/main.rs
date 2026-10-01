@@ -11,6 +11,7 @@ mod coverage;
 mod dead_symbols;
 mod doc_citations;
 mod doc_size;
+mod error;
 mod escapes;
 mod files;
 mod gate;
@@ -32,6 +33,7 @@ mod public_api;
 mod radius;
 mod ratchet;
 mod reachability;
+mod record;
 mod reference;
 mod sarif;
 mod scope;
@@ -51,6 +53,8 @@ use std::process::ExitCode;
 use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
+
+use crate::error::Error;
 
 #[derive(Parser)]
 #[command(
@@ -156,7 +160,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
         Check::DocCitations(args) => doc_citations::run(args, start, out),
         Check::DocSize(args) => doc_size::run(args, start, out),
@@ -167,7 +171,7 @@ fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, config::
     }
 }
 
-fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
         Structural::Complexity(args) => complexity::run(args, start, out),
         Structural::DeadSymbols(args) => dead_symbols::run(args, start, out),
@@ -177,7 +181,7 @@ fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8
     }
 }
 
-fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
         Runner::Gate(args) => gate::run(args, start, out),
         Runner::Init(args) => init::run(args, start, out),
@@ -187,7 +191,7 @@ fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, config
     }
 }
 
-fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, config::Error> {
+fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
         Tool::Radius(args) => turn::run(args, start, out),
         Tool::Turn(args) => turn::moved(args, start, out),
@@ -197,7 +201,7 @@ fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, config::Er
     }
 }
 
-fn report(run: impl FnOnce(&Path, &mut String) -> Result<u8, config::Error>) -> ExitCode {
+fn report(run: impl FnOnce(&Path, &mut String) -> Result<u8, Error>) -> ExitCode {
     let start = match std::env::current_dir() {
         Ok(directory) => directory,
         Err(why) => {

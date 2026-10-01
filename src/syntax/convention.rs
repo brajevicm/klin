@@ -5,7 +5,7 @@
 
 use tree_sitter::Node;
 
-use crate::ratchet;
+use crate::record;
 use crate::syntax::{
     Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant, walk,
 };
@@ -68,7 +68,7 @@ fn declared(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Test> {
         file: path.to_string(),
         line: row as u64 + 1,
         text: line_at(lines, row),
-        body: ratchet::body_hash(&lines[row..=end.max(row)].join("\n")),
+        body: record::body_hash(&lines[row..=end.max(row)].join("\n")),
     })
 }
 

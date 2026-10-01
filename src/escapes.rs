@@ -1,9 +1,10 @@
 use std::path::Path;
 
 use crate::check::{Context, Sink};
-use crate::config::Error;
+use crate::error::Error;
 use crate::markers::{self, Args, Kind, Language, TestCode, TestIdioms};
-use crate::ratchet::{Evaluator, Remedy, Values};
+use crate::ratchet::{Evaluator, Remedy};
+use crate::record::Values;
 use crate::reference::Key;
 use crate::scope;
 
