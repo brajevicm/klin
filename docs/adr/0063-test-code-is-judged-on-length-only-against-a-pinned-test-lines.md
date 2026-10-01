@@ -35,9 +35,11 @@ code `skip_test_idioms` reads as test code (ADR 0060), with a test file of
 - Each tree is classified over its own files, and a renamed file is
   classified at the base under its base path.
 - A finding in test code carries its length as `test_lines`, and one in
-  production code as `lines`. A function that moves between the two carries a
-  value its base entry does not, so it is judged under its new ceiling from
-  that point, whichever ceiling is stricter.
+  production code as `lines`. A site over its `cc` ceiling that moves between
+  the two carries a value its base entry does not, so it is worsened,
+  whichever length ceiling is stricter and even when its length is under
+  both. The rule fails closed: a move cannot keep a length the new class
+  refuses.
 - An accepted `complexity` entry may leave out `lines` or `test_lines`. It
   then holds only a finding that does not carry the value it left out.
 - The `OK:` line names added and renamed files from the change set, so a

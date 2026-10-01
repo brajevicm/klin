@@ -1876,7 +1876,7 @@ fn moved_between_test_and_production(config: &str, from: &str, to: &str) -> harn
 }
 
 #[test]
-fn a_test_moved_into_production_code_is_judged_against_the_stricter_production_lines() {
+fn a_test_over_cc_moved_into_production_code_is_worsened_with_both_ceilings_pinned() {
     let run = moved_between_test_and_production(
         r#"{ "complexity": { "cc": 8, "lines": 60, "test_lines": 100 } }"#,
         "tests/knot.rs",
@@ -1892,7 +1892,7 @@ fn a_test_moved_into_production_code_is_judged_against_the_stricter_production_l
 }
 
 #[test]
-fn production_code_moved_into_a_test_is_judged_against_the_stricter_test_lines() {
+fn production_code_over_cc_moved_into_a_test_is_worsened_with_both_ceilings_pinned() {
     let run = moved_between_test_and_production(
         r#"{ "complexity": { "cc": 8, "lines": 100, "test_lines": 60 } }"#,
         "src/knot.rs",
@@ -1924,4 +1924,41 @@ fn a_file_a_wider_scope_brings_in_is_not_named_as_added() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("added or renamed: tests/new.rs ("), "{}", run.out);
     assert!(!run.says("tests/old.rs"), "{}", run.out);
+}
+
+#[test]
+fn a_function_over_cc_that_changes_class_is_worsened_under_both_length_ceilings() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "cc": 8, "lines": 60, "test_lines": 60 } }"#,
+    );
+    tree.write("tests/keep.rs", "fn kept() {}\n");
+    tree.write("src/knot.rs", &knotted("knot"));
+    tree.base();
+    tree.git(&["mv", "src/knot.rs", "tests/knot.rs"]);
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("cc 11, 13 test lines, was cc 11, 13 lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn an_accepted_entry_that_names_test_lines_holds_a_test_function() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "complexity", "file": "tests/knot.rs",
+                           "text": "fn knot_test(a: i32) -> i32 {", "cc": 11, "test_lines": 13}],
+             "complexity": { "cc": 8, "lines": 60, "test_lines": 60 } }"#,
+    );
+    tree.write("tests/knot.rs", &knotted("knot_test"));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("all on the accepted list"), "{}", run.out);
 }

@@ -137,11 +137,7 @@ impl Prior {
 
     fn changed_by(&mut self, changes: &[Change]) {
         self.renamed = changed::renamed(changes);
-        self.added = changes
-            .iter()
-            .filter(|change| change.was.is_none())
-            .map(|change| change.path.clone())
-            .collect();
+        self.added = changed::added(changes);
     }
 
     /// The files a measurement of this base could not read that the base could not read under

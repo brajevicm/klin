@@ -307,7 +307,7 @@ impl Function {
 
     fn finding(&self, ceilings: &Ceilings) -> Finding {
         let mut values = Values::new();
-        values.insert("cc".into(), self.cc.into());
+        values.insert(CC.name.into(), self.cc.into());
         if self.length_ceiling(ceilings).is_some() {
             let key = match self.test {
                 true => TEST_LINES,

@@ -444,7 +444,10 @@ at that site. The one exception is a value a site of that gate may carry
 or not: `lines` and `test_lines` of `complexity`, of which a function carries
 at most one (8.2.1). An entry may leave either out. It then holds only a
 finding that does not carry the value it left out, because a value a finding
-carries and its entry does not is a rise (7.1). Pinned by
+carries and its entry does not is a rise (7.1). An entry that names `lines`
+for a function in test code, with `test_lines` pinned, therefore matches
+nothing. Pinned by
+`an_accepted_entry_that_names_test_lines_holds_a_test_function`,
 `an_accepted_entry_without_lines_holds_a_test_function_on_its_cc`,
 `an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function`
 and `an_accepted_entry_that_names_some_of_the_values_is_a_tool_error` in
@@ -1930,18 +1933,22 @@ into production code is new production code there. Pinned by
 `a_test_file_renamed_into_production_code_is_judged_as_production_code`. With
 `test_lines` pinned, a function in test code over it is a finding, and
 `lines` judges only the rest. A finding in test code carries its length as
-`test_lines`, and one in production code as `lines`, so a function that moves
-between the two carries a value its base entry does not and is `worsened`
-(7.1), whichever ceiling is stricter. Pinned by
-`a_test_moved_into_production_code_is_judged_against_the_stricter_production_lines`
+`test_lines`, and one in production code as `lines`. A finding that moves
+between the two carries a value its base entry does not, so it is
+`worsened` (7.1). That holds for any such move of a site over its `cc`
+ceiling, whichever length ceiling is stricter and even when its length is
+under both. Pinned by
+`a_test_over_cc_moved_into_production_code_is_worsened_with_both_ceilings_pinned`,
+`production_code_over_cc_moved_into_a_test_is_worsened_with_both_ceilings_pinned`
 and
-`production_code_moved_into_a_test_is_judged_against_the_stricter_test_lines`.
+`a_function_over_cc_that_changes_class_is_worsened_under_both_length_ceilings`.
 With no `test_lines`, no function in test code fails on length, its finding
 carries no length, and the `OK:` line says how many test functions were not
 judged on length and names each file that holds one and that the change added
 or renamed, since nothing else checks how long those tests are. The change
 set says which files those are, so a file a wider scope brings in is not
-named. Pinned by `a_file_a_wider_scope_brings_in_is_not_named_as_added`. A failure names the ceilings in force, with `test_lines`
+named. Pinned by
+`a_file_a_wider_scope_brings_in_is_not_named_as_added`. A failure names the ceilings in force, with `test_lines`
 only where one is pinned. Pinned by
 `with_no_test_lines_a_test_function_past_the_lines_ceiling_does_not_fail`,
 `with_no_test_lines_a_test_function_past_the_cc_ceiling_still_fails`,
