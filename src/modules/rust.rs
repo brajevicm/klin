@@ -611,27 +611,26 @@ impl Crate<'_> {
     }
 
     /// The deepest module a path names from this module: `crate` starts at the target root,
-    /// `self`, `super` and the name of a child module this module declares at this module and
-    /// the ones above it, and each name after them at the child module of that name, until a
-    /// name is no module.
+    /// `self` and `super` at this module and the ones above it, a child module this module
+    /// declares at this module, as if `self::` came first, and each name after them at the child
+    /// module of that name, until a name is no module.
     fn target_of(&self, from: usize, path: &str) -> Reached {
         let mut segments = path.split("::").peekable();
         let start = match segments.peek() {
             Some(&"crate") => segments.next().map(|_| 0),
             Some(&"self" | &"super") => Some(from),
-            Some(first)
-                if self.nodes[from]
-                    .children
-                    .contains_key(first.trim_start_matches("r#")) =>
-            {
-                Some(from)
-            }
+            Some(first) if self.declares(from, first.trim_start_matches("r#")) => Some(from),
             _ => return Reached::External,
         };
         match start.and_then(|at| self.ascended(at, &mut segments)) {
             Some(at) => self.descended(at, segments),
             None => Reached::Above,
         }
+    }
+
+    fn declares(&self, at: usize, name: &str) -> bool {
+        let node = &self.nodes[at];
+        node.children.contains_key(name) || node.unresolved.contains(name)
     }
 
     fn ascended<'p>(

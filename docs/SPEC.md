@@ -2253,13 +2253,13 @@ if it started with `self::`, so `pub use inner::X;` and `inner::f()` beside
 names that module's items and is no edge, so `use self::Kind::*` closes no
 cycle. A path from another name may be another crate or a local item, so a
 `use` tree that writes it is counted as external and not resolved, and a path
-outside an import that writes it is not read. Every TypeScript file is a module. A
-relative specifier resolves when exactly one of these files exists: the
-specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a `.js`
-specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after it. A
-bare specifier, an alias and a relative specifier that names a file of another
-kind are counted as external. A `mod` declaration is containment and never a
-dependency.
+outside an import that writes it is not read. Every TypeScript file is a
+module. A relative specifier resolves when exactly one of these files exists:
+the specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a
+`.js` specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after
+it. A bare specifier, an alias and a relative specifier that names a file of
+another kind are counted as external. A `mod` declaration is containment and
+never a dependency.
 
 A module is its resolver's identity and holds one or more physical files, each
 once and in no meaningful order (ADR 0058). A Rust or a TypeScript module holds
@@ -2355,6 +2355,7 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_cycle_the_base_held_through_a_bare_child_path_stays_held`,
 `a_call_through_a_child_the_file_declares_is_a_dependency_on_it`,
 `a_first_segment_that_names_no_declared_module_stays_external`,
+`a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it`,
 `a_file_renamed_inside_its_layer_keeps_its_base_debt`,
 `a_file_renamed_into_another_layer_is_placed_in_its_base_layer_at_the_base`,
 `a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base`,
@@ -2377,8 +2378,10 @@ unit tests
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
-declares, a TypeScript `import()` or
-`require()`, `tsconfig` paths and package exports are not dependencies in V1.
+declares, a TypeScript `import()` or `require()`, `tsconfig` paths and package
+exports are not dependencies in V1. A function-local `use` that binds the name
+of a declared child module shadows it in Rust, and klin still reads a bare path
+through that name as a dependency on the child.
 
 **`public-api` judges the consumer-facing contract a library or package
 exposes.** Klin derives public API from standard Rust library and TypeScript

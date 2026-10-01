@@ -619,6 +619,23 @@ fn a_first_segment_that_names_no_declared_module_stays_external() {
     );
 }
 
+#[test]
+fn a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", NESTED);
+    tree.write("src/lib.rs", "mod outer;\n");
+    tree.write(
+        "src/outer.rs",
+        "mod wrap {\n    pub mod inner;\n}\npub fn api() { inner::helper(); }\n",
+    );
+    tree.write("src/outer/wrap/inner.rs", "pub fn helper() {}\n");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 dependency site(s) judged"), "{}", run.out);
+}
+
 fn renamed_layers(tree: &Tree) {
     tree.write("klin.json", LAYERS);
     tree.write("src/lib.rs", "mod domain;\nmod ui;\n");

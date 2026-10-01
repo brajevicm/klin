@@ -1230,7 +1230,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             } else if let Some(path) =
                 (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
             {
-                if let Some(path) = self.kept(node, path) {
+                if let Some(path) = self.resolvable(node, path) {
                     paths.push(path);
                 }
             } else {
@@ -1246,8 +1246,9 @@ impl<'a, 'b> Reading<'a, 'b> {
     }
 
     /// The qualified path a node writes where it starts at a rooted segment or at a module the
-    /// file declares at the path's own nesting.
-    fn kept(&self, node: Node, path: String) -> Option<QualifiedPath> {
+    /// file declares at the path's own nesting. The nesting is read only for a path whose first
+    /// segment could qualify.
+    fn resolvable(&self, node: Node, path: String) -> Option<QualifiedPath> {
         let first = path.split("::").next().unwrap_or_default();
         let rooted = self.adapter.rooted.contains(&first);
         if !rooted && !self.modules.iter().any(|module| module.name == first) {
