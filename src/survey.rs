@@ -11,7 +11,7 @@ use serde_json::{Map, Value};
 
 use crate::scope::{self, ROOT, ancestors, under_or_at};
 use crate::tree::Tree;
-use crate::{cache, files, git, state, turn};
+use crate::{cache, files, git, state};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
@@ -65,10 +65,6 @@ impl Facts {
     pub fn at_commit(&self) -> Option<(&Survey, &str)> {
         self.held.as_ref().zip(self.commit.as_deref())
     }
-}
-
-pub fn unwindowed(root: &Path) -> Option<String> {
-    turn::derivation(root, state::ready(root).ok().as_deref())
 }
 
 /// The facts of a tree, read from the derivation commit's cached survey and the tree's one file

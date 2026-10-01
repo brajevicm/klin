@@ -17,8 +17,8 @@ use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
-use crate::survey;
 use crate::tree::Tree;
+use crate::{stamp, survey};
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
 pub struct Project {
@@ -89,7 +89,7 @@ impl Project {
                 .then(|| base::choose(self.root(), false).ok())
                 .flatten()
                 .and_then(|window| window.derives)
-                .or_else(|| survey::unwindowed(self.root()))
+                .or_else(|| stamp::unwindowed(self.root()))
         })
     }
 
@@ -97,7 +97,7 @@ impl Project {
         let commit = window
             .derives
             .clone()
-            .or_else(|| survey::unwindowed(self.root()));
+            .or_else(|| stamp::unwindowed(self.root()));
         self.derivation = OnceCell::from(commit);
         self.facts.take();
     }

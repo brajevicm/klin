@@ -7,8 +7,8 @@ use crate::cache;
 use crate::config::{self, Config};
 use crate::error::Error;
 use crate::key::Section;
+use crate::stamp;
 use crate::state;
-use crate::turn;
 
 /// The section that pins how wide this project's usual change is. Absent, #92 derives it, and
 /// with neither the report on a prompt prints nothing. ADR 0014.
@@ -104,10 +104,10 @@ pub fn asked(root: &Path, sections: &[Section], out: &mut String) -> Result<u8, 
     let at = state::ready(root).map_err(Error)?;
     let config = Config::load(None, root, sections)?;
     let usual = usual(&config, root, Some(&at))?;
-    let opened = turn::mark(root, &at).ok_or_else(|| {
+    let opened = stamp::mark(root, &at).ok_or_else(|| {
         Error("no prompt mark is readable, so there is no turn to measure".to_string())
     })?;
-    let tree = turn::tree(root, &at)
+    let tree = stamp::tree(root, &at)
         .ok_or_else(|| Error("git could not read this working tree".to_string()))?;
     let spread = measured(root, &opened, &tree)
         .ok_or_else(|| Error("git could not measure this turn".to_string()))?;
@@ -252,7 +252,7 @@ fn unpinned(config: &Config, lines: Option<u64>, directories: Option<u64>, why: 
 /// reason it says nothing. Below the floor a percentile would fire on almost every turn, so
 /// there is no derived section and the caller says why. ADR 0014, spec 5.4.
 pub fn history(root: &Path, at: Option<&Path>) -> Result<Derived, String> {
-    let commit = turn::derivation(root, at)
+    let commit = stamp::derivation(root, at)
         .ok_or_else(|| "no commit to derive this project's usual change from".to_string())?;
     if let Some(held) = at
         .and_then(|at| cache::read(at, &commit, SECTION))
@@ -323,7 +323,7 @@ fn sampled(root: &Path, commit: &str) -> Option<Vec<(u64, u64)>> {
     args.extend(["log", "--no-merges", "--format=%H", "--no-renames"]);
     args.extend_from_slice(COUNTED);
     args.extend([most.as_str(), commit]);
-    let text = turn::git(root, None, &args)?;
+    let text = stamp::git(root, None, &args)?;
     let mut commits = Vec::new();
     let mut rows = Vec::new();
     let mut started = false;
@@ -373,7 +373,7 @@ fn numstat(root: &Path, opened: &str, tree: &str, how: &[&str]) -> Option<Vec<(S
     args.extend_from_slice(COUNTED);
     args.extend_from_slice(how);
     args.extend([opened, tree]);
-    let text = turn::git(root, None, &args)?;
+    let text = stamp::git(root, None, &args)?;
     Some(text.lines().filter_map(entry).collect())
 }
 

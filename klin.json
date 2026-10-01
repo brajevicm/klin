@@ -142,6 +142,7 @@
           "src/ratchet.rs",
           "src/record.rs",
           "src/scope.rs",
+          "src/stamp.rs",
           "src/state.rs",
           "src/surface",
           "src/write.rs"
