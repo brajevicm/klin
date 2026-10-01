@@ -87,7 +87,7 @@ pub struct Kind {
     pub reads_cfg_attr: bool,
     /// The rows whose matches in one file are one site, keyed by the row and not by a line,
     /// because a comment is not a declaration. Spec 8.2.1, ADR 0064.
-    pub counted: &'static [&'static str],
+    pub keyed_by_row: &'static [&'static str],
     pub evaluator: Evaluator<'static>,
 }
 
@@ -139,21 +139,26 @@ struct Pattern {
     /// Whether `skip_test_idioms` leaves a match of this row out inside test code.
     test_idiom: bool,
     /// Whether this row's matches in one file are one site, keyed by the row.
-    counted: bool,
+    keyed_by_row: bool,
 }
 
 impl Pattern {
-    /// The text a match on this line is keyed by: the row for a counted row, which marks the
-    /// line it matched, and the line's own text for any other.
-    fn key<'a>(&'a self, rel: &str, line: u64, body: &'a str, marks: &mut Marks) -> &'a str {
-        if !self.counted {
-            return body;
+    /// One match on a line, at the site of that line's text, or at the site of this row with
+    /// the line marked where the row keys the site.
+    fn record(
+        &self,
+        seen: &mut BTreeMap<(String, String), Tally>,
+        rel: &str,
+        line: u64,
+        body: &str,
+    ) {
+        if !self.keyed_by_row {
+            record(seen, rel, line, body, &self.name, &self.remedy);
+            return;
         }
-        marks
-            .entry((rel.to_string(), self.name.clone()))
-            .or_default()
+        record(seen, rel, line, &self.name, &self.name, &self.remedy)
+            .marks
             .push((line, body.to_string()));
-        &self.name
     }
 }
 
@@ -210,8 +215,12 @@ struct Skipped {
     everywhere: Vec<usize>,
 }
 
-/// The line and trimmed text of each match a counted site holds, by the site's file and text.
+/// The line and trimmed text of each match a site keyed by its row holds, by the site's file
+/// and text.
 type Marks = BTreeMap<(String, String), Vec<(u64, String)>>;
+
+/// The value that lists the lines of a site keyed by its row whose text the base file lacks.
+const NEW_LINES: &str = "new_lines";
 
 /// One tree read: the sites, how many test idioms test code took out of the count, and the
 /// files the walk reached, which is what the gate's coverage counts.
@@ -228,6 +237,8 @@ struct Tally {
     name: String,
     remedy: String,
     count: u64,
+    /// The line and trimmed text of each match, for a site keyed by its row.
+    marks: Vec<(u64, String)>,
 }
 
 /// One tree walk: the tree's tests, and what the walk accumulates across its files. The
@@ -236,7 +247,6 @@ struct Tally {
 struct Walk {
     tests: Option<Tests>,
     seen: BTreeMap<(String, String), Tally>,
-    marks: Marks,
     shaped: BTreeSet<String>,
     skipped: u64,
     work: ContentCost,
@@ -262,7 +272,7 @@ pub fn show(label: &str, values: &Values) -> String {
         Some(count) if count > 1 => format!("{name} x{count}"),
         _ => name.to_string(),
     };
-    if let Some(lines) = values.get("lines").and_then(Value::as_str) {
+    if let Some(lines) = values.get(NEW_LINES).and_then(Value::as_str) {
         let plural = if lines.contains(',') { "s" } else { "" };
         let _ = write!(named, ", new on line{plural} {lines}");
     }
@@ -333,8 +343,9 @@ fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result
     Ok(before)
 }
 
-/// Each counted site's lines whose text the base file lacks, one base line taken per match, so
-/// a failure names them. The site moves to the first, and its values list them all. Spec 8.2.1.
+/// The lines of each site keyed by its row whose text the base file lacks, one base line taken
+/// per match, so a failure names them. The site moves to the first, and its values list them
+/// all. Spec 8.2.1.
 fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding> {
     for finding in &mut findings {
         let key = (finding.file.clone(), finding.text.clone());
@@ -360,7 +371,7 @@ fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding
             let lines: Vec<String> = fresh.iter().map(u64::to_string).collect();
             finding
                 .values
-                .insert("lines".into(), lines.join(", ").into());
+                .insert(NEW_LINES.into(), lines.join(", ").into());
         }
     }
     findings.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
@@ -454,7 +465,7 @@ fn compiled(
             Regex::new(&format!("(?m){regex}"))
                 .map(|compiled| Pattern {
                     test_idiom: idioms.contains(&name.as_str()),
-                    counted: kind.counted.contains(&name.as_str()),
+                    keyed_by_row: kind.keyed_by_row.contains(&name.as_str()),
                     name: name.clone(),
                     regex: compiled,
                     remedy,
@@ -524,9 +535,10 @@ fn findings(
         }
         walk.read(kind, search, &file, &rel)?;
     }
+    let (findings, marks) = collected(kind, walk.seen);
     Ok(Read {
-        findings: collected(kind, walk.seen),
-        marks: walk.marks,
+        findings,
+        marks,
         skipped: walk.skipped,
         files: covered(measured, excluded),
         work: walk.work,
@@ -547,7 +559,6 @@ impl Walk {
         Walk {
             tests,
             seen: BTreeMap::new(),
-            marks: Marks::new(),
             shaped: BTreeSet::new(),
             skipped: 0,
             work: ContentCost::default(),
@@ -570,7 +581,7 @@ impl Walk {
             if past.parsed {
                 self.work.parses += 1;
             }
-            self.skipped += tally(set, rel, &text, &past, &mut self.seen, &mut self.marks);
+            self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
                 shapes(rel, &text, &mut self.seen);
@@ -620,7 +631,6 @@ fn tally(
     text: &str,
     past: &Skipped,
     seen: &mut BTreeMap<(String, String), Tally>,
-    marks: &mut Marks,
 ) -> u64 {
     let lines: Vec<&str> = text.split('\n').collect();
     let mut skipped = 0;
@@ -645,8 +655,7 @@ fn tally(
                 continue;
             }
             let body = lines.get(line as usize - 1).unwrap_or(&"").trim();
-            let key = pattern.key(rel, line, body, marks);
-            record(seen, rel, line, key, &pattern.name, &pattern.remedy);
+            pattern.record(seen, rel, line, body);
         }
     }
     skipped
@@ -660,10 +669,14 @@ fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
         .any(|(from, to)| *from <= at.start && at.end <= *to)
 }
 
-fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
+fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
+    let mut marks = Marks::new();
     let mut out: Vec<Finding> = seen
         .into_iter()
         .map(|((file, text), tally)| {
+            if !tally.marks.is_empty() {
+                marks.insert((file.clone(), text.clone()), tally.marks);
+            }
             let mut values = Values::new();
             values.insert(kind.label.into(), tally.name.into());
             values.insert("count".into(), tally.count.into());
@@ -680,17 +693,17 @@ fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> Vec<Findin
         })
         .collect();
     out.sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-    out
+    (out, marks)
 }
 
-fn record(
-    seen: &mut BTreeMap<(String, String), Tally>,
+fn record<'a>(
+    seen: &'a mut BTreeMap<(String, String), Tally>,
     file: &str,
     line: u64,
     text: &str,
     name: &str,
     remedy: &str,
-) {
+) -> &'a mut Tally {
     seen.entry((file.to_string(), text.to_string()))
         .and_modify(|tally| tally.count += 1)
         .or_insert(Tally {
@@ -698,7 +711,8 @@ fn record(
             name: name.to_string(),
             remedy: remedy.to_string(),
             count: 1,
-        });
+            marks: Vec::new(),
+        })
 }
 
 /// The quoted spans of this text, so a match that starts inside one is not a site. A quote that

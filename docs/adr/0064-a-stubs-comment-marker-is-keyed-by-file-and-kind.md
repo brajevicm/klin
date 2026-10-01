@@ -22,7 +22,7 @@ the number of marker matches in the file.
 - A failure names the marker lines whose text the base file lacks. Each base
   line holds one match with the same text, so a copied marker line is named
   too. The site's line is the first named line, and its values carry all of
-  them under `lines`.
+  them under `new_lines`.
 - A marker moved within a file is held. A marker moved to another file
   raises that file's count, as before.
 - An accepted entry for a marker names `comment marker` as its `text`.
@@ -40,7 +40,8 @@ a line is an edit to code. The body shapes keep their declaration line.
   marker with a new one added in the same file. The count cannot see either.
 - A failure names a file and a count. It may name more than one line when
   several marker lines changed together, and only one of them may be the
-  marker that raised the count.
+  marker that raised the count. The site's line is the first named line, so
+  it may point at an edited marker and not at the new one.
 - A line that holds a marker and a code stub, such as `todo!() // TODO`, is
   now two sites.
 - An accepted entry that keyed a marker by its line text matches nothing,

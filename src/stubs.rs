@@ -90,7 +90,7 @@ pub const KIND: Kind = Kind {
     skips_literals: true,
     reads_shapes: true,
     reads_cfg_attr: false,
-    counted: &[MARKER],
+    keyed_by_row: &[MARKER],
     evaluator: Evaluator {
         metrics: &["count"],
         unit: "stub site(s)",

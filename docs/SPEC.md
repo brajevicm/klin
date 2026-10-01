@@ -1258,7 +1258,7 @@ from `after` fails, as a rise of its `missing` value from 0 to 1.
 | `doc-size` | instruction file that grows every turn | document | words over a ceiling derived from the derivation commit | yes | shipped |
 | `doc-citations` | document that cites a file that moved | document + path | new against `before` | yes | shipped, needs the base comparison |
 | `radius` | unprompted wide change | turn | report only | yes | #91 |
-| `stubs` | placeholder left behind | file + line text, a comment marker file + kind | `count` rises | yes | **new** |
+| `stubs` | placeholder left behind | file + line text, or file + kind for a comment marker | `count` rises | yes | **new** |
 | `inventory` over tests | deleted test file, deleted test function | test file path, or test function site | `missing` rises | yes | shipped |
 | `lockfile` | dependency added without a lockfile entry, pin removed, pin the lockfile does not record | manifest + name | `unlocked`, `unpinned`, `stale` rise | yes | shipped, Rust, npm and Go |
 | `sarif`, `after` only | anything a linter reports, on a line the window changed | file + rule + message | new on a changed line | no | shipped, section 8.3 |
@@ -1359,8 +1359,8 @@ protocol, MUST NOT match. Identity is file plus line text, ratcheted on
 `count`, exactly like escapes, except for a comment marker. A comment is not
 a declaration, so every comment marker in one file is one site, keyed by the
 file and the row kind and ratcheted on its count (4.4, 8.2.1, ADR 0064). It
-SHOULD share the escapes engine and differ only in the table. #106 shipped the line patterns and #114 the body shapes,
-which the function walk reads.
+SHOULD share the escapes engine and differ only in the table. #106 shipped
+the line patterns and #114 the body shapes, which the function walk reads.
 
 The escapes table gains three rows for test-disabling constructs it lacks:
 `fit(`, `fdescribe(` and `pytest.mark.xfail`. `skipif` is not a row, because a conditional skip states which platforms a test supports. The
@@ -1406,7 +1406,8 @@ punishes fenced examples equally. That is a design choice for a separate
 ticket, not a defect of the rule.
 
 **`escapes` and `stubs` aggregate matches into sites.** A site is one file
-plus the text of one line with leading and trailing whitespace trimmed. Every
+plus the text of one line with leading and trailing whitespace trimmed, except
+for a `stubs` comment marker, whose site is keyed by its file and kind. Every
 match of every pattern in the language's table, on every line whose trimmed
 text is equal, lands on that one site. Its `count` is the number of those
 matches. Its label and remedy are the ones of the first pattern, in table
@@ -1452,37 +1453,40 @@ predicate always holds, as 8.2 states. Pinned by
 `a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test` in
 `tests/escapes.rs`.
 `stubs` throws away a match that lies wholly inside a quoted span on one
-line, judges a test module like any other code, and refuses the key.
-`stubs` keys a comment marker by its file and the row kind, `comment marker`,
-in place of a line text (ADR 0064). Every marker match in one file lands on
-that one site, its `count` is the number of matches, and an accepted entry
-names `comment marker` as its `text`. So a typo fix inside a marker, a
-change from `TODO` to `FIXME` and a move within the file hold the count,
-and a new marker or one moved in from another file raises it. The gate pairs
-each marker match with one base match of the same trimmed text in the same
-file, and the matches left over are the lines the base file lacks. The
-site's line is the first of them, and its `lines` value lists them all, so a
-failure names each one. A line that holds a marker and a code stub is two
-sites, and a code stub keeps its line text, so an edited `todo!()` line is a
-new site. Known limit: a reworded marker, or a marker deleted while another
-is added in the same file, holds the count. Pinned by
-`a_typo_fix_inside_an_existing_marker_is_held`,
-`a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
-`every_marker_line_the_base_file_lacks_is_named`,
-`an_edited_not_implemented_line_is_a_new_site`,
-`a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`
-and `a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites` in
-`tests/stubs.rs`. The rules of the quoted span and the shared line are pinned by
+line, judges a test module like any other code, and refuses the key. Pinned by
 `repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_with_every_match_counted`,
 `a_line_carrying_two_escape_kinds_counts_both_under_the_first` and
 `the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets` in
 `tests/escapes.rs`. Known limit: the label hides the second kind on a mixed
 line. A finding that says `unwrap x4` may hold two `expect` calls.
 
+`stubs` keys a comment marker by its file and the row kind,
+`comment marker`, in place of a line text (ADR 0064). Every marker match in one file
+lands on that one site, its `count` is the number of matches, and an
+accepted entry names `comment marker` as its `text`. So a typo fix inside a
+marker, a change from `TODO` to `FIXME` and a move within the file hold the
+count, and a new marker or one moved in from another file raises it. The
+gate pairs each marker match with one base match of the same trimmed text in
+the same file, and the matches left over are the lines the base file lacks.
+The site's line is the first of them, and its `new_lines` value lists them
+all as one string, such as `"1, 3"`, so a failure names each one. The first
+named line may be an edited marker and not the new one. A line that holds a
+marker and a code stub is two sites, and a code stub keeps its line text, so
+an edited `todo!()` line is a new site. Known limit: a reworded marker, or a
+marker deleted while another is added in the same file, holds the count.
+Pinned by `a_typo_fix_inside_an_existing_marker_is_held`,
+`a_new_marker_in_a_file_that_holds_one_raises_its_count_and_names_the_new_line`,
+`every_marker_line_the_base_file_lacks_is_named`,
+`an_edited_not_implemented_line_is_a_new_site`,
+`a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_there`,
+`a_marker_and_a_body_shape_on_one_declaration_line_are_two_sites` and
+`an_accepted_marker_entry_names_the_row_and_holds_at_its_count` in
+`tests/stubs.rs`.
+
 **`stubs` judges three body shapes.** The function walk of `complexity`
 reads them, over every grammar the built-in stubs table supports, and
 `stubs` records each one at the declaration line of the function that holds
-it, as one more match on that site. A shape is read off a body that
+it, as one more match on the site of that line. A shape is read off a body that
 holds a run of statements, so a concise arrow body such as `() => value` is
 one expression and does the work of one. A function whose body holds one
 `pass` statement is a `pass body`. A function whose body holds no statement,

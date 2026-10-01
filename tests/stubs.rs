@@ -519,3 +519,26 @@ fn a_marker_moved_within_a_file_is_held_and_one_moved_to_another_file_is_new_the
     assert!(run.says("1 new stub site(s)"), "{}", run.out);
     assert!(run.says("src/b.rs:1  comment marker"), "{}", run.out);
 }
+
+#[test]
+fn an_accepted_marker_entry_names_the_row_and_holds_at_its_count() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{ "accepted": [{"gate": "stubs", "file": "src/lib.rs", "text": "comment marker", "count": 2}],
+             "stubs": { "in": "src" } }"#,
+    );
+    tree.write("src/lib.rs", "// TODO: one\n// FIXME: two\nfn f() {}\n");
+
+    let held = tree.run(&["stubs", "--strict"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(held.says("all on the accepted list"), "{}", held.out);
+
+    tree.write(
+        "src/lib.rs",
+        "// TODO: one\n// FIXME: two\nfn f() {}\n// HACK: three\n",
+    );
+    let worse = tree.run(&["stubs"]);
+    assert_eq!(worse.code, 1, "{}", worse.out);
+    assert!(worse.says("got worse"), "{}", worse.out);
+}
