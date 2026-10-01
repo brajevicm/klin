@@ -356,7 +356,12 @@ fn measure(
         exclude_except: &[],
         skip_hidden: true,
     };
-    let found = files::found(tree, &[tree.root().to_path_buf()], &wanted)?;
+    let found = files::found(
+        tree.root(),
+        || tree.files(),
+        &[tree.root().to_path_buf()],
+        &wanted,
+    )?;
     structural::measure(found, tree, unchanged)
 }
 

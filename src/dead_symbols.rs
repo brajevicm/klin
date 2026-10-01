@@ -368,7 +368,12 @@ fn measure(
         exclude_except: &[],
         skip_hidden: true,
     };
-    let mut found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
+    let mut found = files::found(
+        tree.root(),
+        || tree.files(),
+        &[repo_root.to_path_buf()],
+        &wanted,
+    )?;
     let mut excluded = Vec::new();
     found.kept.retain(|file| {
         let keep = selection.scope.selects(&files::relative(file, repo_root));

@@ -529,7 +529,14 @@ fn findings(
         exclude_except: &[],
         skip_hidden: false,
     };
-    for file in files::found(tree, &[repo_root.to_path_buf()], &wanted)?.kept {
+    for file in files::found(
+        tree.root(),
+        || tree.files(),
+        &[repo_root.to_path_buf()],
+        &wanted,
+    )?
+    .kept
+    {
         let rel = files::relative(&file, repo_root);
         if !search.scope.selects(&rel) {
             excluded.insert(rel);
