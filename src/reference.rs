@@ -75,7 +75,7 @@ fn schema_value() -> Value {
 fn section(spec: &check::Row) -> Value {
     match spec.shape {
         SectionShape::Object => disabled(object(spec.keys, true)),
-        SectionShape::DocumentMap => disabled(document_map()),
+        SectionShape::DocumentMap(document) => disabled(document_map(document)),
         SectionShape::FalseOnly(_) => json!({"const": false}),
         SectionShape::Conventions(_) => disabled(conventions(spec.keys)),
         SectionShape::Sarif => disabled(json!({
@@ -89,12 +89,12 @@ fn disabled(value: Value) -> Value {
     json!({"anyOf": [{"const": false}, value]})
 }
 
-fn document_map() -> Value {
+fn document_map(document: &Key) -> Value {
     json!({
         "type": "object",
         "minProperties": 1,
         "propertyNames": {"minLength": 1},
-        "additionalProperties": field(&crate::doc_size::DOCUMENT)
+        "additionalProperties": field(document)
     })
 }
 

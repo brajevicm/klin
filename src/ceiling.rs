@@ -41,10 +41,12 @@ pub fn read(
         return Ok(Ceiling { value, step: None });
     }
     let steps = value.as_object().ok_or_else(|| {
-        Error(format!(
-            "{}: a \"{section}\" entry's \"{key}\" must be {unit} or an object of dated steps",
-            file.display()
-        ))
+        Error::malformed(
+            file,
+            section,
+            key,
+            &format!("{unit} or an object of dated steps"),
+        )
     })?;
     let today = today()?;
     let (value, date) = due(file, section, key, steps, unit, &today)?

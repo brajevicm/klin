@@ -162,10 +162,7 @@ impl Config {
     }
 
     pub fn malformed(&self, section: &str, key: &str, must_be: &str) -> Error {
-        Error(format!(
-            "{}: a \"{section}\" entry's \"{key}\" must be {must_be}",
-            self.file.display()
-        ))
+        Error::malformed(&self.file, section, key, must_be)
     }
 
     /// One Automatic check's human policy, empty when absent and refused when it names a field
@@ -228,7 +225,7 @@ fn structure(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Erro
 fn section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
     match check.shape {
         SectionShape::Object => object_section_shape(file, check, value),
-        SectionShape::DocumentMap => document_map_shape(file, check, value),
+        SectionShape::DocumentMap(document) => document_map_shape(file, check, document, value),
         SectionShape::FalseOnly(_) => false_only_shape(file, check, value),
         SectionShape::Conventions(instead) => dynamic_conventions(file, check, instead, value),
         SectionShape::Sarif => named_entries_shape(file, check, value),
@@ -256,7 +253,12 @@ fn false_only_shape(file: &Path, check: &Section, value: &Value) -> Result<(), E
     }
 }
 
-fn document_map_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
+fn document_map_shape(
+    file: &Path,
+    check: &Section,
+    document: &Key,
+    value: &Value,
+) -> Result<(), Error> {
     let section = check.name;
     match value {
         Value::Bool(false) => Ok(()),
@@ -270,7 +272,7 @@ fn document_map_shape(file: &Path, check: &Section, value: &Value) -> Result<(),
             }
             fields
                 .iter()
-                .try_for_each(|(name, value)| document_shape(file, check, name, value))
+                .try_for_each(|(name, value)| document_shape(file, section, document, name, value))
         }
         _ => Err(Error(format!(
             "{}: \"{section}\" must be an object or false — {}",
@@ -280,17 +282,17 @@ fn document_map_shape(file: &Path, check: &Section, value: &Value) -> Result<(),
     }
 }
 
-/// One pinned document, judged by the keys the section declares for every document it maps.
-fn document_shape(file: &Path, check: &Section, name: &str, value: &Value) -> Result<(), Error> {
-    let section = check.name;
+fn document_shape(
+    file: &Path,
+    section: &str,
+    document: &Key,
+    name: &str,
+    value: &Value,
+) -> Result<(), Error> {
     if name.is_empty() {
         return Err(document_error(file, section, name));
     }
-    match check
-        .keys
-        .iter()
-        .try_for_each(|key| value_shape(file, section, key, value))
-    {
+    match value_shape(file, section, document, value) {
         Ok(()) => Ok(()),
         Err(error) if value.is_object() => Err(error),
         Err(_) => Err(document_error(file, section, name)),
@@ -615,7 +617,7 @@ fn dynamic_conventions(
         Value::Bool(false) => Ok(()),
         Value::Object(conventions) if !conventions.is_empty() => {
             conventions.iter().try_for_each(|(name, value)| {
-                convention_shape_entry(file, check, instead, name, value)
+                convention_shape_entry(file, check.keys, instead, name, value)
             })
         }
         Value::Object(_) => Err(Error(format!(
@@ -633,7 +635,7 @@ fn dynamic_conventions(
 
 fn convention_shape_entry(
     file: &Path,
-    check: &Section,
+    keys: &[Key],
     instead: &[(&'static str, &'static str)],
     name: &str,
     value: &Value,
@@ -644,11 +646,11 @@ fn convention_shape_entry(
             file.display()
         ))
     })?;
-    known_convention(fields, check.keys, instead)
+    known_convention(fields, keys, instead)
         .map_err(|why| Error(format!("{}: convention \"{name}\" {why}", file.display())))?;
-    convention_fields(file, check.keys, name, fields)?;
+    convention_fields(file, keys, name, fields)?;
     convention_matcher(file, name, fields)?;
-    convention_language(file, check.keys, name, fields)?;
+    convention_language(file, keys, name, fields)?;
     convention_remedy(file, name, fields)
 }
 
@@ -941,7 +943,7 @@ const NARROW: &str = "narrow the check only with \"in\" / \"except\", or set it 
 /// What a section may say, in the words of the error that refused what it said.
 fn policy(shape: SectionShape) -> &'static str {
     match shape {
-        SectionShape::DocumentMap => {
+        SectionShape::DocumentMap(_) => {
             "write a map of document path to ceiling, such as {\"README.md\": 1200}, or false"
         }
         SectionShape::FalseOnly(instead) => instead,

@@ -1,5 +1,6 @@
-//! The key metadata every section declares and the reference prints: the shape of each key, the
-//! keys every section shares, and the two keys one entry of the `build` list holds. It imports no
+//! The key metadata every section declares and the reference prints: the shape of each key and
+//! section, the `Section` descriptor `config` judges a file by, the keys every section shares,
+//! and the two keys one entry of the `build` list holds. It imports no
 //! check and no catalogue, so a module that reads a key does not reach the reference. Spec 5.3.
 
 use std::collections::BTreeMap;
@@ -26,7 +27,8 @@ pub enum Shape {
 #[derive(Clone, Copy)]
 pub enum SectionShape {
     Object,
-    DocumentMap,
+    /// A map of document path to the one key every document takes.
+    DocumentMap(&'static Key),
     /// A section that reads no policy, with what a person may write instead.
     FalseOnly(&'static str),
     /// A map of named conventions, with the fields a person may write for a key a convention
@@ -42,9 +44,11 @@ pub enum SectionShape {
 pub struct Section {
     /// What the command is called, which for two checks is not the name of the section.
     pub command: &'static str,
+    /// The top-level key the section is written under.
     pub name: &'static str,
     /// Whether absence derives the section, which is when a retired list of entries is named.
     pub automatic: bool,
+    /// The keys the section reads, which its shape judges a value by.
     pub keys: &'static [Key],
     pub shape: SectionShape,
 }

@@ -373,7 +373,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "long documents",
         },
         gate_per_entry: false,
-        shape: SectionShape::DocumentMap,
+        shape: SectionShape::DocumentMap(&doc_size::DOCUMENT),
     },
     Row {
         name: "doc-citations",
