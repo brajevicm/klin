@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="292" viewBox="0 0 880 292" role="img" aria-labelledby="title desc" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title id="title">How klin works</title>
+  <desc id="desc">One agent turn: you prompt and klin marks the start. The agent edits and tries to finish. klin compares the start of the turn with now. A function got worse, so klin blocks the stop with FAIL src/quote.ts:18, cc 11, was cc 10. The agent repairs the named site in the same turn. When nothing is new or worse, the change passes to CI, which checks it again from its own checkout before merge.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#94A3B8"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#10B981"/>
+    </marker>
+  </defs>
+
+  <rect x="16" y="20" width="620" height="256" rx="16" fill="#10B981" fill-opacity="0.06" stroke="#10B981" stroke-opacity="0.35" stroke-dasharray="5 5"/>
+  <text x="36" y="48" font-size="11.5" font-weight="600" letter-spacing="1.2" fill="#10B981">ONE AGENT TURN</text>
+  <text x="616" y="48" text-anchor="end" font-size="12" fill="#667085">the agent still has the context</text>
+
+  <rect x="676" y="20" width="188" height="256" rx="16" fill="none" stroke="#E2E8F0" stroke-dasharray="5 5"/>
+  <text x="696" y="48" font-size="11.5" font-weight="600" letter-spacing="1.2" fill="#667085">BEFORE MERGE</text>
+
+  <rect x="36" y="76" width="128" height="60" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="100.0" y="102" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">You prompt</text>
+  <text x="100.0" y="121" text-anchor="middle" font-size="12.5" fill="#667085">klin marks the start</text>
+
+  <rect x="204" y="76" width="160" height="60" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="284.0" y="102" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">Agent edits</text>
+  <text x="284.0" y="121" text-anchor="middle" font-size="12.5" fill="#667085">and tries to finish</text>
+
+  <rect x="404" y="76" width="212" height="60" rx="10" fill="#0F172A" stroke="#10B981" stroke-width="2"/>
+  <text x="510.0" y="102" text-anchor="middle" font-size="15" font-weight="600" fill="#F8FAFC">klin checks</text>
+  <text x="510.0" y="121" text-anchor="middle" font-size="12.5" fill="#6EE7B7">start of turn vs now</text>
+
+  <rect x="204" y="196" width="160" height="60" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="284.0" y="222" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">Agent repairs</text>
+  <text x="284.0" y="241" text-anchor="middle" font-size="12.5" fill="#667085">the named site</text>
+
+  <rect x="404" y="196" width="212" height="60" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="420" y="222" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" font-weight="700" fill="#0F172A">FAIL <tspan font-weight="400">src/quote.ts:18</tspan></text>
+  <text x="420" y="242" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#667085">cc 11, was cc 10</text>
+
+  <rect x="696" y="76" width="148" height="60" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="770.0" y="102" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">CI checks again</text>
+  <text x="770.0" y="121" text-anchor="middle" font-size="12.5" fill="#667085">from its own checkout</text>
+
+  <rect x="696" y="196" width="148" height="60" rx="10" fill="#FFFFFF" stroke="#10B981" stroke-width="1"/>
+  <text x="770.0" y="222" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">Ready to merge</text>
+  <text x="770.0" y="241" text-anchor="middle" font-size="12.5" fill="#667085">nothing new or worse</text>
+
+  <path d="M164 106H200" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M364 106H400" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M510 136V192" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="518" y="170" font-size="12" fill="#667085">new or worsened</text>
+  <path d="M404 226H368" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M284 196V140" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#a)"/>
+  <path d="M616 106H692" stroke="#10B981" stroke-width="2" marker-end="url(#g)"/>
+  <text x="654" y="98" text-anchor="middle" font-size="12" font-weight="600" fill="#10B981">pass</text>
+  <path d="M770 136V192" stroke="#10B981" stroke-width="2" marker-end="url(#g)"/>
+</svg>
