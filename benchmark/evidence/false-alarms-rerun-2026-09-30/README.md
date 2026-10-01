@@ -6,6 +6,7 @@ The evidence for #412. The section "Rerun after #389, 2026-09-30" of
 - `selection.json`: a copy of the first run's selection, the same 100 changes.
 - `klin.provenance.json`: the commit and SHA-256 of the binary that ran.
 - `runs/`: one record per change, as in the first run.
+- `after-415/`: R035's change alone, run by a binary that holds #415, with its own selection and provenance.
 
 The rows and labels are those of `../false-alarms-2026-09-29/`. To build it
 again, with the clones in a directory of your choice:

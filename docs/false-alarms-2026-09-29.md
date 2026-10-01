@@ -431,8 +431,17 @@ The two ERROR runs are the same two changes as in the first run.
 The other 25 commits still fail. `complexity` fails in 22 of them, `escapes`
 in 3 and `stubs` in 1. The escapes rows are R034 and R041, best-effort
 `|| true`, which ADR 0062 keeps, and R058, an `eslint-disable` with a stated
-reason, which #389 did not raise. The stubs row is R035, which #415
-addresses.
+reason, which #389 did not raise. The stubs row is R035, a typo fix in a lone
+`/// FIXME` line.
+
+#415 merged after this rerun and keys a comment marker by file and kind. Its
+binary, built from `main` at `20f48bb6` with the SHA-256
+`4bb5bd7d72d7c1fb775f29324ac3b54f292dae508c871c08d6b81fa93514c037`, ran R035's
+change, `denisidoro/navi` `cc40723617`, the same way. Every gate is ok and the
+run passes. The other 99 changes did not run on that binary. If the 6 commits
+that pass above still pass on it, 7 of the 31 noise-only commits pass. The
+record is in
+`benchmark/evidence/false-alarms-rerun-2026-09-30/after-415/`.
 
 ### Rows that changed in the 26 still-failing commits
 
