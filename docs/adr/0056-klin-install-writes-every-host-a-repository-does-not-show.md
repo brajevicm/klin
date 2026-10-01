@@ -27,20 +27,25 @@ A klin plugin enabled in the person's own home does not count here. It is
 evidence of one person's machine, not of the repository, and counting it would
 make a plugin user commit one host where a teammate commits three.
 
-The README installs klin in one command run from the repository: the
-installer, then the installed binary by its full path,
-`sh -c 'i=$(curl …) && sh -c "$i" && ~/.local/bin/klin install'`. The
-release configuration puts the binary in `~/.local/bin`, so the full path
-works before PATH does. The download is held in a variable rather than piped,
-because a pipeline exits with the status of its last command: a `curl` that
-failed would hand `sh` nothing, `sh` would exit 0, and a klin an earlier
-install left behind would run. The outer `sh -c` runs that in a POSIX shell,
-because fish cannot assign a variable that way.
+The README installs klin from the repository: the installer piped into `sh`,
+`source $HOME/.local/bin/env`, then `klin install`. The release configuration
+puts the binary in `~/.local/bin`, and the dist installer writes that `env`
+script to put the directory on PATH, so the shell that ran the installer finds
+`klin`. fish sources `env.fish` instead. Where `~/.local/bin` is on PATH
+already, the installer writes no `env` script, and the `source` line fails
+while `klin install` still runs.
 
-The terminal that ran the installer still has no `~/.local/bin` on PATH, and
-a host started from it runs the hooks with that PATH. So each hook line klin
-writes looks in `~/.local/bin` after PATH. Before this, the README's new
-terminal hid the gap.
+The lines are not chained. A `curl` that fails hands `sh` nothing and `sh`
+exits 0, so a person who pastes the block at once runs any klin an earlier
+install left behind. The README once held the download in a variable
+and chained the lines, inside an outer `sh -c` for fish, to stop that. The
+command was hard to read, and no other installer README we surveyed guards
+it. A person who runs the lines one at a time sees the failed download first.
+
+A terminal that ran the installer but skipped the `source` line has no
+`~/.local/bin` on PATH, and a host started from it runs the hooks with that
+PATH. So each hook line klin writes looks in `~/.local/bin` after PATH.
+Before this, the README's new terminal hid the gap.
 
 `--user` keeps the refusal. A person's home shows the hosts that person runs,
 and a home that shows none has no team whose hosts klin cannot see.
@@ -52,7 +57,7 @@ A repository with no host directory gains `.claude/`, `.codex/` and
 `.agents/skills/`. A person who wants fewer names them with `--host`.
 
 A person who sets `KLIN_INSTALL_DIR` gets the binary somewhere else, and the
-README's full path does not reach it. That person chose the directory and
+README's `source` line does not reach it. That person chose the directory and
 runs `klin install` from there.
 
 Homebrew and npm stay with #315.

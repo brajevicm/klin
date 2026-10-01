@@ -294,50 +294,41 @@ fn fake_curl(body: &str) -> String {
     format!("#!/bin/sh\ncase \"$*\" in *klin-installer.sh*) ;; *) exit 22 ;; esac\n{body}\n")
 }
 
-/// An installer that puts a klin in `~/.local/bin` which records where it ran and with what.
+/// An installer that puts a klin in `~/.local/bin` which records where it ran and with what,
+/// and writes the `env` script that puts `~/.local/bin` on PATH, as the dist installer does.
 const AN_INSTALLER: &str = r#"cat <<'SH'
 mkdir -p "$HOME/.local/bin"
 printf '#!/bin/sh\necho "$PWD $*" > "$HOME/ran"\n' > "$HOME/.local/bin/klin"
 chmod +x "$HOME/.local/bin/klin"
+echo 'export PATH="$HOME/.local/bin:$PATH"' > "$HOME/.local/bin/env"
 SH"#;
 
-/// The README's install is one command run from the repository root, in any shell a person types
-/// it into, and it runs klin only once the installer succeeded. A download that fails runs no klin, not even one an earlier install
-/// left in `~/.local/bin`. The installed klin runs by its full path, before PATH holds it. #318.
+/// The README's install runs from the repository root in bash: the installer, the `env` script
+/// it wrote, then the klin it installed, found on PATH. ADR 0056.
 #[test]
-fn the_readmes_install_runs_klin_only_after_the_installer_succeeded() {
+fn the_readmes_install_runs_the_installed_klin_in_the_repository() {
     let script = block(&text(README), "klin-installer.sh");
-    for (curl, left_behind, runs) in [("exit 22", true, false), (AN_INSTALLER, false, true)] {
-        let work = Tree::bare();
-        work.write("your-repo/.keep", "");
-        work.write("bin/curl", &fake_curl(curl));
-        executable(&work.path("bin/curl"));
-        let home = Tree::bare();
-        if left_behind {
-            home.write(
-                ".local/bin/klin",
-                "#!/bin/sh\necho \"$PWD $*\" > \"$HOME/ran\"\n",
-            );
-            executable(&home.path(".local/bin/klin"));
-        }
+    let work = Tree::bare();
+    work.write("your-repo/.keep", "");
+    work.write("bin/curl", &fake_curl(AN_INSTALLER));
+    executable(&work.path("bin/curl"));
+    let home = Tree::bare();
 
-        let path = format!("{}:/usr/bin:/bin", work.path("bin").display());
-        let home_dir = home.root().display().to_string();
-        let run = ran(
-            SHELL,
-            &["-c", &script],
-            &work.path("your-repo"),
-            &[("PATH", path.as_str()), ("HOME", home_dir.as_str())],
-        );
-        let klin_ran = fs::read_to_string(home.path("ran")).unwrap_or_default();
-        assert_eq!(run.code == 0, runs, "{curl}: {}", run.out);
-        assert_eq!(
-            klin_ran.trim().ends_with("/your-repo install"),
-            runs,
-            "{curl}: {klin_ran}{}",
-            run.out
-        );
-    }
+    let path = format!("{}:/usr/bin:/bin", work.path("bin").display());
+    let home_dir = home.root().display().to_string();
+    let run = ran(
+        "/bin/bash",
+        &["-c", &script],
+        &work.path("your-repo"),
+        &[("PATH", path.as_str()), ("HOME", home_dir.as_str())],
+    );
+    let klin_ran = fs::read_to_string(home.path("ran")).unwrap_or_default();
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        klin_ran.trim().ends_with("/your-repo install"),
+        "{klin_ran}{}",
+        run.out
+    );
 }
 
 /// The README's Cursor fallback is a copy a person may run twice, so it must leave one usable
