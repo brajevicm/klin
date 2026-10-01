@@ -12,7 +12,7 @@ klin catches new or worsened deterministic problems during coding-agent work and
 
 **Claude Code · Codex · Cursor**
 
-```
+```text
 FAIL  complexity
       FAIL: 1 function(s) got worse — the ratchet only tightens:
         src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines
@@ -28,7 +28,9 @@ sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/kl
 
 Runs on macOS, Ubuntu 22.04 and later, and Debian 12 and later.
 
-This installs klin, then writes `klin.json` and the hooks for each host your repository already uses, or for Claude Code, Codex and Cursor when it shows none. Commit them, and your teammates get the same checks. `--host claude`, `--host codex` or `--host cursor` narrows the list. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
+This installs klin, opts the repository in, and writes the hooks for each host your repository already uses, or for Claude Code, Codex and Cursor when it shows none. Commit the generated `klin.json` and hook files so your teammates get the same checks.
+
+`--host claude`, `--host codex` or `--host cursor` narrows the host list. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
 
 Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
@@ -36,7 +38,7 @@ Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh s
 
 ### Or use your host's plugin
 
-A plugin runs the same checks and fetches klin by itself, but it doesn't add the `klin` command.
+A plugin runs the same checks and fetches klin by itself, but it doesn't add the `klin` command. If you also want shell commands such as `klin stats`, install the CLI separately.
 
 #### Claude Code
 
@@ -86,9 +88,28 @@ echo '{}' > klin.json
 
 Claude Code, Codex, and Cursor are the first-class integrations. Any other coding-agent harness can use klin through its versioned [harness protocol](harness-protocol/), but somebody has to build that integration for the harness.
 
-Installing the klin binary alone does not connect another harness. The harness has to send its lifecycle events to klin in the protocol's format and turn klin's decisions back into its own answers. Using the protocol does not make that harness first-class.
+Installing the klin binary alone does not connect another harness. The harness has to send its lifecycle events to klin in the protocol's format and turn klin's decisions back into its own answers.
 
 Start with [the porting guide](docs/HARNESS_INTEGRATION.md).
+
+## Did klin catch anything?
+
+Work normally with your coding agent, then inspect the latest session:
+
+```sh
+klin stats --session
+```
+
+```text
+Nothing needs your attention.
+
+klin caught 1 regression this session.
+It was fixed after klin flagged it.
+```
+
+Use `klin stats --all` to inspect individual regressions and `klin stats --json` for machine-readable output.
+
+If something is still unresolved, the report puts it first and names the affected sites.
 
 ## Why klin
 
@@ -105,15 +126,15 @@ worsened                   8          9         ✗ fail
 
 **Adopt without a cleanup project.** Existing measured debt does not block work. Unchanged and improved debt passes; new or worsened debt fails.
 
+**Repair now, verify later.** Local hooks return regressions while the agent still has the working context. CI independently verifies the same repository policy before merge.
+
 **Deterministic, not another LLM.** klin measures specific properties and returns concrete evidence instead of asking another model whether the code is "good."
 
 **No baseline to maintain.** The before-state comes from the repository and the work boundary, not a baseline file that has to stay in sync.
 
-**Repair now, verify later.** Local hooks return regressions while the agent still has the working context. CI independently verifies the same repository policy before merge.
+**The agent fixes code, not the bar.** Bundled agent instructions tell it to repair the named code rather than weaken policy, silence a check, or reset the work boundary.
 
 ## What klin catches
-
-An agent can finish the task and still make something else worse. klin catches specific regressions while the work is still in context.
 
 - **Complexity creeps up.** A function becomes too complex or too large for the repo's current bar.
 - **Architecture drifts.** A new dependency cycle appears, code crosses a configured layer, or a project convention is broken.
@@ -151,13 +172,15 @@ klin gate --strict
 
 Hooks alone are klin's **Feedback** level. Make the independent CI check required and protect changes to the enforcement setup through review to reach **Enforced**.
 
+Local hooks are feedback inside the developer environment, not a tamper-proof security boundary. Independent required CI is the enforcement boundary.
+
 [See the trust model and enforcement boundaries](docs/THREAT_MODEL.md).
 
 ## Tested on real coding-agent work
 
-We tested klin across repeated controlled coding-agent runs and used what we found to harden the product before release.
+We tested klin across repeated controlled coding-agent runs and used the results to harden the product before release.
 
-In the latest validation, every case that exposed the target regression was repaired with klin active, with no undesired signals. A separate seeded confirmation found no repair-by-appeasement.
+[Read the coding-agent validation](docs/benchmark-result-2026-09-25.md).
 
 ## Documentation
 
