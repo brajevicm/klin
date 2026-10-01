@@ -45,14 +45,13 @@ a line is an edit to code. The body shapes keep their declaration line.
 - A line that holds a marker and a code stub, such as `todo!() // TODO`, is
   now two sites.
 - An accepted entry that keyed a marker by its line text matches nothing,
-  and the marker fails as new until a person rewrites the entry. When that
-  line also holds a code stub or a body shape, the entry keys the site of
-  that code stub or body shape, which now counts it alone.
-  - Where the base holds that site, the base entry shares the exact count
-    and takes the match (spec 4.4). The accepted entry matches nothing, so
-    it is a NOTE and a failure under `--strict`, and the marker is held at
-    the base. This is the usual upgrade case.
-  - Where the base does not hold that site, the accepted entry holds it and
-    `--strict` does not name it, and the marker fails as new. The entry may
-    allow a higher count than that site holds, and only a person who reads
-    the config sees that.
+  so it is a NOTE and a failure under `--strict`, until a person rewrites
+  it. The marker is held where the base holds it, and fails as new where
+  the base does not.
+- When that line also holds a code stub or a body shape, the old entry keys
+  the site of that code stub or body shape, which now counts it alone. Where
+  the base holds that site, the usual upgrade case, the base entry shares
+  the exact count and takes the match (spec 4.4), so the old entry matches
+  nothing as above. Where the base does not hold that site, the old entry
+  holds it and `--strict` does not name it. It may then allow a higher count
+  than that site holds, and only a person who reads the config sees that.
