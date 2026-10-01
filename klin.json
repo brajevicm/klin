@@ -116,6 +116,7 @@
           "src/error.rs",
           "src/git.rs",
           "src/hunks.rs",
+          "src/key.rs",
           "src/markers.rs",
           "src/modules",
           "src/ratchet.rs",
