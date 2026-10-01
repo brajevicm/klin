@@ -33,12 +33,16 @@ FAIL  complexity
 From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 
 ```sh
-sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh) && sh -c "$i" && ~/.local/bin/klin install'
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+source $HOME/.local/bin/env
+
+# Set up this repository. For Claude Code only, add --host claude.
+klin install
 ```
 
 Then commit `klin.json` and the generated integration files.
 
-klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to the final `klin install`.
+klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
 
 If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
 
