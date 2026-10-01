@@ -181,6 +181,8 @@ pub struct ModuleDecl {
     pub nesting: Vec<String>,
     /// True where the declaration holds its module's body, so no file is named for it.
     pub inline: bool,
+    /// True where a function body holds the declaration, so no path outside that body names it.
+    pub in_function: bool,
     /// The file the declaration names instead of its own name, where the language can say so.
     /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
     pub path: Option<String>,
@@ -1143,6 +1145,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             name: text_of(name, self.source),
             nesting: (self.adapter.nesting)(node, self.source),
             inline,
+            in_function: inside_a_function(node, self.language),
             path: (!inline)
                 .then(|| (self.adapter.remapped)(node, self.source))
                 .flatten(),
@@ -1216,6 +1219,14 @@ impl<'a, 'b> Reading<'a, 'b> {
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
+        let declarations = std::mem::take(&mut self.modules);
+        let mut modules: HashMap<&str, Vec<&[String]>> = HashMap::new();
+        for module in declarations.iter().filter(|module| !module.in_function) {
+            modules
+                .entry(&module.name)
+                .or_default()
+                .push(&module.nesting);
+        }
         walk(root, &mut |node| {
             if self.adapter.identifiers.contains(&node.kind())
                 && !self.declared.contains(&node.start_byte())
@@ -1230,7 +1241,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             } else if let Some(segments) =
                 (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
             {
-                if let Some(path) = self.resolvable(node, &segments) {
+                if let Some(path) = self.resolvable(node, &segments, &modules) {
                     paths.push(path);
                 }
             } else {
@@ -1242,25 +1253,29 @@ impl<'a, 'b> Reading<'a, 'b> {
                 }
             }
         });
+        self.modules = declarations;
         (references, paths)
     }
 
     /// The qualified path a node writes where it starts at a rooted segment or at a module the
-    /// file declares at the path's own nesting. The nesting is read only for a path whose first
-    /// segment could qualify.
-    fn resolvable(&self, node: Node, segments: &[String]) -> Option<QualifiedPath> {
+    /// file declares outside a function at the path's own nesting. `modules` holds the nestings
+    /// each such name is declared at, and the nesting is read only for a path whose first segment
+    /// could qualify.
+    fn resolvable(
+        &self,
+        node: Node,
+        segments: &[String],
+        modules: &HashMap<&str, Vec<&[String]>>,
+    ) -> Option<QualifiedPath> {
         let first = segments.first()?.as_str();
         let rooted = self.adapter.rooted.contains(&first);
-        if !rooted && !self.modules.iter().any(|module| module.name == first) {
+        let declared = modules.get(first);
+        if !rooted && declared.is_none() {
             return None;
         }
         let nesting = (self.adapter.nesting)(node, self.source);
-        let declared = || {
-            self.modules
-                .iter()
-                .any(|module| module.name == first && module.nesting == nesting)
-        };
-        (rooted || declared()).then(|| QualifiedPath {
+        let beside = || declared.is_some_and(|at| at.contains(&nesting.as_slice()));
+        (rooted || beside()).then(|| QualifiedPath {
             line: self.row(node),
             nesting,
             path: segments.join("::"),

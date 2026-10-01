@@ -636,6 +636,66 @@ fn a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it() {
     assert!(run.says("0 dependency site(s) judged"), "{}", run.out);
 }
 
+fn a_child_shadowing_a_root_module(tree: &Tree, edition: &str) {
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"top":{"in":"src/a.rs","can_use":["low"]},"low":{"in":"src/b","can_use":[]}}}}"#,
+    );
+    tree.write(
+        "Cargo.toml",
+        &format!("[package]\nname = \"t\"\nversion = \"0.1.0\"\n{edition}"),
+    );
+    tree.write("src/lib.rs", "mod a;\nmod b;\n");
+    tree.write("src/a.rs", "pub struct X;\n");
+    tree.write(
+        "src/b/mod.rs",
+        "mod a;\npub use a::X;\npub fn g() { a::f(); }\n",
+    );
+    tree.write("src/b/a.rs", "pub struct X;\npub fn f() {}\n");
+}
+
+#[test]
+fn a_bare_use_path_in_edition_2015_starts_at_the_crate_root() {
+    let tree = Tree::new();
+    a_child_shadowing_a_root_module(&tree, "");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/b/mod.rs:2") && run.says("low → top: src/a.rs") && run.says("1 new"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_bare_use_path_from_edition_2018_starts_at_the_declared_child() {
+    let tree = Tree::new();
+    a_child_shadowing_a_root_module(&tree, "edition = \"2018\"\n");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 forbidden"), "{}", run.out);
+}
+
+#[test]
+fn a_module_declared_inside_a_function_is_not_reached_by_a_bare_path_beside_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", ACYCLIC);
+    tree.write("src/lib.rs", "mod a;\n");
+    tree.write(
+        "src/a.rs",
+        "pub fn api() {\n    mod inner {\n        pub fn helper() { super::other(); }\n    }\n}\npub fn other() { inner::helper(); }\n",
+    );
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("0 cyclic"), "{}", run.out);
+}
+
 fn renamed_layers(tree: &Tree) {
     tree.write("klin.json", LAYERS);
     tree.write("src/lib.rs", "mod domain;\nmod ui;\n");

@@ -3,8 +3,10 @@
 //! usable. From each root the resolver follows `mod` declarations to files, `#[path]` included,
 //! and makes every file it reaches a module of that target, so a file two targets reach is a
 //! module of each. A dependency is a path a `use` tree or a qualified path writes from `crate`,
-//! `self` or `super`, resolved to the deepest module it names. A path from any other name may be
-//! another crate or a local item, so it is counted and never resolved. Each target's extern
+//! `self`, `super` or a module its file declares outside a function, resolved to the deepest
+//! module it names. An import of an edition 2015 target reads a bare first name from the target
+//! root. A path from any other name may be another crate or a local item, so it is counted and
+//! never resolved. Each target's extern
 //! prelude names the libraries of the tree its manifest takes by path, so a consumer that
 //! follows a path into another crate reaches the one Cargo would build.
 
@@ -13,7 +15,7 @@ use std::io;
 use std::iter::Peekable;
 use std::path::{Path, PathBuf};
 
-use cargo_toml::{AbstractFilesystem, Manifest, Value};
+use cargo_toml::{AbstractFilesystem, Edition, Manifest, Value};
 
 use super::{Attachment, Builder, TargetKind, Topology, directory, joined};
 use crate::survey;
@@ -29,6 +31,9 @@ struct Target {
     kind: TargetKind,
     manifest: Option<String>,
     dependencies: Vec<PathDependency>,
+    /// The edition the target compiles under. A conventional root has no manifest to say, and
+    /// is read as a current edition.
+    edition: Edition,
 }
 
 /// One normal dependency a manifest takes from the tree by path: the name a target writes for
@@ -45,6 +50,7 @@ struct Product {
     kind: TargetKind,
     name: String,
     path: String,
+    edition: Edition,
 }
 
 /// One module of one target: where it sits in the graph, the module that holds it, the modules
@@ -55,6 +61,9 @@ struct Node {
     parent: Option<usize>,
     children: BTreeMap<String, usize>,
     unresolved: HashSet<String>,
+    /// The module names the module declares outside a function, which a bare path may start
+    /// with.
+    named: HashSet<String>,
     directory: String,
     file: String,
     nesting: Vec<String>,
@@ -166,6 +175,7 @@ fn targets(builder: &mut Builder) -> Vec<Target> {
                     kind: product.kind,
                     manifest: Some(manifest.clone()),
                     dependencies: dependencies.clone(),
+                    edition: product.edition,
                 }),
                 None => builder.hole(
                     manifest,
@@ -211,6 +221,11 @@ fn products(
         .as_ref()
         .map(|package| package.name.clone())
         .unwrap_or_default();
+    let edition = parsed
+        .package
+        .as_ref()
+        .and_then(|package| package.edition.get().ok().copied())
+        .unwrap_or_default();
     let mut out: Vec<Product> = parsed
         .lib
         .and_then(|lib| {
@@ -218,6 +233,7 @@ fn products(
                 kind: TargetKind::Library,
                 name: lib.name.unwrap_or_else(|| crate_name(&package)),
                 path: lib.path?,
+                edition: lib.edition.unwrap_or(edition),
             })
         })
         .into_iter()
@@ -228,6 +244,7 @@ fn products(
                 kind: TargetKind::Binary,
                 name: bin.name.unwrap_or_else(|| stem(&path).to_string()),
                 path,
+                edition: bin.edition.unwrap_or(edition),
             });
         }
     }
@@ -299,6 +316,7 @@ fn conventional(topology: &Topology, read: &[(&str, bool)]) -> Vec<Target> {
                 kind,
                 manifest: None,
                 dependencies: Vec::new(),
+                edition: Edition::E2021,
             }
         })
         .collect()
@@ -403,6 +421,7 @@ impl Crate<'_> {
             parent: parent.map(|(at, _)| at),
             children: BTreeMap::new(),
             unresolved: HashSet::new(),
+            named: HashSet::new(),
             directory: children.to_string(),
             file: file.to_string(),
             nesting,
@@ -431,6 +450,9 @@ impl Crate<'_> {
                 continue;
             };
             let name = declaration.name.trim_start_matches("r#");
+            if !declaration.in_function {
+                self.nodes[parent].named.insert(name.to_string());
+            }
             if declaration.inline {
                 let mut nesting = declaration.nesting.clone();
                 nesting.push(name.to_string());
@@ -577,12 +599,18 @@ impl Crate<'_> {
                     .into_iter()
                     .flat_map(|from| import.paths.iter().map(move |path| (*from, path)))
                 {
-                    self.dependency(builder, path, (file, import.line), &import.text);
+                    self.dependency(builder, path, (file, import.line), &import.text, true);
                 }
             }
             for path in &facts.paths {
                 if let Some(from) = nestings.get(&path.nesting) {
-                    self.dependency(builder, (*from, &path.path), (file, path.line), &path.path);
+                    self.dependency(
+                        builder,
+                        (*from, &path.path),
+                        (file, path.line),
+                        &path.path,
+                        false,
+                    );
                 }
             }
         }
@@ -594,8 +622,9 @@ impl Crate<'_> {
         (from, path): (usize, &String),
         (file, line): (&str, u64),
         text: &str,
+        import: bool,
     ) {
-        match self.target_of(from, path) {
+        match self.target_of(from, path, import) {
             Reached::Module(to) if to != from => {
                 builder.depend(self.nodes[from].index, self.nodes[to].index, file, line);
             }
@@ -611,16 +640,18 @@ impl Crate<'_> {
     }
 
     /// The deepest module a path names from this module: `crate` starts at the target root,
-    /// `self` and `super` at this module and the ones above it, a child module this module
-    /// declares at this module, as if `self::` came first, and each name after them at the child
-    /// module of that name, until a name is no module.
-    fn target_of(&self, from: usize, path: &str) -> Reached {
+    /// `self` and `super` at this module and the ones above it, and each name after them at the
+    /// child module of that name, until a name is no module. Any other first name starts where
+    /// `bare_start` says.
+    fn target_of(&self, from: usize, path: &str, import: bool) -> Reached {
         let mut segments = path.split("::").peekable();
-        let start = match segments.peek() {
-            Some(&"crate") => segments.next().map(|_| 0),
-            Some(&"self" | &"super") => Some(from),
-            Some(first) if self.declares(from, first.trim_start_matches("r#")) => Some(from),
-            _ => return Reached::External,
+        let start = match segments.peek().copied() {
+            Some("crate") => segments.next().map(|_| 0),
+            Some("self" | "super") => Some(from),
+            first => match first.and_then(|first| self.bare_start(from, first, import)) {
+                Some(at) => Some(at),
+                None => return Reached::External,
+            },
         };
         match start.and_then(|at| self.ascended(at, &mut segments)) {
             Some(at) => self.descended(at, segments),
@@ -628,9 +659,18 @@ impl Crate<'_> {
         }
     }
 
-    fn declares(&self, at: usize, name: &str) -> bool {
-        let node = &self.nodes[at];
-        node.children.contains_key(name) || node.unresolved.contains(name)
+    /// The module a bare first name starts at: this module where it declares a module of that
+    /// name, as if `self::` came first, or, in an import of an edition 2015 target, the target
+    /// root where the root declares it. `None` means the name is external.
+    fn bare_start(&self, from: usize, first: &str, import: bool) -> Option<usize> {
+        let at = match import && self.target.edition == Edition::E2015 {
+            true => 0,
+            false => from,
+        };
+        self.nodes[at]
+            .named
+            .contains(first.trim_start_matches("r#"))
+            .then_some(at)
     }
 
     fn ascended<'p>(

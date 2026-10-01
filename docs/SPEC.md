@@ -2247,9 +2247,14 @@ the directory of the file or of the inline module that holds it. A file two
 targets reach is a module of each. A dependency is a path a `use` tree or a
 path outside an import writes from `crate`, `self` or `super`, resolved to the
 deepest module it names. A path whose first segment names a module the same
-file declares at that path's nesting, with `mod name;` or inline, resolves as
-if it started with `self::`, so `pub use inner::X;` and `inner::f()` beside
-`mod inner;` depend on `inner`. A Rust path that resolves to its own module
+file declares at that path's nesting, with `mod name;` or inline and outside a
+function body, resolves as if it started with `self::`, so `pub use inner::X;`
+and `inner::f()` beside `mod inner;` depend on `inner`. A module a function
+body declares is reached by no bare path. A target's edition comes from its
+manifest, where Cargo's default is 2015, and a conventional root is read as a
+current edition. In a `use` tree of an edition 2015 target, a first segment
+starts at the target root instead, and resolves only where the root declares a
+module of that name. A Rust path that resolves to its own module
 names that module's items and is no edge, so `use self::Kind::*` closes no
 cycle. A path from another name may be another crate or a local item, so a
 `use` tree that writes it is counted as external and not resolved, and a path
@@ -2356,6 +2361,9 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_call_through_a_child_the_file_declares_is_a_dependency_on_it`,
 `a_first_segment_that_names_no_declared_module_stays_external`,
 `a_child_declared_inside_an_inline_module_is_not_reached_from_beside_it`,
+`a_module_declared_inside_a_function_is_not_reached_by_a_bare_path_beside_it`,
+`a_bare_use_path_in_edition_2015_starts_at_the_crate_root`,
+`a_bare_use_path_from_edition_2018_starts_at_the_declared_child`,
 `a_file_renamed_inside_its_layer_keeps_its_base_debt`,
 `a_file_renamed_into_another_layer_is_placed_in_its_base_layer_at_the_base`,
 `a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base`,
@@ -2379,9 +2387,10 @@ unit tests
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
 declares, a TypeScript `import()` or `require()`, `tsconfig` paths and package
-exports are not dependencies in V1. A function-local `use` that binds the name
-of a declared child module shadows it in Rust, and klin still reads a bare path
-through that name as a dependency on the child.
+exports are not dependencies in V1. A name a block or a function binds in the
+type namespace, such as a local `use`, a local type alias or a generic type
+parameter, shadows a declared child module of the same name in Rust, and klin
+still reads a bare path through that name as a dependency on the child.
 
 **`public-api` judges the consumer-facing contract a library or package
 exposes.** Klin derives public API from standard Rust library and TypeScript
@@ -2773,7 +2782,7 @@ resolves an import or a Rust `mod foo;` to a file. The extractor keeps each
 specifier as written for it, with the inline modules that hold an import, a
 module declaration or a qualified path, every leaf path of a Rust use tree, and
 every path outside an import that starts at `crate`, `self`, `super` or the
-name of a module the file declares at that path's nesting.
+name of a module the file declares outside a function at that path's nesting.
 
 A `test-hygiene` check, a count of habits across the test roots against a
 dated ceiling, was considered and is not a check. A habit that rose is an
