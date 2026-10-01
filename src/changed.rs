@@ -77,6 +77,14 @@ pub fn blobs(
     Repo::at(root).blobs(commit, paths, each)
 }
 
+pub fn added(changes: &[Change]) -> std::collections::HashSet<String> {
+    changes
+        .iter()
+        .filter(|change| change.was.is_none())
+        .map(|change| change.path.clone())
+        .collect()
+}
+
 /// Every file the change set renamed, by its current path, with the path it had at the base.
 pub fn renamed(changes: &[Change]) -> std::collections::HashMap<String, String> {
     changes

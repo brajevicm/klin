@@ -131,6 +131,15 @@ impl Finding {
 /// The debt a person accepted in the config, as prior entries for one gate. An entry must carry
 /// every value the gate ratchets, or it would hold a site at any value it grows to.
 pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Values>, Error> {
+    accepted_leaving_out(config, gate, metrics, &[])
+}
+
+pub fn accepted_leaving_out(
+    config: &Config,
+    gate: &str,
+    metrics: &[&str],
+    optional: &[&str],
+) -> Result<Vec<Values>, Error> {
     let section = config::ACCEPTED.name;
     let Some(listed) = config.pinned(section) else {
         return Ok(Vec::new());
@@ -152,7 +161,7 @@ pub fn accepted(config: &Config, gate: &str, metrics: &[&str]) -> Result<Vec<Val
         if named != gate {
             continue;
         }
-        names_every_value(config, gate, &entry, metrics)?;
+        names_every_value(config, gate, &entry, metrics, optional)?;
         entry.remove(BODY);
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);
@@ -165,10 +174,12 @@ fn names_every_value(
     gate: &str,
     entry: &Values,
     metrics: &[&str],
+    optional: &[&str],
 ) -> Result<(), Error> {
     let missing: Vec<&str> = metrics
         .iter()
         .copied()
+        .filter(|metric| entry.contains_key(*metric) || !optional.contains(metric))
         .filter(|metric| entry.get(*metric).and_then(Value::as_f64).is_none())
         .collect();
     if missing.is_empty() {
@@ -301,17 +312,18 @@ enum Outcome {
     Held,
 }
 
+fn rose(finding: &Finding, entry: &Values, metric: &str) -> bool {
+    let Some(now) = finding.values.get(metric).and_then(Value::as_f64) else {
+        return false;
+    };
+    entry
+        .get(metric)
+        .and_then(Value::as_f64)
+        .is_none_or(|was| now > was)
+}
+
 fn compare(finding: &Finding, entry: &Values, metrics: &[&str]) -> Outcome {
-    let comparable: Vec<(f64, f64)> = metrics
-        .iter()
-        .filter_map(|metric| {
-            Some((
-                finding.values.get(*metric)?.as_f64()?,
-                entry.get(*metric)?.as_f64()?,
-            ))
-        })
-        .collect();
-    match comparable.iter().any(|(now, was)| now > was) {
+    match metrics.iter().any(|metric| rose(finding, entry, metric)) {
         true => Outcome::Rose,
         false => Outcome::Held,
     }
@@ -754,11 +766,8 @@ fn remedy(comparison: &Comparison, evaluator: &Evaluator) -> String {
 fn risen(finding: &Finding, entry: &Values, metrics: &[&str]) -> Values {
     metrics
         .iter()
-        .filter_map(|metric| {
-            let now = finding.values.get(*metric)?;
-            let rose = now.as_f64()? > entry.get(*metric)?.as_f64()?;
-            rose.then(|| (metric.to_string(), now.clone()))
-        })
+        .filter(|metric| rose(finding, entry, metric))
+        .filter_map(|metric| Some((metric.to_string(), finding.values.get(*metric)?.clone())))
         .collect()
 }
 

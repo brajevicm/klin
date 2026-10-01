@@ -96,6 +96,7 @@ pub struct Tree {
     files: OnceCell<Result<Vec<String>, String>>,
     listing: Cell<files::Listing>,
     extracted: Extracted,
+    tests: OnceCell<Tests>,
 }
 
 impl Tree {
@@ -106,6 +107,7 @@ impl Tree {
             files: OnceCell::new(),
             listing: Cell::new(files::Listing::default()),
             extracted: Extracted::default(),
+            tests: OnceCell::new(),
         }
     }
 
@@ -134,9 +136,11 @@ impl Tree {
 
     /// What spec 5.4 calls the tests of this tree alone, off its one file list.
     pub fn tests(&self) -> Tests {
-        Tests {
-            roots: self.test_roots().into_iter().collect(),
-        }
+        self.tests
+            .get_or_init(|| Tests {
+                roots: self.test_roots().into_iter().collect(),
+            })
+            .clone()
     }
 
     /// Every file, read on the first call and held for the run. A directory the walk could not
@@ -350,6 +354,7 @@ impl Project {
 
 /// The tests of one tree: every file under one of its test roots, and every source file a test
 /// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
+#[derive(Clone)]
 pub struct Tests {
     roots: scope::Roots,
 }

@@ -1,6 +1,11 @@
 {
   "build": "cargo build --quiet --all-targets",
-  "complexity": { "cc": 8, "lines": 60, "in": ["src", "tests"] },
+  "complexity": {
+    "cc": 8,
+    "lines": 60,
+    "test_lines": 60,
+    "in": ["src", "tests"]
+  },
   "escapes": { "in": ["src", "tests"] },
   "doc_size": {
     "README.md": 1500,

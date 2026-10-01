@@ -356,8 +356,12 @@ pub fn test_module_ranges(path: &str, source: &str) -> Vec<(u64, u64)> {
     let Some(file) = tolerant(path, source) else {
         return Vec::new();
     };
+    cfg_test_ranges(file.root(), file.bytes())
+}
+
+pub fn cfg_test_ranges(root: Node, source: &[u8]) -> Vec<(u64, u64)> {
     let mut out = Vec::new();
-    marked_ranges(file.root(), file.bytes(), &mut out);
+    marked_ranges(root, source, &mut out);
     out
 }
 

@@ -104,6 +104,17 @@ fn pin_fills_in_the_guardrails_the_config_does_not_state() {
 }
 
 #[test]
+fn pin_writes_no_test_lines_because_klin_never_derives_it() {
+    let tree = in_debt();
+
+    let run = tree.run(&["init", "--pin"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let config = config(&tree);
+    assert!(config["complexity"]["lines"].is_u64(), "{config}");
+    assert!(config["complexity"].get("test_lines").is_none(), "{config}");
+}
+
+#[test]
 fn pin_leaves_a_gate_a_person_excluded_alone() {
     let tree = in_debt();
     tree.write("klin.json", r#"{ "escapes": false, "complexity": false }"#);
