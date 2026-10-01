@@ -8,7 +8,7 @@
 
 **Deterministic quality control for coding agents.**
 
-klin catches new or worsened deterministic problems during coding-agent work and returns concrete feedback while the working context is still available.
+klin catches new or worsened problems during coding-agent work and returns concrete feedback while the working context is still available.
 
 **Works natively with:** Claude Code · Codex · Cursor
 
@@ -21,38 +21,10 @@ FAIL  complexity
 
 ## How klin works
 
-```mermaid
-flowchart LR
-    A("`**Agent edits**
-changes the repository`")
-
-    B("`**klin checks the delta**
-new or worsened problems only`")
-
-    C("`**CI verifies**
-independent repository check`")
-
-    D("`**Regression**
-concrete finding + guidance`")
-
-    E("`**Agent repairs**
-while context is still live`")
-
-    A --> B
-    B -->|"clean"| C
-    B -->|"regression"| D
-    D --> E
-    E --> B
-
-    classDef klin fill:#ECFDF5,stroke:#10B981,color:#064E3B,stroke-width:2px;
-    classDef regression fill:#FEF2F2,stroke:#EF4444,color:#991B1B,stroke-width:2px;
-
-    class B klin;
-    class D regression;
-
-    linkStyle 2 stroke:#EF4444,stroke-width:2px;
-    linkStyle 3 stroke:#EF4444,stroke-width:2px;
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-how-it-works-dark.svg">
+  <img src="assets/klin-how-it-works-light.svg" width="880" alt="One agent turn: you prompt and klin marks the start. The agent edits and tries to finish, and klin compares the start of the turn with now. A new or worsened problem fails, and the agent repairs the named site in the same turn. A pass goes to CI, which checks the change again from its own checkout before merge.">
+</picture>
 
 ## Quick start
 
@@ -70,14 +42,16 @@ Commit `klin.json` and the generated integration files.
 
 Only want one host? Append `--host claude`, `--host codex`, or `--host cursor` to the final `klin install` command.
 
+If your shell can't find `klin` after the install, open a new terminal. To update later, run `klin update`, then `klin install`.
+
 > [!NOTE]
 > **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ### 2. Work normally
 
-Use your coding agent as usual.
+Use your coding agent as usual. There is nothing to run manually - klin checks the turn when the agent tries to finish.
 
-klin marks the work boundary and checks the delta when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
+klin marks the start of the turn and checks what changed when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
 
 ### 3. See what happened
 
@@ -88,19 +62,18 @@ klin stats --session
 ```text
 Nothing needs your attention.
 
-klin caught 1 regression this session.
-It was fixed after klin flagged it.
+klin caught 1 regression this session. It was fixed after klin flagged it.
 ```
 
 Use `klin stats --all` for individual findings or `klin stats --json` for machine-readable output.
 
 ## Native plugins
 
-**Alternative to the repository-hook setup above.**
+**Alternative to the CLI setup above.**
 
 Claude Code, Codex, and Cursor can also run klin through their native plugin systems.
 
-Plugins do not expose the `klin` CLI. If plugin and repository hooks are both present, one copy handles each event and the other stays quiet.
+A plugin gives you no `klin` command in your shell. Install the CLI too if you want `klin stats`. If plugin and repository hooks are both present, one copy handles each event and the other stays quiet.
 
 ### Claude Code
 
@@ -116,7 +89,7 @@ codex plugin marketplace add brajevicm/klin
 codex plugin add klin@klin
 ```
 
-Then run `/hooks`, trust the klin hooks, and start a fresh session.
+Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ### Cursor
 
@@ -139,7 +112,9 @@ Reload Cursor.
 
 </details>
 
-Opt the repository in:
+### Opt the repository in
+
+A plugin stays quiet until the repository opts in. At the repository root, run:
 
 ```sh
 echo '{}' > klin.json
@@ -162,11 +137,11 @@ improved                8        6       ✓ pass
 worsened                8        9       ✗ fail
 ```
 
-Existing debt does not block adoption. Only new or worsened debt fails.
+Existing debt does not block adoption. Only new or worsened debt fails. One exception: a build that fails blocks the agent until the code builds again.
 
 **Deterministic, not another LLM.** klin measures specific properties and returns concrete evidence instead of asking another model whether the code is "good."
 
-**No baseline to maintain.** The before-state comes from the repository and the work boundary.
+**No baseline to maintain.** klin reads the before-state from Git, so no baseline file has to stay in sync.
 
 **Repair now, verify later.** Local hooks return findings while the agent still has context. CI independently checks the committed result.
 
@@ -175,53 +150,51 @@ Existing debt does not block adoption. Only new or worsened debt fails.
 ## What klin catches
 
 - **Complexity creeps up.** A function becomes too complex or too large for the repository's current bar.
-- **Architecture drifts.** A new dependency cycle appears, code crosses a configured layer, or a project convention is broken.
-- **Guardrails get bypassed.** A test disappears or gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch.
-- **Work is left unfinished.** New TODOs, placeholders, stubs, or unreachable code remain behind.
-- **A public contract changes.** An exported surface disappears or its declared contract changes.
-- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or resolves differently.
-- **Documentation goes stale.** Code moves, but documentation still points to the old location.
+- **Architecture drifts.** Code crosses a layer you defined, closes a new dependency cycle, or breaks a convention you wrote down. These checks need a `layering` or `conventions` section in `klin.json`.
+- **Guardrails get bypassed.** A test gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch. If a test disappears, klin asks the agent about it once.
+- **Work is left unfinished.** The change leaves a new TODO, placeholder, or stub, or adds code that nothing references.
+- **A public contract changes.** An exported Rust or TypeScript surface disappears or its declared contract changes.
+- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or has a version the lockfile does not record.
+- **Documentation goes stale.** Code moves, but a Markdown file at the repository root still points to the old path.
 
 Keep your linters, type checkers, tests, security scanners, static analysis, AI review, and human review. klin adds a deterministic ratchet around the agent's change.
 
-Tools that emit SARIF can feed findings through the same new-or-worsened model.
+A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails on any of its results that sit on a line the change touched.
 
 [Configuration and language coverage →](docs/REFERENCE.md)
 
 ## CI
 
-**Local hooks provide feedback. CI enforces.**
+klin works at two levels:
 
-GitHub Actions, after checkout:
+- **Feedback:** hooks only. klin returns findings to the agent and refuses its edits to `klin.json`, but nothing outside the agent's environment checks the result.
+- **Enforced:** hooks plus a required CI check on a protected branch. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and `CODEOWNERS` itself.
+
+The Quick start setup reaches Feedback. Add the CI check to reach Enforced.
+
+GitHub Actions:
 
 ```yaml
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0
 - uses: brajevicm/klin@v0.4.1
 ```
 
-Other CI:
+Other CI: install klin, fetch the full Git history, then run:
 
 ```sh
 klin gate --strict
 ```
 
-Make the check required. Require review for changes to `klin.json` and the generated hook files.
-
 [Trust model and enforcement boundaries →](docs/THREAT_MODEL.md)
-
-## Tested on real coding-agent work
-
-klin has been tested across repeated controlled coding-agent runs.
-
-[Read the coding-agent validation →](docs/benchmark-result-2026-09-25.md)
 
 ## Learn more
 
-- [Configuration reference](docs/REFERENCE.md)
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
-- [Trust and enforcement](docs/THREAT_MODEL.md)
 - [Agent instructions](plugins/klin/skills/klin/SKILL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
-- [Coding-agent validation](docs/benchmark-result-2026-09-25.md)
+- [Benchmark and validation evidence](docs/benchmark-result-2026-09-25.md)
 
 Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
 Security issue? [Follow the private reporting instructions](SECURITY.md).

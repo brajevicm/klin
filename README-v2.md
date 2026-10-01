@@ -10,7 +10,7 @@
 
 klin catches new or worsened problems during coding-agent work and returns concrete feedback while the working context is still available.
 
-**First-class support:** Claude Code · Codex · Cursor
+**Works natively with:** Claude Code · Codex · Cursor
 
 ```text
 FAIL  complexity
@@ -49,7 +49,7 @@ If your shell can't find `klin` after the install, open a new terminal. To updat
 
 ### 2. Work normally
 
-Use your coding agent as usual.
+Use your coding agent as usual. There is nothing to run manually - klin checks the turn when the agent tries to finish.
 
 klin marks the start of the turn and checks what changed when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
 
@@ -143,6 +143,8 @@ Existing debt does not block adoption. Only new or worsened debt fails. One exce
 
 **No baseline to maintain.** klin reads the before-state from Git, so no baseline file has to stay in sync.
 
+**Repair now, verify later.** Local hooks return findings while the agent still has context. CI independently checks the committed result.
+
 **The agent fixes code, not the bar.** Intentional exceptions are human-reviewed policy in `accepted`.
 
 ## What klin catches
@@ -187,17 +189,12 @@ klin gate --strict
 
 [Trust model and enforcement boundaries →](docs/THREAT_MODEL.md)
 
-## Validation
-
-The latest controlled benchmark round, 14 paired Claude Code runs, was inconclusive. Too few runs tried a shortcut, across too few checks, to support a product claim.
-
-[Read the benchmark result →](docs/benchmark-result-2026-09-25.md)
-
 ## Learn more
 
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 - [Agent instructions](plugins/klin/skills/klin/SKILL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
+- [Benchmark and validation evidence](docs/benchmark-result-2026-09-25.md)
 
 Found a problem or have a question? [Open an issue](https://github.com/brajevicm/klin/issues/new/choose).  
 Security issue? [Follow the private reporting instructions](SECURITY.md).
