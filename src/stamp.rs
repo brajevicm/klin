@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::git::Repo;
 use crate::state;
@@ -59,6 +59,8 @@ pub fn unwindowed(root: &Path) -> Option<String> {
     derivation(root, state::ready(root).ok().as_deref())
 }
 
+/// The stamp the `turn` file holds, and `None` when the file is missing or unreadable.
+/// Spec 6.5.
 pub fn read(at: &Path) -> Option<Stamp> {
     let text = std::fs::read_to_string(at.join(FILE)).ok()?;
     let held: Value = serde_json::from_str(&text).ok()?;
@@ -95,6 +97,36 @@ pub fn read(at: &Path) -> Option<Stamp> {
     })
 }
 
+/// The stamp as the `turn` file holds it. A field a fresh stamp does not have is left out.
+/// Spec 6.5.
+pub fn recorded(stamp: &Stamp) -> Value {
+    let mut fields = Map::new();
+    let fields_of = [
+        ("commit", stamp.commit.clone().map(Value::from)),
+        ("parent", stamp.parent.clone().map(Value::from)),
+        ("mark", stamp.mark.clone().map(Value::from)),
+    ];
+    for (key, value) in fields_of {
+        if let Some(found) = value {
+            fields.insert(key.into(), found);
+        }
+    }
+    fields.insert("time".into(), stamp.time.into());
+    let verdict = match stamp.green {
+        true => "green",
+        false => "red",
+    };
+    fields.insert("verdict".into(), verdict.into());
+    fields.insert("prompts".into(), stamp.prompts.into());
+    if !stamp.asked.is_empty() {
+        fields.insert("asked".into(), stamp.asked.clone().into());
+    }
+    if stamp.intervened {
+        fields.insert("intervened".into(), true.into());
+    }
+    Value::Object(fields)
+}
+
 /// A tree of the working directory, everything `.gitignore` does not exclude, written through
 /// an index of klin's own. Both the stamp and the spread report read the turn from it.
 pub fn tree(root: &Path, at: &Path) -> Option<String> {
@@ -109,13 +141,14 @@ pub fn tree_through(root: &Path, index: &Path) -> Option<String> {
     git(root, Some(index), &["write-tree"])
 }
 
+/// The commit a ref or object name points at, and `None` when it names no commit.
 pub fn resolve(root: &Path, reference: &str) -> Option<String> {
     let refspec = format!("{reference}^{{commit}}");
     Repo::at(root).rev_parse(&["--verify", "--quiet", &refspec])
 }
 
-/// Every git call the stamp makes, with klin as the author of its own commit and an index of
-/// its own, so nothing here touches what a person staged.
+/// A git call with klin as the author of any commit it makes and an optional index of its own,
+/// so nothing here touches what a person staged.
 pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {
     let mut command = vec![
         "-c",

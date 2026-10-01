@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::base::{self, Kind, Window};
 use crate::config::Config;
@@ -13,7 +13,7 @@ use crate::host;
 use crate::journal;
 use crate::key::Section;
 use crate::radius;
-use crate::stamp::{FILE, INDEX, MARK, Stamp, git, mark, read, resolve, tree};
+use crate::stamp::{self, Stamp};
 use crate::state;
 use crate::write::{AtomicWrite, atomic_write};
 
@@ -47,9 +47,9 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
         return Ok(0);
     };
     let start = named.as_path();
-    let never = !at.join(INDEX).exists();
-    let opened = mark(start, &at);
-    let tree = tree(start, &at);
+    let never = !at.join(stamp::INDEX).exists();
+    let opened = stamp::mark(start, &at);
+    let tree = stamp::tree(start, &at);
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if let Some(event) = &event {
@@ -128,7 +128,7 @@ fn prompt_facts(
 /// The mark this event leaves for the next prompt to measure from. It moves on a session start
 /// and on a prompt alike, whatever verdict the last stop left. ADR 0024.
 fn marked(root: &Path, tree: &str) -> Option<String> {
-    stamped(root, tree, MARK).map(|(commit, _)| commit)
+    stamped(root, tree, stamp::MARK).map(|(commit, _)| commit)
 }
 
 /// One rule, on a session start and on a prompt alike: the stamp moves on a first session or
@@ -162,8 +162,8 @@ fn next(
 pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Which::Reset = args.which;
     let at = state::ready(start).map_err(Error)?;
-    let prompts = read(&at).map_or(0, |held| held.prompts);
-    let tree = tree(start, &at);
+    let prompts = stamp::read(&at).map_or(0, |held| held.prompts);
+    let tree = stamp::tree(start, &at);
     let Some(stamp) = taken(start, tree.as_deref(), prompts, out) else {
         return Err(Error("git could not stamp this tree".to_string()));
     };
@@ -182,13 +182,13 @@ pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> 
 /// readable, and zero for as long as it stays unreadable, so a worktree whose prompt hook
 /// never runs holds one budget rather than one for each turn. Spec 9.3.
 pub fn prompts(at: &Path) -> u64 {
-    read(at).map_or(0, |held| held.prompts)
+    stamp::read(at).map_or(0, |held| held.prompts)
 }
 
 /// When the current turn stamp was taken, and `None` when no stamp is readable. Spec 11.5.
 pub fn taken_at(root: &Path) -> Option<u64> {
     state::dir(root)
-        .and_then(|at| read(&at))
+        .and_then(|at| stamp::read(&at))
         .map(|held| held.time)
 }
 
@@ -197,7 +197,7 @@ pub fn taken_at(root: &Path) -> Option<u64> {
 /// stops keeps it, and it goes when the stamp moves. Empty when no stamp is readable. Spec 8.2.
 pub fn asked(root: &Path) -> Vec<String> {
     state::dir(root)
-        .and_then(|at| read(&at))
+        .and_then(|at| stamp::read(&at))
         .map(|held| held.asked)
         .unwrap_or_default()
 }
@@ -206,7 +206,7 @@ pub fn asked(root: &Path) -> Vec<String> {
 /// Spec 9.5.
 pub fn intervened(root: &Path) -> bool {
     state::dir(root)
-        .and_then(|at| read(&at))
+        .and_then(|at| stamp::read(&at))
         .is_some_and(|held| held.intervened)
 }
 
@@ -236,7 +236,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
 /// when that file is gone. A stamp restored from the ref is red, so the next stop judges
 /// everything since it, and a NOTE says the restore happened. Spec 6.2, 16.1.
 fn held(root: &Path, at: &Path, flags: &mut Vec<&'static str>, out: &mut String) -> Option<Stamp> {
-    if let Some(stamp) = read(at).filter(|stamp| resolves(root, stamp)) {
+    if let Some(stamp) = stamp::read(at).filter(|stamp| resolves(root, stamp)) {
         return Some(stamp);
     }
     let stamp = kept(root)?;
@@ -256,7 +256,7 @@ fn held(root: &Path, at: &Path, flags: &mut Vec<&'static str>, out: &mut String)
 /// stamp that names no commit is the record of a deletion, and it has no commit to lose.
 fn resolves(root: &Path, stamp: &Stamp) -> bool {
     match stamp.commit.as_deref() {
-        Some(commit) => resolve(root, commit).is_some(),
+        Some(commit) => stamp::resolve(root, commit).is_some(),
         None => true,
     }
 }
@@ -264,10 +264,10 @@ fn resolves(root: &Path, stamp: &Stamp) -> bool {
 /// The stamp the ref holds, which is the recovery copy of the `turn` file. Red, because a stop
 /// that reads it judges everything since the stamp. Spec 6.5.
 fn kept(root: &Path) -> Option<Stamp> {
-    let commit = resolve(root, REFERENCE)?;
+    let commit = stamp::resolve(root, REFERENCE)?;
     Some(Stamp {
-        parent: resolve(root, &format!("{commit}^")),
-        mark: resolve(root, MARK),
+        parent: stamp::resolve(root, &format!("{commit}^")),
+        mark: stamp::resolve(root, stamp::MARK),
         commit: Some(commit),
         time: now(),
         green: false,
@@ -337,7 +337,7 @@ pub fn window(
 /// restore, no re-anchor and no replacement written. Spec 6.5, 14.
 fn read_only(root: &Path, out: &mut String) -> Result<Window, Error> {
     let file = state::dir(root)
-        .and_then(|at| read(&at))
+        .and_then(|at| stamp::read(&at))
         .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
     match file.or_else(|| kept(root)) {
         Some(stamp) if abandoned(root, &stamp) => {
@@ -397,8 +397,8 @@ fn replaced(
 /// not for an ordinary commit, so a moved ref would name a parent the stop never took and pass
 /// the lineage test on history that holds no base at all. Spec 6.2, 6.2.1.
 fn reanchored(root: &Path) {
-    let _ = git(root, None, &["update-ref", "-d", REFERENCE]);
-    let _ = git(root, None, &["update-ref", "-d", MARK]);
+    let _ = stamp::git(root, None, &["update-ref", "-d", REFERENCE]);
+    let _ = stamp::git(root, None, &["update-ref", "-d", stamp::MARK]);
 }
 
 /// The window the stamp itself is, once a stop has one to read.
@@ -414,7 +414,7 @@ fn turn(stamp: &Stamp) -> Window {
 /// The base `klin gate` would choose by hand, and HEAD when none resolves. Spec 6.3.
 fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     base::choose(root, false).or_else(|problem| {
-        let Some(head) = resolve(root, "HEAD") else {
+        let Some(head) = stamp::resolve(root, "HEAD") else {
             return Err(problem);
         };
         note(
@@ -442,7 +442,7 @@ pub fn verdict(
     let Ok(at) = state::ready(root) else {
         return Err("klin could not ready the state directory, so this stop wrote no verdict");
     };
-    let Some(held) = read(&at) else {
+    let Some(held) = stamp::read(&at) else {
         return Err(
             "the state directory holds no stamp klin could read, so this stop wrote no \
                     verdict",
@@ -493,20 +493,20 @@ const LEFT_BEHIND: &str = "this turn started from a commit HEAD no longer holds,
 /// empty on every stamp, so a file that became ignored leaves the tree, at the cost of
 /// hashing the whole tree once per prompt. A reused index would keep the stat cache.
 fn stamped(root: &Path, tree: &str, reference: &str) -> Option<(String, Option<String>)> {
-    let head = resolve(root, "HEAD");
+    let head = stamp::resolve(root, "HEAD");
     let mut args = vec!["commit-tree", tree];
     if let Some(head) = &head {
         args.extend(["-p", head]);
     }
     args.extend(["-m", "klin: the turn stamp"]);
-    let commit = git(root, None, &args)?;
-    git(root, None, &["update-ref", reference, &commit])?;
+    let commit = stamp::git(root, None, &args)?;
+    stamp::git(root, None, &["update-ref", reference, &commit])?;
     Some((commit, head))
 }
 
 fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
-    let text = recorded(stamp).to_string() + "\n";
-    let target = at.join(FILE);
+    let text = stamp::recorded(stamp).to_string() + "\n";
+    let target = at.join(stamp::FILE);
     if atomic_write(AtomicWrite {
         target: &target,
         bytes: text.as_bytes(),
@@ -518,36 +518,6 @@ fn write(at: &Path, stamp: &Stamp, out: &mut String) -> bool {
     }
     note(out, &format!("{} could not be written", target.display()));
     false
-}
-
-/// The stamp as the `turn` file holds it. A field a fresh stamp does not have is left out.
-/// Spec 6.5.
-fn recorded(stamp: &Stamp) -> Value {
-    let mut fields = Map::new();
-    let fields_of = [
-        ("commit", stamp.commit.clone().map(Value::from)),
-        ("parent", stamp.parent.clone().map(Value::from)),
-        ("mark", stamp.mark.clone().map(Value::from)),
-    ];
-    for (key, value) in fields_of {
-        if let Some(found) = value {
-            fields.insert(key.into(), found);
-        }
-    }
-    fields.insert("time".into(), stamp.time.into());
-    let verdict = match stamp.green {
-        true => "green",
-        false => "red",
-    };
-    fields.insert("verdict".into(), verdict.into());
-    fields.insert("prompts".into(), stamp.prompts.into());
-    if !stamp.asked.is_empty() {
-        fields.insert("asked".into(), stamp.asked.clone().into());
-    }
-    if stamp.intervened {
-        fields.insert("intervened".into(), true.into());
-    }
-    Value::Object(fields)
 }
 
 fn now() -> u64 {
