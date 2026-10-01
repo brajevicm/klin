@@ -29,6 +29,7 @@ pub(crate) const ADAPTER: Adapter = Adapter {
     remapped,
     nesting,
     qualified,
+    rooted: &[],
     quoted,
     visibility,
     exported_as,

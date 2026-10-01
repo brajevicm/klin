@@ -539,6 +539,86 @@ fn a_module_declaration_is_containment_and_not_a_dependency() {
     );
 }
 
+fn closed_through_a_bare_child(tree: &Tree) {
+    tree.write("klin.json", ACYCLIC);
+    tree.write("src/lib.rs", "mod a;\nmod b;\n");
+    tree.write("src/a.rs", "use crate::b::X;\npub struct Y;\n");
+    tree.write("src/b/mod.rs", "mod inner;\npub use inner::X;\n");
+    tree.write("src/b/inner.rs", "use crate::a::Y;\npub struct X;\n");
+}
+
+#[test]
+fn a_cycle_closed_through_a_bare_child_path_is_a_cycle() {
+    let tree = Tree::new();
+    closed_through_a_bare_child(&tree);
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("cycle: src/a.rs") && run.says("src/b/mod.rs → src/b/inner.rs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_cycle_the_base_held_through_a_bare_child_path_stays_held() {
+    let tree = Tree::new();
+    closed_through_a_bare_child(&tree);
+    tree.base();
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("the base already held"), "{}", run.out);
+}
+
+const NESTED: &str = r#"{"layering":{"layers":{"outer":{"in":"src/outer.rs","can_use":[]},"inner":{"in":"src/outer","can_use":["outer"]}}}}"#;
+
+#[test]
+fn a_call_through_a_child_the_file_declares_is_a_dependency_on_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", NESTED);
+    tree.write("src/lib.rs", "mod outer;\n");
+    tree.write(
+        "src/outer.rs",
+        "mod inner;\npub fn api() { inner::helper(); }\n",
+    );
+    tree.write("src/outer/inner.rs", "pub fn helper() {}\n");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("src/outer.rs:2") && run.says("outer → inner: src/outer/inner.rs"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_first_segment_that_names_no_declared_module_stays_external() {
+    let tree = Tree::new();
+    tree.write("klin.json", NESTED);
+    tree.write("src/lib.rs", "mod outer;\n");
+    tree.write(
+        "src/outer.rs",
+        "mod inner;\nuse other::helper;\npub fn api() { other::inner::helper(); }\n",
+    );
+    tree.write("src/outer/inner.rs", "pub fn helper() {}\n");
+
+    let run = tree.run(&["layering"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("0 dependency site(s) judged")
+            && run.says("1 external or unsupported dependenc(ies)"),
+        "{}",
+        run.out
+    );
+}
+
 fn renamed_layers(tree: &Tree) {
     tree.write("klin.json", LAYERS);
     tree.write("src/lib.rs", "mod domain;\nmod ui;\n");

@@ -2246,10 +2246,14 @@ and, where no usable manifest sits above a file, from `src/lib.rs`,
 the directory of the file or of the inline module that holds it. A file two
 targets reach is a module of each. A dependency is a path a `use` tree or a
 path outside an import writes from `crate`, `self` or `super`, resolved to the
-deepest module it names. A Rust path that resolves to its own module names
-that module's items and is no edge, so `use self::Kind::*` closes no cycle.
-A path from another name may be another crate or a local item, so it is
-counted as external and not resolved. Every TypeScript file is a module. A
+deepest module it names. A path whose first segment names a module the same
+file declares at that path's nesting, with `mod name;` or inline, resolves as
+if it started with `self::`, so `pub use inner::X;` and `inner::f()` beside
+`mod inner;` depend on `inner`. A Rust path that resolves to its own module
+names that module's items and is no edge, so `use self::Kind::*` closes no
+cycle. A path from another name may be another crate or a local item, so a
+`use` tree that writes it is counted as external and not resolved, and a path
+outside an import that writes it is not read. Every TypeScript file is a module. A
 relative specifier resolves when exactly one of these files exists: the
 specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a `.js`
 specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after it. A
@@ -2347,6 +2351,10 @@ strict, the working tree takes the base's facts for every unchanged file, as
 `a_package_renamed_with_its_manifest_keeps_its_base_debt`,
 `a_missing_target_root_a_manifest_names_is_unresolved_whatever_the_scope`,
 `a_module_declaration_is_containment_and_not_a_dependency`,
+`a_cycle_closed_through_a_bare_child_path_is_a_cycle`,
+`a_cycle_the_base_held_through_a_bare_child_path_stays_held`,
+`a_call_through_a_child_the_file_declares_is_a_dependency_on_it`,
+`a_first_segment_that_names_no_declared_module_stays_external`,
 `a_file_renamed_inside_its_layer_keeps_its_base_debt`,
 `a_file_renamed_into_another_layer_is_placed_in_its_base_layer_at_the_base`,
 `a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base`,
@@ -2368,7 +2376,8 @@ unit tests
 `src/layering.rs`, and
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
-inside a macro's tokens, a bare Rust path, a TypeScript `import()` or
+inside a macro's tokens, a bare Rust path that names no module its file
+declares, a TypeScript `import()` or
 `require()`, `tsconfig` paths and package exports are not dependencies in V1.
 
 **`public-api` judges the consumer-facing contract a library or package
@@ -2760,7 +2769,8 @@ over such a tree is visibly a run over nothing. The module graph of ADR 0043
 resolves an import or a Rust `mod foo;` to a file. The extractor keeps each
 specifier as written for it, with the inline modules that hold an import, a
 module declaration or a qualified path, every leaf path of a Rust use tree, and
-every path outside an import that starts at `crate`, `self` or `super`.
+every path outside an import that starts at `crate`, `self`, `super` or the
+name of a module the file declares at that path's nesting.
 
 A `test-hygiene` check, a count of habits across the test roots against a
 dated ceiling, was considered and is not a check. A habit that rose is an

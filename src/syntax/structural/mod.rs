@@ -838,9 +838,12 @@ pub(crate) struct Adapter {
     pub remapped: fn(Node, &[u8]) -> Option<String>,
     /// The inline modules that hold a node, outermost first.
     pub nesting: fn(Node, &[u8]) -> Vec<String>,
-    /// The path a node writes from the crate or from its own module, and `None` for any other
-    /// node, including a path inside a longer one.
+    /// The whole path a node writes, and `None` for any other node, including a path inside a
+    /// longer one.
     pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The first segments a qualified path resolves from inside the crate. A path that starts
+    /// with any other name is kept only where it names a module the file declares beside it.
+    pub rooted: &'static [&'static str],
     /// The names a node writes inside a string that the language calls by that text, such as a
     /// function a Rust `serde` attribute names or a name a format string captures.
     pub quoted: fn(Node, &[u8]) -> Vec<String>,
@@ -1227,11 +1230,9 @@ impl<'a, 'b> Reading<'a, 'b> {
             } else if let Some(path) =
                 (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
             {
-                paths.push(QualifiedPath {
-                    line: self.row(node),
-                    nesting: (self.adapter.nesting)(node, self.source),
-                    path,
-                });
+                if let Some(path) = self.kept(node, path) {
+                    paths.push(path);
+                }
             } else {
                 for name in (self.adapter.quoted)(node, self.source) {
                     references.push(Reference {
@@ -1242,6 +1243,27 @@ impl<'a, 'b> Reading<'a, 'b> {
             }
         });
         (references, paths)
+    }
+
+    /// The qualified path a node writes where it starts at a rooted segment or at a module the
+    /// file declares at the path's own nesting.
+    fn kept(&self, node: Node, path: String) -> Option<QualifiedPath> {
+        let first = path.split("::").next().unwrap_or_default();
+        let rooted = self.adapter.rooted.contains(&first);
+        if !rooted && !self.modules.iter().any(|module| module.name == first) {
+            return None;
+        }
+        let nesting = (self.adapter.nesting)(node, self.source);
+        let declared = || {
+            self.modules
+                .iter()
+                .any(|module| module.name == first && module.nesting == nesting)
+        };
+        (rooted || declared()).then(|| QualifiedPath {
+            line: self.row(node),
+            nesting,
+            path,
+        })
     }
 
     fn claimed(&self, node: Node) -> bool {
