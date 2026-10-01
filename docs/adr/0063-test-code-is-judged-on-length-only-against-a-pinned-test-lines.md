@@ -62,6 +62,21 @@ code `skip_test_idioms` reads as test code (ADR 0060), with a test file of
   Moving code into such a file avoids the length check. It does not avoid
   `cc`.
 
+## Rejected
+
+- **Keep judging test code against the derived `lines`.** The replay labels
+  long test bodies under derived ceilings as not appropriate: R040, R042 and
+  the roughly 100 test bodies of R054.
+- **Leave every function in test code out of `complexity`.** ADR 0051
+  rejected it, because it loses the `cc` findings on test bodies and helpers,
+  and #293 rejected leaving test files out.
+- **Take test code out of the derived sample.** #389 raised it so that long
+  tests cannot loosen the production ceiling. Test code stays in the sample so
+  that no derived ceiling moves.
+- **Count only an inline `#[cfg(test)]` module as test code.** Rust compiles
+  any item marked `#[cfg(test)]` only for tests, so a helper or fixture marked
+  that way is test code too.
+
 ## Consequences
 
 A repository that wants its tests judged on length pins `test_lines`. klin's

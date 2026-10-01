@@ -55,3 +55,26 @@ a line is an edit to code. The body shapes keep their declaration line.
   nothing as above. Where the base does not hold that site, the old entry
   holds it and `--strict` does not name it. It may then allow a higher count
   than that site holds, and only a person who reads the config sees that.
+
+## Rejected
+
+`docs/stubs-marker-decisions-2026-10-01.md` holds the research behind the
+last four options.
+
+- **Keep the file plus line text key for a comment marker.** A typo fix in an
+  existing marker then reads as new, which is R035.
+- **Match a marker by its owner and its sequence.** That needs an AST owner
+  for each comment.
+- **Fold a marker into the site of a code stub on its line, or drop it
+  there.** Both make a marker the base held read as new when an agent
+  implements the code stub beside it, which is the R035 class of false alarm.
+- **Key a code stub by its line text without its trailing comment.** An edit
+  to a code stub's line is an edit to code, and no replay row shows the case.
+- **Name only the lines that edit distance leaves unpaired, or read the git
+  diff.** Edit distance can drop the new marker from the list when a marker
+  is reworded, and it would be klin's first similarity heuristic. The diff
+  shows a typo fix and a new line both as added lines, and `stubs` would then
+  depend on git's diff choices.
+- **Carry `new_lines` as an array.** An array would amend spec 4.5, which
+  allows only a number or a string as a value, and no reader in klin parses
+  the list.
