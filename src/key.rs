@@ -93,8 +93,8 @@ pub const SKIP_DIRS: Key = Key {
 };
 
 /// The two keys one entry of the `build` list holds, which `config::BUILD` states.
-pub const RUN: &str = "run";
-pub const ROOT: &str = "root";
+pub const BUILD_RUN: &str = "run";
+pub const BUILD_ROOT: &str = "root";
 
 /// Every language name a table holds, with the extensions that name selects. Two rows under one
 /// name, such as TypeScript and TSX, are one row here, because the name selects both.

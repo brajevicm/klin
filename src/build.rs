@@ -6,7 +6,7 @@ use crate::changed::Change;
 use crate::check::{self, Said};
 use crate::config::{self, Config};
 use crate::error::Error;
-use crate::key::{ROOT, RUN};
+use crate::key::{BUILD_ROOT, BUILD_RUN};
 use crate::project::Project;
 use crate::scope;
 use crate::shell;
@@ -89,13 +89,13 @@ pub fn plan(project: &Project) -> Result<Plan, Error> {
 
 fn entry(config: &Config, item: &serde_json::Map<String, Value>) -> Result<Entry, Error> {
     let run = item
-        .get(RUN)
+        .get(BUILD_RUN)
         .and_then(Value::as_str)
-        .ok_or_else(|| config.missing(BUILD, RUN))?;
-    let root = match item.get(ROOT) {
+        .ok_or_else(|| config.missing(BUILD, BUILD_RUN))?;
+    let root = match item.get(BUILD_ROOT) {
         None => None,
         Some(Value::String(at)) => Some(at.clone()),
-        Some(_) => return Err(config.malformed(BUILD, ROOT, "a directory in the tree")),
+        Some(_) => return Err(config.malformed(BUILD, BUILD_ROOT, "a directory in the tree")),
     };
     Ok(Entry {
         root,
@@ -134,9 +134,9 @@ impl Entry {
     fn value(&self) -> Value {
         let mut out = serde_json::Map::new();
         if let Some(root) = &self.root {
-            out.insert(ROOT.into(), root.clone().into());
+            out.insert(BUILD_ROOT.into(), root.clone().into());
         }
-        out.insert(RUN.into(), self.run.clone().into());
+        out.insert(BUILD_RUN.into(), self.run.clone().into());
         Value::Object(out)
     }
 }
