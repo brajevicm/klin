@@ -75,10 +75,16 @@
           "src/public_api.rs",
           "src/reachability.rs",
           "src/sarif.rs",
-          "src/stubs.rs",
-          "src/surface"
+          "src/stubs.rs"
         ],
-        "can_use": ["catalogue", "project", "syntax", "core", "window"]
+        "can_use": [
+          "catalogue",
+          "contract",
+          "project",
+          "syntax",
+          "core",
+          "window"
+        ]
       },
       "syntax": {
         "in": "src/syntax",
@@ -89,8 +95,8 @@
         "can_use": ["catalogue", "syntax", "core", "window"]
       },
       "catalogue": {
-        "in": ["src/check.rs", "src/config.rs", "src/reference.rs"],
-        "can_use": ["checks", "project", "syntax", "core"]
+        "in": ["src/check/catalogue.rs", "src/reference.rs"],
+        "can_use": ["checks", "contract", "project", "syntax", "core"]
       },
       "host": { "in": "src/host", "can_use": ["core"] },
       "journal": {
@@ -99,11 +105,15 @@
       },
       "stats": {
         "in": "src/stats.rs",
-        "can_use": ["catalogue", "journal", "window", "core"]
+        "can_use": ["catalogue", "contract", "journal", "window", "core"]
       },
       "window": {
         "in": ["src/radius.rs", "src/turn.rs"],
         "can_use": ["catalogue", "host", "journal", "core"]
+      },
+      "contract": {
+        "in": ["src/check/contract.rs", "src/check/holes.rs"],
+        "can_use": ["project", "syntax", "core"]
       },
       "core": {
         "in": [
@@ -112,6 +122,7 @@
           "src/cache.rs",
           "src/ceiling.rs",
           "src/changed.rs",
+          "src/config.rs",
           "src/coverage.rs",
           "src/error.rs",
           "src/git.rs",
@@ -123,9 +134,10 @@
           "src/record.rs",
           "src/scope.rs",
           "src/state.rs",
+          "src/surface",
           "src/write.rs"
         ],
-        "can_use": ["catalogue", "project", "syntax", "core"]
+        "can_use": ["catalogue", "contract", "project", "syntax", "core"]
       }
     }
   }
