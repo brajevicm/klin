@@ -10,6 +10,7 @@ use std::path::Path;
 use crate::check::{Context, Sink};
 use crate::config::Config;
 use crate::error::Error;
+use crate::key::Section;
 use crate::project::Project;
 use crate::ratchet::{self, Finding};
 use crate::scope::Selector;
@@ -48,10 +49,11 @@ struct Explained<'a> {
 pub(super) fn run(
     named: Option<&str>,
     args: &Args,
+    sections: &[Section],
     start: &Path,
     out: &mut String,
 ) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let config = &project.config;
     let conventions = conventions(config)?;
     let places = walked(config, project.tree())?;

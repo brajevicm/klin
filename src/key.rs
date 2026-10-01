@@ -27,9 +27,26 @@ pub enum Shape {
 pub enum SectionShape {
     Object,
     DocumentMap,
-    FalseOnly,
-    Conventions,
+    /// A section that reads no policy, with what a person may write instead.
+    FalseOnly(&'static str),
+    /// A map of named conventions, with the fields a person may write for a key a convention
+    /// reads, which an unknown-field error names.
+    Conventions(&'static [(&'static str, &'static str)]),
     Sarif,
+}
+
+/// What `config` knows of one section: enough to judge its shape before any gate runs, and
+/// nothing a gate does. The catalogue builds these and the runner passes them to `config`, so
+/// `config` names no check. Spec 5.2, 14.
+#[derive(Clone, Copy)]
+pub struct Section {
+    /// What the command is called, which for two checks is not the name of the section.
+    pub command: &'static str,
+    pub name: &'static str,
+    /// Whether absence derives the section, which is when a retired list of entries is named.
+    pub automatic: bool,
+    pub keys: &'static [Key],
+    pub shape: SectionShape,
 }
 
 /// One configuration key, declared beside the code that reads it. `rule` is the rule klin

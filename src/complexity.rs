@@ -12,7 +12,7 @@ use crate::check::{self, ContentCost, Context, Sink};
 use crate::coverage::{self, Files};
 use crate::error::Error;
 use crate::files;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::{self, Values};
@@ -372,8 +372,8 @@ struct Spec {
 type Provenance = Vec<(String, Option<Value>)>;
 type Notes = Vec<(String, String)>;
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     gate(&context(args, &project), &mut Sink::unrecorded(out))
 }
 
@@ -602,7 +602,13 @@ fn pinned(
     key: Key,
     value: &Value,
 ) -> Result<(Ceiling, (String, Option<Value>)), Error> {
-    let ceiling = ceiling::read(&project.config, SECTION, key.name, value, "a whole number")?;
+    let ceiling = ceiling::read(
+        &project.config.file,
+        SECTION,
+        key.name,
+        value,
+        "a whole number",
+    )?;
     let line = format!("pinned: {SECTION} {} {ceiling}", key.name);
     Ok((ceiling, (line, None)))
 }

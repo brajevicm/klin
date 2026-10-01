@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::check::{Context, Sink};
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::markers::{self, Args, Kind, Language, TestCode, TestIdioms};
 use crate::ratchet::{Evaluator, Remedy};
 use crate::record::Values;
@@ -163,8 +163,8 @@ pub const KIND: Kind = Kind {
     },
 };
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    markers::run(&KIND, args, start, out)
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    markers::run(&KIND, args, sections, start, out)
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {

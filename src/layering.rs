@@ -20,7 +20,7 @@ use serde_json::{Map, Value};
 use crate::check::{Context, Sink};
 use crate::config::{self, Config};
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::modules::{
     self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
 };
@@ -175,8 +175,8 @@ impl Placed<'_> {
     }
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let at = Context {
         strict: args.strict,
         quiet: args.quiet,

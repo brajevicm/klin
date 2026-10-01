@@ -18,7 +18,7 @@ use crate::check::{self, Context, Said, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::project::Project;
 
 pub const SECTION: &str = "doc_size";
@@ -92,13 +92,13 @@ struct Listing {
     said: Vec<Said>,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
     if let Some(named) = &args.file
         && !named.is_file()
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
-    let project = Project::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     evaluate(
         &context(args, &project),
         args.file.as_deref(),
@@ -364,7 +364,13 @@ fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> 
         said: Vec::new(),
     };
     for (name, value) in pins {
-        let ceiling = ceiling::read(config, SECTION, name, value, "a whole number of words")?;
+        let ceiling = ceiling::read(
+            &config.file,
+            SECTION,
+            name,
+            value,
+            "a whole number of words",
+        )?;
         listing
             .said
             .push((format!("pinned: {SECTION} {name} {ceiling}"), None));

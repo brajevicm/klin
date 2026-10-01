@@ -18,7 +18,7 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
-use crate::key::{self, Key};
+use crate::key::{self, Key, Section};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
@@ -136,8 +136,8 @@ struct State {
     proven: bool,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let at = Context {
         strict: args.strict,
         quiet: args.quiet,
@@ -271,7 +271,7 @@ fn family(config: &Config, entry: &Value, scope: &Scope) -> Result<Family, Error
     let values = entry
         .as_object()
         .ok_or_else(|| config.malformed(SECTION, "entry", "an object"))?;
-    ratchet::no_retired_key(&config.file, SECTION, values)?;
+    crate::config::no_retired_key(&config.file, SECTION, values)?;
     let name = values
         .get(NAME.name)
         .and_then(Value::as_str)

@@ -21,7 +21,7 @@ use crate::check::{Context, Sink};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
@@ -88,7 +88,7 @@ const MATCHERS: [Key; 3] = [TEXT, CODE, FILES];
 
 /// The keys a person writes for a convention that belong to another shape of rule, each with the
 /// key a convention reads for the same intent, so a near miss names the key to use.
-const INSTEAD: &[(&str, &str)] = &[
+pub const INSTEAD: &[(&str, &str)] = &[
     ("exclude", EXCEPT.name),
     ("exceptions", EXCEPT.name),
     ("roots", IN.name),
@@ -282,11 +282,11 @@ struct Place {
     path: PathBuf,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
     if let Some(named) = &args.report {
-        return report::run(named.as_deref(), args, start, out);
+        return report::run(named.as_deref(), args, sections, start, out);
     }
-    let project = Project::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let at = Context {
         only: args.only.as_deref(),
         strict: args.strict,
@@ -416,37 +416,6 @@ fn described(rule: &Rule, gate: &str, mut found: Vec<Finding>) -> Vec<Finding> {
     found
 }
 
-/// Every accepted entry for a convention must name one the section defines. A convention renamed
-/// or removed retires its debt, and an entry left behind would otherwise hold nothing in silence
-/// while the gate it names never runs. Refused before any gate runs. A section that is absent or
-/// `false` runs no gate, so its entries wait for it, as an excluded gate's entries do. Spec 8.4.
-pub fn no_stale_debt(file: &Path, data: &Value) -> Result<(), Error> {
-    let Some(defined) = data.get(SECTION).and_then(Value::as_object) else {
-        return Ok(());
-    };
-    let listed = data.get(config::ACCEPTED.name).and_then(Value::as_array);
-    for entry in listed.into_iter().flatten() {
-        let Some(gate) = entry.get("gate").and_then(Value::as_str) else {
-            continue;
-        };
-        let Some(name) = gate
-            .strip_prefix(SECTION)
-            .and_then(|rest| rest.strip_prefix('/'))
-        else {
-            continue;
-        };
-        if !defined.contains_key(name) {
-            return Err(Error(format!(
-                "{}: the accepted entry for {gate} names no convention the \"{SECTION}\" section \
-                 defines — renaming or removing a convention retires its debt, so delete the \
-                 entry or restore the convention",
-                file.display()
-            )));
-        }
-    }
-    Ok(())
-}
-
 fn conventions(config: &Config) -> Result<Vec<Convention>, Error> {
     let listed = config.required(SECTION)?.as_object().ok_or_else(|| {
         Error(format!(
@@ -481,7 +450,7 @@ fn convention(name: &str, rule: &Value) -> Result<Convention, String> {
     let fields = rule
         .as_object()
         .ok_or("must be an object with a \"remedy\" and one of: text, code, files")?;
-    known(fields)?;
+    config::known_convention(fields, KEYS, INSTEAD)?;
     let (matcher, written) = matcher(fields)?;
     let (within, except) = scope(fields)?;
     Ok(Convention {
@@ -510,34 +479,6 @@ fn scope(fields: &Map<String, Value>) -> Result<(Vec<Selector>, Vec<Selector>), 
         scope::selectors(fields, IN)?,
         scope::selectors(fields, EXCEPT)?,
     ))
-}
-
-/// A key a convention does not read would measure nothing, so it is refused, naming the key a
-/// person most likely meant.
-pub(crate) fn known(fields: &Map<String, Value>) -> Result<(), String> {
-    let Some(unknown) = fields
-        .keys()
-        .find(|key| !KEYS.iter().any(|held| held.name == *key))
-    else {
-        return Ok(());
-    };
-    let candidates = || {
-        KEYS.iter()
-            .map(|key| (key.name, key.name))
-            .chain(INSTEAD.iter().copied())
-    };
-    let meant = crate::config::nearest(unknown, candidates().map(|(near, _)| near))
-        .and_then(|near| candidates().find(|(held, _)| *held == near));
-    Err(match meant {
-        Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
-        None => format!(
-            "has unknown field \"{unknown}\" — a convention reads only: {}",
-            KEYS.iter()
-                .map(|key| key.name)
-                .collect::<Vec<&str>>()
-                .join(", ")
-        ),
-    })
 }
 
 /// The one matcher key a convention states.

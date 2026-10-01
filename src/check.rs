@@ -15,7 +15,7 @@ use crate::base::{self, Prior};
 use crate::changed::Change;
 use crate::config::Config;
 use crate::error::Error;
-use crate::key::{Key, Languages, SectionShape};
+use crate::key::{Key, Languages, Section, SectionShape};
 use crate::project::Project;
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
@@ -391,7 +391,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "broken citations",
         },
         gate_per_entry: false,
-        shape: SectionShape::FalseOnly,
+        shape: SectionShape::FalseOnly(doc_citations::POLICY),
     },
     Row {
         name: "lockfile",
@@ -553,7 +553,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "broken public contracts",
         },
         gate_per_entry: false,
-        shape: SectionShape::FalseOnly,
+        shape: SectionShape::FalseOnly(public_api::POLICY),
     },
     Row {
         name: "conventions",
@@ -571,7 +571,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "convention breaches",
         },
         gate_per_entry: false,
-        shape: SectionShape::Conventions,
+        shape: SectionShape::Conventions(conventions::INSTEAD),
     },
     Row {
         name: "sarif",
@@ -593,18 +593,18 @@ pub const CATALOGUE: &[Row] = &[
     },
 ];
 
-/// The section each check reads, which config.rs judges the top-level keys against.
-pub fn sections() -> impl Iterator<Item = &'static str> {
-    CATALOGUE.iter().map(|check| check.section)
-}
-
-/// The section behind a key that is what the command is called, so an error can say which of
-/// the two the config wants. `None` for a check whose name is its section.
-pub fn command_named(key: &str) -> Option<&'static str> {
+/// The section each check reads, as the data `config` judges a configuration's shape by.
+pub fn sections() -> Vec<Section> {
     CATALOGUE
         .iter()
-        .find(|check| check.name != check.section && check.name == key)
-        .map(|check| check.section)
+        .map(|check| Section {
+            command: check.name,
+            name: check.section,
+            automatic: check.activation == Activation::Automatic,
+            keys: check.keys,
+            shape: check.shape,
+        })
+        .collect()
 }
 
 /// Every check by name, for the errors that list what a person may write.

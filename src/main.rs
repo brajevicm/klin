@@ -162,23 +162,25 @@ fn main() -> ExitCode {
 }
 
 fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let sections = &check::sections();
     match command {
-        Check::DocCitations(args) => doc_citations::run(args, start, out),
-        Check::DocSize(args) => doc_size::run(args, start, out),
-        Check::Escapes(args) => escapes::run(args, start, out),
-        Check::Stubs(args) => stubs::run(args, start, out),
-        Check::Conventions(args) => conventions::run(args, start, out),
-        Check::Sarif(args) => sarif::run(args, start, out),
+        Check::DocCitations(args) => doc_citations::run(args, sections, start, out),
+        Check::DocSize(args) => doc_size::run(args, sections, start, out),
+        Check::Escapes(args) => escapes::run(args, sections, start, out),
+        Check::Stubs(args) => stubs::run(args, sections, start, out),
+        Check::Conventions(args) => conventions::run(args, sections, start, out),
+        Check::Sarif(args) => sarif::run(args, sections, start, out),
     }
 }
 
 fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let sections = &check::sections();
     match command {
-        Structural::Complexity(args) => complexity::run(args, start, out),
-        Structural::DeadSymbols(args) => dead_symbols::run(args, start, out),
-        Structural::Reachability(args) => reachability::run(args, start, out),
-        Structural::Layering(args) => layering::run(args, start, out),
-        Structural::PublicApi(args) => public_api::run(args, start, out),
+        Structural::Complexity(args) => complexity::run(args, sections, start, out),
+        Structural::DeadSymbols(args) => dead_symbols::run(args, sections, start, out),
+        Structural::Reachability(args) => reachability::run(args, sections, start, out),
+        Structural::Layering(args) => layering::run(args, sections, start, out),
+        Structural::PublicApi(args) => public_api::run(args, sections, start, out),
     }
 }
 
@@ -194,7 +196,7 @@ fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, Error>
 
 fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Tool::Radius(args) => turn::run(args, start, out),
+        Tool::Radius(args) => turn::run(args, &check::sections(), start, out),
         Tool::Turn(args) => turn::moved(args, start, out),
         Tool::Stats(args) => stats::run(args, start, out),
         Tool::Reference(args) => reference::run(args, out),

@@ -18,12 +18,16 @@ use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 
 pub const SECTION: &str = "doc_citations";
+
+/// What a person may write instead of a policy, which this section does not read. Spec 5.4.
+pub const POLICY: &str =
+    "documents and citation roots are discovered; remove the section, or set it to false";
 
 /// The section reads no keys: it is absent, or `false`. Spec 5.4, 5.8, ADR 0040.
 pub const KEYS: &[Key] = &[];
@@ -85,13 +89,13 @@ struct Index {
     basenames: BTreeMap<String, Vec<String>>,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
     if let Some(named) = &args.file
         && !named.is_file()
     {
         return Err(Error(format!("no such file: {}", named.display())));
     }
-    let project = Project::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     evaluate(
         &context(args, &project),
         args.file.as_deref(),

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::error::Error;
-use crate::key::{Key, SectionShape, Shape};
+use crate::key::{Key, Section, SectionShape, Shape};
 
 const FILENAME: &str = "klin.json";
 
@@ -20,6 +20,21 @@ const RETIRED: &[(&str, &str)] = &[
     (
         "version",
         "the binary's version changes no gate, and a configuration names none — delete the key",
+    ),
+];
+
+/// The section keys klin no longer reads, each with what to do instead. Section 14.
+const RETIRED_KEYS: &[(&str, &str)] = &[
+    (
+        "baseline",
+        "which is not a key klin reads — a run compares the working tree against the base \
+         commit, and a person accepts debt in the \"accepted\" list. Delete the key and the \
+         file it names.",
+    ),
+    (
+        "sources",
+        "which klin now spells \"roots\", the name every section uses for the same thing. \
+         Rename the key, so nothing measures a different set in silence.",
     ),
 ];
 
@@ -71,15 +86,20 @@ pub struct Config {
 
 impl Config {
     /// The config, or an empty one when there is no file. `klin.json` is optional: a tree that
-    /// has none is gated by every Automatic check over its facts. ADR 0016, ADR 0040, spec 5.1.
-    pub fn load(explicit: Option<&Path>, start: &Path) -> Result<Config, Error> {
+    /// has none is gated by every Automatic check over its facts. The sections are the ones the
+    /// catalogue declares, which the file is judged against. ADR 0016, ADR 0040, spec 5.1.
+    pub fn load(
+        explicit: Option<&Path>,
+        start: &Path,
+        sections: &[Section],
+    ) -> Result<Config, Error> {
         let Some(file) = named(explicit, start) else {
             return Ok(Config::unwritten(start));
         };
         let text = std::fs::read_to_string(&file).map_err(|why| Error::unreadable(&file, why))?;
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
-        well_formed(&file, &data)?;
+        well_formed(&file, &data, sections)?;
         Ok(Config { file, root, data })
     }
 
@@ -178,17 +198,17 @@ impl Config {
 
 /// What every command refuses before it reads a section: the config errors of section 14,
 /// named against the file that holds them.
-fn well_formed(file: &Path, data: &Value) -> Result<(), Error> {
-    every_key_is_one_klin_reads(file, data)?;
+fn well_formed(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {
+    every_key_is_one_klin_reads(file, data, sections)?;
     no_section_names_a_retired_key(file, data)?;
-    structure(file, data)?;
-    crate::conventions::no_stale_debt(file, data)?;
+    structure(file, data, sections)?;
+    no_stale_debt(file, data, sections)?;
     crate::ceiling::every_schedule(file, data)
 }
 
 /// The structural contract shared by the native reader and the generated schema. Semantic rules
 /// that need a tree, parser or dated step stay in the check that owns them. Spec 5.2, 5.3, 5.5.
-fn structure(file: &Path, data: &Value) -> Result<(), Error> {
+fn structure(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {
     let fields = data
         .as_object()
         .ok_or_else(|| Error(format!("{}: klin.json must be an object", file.display())))?;
@@ -197,56 +217,50 @@ fn structure(file: &Path, data: &Value) -> Result<(), Error> {
             value_shape(file, key.name, key, value)?;
         }
     }
-    for check in crate::check::CATALOGUE {
-        if let Some(value) = fields.get(check.section) {
+    for check in sections {
+        if let Some(value) = fields.get(check.name) {
             section_shape(file, check, value)?;
         }
     }
     Ok(())
 }
 
-fn section_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+fn section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
     match check.shape {
         SectionShape::Object => object_section_shape(file, check, value),
-        SectionShape::DocumentMap => document_map_shape(file, check.section, value),
-        SectionShape::FalseOnly => false_only_shape(file, check, value),
-        SectionShape::Conventions => dynamic_conventions(file, check, value),
+        SectionShape::DocumentMap => document_map_shape(file, check, value),
+        SectionShape::FalseOnly(_) => false_only_shape(file, check, value),
+        SectionShape::Conventions(instead) => dynamic_conventions(file, check, instead, value),
         SectionShape::Sarif => named_entries_shape(file, check, value),
     }
 }
 
-fn object_section_shape(
-    file: &Path,
-    check: &crate::check::Row,
-    value: &Value,
-) -> Result<(), Error> {
-    if check.activation == crate::check::Activation::Automatic && matches!(value, Value::Array(_)) {
-        return retired_list(file, check.section);
+fn object_section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
+    if check.automatic && matches!(value, Value::Array(_)) {
+        return retired_list(file, check);
     }
-    disabled_object(file, check.section, value, check.keys)
+    disabled_object(file, check.name, value, check.keys)
 }
 
-fn false_only_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
-    match (
-        check.activation == crate::check::Activation::Automatic,
-        value,
-    ) {
+fn false_only_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
+    match (check.automatic, value) {
         (_, Value::Bool(false)) => Ok(()),
-        (true, Value::Array(_)) => retired_list(file, check.section),
+        (true, Value::Array(_)) => retired_list(file, check),
         (true, Value::Object(_)) => Err(Error(format!(
             "{}: \"{}\" reads no policy — {}",
             file.display(),
-            check.section,
-            policy_shape(check.section)
+            check.name,
+            policy(check.shape)
         ))),
-        _ => Err(shape_error(file, check.section, check.section, "false")),
+        _ => Err(shape_error(file, check.name, check.name, "false")),
     }
 }
 
-fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), Error> {
+fn document_map_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
+    let section = check.name;
     match value {
         Value::Bool(false) => Ok(()),
-        Value::Array(_) => retired_list(file, section),
+        Value::Array(_) => retired_list(file, check),
         Value::Object(fields) => {
             if fields.is_empty() {
                 return Err(Error(format!(
@@ -256,21 +270,27 @@ fn document_map_shape(file: &Path, section: &str, value: &Value) -> Result<(), E
             }
             fields
                 .iter()
-                .try_for_each(|(name, value)| document_shape(file, section, name, value))
+                .try_for_each(|(name, value)| document_shape(file, check, name, value))
         }
         _ => Err(Error(format!(
             "{}: \"{section}\" must be an object or false — {}",
             file.display(),
-            policy_shape(section)
+            policy(check.shape)
         ))),
     }
 }
 
-fn document_shape(file: &Path, section: &str, name: &str, value: &Value) -> Result<(), Error> {
+/// One pinned document, judged by the keys the section declares for every document it maps.
+fn document_shape(file: &Path, check: &Section, name: &str, value: &Value) -> Result<(), Error> {
+    let section = check.name;
     if name.is_empty() {
         return Err(document_error(file, section, name));
     }
-    match value_shape(file, section, &crate::doc_size::DOCUMENT, value) {
+    match check
+        .keys
+        .iter()
+        .try_for_each(|key| value_shape(file, section, key, value))
+    {
         Ok(()) => Ok(()),
         Err(error) if value.is_object() => Err(error),
         Err(_) => Err(document_error(file, section, name)),
@@ -284,11 +304,12 @@ fn document_error(file: &Path, section: &str, name: &str) -> Error {
     ))
 }
 
-fn retired_list(file: &Path, section: &str) -> Result<(), Error> {
+fn retired_list(file: &Path, check: &Section) -> Result<(), Error> {
     Err(Error(format!(
-        "{}: \"{section}\" no longer accepts a list of entries, because klin discovers what it applies to — {}",
+        "{}: \"{}\" no longer accepts a list of entries, because klin discovers what it applies to — {}",
         file.display(),
-        policy_shape(section)
+        check.name,
+        policy(check.shape)
     )))
 }
 
@@ -367,14 +388,7 @@ fn ceiling_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result
         return Ok(());
     }
     if value.is_object() {
-        return crate::ceiling::read(
-            &Config::empty(file),
-            section,
-            key.name,
-            value,
-            "a whole number",
-        )
-        .map(|_| ());
+        return crate::ceiling::read(file, section, key.name, value, "a whole number").map(|_| ());
     }
     Err(shape_error(
         file,
@@ -591,28 +605,36 @@ fn layers_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<
     Ok(())
 }
 
-fn dynamic_conventions(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+fn dynamic_conventions(
+    file: &Path,
+    check: &Section,
+    instead: &[(&'static str, &'static str)],
+    value: &Value,
+) -> Result<(), Error> {
     match value {
         Value::Bool(false) => Ok(()),
-        Value::Object(conventions) if !conventions.is_empty() => conventions
-            .iter()
-            .try_for_each(|(name, value)| convention_shape_entry(file, check, name, value)),
+        Value::Object(conventions) if !conventions.is_empty() => {
+            conventions.iter().try_for_each(|(name, value)| {
+                convention_shape_entry(file, check, instead, name, value)
+            })
+        }
         Value::Object(_) => Err(Error(format!(
             "{}: \"{}\" names no convention — write one, or set the section to false",
             file.display(),
-            check.section
+            check.name
         ))),
         _ => Err(Error(format!(
             "{}: \"{}\" is an object of convention names, each with a \"remedy\" and one of: text, code, files",
             file.display(),
-            check.section
+            check.name
         ))),
     }
 }
 
 fn convention_shape_entry(
     file: &Path,
-    check: &crate::check::Row,
+    check: &Section,
+    instead: &[(&'static str, &'static str)],
     name: &str,
     value: &Value,
 ) -> Result<(), Error> {
@@ -622,12 +644,81 @@ fn convention_shape_entry(
             file.display()
         ))
     })?;
-    crate::conventions::known(fields)
+    known_convention(fields, check.keys, instead)
         .map_err(|why| Error(format!("{}: convention \"{name}\" {why}", file.display())))?;
     convention_fields(file, check.keys, name, fields)?;
     convention_matcher(file, name, fields)?;
     convention_language(file, check.keys, name, fields)?;
     convention_remedy(file, name, fields)
+}
+
+/// A key a convention does not read would measure nothing, so it is refused, naming the key a
+/// person most likely meant: one the convention reads, or the one `instead` maps a near miss to.
+pub fn known_convention(
+    fields: &Map<String, Value>,
+    keys: &[Key],
+    instead: &[(&'static str, &'static str)],
+) -> Result<(), String> {
+    let Some(unknown) = fields
+        .keys()
+        .find(|key| !keys.iter().any(|held| held.name == *key))
+    else {
+        return Ok(());
+    };
+    let candidates = || {
+        keys.iter()
+            .map(|key| (key.name, key.name))
+            .chain(instead.iter().copied())
+    };
+    let meant = nearest(unknown, candidates().map(|(near, _)| near))
+        .and_then(|near| candidates().find(|(held, _)| *held == near));
+    Err(match meant {
+        Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
+        None => format!(
+            "has unknown field \"{unknown}\" — a convention reads only: {}",
+            keys.iter()
+                .map(|key| key.name)
+                .collect::<Vec<&str>>()
+                .join(", ")
+        ),
+    })
+}
+
+/// Every accepted entry for a convention must name one the section defines. A convention renamed
+/// or removed retires its debt, and an entry left behind would otherwise hold nothing in silence
+/// while the gate it names never runs. Refused before any gate runs. A section that is absent or
+/// `false` runs no gate, so its entries wait for it, as an excluded gate's entries do. Spec 8.4.
+fn no_stale_debt(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {
+    let listed = data.get(ACCEPTED.name).and_then(Value::as_array);
+    for check in sections {
+        let SectionShape::Conventions(_) = check.shape else {
+            continue;
+        };
+        let Some(defined) = data.get(check.name).and_then(Value::as_object) else {
+            continue;
+        };
+        for entry in listed.into_iter().flatten() {
+            let Some(gate) = entry.get("gate").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(name) = gate
+                .strip_prefix(check.name)
+                .and_then(|rest| rest.strip_prefix('/'))
+            else {
+                continue;
+            };
+            if !defined.contains_key(name) {
+                return Err(Error(format!(
+                    "{}: the accepted entry for {gate} names no convention the \"{}\" section \
+                     defines — renaming or removing a convention retires its debt, so delete the \
+                     entry or restore the convention",
+                    file.display(),
+                    check.name
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn convention_fields(
@@ -752,25 +843,25 @@ fn language_names(keys: &[Key]) -> Vec<&'static str> {
         .unwrap_or_default()
 }
 
-fn named_entries_shape(file: &Path, check: &crate::check::Row, value: &Value) -> Result<(), Error> {
+fn named_entries_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
     let Value::Bool(false) = value else {
         let Some(entries) = value.as_array() else {
             return Err(Error(format!(
                 "{}: \"{}\" is a list of entries, each its own gate under its own \"name\"",
                 file.display(),
-                check.section
+                check.name
             )));
         };
         for entry in entries {
             let Some(fields) = entry.as_object() else {
                 return Err(shape_error(
                     file,
-                    check.section,
-                    check.section,
+                    check.name,
+                    check.name,
                     "a list of entries, or false",
                 ));
             };
-            fields_shape(file, check.section, fields, check.keys, false)?;
+            fields_shape(file, check.name, fields, check.keys, false)?;
         }
         return Ok(());
     };
@@ -844,20 +935,17 @@ const TOPOLOGY: &[&str] = &[
 /// A section key klin renamed, and the name the section reads it by now. Spec 5.2.
 const RENAMED: &[(&str, &str)] = &[("skip_rust_tests", "skip_test_idioms")];
 
+/// What an object section may say to narrow its check.
+const NARROW: &str = "narrow the check only with \"in\" / \"except\", or set it to false";
+
 /// What a section may say, in the words of the error that refused what it said.
-fn policy_shape(section: &str) -> &'static str {
-    match section {
-        crate::doc_size::SECTION => {
+fn policy(shape: SectionShape) -> &'static str {
+    match shape {
+        SectionShape::DocumentMap => {
             "write a map of document path to ceiling, such as {\"README.md\": 1200}, or false"
         }
-        crate::doc_citations::SECTION => {
-            "documents and citation roots are discovered; remove the section, or set it to false"
-        }
-        crate::public_api::SECTION => {
-            "public surfaces are derived from Cargo library targets and package entry points; \
-             remove the section, or set it to false"
-        }
-        _ => "narrow the check only with \"in\" / \"except\", or set it to false",
+        SectionShape::FalseOnly(instead) => instead,
+        _ => NARROW,
     }
 }
 
@@ -876,9 +964,8 @@ pub fn known_fields(
     if TOPOLOGY.contains(&unknown.as_str()) {
         return Err(Error(format!(
             "{}: \"{section}\" no longer reads \"{unknown}\" — repository topology is \
-             discovered; {}",
-            file.display(),
-            policy_shape(section)
+             discovered; {NARROW}",
+            file.display()
         )));
     }
     if let Some((_, now)) = RENAMED
@@ -937,7 +1024,20 @@ fn no_section_names_a_retired_key(file: &Path, data: &Value) -> Result<(), Error
     };
     for (name, section) in fields {
         if let Some(values) = section.as_object() {
-            crate::ratchet::no_retired_key(file, name, values)?;
+            no_retired_key(file, name, values)?;
+        }
+    }
+    Ok(())
+}
+
+/// A section naming a key klin retired, refused before any gate runs. Section 14.
+pub fn no_retired_key(file: &Path, name: &str, values: &Map<String, Value>) -> Result<(), Error> {
+    for (retired, why) in RETIRED_KEYS {
+        if values.contains_key(*retired) {
+            return Err(Error(format!(
+                "{}: \"{name}\" names a \"{retired}\", {why}",
+                file.display()
+            )));
         }
     }
     Ok(())
@@ -954,21 +1054,31 @@ pub fn present(explicit: Option<&Path>, start: &Path) -> bool {
 
 /// A key klin does not read measures nothing and would otherwise pass in silence, so it is a
 /// config error naming the file and the key. Sections 5.2 and 14.
-fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
+fn every_key_is_one_klin_reads(
+    file: &Path,
+    data: &Value,
+    sections: &[Section],
+) -> Result<(), Error> {
     let Some(fields) = data.as_object() else {
         return Ok(());
     };
-    let known = |key: &str| {
-        KEYS.iter().any(|held| held.name == key) || crate::check::sections().any(|read| read == key)
+    let every = || {
+        KEYS.iter()
+            .map(|key| key.name)
+            .chain(sections.iter().map(|section| section.name))
     };
-    let Some(unknown) = fields.keys().find(|key| !known(key)) else {
+    let Some(unknown) = fields.keys().find(|key| !every().any(|read| read == *key)) else {
         return Ok(());
     };
-    if let Some(section) = crate::check::command_named(unknown) {
+    if let Some(section) = sections
+        .iter()
+        .find(|section| section.command != section.name && section.command == unknown)
+    {
         return Err(Error(format!(
             "{}: \"{unknown}\" is what the command is called — the section it reads is \
-             \"{section}\"",
-            file.display()
+             \"{}\"",
+            file.display(),
+            section.name
         )));
     }
     if let Some((_, instead)) = RETIRED.iter().find(|(retired, _)| retired == unknown) {
@@ -977,11 +1087,6 @@ fn every_key_is_one_klin_reads(file: &Path, data: &Value) -> Result<(), Error> {
             file.display()
         )));
     }
-    let every = || {
-        KEYS.iter()
-            .map(|key| key.name)
-            .chain(crate::check::sections())
-    };
     let meant = nearest(unknown, every())
         .map(|meant| format!("\nDid you mean \"{meant}\"?"))
         .unwrap_or_default();

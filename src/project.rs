@@ -16,6 +16,7 @@ use crate::base::{self, Prior, Window};
 use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
+use crate::key::Section;
 use crate::syntax::structural::Extracted;
 use crate::{files, scope, survey};
 
@@ -220,10 +221,14 @@ pub struct Project {
 }
 
 impl Project {
-    /// The one load a run does: the config found from `start`, validated, and a tree at its
-    /// root with nothing read yet. Spec 5.1, 14.
-    pub fn load(explicit: Option<&Path>, start: &Path) -> Result<Project, Error> {
-        let config = Config::load(explicit, start)?;
+    /// The one load a run does: the config found from `start`, validated against the sections
+    /// the runner passes, and a tree at its root with nothing read yet. Spec 5.1, 14.
+    pub fn load(
+        explicit: Option<&Path>,
+        start: &Path,
+        sections: &[Section],
+    ) -> Result<Project, Error> {
+        let config = Config::load(explicit, start, sections)?;
         Ok(Project {
             by_hand: true,
             ..Project::of(config, start)

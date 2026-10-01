@@ -3,7 +3,6 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use crate::config::Config;
 use crate::error::Error;
 
 /// The value a measure may reach, either a number a person pinned or the lowest step of a dated
@@ -32,7 +31,7 @@ impl fmt::Display for Ceiling {
 }
 
 pub fn read(
-    config: &Config,
+    file: &Path,
     section: &str,
     key: &str,
     value: &Value,
@@ -42,13 +41,16 @@ pub fn read(
         return Ok(Ceiling { value, step: None });
     }
     let steps = value.as_object().ok_or_else(|| {
-        config.malformed(section, key, &format!("{unit} or an object of dated steps"))
+        Error(format!(
+            "{}: a \"{section}\" entry's \"{key}\" must be {unit} or an object of dated steps",
+            file.display()
+        ))
     })?;
     let today = today()?;
-    let (value, date) = due(config, section, key, steps, unit, &today)?
+    let (value, date) = due(file, section, key, steps, unit, &today)?
         .into_iter()
         .min()
-        .ok_or_else(|| no_step_due(&config.file, section, key, &today))?;
+        .ok_or_else(|| no_step_due(file, section, key, &today))?;
     Ok(Ceiling {
         value,
         step: Some(date),
@@ -111,7 +113,7 @@ pub fn is_schedule(fields: &Map<String, Value>) -> bool {
 /// The steps a schedule holds that today has reached, lowest value first once sorted. A step
 /// higher than an earlier one is allowed and never wins.
 fn due(
-    config: &Config,
+    file: &Path,
     section: &str,
     key: &str,
     steps: &Map<String, Value>,
@@ -121,17 +123,11 @@ fn due(
     let mut out = Vec::new();
     for (date, step) in steps {
         if !is_date(date) {
-            return Err(step_error(
-                config,
-                section,
-                key,
-                date,
-                "a date as YYYY-MM-DD",
-            ));
+            return Err(step_error(file, section, key, date, "a date as YYYY-MM-DD"));
         }
         let step = step
             .as_u64()
-            .ok_or_else(|| step_error(config, section, key, date, unit))?;
+            .ok_or_else(|| step_error(file, section, key, date, unit))?;
         if date.as_str() <= today {
             out.push((step, date.clone()));
         }
@@ -153,10 +149,10 @@ pub fn in_force(named: &[(&str, &Ceiling)]) -> String {
     }
 }
 
-fn step_error(config: &Config, section: &str, key: &str, date: &str, must_be: &str) -> Error {
+fn step_error(file: &Path, section: &str, key: &str, date: &str, must_be: &str) -> Error {
     Error(format!(
         "{}: the \"{section}\" \"{key}\" step \"{date}\" must be {must_be}",
-        config.file.display()
+        file.display()
     ))
 }
 

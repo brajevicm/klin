@@ -12,7 +12,7 @@ use crate::config::Config;
 use crate::coverage::{self, Files};
 use crate::error::Error;
 use crate::files;
-use crate::key::{self, Key};
+use crate::key::{self, Key, Section};
 use crate::project::{Project, Tests, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line};
 use crate::record::Values;
@@ -254,12 +254,18 @@ struct Walk {
     work: ContentCost,
 }
 
-pub fn run(kind: &Kind, args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(
+    kind: &Kind,
+    args: &Args,
+    sections: &[Section],
+    start: &Path,
+    out: &mut String,
+) -> Result<u8, Error> {
     if args.list_languages {
         list_languages(kind, out);
         return Ok(0);
     }
-    let project = Project::load(args.config.as_deref(), start)?;
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     gate(
         kind,
         &context(kind, args, &project),

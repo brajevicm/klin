@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 use crate::cache;
 use crate::config::{self, Config};
 use crate::error::Error;
+use crate::key::Section;
 use crate::state;
 use crate::turn;
 
@@ -99,9 +100,9 @@ pub fn spread(
 
 /// `klin radius --report`, which a person runs. It moves nothing, it raises no counter, and
 /// unlike the hook it names what it cannot read rather than staying quiet. ADR 0014.
-pub fn asked(root: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn asked(root: &Path, sections: &[Section], out: &mut String) -> Result<u8, Error> {
     let at = state::ready(root).map_err(Error)?;
-    let config = Config::load(None, root)?;
+    let config = Config::load(None, root, sections)?;
     let usual = usual(&config, root, Some(&at))?;
     let opened = turn::mark(root, &at).ok_or_else(|| {
         Error("no prompt mark is readable, so there is no turn to measure".to_string())

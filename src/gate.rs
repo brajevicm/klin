@@ -118,7 +118,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(_claim) = state::claimed(start, identity) else {
         return Ok(0);
     };
-    let loaded = Project::load(args.config.as_deref(), start);
+    let loaded = Project::load(args.config.as_deref(), start, &check::sections());
     if !args.hook {
         let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
         return refused(args, judged, out).map(|tally| code(&tally));

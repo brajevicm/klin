@@ -18,7 +18,7 @@ use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::hunks::Hunks;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
@@ -88,8 +88,8 @@ pub struct Args {
 
 /// Every entry of the section, judged one after another, which is what `klin gate` does with
 /// one gate per entry. The worst outcome is the command's. Spec 8.3, 8.6.
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let mut worst = 0;
     for (name, _) in check::named_entries(&project.config, SECTION)? {
         worst = worst.max(gate(

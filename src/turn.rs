@@ -12,6 +12,7 @@ use crate::git::Repo;
 use crate::handoff;
 use crate::host;
 use crate::journal;
+use crate::key::Section;
 use crate::radius;
 use crate::state;
 use crate::write::{AtomicWrite, atomic_write};
@@ -66,9 +67,9 @@ pub struct Stamp {
     pub intervened: bool,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
     if args.report {
-        return radius::asked(start, out);
+        return radius::asked(start, sections, out);
     }
     let Some((event, named, at, _claim)) = opening(start, out) else {
         return Ok(0);
@@ -83,15 +84,15 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         handoff::clear(start, &event.session);
     }
     if event.as_ref().is_some_and(|event| event.prompted) {
-        journaled_prompt(
+        let (enabled, facts) = prompt_facts(
             start,
             &at,
-            prompts,
             opened.as_deref(),
             tree.as_deref(),
-            event.as_ref(),
+            sections,
             out,
         );
+        journal::prompt(start, prompts, event.as_ref(), enabled, facts);
     }
     let mark = tree.as_deref().and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
@@ -131,28 +132,25 @@ fn opening(
     Some((event, root, at, claim))
 }
 
-/// The prompt line of spec 9.6 and 11.4: the counter, the session and excerpt from the event,
-/// and the radius facts, behind one config load so a `UserPromptSubmit` event reads klin.json
-/// once and not twice. A config klin cannot read carries no excerpt: the one case where klin
-/// cannot see `journal.prompt` is the case where it must not record the text.
-fn journaled_prompt(
+/// What the prompt line of spec 9.6 and 11.4 reads from the configuration: whether it records
+/// the excerpt, and the radius facts, behind one config load so a `UserPromptSubmit` event reads
+/// klin.json once and not twice. A config klin cannot read carries no excerpt: the one case
+/// where klin cannot see `journal.prompt` is the case where it must not record the text.
+fn prompt_facts(
     start: &Path,
     at: &Path,
-    prompts: u64,
     opened: Option<&str>,
     tree: Option<&str>,
-    event: Option<&host::Event>,
+    sections: &[Section],
     out: &mut String,
-) {
-    let config = Config::load(None, start).ok();
-    let (enabled, facts) = match &config {
-        Some(config) => (
-            journal::prompt_enabled(config),
-            radius::spread(config, start, at, opened, tree, out),
+) -> (bool, Option<Value>) {
+    match Config::load(None, start, sections) {
+        Ok(config) => (
+            journal::prompt_enabled(&config),
+            radius::spread(&config, start, at, opened, tree, out),
         ),
-        None => (false, None),
-    };
-    journal::prompt(start, prompts, event, enabled, facts);
+        Err(_) => (false, None),
+    }
 }
 
 /// Where this turn's window opened: the prompt mark the last event left, or the mark ref when

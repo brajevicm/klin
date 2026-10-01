@@ -17,7 +17,7 @@ use crate::base;
 use crate::check::{Context, Sink};
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Section};
 use crate::modules::{self, ModuleGraph, Topology};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
@@ -28,6 +28,10 @@ use crate::syntax::{self, structural};
 pub const SECTION: &str = "public_api";
 pub const NAME: &str = "public-api";
 pub const KEYS: &[Key] = &[];
+
+/// What a person may write instead of a policy, which this section does not read. Spec 5.4.
+pub const POLICY: &str = "public surfaces are derived from Cargo library targets and package entry points; \
+     remove the section, or set it to false";
 pub const REFERENCE_TEXT: &str = "A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050).";
 
 const BREAK: &str = "break";
@@ -79,8 +83,8 @@ struct Side {
     current: HashMap<String, String>,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start)?;
+pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
+    let project = Project::load(args.config.as_deref(), start, sections)?;
     let at = Context {
         strict: args.strict,
         quiet: args.quiet,

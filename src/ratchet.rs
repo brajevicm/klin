@@ -1,5 +1,5 @@
 //! The engine every ratcheting gate judges through. It exposes `Section` and `section`,
-//! `no_retired_key`, `Finding`, `accepted`, `noted`, `scoped`, `identity`, `Line`, and
+//! `Finding`, `accepted`, `noted`, `scoped`, `identity`, `Line`, and
 //! `Evaluator` with its `evaluate` call. Everything else here, the matcher and the reporter
 //! included, is private.
 
@@ -18,20 +18,6 @@ use crate::record::Values;
 const ACCEPTED: &str = "accepted";
 
 const BODY: &str = "body_hash";
-
-const RETIRED: &[(&str, &str)] = &[
-    (
-        "baseline",
-        "which is not a key klin reads — a run compares the working tree against the base \
-         commit, and a person accepts debt in the \"accepted\" list. Delete the key and the \
-         file it names.",
-    ),
-    (
-        "sources",
-        "which klin now spells \"roots\", the name every section uses for the same thing. \
-         Rename the key, so nothing measures a different set in silence.",
-    ),
-];
 
 /// A pattern row klin retired from a built-in table, as the gate that held it, the values key
 /// its name is recorded under, the name, the file suffix the row read, and where the row went.
@@ -68,23 +54,6 @@ fn retired_row(gate: &str, entry: &Values) -> Option<String> {
             *named == gate && text(entry, key) == *row && text(entry, "file").ends_with(suffix)
         })
         .map(|(_, _, row, _, went)| format!("\"{row}\" {went}"))
-}
-
-/// A section naming a key klin retired, refused before any gate runs. Section 14.
-pub fn no_retired_key(
-    file: &std::path::Path,
-    name: &str,
-    values: &Map<String, Value>,
-) -> Result<(), Error> {
-    for (retired, why) in RETIRED {
-        if values.contains_key(*retired) {
-            return Err(Error(format!(
-                "{}: \"{name}\" names a \"{retired}\", {why}",
-                file.display()
-            )));
-        }
-    }
-    Ok(())
 }
 
 #[derive(Clone)]

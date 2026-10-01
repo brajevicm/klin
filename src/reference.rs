@@ -76,8 +76,8 @@ fn section(spec: &check::Row) -> Value {
     match spec.shape {
         SectionShape::Object => disabled(object(spec.keys, true)),
         SectionShape::DocumentMap => disabled(document_map()),
-        SectionShape::FalseOnly => json!({"const": false}),
-        SectionShape::Conventions => disabled(conventions(spec.keys)),
+        SectionShape::FalseOnly(_) => json!({"const": false}),
+        SectionShape::Conventions(_) => disabled(conventions(spec.keys)),
         SectionShape::Sarif => disabled(json!({
             "type": "array",
             "items": object(spec.keys, false)
