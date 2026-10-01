@@ -528,6 +528,29 @@ fn a_configuration_that_will_not_load_turns_off_the_excerpt() {
     assert!(line.get("text").is_none(), "{line}");
 }
 
+/// A configuration klin refuses at load for a schedule with no step due is one klin cannot read,
+/// so the prompt line carries no excerpt, as it does for a file that will not parse. Spec 11.4, 14.
+#[test]
+fn a_schedule_with_no_step_due_turns_off_the_excerpt() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"doc_size": {"README.md": {"2099-01-01": 100}}}"#,
+    );
+    tree.words("README.md", 5);
+    tree.base();
+
+    let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
+                    "prompt": "a secret plan"}"#;
+    let run = harness::feed(tree.root(), &["radius"], event);
+    assert_eq!(run.code, 0, "{}", run.out);
+
+    let lines = journal(&tree);
+    let line = &lines[0];
+    assert_eq!(field(line, &["kind"]), "prompt", "{line}");
+    assert!(line.get("text").is_none(), "{line}");
+}
+
 fn guard(tree: &Tree, event: &str) -> harness::Run {
     harness::feed(tree.root(), &["guard"], event)
 }

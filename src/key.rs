@@ -117,6 +117,17 @@ pub const SKIP_DIRS: Key = Key {
 pub const BUILD_RUN: &str = "run";
 pub const BUILD_ROOT: &str = "root";
 
+/// The gate one named entry of a section runs as, such as `conventions/no-unwrap`. The check
+/// that runs the entry and the rule that judges the accepted list both spell it here. Spec 8.4.
+pub fn entry_gate(gate: &str, name: &str) -> String {
+    format!("{gate}/{name}")
+}
+
+/// The entry an `entry_gate` names under `gate`, and `None` for a gate that is not one of them.
+pub fn entry_named<'a>(gate: &str, named: &'a str) -> Option<&'a str> {
+    named.strip_prefix(gate)?.strip_prefix('/')
+}
+
 /// Every language name a table holds, with the extensions that name selects. Two rows under one
 /// name, such as TypeScript and TSX, are one row here, because the name selects both.
 pub fn extensions_by_name(

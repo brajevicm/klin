@@ -1,3 +1,7 @@
+//! The ceiling a gate reads, as a whole number or the step of a dated schedule that is due today,
+//! and the refusal of a schedule with no step due. It imports only `error`, so `config` can judge
+//! every schedule at load and stay below every check. Spec 5.4, 14.
+
 use std::fmt;
 use std::path::Path;
 

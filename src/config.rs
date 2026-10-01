@@ -203,8 +203,10 @@ fn well_formed(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Er
     crate::ceiling::every_schedule(file, data)
 }
 
-/// The structural contract shared by the native reader and the generated schema. Semantic rules
-/// that need a tree, parser or dated step stay in the check that owns them. Spec 5.2, 5.3, 5.5.
+/// The structural contract shared by the native reader and the generated schema. A rule belongs
+/// here only when klin.json alone decides it, with each section's shape passed in as data. A rule
+/// that needs a tree, a parser or a check's own reading stays in the check that owns it, and the
+/// dated steps stay in `ceiling`, which imports nothing above `error`. Spec 5.2, 5.3, 5.5.
 fn structure(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {
     let fields = data
         .as_object()
@@ -686,10 +688,11 @@ pub fn known_convention(
     })
 }
 
-/// Every accepted entry for a convention must name one the section defines. A convention renamed
-/// or removed retires its debt, and an entry left behind would otherwise hold nothing in silence
-/// while the gate it names never runs. Refused before any gate runs. A section that is absent or
-/// `false` runs no gate, so its entries wait for it, as an excluded gate's entries do. Spec 8.4.
+/// Each convention a `Conventions` section names runs as its own gate, so an accepted entry for one
+/// of those gates must name a convention the section defines. A convention renamed or removed
+/// retires its debt, and an entry left behind would otherwise hold nothing in silence while the
+/// gate it names never runs. Refused before any gate runs. A section that is absent or `false`
+/// runs no gate, so its entries wait for it, as an excluded gate's entries do. Spec 8.4.
 fn no_stale_debt(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {
     let listed = data.get(ACCEPTED.name).and_then(Value::as_array);
     for check in sections {
@@ -703,10 +706,7 @@ fn no_stale_debt(file: &Path, data: &Value, sections: &[Section]) -> Result<(), 
             let Some(gate) = entry.get("gate").and_then(Value::as_str) else {
                 continue;
             };
-            let Some(name) = gate
-                .strip_prefix(check.name)
-                .and_then(|rest| rest.strip_prefix('/'))
-            else {
+            let Some(name) = crate::key::entry_named(check.name, gate) else {
                 continue;
             };
             if !defined.contains_key(name) {

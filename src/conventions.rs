@@ -21,7 +21,7 @@ use crate::check::{Context, Sink};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::{self, Key, Section};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
@@ -363,7 +363,7 @@ fn judged(
     out: &mut Sink,
 ) -> Result<u8, Error> {
     let name = &rule.convention.name;
-    let gate = format!("{}/{name}", at.gate);
+    let gate = key::entry_gate(at.gate, name);
     let now = described(rule, &gate, after.take(name));
     let sites = ratchet::scoped(&now, at.only);
     let condition = format!("the convention {name} forbids");

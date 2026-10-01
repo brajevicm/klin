@@ -507,6 +507,22 @@ fn a_radius_section_that_is_not_an_object_is_a_config_error() {
     assert!(!run.says("derived:"), "{}", run.out);
 }
 
+/// `radius --report` loads the configuration as every command does, so a schedule with no step
+/// due is the config error a gate would refuse with. Spec 14.
+#[test]
+fn report_refuses_a_schedule_with_no_step_due() {
+    let tree = history(43, 6);
+    tree.write(
+        "klin.json",
+        r#"{"doc_size": {"README.md": {"2099-01-01": 100}}}"#,
+    );
+
+    stamped(&tree);
+    let run = tree.run(&["radius", "--report"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("schedule has no step due"), "{}", run.out);
+}
+
 fn written(file: &std::path::Path, text: &str) {
     assert!(
         std::fs::write(file, text).is_ok(),
