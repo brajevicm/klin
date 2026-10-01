@@ -16,7 +16,7 @@ use ast_grep_core::matcher::{PatternBuilder, PatternNode};
 use ast_grep_core::tree_sitter::{LanguageExt, StrDoc, TSLanguage};
 use ast_grep_core::{AstGrep, PatternError};
 
-use crate::reference;
+use crate::key;
 use crate::syntax::{LANGUAGES, Language, LanguageId, ParsedFile, tree_of, walk};
 
 /// What a language's code patterns need: the character a hole is written with once a pattern
@@ -298,7 +298,7 @@ pub fn called(language: &str) -> &'static str {
 
 /// The names a code pattern may be written in, each with the extensions it reads.
 pub fn language_extensions() -> Vec<(&'static str, String)> {
-    reference::extensions_by_name(
+    key::extensions_by_name(
         LANGUAGES
             .iter()
             .filter(|row| adapter(row.id).is_some())

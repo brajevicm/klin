@@ -20,13 +20,13 @@ use serde_json::{Map, Value};
 use crate::check::{Context, Sink};
 use crate::config::{self, Config};
 use crate::error::Error;
+use crate::key::Key;
 use crate::modules::{
     self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
 };
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
 use crate::{base, coverage};
@@ -39,7 +39,7 @@ const ACYCLIC: Key = Key {
     required: false,
     rule: None,
     default: "`false`",
-    shape: crate::reference::Shape::Boolean,
+    shape: crate::key::Shape::Boolean,
 };
 
 const LAYERS: Key = Key {
@@ -48,7 +48,7 @@ const LAYERS: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::Layers,
+    shape: crate::key::Shape::Layers,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, ACYCLIC, LAYERS];

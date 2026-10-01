@@ -12,10 +12,10 @@ use crate::config::Config;
 use crate::coverage::{self, Files};
 use crate::error::Error;
 use crate::files;
+use crate::key::{self, Key};
 use crate::project::{Project, Tests, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line};
 use crate::record::Values;
-use crate::reference::{self, Key};
 use crate::scope::Scope;
 use crate::syntax;
 
@@ -102,12 +102,12 @@ pub const SKIP_TEST_IDIOMS: Key = Key {
     required: false,
     rule: None,
     default: "`true`",
-    shape: crate::reference::Shape::Boolean,
+    shape: crate::key::Shape::Boolean,
 };
 
 /// Every language name a kind's table holds, with the extensions that name selects.
 pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
-    reference::extensions_by_name(
+    key::extensions_by_name(
         kind.languages
             .iter()
             .map(|language| (language.names, language.suffixes)),

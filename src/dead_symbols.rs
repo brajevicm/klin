@@ -17,10 +17,10 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
+use crate::key::Key;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
 
@@ -38,7 +38,7 @@ pub const IGNORE: Key = Key {
     required: false,
     rule: None,
     default: "Rust `main`, test functions and declarations marked externally visible",
-    shape: crate::reference::Shape::Strings,
+    shape: crate::key::Shape::Strings,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];

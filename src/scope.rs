@@ -10,8 +10,8 @@ use std::path::Path;
 
 use crate::config::Config;
 use crate::error::Error;
+use crate::key::Key;
 use crate::record::Values;
-use crate::reference::Key;
 
 pub const IN: Key = Key {
     name: "in",
@@ -19,7 +19,7 @@ pub const IN: Key = Key {
     required: false,
     rule: None,
     default: "the whole repository",
-    shape: crate::reference::Shape::StringOrList,
+    shape: crate::key::Shape::StringOrList,
 };
 
 pub const EXCEPT: Key = Key {
@@ -28,7 +28,7 @@ pub const EXCEPT: Key = Key {
     required: false,
     rule: None,
     default: "nothing is taken out",
-    shape: crate::reference::Shape::StringOrList,
+    shape: crate::key::Shape::StringOrList,
 };
 
 #[derive(Clone, Default, PartialEq, Eq)]

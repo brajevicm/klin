@@ -6,9 +6,9 @@ use std::time::{Duration, Instant};
 use crate::config::Config;
 use crate::error::Error;
 use crate::git::Repo;
+use crate::key::{Key, SKIP_DIRS};
 use crate::project::Tree;
 use crate::record::Values;
-use crate::reference::{Key, SKIP_DIRS};
 use crate::scope;
 
 const DEFAULT_SKIP_DIRS: &[&str] = &[

@@ -6,15 +6,13 @@ use crate::changed::Change;
 use crate::check::{self, Said};
 use crate::config::{self, Config};
 use crate::error::Error;
+use crate::key::{ROOT, RUN};
 use crate::project::Project;
 use crate::scope;
 use crate::shell;
 use crate::survey;
 
 const BUILD: &str = config::BUILD.name;
-/// The two keys one entry of the `build` list holds, which `config::BUILD` states.
-pub const RUN: &str = "run";
-pub const ROOT: &str = "root";
 
 /// A manifest names a project klin can build, the file that must sit beside it, and the command
 /// that builds it. A manifest with no command builds no project of its own. ADR 0012.

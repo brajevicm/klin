@@ -18,10 +18,10 @@ use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
+use crate::key::Key;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 
 pub const SECTION: &str = "doc_citations";
 

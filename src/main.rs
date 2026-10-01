@@ -24,6 +24,7 @@ mod hunks;
 mod init;
 mod inventory;
 mod journal;
+mod key;
 mod layering;
 mod lockfile;
 mod markers;

@@ -18,10 +18,10 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
+use crate::key::{self, Key};
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::{self, Key};
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
 use crate::syntax::structural::{
@@ -50,7 +50,7 @@ pub const NAME: Key = Key {
     required: true,
     rule: Some("the root and the pattern, as `src/commands/*_command.rs`"),
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 pub const PATTERN: Key = Key {
@@ -62,7 +62,7 @@ pub const PATTERN: Key = Key {
          least three files of one directory that the derivation commit proves reached",
     ),
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
@@ -119,7 +119,7 @@ impl Family {
         Value::Object(Map::from_iter([
             (NAME.name.into(), self.name.clone().into()),
             (
-                reference::ROOTS.name.into(),
+                key::ROOTS.name.into(),
                 Value::Array(self.roots.iter().cloned().map(Value::from).collect()),
             ),
             (PATTERN.name.into(), self.pattern.clone().into()),
@@ -276,8 +276,8 @@ fn family(config: &Config, entry: &Value, scope: &Scope) -> Result<Family, Error
         .get(NAME.name)
         .and_then(Value::as_str)
         .ok_or_else(|| config.missing(SECTION, NAME.name))?;
-    let roots = files::roots(config, SECTION, values, reference::ROOTS)?
-        .ok_or_else(|| config.missing(SECTION, reference::ROOTS.name))?;
+    let roots = files::roots(config, SECTION, values, key::ROOTS)?
+        .ok_or_else(|| config.missing(SECTION, key::ROOTS.name))?;
     let pattern = values
         .get(PATTERN.name)
         .and_then(Value::as_str)
@@ -306,7 +306,7 @@ fn selected_by(
     pattern: String,
     scope: &Scope,
 ) -> Result<Family, Error> {
-    let named = files::strings(config, SECTION, values, reference::LANGUAGES)?;
+    let named = files::strings(config, SECTION, values, key::LANGUAGES)?;
     let extensions = structural::selected_extensions(&named)
         .ok_or_else(|| structural::unknown_language(config, SECTION, &named))?;
     Ok(Family {
@@ -314,7 +314,7 @@ fn selected_by(
         roots,
         pattern,
         extensions,
-        exclude: files::strings(config, SECTION, values, reference::EXCLUDE)?,
+        exclude: files::strings(config, SECTION, values, key::EXCLUDE)?,
         skip_dirs: files::skip_dirs(config, SECTION, values)?,
         scope: scope.clone(),
     })
@@ -977,13 +977,10 @@ fn entry(candidate: &Candidate, evidence: &BTreeMap<String, Member>) -> Option<V
         format!("{}/{}", candidate.root, candidate.pattern).into(),
     );
     out.insert(
-        reference::ROOTS.name.into(),
+        key::ROOTS.name.into(),
         Value::Array(vec![candidate.root.clone().into()]),
     );
     out.insert(PATTERN.name.into(), candidate.pattern.clone().into());
-    out.insert(
-        reference::LANGUAGES.name.into(),
-        Value::Array(vec![name.into()]),
-    );
+    out.insert(key::LANGUAGES.name.into(), Value::Array(vec![name.into()]));
     Some(Value::Object(out))
 }

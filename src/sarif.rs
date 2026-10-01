@@ -18,10 +18,10 @@ use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::hunks::Hunks;
+use crate::key::Key;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 use crate::shell;
 
 pub const SECTION: &str = "sarif";
@@ -35,7 +35,7 @@ const REPORT: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const RUN: Key = Key {
@@ -44,7 +44,7 @@ const RUN: Key = Key {
     required: false,
     rule: None,
     default: "klin reads the report as it finds it and refuses one that predates the change",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const DIFFERENTIAL: Key = Key {
@@ -53,7 +53,7 @@ const DIFFERENTIAL: Key = Key {
     required: false,
     rule: None,
     default: "`false`",
-    shape: crate::reference::Shape::Boolean,
+    shape: crate::key::Shape::Boolean,
 };
 const COUNT: &str = "count";
 const METRICS: &[&str] = &[COUNT];

@@ -11,8 +11,8 @@ use tree_sitter::{Node, Parser, Tree};
 
 use crate::check::{Context, Records, Sink, UNPARSED};
 use crate::error::Error;
+use crate::key;
 use crate::record::Values;
-use crate::reference;
 
 pub mod convention;
 pub mod pattern;
@@ -332,7 +332,7 @@ pub fn extensions(named: &[String]) -> Vec<&'static str> {
 
 /// Every language name the table holds, with the extensions that name selects.
 pub fn language_extensions() -> Vec<(&'static str, String)> {
-    reference::extensions_by_name(
+    key::extensions_by_name(
         LANGUAGES
             .iter()
             .map(|language| (language.names, language.extensions)),

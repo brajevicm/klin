@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::error::Error;
-use crate::reference::{Key, SectionShape, Shape};
+use crate::key::{Key, SectionShape, Shape};
 
 const FILENAME: &str = "klin.json";
 
@@ -29,7 +29,7 @@ pub const BUILD: Key = Key {
     required: false,
     rule: Some("one command per standard manifest, from the fixed table of ADR 0012"),
     default: "",
-    shape: crate::reference::Shape::Build,
+    shape: crate::key::Shape::Build,
 };
 
 pub const ACCEPTED: Key = Key {
@@ -38,7 +38,7 @@ pub const ACCEPTED: Key = Key {
     required: false,
     rule: None,
     default: "nothing is accepted",
-    shape: crate::reference::Shape::Accepted,
+    shape: crate::key::Shape::Accepted,
 };
 
 pub const RADIUS: Key = Key {
@@ -49,7 +49,7 @@ pub const RADIUS: Key = Key {
         "the 90th percentile over the last 200 non-merge commits, and no section below 50 commits",
     ),
     default: "",
-    shape: crate::reference::Shape::Radius,
+    shape: crate::key::Shape::Radius,
 };
 
 pub const JOURNAL: Key = Key {
@@ -58,7 +58,7 @@ pub const JOURNAL: Key = Key {
     required: false,
     rule: None,
     default: "the prompt excerpt is recorded",
-    shape: crate::reference::Shape::Journal,
+    shape: crate::key::Shape::Journal,
 };
 
 /// The policy a person wrote, and nothing klin computed. What the file leaves out is derived
@@ -153,7 +153,7 @@ impl Config {
     pub fn policy(
         &self,
         section: &str,
-        keys: &[crate::reference::Key],
+        keys: &[crate::key::Key],
     ) -> Result<Map<String, Value>, Error> {
         let Some(value) = self.pinned(section) else {
             return Ok(Map::new());
@@ -428,7 +428,7 @@ fn build_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(
                     fields,
                     &[
                         Key {
-                            name: crate::build::RUN,
+                            name: crate::key::RUN,
                             holds: "",
                             required: true,
                             rule: None,
@@ -436,7 +436,7 @@ fn build_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(
                             shape: Shape::String,
                         },
                         Key {
-                            name: crate::build::ROOT,
+                            name: crate::key::ROOT,
                             holds: "",
                             required: false,
                             rule: None,

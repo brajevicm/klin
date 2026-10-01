@@ -12,10 +12,10 @@ use crate::check::{self, ContentCost, Context, Sink};
 use crate::coverage::{self, Files};
 use crate::error::Error;
 use crate::files;
+use crate::key::Key;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::{self, Values};
-use crate::reference::Key;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
 use crate::{cache, changed, survey};
@@ -39,7 +39,7 @@ pub const CC: Key = Key {
          floor of 10, and the floor itself below 50 functions",
     ),
     default: "",
-    shape: crate::reference::Shape::Ceiling,
+    shape: crate::key::Shape::Ceiling,
 };
 
 pub const LINES: Key = Key {
@@ -51,7 +51,7 @@ pub const LINES: Key = Key {
          floor of 25",
     ),
     default: "",
-    shape: crate::reference::Shape::Ceiling,
+    shape: crate::key::Shape::Ceiling,
 };
 
 pub const TEST_LINES: Key = Key {
@@ -61,7 +61,7 @@ pub const TEST_LINES: Key = Key {
     required: false,
     rule: None,
     default: "test code is not judged on length",
-    shape: crate::reference::Shape::Ceiling,
+    shape: crate::key::Shape::Ceiling,
 };
 
 const ECMASCRIPT_DECISIONS: &[&str] = &[

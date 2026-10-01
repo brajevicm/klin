@@ -21,10 +21,10 @@ use crate::check::{Context, Sink};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
+use crate::key::Key;
 use crate::project::{Project, Tree};
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
@@ -40,7 +40,7 @@ const TEXT: Key = Key {
     required: false,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const CODE: Key = Key {
@@ -49,7 +49,7 @@ const CODE: Key = Key {
     required: false,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const FILES: Key = Key {
@@ -58,7 +58,7 @@ const FILES: Key = Key {
     required: false,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const REMEDY: Key = Key {
@@ -67,7 +67,7 @@ const REMEDY: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 const IN: Key = scope::IN;
@@ -79,7 +79,7 @@ const LANGUAGE: Key = Key {
     required: false,
     rule: None,
     default: "the one language the source in scope is written in",
-    shape: crate::reference::Shape::Language(pattern::language_extensions),
+    shape: crate::key::Shape::Language(pattern::language_extensions),
 };
 
 pub const KEYS: &[Key] = &[TEXT, CODE, FILES, REMEDY, IN, EXCEPT, LANGUAGE];

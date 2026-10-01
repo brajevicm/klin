@@ -18,8 +18,8 @@ use crate::check::{self, Context, Said, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
+use crate::key::Key;
 use crate::project::Project;
-use crate::reference::Key;
 
 pub const SECTION: &str = "doc_size";
 
@@ -34,7 +34,7 @@ pub const DOCUMENT: Key = Key {
         "`AGENTS.md` and `CLAUDE.md` at the tree root, where the derivation commit holds them: the word count there, rounded up to the next 50 and never below 50",
     ),
     default: "",
-    shape: crate::reference::Shape::Ceiling,
+    shape: crate::key::Shape::Ceiling,
 };
 
 /// The documents a ceiling is derived for when the map does not name them. Spec 5.4.

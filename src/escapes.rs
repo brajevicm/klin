@@ -2,10 +2,10 @@ use std::path::Path;
 
 use crate::check::{Context, Sink};
 use crate::error::Error;
+use crate::key::Key;
 use crate::markers::{self, Args, Kind, Language, TestCode, TestIdioms};
 use crate::ratchet::{Evaluator, Remedy};
 use crate::record::Values;
-use crate::reference::Key;
 use crate::scope;
 
 pub const SECTION: &str = "escapes";

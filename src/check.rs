@@ -15,8 +15,8 @@ use crate::base::{self, Prior};
 use crate::changed::Change;
 use crate::config::Config;
 use crate::error::Error;
+use crate::key::{Key, Languages, SectionShape};
 use crate::project::Project;
-use crate::reference::{Key, Languages, SectionShape};
 use crate::{
     complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering,
     lockfile, modules, public_api, reachability, sarif, stubs, surface, syntax,
@@ -627,7 +627,7 @@ pub const NAMED: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::reference::Shape::String,
+    shape: crate::key::Shape::String,
 };
 
 /// The entries of a section a person writes entry by entry, each with the name its gate takes.
