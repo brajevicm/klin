@@ -166,42 +166,11 @@ impl Tree {
     pub fn listing_cost(&self) -> files::Listing {
         self.listing.take()
     }
-
-    /// The file list's name for a directory this tree holds, and `None` for one the walk did
-    /// not reach: outside the root, not a directory, under a directory every walk skips, or
-    /// behind a symbolic link, which the walk does not follow and a root named through one
-    /// still reads.
-    pub fn covers(&self, directory: &Path) -> Option<String> {
-        if !directory.is_dir() {
-            return None;
-        }
-        let inside = directory.strip_prefix(&self.root).ok()?;
-        let named = inside.to_str()?;
-        if named.split('/').any(files::skipped) || self.linked(inside) {
-            return None;
-        }
-        Some(match named.is_empty() {
-            true => scope::ROOT.to_string(),
-            false => named.to_string(),
-        })
-    }
-}
-
-impl Tree {
-    /// Whether any directory between the root and this one is a symbolic link.
-    fn linked(&self, inside: &Path) -> bool {
-        let mut at = self.root.clone();
-        inside.components().any(|part| {
-            at.push(part);
-            at.symlink_metadata()
-                .is_ok_and(|held| held.file_type().is_symlink())
-        })
-    }
 }
 
 /// Whether a walk of a tree reaches a file at this path: it descends no directory of the
 /// default skip set. A walk keeps a file whatever the file itself is called, so only the
-/// directories above it decide. This is `Tree::covers` for a file the tree does not list yet,
+/// directories above it decide. This is `files::found`'s coverage for a file the tree does not list yet,
 /// which is what the base laid out from an index has. Spec 4.3.
 pub fn reached(path: &str) -> bool {
     path.rsplit_once('/')

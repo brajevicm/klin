@@ -7,7 +7,6 @@ use crate::config::Config;
 use crate::error::Error;
 use crate::git::Repo;
 use crate::key::{Key, SKIP_DIRS};
-use crate::project::Tree;
 use crate::record::Values;
 use crate::scope;
 
@@ -138,19 +137,30 @@ pub struct Found {
     pub excluded: Vec<PathBuf>,
 }
 
-pub fn under(tree: &Tree, roots: &[PathBuf], wanted: &Wanted) -> Result<Vec<PathBuf>, Error> {
-    Ok(found(tree, roots, wanted)?.kept)
+pub fn under<'a>(
+    tree: &Path,
+    files: impl Fn() -> Result<&'a [String], Error>,
+    roots: &[PathBuf],
+    wanted: &Wanted,
+) -> Result<Vec<PathBuf>, Error> {
+    Ok(found(tree, files, roots, wanted)?.kept)
 }
 
 /// The files under each root that the check wants, read off the tree's one file list, so
 /// however many roots a section names the tree is walked once and git is asked once what it
-/// ignores. A root the list did not reach — outside the tree, under a directory every walk
-/// skips, or behind a symbolic link — is walked on its own, as every root once was. ADR 0038.
-pub fn found(tree: &Tree, roots: &[PathBuf], wanted: &Wanted) -> Result<Found, Error> {
+/// ignores. The list is asked for only when a root is one it covers. A root the list did not
+/// reach — outside the tree, under a directory every walk skips, or behind a symbolic link —
+/// is walked on its own, as every root once was. ADR 0038.
+pub fn found<'a>(
+    tree: &Path,
+    files: impl Fn() -> Result<&'a [String], Error>,
+    roots: &[PathBuf],
+    wanted: &Wanted,
+) -> Result<Found, Error> {
     let mut found = Found::default();
     for root in roots {
-        match tree.covers(root) {
-            Some(directory) => select(tree, &directory, wanted, &mut found)?,
+        match covers(tree, root) {
+            Some(directory) => select(tree, files()?, &directory, wanted, &mut found),
             None => walk(root, wanted, &ignored(root), &mut found)?,
         }
     }
@@ -161,11 +171,40 @@ pub fn found(tree: &Tree, roots: &[PathBuf], wanted: &Wanted) -> Result<Found, E
     Ok(found)
 }
 
+/// The file list's name for a directory the tree at this root holds, and `None` for one the
+/// walk did not reach: outside the root, not a directory, under a directory every walk skips,
+/// or behind a symbolic link, which the walk does not follow and a root named through one
+/// still reads.
+fn covers(tree: &Path, directory: &Path) -> Option<String> {
+    if !directory.is_dir() {
+        return None;
+    }
+    let inside = directory.strip_prefix(tree).ok()?;
+    let named = inside.to_str()?;
+    if named.split('/').any(skipped) || linked(tree, inside) {
+        return None;
+    }
+    Some(match named.is_empty() {
+        true => scope::ROOT.to_string(),
+        false => named.to_string(),
+    })
+}
+
+/// Whether any directory between the root and this one is a symbolic link.
+fn linked(tree: &Path, inside: &Path) -> bool {
+    let mut at = tree.to_path_buf();
+    inside.components().any(|part| {
+        at.push(part);
+        at.symlink_metadata()
+            .is_ok_and(|held| held.file_type().is_symlink())
+    })
+}
+
 /// One root's files out of the tree's list, under the same rules the walk applies below a
 /// root: a hidden or skipped directory below it is not descended, and the file's name and its
 /// path decide the rest. Spec 5.6, ADR 0038.
-fn select(tree: &Tree, directory: &str, wanted: &Wanted, into: &mut Found) -> Result<(), Error> {
-    for file in tree.files()? {
+fn select(tree: &Path, files: &[String], directory: &str, wanted: &Wanted, into: &mut Found) {
+    for file in files {
         if !scope::under_or_at(file, directory) {
             continue;
         }
@@ -177,9 +216,8 @@ fn select(tree: &Tree, directory: &str, wanted: &Wanted, into: &mut Found) -> Re
         if !parents.is_empty() && !parents.split('/').all(|segment| wanted.descends(segment)) {
             continue;
         }
-        keep(tree.root().join(file), name, wanted, into);
+        keep(tree.join(file), name, wanted, into);
     }
-    Ok(())
 }
 
 /// What one tree's file list cost: asking git what it ignores, and walking the directories.

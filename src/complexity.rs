@@ -915,7 +915,8 @@ fn measure(
         exclude_except: &[],
         skip_hidden: true,
     };
-    let mut found = files::found(tree, &[repo_root.to_path_buf()], &wanted)?;
+    let roots = [repo_root.to_path_buf()];
+    let mut found = files::found(tree.root(), || tree.files(), &roots, &wanted)?;
     let mut scoped_out = Vec::new();
     found.kept.retain(|file| {
         let relative = files::relative(file, repo_root);

@@ -337,7 +337,12 @@ fn working(tree: &Tree, roots: &[PathBuf]) -> Result<Index, Error> {
         if !root.is_dir() {
             continue;
         }
-        for file in files::under(tree, std::slice::from_ref(root), &wanted)? {
+        for file in files::under(
+            tree.root(),
+            || tree.files(),
+            std::slice::from_ref(root),
+            &wanted,
+        )? {
             index.add(&files::relative(&file, root));
         }
     }
