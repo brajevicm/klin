@@ -47,7 +47,7 @@ a line is an edit to code. The body shapes keep their declaration line.
 - An accepted entry that keyed a marker by its line text matches nothing,
   and the marker fails as new until a person rewrites the entry. When that
   line also holds a code stub or a body shape, the entry keeps matching the
-  code stub's site, which now counts the code stub alone. The entry holds
-  that site, `--strict` does not name it as stale, and the marker still
-  fails as new. The entry may allow a higher count than the code stub's
-  site holds, and only a person who reads the config sees that.
+  site of that code stub or body shape, which now counts it alone. The entry
+  holds that site, `--strict` does not name it as stale, and the marker
+  fails as new unless the base holds it. The entry may allow a higher count
+  than that site holds, and only a person who reads the config sees that.

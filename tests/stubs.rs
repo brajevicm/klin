@@ -544,20 +544,31 @@ fn an_accepted_marker_entry_names_the_row_and_holds_at_its_count() {
 }
 
 #[test]
-fn an_accepted_entry_for_a_line_that_held_a_marker_and_a_body_shape_holds_the_body_shape() {
+fn an_accepted_entry_for_a_line_that_held_a_marker_and_a_code_stub_holds_the_code_stub() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "accepted": [{"gate": "stubs", "file": "src/a.py", "text": "def save(key):  # TODO write it", "count": 2}],
+        r#"{ "accepted": [
+               {"gate": "stubs", "file": "src/a.py", "text": "def save(key):  # TODO write it", "count": 2},
+               {"gate": "stubs", "file": "src/a.rs", "text": "todo!() // TODO handle errors", "count": 2}],
              "stubs": { "in": "src" } }"#,
     );
     tree.write("src/a.py", "def save(key):  # TODO write it\n    pass\n");
+    tree.write(
+        "src/a.rs",
+        "fn f() {\n    todo!() // TODO handle errors\n}\n",
+    );
 
     let run = tree.run(&["stubs", "--strict"]);
     assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 new stub site(s)"), "{}", run.out);
+    assert!(run.says("2 new stub site(s)"), "{}", run.out);
     assert!(
         run.says("src/a.py:1  comment marker, new on line 1"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("src/a.rs:2  comment marker, new on line 2"),
         "{}",
         run.out
     );

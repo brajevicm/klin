@@ -640,13 +640,13 @@ fn tally(
             .regex
             .find_iter(text)
             .filter(|found| set.stands(past, found));
-        let (mut from, mut line) = (0, 1);
+        let (mut scanned, mut line) = (0, 1);
         for found in stands {
             if quoted(past, found.range()) {
                 continue;
             }
-            line += text[from..found.start()].matches('\n').count() as u64;
-            from = found.start();
+            line += text[scanned..found.start()].matches('\n').count() as u64;
+            scanned = found.start();
             if pattern.test_idiom
                 && (past.test_file
                     || past
@@ -668,8 +668,8 @@ fn tally(
 /// `//` of a URL in a string ahead of a real comment marker, is a site. The spans come in order
 /// and never overlap, so only the last one to start at or before the match can hold it.
 fn quoted(past: &Skipped, at: std::ops::Range<usize>) -> bool {
-    let before = past.literals.partition_point(|(from, _)| *from <= at.start);
-    before > 0 && at.end <= past.literals[before - 1].1
+    let started = past.literals.partition_point(|(from, _)| *from <= at.start);
+    started > 0 && at.end <= past.literals[started - 1].1
 }
 
 fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {
