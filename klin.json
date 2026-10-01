@@ -74,6 +74,7 @@
           "src/lockfile.rs",
           "src/public_api.rs",
           "src/reachability.rs",
+          "src/conventions/rules.rs",
           "src/sarif.rs",
           "src/stubs.rs"
         ],
