@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use serde_json::Value;
 
+use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -17,7 +18,6 @@ use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope};
-use crate::{base, changed};
 
 pub const SECTION: &str = "lockfile";
 
@@ -208,7 +208,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         plural(sites.judged),
         sites.manifests
     );
-    let tail = sites.coverage().said(out);
+    let tail = out.covered(&sites.coverage());
     let code = evaluator().evaluate(
         sites.findings,
         sites.prior,
@@ -232,7 +232,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     said(&found, out);
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
-    let commit = base::commit(config.root(), at, out)?;
+    let commit = check::base_commit(config.root(), at, out)?;
     let changes = at.project.changes(&commit)?;
     let renamed = renamed(&changes, &judged);
     let judged: Vec<(&str, &str, &Format)> = judged

@@ -12,7 +12,6 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-use crate::base;
 use crate::check::{self, Context, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
@@ -116,7 +115,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
     let state = said(&judged, entry.differential);
-    let tail = coverage.said(out);
+    let tail = out.covered(&coverage);
     let code = evaluator().evaluate(
         judged.findings,
         Vec::new(),
@@ -219,7 +218,7 @@ fn read(
         wrote(root, command, &entry.report)?;
     }
     let data = sarif(&entry.report)?;
-    let changed = Hunks::read(root, &base::commit(root, at, out)?, None)?;
+    let changed = Hunks::read(root, &check::base_commit(root, at, out)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }

@@ -132,7 +132,7 @@ fn evaluate(
     });
     let over = judged(&documents, &against, at, out)?;
     let measured = documents.len();
-    let said = Coverage::whole(measured).said(out);
+    let said = out.covered(&Coverage::whole(measured));
     if over == 0 && !at.quiet {
         let _ = writeln!(out.text, "OK: {measured} document(s) judged{said}");
     }

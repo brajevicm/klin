@@ -9,7 +9,7 @@ use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed::Change;
 use crate::check::{self, ContentCost, Context, Sink};
-use crate::coverage::{self, Files};
+use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::{Key, Section};
@@ -395,9 +395,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let tests = unjudged_tests(&sweep.functions, &spec.ceilings, at);
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
-    let said = sweep.files.coverage(at.only).said(out);
+    let said = out.covered(&sweep.files.coverage(at.only));
     let mut owned = None;
-    let laid = base::laid(at.prior, &mut owned, || base::own(at, out))?;
+    let laid = base::laid(at.prior, &mut owned, || check::own_base(at, out))?;
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
@@ -421,8 +421,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let code = coverage::lost_said(&lost, at, code, out);
-    Ok(syntax::unread(
+    let code = check::lost_said(&lost, at, code, out);
+    Ok(check::unread(
         &sweep.unparsed,
         || laid.unread_either(&before.unreadable),
         at,

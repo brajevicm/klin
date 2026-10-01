@@ -1,13 +1,11 @@
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
 use crate::changed::{self, Change, blobs};
-use crate::check::{Context, Sink};
 use crate::error::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::project::{self, Project, Tree};
@@ -572,56 +570,42 @@ fn written(
     Ok(prior)
 }
 
-/// The base commit a gate judges against: the one the runner chose, or the one this gate
-/// chooses for itself and names once in the report. Spec 6.1.
-pub fn commit(root: &Path, at: &Context, out: &mut Sink) -> Result<String, Error> {
-    match at.base {
-        Some(commit) => Ok(commit.to_string()),
-        None => Ok(announced(root, at, out)?.before),
-    }
-}
-
-/// The base a gate the runner did not lay out chooses for itself, named once in the report.
-pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Error> {
-    let base = choose(root, at.strict)?;
-    if at.context() {
-        let _ = writeln!(out.text, "{}", base.line());
-    }
-    Ok(base)
-}
-
-/// The base laid out whole, for a check that resolves names against every file of it: the
-/// runner's own when the runner laid the whole base out, and otherwise the run's one checkout,
+/// The base laid out whole, for a check that resolves names against every file of it: `laid`,
+/// the runner's own when the runner laid the whole base out, and otherwise the run's one checkout,
 /// which every such check shares. A changed run lays out only its changed files, whether or not
 /// the check takes that run's scope, so the change set and not the judgement scope decides.
 /// Spec 8.4, ADR 0038.
-pub fn whole<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
-    match (at.prior, at.changes) {
-        (Some(prior), None) => Ok(prior),
-        _ => at
-            .project
-            .whole_base(commit, at.changes.filter(|_| !at.strict)),
+pub fn whole<'a>(
+    project: &'a Project,
+    laid: Option<&'a Prior>,
+    shared: Option<&[Change]>,
+    commit: &str,
+) -> Result<&'a Prior, Error> {
+    match laid {
+        Some(prior) => Ok(prior),
+        None => project.whole_base(commit, shared),
     }
 }
 
 /// The base's view of the working tree's unchanged files, for a changed run that is not strict,
-/// with the structural cache of the base commit where klin keeps state. Any other run shares
-/// nothing and reads no cache. Spec 8.4.
+/// with the structural cache of the base commit where klin keeps state. `shared` holds the
+/// changes of such a run, and any other run shares nothing and reads no cache. Spec 8.4.
 pub fn unchanged<'a>(
-    at: &Context<'a>,
+    project: &Project,
+    shared: Option<&'a [Change]>,
     prior: &'a Prior,
     commit: &str,
 ) -> Result<Option<Unchanged<'a>>, Error> {
-    let Some(changes) = at.changes.filter(|_| !at.strict) else {
+    let Some(changes) = shared else {
         return Ok(None);
     };
-    let dir = at.project.facts().state.as_deref();
+    let dir = project.facts().state.as_deref();
     let cache = || {
         prior.spent(
             |layout| &mut layout.cache_name,
             || {
                 let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
-                Cache::at(&under, commit, &checkout(at.project.root()))
+                Cache::at(&under, commit, &checkout(project.root()))
             },
         )
     };
@@ -673,12 +657,6 @@ pub fn laid<'p>(
         Some(prior) => Ok(prior),
         None => Ok(own.insert(lay()?)),
     }
-}
-
-/// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
-    let base = announced(at.project.root(), at, out)?;
-    materialize(at.project, &base.before, None)
 }
 
 /// The pair of trees a run compares: which of the three kinds of 4.2 it is, the base commit

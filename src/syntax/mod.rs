@@ -4,15 +4,11 @@
 //! Tree-sitter node kinds of another language's grammar. ADR 0003, ADR 0035.
 
 use std::collections::HashSet;
-use std::fmt::Write;
 
-use serde_json::Value;
 use tree_sitter::{Node, Parser, Tree};
 
-use crate::check::{Context, Records, Sink, UNPARSED};
 use crate::error::Error;
 use crate::key;
-use crate::record::Values;
 
 pub mod convention;
 pub mod pattern;
@@ -339,73 +335,32 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     )
 }
 
-/// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
-/// it, because an agent cannot fix a grammar and a file klin cannot read is a hole in the
-/// ratchet. A file the base held and could not read either is a NOTE in every run, because the
-/// change opened no hole there. `base` names those files under today's paths, and is asked only
-/// outside the hook, when a file in scope needs it. ADR 0003, ADR 0021, spec 8.6, 14.
-pub fn unread(
-    unparsed: &[Unparsed],
-    base: impl FnOnce() -> Vec<String>,
-    at: &Context,
-    code: u8,
-    out: &mut Sink,
-) -> u8 {
+/// The files no grammar read in a run's scope, split by whether the base could not read them
+/// either: a file the base held unread opened no hole. ADR 0003, ADR 0021, spec 8.6, 14.
+pub struct Rejected<'a> {
+    pub held: Vec<&'a Unparsed>,
+    pub new: Vec<&'a Unparsed>,
+}
+
+/// Which files in scope no grammar read, split against the base. `base` names the base's
+/// unread files under today's paths, and is asked only when a file in scope needs it. `None`
+/// holds every file, which the hook does because an agent cannot fix a grammar.
+pub fn rejected<'a>(
+    unparsed: &'a [Unparsed],
+    only: Option<&[String]>,
+    base: Option<impl FnOnce() -> Vec<String>>,
+) -> Rejected<'a> {
     let named: Vec<&Unparsed> = unparsed
         .iter()
-        .filter(|file| at.only.is_none_or(|only| only.contains(&file.file)))
+        .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
         .collect();
-    if named.is_empty() {
-        return code;
-    }
-    let base: Option<HashSet<String>> = (!at.hook()).then(|| base().into_iter().collect());
-    let (noted, refused): (Vec<&Unparsed>, Vec<&Unparsed>) = named
+    let base: Option<HashSet<String>> = base
+        .filter(|_| !named.is_empty())
+        .map(|base| base().into_iter().collect());
+    let (held, new) = named
         .into_iter()
         .partition(|file| base.as_ref().is_none_or(|base| base.contains(&file.file)));
-    said("NOTE", &noted, out, |records| &mut records.notes);
-    said("FAIL", &refused, out, |records| &mut records.findings);
-    match refused.is_empty() {
-        true => code,
-        false => 2,
-    }
-}
-
-/// One block of unparsed files under one word, each recorded where `into` puts it.
-fn said(
-    word: &str,
-    named: &[&Unparsed],
-    out: &mut Sink,
-    into: fn(&mut Records) -> &mut Vec<Value>,
-) {
-    if named.is_empty() {
-        return;
-    }
-    let _ = writeln!(
-        out.text,
-        "{word}: {} file(s) the grammar could not parse, so nothing in them was measured:",
-        named.len()
-    );
-    for file in named {
-        let rejected = rejected(file);
-        let _ = writeln!(out.text, "  {}  {rejected}", file.file);
-        out.record(|records| into(records).push(unparsed_site(file, &rejected)));
-    }
-    let _ = writeln!(out.text, "{REMEDY}");
-}
-
-const REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the grammar, or \
-                      exclude the file and accept that nothing measures it.";
-
-fn rejected(file: &Unparsed) -> String {
-    format!("the {} grammar rejected it", file.language)
-}
-
-fn unparsed_site(file: &Unparsed, rejected: &str) -> Value {
-    let mut out = Values::new();
-    out.insert("outcome".into(), UNPARSED.into());
-    out.insert("file".into(), file.file.clone().into());
-    out.insert("text".into(), rejected.into());
-    Value::Object(out)
+    Rejected { held, new }
 }
 
 /// The line at this row, trimmed, which is the text every site in klin is named by.

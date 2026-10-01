@@ -1,11 +1,6 @@
 use std::collections::{BTreeSet, HashMap};
-use std::fmt::Write;
 
-use serde_json::{Map, Value};
-
-use crate::check::{self, Context, Sink};
 use crate::project::Project;
-use crate::syntax::structural::Unsupported;
 
 /// The scope one gate measured, said on its `OK:` line and carried in the JSON under
 /// `coverage`. The boundary is the same for every check, and this is where it is written down:
@@ -48,32 +43,6 @@ impl Coverage {
             excluded: 0,
             unreadable: 0,
         }
-    }
-
-    /// What every `OK:` line adds after what the gate judged, recorded for `--json` on the way
-    /// past so one call per check carries both. Spec 8.6.
-    pub fn said(&self, out: &mut Sink) -> String {
-        out.record(|records| records.coverage = Some(self.record()));
-        match self.not_measured {
-            0 => format!(
-                " ({} file(s) found, {} measured, {} excluded, {} unreadable)",
-                self.found, self.measured, self.excluded, self.unreadable
-            ),
-            not_measured => format!(
-                " ({} file(s) found, {} measured, {} not measured, {} excluded, {} unreadable)",
-                self.found, self.measured, not_measured, self.excluded, self.unreadable
-            ),
-        }
-    }
-
-    fn record(&self) -> Value {
-        let mut out = Map::new();
-        out.insert("found".into(), self.found.into());
-        out.insert("measured".into(), self.measured.into());
-        out.insert("not_measured".into(), self.not_measured.into());
-        out.insert("excluded".into(), self.excluded.into());
-        out.insert("unreadable".into(), self.unreadable.into());
-        Value::Object(out)
     }
 }
 
@@ -140,90 +109,9 @@ pub struct Lost {
     pub why: &'static str,
 }
 
-const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \
-                           on purpose and accept that nothing measures it.";
-
-/// What a gate says about the files that left its scrutiny: a NOTE per file for a person and a
-/// `lost` record under its notes for `--json`. Under `--strict` the loss is exit 2, beside the
-/// other strict failures of spec 10. In the hook and without either flag the code stands.
-pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
-    if lost.is_empty() {
-        return code;
-    }
-    for file in lost {
-        let _ = writeln!(
-            out.text,
-            "NOTE: {} was measured at the base and is not measured now — {}",
-            file.file, file.why
-        );
-    }
-    out.record(|records| {
-        for file in lost {
-            let mut record = Map::new();
-            record.insert("outcome".into(), check::LOST.into());
-            record.insert("file".into(), file.file.clone().into());
-            record.insert("text".into(), file.why.into());
-            records.notes.push(Value::Object(record));
-        }
-    });
-    if !at.strict {
-        return code;
-    }
-    let _ = writeln!(
-        out.text,
-        "FAIL: {} file(s) left scrutiny — under --strict a file klin measured at the base and \
-         does not measure now, though it is still in the tree, is a failure. {LOST_REMEDY}",
-        lost.len()
-    );
-    2
-}
-
 /// Whether a scoped run judges this file, which is every file outside a scoped run.
 pub fn in_scope(file: &str, only: Option<&[String]>) -> bool {
     only.is_none_or(|only| only.iter().any(|wanted| wanted == file))
-}
-
-/// What a structural gate says about the files in a language no adapter measures: a FAIL
-/// outside the hook, because a green run must not imply they were analyzed, and a NOTE in it,
-/// because the agent cannot add an adapter. Spec 8.4, 8.6.
-pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mut Sink) -> u8 {
-    let files: Vec<&Unsupported> = files
-        .iter()
-        .filter(|file| in_scope(&file.file, at.only))
-        .collect();
-    if files.is_empty() {
-        return code;
-    }
-    let word = if at.hook() { "NOTE" } else { "FAIL" };
-    let _ = writeln!(
-        out.text,
-        "{word}: {} file(s) in unsupported structural languages were not measured:",
-        files.len()
-    );
-    for file in &files {
-        let _ = writeln!(out.text, "  {}  {}", file.file, file.language);
-    }
-    let _ = writeln!(
-        out.text,
-        "Add a structural adapter for the language, or exclude the file and accept that nothing measures it."
-    );
-    out.record(|records| {
-        for file in &files {
-            let mut record = Map::new();
-            record.insert("outcome".into(), check::NOT_MEASURED.into());
-            record.insert("file".into(), file.file.clone().into());
-            record.insert(
-                "text".into(),
-                format!("{} has no structural adapter", file.language).into(),
-            );
-            if at.hook() {
-                records.notes.push(Value::Object(record));
-            } else {
-                records.findings.push(Value::Object(record));
-            }
-        }
-    });
-    if at.hook() { code } else { 2 }
 }
 
 /// One form a gate supports and could not resolve, and why.
@@ -242,70 +130,9 @@ impl Unresolved {
     }
 }
 
-/// What a gate says about the forms it supports and could not resolve: a NOTE in the hook, and
-/// exit 2 elsewhere, because a green run must not imply a resolution klin did not make. A form
-/// the base holds in the same file, with the same text and reason, is a NOTE in every run,
-/// because the change opened no hole there. Each base form pairs with one form now, so a second
-/// copy of a held form is new. `base` is built only outside the hook, where the answer decides
-/// something. `what` follows the count on the first line, and
-/// `remedy` closes each block. ADR 0021, spec 8.6.
-pub fn unresolved_said(
-    (now, base): (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
-    (what, remedy): (&str, &str),
-    (at, code): (&Context, u8),
-    out: &mut Sink,
-) -> u8 {
-    if now.is_empty() {
-        return code;
-    }
-    let held = match at.hook() {
-        true => vec![true; now.len()],
-        false => held_at(now, &base()),
-    };
-    let (noted, refused): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
-    for (word, named) in [("NOTE", &noted), ("FAIL", &refused)] {
-        listed(word, named, (what, remedy), out);
-    }
-    out.record(|records| {
-        for (into, named) in [
-            (&mut records.notes, &noted),
-            (&mut records.findings, &refused),
-        ] {
-            into.extend(named.iter().map(|(hole, _)| {
-                serde_json::json!({
-                    "outcome": check::UNRESOLVED,
-                    "file": hole.file,
-                    "line": hole.line,
-                    "text": format!("{} — {}", hole.text, hole.why),
-                })
-            }));
-        }
-    });
-    match refused.is_empty() {
-        true => code,
-        false => 2,
-    }
-}
-
-/// One block of forms under one word, as the report prints it, and nothing for no form.
-fn listed(word: &str, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str), out: &mut Sink) {
-    if named.is_empty() {
-        return;
-    }
-    let _ = writeln!(out.text, "{word}: {} {what}:", named.len());
-    for (hole, _) in named {
-        let _ = writeln!(
-            out.text,
-            "  {}:{}  {}  — {}",
-            hole.file, hole.line, hole.text, hole.why
-        );
-    }
-    let _ = writeln!(out.text, "{remedy}");
-}
-
 /// Whether each form now pairs with a form the base holds in the same file with the same text and
 /// reason, at any line. Each base form pairs once, so a second copy of a held form is new.
-fn held_at(now: &[Unresolved], base: &[Unresolved]) -> Vec<bool> {
+pub fn held_at(now: &[Unresolved], base: &[Unresolved]) -> Vec<bool> {
     let mut left: HashMap<(&str, &str, &str), usize> = HashMap::new();
     for was in base {
         *left.entry(was.key()).or_default() += 1;
@@ -319,10 +146,4 @@ fn held_at(now: &[Unresolved], base: &[Unresolved]) -> Vec<bool> {
             _ => false,
         })
         .collect()
-}
-
-/// Whether a note records a file the run could not read or stopped measuring, which the hook
-/// prints even when nothing blocks the stop.
-pub fn is_lost(note: &Value) -> bool {
-    note.get("outcome").and_then(Value::as_str) == Some(check::LOST)
 }

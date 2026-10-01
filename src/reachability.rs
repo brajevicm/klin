@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
@@ -151,7 +151,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let families = families(project)?;
     said_families(&families, out);
-    let commit = base::commit(config.root(), at, out)?;
+    let commit = check::base_commit(config.root(), at, out)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, before_families, after) = sweeps(at, &families, &commit, &mut names, &mut layout)?;
@@ -178,7 +178,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let judged = after_states.len();
     let unreached = now.len();
     let covered_after = covered(&after, &families);
-    let said = covered_after.coverage(None).said(out);
+    let said = out.covered(&covered_after.coverage(None));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
         now,
@@ -194,7 +194,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let prior = base::whole(at, &commit)?;
+    let prior = base::whole(at.project, at.laid_whole(), at.shared(), &commit)?;
     let unread_at_base = || prior.unread_either(&before.files.unreadable);
     let code = coverage_result(
         code,
@@ -216,8 +216,12 @@ fn sweeps(
     names: &mut structural::NameCost,
     layout: &mut Option<base::Layout>,
 ) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
-    let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    let prior = structural::timed(&mut names.base, || {
+        base::whole(at.project, at.laid_whole(), at.shared(), commit)
+    })?;
+    let unchanged = structural::timed(&mut names.base, || {
+        base::unchanged(at.project, at.shared(), prior, commit)
+    })?;
     *layout = prior.layout();
     let mut after = structural::timed(&mut names.after.measure, || {
         measure(at.project.tree(), families, unchanged.as_ref())
@@ -666,9 +670,9 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    let code = coverage::not_measured_said(&unsupported, at, code, out);
+    let code = check::not_measured_said(&unsupported, at, code, out);
     let lost = covered(after, families).lost(&covered(before, before_families), at.project, None);
-    let code = coverage::lost_said(&lost, at, code, out);
+    let code = check::lost_said(&lost, at, code, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
         .iter()
@@ -678,7 +682,7 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    syntax::unread(&unparsed, unread_at_base, at, code, out)
+    check::unread(&unparsed, unread_at_base, at, code, out)
 }
 
 fn evaluator() -> Evaluator<'static> {

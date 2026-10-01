@@ -16,7 +16,7 @@ use crate::error::Error;
 use crate::host::{self, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, coverage, handoff, journal, state, stats, turn, write};
+use crate::{build, handoff, journal, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -1651,7 +1651,7 @@ fn told(note: &Value) -> bool {
     matches!(
         outcome,
         Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED | UNBUILT)
-    ) || coverage::is_lost(note)
+    ) || check::is_lost(note)
 }
 
 fn gather(totals: &mut Records, mut records: Records, name: &str) {

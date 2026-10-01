@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
@@ -107,7 +107,7 @@ fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    let commit = base::commit(project.root(), at, out)?;
+    let commit = check::base_commit(project.root(), at, out)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
@@ -135,7 +135,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         .filter(|state| coverage::in_scope(&state.file, at.only))
         .count();
     let dead = now.len();
-    let said = after.files.coverage(at.only).said(out);
+    let said = out.covered(&after.files.coverage(at.only));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
         now,
@@ -148,7 +148,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    let prior = base::whole(at, &commit)?;
+    let prior = base::whole(at.project, at.laid_whole(), at.shared(), &commit)?;
     let unread_at_base = || prior.unread_either(&before.files.unreadable);
     let code = coverage_result(code, at, (&before, unread_at_base), &after, out);
     reports(report, &after_states, &held_before, at.only, out);
@@ -165,8 +165,12 @@ fn sweeps(
     names: &mut structural::NameCost,
     layout: &mut Option<base::Layout>,
 ) -> Result<(structural::Measurement, structural::Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || base::whole(at, commit))?;
-    let unchanged = structural::timed(&mut names.base, || base::unchanged(at, prior, commit))?;
+    let prior = structural::timed(&mut names.base, || {
+        base::whole(at.project, at.laid_whole(), at.shared(), commit)
+    })?;
+    let unchanged = structural::timed(&mut names.base, || {
+        base::unchanged(at.project, at.shared(), prior, commit)
+    })?;
     *layout = prior.layout();
     let mut after = structural::timed(&mut names.after.measure, || {
         measure(at.project.tree(), &spec.selection, unchanged.as_ref())
@@ -301,14 +305,14 @@ fn coverage_result(
     after: &structural::Measurement,
     out: &mut Sink,
 ) -> u8 {
-    let code = coverage::not_measured_said(&after.unsupported, at, code, out);
-    let code = coverage::lost_said(
+    let code = check::not_measured_said(&after.unsupported, at, code, out);
+    let code = check::lost_said(
         &after.files.lost(&before.files, at.project, at.only),
         at,
         code,
         out,
     );
-    syntax::unread(&after.unparsed, unread_at_base, at, code, out)
+    check::unread(&after.unparsed, unread_at_base, at, code, out)
 }
 
 fn reports(

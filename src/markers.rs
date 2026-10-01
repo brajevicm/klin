@@ -5,11 +5,10 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 use serde_json::Value;
 
-use crate::base;
 use crate::changed::Change;
-use crate::check::{ContentCost, Context, Sink};
+use crate::check::{self, ContentCost, Context, Sink};
 use crate::config::Config;
-use crate::coverage::{self, Files};
+use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::{self, Key, Section};
@@ -306,7 +305,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         count => format!(" ({count} in tests skipped)"),
     };
     let unit = kind.evaluator.unit;
-    let said = read.files.coverage(at.only).said(out);
+    let said = out.covered(&read.files.coverage(at.only));
     let before = at_the_base(kind, &spec, at, out)?;
     out.record(|records| records.work = Some(read.work + before.work));
     let lost = read.files.lost(&before.files, project, at.only);
@@ -321,7 +320,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         },
         out,
     );
-    Ok(coverage::lost_said(&lost, at, code, out))
+    Ok(check::lost_said(&lost, at, code, out))
 }
 
 fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {
@@ -329,7 +328,7 @@ fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result
     let prior = match at.prior {
         Some(prior) => prior,
         None => {
-            owned = base::own(at, out)?;
+            owned = check::own_base(at, out)?;
             &owned
         }
     };

@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::base;
 use crate::changed;
 use crate::check::{self, Context, Sink};
 use crate::config::Config;
@@ -126,14 +125,14 @@ fn evaluate(
     if named.is_none() && !at.quiet {
         said(&listing, out);
     }
-    let commit = base::commit(&listing.root, at, out)?;
+    let commit = check::base_commit(&listing.root, at, out)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {
         Some(config) => ratchet::accepted(config, at.gate, evaluator().metrics)?,
         None => Vec::new(),
     };
-    let said = covered(&listing).said(out);
+    let said = out.covered(&covered(&listing));
     Ok(evaluator().evaluate(
         now,
         before,

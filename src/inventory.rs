@@ -116,7 +116,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let today = today(project)?;
     said(project, out);
-    let commit = base::commit(config.root(), at, out)?;
+    let commit = check::base_commit(config.root(), at, out)?;
     let mut owned = None;
     let prior = base::laid(at.prior, &mut owned, || {
         base::materialize(project, &commit, None)
@@ -136,7 +136,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let (before, went) = let_through(&now, at, config.root());
     let held = ratchet::scoped(&now, at.only);
     let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
-    let said = covered(&judged, &paired, &measured.unparsed, at).said(out);
+    let said = out.covered(&covered(&judged, &paired, &measured.unparsed, at));
     let state = standing(held, went.len());
     let code = evaluator().evaluate(
         now,
@@ -152,7 +152,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
-    Ok(syntax::unread(
+    Ok(check::unread(
         &measured.unparsed,
         || prior.unread_either(&measured.unread_at_base),
         at,

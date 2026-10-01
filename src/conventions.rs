@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::check::{Context, Sink};
+use crate::check::{self, Context, Sink};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
@@ -305,7 +305,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let mut before = at_the_base(&rules, at, out)?;
     let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
-    Ok(syntax::unread(
+    Ok(check::unread(
         &after.unparsed,
         || before.files.unreadable,
         at,
@@ -342,7 +342,7 @@ fn every_convention(
     at: &Context,
     out: &mut Sink,
 ) -> Result<u8, Error> {
-    let said = after.files.coverage(at.only).said(out);
+    let said = out.covered(&after.files.coverage(at.only));
     let mut code = 0;
     for rule in rules {
         code = code.max(judged(config, rule, (&mut *after, &mut *before), at, out)?);
@@ -860,7 +860,7 @@ fn at_the_base(rules: &[Rule], at: &Context, out: &mut Sink) -> Result<Measured,
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = base::announced(project.root(), at, out)?;
+            let window = check::announced(project.root(), at, out)?;
             owned = base::materialize(project, &window.before, None)?;
             (&owned, window.before)
         }
