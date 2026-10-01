@@ -18,9 +18,10 @@ use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
 use crate::key::{Key, Section};
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
+use crate::tree::Tree;
 
 pub const SECTION: &str = "doc_citations";
 

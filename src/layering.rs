@@ -23,14 +23,16 @@ use crate::config::{self, Config};
 use crate::coverage;
 use crate::error::Error;
 use crate::key::{Key, Section};
+use crate::measurement;
 use crate::modules::{
     self, Attachment, Cycles, Dependency, GraphCost, Hole, ModuleGraph, Topology,
 };
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
+use crate::tree::Tree;
 
 pub const SECTION: &str = "layering";
 
@@ -250,12 +252,12 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
     let project = at.project;
     let prior = contract::whole_base(at, commit)?;
     let unchanged = contract::unchanged_base(at, prior, commit)?;
-    let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
-    let before = structural::measure_all(prior.tree(), None)?;
+    let mut after = measurement::measure_all(project.tree(), unchanged.as_ref())?;
+    let before = measurement::measure_all(prior.tree(), None)?;
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
-            structural::Unchanged::publish,
+            measurement::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
     Ok((
@@ -266,7 +268,7 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
 
 fn side(
     tree: &Tree,
-    measured: &structural::Measurement,
+    measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
     let topology = |file: &str| {

@@ -20,15 +20,15 @@ use crate::coverage;
 use crate::error::Error;
 use crate::files;
 use crate::key::{self, Key, Section};
-use crate::project::{Project, Tree};
+use crate::measurement::{self, Measurement};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
-use crate::syntax::structural::{
-    self, Declaration, DeclarationKind, Declared, Measurement, SourceIndex,
-};
+use crate::syntax::structural::{self, Declaration, DeclarationKind, Declared, SourceIndex};
 use crate::syntax::{self, LanguageId};
+use crate::tree::Tree;
 use crate::{cache, changed};
 
 pub const SECTION: &str = "reachability";
@@ -230,7 +230,7 @@ fn sweeps(
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
-            structural::Unchanged::publish,
+            measurement::Unchanged::publish,
         );
     Ok((before, before_families, after))
 }
@@ -340,7 +340,7 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 fn measure(
     tree: &Tree,
     families: &[Family],
-    unchanged: Option<&structural::Unchanged>,
+    unchanged: Option<&measurement::Unchanged>,
 ) -> Result<Measurement, Error> {
     let mut extensions: Vec<&str> = families
         .iter()
@@ -362,7 +362,7 @@ fn measure(
         &[tree.root().to_path_buf()],
         &wanted,
     )?;
-    structural::measure(found, tree, unchanged)
+    measurement::measure(found, tree, unchanged)
 }
 
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.

@@ -13,11 +13,13 @@ use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::{self, Key, Section};
-use crate::project::{Project, Tests, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line};
 use crate::record::Values;
 use crate::scope::Scope;
+use crate::survey::{self, Tests};
 use crate::syntax;
+use crate::tree::Tree;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
 /// a site it matches. A row that names no remedy carries the empty string.
@@ -514,7 +516,7 @@ fn findings(
         .sets
         .iter()
         .any(|set| set.skipped_tests(search).is_some());
-    let mut walk = Walk::over(skips.then(|| tree.tests()));
+    let mut walk = Walk::over(skips.then(|| survey::tests(tree)));
     let changed: Option<BTreeSet<&str>> =
         changes.map(|changes| changes.iter().map(|change| change.path.as_str()).collect());
     let suffixes: Vec<&str> = search

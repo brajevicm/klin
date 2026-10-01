@@ -19,13 +19,14 @@ use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::git::Repo;
 use crate::key::Key;
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Roots, Scope};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
+use crate::tree::Tree;
 use crate::turn;
 
 pub const SECTION: &str = "inventory";
