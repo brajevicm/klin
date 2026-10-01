@@ -1,0 +1,583 @@
+{
+  "language": "TypeScript",
+  "repository": "whyour/qinglong",
+  "index": 3,
+  "head": "f168efcdaeba2ba3e0be0bfaa3040aa0a5f644c5",
+  "base": "bf63425805bed9248ba17568c07e382c8e205887",
+  "exit": 1,
+  "signal": null,
+  "ms": 3336,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "README-en.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "cli/package.json",
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "cli/test/compatibility",
+          "cli/test/helpers",
+          "cli/test/integration",
+          "cli/test/internal",
+          "cli/test/linux",
+          "cli/test/remote",
+          "cli/test/shared",
+          "test"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 4,946 function(s) at bf63425; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,946 functions at bf63425, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 57
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/pages/crontab/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/crontab"
+            ]
+          },
+          {
+            "name": "src/pages/script/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "src/pages/script"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "back/schedule/addCron.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "d7cbeef033ef86b4",
+        "line": 84,
+        "matched": null,
+        "outcome": "new",
+        "text": "const err: any = new Error(",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 57",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 57 lines)",
+        "file": "back/shared/cronSchedule.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a7a6c47c14ff0631",
+        "line": 28,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function parseCronSchedule(schedule: unknown): CronSchedule {",
+        "values": {
+          "cc": 14,
+          "lines": 58
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 57",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 57 lines)",
+        "file": "back/shared/cronScheduler.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3795db9d37ecb950",
+        "line": 16,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function createCronJob(",
+        "values": {
+          "cc": 4,
+          "lines": 74
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 57",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 57 lines)",
+        "file": "back/schedule/addCron.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "4e9585ce69b8c810",
+        "line": 15,
+        "matched": {
+          "accepted": false,
+          "file": "back/schedule/addCron.ts",
+          "line": 15,
+          "text": "const addCron = (",
+          "values": {
+            "cc": 14,
+            "lines": 121
+          }
+        },
+        "outcome": "worsened",
+        "text": "const addCron = (",
+        "values": {
+          "cc": 15,
+          "lines": 96
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 31,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 119,
+        "ms": 14,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 437,
+          "measured": 437,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 477,
+        "ms": 422,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 870
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 419,
+          "measured": 419,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 540,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 834,
+          "reads": 834
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 148,
+          "measured": 148,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 510,
+        "ms": 175,
+        "name": "inventory",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 419,
+          "measured": 418,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 208,
+        "ms": 1061,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 834,
+          "reads": 834
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 255,
+          "measured": 254,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 509,
+          "ms": 556,
+          "parses": 509,
+          "reads": 509,
+          "shared": 0,
+          "states": 1005
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 39416,
+          "declaration_text_bytes": 154506,
+          "declarations": 3383,
+          "export_leaves": 190,
+          "export_text_bytes": 8210,
+          "exported_alias_bytes": 294,
+          "exported_aliases": 42,
+          "exports": 186,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 507,
+          "import_text_bytes": 206021,
+          "imports": 2942,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 13796,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9927671488567429,
+          "reference_canonical_allocation_ratio_milli": 1992,
+          "reference_canonical_allocations": 8541,
+          "reference_canonical_bytes": 89053,
+          "reference_distinct_names": 4286,
+          "reference_name_bytes": 837678,
+          "reference_representation_after_bytes": 1998000,
+          "reference_representation_before_bytes": 3996000,
+          "references": 124875,
+          "signature_bytes": 221301,
+          "signatures": 2693,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 9,
+        "ms": 568,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1697,
+            "distinct_names": 4312,
+            "files": 254,
+            "index_ms": 2,
+            "measure_ms": 281,
+            "query_ms": 0,
+            "references": 58040
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1686,
+            "distinct_names": 4295,
+            "files": 253,
+            "index_ms": 2,
+            "measure_ms": 275,
+            "query_ms": 0,
+            "references": 57786
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 9,
+            "renames_ms": 0,
+            "walk_ms": 3,
+            "worktree_add_ms": 75,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 509
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 310,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1697,
+            "distinct_names": 4312,
+            "files": 254,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 58040
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1686,
+            "distinct_names": 4295,
+            "files": 253,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 57786
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 0,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 509
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1281,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 1265,
+          "modules": 509,
+          "ms": 1,
+          "sources": 509
+        },
+        "held": 0,
+        "ms": 2,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "test/back/cron-schedule-compatibility.test.cjs",
+        "gate": "inventory",
+        "line": 6,
+        "outcome": "deleted",
+        "text": "the test site test('validation agrees with the actual scheduler across legacy cron syntax', () => { in test/back/cron-schedule-compatibility.test.cjs went in this window"
+      },
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "src/pages/error/index.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "9 dead symbol(s) the base already held:\n  back/config/util.ts:194  enum FileType {\n  back/config/util.ts:758  function isCentOS(osReleaseInfo: string): boolean {\n  back/config/util.ts:826  async function replaceDomainInFile(\n  back/shared/pLimit.ts:76  constructor() {\n  back/shared/pLimit.ts:188  public async runWithSubscriptionLimit<T>(\n  back/shared/pLimit.ts:197  public async runWithSystemLimit<T>(\n  back/shared/pLimit.ts:206  public async runWithScriptLimit<T>(\n  src/utils/websocket.ts:18  constructor(url: string, options: Partial<typeof WebSocketManager.prototype.options> = {}) {\n  typings.d.ts:12  interface Window {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  TypeScript package @whyour/qinglong (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @whyour/qinglong-cli (cli/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "bf63425805bed9248ba17568c07e382c8e205887",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

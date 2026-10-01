@@ -437,14 +437,7 @@ in 3 and `stubs` in 1. The escapes rows are R034 and R041, best-effort
 reason, which #389 did not raise. The stubs row is R035, a typo fix in a lone
 `/// FIXME` line.
 
-#415 merged after this rerun and keys a comment marker by file and kind. Its
-binary, built from `main` at `20f48bb6` with the SHA-256
-`4bb5bd7d72d7c1fb775f29324ac3b54f292dae508c871c08d6b81fa93514c037`, ran R035's
-change, `denisidoro/navi` `cc40723617`, the same way. Every gate is ok and the
-run passes. The other 99 changes did not run on that binary. If the 6 commits
-that pass above still pass on it, 7 of the 31 noise-only commits pass. The
-record is in
-`benchmark/evidence/false-alarms-rerun-2026-09-30/after-415/`.
+#415 addresses it, and the next section gives its result.
 
 ### Rows that changed in the 26 still-failing commits
 
@@ -484,3 +477,53 @@ and test files. R052 still fails on its library-source escapes, which the
 label calls appropriate. The first binary named 80 of R052's findings
 `ts-ignore`. The rerun names 74 of them `ts-expect-error` and 2 `ts-ignore`,
 and the other 4 are the test-file findings that went away.
+
+## Rerun on main, 2026-10-01
+
+#414 and #415 merged after the 2026-09-30 rerun, so #412 ran the same 100
+changes again with `{}`, by the procedure of "The run". The binary is
+`klin 0.4.0`, which `benchmark/build-klin` built from `main` at `20f48bb6`,
+the merge of #418. Its SHA-256 is
+`4bb5bd7d72d7c1fb775f29324ac3b54f292dae508c871c08d6b81fa93514c037`. Between
+`1d6dcd6f` and `20f48bb6`, only #414 and #415 change files under `src/`. The
+records are in `benchmark/evidence/false-alarms-rerun-2026-10-01/`. The two
+limits of the 2026-09-30 rerun apply here too: agents drafted and reviewed the
+labels, and the result is in-sample.
+
+| Run | PASS | FAIL | ERROR |
+|---|---|---|---|
+| First run, 2026-09-29 | 53 | 45 | 2 |
+| Rerun, 2026-09-30 | 59 | 39 | 2 |
+| Rerun on main, 2026-10-01 | 60 | 38 | 2 |
+
+- One more noise-only commit passes: `denisidoro/navi` `cc40723617` (R035).
+  #415 keys the `/// FIXME` by file and kind, so the typo fix holds its count.
+  That makes 2 of the 26 still-failing commits and 7 of the 31 noise-only
+  commits.
+- The other 24 still fail. `complexity` fails in 21 of them and `escapes` in
+  3. No noise-only commit fails on `stubs`.
+- No other change moved between PASS, FAIL and ERROR.
+
+With `{}`, no `complexity.test_lines` is pinned, so #414 judges no test code on
+length. Every finding that went away is a test function or a test helper over
+the `lines` ceiling. No finding was added. In R053 the same 6 `stubs` sites
+fail as before, and each now prints its kind, `comment marker`, in place of its
+line text, because #415 keys a marker by file and kind.
+
+| Row | Label | Gate | 2026-09-30 | 2026-10-01 | What went away |
+|---|---|---|---|---|---|
+| R035 | not appropriate | stubs | FAIL, 1 | ok | the `/// FIXME` whose typo was fixed |
+| R042 | not appropriate | complexity | FAIL, 1 | ok | the test helper `fixture`, 62 lines. The commit still fails on R041 |
+| R040 | not appropriate | complexity | FAIL, 2 | FAIL, 1 | the 245-line test body. The growth of `shellSessionArguments` stays |
+| R045 | not appropriate | complexity | FAIL, 3 | FAIL, 2 | the test helper `fixture`, 79 lines |
+| R010 | not appropriate | complexity | FAIL, 5 | FAIL, 4 | one Rust test function, 110 lines |
+| R008 | appropriate | complexity | FAIL, 6 | FAIL, 5 | the 103-line test |
+| R019 | appropriate | complexity | FAIL, 19 | FAIL, 18 | the tiling test |
+| R025 | appropriate | complexity | FAIL, 29 | FAIL, 28 | one Rust test function, 69 lines |
+| R029 | appropriate | complexity | FAIL, 35 | FAIL, 34 | the tiling test |
+| R048 | appropriate | complexity | FAIL, 143 | FAIL, 62 | 79 test bodies |
+| R054 | appropriate | complexity | ERROR, 132 | ERROR, 28 | 104 test bodies |
+| R075 | appropriate | complexity | FAIL, 11 | FAIL, 10 | one test body, 88 lines |
+
+Every row labeled appropriate keeps the finding that its note names. Where a
+note names the test findings, it calls them not appropriate.
