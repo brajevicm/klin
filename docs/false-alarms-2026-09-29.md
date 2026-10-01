@@ -402,6 +402,9 @@ that from the gate and the values of the findings.
 
 ### Which count
 
+A noise-only commit is a change that failed in the first run and whose rows
+all carry the label `not-appropriate`. The first run has 31 of them.
+
 #389 gives 26 still-failing noise-only commits in its evidence and 25 in its
 acceptance criteria. This rerun measures against 26. The first version of #389
 counted 25, because #382 then carried the `cc 10` floor, and that floor clears
@@ -448,13 +451,13 @@ record is in
 | Row | Repository | Commit | Gate | First run | Rerun | What changed |
 |---|---|---|---|---|---|---|
 | R065 | `Open-Dev-Society/OpenStock` | `75a9ebb6f5` | complexity | FAIL, 1 finding | ok | `TradingViewWidget` at cc 9 is under the floor |
-| R049 | `apollographql/apollo-client` | `37f700eb4c` | complexity | FAIL, 2 | FAIL, 1 | the cc 7 callback at `useLazyQuery.ts:616` is under the floor; the growth of `useLazyQuery` stays |
+| R049 | `apollographql/apollo-client` | `37f700eb4c` | complexity | FAIL, 2 | FAIL, 1 | the cc 7 callback at `useLazyQuery.ts:616` is under the floor, and the growth of `useLazyQuery` stays |
 | R064 | `Open-Dev-Society/OpenStock` | `e844ac413c` | complexity | FAIL, 4 | FAIL, 3 | `createAlert` at cc 9 is under the floor |
 | R072 | `mountain-loop/yaak` | `0a57d8eb61` | complexity | FAIL, 4 | FAIL, 2 | `convertBase64` and `convertPrompt` at cc 10 are under the floor |
 | R001, R005, R009, R014 | | | doc-size | FAIL | ok | a changelog is no longer judged |
 | R059, R061, R063 | `Open-Dev-Society/OpenStock` | | doc-size | FAIL | not run | the tree has no `AGENTS.md` or `CLAUDE.md` |
-| R015 | `gfx-rs/wgpu` | `5a7601baf4` | escapes | FAIL, 1 | ok | #385 |
-| R039 | `refactoringhq/tolaria` | `44740e4ae1` | dead-symbols | FAIL, 1 | ok | |
+| R015 | `gfx-rs/wgpu` | `5a7601baf4` | escapes | FAIL, 1 | ok | the `expect` in `naga/tests/` is test code, because `naga/build.rs` no longer removes the test root (#385) |
+| R039 | `refactoringhq/tolaria` | `44740e4ae1` | dead-symbols | FAIL, 1 | ok | the bindings that `vi.hoisted` destructures no longer read as dead (#384) |
 
 Each of these commits except R065's still fails on another row.
 
@@ -469,12 +472,15 @@ Each of these commits except R065's still fails on another row.
   ERROR.
 - The finding count went down in R013 (3 to 2), R044 (4 to 3), R048 (167 to
   143), R052 (150 to 146), R054 (149 to 132), R068 (30 to 16) and R075 (12
-  to 11). Each gate still fails. In the `complexity` rows, every finding that
-  went away had `cc` 10 or lower.
+  to 11). R054 and R068 still end in ERROR, and the other gates still fail.
+  In the `complexity` rows, every finding that went away had `cc` 10 or
+  lower.
 
 R052 shows the limit of #411's test idiom. The rule removed the 4
 `@ts-expect-error` rows in `__tests__` files. 73 `@ts-expect-error` rows stay
 in `integration-tests/type-tests/`, because SPEC 5.4 does not classify those
 files as test code. The label note puts 131 of R052's findings in type tests
 and test files. R052 still fails on its library-source escapes, which the
-label calls appropriate.
+label calls appropriate. The first binary named 80 of R052's findings
+`ts-ignore`. The rerun names 74 of them `ts-expect-error` and 2 `ts-ignore`,
+and the other 4 are the test-file findings that went away.

@@ -8,9 +8,10 @@ The evidence for #412. The section "Rerun after #389, 2026-09-30" of
 - `runs/`: one record per change, as in the first run.
 - `after-415/`: R035's change alone, run by a binary that holds #415, with its own selection and provenance.
 
-The rows and labels are those of `../false-alarms-2026-09-29/`. To build it
-again, with the clones in a directory of your choice:
+The rows and labels are those of `../false-alarms-2026-09-29/`. To build
+the records again, with the clones in a directory of your choice:
 
 ```sh
 KLIN_BIN=PATH node benchmark/src/cli.ts replay-run benchmark/evidence/false-alarms-rerun-2026-09-30 --clones DIR
+KLIN_BIN=PATH node benchmark/src/cli.ts replay-run benchmark/evidence/false-alarms-rerun-2026-09-30/after-415 --clones DIR
 ```
