@@ -18,12 +18,14 @@ use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::key::{Key, Section};
+use crate::measurement;
 use crate::modules::{self, ModuleGraph, Topology};
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::surface::{self, Contract, Derived, Item, MODULE, Surface};
 use crate::syntax::{self, structural};
+use crate::tree::Tree;
 
 pub const SECTION: &str = "public_api";
 pub const NAME: &str = "public-api";
@@ -136,12 +138,12 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
     let project = at.project;
     let prior = contract::whole_base(at, commit)?;
     let unchanged = contract::unchanged_base(at, prior, commit)?;
-    let mut after = structural::measure_all(project.tree(), unchanged.as_ref())?;
-    let before = structural::measure_all(prior.tree(), None)?;
+    let mut after = measurement::measure_all(project.tree(), unchanged.as_ref())?;
+    let before = measurement::measure_all(prior.tree(), None)?;
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
-            structural::Unchanged::publish,
+            measurement::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
     Ok((
@@ -152,7 +154,7 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
 
 fn side(
     tree: &Tree,
-    measured: &structural::Measurement,
+    measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
     let layout = Topology::new(tree.root(), tree.files()?, measured.facts(), renamed);
@@ -433,7 +435,7 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
     let tree = at.project.tree();
-    let measured = structural::measure_all(tree, None)?;
+    let measured = measurement::measure_all(tree, None)?;
     let layout = Topology::new(
         tree.root(),
         tree.files()?,

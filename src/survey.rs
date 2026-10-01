@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::project::{self, Tree};
-use crate::scope::{ROOT, ancestors, under_or_at};
+use crate::scope::{self, ROOT, ancestors, under_or_at};
+use crate::tree::Tree;
 use crate::{cache, files, git, state, turn};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
@@ -122,11 +122,14 @@ pub(crate) fn listed(root: &Path, commit: &str) -> Option<Vec<String>> {
     Some(listed.into_iter().filter(|path| surveyed(path)).collect())
 }
 
-/// The test roots of one tree, classified over that tree alone. A root that was test-only at
-/// the derivation commit and holds production code now is not one here, where `found` would
-/// still carry it by the union rule of 4.3. Spec 5.4.
-pub fn test_roots_of(tree: &Tree) -> Vec<String> {
-    walked(tree).test_roots
+/// What spec 5.4 calls the tests of this tree alone, off its one file list, with the roots the
+/// tree holds for the run.
+pub fn tests(tree: &Tree) -> Tests {
+    Tests {
+        roots: tree
+            .test_roots(|tree| walked(tree).test_roots.into_iter().collect())
+            .clone(),
+    }
 }
 
 /// Every path the working tree holds that a survey reads, off the tree's one file list.
@@ -211,7 +214,7 @@ fn holding<'a>(paths: impl Iterator<Item = &'a String>) -> HashSet<&'a str> {
 
 /// Whether a path is source, which is a fact of the path and no check's opinion. ADR 0038.
 fn source(path: &str) -> bool {
-    project::language_of(path).is_some()
+    language_of(path).is_some()
 }
 
 /// Spec 5.4, 8.2.
@@ -323,4 +326,90 @@ fn kept(found: &Survey) -> Value {
     fields.insert("manifests".into(), list(&found.manifests));
     fields.insert("tests".into(), found.tests.into());
     Value::Object(fields)
+}
+
+/// One language a file is classified as by its extension, which is a fact of the path and no
+/// check's opinion. The escapes table names its own rows for each of these by the same name,
+/// and the survey leaves out a language that table has no rows for. Spec 5.4.
+pub struct Language {
+    pub name: &'static str,
+    pub suffixes: &'static [&'static str],
+}
+
+/// The languages the survey calls source, by extension. This is what a derived root is a
+/// directory of, so it belongs below every check. Spec 5.4, ADR 0038.
+pub const LANGUAGES: &[Language] = &[
+    Language {
+        name: "go",
+        suffixes: &[".go"],
+    },
+    Language {
+        name: "java",
+        suffixes: &[".java"],
+    },
+    Language {
+        name: "kotlin",
+        suffixes: &[".kt", ".kts"],
+    },
+    Language {
+        name: "python",
+        suffixes: &[".py"],
+    },
+    Language {
+        name: "ruby",
+        suffixes: &[".rb"],
+    },
+    Language {
+        name: "rust",
+        suffixes: &[".rs"],
+    },
+    Language {
+        name: "shell",
+        suffixes: &[".sh", ".bash", ".zsh"],
+    },
+    Language {
+        name: "swift",
+        suffixes: &[".swift"],
+    },
+    Language {
+        name: "typescript",
+        suffixes: &[".ts", ".tsx", ".mts", ".cts"],
+    },
+    Language {
+        name: "javascript",
+        suffixes: &[".js", ".jsx", ".mjs", ".cjs"],
+    },
+];
+
+/// The language a path is written in, by its extension, and `None` for a file no language
+/// claims. This is what the survey calls source.
+pub fn language_of(path: &str) -> Option<&'static str> {
+    LANGUAGES
+        .iter()
+        .find(|language| {
+            language
+                .suffixes
+                .iter()
+                .any(|suffix| path.ends_with(suffix))
+        })
+        .map(|language| language.name)
+}
+
+/// The tests of one tree: every file under one of its test roots, and every source file a test
+/// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
+#[derive(Clone)]
+pub struct Tests {
+    roots: scope::Roots,
+}
+
+impl Tests {
+    /// Whether one of the tree's test roots holds this path.
+    pub fn root_holds(&self, path: &str) -> bool {
+        self.roots.holds(path)
+    }
+
+    /// Whether spec 5.4 calls this path a test file.
+    pub fn file_holds(&self, path: &str) -> bool {
+        self.root_holds(path) || marked(path)
+    }
 }

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -8,9 +9,18 @@ use serde_json::{Map, Value};
 use crate::changed::{self, Change, blobs};
 use crate::error::Error;
 use crate::git::{Boolean, Repo, Staged};
-use crate::project::{self, Project, Tree};
 use crate::state;
-use crate::syntax::structural::{Cache, Outcome, Unchanged, same_grammar, selected_extensions};
+use crate::syntax::structural::{Cache, Outcome, same_grammar, selected_extensions};
+use crate::tree::{self, Tree};
+
+/// What laying a base out reads from the run beside it: where the configuration sits, the
+/// change set against the base commit, and the state directory the structural cache sits in.
+/// The base reads each of them only when its layout needs it. Spec 8.4.
+pub trait Run {
+    fn root(&self) -> &Path;
+    fn changes(&self, base: &str) -> Result<Cow<'_, [Change]>, Error>;
+    fn state(&self) -> Option<&Path>;
+}
 
 const EMPTY: &str = "0000000000000000000000000000000000000000";
 
@@ -119,6 +129,15 @@ impl Prior {
         self.tree.root()
     }
 
+    /// The base commit's structural cache, named under the state directory and timed into the
+    /// layout, and `None` where klin keeps no state. Spec 8.4.
+    pub fn cache(&self, dir: Option<&Path>, root: &Path, commit: &str) -> Option<Cache> {
+        self.spent(
+            |layout| &mut layout.cache_name,
+            || structural_cache(dir, root, commit),
+        )
+    }
+
     /// The base tree's file list, read once for every gate that measures it. ADR 0038.
     pub fn tree(&self) -> &Tree {
         &self.tree
@@ -161,15 +180,11 @@ impl Drop for Prior {
     }
 }
 
-pub fn materialize(
-    project: &Project,
-    before: &str,
-    scope: Option<&[Change]>,
-) -> Result<Prior, Error> {
+pub fn materialize(run: &impl Run, before: &str, scope: Option<&[Change]>) -> Result<Prior, Error> {
     let dir = temporary()?;
     match scope {
-        Some(changes) => written(project, before, changes, dir),
-        None => checked_out(project, before, dir, under_the_repository(project.root())?),
+        Some(changes) => written(run, before, changes, dir),
+        None => checked_out(run, before, dir, under_the_repository(run.root())?),
     }
 }
 
@@ -177,15 +192,15 @@ pub fn materialize(
 /// change set may take the layout that checks no whole commit out, and takes today's checkout
 /// wherever that layout cannot serve it: no structural cache to read, or a git command that
 /// refused. Optimization state decides the cost and never the verdict. Spec 8.4.
-pub fn laid_out(project: &Project, before: &str, light: Option<&[Change]>) -> Result<Prior, Error> {
+pub fn laid_out(run: &impl Run, before: &str, light: Option<&[Change]>) -> Result<Prior, Error> {
     let dir = temporary()?;
-    let inside = under_the_repository(project.root())?;
+    let inside = under_the_repository(run.root())?;
     if let Some(changes) = light
-        && let Some(laid) = lightly(project, before, changes, dir.path(), &inside)
+        && let Some(laid) = lightly(run, before, changes, dir.path(), &inside)
     {
-        return Ok(held(project, laid, dir, changes));
+        return Ok(held(run, laid, dir, changes));
     }
-    checked_out(project, before, dir, inside)
+    checked_out(run, before, dir, inside)
 }
 
 fn temporary() -> Result<tempfile::TempDir, Error> {
@@ -208,12 +223,12 @@ fn missing(before: &str, was: &str) -> Error {
 }
 
 fn checked_out(
-    project: &Project,
+    run: &impl Run,
     before: &str,
     dir: tempfile::TempDir,
     inside: PathBuf,
 ) -> Result<Prior, Error> {
-    let root = project.root();
+    let root = run.root();
     let started = Instant::now();
     Repo::at(root)
         .text(&[
@@ -235,7 +250,7 @@ fn checked_out(
     let _ = std::fs::create_dir_all(&at);
     let mut prior = Prior::new(Tree::at(&at), dir, Some(root.to_path_buf()));
     prior.add(|layout| &mut layout.worktree_add, started.elapsed());
-    let changes = prior.spent(|layout| &mut layout.changes, || project.changes(before))?;
+    let changes = prior.spent(|layout| &mut layout.changes, || run.changes(before))?;
     prior.changed_by(&changes);
     prior.spent(
         |layout| &mut layout.renames,
@@ -279,7 +294,7 @@ fn under_the_repository(root: &Path) -> Result<PathBuf, Error> {
 /// checkout of the commit does. `None` where the run cannot take this layout, and where a
 /// command failed the worktree is removed again, so nothing half-laid reaches a gate. Spec 8.4.
 fn lightly(
-    project: &Project,
+    run: &impl Run,
     before: &str,
     changes: &[Change],
     dir: &Path,
@@ -287,13 +302,7 @@ fn lightly(
 ) -> Option<Laid> {
     let mut layout = Layout::default();
     let started = Instant::now();
-    let under = project
-        .facts()
-        .state
-        .as_deref()?
-        .join(state::CACHE)
-        .join(state::STRUCTURAL);
-    let cache = Cache::at(&under, before, &checkout(project.root()))?;
+    let cache = structural_cache(run.state(), run.root(), before)?;
     layout.cache_name = started.elapsed();
     let started = Instant::now();
     let outcomes = cache.read()?;
@@ -302,14 +311,14 @@ fn lightly(
     let root = dir.join(inside);
     let started = Instant::now();
     let laid = (|| {
-        let catalogue = staged(project.root(), dir, &root, before)?;
+        let catalogue = staged(run.root(), dir, &root, before)?;
         let wanted = required(&catalogue, changes, &outcomes);
         let written = wanted.len();
         Repo::at(&root).checkout_index(&wanted)?;
         Some((catalogue, written))
     })();
     let Some((catalogue, written)) = laid else {
-        abandoned(project.root(), dir);
+        abandoned(run.root(), dir);
         return None;
     };
     layout.worktree_add = started.elapsed();
@@ -321,7 +330,7 @@ fn lightly(
             continue;
         };
         if move_within(&root, was, &change.path).is_err() {
-            abandoned(project.root(), dir);
+            abandoned(run.root(), dir);
             return None;
         }
     }
@@ -350,11 +359,11 @@ struct Laid {
 
 /// A light layout made into the base every gate reads, with the outcomes the layout read handed
 /// to the tree, so the view that asks later neither names nor reads the cache again.
-fn held(project: &Project, laid: Laid, dir: tempfile::TempDir, changes: &[Change]) -> Prior {
+fn held(run: &impl Run, laid: Laid, dir: tempfile::TempDir, changes: &[Change]) -> Prior {
     let tree = Tree::listed(&laid.root, laid.files);
     tree.extracted()
         .hold(laid.cache, laid.outcomes, changes, laid.read);
-    let mut prior = Prior::new(tree, dir, Some(project.root().to_path_buf()));
+    let mut prior = Prior::new(tree, dir, Some(run.root().to_path_buf()));
     prior.changed_by(changes);
     prior.layout.set(Some(laid.layout));
     prior
@@ -439,7 +448,7 @@ impl Catalogue {
                 SYMLINK => !symlinks,
                 _ => return None,
             };
-            if lists && project::reached(&entry.path) {
+            if lists && tree::reached(&entry.path) {
                 catalogue.listed.push(entry.path.clone());
             }
             catalogue.written.push(entry.path);
@@ -511,12 +520,12 @@ fn move_within(root: &Path, was: &str, now: &str) -> Result<(), Error> {
 }
 
 fn written(
-    project: &Project,
+    run: &impl Run,
     before: &str,
     changes: &[Change],
     dir: tempfile::TempDir,
 ) -> Result<Prior, Error> {
-    let root = project.root();
+    let root = run.root();
     let at = dir.path().to_path_buf();
     let mut prior = Prior::new(Tree::at(&at), dir, None);
     prior.changed_by(changes);
@@ -570,46 +579,11 @@ fn written(
     Ok(prior)
 }
 
-/// The base laid out whole, for a check that resolves names against every file of it: `laid`,
-/// the runner's own when the runner laid the whole base out, and otherwise the run's one checkout,
-/// which every such check shares. A changed run lays out only its changed files, whether or not
-/// the check takes that run's scope, so the change set and not the judgement scope decides.
-/// Spec 8.4, ADR 0038.
-pub fn whole<'a>(
-    project: &'a Project,
-    laid: Option<&'a Prior>,
-    shared: Option<&[Change]>,
-    commit: &str,
-) -> Result<&'a Prior, Error> {
-    match laid {
-        Some(prior) => Ok(prior),
-        None => project.whole_base(commit, shared),
-    }
-}
-
-/// The base's view of the working tree's unchanged files, for a changed run that is not strict,
-/// with the structural cache of the base commit where klin keeps state. `shared` holds the
-/// changes of such a run, and any other run shares nothing and reads no cache. Spec 8.4.
-pub fn unchanged<'a>(
-    project: &Project,
-    shared: Option<&'a [Change]>,
-    prior: &'a Prior,
-    commit: &str,
-) -> Result<Option<Unchanged<'a>>, Error> {
-    let Some(changes) = shared else {
-        return Ok(None);
-    };
-    let dir = project.facts().state.as_deref();
-    let cache = || {
-        prior.spent(
-            |layout| &mut layout.cache_name,
-            || {
-                let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
-                Cache::at(&under, commit, &checkout(project.root()))
-            },
-        )
-    };
-    Unchanged::new(prior.tree(), changes, cache).map(Some)
+/// The structural cache of a base commit under the state directory, and `None` where klin
+/// keeps no state or the cache cannot be named. Spec 8.4.
+fn structural_cache(dir: Option<&Path>, root: &Path, commit: &str) -> Option<Cache> {
+    let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
+    Cache::at(&under, commit, &checkout(root))
 }
 
 /// What the bytes of a base checkout depend on besides the commit: where the configuration sits,

@@ -23,12 +23,13 @@ use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::key::{self, Key, Section};
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Selector};
 use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
+use crate::tree::Tree;
 use crate::{base, files};
 
 mod report;

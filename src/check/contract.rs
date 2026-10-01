@@ -16,8 +16,9 @@ use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
+use crate::measurement::{self, Unchanged};
 use crate::project::Project;
-use crate::syntax::structural::{ExtractionCost, NameCost, Unchanged, footprint::Footprint};
+use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
 use crate::{modules, surface};
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -302,8 +303,10 @@ pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Er
 /// The base laid out whole for this run: the runner's own when it laid the whole base out, which
 /// a changed run never does, and otherwise the run's one checkout. Spec 8.4, ADR 0038.
 pub fn whole_base<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
-    let laid = at.prior.filter(|_| at.changes.is_none());
-    base::whole(at.project, laid, shared(at), commit)
+    match at.prior.filter(|_| at.changes.is_none()) {
+        Some(prior) => Ok(prior),
+        None => at.project.whole_base(commit, shared(at)),
+    }
 }
 
 /// The base's view of the files this run leaves alone, which only a changed run that is not
@@ -313,7 +316,7 @@ pub fn unchanged_base<'a>(
     prior: &'a Prior,
     commit: &str,
 ) -> Result<Option<Unchanged<'a>>, Error> {
-    base::unchanged(at.project, shared(at), prior, commit)
+    measurement::unchanged(at.project, shared(at), prior, commit)
 }
 
 fn shared<'a>(at: &Context<'a>) -> Option<&'a [Change]> {

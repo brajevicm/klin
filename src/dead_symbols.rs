@@ -19,11 +19,13 @@ use crate::coverage;
 use crate::error::Error;
 use crate::files;
 use crate::key::{Key, Section};
-use crate::project::{Project, Tree};
+use crate::measurement;
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
+use crate::tree::Tree;
 
 pub const SECTION: &str = "dead_symbols";
 
@@ -165,7 +167,7 @@ fn sweeps(
     commit: &str,
     names: &mut structural::NameCost,
     layout: &mut Option<base::Layout>,
-) -> Result<(structural::Measurement, structural::Measurement), Error> {
+) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
     let prior = structural::timed(&mut names.base, || contract::whole_base(at, commit))?;
     let unchanged = structural::timed(&mut names.base, || {
         contract::unchanged_base(at, prior, commit)
@@ -178,7 +180,7 @@ fn sweeps(
     after.cost = after.cost
         + unchanged.map_or_else(
             structural::ExtractionCost::default,
-            structural::Unchanged::publish,
+            measurement::Unchanged::publish,
         );
     Ok((before, after))
 }
@@ -192,8 +194,8 @@ fn sweeps(
 /// declarations widens to all of them, which fails less. Issue #237, spec 8.4.
 fn affected_scope(
     at: &Context,
-    before: &structural::Measurement,
-    after: &structural::Measurement,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
     names: &mut structural::NameCost,
 ) -> Option<Vec<String>> {
     let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
@@ -220,8 +222,8 @@ fn affected_scope(
 /// Every file that declares one of these names in either tree.
 fn declaring_files(
     names: &BTreeSet<(syntax::LanguageId, structural::Name)>,
-    before: &structural::Measurement,
-    after: &structural::Measurement,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
 ) -> BTreeSet<String> {
     let mut files = BTreeSet::new();
     for (language, name) in names {
@@ -249,13 +251,13 @@ fn reference_names(
 /// Whether the working tree's structural evidence for this path is a measurement. A changed
 /// file the analyzer could not read is a coverage hole the run already reports, and its old
 /// reference names are not proof that the references went away, so nothing widens from it.
-fn measured_after(after: &structural::Measurement, path: &str) -> bool {
+fn measured_after(after: &measurement::Measurement, path: &str) -> bool {
     !after.unparsed.iter().any(|held| held.file == path)
         && !after.unsupported.iter().any(|held| held.file == path)
 }
 
 fn judgement(
-    measured: &structural::Measurement,
+    measured: &measurement::Measurement,
     cost: &mut structural::TreeNameCost,
     ignore: &[String],
     only: Option<&[String]>,
@@ -264,7 +266,7 @@ fn judgement(
     structural::timed(&mut cost.query, || states(index, ignore, only))
 }
 
-fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<structural::Measurement, Error> {
+fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
     let selection = Selection {
         scope: Scope::at_base(
             &at.project.config,
@@ -286,8 +288,8 @@ fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
 
 fn dead_findings(
     states: &[State],
-    before: &structural::Measurement,
-    after: &structural::Measurement,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
     held_before: &[&State],
 ) -> Vec<Finding> {
     states
@@ -300,8 +302,8 @@ fn dead_findings(
 fn coverage_result(
     code: u8,
     at: &Context,
-    (before, unread_at_base): (&structural::Measurement, impl FnOnce() -> Vec<String>),
-    after: &structural::Measurement,
+    (before, unread_at_base): (&measurement::Measurement, impl FnOnce() -> Vec<String>),
+    after: &measurement::Measurement,
     out: &mut Sink,
 ) -> u8 {
     let code = holes::not_measured_said(&after.unsupported, at, code, out);
@@ -357,8 +359,8 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 fn measure(
     tree: &Tree,
     selection: &Selection,
-    unchanged: Option<&structural::Unchanged>,
-) -> Result<structural::Measurement, Error> {
+    unchanged: Option<&measurement::Unchanged>,
+) -> Result<measurement::Measurement, Error> {
     let repo_root = tree.root();
     let skip_dirs = files::default_skip_dirs();
     let wanted = files::Wanted {
@@ -383,7 +385,7 @@ fn measure(
         keep
     });
     found.excluded.extend(excluded);
-    structural::measure(found, tree, unchanged)
+    measurement::measure(found, tree, unchanged)
 }
 
 fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
@@ -462,8 +464,8 @@ fn finding(state: &State) -> Finding {
 
 fn finding_with_lost_reference(
     state: &State,
-    before: &structural::Measurement,
-    after: &structural::Measurement,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
     before_states: &[&State],
 ) -> Finding {
     let mut finding = finding(state);
@@ -490,8 +492,8 @@ fn site(state: &State) -> (&str, u64, &str) {
 
 fn lost_reference(
     state: &State,
-    before: &structural::Measurement,
-    after: &structural::Measurement,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
     before_states: &[&State],
 ) -> Option<String> {
     let held = held_at(before_states, state)?;

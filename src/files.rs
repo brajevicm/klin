@@ -230,7 +230,7 @@ pub struct Listing {
 
 /// Every file under the root, by its relative path, sorted: the default skip set pruned, every
 /// path git ignores pruned, and no symbolic link. Hidden directories are walked, and a caller
-/// that skips them filters them out. Read once per tree, by `project::Tree`, with what the two
+/// that skips them filters them out. Read once per tree, by `tree::Tree`, with what the two
 /// parts of the read took. Spec 4.3.
 pub fn listing(root: &Path) -> Result<(Vec<String>, Listing), Error> {
     let skip_dirs = default_skip_dirs();

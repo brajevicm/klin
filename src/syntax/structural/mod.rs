@@ -7,7 +7,7 @@ use std::borrow::Borrow;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::{Add, Deref};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
@@ -16,10 +16,7 @@ use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
 use crate::changed::Change;
 use crate::config::Config;
-use crate::coverage::Files;
 use crate::error::Error;
-use crate::files::{self, Found};
-use crate::project::Tree;
 pub use crate::syntax::LanguageId;
 use crate::syntax::convention;
 use crate::syntax::{LANGUAGES, Language, Parsed, ParsedFile, Unparsed, line_at, parse, walk};
@@ -309,46 +306,6 @@ pub struct Unsupported {
     pub language: &'static str,
 }
 
-/// One structural measurement over a discovered file set. Consumers receive the semantic facts
-/// and explicit coverage outcomes; a name-resolving consumer asks for the index lazily, and none
-/// parses files or reconstructs capability gaps.
-pub struct Measurement {
-    facts: Vec<Rc<FileFacts>>,
-    index: OnceCell<SourceIndex>,
-    pub unparsed: Vec<Unparsed>,
-    pub unsupported: Vec<Unsupported>,
-    pub files: Files,
-    pub cost: ExtractionCost,
-}
-
-impl Measurement {
-    /// The selected files' shared facts, sorted by path, without building the name-resolution
-    /// index. `index().files()` holds the same files in the same order.
-    pub fn facts(&self) -> &[Rc<FileFacts>] {
-        &self.facts
-    }
-
-    /// The name-resolution index, built once only when a consumer asks for it.
-    pub fn index(&self) -> &SourceIndex {
-        self.index
-            .get_or_init(|| SourceIndex::of(self.facts.clone()))
-    }
-
-    pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
-        let index = timed(&mut cost.index, || self.index());
-        cost.files = index.files.len();
-        cost.declarations = index.files.iter().map(|file| file.declarations.len()).sum();
-        cost.references = index
-            .names
-            .values()
-            .flat_map(HashMap::values)
-            .map(|held| held.references.len())
-            .sum();
-        cost.distinct_names = index.names.values().map(HashMap::len).sum();
-        index
-    }
-}
-
 /// What a name-resolving gate's evidence cost: the base it laid out, each tree's part, and the
 /// lost references `dead-symbols` explained. Spec 11.2.
 #[derive(Default, Clone, Copy)]
@@ -406,7 +363,9 @@ struct Kept {
 }
 
 impl Extracted {
-    fn outcome(
+    /// The outcome of one file: held from an earlier request, taken from the cache, or read,
+    /// parsed and extracted now, with what it cost counted. ADR 0038, spec 11.2.
+    pub fn outcome(
         &self,
         path: &Path,
         file: &str,
@@ -446,7 +405,11 @@ impl Extracted {
     /// This tree's outcomes read from its cache, once for the run, less every path the change
     /// set names. The cache is named only when the tree holds none yet, and the time reading and
     /// decoding it took is the cost; naming it is the caller's part.
-    fn keep(&self, cache: impl FnOnce() -> Option<Cache>, changes: &[Change]) -> ExtractionCost {
+    pub fn keep(
+        &self,
+        cache: impl FnOnce() -> Option<Cache>,
+        changes: &[Change],
+    ) -> ExtractionCost {
         if let Some(kept) = self.kept.get() {
             return ExtractionCost {
                 cache_read: kept.read.take(),
@@ -512,7 +475,7 @@ impl Extracted {
 
     /// Every outcome this tree holds for a path the change set does not name, written to its
     /// cache when this run extracted one the cache lacked. The time the write took is the cost.
-    fn publish(&self) -> ExtractionCost {
+    pub fn publish(&self) -> ExtractionCost {
         let Some(kept) = self.kept.get().filter(|kept| kept.stale.replace(false)) else {
             return ExtractionCost::default();
         };
@@ -530,47 +493,6 @@ impl Extracted {
             cache_write: started.elapsed(),
             ..ExtractionCost::default()
         }
-    }
-}
-
-/// The whole base tree beside the working tree, with the paths a changed run's `Change` set
-/// names. Git says a working-tree file outside that set holds the base's bytes at the same path,
-/// so its outcome is the base extraction's, and the two trees share one set of facts for it. A
-/// path the base does not list under the same name is extracted from the working tree. The base's
-/// outcomes come from its structural cache where an earlier run kept them. Spec 8.4.
-pub struct Unchanged<'a> {
-    base: &'a Tree,
-    listed: &'a [String],
-    changed: HashSet<&'a str>,
-    cost: ExtractionCost,
-}
-
-impl<'a> Unchanged<'a> {
-    pub fn new(
-        base: &'a Tree,
-        changes: &'a [Change],
-        cache: impl FnOnce() -> Option<Cache>,
-    ) -> Result<Unchanged<'a>, Error> {
-        let cost = base.extracted().keep(cache, changes);
-        Ok(Unchanged {
-            base,
-            listed: base.files()?,
-            changed: changes.iter().map(|change| change.path.as_str()).collect(),
-            cost,
-        })
-    }
-
-    /// The base's outcomes written to its cache once both trees are measured, and what reading
-    /// and writing the cache cost this view.
-    pub fn publish(self) -> ExtractionCost {
-        self.cost + self.base.extracted().publish()
-    }
-
-    /// The base tree and its copy of this working-tree file, when the file is unchanged.
-    fn copy(&self, file: &str) -> Option<(&'a Tree, PathBuf)> {
-        let listed = self.listed.binary_search_by(|held| held.as_str().cmp(file));
-        (listed.is_ok() && !self.changed.contains(file))
-            .then(|| (self.base, self.base.root().join(file)))
     }
 }
 
@@ -620,79 +542,6 @@ pub(crate) fn of_with(path: &str, source: &str, names: &mut Names) -> Result<Out
         Some(Parsed::Rejected(file)) => Ok(Outcome::Unparsed(file)),
         Some(Parsed::Read(file)) => measured(&file, names),
     }
-}
-
-/// Every structural file of a tree, measured, because a gate that reads a module graph or a
-/// public surface needs every module a path may reach. The selection is every structural
-/// language under the default skip set, and no scope narrows it.
-pub fn measure_all(tree: &Tree, unchanged: Option<&Unchanged>) -> Result<Measurement, Error> {
-    let extensions = selected_extensions(&[]).unwrap_or_default();
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let found = files::found(
-        tree.root(),
-        || tree.files(),
-        &[tree.root().to_path_buf()],
-        &wanted,
-    )?;
-    measure(found, tree, unchanged)
-}
-
-/// The found files of one tree measured, each through the tree's one extraction of it, or the
-/// base's extraction where the file is unchanged against that base.
-pub fn measure(
-    found: Found,
-    tree: &Tree,
-    unchanged: Option<&Unchanged>,
-) -> Result<Measurement, Error> {
-    let repo_root = tree.root();
-    let mut facts = Vec::new();
-    let mut unparsed = Vec::new();
-    let mut unsupported = Vec::new();
-    let mut measured = Vec::new();
-    let mut cost = ExtractionCost::default();
-    for path in found.kept {
-        let file = files::relative(&path, repo_root);
-        let (source, path) = unchanged
-            .and_then(|held| held.copy(&file))
-            .unwrap_or((tree, path));
-        match source.extracted().outcome(&path, &file, &mut cost)? {
-            Outcome::Facts(found) => {
-                measured.push(found.file.clone());
-                facts.push(found);
-            }
-            Outcome::Unsupported(language) => unsupported.push(Unsupported { file, language }),
-            Outcome::Unparsed(file) => unparsed.push(file),
-            Outcome::Foreign => {}
-        }
-    }
-    let excluded = found
-        .excluded
-        .iter()
-        .map(|file| files::relative(file, repo_root))
-        .collect();
-    let unreadable = unparsed.iter().map(|file| file.file.clone()).collect();
-    facts.sort_by(|a, b| a.file.cmp(&b.file));
-    let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
-    Ok(Measurement {
-        facts,
-        index: OnceCell::new(),
-        unparsed,
-        unsupported,
-        files: Files {
-            measured,
-            not_measured,
-            excluded,
-            unreadable,
-        },
-        cost,
-    })
 }
 
 fn measured(file: &ParsedFile, names: &mut Names) -> Result<Outcome, Error> {
@@ -1354,6 +1203,19 @@ struct Sites {
 }
 
 impl SourceIndex {
+    /// What this index holds, counted into the tree's name cost. Spec 11.2.
+    pub fn tally(&self, cost: &mut TreeNameCost) {
+        cost.files = self.files.len();
+        cost.declarations = self.files.iter().map(|file| file.declarations.len()).sum();
+        cost.references = self
+            .names
+            .values()
+            .flat_map(HashMap::values)
+            .map(|held| held.references.len())
+            .sum();
+        cost.distinct_names = self.names.values().map(HashMap::len).sum();
+    }
+
     pub fn of(mut files: Vec<Rc<FileFacts>>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
         let mut names: HashMap<LanguageId, HashMap<Name, Sites>> = HashMap::new();
@@ -1985,36 +1847,6 @@ export function charge(at: number): number {
         assert_eq!(found, vec![("src/one.rs", 1), ("src/one.rs", 2)]);
         assert_eq!(index.references(LanguageId::Rust, "other").count(), 1);
         assert_eq!(index.references(LanguageId::Rust, "nothing").count(), 0);
-    }
-
-    fn measurement_of(files: Vec<Rc<FileFacts>>) -> Measurement {
-        Measurement {
-            facts: files,
-            index: OnceCell::new(),
-            unparsed: Vec::new(),
-            unsupported: Vec::new(),
-            files: Files::default(),
-            cost: ExtractionCost::default(),
-        }
-    }
-
-    #[test]
-    fn reading_facts_builds_no_name_index_and_holds_the_order_the_index_uses() {
-        let measured = measurement_of(vec![
-            Rc::new(synthetic("src/one.rs", LanguageId::Rust, &["a"])),
-            Rc::new(synthetic("src/two.rs", LanguageId::Rust, &["b"])),
-        ]);
-        let read: Vec<&str> = measured.facts().iter().map(|f| f.file.as_str()).collect();
-        assert_eq!(read, vec!["src/one.rs", "src/two.rs"]);
-        assert!(measured.index.get().is_none(), "facts() built an index");
-        let indexed: Vec<&str> = measured
-            .index()
-            .files()
-            .iter()
-            .map(|f| f.file.as_str())
-            .collect();
-        assert_eq!(indexed, read);
-        assert!(measured.index.get().is_some());
     }
 
     fn synthetic(file: &str, language: LanguageId, names: &[&str]) -> FileFacts {

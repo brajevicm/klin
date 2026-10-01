@@ -14,11 +14,12 @@ use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::{Key, Section};
-use crate::project::{Project, Tree};
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::{self, Values};
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
+use crate::tree::Tree;
 use crate::{cache, changed, survey};
 
 pub const SECTION: &str = "complexity";
@@ -959,7 +960,7 @@ fn test_files<'a>(
     tree: &Tree,
     renamed: Option<&'a HashMap<String, String>>,
 ) -> impl Fn(&str) -> bool + 'a {
-    let tests = tree.tests();
+    let tests = survey::tests(tree);
     move |file| {
         tests.file_holds(
             renamed

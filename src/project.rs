@@ -9,173 +9,16 @@
 //! own no lifetime of their own. ADR 0038, ADR 0040.
 
 use std::borrow::Cow;
-use std::cell::{Cell, OnceCell};
+use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
-use crate::base::{self, Prior, Window};
+use crate::base::{self, Prior, Run, Window};
 use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
-use crate::syntax::structural::Extracted;
-use crate::{files, scope, survey};
-
-/// One language a file is classified as by its extension, which is a fact of the path and no
-/// check's opinion. The escapes table names its own rows for each of these by the same name,
-/// and the survey leaves out a language that table has no rows for. Spec 5.4.
-pub struct Language {
-    pub name: &'static str,
-    pub suffixes: &'static [&'static str],
-}
-
-/// The languages the survey calls source, by extension. This is what a derived root is a
-/// directory of, so it belongs below every check. Spec 5.4, ADR 0038.
-pub const LANGUAGES: &[Language] = &[
-    Language {
-        name: "go",
-        suffixes: &[".go"],
-    },
-    Language {
-        name: "java",
-        suffixes: &[".java"],
-    },
-    Language {
-        name: "kotlin",
-        suffixes: &[".kt", ".kts"],
-    },
-    Language {
-        name: "python",
-        suffixes: &[".py"],
-    },
-    Language {
-        name: "ruby",
-        suffixes: &[".rb"],
-    },
-    Language {
-        name: "rust",
-        suffixes: &[".rs"],
-    },
-    Language {
-        name: "shell",
-        suffixes: &[".sh", ".bash", ".zsh"],
-    },
-    Language {
-        name: "swift",
-        suffixes: &[".swift"],
-    },
-    Language {
-        name: "typescript",
-        suffixes: &[".ts", ".tsx", ".mts", ".cts"],
-    },
-    Language {
-        name: "javascript",
-        suffixes: &[".js", ".jsx", ".mjs", ".cjs"],
-    },
-];
-
-/// The language a path is written in, by its extension, and `None` for a file no language
-/// claims. This is what the survey calls source.
-pub fn language_of(path: &str) -> Option<&'static str> {
-    LANGUAGES
-        .iter()
-        .find(|language| {
-            language
-                .suffixes
-                .iter()
-                .any(|suffix| path.ends_with(suffix))
-        })
-        .map(|language| language.name)
-}
-
-/// One tree's files, read once. The list is every file under the root by its relative path,
-/// sorted, less the default skip set, everything git ignores, and symbolic links. Hidden
-/// directories are in it, because two checks read them, and a caller that skips them filters
-/// the list. The list reads no file's contents. A structural check's files are read, parsed and
-/// extracted when a check first asks for them, and held with the tree for the run. Spec 4.1,
-/// 4.3, ADR 0038.
-pub struct Tree {
-    root: PathBuf,
-    files: OnceCell<Result<Vec<String>, String>>,
-    listing: Cell<files::Listing>,
-    extracted: Extracted,
-    tests: OnceCell<Tests>,
-}
-
-impl Tree {
-    /// A tree at this root, with nothing read yet.
-    pub fn at(root: &Path) -> Tree {
-        Tree {
-            root: root.to_path_buf(),
-            files: OnceCell::new(),
-            listing: Cell::new(files::Listing::default()),
-            extracted: Extracted::default(),
-            tests: OnceCell::new(),
-        }
-    }
-
-    /// A tree at this root whose file list a caller already knows, because it read the list
-    /// from somewhere other than a walk: the base laid out without a checkout reads it from the
-    /// base commit's index. The list carries the same rules a walk gives it. Spec 4.3, 8.4.
-    pub fn listed(root: &Path, files: Vec<String>) -> Tree {
-        let tree = Tree::at(root);
-        let _ = tree.files.set(Ok(files));
-        tree
-    }
-
-    pub fn root(&self) -> &Path {
-        &self.root
-    }
-
-    /// Each file's structural outcome, extracted once for every check that selects the file.
-    pub fn extracted(&self) -> &Extracted {
-        &self.extracted
-    }
-
-    /// The test roots of this tree alone, off its one file list. Spec 5.4.
-    pub fn test_roots(&self) -> Vec<String> {
-        survey::test_roots_of(self)
-    }
-
-    /// What spec 5.4 calls the tests of this tree alone, off its one file list.
-    pub fn tests(&self) -> Tests {
-        self.tests
-            .get_or_init(|| Tests {
-                roots: self.test_roots().into_iter().collect(),
-            })
-            .clone()
-    }
-
-    /// Every file, read on the first call and held for the run. A directory the walk could not
-    /// read is an error naming it, as it was for every walk before. Spec 4.3, 14.
-    pub fn files(&self) -> Result<&[String], Error> {
-        self.files
-            .get_or_init(|| {
-                files::listing(&self.root)
-                    .map(|(files, cost)| {
-                        self.listing.set(cost);
-                        files
-                    })
-                    .map_err(|why| why.to_string())
-            })
-            .as_deref()
-            .map_err(|why| Error(why.clone()))
-    }
-
-    /// What reading the file list cost, handed over once: a second call, or a call before the
-    /// list is read, is zero. Spec 11.2.
-    pub fn listing_cost(&self) -> files::Listing {
-        self.listing.take()
-    }
-}
-
-/// Whether a walk of a tree reaches a file at this path: it descends no directory of the
-/// default skip set. A walk keeps a file whatever the file itself is called, so only the
-/// directories above it decide. This is `files::found`'s coverage for a file the tree does
-/// not list yet, which is what the base laid out from an index has. Spec 4.3.
-pub fn reached(path: &str) -> bool {
-    path.rsplit_once('/')
-        .is_none_or(|(parents, _)| !parents.split('/').any(files::skipped))
-}
+use crate::survey;
+use crate::tree::Tree;
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
 pub struct Project {
@@ -327,21 +170,16 @@ impl Project {
     }
 }
 
-/// The tests of one tree: every file under one of its test roots, and every source file a test
-/// directory segment or a test affix marks, wherever it sits. Spec 5.4, 8.2.
-#[derive(Clone)]
-pub struct Tests {
-    roots: scope::Roots,
-}
-
-impl Tests {
-    /// Whether one of the tree's test roots holds this path.
-    pub fn root_holds(&self, path: &str) -> bool {
-        self.roots.holds(path)
+impl Run for Project {
+    fn root(&self) -> &Path {
+        Project::root(self)
     }
 
-    /// Whether spec 5.4 calls this path a test file.
-    pub fn file_holds(&self, path: &str) -> bool {
-        self.root_holds(path) || survey::marked(path)
+    fn changes(&self, base: &str) -> Result<Cow<'_, [Change]>, Error> {
+        Project::changes(self, base)
+    }
+
+    fn state(&self) -> Option<&Path> {
+        self.facts().state.as_deref()
     }
 }
