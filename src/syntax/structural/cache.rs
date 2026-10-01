@@ -17,7 +17,7 @@ use crate::syntax::{LANGUAGES, Language, LanguageId};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
-const EPOCH: u64 = 4;
+const EPOCH: u64 = 5;
 
 const MAGIC: &[u8] = b"klin structural cache\n";
 const KEPT: usize = 4;
@@ -230,6 +230,7 @@ impl Writer {
             self.text(&module.name);
             self.texts(&module.nesting);
             self.number(u64::from(module.inline));
+            self.number(u64::from(module.in_block));
             self.optional(module.path.as_deref());
             self.number(visibility_number(module.visibility));
         }
@@ -483,6 +484,7 @@ impl Reader<'_, '_> {
             name,
             nesting,
             inline,
+            in_block: self.number().filter(|flag| *flag <= 1)? == 1,
             path: self.optional()?,
             visibility: visibility_of(self.number()?)?,
         })

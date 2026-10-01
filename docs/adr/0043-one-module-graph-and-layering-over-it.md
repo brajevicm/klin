@@ -131,3 +131,17 @@ Klin's `layering` policy now enables `acyclic` over the module graph and pins
 the runner, checks, syntax, project, catalogue, core and edge boundaries. A
 resolved forbidden or cyclic edge is ratcheted; external and unsupported V1
 forms are not guessed, and no accepted entry is used to make the policy green.
+
+## Amendment: a bare path through a declared child module (#421)
+
+The decision above counts a path from any name but `crate`, `self` or `super`
+as external and never resolves it, and lists a bare Rust path as a known
+limit. Since the 2018 edition a path may start with the name of a child
+module, so a cycle closed through `pub use inner::X;` beside `mod inner;` went
+unseen. A path whose first segment names a module the same file declares at
+that path's nesting, directly in a module rather than inside a block, now resolves as if it started
+with `self::`, in a `use` tree and outside an import. In a `use` tree of an
+edition 2015 target the first segment starts at the target root, as rustc
+reads it. Any other first segment stays external. A bare path through a name
+no module of its file declares, and a name a block binds over a declared
+child, remain known limits. SPEC.md 8.2.1 states the rule.

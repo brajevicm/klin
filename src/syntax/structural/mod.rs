@@ -181,6 +181,9 @@ pub struct ModuleDecl {
     pub nesting: Vec<String>,
     /// True where the declaration holds its module's body, so no file is named for it.
     pub inline: bool,
+    /// True where a block holds the declaration with no module between them, so the module is
+    /// an item of that block and no path outside it names it.
+    pub in_block: bool,
     /// The file the declaration names instead of its own name, where the language can say so.
     /// Rust writes it `#[path = "other.rs"]`. The module graph resolves either to a file.
     pub path: Option<String>,
@@ -838,9 +841,14 @@ pub(crate) struct Adapter {
     pub remapped: fn(Node, &[u8]) -> Option<String>,
     /// The inline modules that hold a node, outermost first.
     pub nesting: fn(Node, &[u8]) -> Vec<String>,
-    /// The path a node writes from the crate or from its own module, and `None` for any other
-    /// node, including a path inside a longer one.
-    pub qualified: fn(Node, &[u8]) -> Option<String>,
+    /// The segments of the whole path a node writes, and `None` for any other node, including a
+    /// path inside a longer one.
+    pub qualified: fn(Node, &[u8]) -> Option<Vec<String>>,
+    /// The first segments a qualified path resolves from inside the crate. A path that starts
+    /// with any other name is kept only where it names a module the file declares beside it.
+    pub rooted: &'static [&'static str],
+    /// The node kinds of a block, whose items are local to it.
+    pub blocks: &'static [&'static str],
     /// The names a node writes inside a string that the language calls by that text, such as a
     /// function a Rust `serde` attribute names or a name a format string captures.
     pub quoted: fn(Node, &[u8]) -> Vec<String>,
@@ -1140,6 +1148,7 @@ impl<'a, 'b> Reading<'a, 'b> {
             name: text_of(name, self.source),
             nesting: (self.adapter.nesting)(node, self.source),
             inline,
+            in_block: held_by_a_block(node, self.adapter.blocks),
             path: (!inline)
                 .then(|| (self.adapter.remapped)(node, self.source))
                 .flatten(),
@@ -1213,6 +1222,14 @@ impl<'a, 'b> Reading<'a, 'b> {
     fn uses(&mut self, root: Node) -> (Vec<Reference>, Vec<QualifiedPath>) {
         let mut references = Vec::new();
         let mut paths = Vec::new();
+        let declarations = std::mem::take(&mut self.modules);
+        let mut modules: HashMap<&str, Vec<&[String]>> = HashMap::new();
+        for module in declarations.iter().filter(|module| !module.in_block) {
+            modules
+                .entry(&module.name)
+                .or_default()
+                .push(&module.nesting);
+        }
         walk(root, &mut |node| {
             if self.adapter.identifiers.contains(&node.kind())
                 && !self.declared.contains(&node.start_byte())
@@ -1224,14 +1241,12 @@ impl<'a, 'b> Reading<'a, 'b> {
                         .intern(node.utf8_text(self.source).unwrap_or_default()),
                     line: self.row(node),
                 });
-            } else if let Some(path) =
+            } else if let Some(segments) =
                 (self.adapter.qualified)(node, self.source).filter(|_| !self.claimed(node))
             {
-                paths.push(QualifiedPath {
-                    line: self.row(node),
-                    nesting: (self.adapter.nesting)(node, self.source),
-                    path,
-                });
+                if let Some(path) = self.resolvable(node, &segments, &modules) {
+                    paths.push(path);
+                }
             } else {
                 for name in (self.adapter.quoted)(node, self.source) {
                     references.push(Reference {
@@ -1241,7 +1256,33 @@ impl<'a, 'b> Reading<'a, 'b> {
                 }
             }
         });
+        self.modules = declarations;
         (references, paths)
+    }
+
+    /// The qualified path a node writes where it starts at a rooted segment or at a module the
+    /// file declares outside a block at the path's own nesting. `modules` holds the nestings
+    /// each such name is declared at, and the nesting is read only for a path whose first segment
+    /// could qualify.
+    fn resolvable(
+        &self,
+        node: Node,
+        segments: &[String],
+        modules: &HashMap<&str, Vec<&[String]>>,
+    ) -> Option<QualifiedPath> {
+        let first = segments.first()?.as_str();
+        let rooted = self.adapter.rooted.contains(&first);
+        let declared = modules.get(first);
+        if !rooted && declared.is_none() {
+            return None;
+        }
+        let nesting = (self.adapter.nesting)(node, self.source);
+        let beside = || declared.is_some_and(|at| at.contains(&nesting.as_slice()));
+        (rooted || beside()).then(|| QualifiedPath {
+            line: self.row(node),
+            nesting,
+            path: segments.join("::"),
+        })
     }
 
     fn claimed(&self, node: Node) -> bool {
@@ -1416,6 +1457,22 @@ fn record_name(named: &mut HashMap<Name, Sites>, name: Name, into: impl FnOnce(&
 /// function rather than a declaration of the file.
 fn inside_a_function(node: Node, language: &Language) -> bool {
     above(node, language.functions).is_some()
+}
+
+/// Whether a block holds this module declaration directly, and not through a module of the same
+/// kind as the declaration that a block may in turn hold.
+fn held_by_a_block(node: Node, blocks: &[&str]) -> bool {
+    let mut holder = node.parent();
+    while let Some(found) = holder {
+        if found.kind() == node.kind() {
+            return false;
+        }
+        if blocks.contains(&found.kind()) {
+            return true;
+        }
+        holder = found.parent();
+    }
+    false
 }
 
 /// The nearest node above this one whose kind is one of these.
