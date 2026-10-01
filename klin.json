@@ -91,7 +91,12 @@
         "can_use": ["catalogue", "project", "core"]
       },
       "project": {
-        "in": ["src/files.rs", "src/project.rs", "src/survey.rs"],
+        "in": [
+          "src/files.rs",
+          "src/project.rs",
+          "src/survey.rs",
+          "src/tree.rs"
+        ],
         "can_use": ["catalogue", "syntax", "core", "window"]
       },
       "catalogue": {
@@ -112,7 +117,11 @@
         "can_use": ["catalogue", "host", "journal", "core"]
       },
       "contract": {
-        "in": ["src/check/contract.rs", "src/check/holes.rs"],
+        "in": [
+          "src/check/contract.rs",
+          "src/check/holes.rs",
+          "src/measurement.rs"
+        ],
         "can_use": ["project", "syntax", "core"]
       },
       "core": {
