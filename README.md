@@ -10,91 +10,76 @@
 
 klin catches new or worsened deterministic problems during coding-agent work and returns concrete feedback while the working context is still available.
 
-**Claude Code · Codex · Cursor**
+**Works natively with:** Claude Code · Codex · Cursor
 
 ```text
 FAIL  complexity
       FAIL: 1 function(s) got worse — the ratchet only tightens:
         src/quote.ts:18  cc 11, 35 lines, was cc 10, 33 lines
-      Reduce the function's responsibility or decision complexity.
+      Reduce the function's responsibility or decision complexity. …
 ```
 
-## Install klin on macOS or Linux
+## How klin works
+
+```mermaid
+flowchart LR
+    A("`**Agent edits**
+changes the repository`")
+
+    B("`**klin checks the delta**
+new or worsened problems only`")
+
+    C("`**CI verifies**
+independent repository check`")
+
+    D("`**Regression**
+concrete finding + guidance`")
+
+    E("`**Agent repairs**
+while context is still live`")
+
+    A --> B
+    B -->|"clean"| C
+    B -->|"regression"| D
+    D --> E
+    E --> B
+
+    classDef klin fill:#ECFDF5,stroke:#10B981,color:#064E3B,stroke-width:2px;
+    classDef regression fill:#FEF2F2,stroke:#EF4444,color:#991B1B,stroke-width:2px;
+
+    class B klin;
+    class D regression;
+
+    linkStyle 2 stroke:#EF4444,stroke-width:2px;
+    linkStyle 3 stroke:#EF4444,stroke-width:2px;
+```
+
+## Quick start
+
+### 1. Install
+
+From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 
 ```sh
-cd your-repo
 sh -c 'i=$(curl --proto "=https" --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh) && sh -c "$i" && ~/.local/bin/klin install'
 ```
 
-Runs on macOS, Ubuntu 22.04 and later, and Debian 12 and later.
+klin detects the supported hosts already used by the repository. If none are found, it configures Claude Code, Codex, and Cursor.
 
-This installs klin, opts the repository in, and writes the hooks for each host your repository already uses, or for Claude Code, Codex and Cursor when it shows none. Commit the generated `klin.json` and hook files so your teammates get the same checks.
+Commit `klin.json` and the generated integration files.
 
-`--host claude`, `--host codex` or `--host cursor` narrows the host list. If the klin plugin also runs on your machine, klin runs once per event and the other copy stays quiet.
+Only want one host? Append `--host claude`, `--host codex`, or `--host cursor` to the final `klin install` command.
 
-Using Codex? Run `/hooks`, review and trust the klin hooks, then start a fresh session.
+> [!NOTE]
+> **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
-**Updating:** run `klin update`, then `klin install` again.
+### 2. Work normally
 
-### Or use your host's plugin
+Use your coding agent as usual.
 
-A plugin runs the same checks and fetches klin by itself, but it doesn't add the `klin` command. If you also want shell commands such as `klin stats`, install the CLI separately.
+klin marks the work boundary and checks the delta when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
 
-#### Claude Code
-
-```text
-/plugin marketplace add brajevicm/klin
-/plugin install klin@klin
-```
-
-#### Codex
-
-```sh
-codex plugin marketplace add brajevicm/klin
-codex plugin add klin@klin
-```
-
-Run `/hooks`, review and trust the klin hooks, then start a fresh session.
-
-#### Cursor
-
-<details>
-<summary>Install the local plugin</summary>
-
-```sh
-d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.4.1 https://github.com/brajevicm/klin "$d" &&
-  mkdir -p ~/.cursor/plugins/local &&
-  rm -rf ~/.cursor/plugins/local/klin &&
-  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
-s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || { echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2; false; }
-```
-
-Reload Cursor after installation.
-
-</details>
-
-A plugin's checks stay quiet until the repository opts in. At the repository root, run:
-
-```sh
-echo '{}' > klin.json
-```
-
-`{}` is a complete configuration. klin discovers repository facts automatically; `klin.json` contains only the policy you choose to configure.
-
-**Configure policy, not your repository.**
-
-### Other coding agents
-
-Claude Code, Codex, and Cursor are the first-class integrations. Any other coding-agent harness can use klin through its versioned [harness protocol](harness-protocol/), but somebody has to build that integration for the harness.
-
-Installing the klin binary alone does not connect another harness. The harness has to send its lifecycle events to klin in the protocol's format and turn klin's decisions back into its own answers.
-
-Start with [the porting guide](docs/HARNESS_INTEGRATION.md).
-
-## Did klin catch anything?
-
-Work normally with your coding agent, then inspect the latest session:
+### 3. See what happened
 
 ```sh
 klin stats --session
@@ -107,56 +92,105 @@ klin caught 1 regression this session.
 It was fixed after klin flagged it.
 ```
 
-Use `klin stats --all` to inspect individual regressions and `klin stats --json` for machine-readable output.
+Use `klin stats --all` for individual findings or `klin stats --json` for machine-readable output.
 
-If something is still unresolved, the report puts it first and names the affected sites.
+## Native plugins
+
+**Alternative to the repository-hook setup above.**
+
+Claude Code, Codex, and Cursor can also run klin through their native plugin systems.
+
+Plugins do not expose the `klin` CLI. If plugin and repository hooks are both present, one copy handles each event and the other stays quiet.
+
+### Claude Code
+
+```text
+/plugin marketplace add brajevicm/klin
+/plugin install klin@klin
+```
+
+### Codex
+
+```sh
+codex plugin marketplace add brajevicm/klin
+codex plugin add klin@klin
+```
+
+Then run `/hooks`, trust the klin hooks, and start a fresh session.
+
+### Cursor
+
+<details>
+<summary><strong>Install the local plugin</strong></summary>
+
+```sh
+d=$(mktemp -d) &&
+  git clone --depth 1 --branch v0.4.1 https://github.com/brajevicm/klin "$d" &&
+  mkdir -p ~/.cursor/plugins/local &&
+  rm -rf ~/.cursor/plugins/local/klin &&
+  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
+s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || {
+  echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2
+  false
+}
+```
+
+Reload Cursor.
+
+</details>
+
+Opt the repository in:
+
+```sh
+echo '{}' > klin.json
+```
+
+`{}` is a complete configuration. klin derives repository facts automatically.
 
 ## Why klin
 
 A coding agent can complete the requested task while making something else worse.
 
-Most deterministic tools tell you what is wrong **now**. klin adds the change boundary: **did this problem appear or get worse during this work?**
+Most deterministic tools tell you what is wrong **now**. klin adds the change boundary:
+
+**Did this problem appear or get worse during this work?**
 
 ```text
-quality debt           before      after      result
-unchanged                  8          8         ✓ pass
-improved                   8          6         ✓ pass
-worsened                   8          9         ✗ fail
+quality debt        before    after    result
+unchanged               8        8       ✓ pass
+improved                8        6       ✓ pass
+worsened                8        9       ✗ fail
 ```
 
-**Adopt without a cleanup project.** Existing measured debt does not block work. Unchanged and improved debt passes; new or worsened debt fails.
-
-**Repair now, verify later.** Local hooks return regressions while the agent still has the working context. CI independently verifies the same repository policy before merge.
+Existing debt does not block adoption. Only new or worsened debt fails.
 
 **Deterministic, not another LLM.** klin measures specific properties and returns concrete evidence instead of asking another model whether the code is "good."
 
-**No baseline to maintain.** The before-state comes from the repository and the work boundary, not a baseline file that has to stay in sync.
+**No baseline to maintain.** The before-state comes from the repository and the work boundary.
 
-**The agent fixes code, not the bar.** Bundled agent instructions tell it to repair the named code rather than weaken policy, silence a check, or reset the work boundary.
+**Repair now, verify later.** Local hooks return findings while the agent still has context. CI independently checks the committed result.
+
+**The agent fixes code, not the bar.** Intentional exceptions are human-reviewed policy in `accepted`.
 
 ## What klin catches
 
-- **Complexity creeps up.** A function becomes too complex or too large for the repo's current bar.
+- **Complexity creeps up.** A function becomes too complex or too large for the repository's current bar.
 - **Architecture drifts.** A new dependency cycle appears, code crosses a configured layer, or a project convention is broken.
 - **Guardrails get bypassed.** A test disappears or gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch.
-- **The work isn't actually finished.** The change leaves behind a new TODO, placeholder, or not-implemented stub, or adds code that nothing can reach.
-- **A public contract changes.** An exported surface disappears or its declared contract changes, even though the repository still builds.
-- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or the lockfile still records a different version.
-- **References in docs go stale.** Code moves, but documentation still points to the old location.
+- **Work is left unfinished.** New TODOs, placeholders, stubs, or unreachable code remain behind.
+- **A public contract changes.** An exported surface disappears or its declared contract changes.
+- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or resolves differently.
+- **Documentation goes stale.** Code moves, but documentation still points to the old location.
 
-Already use a static analysis tool? If it emits SARIF, its findings can go through the same ratchet.
+Keep your linters, type checkers, tests, security scanners, static analysis, AI review, and human review. klin adds a deterministic ratchet around the agent's change.
 
-See the [configuration reference](docs/REFERENCE.md) for exact check and language coverage.
+Tools that emit SARIF can feed findings through the same new-or-worsened model.
 
-## Keep your existing tools
+[Configuration and language coverage →](docs/REFERENCE.md)
 
-Keep your linters, type checkers, tests, security scanners, AI review, and human review. klin does not replace them; it adds deterministic quality control around the coding agent's change.
+## CI
 
-## Feedback locally. Verify independently in CI.
-
-Local hooks are for repair. CI is for verification.
-
-While the coding agent works, klin returns regressions while the change is still in context. Before merge, CI checks the committed change again from an independent checkout the agent never touched.
+**Local hooks provide feedback. CI enforces.**
 
 GitHub Actions, after checkout:
 
@@ -164,29 +198,28 @@ GitHub Actions, after checkout:
 - uses: brajevicm/klin@v0.4.1
 ```
 
-Other CI, after installing klin:
+Other CI:
 
 ```sh
 klin gate --strict
 ```
 
-Hooks alone are klin's **Feedback** level. Make the independent CI check required and protect changes to the enforcement setup through review to reach **Enforced**.
+Make the check required. Require review for changes to `klin.json` and the generated hook files.
 
-Local hooks are feedback inside the developer environment, not a tamper-proof security boundary. Independent required CI is the enforcement boundary.
-
-[See the trust model and enforcement boundaries](docs/THREAT_MODEL.md).
+[Trust model and enforcement boundaries →](docs/THREAT_MODEL.md)
 
 ## Tested on real coding-agent work
 
-We tested klin across repeated controlled coding-agent runs and used the results to harden the product before release.
+klin has been tested across repeated controlled coding-agent runs.
 
-[Read the coding-agent validation](docs/benchmark-result-2026-09-25.md).
+[Read the coding-agent validation →](docs/benchmark-result-2026-09-25.md)
 
-## Documentation
+## Learn more
 
 - [Configuration reference](docs/REFERENCE.md)
 - [Host compatibility](docs/HOST_COMPATIBILITY.md)
 - [Trust and enforcement](docs/THREAT_MODEL.md)
+- [Agent instructions](plugins/klin/skills/klin/SKILL.md)
 - [Integrating another coding-agent harness](docs/HARNESS_INTEGRATION.md)
 - [Coding-agent validation](docs/benchmark-result-2026-09-25.md)
 
