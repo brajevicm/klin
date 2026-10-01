@@ -49,7 +49,7 @@ If your shell can't find `klin` after the install, open a new terminal. To updat
 
 ### 2. Work normally
 
-Use your coding agent as usual. There is nothing to run manually - klin checks the turn when the agent tries to finish.
+Use your coding agent as usual. You don't need to run anything yourself.
 
 klin marks the start of the turn and checks what changed when the agent tries to finish. New or worsened deterministic problems go back to the agent while the change is still in context.
 
@@ -208,9 +208,9 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 ## Privacy and trust
 
 - **No telemetry.** klin reads no secrets and sends nothing anywhere.
-- **Project commands stay project commands.** klin may run the configured or derived build command and prints the derived command before running it. Set `"build": false` to disable builds.
-- **Local state stays in Git state.** klin keeps its working state under `.git/klin`, including up to 80 characters of the prompt's first line by default. Set `"journal": { "prompt": false }` to omit prompt text.
-- **Downloaded binaries are verified.** The plugin verifies the pinned release's SHA-256 before caching and running it; the release installer also verifies its release artifact.
+- **You control the build commands.** klin may run the configured or derived build command, and it prints a derived command before running it. Set `"build": false` to disable builds.
+- **State stays in your repository.** klin keeps its working state under `.git/klin`, including up to 80 characters of the prompt's first line by default. Set `"journal": { "prompt": false }` to omit prompt text.
+- **Downloaded binaries are verified.** The plugin checks the pinned release's SHA-256 before it caches and runs the binary. The installer also verifies what it downloads.
 
 [Threat model →](docs/THREAT_MODEL.md)
 
