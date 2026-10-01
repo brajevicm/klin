@@ -1,7 +1,8 @@
 //! What a gate says about the holes in what it measured: files that left its scrutiny, files in a
-//! language no adapter reads, forms no resolver proved, and files no grammar read. Each is a NOTE
-//! where the change opened no hole or the agent cannot close it, and exit 2 elsewhere, so a green
-//! run never implies a measurement klin did not make. Spec 8.6.
+//! language no adapter reads, forms no resolver proved, and files no grammar read. A file that
+//! left scrutiny is a NOTE, and exit 2 only under `--strict`. Each other hole is a NOTE where the
+//! change opened no hole or the agent cannot close it, and exit 2 elsewhere, so a green run never
+//! implies a measurement klin did not make. Spec 8.6, 10.
 
 use std::fmt::Write;
 
