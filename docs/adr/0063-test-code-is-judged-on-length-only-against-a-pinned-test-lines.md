@@ -34,8 +34,14 @@ code `skip_test_idioms` reads as test code (ADR 0060), with a test file of
   production ceiling refuses.
 - Each tree is classified over its own files, and a renamed file is
   classified at the base under its base path.
-- An accepted `complexity` entry may leave out `lines`. It then holds only a
-  finding that carries no `lines`.
+- A finding in test code carries its length as `test_lines`, and one in
+  production code as `lines`. A function that moves between the two carries a
+  value its base entry does not, so it is judged under its new ceiling from
+  that point, whichever ceiling is stricter.
+- An accepted `complexity` entry may leave out `lines` or `test_lines`. It
+  then holds only a finding that does not carry the value it left out.
+- The `OK:` line names added and renamed files from the change set, so a
+  file a wider scope brings in is not named.
 - Test code stays in the derived sample of `cc` and `lines`, so no derived
   ceiling moves.
 - With no `test_lines`, the `OK:` line of `complexity` says how many test

@@ -27,6 +27,7 @@ pub struct Prior {
     layout: Cell<Option<Layout>>,
     /// The path the base holds each file at that the change renamed, by the path it has today.
     renamed: HashMap<String, String>,
+    added: HashSet<String>,
 }
 
 /// What laying the whole base out took, part by part, so a warm run's base cost is not one
@@ -65,6 +66,7 @@ impl Prior {
             from_worktree: Cell::new(from_worktree),
             layout: Cell::new(None),
             renamed: HashMap::new(),
+            added: HashSet::new(),
         }
     }
 
@@ -127,6 +129,19 @@ impl Prior {
     /// The path the base holds each file at that the change renamed, by the path it has today.
     pub fn renamed(&self) -> &HashMap<String, String> {
         &self.renamed
+    }
+
+    pub fn added(&self) -> &HashSet<String> {
+        &self.added
+    }
+
+    fn changed_by(&mut self, changes: &[Change]) {
+        self.renamed = changed::renamed(changes);
+        self.added = changes
+            .iter()
+            .filter(|change| change.was.is_none())
+            .map(|change| change.path.clone())
+            .collect();
     }
 
     /// The files a measurement of this base could not read that the base could not read under
@@ -227,7 +242,7 @@ fn checked_out(
     let mut prior = Prior::new(Tree::at(&at), dir, Some(root.to_path_buf()));
     prior.add(|layout| &mut layout.worktree_add, started.elapsed());
     let changes = prior.spent(|layout| &mut layout.changes, || project.changes(before))?;
-    prior.renamed = changed::renamed(&changes);
+    prior.changed_by(&changes);
     prior.spent(
         |layout| &mut layout.renames,
         || {
@@ -346,7 +361,7 @@ fn held(project: &Project, laid: Laid, dir: tempfile::TempDir, changes: &[Change
     tree.extracted()
         .hold(laid.cache, laid.outcomes, changes, laid.read);
     let mut prior = Prior::new(tree, dir, Some(project.root().to_path_buf()));
-    prior.renamed = changed::renamed(changes);
+    prior.changed_by(changes);
     prior.layout.set(Some(laid.layout));
     prior
 }
@@ -510,7 +525,7 @@ fn written(
     let root = project.root();
     let at = dir.path().to_path_buf();
     let mut prior = Prior::new(Tree::at(&at), dir, None);
-    prior.renamed = changed::renamed(changes);
+    prior.changed_by(changes);
     let requested: Vec<(&str, &Change)> = changes
         .iter()
         .filter_map(|change| change.was.as_deref().map(|was| (was, change)))

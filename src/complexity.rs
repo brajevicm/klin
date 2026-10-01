@@ -309,7 +309,11 @@ impl Function {
         let mut values = Values::new();
         values.insert("cc".into(), self.cc.into());
         if self.length_ceiling(ceilings).is_some() {
-            values.insert("lines".into(), self.length().into());
+            let key = match self.test {
+                true => TEST_LINES,
+                false => LINES,
+            };
+            values.insert(key.name.into(), self.length().into());
         }
         Finding {
             file: self.file.clone(),
@@ -396,7 +400,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
-    let unjudged = tests.said(&before, laid);
+    let unjudged = tests.said(laid);
     let code = evaluator(&spec).evaluate(
         now,
         prior,
@@ -404,7 +408,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
             &project.config,
             at.gate,
             evaluator(&spec).metrics,
-            &[LINES.name],
+            &[LINES.name, TEST_LINES.name],
         )?,
         at,
         Line {
@@ -486,20 +490,14 @@ fn unjudged_tests<'a>(
 }
 
 impl Unjudged<'_> {
-    fn said(&self, before: &Files, prior: &base::Prior) -> String {
+    fn said(&self, prior: &base::Prior) -> String {
         if self.functions == 0 {
             return String::new();
         }
-        let held: BTreeSet<&str> = before
-            .measured
-            .iter()
-            .chain(&before.unreadable)
-            .map(String::as_str)
-            .collect();
         let arrived: Vec<&str> = self
             .files
             .iter()
-            .filter(|file| prior.renamed().contains_key(**file) || !held.contains(**file))
+            .filter(|file| prior.renamed().contains_key(**file) || prior.added().contains(**file))
             .copied()
             .collect();
         let named = match arrived.is_empty() {
@@ -531,7 +529,7 @@ fn scoped<'a>(files: impl Iterator<Item = &'a String>, at: &Context) -> usize {
 
 fn evaluator(spec: &Spec) -> Evaluator<'_> {
     Evaluator {
-        metrics: &["cc", "lines"],
+        metrics: &[CC.name, LINES.name, TEST_LINES.name],
         unit: "function(s)",
         condition: &spec.gate_text,
         ceiling: Some(&spec.ceiling_text),
@@ -1269,8 +1267,10 @@ fn show(values: &Values) -> String {
             .and_then(Value::as_u64)
             .map_or("?".to_string(), |value| value.to_string())
     };
-    match values.contains_key("lines") {
-        true => format!("cc {}, {} lines", number("cc"), number("lines")),
-        false => format!("cc {}", number("cc")),
-    }
+    let length = [(LINES.name, "lines"), (TEST_LINES.name, "test lines")]
+        .iter()
+        .find(|(key, _)| values.contains_key(*key))
+        .map(|(key, unit)| format!(", {} {unit}", number(key)))
+        .unwrap_or_default();
+    format!("cc {}{length}", number(CC.name))
 }

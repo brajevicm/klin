@@ -1712,8 +1712,12 @@ fn with_test_lines_pinned_a_test_function_past_it_fails() {
     let run = tree.run(&["complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pinned: complexity test_lines 30"), "{}", run.out);
-    assert!(run.says("tests/long.rs:1  cc 1, 40 lines"), "{}", run.out);
-    assert!(run.says("src/lib.rs:5  cc 1, 40 lines"), "{}", run.out);
+    assert!(
+        run.says("tests/long.rs:1  cc 1, 40 test lines"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("src/lib.rs:5  cc 1, 40 test lines"), "{}", run.out);
     assert!(!run.says("tests/short.rs:1"), "{}", run.out);
     assert!(!run.says("not judged on length"), "{}", run.out);
 }
@@ -1858,4 +1862,66 @@ fn a_function_marked_cfg_test_outside_a_module_is_test_code() {
         "{}",
         run.out
     );
+}
+
+fn moved_between_test_and_production(config: &str, from: &str, to: &str) -> harness::Run {
+    let tree = Tree::new();
+    tree.write("klin.json", config);
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.write("tests/keep.rs", "fn kept() {}\n");
+    tree.write(from, &stretched(&knotted("knot"), 67));
+    tree.base();
+    tree.git(&["mv", from, to]);
+    tree.run(&["complexity"])
+}
+
+#[test]
+fn a_test_moved_into_production_code_is_judged_against_the_stricter_production_lines() {
+    let run = moved_between_test_and_production(
+        r#"{ "complexity": { "cc": 8, "lines": 60, "test_lines": 100 } }"#,
+        "tests/knot.rs",
+        "src/knot.rs",
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(
+        run.says("cc 11, 80 lines, was cc 11, 80 test lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn production_code_moved_into_a_test_is_judged_against_the_stricter_test_lines() {
+    let run = moved_between_test_and_production(
+        r#"{ "complexity": { "cc": 8, "lines": 100, "test_lines": 60 } }"#,
+        "src/knot.rs",
+        "tests/knot.rs",
+    );
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("got worse"), "{}", run.out);
+    assert!(
+        run.says("cc 11, 80 test lines, was cc 11, 80 lines"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_file_a_wider_scope_brings_in_is_not_named_as_added() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
+    tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");
+    tree.write("tests/old.rs", &long("old_test", 5));
+    tree.base();
+    tree.write(
+        "klin.json",
+        r#"{ "complexity": { "in": ["src", "tests"] } }"#,
+    );
+    tree.write("tests/new.rs", &long("new_test", 5));
+
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("added or renamed: tests/new.rs ("), "{}", run.out);
+    assert!(!run.says("tests/old.rs"), "{}", run.out);
 }
