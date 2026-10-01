@@ -5,7 +5,7 @@ This note belongs to #371, the WP0 of the cycle-first architecture foundation
 edge to one WP1 ticket. ADR 0065 records the rules that the WP1 tickets
 follow.
 
-## Baseline
+## The measured commit
 
 - Commit: `bffa48cd622537d42e6a636fb33c3a9c14d5e04d`, the merge of #424. #421
   is closed, so `klin layering` counts an edge written through a bare child
@@ -17,7 +17,7 @@ follow.
   OK: 723 dependency site(s) judged, 0 forbidden, 282 cyclic, all held at the base
   ```
 
-**The held cyclic count at the baseline is 282.** Each WP1 PR measures its
+**The held cyclic count at `bffa48cd` is 282.** Each WP1 PR measures its
 count before and after with `klin layering`. The numbers below come from the
 diagnostic method, and `klin layering` stays authoritative (ADR 0065).
 
@@ -29,7 +29,7 @@ uses the same binary on a copy of the tree:
 1. Make a scratch repository with one empty commit as the base.
 2. Copy `src/`, `Cargo.toml` and `Cargo.lock` into the scratch repository.
    Write a `klin.json` that holds only the `layering` section of the
-   baseline, and stage everything.
+   measured commit, and stage everything.
 3. Run `klin layering`. The base holds nothing, so the run prints all 282
    cyclic edges as new, each with its line, its site count and one shortest
    cycle.
@@ -42,8 +42,9 @@ uses the same binary on a copy of the tree:
    Apply them one at a time, and find the SCCs again after each one. An edge
    that leaves the SCCs at a ticket belongs to that ticket.
 
-The scripts were one-off and are not in the repository. This note holds
-their results.
+The scripts were one-off, and the repository does not keep them. This note
+holds their results: the SCCs, the hubs and every cyclic edge. The 84 edges
+outside the SCCs close no cycle, so the note does not list them.
 
 ## Limits
 
@@ -81,7 +82,7 @@ main, shell, state, stats, syntax::structural::footprint, update and write.
 
 ### Hubs
 
-These modules hold the most cyclic edges, counted at the baseline.
+These modules hold the most cyclic edges at `bffa48cd`.
 
 | Module | Cyclic edges in | Cyclic edges out | Why it is a hub |
 |---|---|---|---|
@@ -105,21 +106,22 @@ These modules hold the most cyclic edges, counted at the baseline.
   and `extensions_by_name` (#373).
 - **Modules that become true leaves after #372.** `cache`, `changed` and
   `hunks` are cyclic only through `config::Error`.
-- **True leaves at the baseline.** `git`, `shell`, `update` and `write`
+- **True leaves at `bffa48cd`.** `git`, `shell`, `update` and `write`
   import no other module. `state` imports only `git`, and `handoff` imports
   only `state` and `write`.
 
 ## Assignment
 
-The sequence is #372, #373, #374, #375, #376, #377, #379, #378, and then a
-#427 for the parent and child cycles. Every one of the 282 edges has
-one owner. 93 edges are *active*: the owner changes the edge's site. 189
+The sequence is #372, #373, #374, #375, #376, #377, #379, #378, and then
+#427 for the parent and child cycles. Every one of the 282 edges has one
+owner. 93 edges are *active*: the owner changes the edge's site. 189
 edges are *passive*: the site does not change, and the owner removes the
-path back. A passive edge has no planned direction.
+path back. A passive edge needs no planned direction, unless a ticket other
+than its owner moves its site.
 
 | Ticket | Active | Passive | Projected held count after it |
 |---|---|---|---|
-| baseline | | | 282 |
+| `bffa48cd` | | | 282 |
 | #372 | 15 | 17 | 250 |
 | #373 | 21 | 8 | 221 |
 | #374 | 7 | 36 | 178 |
@@ -132,8 +134,10 @@ path back. A passive edge has no planned direction.
 
 ### Active families
 
-Each active edge belongs to one family. The appendix names the family of
-each edge.
+Each active edge belongs to one family. A count in parentheses counts
+active edges unless it says passive. 14 passive edges have a site that a
+ticket other than their owner moves, and they take that ticket's family:
+F7b 1, F7c 7, F7d 1 and F9 5. The appendix names the family of each edge.
 
 | Family | Current source | Current target | Why cyclic | Owning ticket | Planned direction |
 |---|---|---|---|---|---|
@@ -145,8 +149,10 @@ each edge.
 | F6 check contracts in low modules (3) | base, syntax, coverage | `check` | `check` imports `base` and every check. | #375 | The low module takes narrow facts and returns structured data. The calling check, or an existing high module, writes through `Sink` and `Records`. |
 | F7a catalogue to checks (13) | check | complexity, conventions, dead_symbols, doc_citations, doc_size, escapes, inventory, layering, lockfile, public_api, reachability, sarif, stubs | Each check imports `check`. | #376 | The new catalogue module imports the concrete checks one-way. No check imports the catalogue. |
 | F7b contract importers (16) | complexity, conventions, conventions::report, dead_symbols, doc_citations, doc_size, escapes, inventory, layering, lockfile, markers, public_api, ratchet, reachability, sarif, stubs | `check` | `check` holds `CATALOGUE`, which imports each of them. | #376 | The caller imports `Context`, `Sink`, `Records` and the outcome names from the new contract module directly. The contract imports no check and no catalogue. |
+| F7c contract and catalogue reads (passive, 7) | check | `base`, `changed`, `config`, `project`, `modules`, `surface`, `syntax` | Each target reaches `check` until #372, #374 or #375. | #372, #374 or #375 owns each one (see the appendix), and #376 moves the sites | The contract imports `Prior`, `Change`, `Config`, `Project` and the cost types that `Records` holds. The catalogue imports `syntax` for the language tables. Each edge points down. |
+| F7d reference to catalogue (passive, 1) | reference | `check` | `check` imports `reference` for metadata until #373. | #373 owns it, and #376 moves the site | `reference` imports the catalogue to render it. No low module imports `reference`. |
 | F8 files to Tree (1) | files | `project` | `project` imports `files`. | #377 | `files` takes a root, a file list or a path set. `project → files` stays, one-way. |
-| F9 structural composition (3) | project, syntax::structural | `syntax::structural`, `project`, `coverage` | Low structural code names `Tree`, and `Measurement` holds `coverage::Files`. | #379 | `measure`, `measure_all`, `Unchanged` and the measurement views move to a new module above `project` and `base`. Low structural code names no `Tree`, `coverage` or `files`. `Tree → syntax::structural` stays for `Extracted`. `Tree` and `Project` stop sharing a module, so `base → Tree` and `Project → base` are both one-way. |
+| F9 structural composition (3) | project, syntax::structural | `syntax::structural`, `project`, `coverage` | Low structural code names `Tree`, and `Measurement` holds `coverage::Files`. | #379 | `measure`, `measure_all`, `Unchanged` and the measurement views move to a new module above `project` and `base`. Low structural code names no `Tree`, `coverage` or `files`. `Tree → syntax::structural` stays for `Extracted`. `Tree` and `Project` stop sharing a module. `base` and `survey` then import `Tree`, and `Tree` imports `files` and `scope`. `base → Tree` and `Project → base` are both one-way. This direction also covers 5 passive edges whose sites #379 moves. |
 | F10 survey and window (2) | radius, survey | `turn` | `turn` imports `radius` and `base`, and `base` reaches `survey`. | #378 | `survey` takes the derivation commit as data. `turn` and `radius` import the mark, tree and derivation-commit lookups from a new module below both. `turn → radius` stays, one-way. |
 | F11 child to parent (12) | host's 4 children, modules::rust, modules::typescript, surface::rust, surface::typescript, syntax::structural's cache, rust and typescript children, conventions::report | the parent | The parent names the child in a dispatch table or a call. | #427 | The items a child reads from its parent move to a sibling module. The parent and its children import the sibling. The parent keeps its dispatch, so parent → child stays, one-way. |
 
@@ -160,9 +166,15 @@ each edge.
 | #375 | 88 | Edges from checks and `check` into low modules, and the children of `syntax`, `modules` and `surface`. No low module reaches `check` after #375. |
 | #376 | 16 | Edges from checks into `ratchet` and `markers`. Both point to the contract, which is downward. |
 | #377 | 3 | `project`, `survey` and `syntax::structural` into `files`. |
-| #378 | 4 | `base → Tree`, `survey → Tree`, `turn → base` and `turn → radius`. #378 removes `Tree → survey` and `survey → turn`. |
 | #379 | 5 | `base → syntax::structural`, `coverage → project`, `coverage → syntax::structural`, `project → base` and `project → survey`. |
+| #378 | 4 | `base → project` and `survey → project`, which #379 points at `Tree`, and `turn → base` and `turn → radius`. #378 removes `Tree → survey` and `survey → turn`. |
 | #427 | 12 | Each parent → child dispatch edge. |
+
+### The project and survey pair
+
+`project → survey` (appendix row 188) is passive under #379.
+`survey → project` (row 250) is passive under #378, and #379 points its site
+at `Tree`. After both tickets, `Project` imports `survey`, and `survey` imports `Tree` and nothing in `Project`.
 
 ## Order constraints the graph proves
 
@@ -195,19 +207,20 @@ implementation began:
 ## Appendix: every cyclic edge
 
 Paths are relative to `src/`. "Line" and "Sites" come from the scratch run.
-"Shortest cycle" is the cycle that `klin layering` printed at the baseline.
-"Site also changes in" names a later ticket that moves the site of an edge
-that its owner already made acyclic.
+"Shortest cycle" is the cycle that `klin layering` printed at `bffa48cd`.
+The owner is the ticket after which the edge is not cyclic. "Site also
+changes in" names another ticket that moves the site of the edge. A passive
+edge that another ticket moves takes the direction of that ticket's family.
 
-| # | Source | Target | Line | Sites | Shortest cycle at the baseline | Owner | Direction | Site also changes in |
+| # | Source | Target | Line | Sites | Shortest cycle at `bffa48cd` | Owner | Direction | Site also changes in |
 |---|---|---|---|---|---|---|---|---|
 | 1 | base.rs | changed.rs | 9 | 1 | base.rs → changed.rs → config.rs → check.rs → base.rs | #372 | passive |  |
 | 2 | base.rs | check.rs | 10 | 1 | base.rs → check.rs → base.rs | #375 | F6 |  |
 | 3 | base.rs | config.rs | 11 | 1 | base.rs → config.rs → check.rs → base.rs | #372 | F1 |  |
-| 4 | base.rs | project.rs | 13 | 1 | base.rs → project.rs → base.rs | #378 | passive | #379 |
+| 4 | base.rs | project.rs | 13 | 1 | base.rs → project.rs → base.rs | #378 | passive, F9 | #379 |
 | 5 | base.rs | syntax/structural/mod.rs | 15 | 1 | base.rs → syntax/structural/mod.rs → project.rs → base.rs | #379 | passive |  |
 | 6 | build.rs | changed.rs | 5 | 1 | build.rs → changed.rs → config.rs → build.rs | #372 | passive |  |
-| 7 | build.rs | check.rs | 6 | 1 | build.rs → check.rs → config.rs → build.rs | #373 | passive | #376 |
+| 7 | build.rs | check.rs | 6 | 1 | build.rs → check.rs → config.rs → build.rs | #373 | passive, F7b | #376 |
 | 8 | build.rs | config.rs | 7 | 1 | build.rs → config.rs → build.rs | #373 | passive |  |
 | 9 | build.rs | project.rs | 8 | 1 | build.rs → project.rs → config.rs → build.rs | #373 | passive |  |
 | 10 | build.rs | scope.rs | 9 | 1 | build.rs → scope.rs → config.rs → build.rs | #373 | passive |  |
@@ -215,10 +228,10 @@ that its owner already made acyclic.
 | 12 | cache.rs | config.rs | 6 | 1 | cache.rs → config.rs → doc_size.rs → cache.rs | #372 | F1 |  |
 | 13 | ceiling.rs | config.rs | 6 | 1 | ceiling.rs → config.rs → ceiling.rs | #374 | passive |  |
 | 14 | changed.rs | config.rs | 3 | 1 | changed.rs → config.rs → build.rs → changed.rs | #372 | F1 |  |
-| 15 | check.rs | base.rs | 14 | 1 | check.rs → base.rs → check.rs | #375 | passive | #376 |
-| 16 | check.rs | changed.rs | 15 | 1 | check.rs → changed.rs → config.rs → check.rs | #372 | passive | #376 |
-| 17 | check.rs | config.rs | 16 | 1 | check.rs → config.rs → check.rs | #374 | passive | #376 |
-| 18 | check.rs | project.rs | 17 | 1 | check.rs → project.rs → base.rs → check.rs | #375 | passive | #376 |
+| 15 | check.rs | base.rs | 14 | 1 | check.rs → base.rs → check.rs | #375 | passive, F7c | #376 |
+| 16 | check.rs | changed.rs | 15 | 1 | check.rs → changed.rs → config.rs → check.rs | #372 | passive, F7c | #376 |
+| 17 | check.rs | config.rs | 16 | 1 | check.rs → config.rs → check.rs | #374 | passive, F7c | #376 |
+| 18 | check.rs | project.rs | 17 | 1 | check.rs → project.rs → base.rs → check.rs | #375 | passive, F7c | #376 |
 | 19 | check.rs | reference.rs | 18 | 2 | check.rs → reference.rs → check.rs | #373 | F3 | #376 |
 | 20 | check.rs | complexity.rs | 19 | 1 | check.rs → complexity.rs → check.rs | #376 | F7a |  |
 | 21 | check.rs | conventions.rs | 19 | 1 | check.rs → conventions.rs → check.rs | #376 | F7a |  |
@@ -229,13 +242,13 @@ that its owner already made acyclic.
 | 26 | check.rs | inventory.rs | 19 | 1 | check.rs → inventory.rs → check.rs | #376 | F7a |  |
 | 27 | check.rs | layering.rs | 19 | 1 | check.rs → layering.rs → check.rs | #376 | F7a |  |
 | 28 | check.rs | lockfile.rs | 19 | 1 | check.rs → lockfile.rs → check.rs | #376 | F7a |  |
-| 29 | check.rs | modules/mod.rs | 19 | 1 | check.rs → modules/mod.rs → syntax/structural/mod.rs → config.rs → check.rs | #375 | passive | #376 |
+| 29 | check.rs | modules/mod.rs | 19 | 1 | check.rs → modules/mod.rs → syntax/structural/mod.rs → config.rs → check.rs | #375 | passive, F7c | #376 |
 | 30 | check.rs | public_api.rs | 19 | 1 | check.rs → public_api.rs → check.rs | #376 | F7a |  |
 | 31 | check.rs | reachability.rs | 19 | 1 | check.rs → reachability.rs → check.rs | #376 | F7a |  |
 | 32 | check.rs | sarif.rs | 19 | 1 | check.rs → sarif.rs → check.rs | #376 | F7a |  |
 | 33 | check.rs | stubs.rs | 19 | 1 | check.rs → stubs.rs → check.rs | #376 | F7a |  |
-| 34 | check.rs | surface/mod.rs | 19 | 1 | check.rs → surface/mod.rs → syntax/structural/mod.rs → config.rs → check.rs | #375 | passive | #376 |
-| 35 | check.rs | syntax/mod.rs | 19 | 1 | check.rs → syntax/mod.rs → check.rs | #375 | passive | #376 |
+| 34 | check.rs | surface/mod.rs | 19 | 1 | check.rs → surface/mod.rs → syntax/structural/mod.rs → config.rs → check.rs | #375 | passive, F7c | #376 |
+| 35 | check.rs | syntax/mod.rs | 19 | 1 | check.rs → syntax/mod.rs → check.rs | #375 | passive, F7c | #376 |
 | 36 | complexity.rs | base.rs | 8 | 1 | complexity.rs → base.rs → check.rs → complexity.rs | #375 | passive |  |
 | 37 | complexity.rs | ceiling.rs | 9 | 1 | complexity.rs → ceiling.rs → config.rs → check.rs → complexity.rs | #374 | passive |  |
 | 38 | complexity.rs | changed.rs | 10 | 2 | complexity.rs → changed.rs → config.rs → check.rs → complexity.rs | #372 | passive |  |
@@ -386,8 +399,8 @@ that its owner already made acyclic.
 | 183 | project.rs | changed.rs | 16 | 1 | project.rs → changed.rs → config.rs → build.rs → project.rs | #372 | passive |  |
 | 184 | project.rs | config.rs | 17 | 1 | project.rs → config.rs → build.rs → project.rs | #374 | passive |  |
 | 185 | project.rs | syntax/structural/mod.rs | 18 | 1 | project.rs → syntax/structural/mod.rs → project.rs | #379 | F9 |  |
-| 186 | project.rs | files.rs | 19 | 1 | project.rs → files.rs → project.rs | #377 | passive | #379 |
-| 187 | project.rs | scope.rs | 19 | 1 | project.rs → scope.rs → config.rs → build.rs → project.rs | #374 | passive | #379 |
+| 186 | project.rs | files.rs | 19 | 1 | project.rs → files.rs → project.rs | #377 | passive, F9 | #379 |
+| 187 | project.rs | scope.rs | 19 | 1 | project.rs → scope.rs → config.rs → build.rs → project.rs | #374 | passive, F9 | #379 |
 | 188 | project.rs | survey.rs | 19 | 1 | project.rs → survey.rs → project.rs | #379 | passive |  |
 | 189 | public_api.rs | base.rs | 16 | 1 | public_api.rs → base.rs → check.rs → public_api.rs | #375 | passive |  |
 | 190 | public_api.rs | check.rs | 17 | 1 | public_api.rs → check.rs → public_api.rs | #376 | F7b |  |
@@ -420,7 +433,7 @@ that its owner already made acyclic.
 | 217 | reachability.rs | cache.rs | 29 | 1 | reachability.rs → cache.rs → config.rs → check.rs → reachability.rs | #372 | passive |  |
 | 218 | reachability.rs | changed.rs | 29 | 1 | reachability.rs → changed.rs → config.rs → check.rs → reachability.rs | #372 | passive |  |
 | 219 | reference.rs | config.rs | 13 | 1 | reference.rs → config.rs → reference.rs | #373 | passive |  |
-| 220 | reference.rs | check.rs | 14 | 1 | reference.rs → check.rs → reference.rs | #373 | passive | #376 |
+| 220 | reference.rs | check.rs | 14 | 1 | reference.rs → check.rs → reference.rs | #373 | passive, F7d | #376 |
 | 221 | reference.rs | doc_citations.rs | 14 | 1 | reference.rs → doc_citations.rs → reference.rs | #373 | passive |  |
 | 222 | sarif.rs | base.rs | 15 | 1 | sarif.rs → base.rs → check.rs → sarif.rs | #375 | passive |  |
 | 223 | sarif.rs | check.rs | 16 | 1 | sarif.rs → check.rs → sarif.rs | #376 | F7b |  |
@@ -450,7 +463,7 @@ that its owner already made acyclic.
 | 247 | surface/typescript.rs | modules/mod.rs | 14 | 1 | surface/typescript.rs → modules/mod.rs → syntax/structural/mod.rs → config.rs → check.rs → surface/mod.rs → surface/typescript.rs | #375 | passive |  |
 | 248 | surface/typescript.rs | survey.rs | 15 | 1 | surface/typescript.rs → survey.rs → cache.rs → config.rs → check.rs → surface/mod.rs → surface/typescript.rs | #375 | passive |  |
 | 249 | surface/typescript.rs | syntax/structural/mod.rs | 16 | 1 | surface/typescript.rs → syntax/structural/mod.rs → config.rs → check.rs → surface/mod.rs → surface/typescript.rs | #375 | passive |  |
-| 250 | survey.rs | project.rs | 12 | 1 | survey.rs → project.rs → survey.rs | #378 | passive | #379 |
+| 250 | survey.rs | project.rs | 12 | 1 | survey.rs → project.rs → survey.rs | #378 | passive, F9 | #379 |
 | 251 | survey.rs | scope.rs | 13 | 1 | survey.rs → scope.rs → config.rs → build.rs → survey.rs | #374 | passive |  |
 | 252 | survey.rs | cache.rs | 14 | 1 | survey.rs → cache.rs → config.rs → build.rs → survey.rs | #372 | passive |  |
 | 253 | survey.rs | files.rs | 14 | 1 | survey.rs → files.rs → project.rs → survey.rs | #377 | passive |  |
@@ -468,7 +481,7 @@ that its owner already made acyclic.
 | 265 | syntax/structural/mod.rs | changed.rs | 17 | 1 | syntax/structural/mod.rs → changed.rs → config.rs → public_api.rs → syntax/structural/mod.rs | #372 | passive |  |
 | 266 | syntax/structural/mod.rs | config.rs | 18 | 1 | syntax/structural/mod.rs → config.rs → public_api.rs → syntax/structural/mod.rs | #374 | passive |  |
 | 267 | syntax/structural/mod.rs | coverage.rs | 19 | 1 | syntax/structural/mod.rs → coverage.rs → syntax/structural/mod.rs | #379 | F9 |  |
-| 268 | syntax/structural/mod.rs | files.rs | 20 | 1 | syntax/structural/mod.rs → files.rs → project.rs → syntax/structural/mod.rs | #377 | passive | #379 |
+| 268 | syntax/structural/mod.rs | files.rs | 20 | 1 | syntax/structural/mod.rs → files.rs → project.rs → syntax/structural/mod.rs | #377 | passive, F9 | #379 |
 | 269 | syntax/structural/mod.rs | project.rs | 21 | 1 | syntax/structural/mod.rs → project.rs → syntax/structural/mod.rs | #379 | F9 |  |
 | 270 | syntax/structural/mod.rs | syntax/mod.rs | 22 | 4 | syntax/structural/mod.rs → syntax/mod.rs → check.rs → base.rs → syntax/structural/mod.rs | #375 | passive |  |
 | 271 | syntax/structural/mod.rs | syntax/convention.rs | 23 | 1 | syntax/structural/mod.rs → syntax/convention.rs → ratchet.rs → check.rs → base.rs → syntax/structural/mod.rs | #375 | passive |  |
