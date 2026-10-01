@@ -50,7 +50,8 @@ impl Tree {
     }
 
     /// The test roots of this tree, derived by the survey on the first call and held for the
-    /// run, because every check that skips tests asks for them. Spec 5.4.
+    /// run, because every check that skips tests asks for them. `survey::tests` is the one
+    /// caller, so the first derivation is the only one. Spec 5.4.
     pub fn test_roots(&self, derive: impl FnOnce(&Tree) -> scope::Roots) -> &scope::Roots {
         self.test_roots.get_or_init(|| derive(self))
     }

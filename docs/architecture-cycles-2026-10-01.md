@@ -183,6 +183,12 @@ at `Tree`. After both tickets, `Project` imports `survey`, and `survey` imports 
 - **#379 before #378.** #379 points `base` and `survey` at `Tree`, and #378
   removes the edge from `Tree` to `survey`. The `base → Tree` edge stops
   being cyclic only at #378. #370 already orders #378 last.
+
+  Result: #379 also removed `Tree → survey`. A `tree` module that still
+  called `survey` closes a new cycle with `survey → Tree`, and rule 5 of
+  ADR 0065 forbids that. `base` reads the run through a trait that
+  `Project` implements, so `base → project` went too. After #379, `klin
+  layering` holds 26 edges, and #378 owns only `radius ↔ turn`.
 - **The descriptors for #374 come from the runner.** If `project` passed
   the catalogue's descriptors to `config`, the edge `project → catalogue`
   would close a new cycle through the checks.

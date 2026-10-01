@@ -129,19 +129,16 @@ impl Prior {
         self.tree.root()
     }
 
-    /// The base tree's file list, read once for every gate that measures it. ADR 0038.
     /// The base commit's structural cache, named under the state directory and timed into the
     /// layout, and `None` where klin keeps no state. Spec 8.4.
     pub fn cache(&self, dir: Option<&Path>, root: &Path, commit: &str) -> Option<Cache> {
         self.spent(
             |layout| &mut layout.cache_name,
-            || {
-                let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
-                Cache::at(&under, commit, &checkout(root))
-            },
+            || structural_cache(dir, root, commit),
         )
     }
 
+    /// The base tree's file list, read once for every gate that measures it. ADR 0038.
     pub fn tree(&self) -> &Tree {
         &self.tree
     }
@@ -305,8 +302,7 @@ fn lightly(
 ) -> Option<Laid> {
     let mut layout = Layout::default();
     let started = Instant::now();
-    let under = run.state()?.join(state::CACHE).join(state::STRUCTURAL);
-    let cache = Cache::at(&under, before, &checkout(run.root()))?;
+    let cache = structural_cache(run.state(), run.root(), before)?;
     layout.cache_name = started.elapsed();
     let started = Instant::now();
     let outcomes = cache.read()?;
@@ -581,6 +577,13 @@ fn written(
         return Err(missing(before, was));
     }
     Ok(prior)
+}
+
+/// The structural cache of a base commit under the state directory, and `None` where klin
+/// keeps no state or the cache cannot be named. Spec 8.4.
+fn structural_cache(dir: Option<&Path>, root: &Path, commit: &str) -> Option<Cache> {
+    let under = dir?.join(state::CACHE).join(state::STRUCTURAL);
+    Cache::at(&under, commit, &checkout(root))
 }
 
 /// What the bytes of a base checkout depend on besides the commit: where the configuration sits,

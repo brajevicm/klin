@@ -363,6 +363,8 @@ struct Kept {
 }
 
 impl Extracted {
+    /// The outcome of one file: held from an earlier request, taken from the cache, or read,
+    /// parsed and extracted now, with what it cost counted. ADR 0038, spec 11.2.
     pub fn outcome(
         &self,
         path: &Path,

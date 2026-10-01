@@ -6,20 +6,19 @@
 use std::cell::OnceCell;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::rc::Rc;
 
-use crate::base::Prior;
+use crate::base::{Prior, Run};
 use crate::changed::Change;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files::{self, Found};
-use crate::project::Project;
 use crate::syntax::Unparsed;
 use crate::syntax::structural::{
     Cache, ExtractionCost, FileFacts, Outcome, SourceIndex, TreeNameCost, Unsupported,
     selected_extensions, timed,
 };
 use crate::tree::Tree;
-use std::rc::Rc;
 
 /// One structural measurement over a discovered file set. Consumers receive the semantic facts
 /// and explicit coverage outcomes; a name-resolving consumer asks for the index lazily, and none
@@ -46,6 +45,8 @@ impl Measurement {
             .get_or_init(|| SourceIndex::of(self.facts.clone()))
     }
 
+    /// The name-resolution index, with what building it took and what it holds counted into
+    /// the tree's name cost. Spec 11.2.
     pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
         let index = timed(&mut cost.index, || self.index());
         index.tally(cost);
@@ -66,6 +67,8 @@ pub struct Unchanged<'a> {
 }
 
 impl<'a> Unchanged<'a> {
+    /// The view over this base tree and change set, with the base's outcomes read from the cache
+    /// `cache` names, when the tree holds none yet. Spec 8.4.
     pub fn new(
         base: &'a Tree,
         changes: &'a [Change],
@@ -171,7 +174,7 @@ pub fn measure(
 /// with the structural cache of the base commit where klin keeps state. `shared` holds the
 /// changes of such a run, and any other run shares nothing and reads no cache. Spec 8.4.
 pub fn unchanged<'a>(
-    project: &Project,
+    run: &impl Run,
     shared: Option<&'a [Change]>,
     prior: &'a Prior,
     commit: &str,
@@ -179,9 +182,9 @@ pub fn unchanged<'a>(
     let Some(changes) = shared else {
         return Ok(None);
     };
-    let dir = project.facts().state.as_deref();
+    let dir = run.state();
     Unchanged::new(prior.tree(), changes, || {
-        prior.cache(dir, project.root(), commit)
+        prior.cache(dir, run.root(), commit)
     })
     .map(Some)
 }
