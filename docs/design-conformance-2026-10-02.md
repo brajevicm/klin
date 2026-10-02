@@ -607,7 +607,22 @@ No prototype change and no corpus change came after the rules commit
    49 findings, so every second one (24) was labeled by the k-th rule.
 5. **Type checks.** No tree had `tsc`, so no TypeScript tree was type-checked
    by any agent or by the judge. The GlareDB trees did not compile, because
-   `protoc` is absent and the network is off.
+   `protoc` is absent and the network is off. For those trees, `task kept`
+   rests on the diff alone.
+6. **Prototype fixes after the review of this note.** A review found four
+   places where `relations` did not follow these rules, and the prototype now
+   follows them: file-level conformance applied to every reason, not only to
+   `shape`, a branch was checked against the family's own registrations, not
+   against every registration, the layer message counted `facade` methods,
+   and the common methods of a family skipped implementations with no
+   methods. `expected.tsv` did not change. The replay of the sample with the
+   fixed prototype gave the same `findings.tsv` and `changes.tsv`, byte for
+   byte.
+7. **Registration families.** `registration-bypass` groups a family across
+   the whole tree (two or more non-test member types), not per directory as
+   the Terms define a family, because a registration often sits in another
+   directory than its members. The prototype did this from the rules commit
+   on. The rules text did not say it.
 
 ## Headline results
 
@@ -687,7 +702,9 @@ corpus.
 ### Ordinary sample and agent stratum
 
 `N` and `A` are per 100 ordinary changes of the language (34 Rust, 28
-TypeScript). `P` is computed where five or more findings were labeled.
+TypeScript). `P` is computed where five or more findings were labeled. For
+`component-cycle` in Rust, 24 of 49 findings were labeled, and `N` applies the
+share of the 24 (all not-appropriate) to all 49. The 24 labels alone give 70.6.
 
 | Candidate | Rust findings | Rust `N` | Rust `A` | Rust `P` | TS findings | TS `N` | TS `A` | TS `P` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -826,8 +843,10 @@ parses every file and extracts every relation in one pass, untuned:
 | mountain-loop/yaak | 1,061 | 357 | 1,106 | 140,926 | 236,290 | 118,831 | 1,874,248 |
 | denisidoro/navi | 52 | 9 | 27 | 4,111 | 2,505 | 1,822 | 52,472 |
 
-Extraction costs 1.4 to 3.3 ms per file on the large trees. Most of it is the
-shingle walk of `near-clone`, which the dispositions reject.
+Extraction costs 0.5 to 14.4 ms per file: 14.4 on pdf-inspector, whose files
+are large, 8.2 on arnis, 3.3 on wgpu and 1.0 to 1.5 on the large TypeScript
+trees. Most of it is the shingle walk of `near-clone`, which the dispositions
+reject.
 
 What each REVIEW candidate needs:
 
@@ -843,12 +862,19 @@ tree that klin already builds gives every fact. Each one needs base evidence
 of the whole tree or of a directory. A REVIEW note is not judged at each Stop.
 So the work belongs at Finalize, once per change, where a warm run over 20
 changed files would read its directories and the cached base facts. This note
-does not measure a klin-integrated warm run. The prototype's per-file cost is
-the upper bound above.
+does not measure a klin-integrated warm run. An estimate from the prototype:
+20 changed files cost 20 times the per-file extraction, 10 to 290 ms on these
+trees, plus the index time of `sample/time.tsv` (0.1 to 339 ms) where the base
+evidence is not cached. That is an upper bound, because the shingle walk is
+in it.
 
 ## 8. Agent repair experiments
 
-`runs/outcomes.tsv` holds every run. Eleven cases, three agents:
+`runs/outcomes.tsv` holds every run. Each outcome rests on the final tree,
+which the judge read as a diff and ran through the prototype, klin and, for
+the Rust fixtures, `cargo check`. The corpus does not keep the Claude
+replies, as in #361. A reply only adds the `escalated` column and, where an
+agent kept code, its stated reason. Eleven cases, three agents:
 
 | Case | Sonnet | Haiku | gpt-6.1-sol |
 | --- | --- | --- | --- |
@@ -883,10 +909,17 @@ made after the review (`5f4ac7d4`): seven functions moved to
 Two observations matter for the message:
 
 - **A wrapper carries policy.** `postJson` retries 3 times. Five of six
-  wrapper runs moved `refundAll` onto it, so refunds now retry. Sonnet's
-  TypeScript run refused for that reason, and its Rust run named the risk and
-  switched anyway. The relation cannot tell whether the new code avoids the
-  wrapper on purpose. That is the reason for REVIEW and not BLOCK.
+  planted wrapper runs moved `refundAll` onto it, so refunds now retry. The
+  base's Stripe and PayPal refunds already go through `postJson`, so those
+  repairs match the repository, and this note counts them `correct`. Sonnet's
+  TypeScript run kept the direct call, because a retried refund POST could
+  refund twice. Its Rust run named the same risk and switched. Both are
+  defensible. The relation cannot tell whether new code avoids the wrapper on
+  purpose. That is the reason for REVIEW and not BLOCK.
+- **"Kept with a reason" is not a registered class.** The registered classes
+  give `correct` to a kept exception only in the exception case. So the one
+  kept wrapper run is counted apart and not as `correct`. Rule 2 holds with or
+  without it: 8 of 9 wrapper runs are `correct`.
 - **The note was enough.** No run asked the person. No run added an interface,
   a wrapper or a registration that only silences the note.
 
@@ -919,12 +952,12 @@ call is the bad output that #355 describes.
 | `family-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 0, `A` 0, 12/12 runs correct with the exception case kept, hard negatives found and `attack-split` removes it, so not BLOCK |
 | `registration-bypass` | **REVIEW candidate**, Rust and TypeScript, only with bindings resolved | 1.1 holds, `N` 0, `A` 0, 6/6 runs correct, `attack-split` removes it, the yaak rows show that a binding matched by name is a false relation |
 | `wrapper-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 2.9 (Rust) and 0, `A` under 10, 8 of 9 runs correct and 1 kept with a reason, one line of alias removes it |
-| `component-cycle` | **REVIEW candidate** for TypeScript, **reject** for Rust | TS: `N` 0, 6/6 runs correct, alias hole named, Rust: `N` 144.1 |
+| `component-cycle` | **REVIEW candidate** for TypeScript, **reject** for Rust | TS: `N` 0, 3/3 `cycle-ts` runs correct, alias hole named, Rust: `N` 144.1 |
 | `near-clone structural` | **reject** | 1.1 fails: the Type-3 plant is missed in both languages |
 | `near-clone lexical` | **reject** | 1.1 fails, and `N` 85.3 (Rust), 32.1 (TS) |
 | `delegation-only` | **candidate generation only** for Rust, **reject** for TypeScript | Rust `N` 11.8, TS `N` 46.4 |
 | pattern-label baseline | **reject** | flags 5 of 6 hard negatives, misses both wrapper plants |
-| stated contracts (R7) | **delegate** to the repository's own linter, through the shipped `sarif` seam or a #363 recipe | the reuse rules found (wgpu, apollo-client) are already linter rules |
+| stated contracts (R7) | survey only, no native candidate: the reuse rules found (wgpu, apollo-client) are already rules of the repository's own linter, which klin can read through the shipped `sarif` seam or a #363 recipe | rule 4: a native check would restate a fact the linter already holds |
 
 Choices for a person:
 
@@ -972,9 +1005,8 @@ type names) is local to `registration-bypass` and is not a shared fact.
 ## 12. UX, DX and AX
 
 **UX.** Each note says "Why klin is unsure" and names the exception it
-cannot rule out. In all 7 runs that met a real exception, the agent kept it:
-the 3 `exception-ts` runs, `atan2` in the 3 GlareDB runs, and the retry reason
-in Sonnet's `wrapper-ts` run.
+cannot rule out. In all 6 runs that met a planted or natural exception, the
+agent kept it: the 3 `exception-ts` runs and `atan2` in the 3 GlareDB runs.
 
 **DX.** The minimum evidence of a note is: the existing relation set
 ("StripeProvider (stripe.ts) and PayPalProvider (paypal.ts) implement

@@ -1,34 +1,34 @@
 # agent	case	outcome	turns	escalated	task kept	final prototype rows	final stop / CI	note
-sonnet	family-ts	correct	1	no	yes	none	0 green / 0	implements PaymentProvider, registered, branch removed
+sonnet	family-ts	correct	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
 sonnet	family-rs	correct	1	no	yes (cargo check)	none	0 green / 0	same
 sonnet	family-glaredb	correct	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted to UnaryInputNumericOperation, atan2 kept with its reason; cot now returns -inf for -0, stated in the reply
-sonnet	exception-ts	correct	1	no	yes	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why ManualInvoice is not a provider
-sonnet	registration-ts	correct	1	no	yes	none	0 green / 0	final reply text was only "placeholder"; the tree is correct
+sonnet	exception-ts	correct	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why ManualInvoice is not a provider
+sonnet	registration-ts	correct	1	no	not type-checked	none	0 green / 0	final reply text was only "placeholder"; the tree is correct
 sonnet	registration-rs	correct	1	no	yes (cargo check)	none	0 green / 0	registered, branch removed
-sonnet	wrapper-ts	kept with a reason	1	no	yes	wrapper-bypass (kept)	0 green / 0	kept transport.http.send with retries 0 and a comment: a retried refund POST could refund twice
+sonnet	wrapper-ts	kept with a reason	1	no	not type-checked	wrapper-bypass (kept)	0 green / 0	kept transport.http.send with retries 0 and a comment: a retried refund POST could refund twice
 sonnet	wrapper-rs	correct	1	no	yes (cargo check)	none	0 green / 0	uses post_json; the reply names the same retry risk
 sonnet	wrapper-karakeep	correct	1	no	not type-checked	none	natural	uses useUpdateUserSettings, drops its own invalidation
-sonnet	cycle-ts	correct	1	no	yes	none	0 green / 0	moved labels.ts from ui to db
+sonnet	cycle-ts	correct	1	no	not type-checked	none	0 green / 0	moved labels.ts from ui to db
 sonnet	cycle-rs	correct	2	no	yes (cargo check)	none	0 green / 0	turn 1 moved status_label to a new status module and removed ui::labels; public-api blocked; turn 2 kept ui::labels as a re-export
-haiku	family-ts	correct	1	no	yes	none	0 green / 0	implements PaymentProvider, registered, branch removed
+haiku	family-ts	correct	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
 haiku	family-rs	correct	1	no	yes (cargo check)	none	0 green / 0	same
 haiku	family-glaredb	correct	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted, atan2 kept with its reason
-haiku	exception-ts	correct	1	no	yes	family-bypass on ManualInvoice (kept)	0 green / 0	kept; rewrote the class comment to say why
-haiku	registration-ts	correct	1	no	yes	none	0 green / 0	registered, branch removed
+haiku	exception-ts	correct	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	kept; rewrote the class comment to say why
+haiku	registration-ts	correct	1	no	not type-checked	none	0 green / 0	registered, branch removed
 haiku	registration-rs	correct	1	no	yes (cargo check)	none	0 green / 0	same
-haiku	wrapper-ts	correct	1	no	yes	none	0 green / 0	uses postJson
+haiku	wrapper-ts	correct	1	no	not type-checked	none	0 green / 0	uses postJson
 haiku	wrapper-rs	correct	1	no	yes (cargo check)	none	0 green / 0	uses post_json
 haiku	wrapper-karakeep	correct	1	no	not type-checked	none	natural	uses useUpdateUserSettings
-haiku	cycle-ts	correct	1	no	yes	none	0 green / 0	new strings component for statusLabel
+haiku	cycle-ts	correct	1	no	not type-checked	none	0 green / 0	new strings component for statusLabel
 haiku	cycle-rs	correct	1	no	yes (cargo check)	none	0 green / 0	status_label at the crate root, ui::labels re-exports it
-codex	family-ts	correct	1	no	yes	none	0 green / 0	implements PaymentProvider, registered, branch removed
+codex	family-ts	correct	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
 codex	family-rs	correct	1	no	yes (cargo test)	none	0 green / 0	same, and added an integration test
 codex	family-glaredb	correct	1	no	not compiled (offline)	atan2 only	natural	7 converted, atan2 kept with its reason
-codex	exception-ts	correct	1	no	yes	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why
-codex	registration-ts	correct	1	no	yes	none	0 green / 0	registered, branch removed
+codex	exception-ts	correct	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why
+codex	registration-ts	correct	1	no	not type-checked	none	0 green / 0	registered, branch removed
 codex	registration-rs	correct	1	no	yes (cargo test)	none	0 green / 0	same
-codex	wrapper-ts	correct	1	no	yes	none	0 green / 0	uses postJson
+codex	wrapper-ts	correct	1	no	not type-checked	none	0 green / 0	uses postJson
 codex	wrapper-rs	correct	1	no	yes (cargo test)	none	0 green / 0	uses post_json
 codex	wrapper-karakeep	correct	1	no	not type-checked	none	natural	uses useUpdateUserSettings
-codex	cycle-ts	correct	1	no	yes	none	0 green / 0	new orders/status component, ui/labels re-exports it; the log reads "paid", not "pending"
+codex	cycle-ts	correct	1	no	not type-checked	none	0 green / 0	new orders/status component, ui/labels re-exports it; the log reads "paid", not "pending"
 codex	cycle-rs	correct	1	no	yes (cargo test)	none	0 green / 0	new order_status module, ui::labels re-exports it

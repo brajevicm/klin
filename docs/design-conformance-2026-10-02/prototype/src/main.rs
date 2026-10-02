@@ -1123,7 +1123,7 @@ fn families<'a>(tree: &'a Tree) -> Vec<Family<'a>> {
         }
         let suffix = counts.into_iter().max_by_key(|(_, n)| *n).filter(|(_, n)| *n >= 2 && *n * 2 > members.len()).map(|(w, _)| w);
         let mut methods: Option<BTreeSet<String>> = None;
-        for imp in impls.iter().filter(|i| !i.methods.is_empty()) {
+        for imp in &impls {
             let set: BTreeSet<String> = imp.methods.iter().cloned().collect();
             methods = Some(match methods {
                 Some(held) => held.intersection(&set).cloned().collect(),
@@ -1165,11 +1165,13 @@ fn family_bypass(before: &Tree, after: &Tree, out: &mut Vec<Finding>) {
         let siblings = sibling_files(before, &file.dir);
         for family in base_families.iter().filter(|f| f.dir == file.dir) {
             let mut reasons = Vec::new();
+            let mut by_shape = false;
             if new_file {
                 for shape in &file_shapes {
                     let holders: Vec<&&FileInfo> = siblings.iter().filter(|s| shapes(s).contains(shape)).collect();
                     let members = holders.iter().filter(|h| family.files.contains(&h.path)).count();
                     if holders.len() >= 2 && members * 2 > holders.len() {
+                        by_shape = true;
                         reasons.push(format!("declares `{shape}` like {} sibling files, {members} of which implement {}", holders.len(), family.name));
                     }
                 }
@@ -1185,7 +1187,7 @@ fn family_bypass(before: &Tree, after: &Tree, out: &mut Vec<Finding>) {
             if reasons.is_empty() || ty.mentions.contains(&family.name) {
                 continue;
             }
-            let conforms = implemented.contains(family.name.as_str()) || (new_file && file_families.contains(family.name.as_str()));
+            let conforms = implemented.contains(family.name.as_str()) || (by_shape && file_families.contains(family.name.as_str()));
             if conforms {
                 continue;
             }
@@ -1302,7 +1304,7 @@ fn registration_bypass(before: &Tree, after: &Tree, out: &mut Vec<Finding>) {
             if excluded_file(after, &branch.file) || held_branches.contains(&(branch.func.clone(), branch.literal.clone())) {
                 continue;
             }
-            if after_regs.iter().any(|r| r.file == branch.file && (r.line..=r.end).contains(&branch.line)) {
+            if after.regs.iter().any(|r| r.file == branch.file && (r.line..=r.end).contains(&branch.line)) {
                 continue;
             }
             let Some(binding) = bindings.iter().find(|b| branch.idents.contains(**b)) else { continue };
@@ -1509,7 +1511,8 @@ fn delegation(before: &Tree, after: &Tree, out: &mut Vec<Finding>) {
         if let Some(owner) = &func.owner {
             let entry = layers.entry((func.file.clone(), owner.clone())).or_insert((0, 0, func.line));
             entry.0 += 1;
-            if func.delegate.is_some() && !func.trait_impl && !func.external_callee {
+            let facade = MODULE_ROOTS.contains(&func.file.rsplit('/').next().unwrap_or_default()) && func.exported;
+            if func.delegate.is_some() && !func.trait_impl && !func.external_callee && !facade {
                 entry.1 += 1;
             }
         }
