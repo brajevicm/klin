@@ -1,6 +1,6 @@
 """Print the assertion lines that a change removes from test files.
 
-usage: python3 tests.py CLONE BASE HEAD
+usage: python3 tests.py CLONE BASE HEAD | tests.py --modifies-test CLONE BASE HEAD
 Prints one tab-separated row per site: family, file, base line, removed text.
 """
 
@@ -84,6 +84,17 @@ def sites(clone, base, head):
                 yield family, path, number, text
 
 
+def modifies_test(clone, base, head):
+    changed = git(clone, "diff", "--name-only", "--no-renames", "--diff-filter=M", base, head).split("\n")
+    for path in filter(None, changed):
+        if path.endswith(EXTENSIONS) and (path_is_test(path) or (path.endswith(".rs") and first_test_line(clone, base, path))):
+            return True
+    return False
+
+
 if __name__ == "__main__":
+    if sys.argv[1] == "--modifies-test":
+        print("yes" if modifies_test(*sys.argv[2:5]) else "no")
+        sys.exit()
     for row in sites(*sys.argv[1:4]):
         print("\t".join(str(part) for part in row))

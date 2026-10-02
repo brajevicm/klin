@@ -1,0 +1,6542 @@
+{
+  "agent": [
+    {
+      "id": 3150061361,
+      "agent": "OpenAI_Codex",
+      "language": "Rust",
+      "fullName": "obi1kenobi/cargo-semver-checks",
+      "number": 1317,
+      "url": "https://github.com/obi1kenobi/cargo-semver-checks/pull/1317",
+      "createdAt": "2025-06-16T13:37:55Z",
+      "merged": true,
+      "author": "obi1kenobi",
+      "headRef": "codex/fix-bug-and-add-test",
+      "base": "cf2922ec08898972caf051d91eb6ea3d7a58a19a",
+      "head": "cddf21b7c634395e8f8df2005dd49598ed0abe6d",
+      "files": 1,
+      "commitAuthors": [
+        "obi1kenobi"
+      ]
+    },
+    {
+      "id": 3236846430,
+      "agent": "Cursor",
+      "language": "Rust",
+      "fullName": "mediar-ai/terminator",
+      "number": 218,
+      "url": "https://github.com/mediar-ai/terminator/pull/218",
+      "createdAt": "2025-07-16T17:56:25Z",
+      "merged": true,
+      "author": "louis030195",
+      "headRef": "cursor/expose-properties-to-serialized-ui-tree-a18f",
+      "base": "478dd636e503dae0bcc136e94d417b83655026c2",
+      "head": "96539ed38f74d9f677811965f6e8e2ff1f8ba79a",
+      "files": 4,
+      "commitAuthors": [
+        "cursoragent"
+      ]
+    },
+    {
+      "id": 3316930644,
+      "agent": "Copilot",
+      "language": "Rust",
+      "fullName": "FuelLabs/sway",
+      "number": 7325,
+      "url": "https://github.com/FuelLabs/sway/pull/7325",
+      "createdAt": "2025-08-13T05:15:02Z",
+      "merged": false,
+      "author": "Copilot",
+      "headRef": "copilot/fix-7324",
+      "base": "5d5ca3494954451e2b8799d7165d34516efe8d52",
+      "head": "ec7bb2674bd075084cdee2fd82fd086836489ad3",
+      "files": 1,
+      "commitAuthors": [
+        "Copilot"
+      ]
+    },
+    {
+      "id": 2989093783,
+      "agent": "Devin",
+      "language": "Rust",
+      "fullName": "GlareDB/glaredb",
+      "number": 3633,
+      "url": "https://github.com/GlareDB/glaredb/pull/3633",
+      "createdAt": "2025-04-11T16:07:24Z",
+      "merged": true,
+      "author": "devin-ai-integration[bot]",
+      "headRef": "devin/1744387618-add-trigonometric-functions",
+      "base": "8001afa4cff0cecfec79f2cb292108da08aa4c35",
+      "head": "9133c0d2057f64575cc158b48422d10cc547e20f",
+      "files": 11,
+      "commitAuthors": [
+        "devin-ai-integration[bot]"
+      ]
+    },
+    {
+      "id": 3390791359,
+      "agent": "Claude_Code",
+      "language": "Rust",
+      "fullName": "jdx/mise",
+      "number": 6216,
+      "url": "https://github.com/jdx/mise/pull/6216",
+      "createdAt": "2025-09-06T19:34:05Z",
+      "merged": true,
+      "author": "jdx",
+      "headRef": "feat/task-timeout",
+      "base": "15a9aede95c8ad953842c206df3b6c9a3960100f",
+      "head": "bfc02629b4a1adef0d10d6cd26d1df87cfb92c13",
+      "files": 11,
+      "commitAuthors": [
+        "autofix-ci[bot]",
+        "jdx"
+      ]
+    },
+    {
+      "id": 3135800042,
+      "agent": "OpenAI_Codex",
+      "language": "Rust",
+      "fullName": "gluesql/glues",
+      "number": 150,
+      "url": "https://github.com/gluesql/glues/pull/150",
+      "createdAt": "2025-06-11T07:33:06Z",
+      "merged": true,
+      "author": "panarch",
+      "headRef": "codex/implement-proxy-client-and-server",
+      "base": "22bd5492dda2b538f0da10293c44c3f4495d7ce3",
+      "head": "136ed62a4c4b211687ec3196ba85aed167c7abb9",
+      "files": 11,
+      "commitAuthors": [
+        "panarch"
+      ]
+    },
+    {
+      "id": 3180889822,
+      "agent": "Google_Jules",
+      "language": "Rust",
+      "fullName": "nyx-space/anise",
+      "number": 469,
+      "url": "https://github.com/nyx-space/anise/pull/469",
+      "createdAt": "2025-06-27T00:29:25Z",
+      "merged": false,
+      "author": "google-labs-jules[bot]",
+      "headRef": "jules_wip_67012128079304564",
+      "base": "e0507b50e23b7f10c03510cc6ca08db6486f7a44",
+      "head": "9ab75de52e22facbd577ea5c1dcbc28a2b24c4f3",
+      "files": 5,
+      "commitAuthors": [
+        "google-labs-jules[bot]"
+      ]
+    },
+    {
+      "id": 2964743634,
+      "agent": "Claude_Code",
+      "language": "Rust",
+      "fullName": "mitsuhiko/insta",
+      "number": 750,
+      "url": "https://github.com/mitsuhiko/insta/pull/750",
+      "createdAt": "2025-04-01T23:03:56Z",
+      "merged": true,
+      "author": "max-sixty",
+      "headRef": "review",
+      "base": "62bb0a3ec47eabda55689188b5ec99916b973c52",
+      "head": "00ec1b6582631ffaeedea37eacb2d4728e1c654c",
+      "files": 2,
+      "commitAuthors": [
+        "max-sixty"
+      ]
+    },
+    {
+      "id": 3477872345,
+      "agent": "Google_Jules",
+      "language": "Rust",
+      "fullName": "vinhnx/VTCode",
+      "number": 133,
+      "url": "https://github.com/vinhnx/VTCode/pull/133",
+      "createdAt": "2025-10-02T15:03:44Z",
+      "merged": false,
+      "author": "google-labs-jules[bot]",
+      "headRef": "fix-xai-provider-key",
+      "base": "c675045819b37efd9f4a27cb4588363c5367ce89",
+      "head": "b03494ecc5ca9acbd4f5c755e134655686d567c6",
+      "files": 1,
+      "commitAuthors": [
+        "google-labs-jules[bot]"
+      ]
+    },
+    {
+      "id": 3081858960,
+      "agent": "OpenAI_Codex",
+      "language": "Rust",
+      "fullName": "cablehead/xs",
+      "number": 93,
+      "url": "https://github.com/cablehead/xs/pull/93",
+      "createdAt": "2025-05-22T02:34:59Z",
+      "merged": true,
+      "author": "cablehead",
+      "headRef": "codex/fix-closure-return-type-in-tests",
+      "base": "cb3bc90bd2df3b190ade25509b92f3ff57ddd9d4",
+      "head": "4915da6b274f873b240950ad50db0ab8bbe89cf2",
+      "files": 2,
+      "commitAuthors": [
+        "cablehead"
+      ]
+    },
+    {
+      "id": 3464712747,
+      "agent": "Claude_Code",
+      "language": "TypeScript",
+      "fullName": "anthropics/claude-code",
+      "number": 8345,
+      "url": "https://github.com/anthropics/claude-code/pull/8345",
+      "createdAt": "2025-09-29T12:09:52Z",
+      "merged": false,
+      "author": "hemangjoshi37a",
+      "headRef": "feat/multimodal-browser-automation",
+      "base": "bd8aff23f2e3486cb279d45fb98a4f12268886fe",
+      "head": "6983942b8b0570e1993d541ff0e00f41fd128c69",
+      "files": 69,
+      "commitAuthors": [
+        "hemangjoshi37a"
+      ]
+    },
+    {
+      "id": 3085512759,
+      "agent": "OpenAI_Codex",
+      "language": "TypeScript",
+      "fullName": "giselles-ai/giselle",
+      "number": 944,
+      "url": "https://github.com/giselles-ai/giselle/pull/944",
+      "createdAt": "2025-05-23T07:43:35Z",
+      "merged": false,
+      "author": "toyamarinyon",
+      "headRef": "codex/add-callback-to-runflow-for-updating-comments",
+      "base": "f138fdfec410b250c353de4f7cb895ebdcb2afb5",
+      "head": "b05a750ffcbbf64c16aab81b948d0f077d2497e5",
+      "files": 6,
+      "commitAuthors": [
+        "toyamarinyon"
+      ]
+    },
+    {
+      "id": 3224085262,
+      "agent": "Claude_Code",
+      "language": "TypeScript",
+      "fullName": "karakeep-app/karakeep",
+      "number": 1723,
+      "url": "https://github.com/karakeep-app/karakeep/pull/1723",
+      "createdAt": "2025-07-11T20:06:28Z",
+      "merged": true,
+      "author": "xuatz",
+      "headRef": "feat/1603",
+      "base": "f8ae986692f82efe8c1f3940907aab553e4f5a49",
+      "head": "cea4d13e1286ac336188c1a2a1235ef45a41bc5b",
+      "files": 11,
+      "commitAuthors": [
+        "xuatz"
+      ]
+    },
+    {
+      "id": 3115595165,
+      "agent": "OpenAI_Codex",
+      "language": "TypeScript",
+      "fullName": "lumen-notes/lumen",
+      "number": 493,
+      "url": "https://github.com/lumen-notes/lumen/pull/493",
+      "createdAt": "2025-06-03T22:22:13Z",
+      "merged": true,
+      "author": "colebemis",
+      "headRef": "codex/fix-typo-in-theme-color.ts",
+      "base": "552b53618e5655125e021d1d299392d42bc87e45",
+      "head": "56e82a135260c95e161e73bed78641764c0c2336",
+      "files": 1,
+      "commitAuthors": [
+        "colebemis"
+      ]
+    },
+    {
+      "id": 3416093417,
+      "agent": "Claude_Code",
+      "language": "TypeScript",
+      "fullName": "langgenius/webapp-conversation",
+      "number": 182,
+      "url": "https://github.com/langgenius/webapp-conversation/pull/182",
+      "createdAt": "2025-09-15T03:05:56Z",
+      "merged": true,
+      "author": "lyzno1",
+      "headRef": "feature/streamdown-and-fixes",
+      "base": "aabdcdb3df7b8f3995c842ff48294bfa2a0e515e",
+      "head": "c4b8029702244d6358bcf00265a92a16e52ea914",
+      "files": 19,
+      "commitAuthors": [
+        "Eric-Guo",
+        "lyzno1"
+      ]
+    },
+    {
+      "id": 3543607494,
+      "agent": "OpenAI_Codex",
+      "language": "TypeScript",
+      "fullName": "PV-Bhat/vibe-check-mcp-server",
+      "number": 64,
+      "url": "https://github.com/PV-Bhat/vibe-check-mcp-server/pull/64",
+      "createdAt": "2025-10-23T08:04:24Z",
+      "merged": true,
+      "author": "PV-Bhat",
+      "headRef": "codex/update-createmcpserver-for-package-version-v88chf",
+      "base": "4f93f93a7d1aa8dc31400da5f2ded4abc09a5577",
+      "head": "037b041f04cf80bb791093470f26b5ce36611d3a",
+      "files": 9,
+      "commitAuthors": [
+        "PV-Bhat"
+      ]
+    },
+    {
+      "id": 3367222317,
+      "agent": "Copilot",
+      "language": "TypeScript",
+      "fullName": "tokens-studio/figma-plugin",
+      "number": 3535,
+      "url": "https://github.com/tokens-studio/figma-plugin/pull/3535",
+      "createdAt": "2025-08-29T15:12:09Z",
+      "merged": false,
+      "author": "Copilot",
+      "headRef": "copilot/fix-c19fc8ae-ff25-4bb8-af09-b46ab8091332",
+      "base": "a6e27e1580088267bc16187c50d604eaf00f579a",
+      "head": "3f044c52ce2fa2a60553ead2df49fdcdd0f828ec",
+      "files": 10,
+      "commitAuthors": [
+        "Copilot"
+      ]
+    },
+    {
+      "id": 3367691480,
+      "agent": "Cursor",
+      "language": "TypeScript",
+      "fullName": "recallnet/js-recall",
+      "number": 1141,
+      "url": "https://github.com/recallnet/js-recall/pull/1141",
+      "createdAt": "2025-08-29T18:23:10Z",
+      "merged": true,
+      "author": "stephhuynh18",
+      "headRef": "cursor/APP-191-fix-competition-voting-and-registration-ui-666c",
+      "base": "621f33c211cd4b6157f51e56dd9047452ada722d",
+      "head": "5c53be67ee48f6664b1a4931a2838b8b4ff61a41",
+      "files": 3,
+      "commitAuthors": [
+        "cursoragent",
+        "stephhuynh18"
+      ]
+    },
+    {
+      "id": 3302814978,
+      "agent": "Devin",
+      "language": "TypeScript",
+      "fullName": "Mail-0/Zero",
+      "number": 1953,
+      "url": "https://github.com/Mail-0/Zero/pull/1953",
+      "createdAt": "2025-08-08T06:37:10Z",
+      "merged": false,
+      "author": "devin-ai-integration[bot]",
+      "headRef": "devin/1754634895-test-ampcode-workflow",
+      "base": "3ca38991fe026dc69b477cfda01b9a7d5342ece2",
+      "head": "d2ab0370a2ff687ef42ba1236de3ce188b5f07cd",
+      "files": 1,
+      "commitAuthors": [
+        "devin-ai-integration[bot]"
+      ]
+    },
+    {
+      "id": 3529329909,
+      "agent": "Google_Jules",
+      "language": "TypeScript",
+      "fullName": "jeremyckahn/chitchatter",
+      "number": 517,
+      "url": "https://github.com/jeremyckahn/chitchatter/pull/517",
+      "createdAt": "2025-10-18T23:11:05Z",
+      "merged": true,
+      "author": "google-labs-jules[bot]",
+      "headRef": "fix/sound-asset-paths",
+      "base": "a74bb8b5da221c597dc4fb43b3bce1e4d62aa863",
+      "head": "3bd71178b755f8133fb28a8069096f7cc8e91b9b",
+      "files": 1,
+      "commitAuthors": [
+        "google-labs-jules[bot]"
+      ]
+    },
+    {
+      "id": 3293530109,
+      "agent": "Claude_Code",
+      "language": "Python",
+      "fullName": "langgenius/dify-official-plugins",
+      "number": 1422,
+      "url": "https://github.com/langgenius/dify-official-plugins/pull/1422",
+      "createdAt": "2025-08-05T15:22:29Z",
+      "merged": true,
+      "author": "akshaysinghas",
+      "headRef": "model-option-inference-profile",
+      "base": "a1c984e03c9627a6c22ba8b87e059d2d980e933b",
+      "head": "856ff338ca77c83c8a078e47a7eee4aaa39b9e28",
+      "files": 9,
+      "commitAuthors": [
+        "akshaysinghas"
+      ]
+    },
+    {
+      "id": 3208686693,
+      "agent": "Cursor",
+      "language": "Python",
+      "fullName": "browser-use/browser-use",
+      "number": 2332,
+      "url": "https://github.com/browser-use/browser-use/pull/2332",
+      "createdAt": "2025-07-07T11:43:41Z",
+      "merged": true,
+      "author": "mertunsall",
+      "headRef": "cursor/make-tool-call-example-parameter-optional-3d84",
+      "base": "0dfffbaebb8dfab10b1ae8171ddb5d1125ea3240",
+      "head": "188642a68e7a8b80be10feef75c6c8610d7b8751",
+      "files": 8,
+      "commitAuthors": [
+        "mertunsall"
+      ]
+    },
+    {
+      "id": 3494509197,
+      "agent": "Copilot",
+      "language": "Python",
+      "fullName": "CravateRouge/bloodyAD",
+      "number": 82,
+      "url": "https://github.com/CravateRouge/bloodyAD/pull/82",
+      "createdAt": "2025-10-08T08:52:21Z",
+      "merged": true,
+      "author": "Copilot",
+      "headRef": "copilot/refactor-async-connection-handler",
+      "base": "8ac70143b2ab22b0c43cf75c2765a8b7c82be0da",
+      "head": "ed89fa4fcc0ca22f1e3d3bf79d4de16f1041fa3a",
+      "files": 5,
+      "commitAuthors": [
+        "Copilot"
+      ]
+    },
+    {
+      "id": 3335715887,
+      "agent": "Claude_Code",
+      "language": "Python",
+      "fullName": "coleam00/Archon",
+      "number": 364,
+      "url": "https://github.com/coleam00/Archon/pull/364",
+      "createdAt": "2025-08-19T21:15:54Z",
+      "merged": false,
+      "author": "Krashnicov",
+      "headRef": "feat/vector-abstractions-new",
+      "base": "cd22089b87ca4184393bc68bd1e898602d1f0396",
+      "head": "a9616bfc1d85323db3e643b929cb0c2db56367aa",
+      "files": 6,
+      "commitAuthors": [
+        "Krashnicov"
+      ]
+    },
+    {
+      "id": 3226428318,
+      "agent": "Google_Jules",
+      "language": "Python",
+      "fullName": "bmaltais/kohya_ss",
+      "number": 3339,
+      "url": "https://github.com/bmaltais/kohya_ss/pull/3339",
+      "createdAt": "2025-07-13T11:30:58Z",
+      "merged": false,
+      "author": "google-labs-jules[bot]",
+      "headRef": "jules_wip_16237221827624082153",
+      "base": "4161d1d80ad554f7801c584632665d6825994062",
+      "head": "acff8f055d88674263f1bb17a180b4f8dca9f784",
+      "files": 3,
+      "commitAuthors": [
+        "google-labs-jules[bot]"
+      ]
+    },
+    {
+      "id": 3241545126,
+      "agent": "Claude_Code",
+      "language": "Python",
+      "fullName": "numbagg/numbagg",
+      "number": 384,
+      "url": "https://github.com/numbagg/numbagg/pull/384",
+      "createdAt": "2025-07-18T01:43:12Z",
+      "merged": true,
+      "author": "max-sixty",
+      "headRef": "coef-matrix",
+      "base": "d22a89ab498ab280eb4cd4e7198023745c9738c8",
+      "head": "33291e55a1d1ac1462702e794e0a5236af6c2078",
+      "files": 8,
+      "commitAuthors": [
+        "max-sixty",
+        "pre-commit-ci[bot]"
+      ]
+    },
+    {
+      "id": 3209029872,
+      "agent": "OpenAI_Codex",
+      "language": "Python",
+      "fullName": "MontrealAI/AGI-Alpha-Agent-v0",
+      "number": 3073,
+      "url": "https://github.com/MontrealAI/AGI-Alpha-Agent-v0/pull/3073",
+      "createdAt": "2025-07-07T13:22:52Z",
+      "merged": true,
+      "author": "MontrealAI",
+      "headRef": "codex/fix-pyodide-asset-checksum-mismatch-in-docs.yml",
+      "base": "09a39cc21d4ce79781c54e29d19d7b1a76472603",
+      "head": "35bffe634035d44f92e764643ebaa33c19403605",
+      "files": 2,
+      "commitAuthors": [
+        "MontrealAI"
+      ]
+    },
+    {
+      "id": 3403599234,
+      "agent": "Cursor",
+      "language": "Python",
+      "fullName": "megakid/ha_octopus_intelligent",
+      "number": 61,
+      "url": "https://github.com/megakid/ha_octopus_intelligent/pull/61",
+      "createdAt": "2025-09-10T19:02:28Z",
+      "merged": false,
+      "author": "megakid",
+      "headRef": "cursor/fix-broken-octopus-energy-api-call-fc0f",
+      "base": "9800a5b21b5bfe17c0dbe35bcdbe719d33680422",
+      "head": "f69060af91a1703128ce2e48e7a1d34a79968cef",
+      "files": 2,
+      "commitAuthors": [
+        "cursoragent"
+      ]
+    },
+    {
+      "id": 3505855589,
+      "agent": "Claude_Code",
+      "language": "Python",
+      "fullName": "basicmachines-co/basic-memory",
+      "number": 350,
+      "url": "https://github.com/basicmachines-co/basic-memory/pull/350",
+      "createdAt": "2025-10-11T13:45:04Z",
+      "merged": true,
+      "author": "phernandez",
+      "headRef": "feat/349-directory-structure-endpoint",
+      "base": "a09066e0f018b3b51c5336014cfdd39f37ef2320",
+      "head": "d1fb0c780f74c0be504798d37fb0a972e2c924e0",
+      "files": 8,
+      "commitAuthors": [
+        "phernandez"
+      ]
+    },
+    {
+      "id": 3438641579,
+      "agent": "OpenAI_Codex",
+      "language": "Python",
+      "fullName": "conchoecia/odp",
+      "number": 102,
+      "url": "https://github.com/conchoecia/odp/pull/102",
+      "createdAt": "2025-09-21T21:45:24Z",
+      "merged": true,
+      "author": "conchoecia",
+      "headRef": "codex/add-helper-for-lineage-splitting",
+      "base": "64c7100b60c6917622579c68896ba838ef6ce789",
+      "head": "cf011aba608b77b0a58faf9fba67821fb19c86a2",
+      "files": 1,
+      "commitAuthors": [
+        "conchoecia"
+      ]
+    }
+  ],
+  "human": [
+    {
+      "agentNumber": 1317,
+      "language": "Rust",
+      "fullName": "obi1kenobi/cargo-semver-checks",
+      "number": 1327,
+      "url": "https://github.com/obi1kenobi/cargo-semver-checks/pull/1327",
+      "createdAt": "2025-06-18T03:19:42Z",
+      "merged": true,
+      "author": "obi1kenobi",
+      "headRef": "fix-unsafe_inherent_method_requires_more_target_features",
+      "base": "85f7671bdce6468430a6a75bc2b4e08688f3d241",
+      "head": "04c79891e8dd91a618e59ad1c61c5ad31f6f2495",
+      "files": 4,
+      "commitAuthors": [
+        "obi1kenobi"
+      ]
+    },
+    {
+      "agentNumber": 218,
+      "language": "Rust",
+      "fullName": "mediar-ai/terminator",
+      "number": 220,
+      "url": "https://github.com/mediar-ai/terminator/pull/220",
+      "createdAt": "2025-07-17T07:06:41Z",
+      "merged": false,
+      "author": "tribhuwan-kumar",
+      "headRef": "col",
+      "base": "0fddc52e9e3ef0778b982d9650e05547b089d9ef",
+      "head": "95822cb74b5398eae0b81792b9e347a2c6d8ba62",
+      "files": 3,
+      "commitAuthors": [
+        "tribhuwan-kumar"
+      ]
+    },
+    {
+      "agentNumber": 7325,
+      "language": "Rust",
+      "fullName": "FuelLabs/sway",
+      "number": 7322,
+      "url": "https://github.com/FuelLabs/sway/pull/7322",
+      "createdAt": "2025-08-11T13:06:50Z",
+      "merged": true,
+      "author": "tritao",
+      "headRef": "dump-impls",
+      "base": "13e4df8d94bad3c149e5e7b948a8e0ee7826066c",
+      "head": "b73f8198ceb0e45e1bff3e11c95fcf5e4b150aa1",
+      "files": 50,
+      "commitAuthors": [
+        "IGI-111",
+        "tritao"
+      ]
+    },
+    {
+      "agentNumber": 3633,
+      "language": "Rust",
+      "fullName": "GlareDB/glaredb",
+      "number": 3635,
+      "url": "https://github.com/GlareDB/glaredb/pull/3635",
+      "createdAt": "2025-04-11T18:39:51Z",
+      "merged": true,
+      "author": "scsmithr",
+      "headRef": "sean/init-cap-reuse-buf",
+      "base": "f82d75197f96c447e6809228ad2b53ce678778a7",
+      "head": "a738fb16c3b957de9361b0425487fc6ddefab876",
+      "files": 1,
+      "commitAuthors": [
+        "scsmithr"
+      ]
+    },
+    {
+      "agentNumber": 6216,
+      "language": "Rust",
+      "fullName": "jdx/mise",
+      "number": 6217,
+      "url": "https://github.com/jdx/mise/pull/6217",
+      "createdAt": "2025-09-06T21:22:08Z",
+      "merged": true,
+      "author": "jdx",
+      "headRef": "rm-unnest",
+      "base": "67ad9c9007c73bcff3df8d5baf514b104a957c85",
+      "head": "25e224d22781b3de7a339657b970a5f4bec0ad43",
+      "files": 5,
+      "commitAuthors": [
+        "jdx"
+      ]
+    },
+    {
+      "agentNumber": 150,
+      "language": "Rust",
+      "fullName": "gluesql/glues",
+      "number": 178,
+      "url": "https://github.com/gluesql/glues/pull/178",
+      "createdAt": "2025-06-22T05:04:32Z",
+      "merged": true,
+      "author": "panarch",
+      "headRef": "upgrade-gluesql-to-v0.17",
+      "base": "0cde63bc6ffeb82d90c9d90a9a1c91747b63a373",
+      "head": "2664fee8d4cba539fed7be00ce3fd5c91dc1fa33",
+      "files": 4,
+      "commitAuthors": [
+        "panarch"
+      ]
+    },
+    {
+      "agentNumber": 469,
+      "language": "Rust",
+      "fullName": "nyx-space/anise",
+      "number": 465,
+      "url": "https://github.com/nyx-space/anise/pull/465",
+      "createdAt": "2025-06-25T17:03:53Z",
+      "merged": true,
+      "author": "ChristopherRabotin",
+      "headRef": "prep-0.6.4",
+      "base": "d57983d3d1699eea232cfdd7486ac97204486a38",
+      "head": "b28504960ee53be55a77d7f011a85c285a694a3a",
+      "files": 7,
+      "commitAuthors": [
+        "ChristopherRabotin"
+      ]
+    },
+    {
+      "agentNumber": 750,
+      "language": "Rust",
+      "fullName": "mitsuhiko/insta",
+      "number": 749,
+      "url": "https://github.com/mitsuhiko/insta/pull/749",
+      "createdAt": "2025-04-01T22:09:51Z",
+      "merged": true,
+      "author": "max-sixty",
+      "headRef": "replace-snapshots",
+      "base": "62bb0a3ec47eabda55689188b5ec99916b973c52",
+      "head": "77407c341f35d74ca06cfca9618ff3f580e4dc67",
+      "files": 30,
+      "commitAuthors": [
+        "max-sixty"
+      ]
+    },
+    {
+      "agentNumber": 133,
+      "language": "Rust",
+      "fullName": "vinhnx/VTCode",
+      "number": 113,
+      "url": "https://github.com/vinhnx/VTCode/pull/113",
+      "createdAt": "2025-09-30T18:12:50Z",
+      "merged": true,
+      "author": "oiwn",
+      "headRef": "add-deepseek",
+      "base": "6656a349fc09a8b9c83ef33263f59ea6bfc85b54",
+      "head": "96febe2d7019565026775f88f39a04623711c593",
+      "files": 20,
+      "commitAuthors": [
+        "oiwn"
+      ]
+    },
+    {
+      "agentNumber": 93,
+      "language": "Rust",
+      "fullName": "cablehead/xs",
+      "number": 82,
+      "url": "https://github.com/cablehead/xs/pull/82",
+      "createdAt": "2025-05-19T23:47:40Z",
+      "merged": true,
+      "author": "cablehead",
+      "headRef": "codex-terminate-fix",
+      "base": "85be0bf637000e218f73ebbcacc94d82b3f13b9a",
+      "head": "a06353b8551bfe5efd530a85536bb330419829a2",
+      "files": 2,
+      "commitAuthors": [
+        "cablehead"
+      ]
+    },
+    {
+      "agentNumber": 8345,
+      "language": "TypeScript",
+      "fullName": "anthropics/claude-code",
+      "number": 8480,
+      "url": "https://github.com/anthropics/claude-code/pull/8480",
+      "createdAt": "2025-09-30T12:55:26Z",
+      "merged": false,
+      "author": "YuminosukeSato",
+      "headRef": "add/kanji",
+      "base": "5062ed93fc67f9322f807ecbf391ae4376cf8e83",
+      "head": "e0ac0b9c05c142ddca9cf1a009077eddac84e42a",
+      "files": 5,
+      "commitAuthors": [
+        "YuminosukeSato"
+      ]
+    },
+    {
+      "agentNumber": 944,
+      "language": "TypeScript",
+      "fullName": "giselles-ai/giselle",
+      "number": 942,
+      "url": "https://github.com/giselles-ai/giselle/pull/942",
+      "createdAt": "2025-05-23T05:20:21Z",
+      "merged": true,
+      "author": "toyamarinyon",
+      "headRef": "feature/add-pull-request-comment-trigger",
+      "base": "23fccfa0f0374b2ded057cf574313515d6aecb80",
+      "head": "498e1ec4932c26daf416e6d32e49adc2e1bdc2af",
+      "files": 1,
+      "commitAuthors": [
+        "satoshi toyama"
+      ]
+    },
+    {
+      "agentNumber": 1723,
+      "language": "TypeScript",
+      "fullName": "karakeep-app/karakeep",
+      "number": 1729,
+      "url": "https://github.com/karakeep-app/karakeep/pull/1729",
+      "createdAt": "2025-07-12T12:02:39Z",
+      "merged": false,
+      "author": "MadMaximusJB",
+      "headRef": "main",
+      "base": "613137ff99442885c5fe679b2cc1172adfc5a283",
+      "head": "8e16e27dd1b98ea8f66d39f6b386181be32c46aa",
+      "files": 24,
+      "commitAuthors": [
+        "MadMaximusJB"
+      ]
+    },
+    {
+      "agentNumber": 493,
+      "language": "TypeScript",
+      "fullName": "lumen-notes/lumen",
+      "number": 480,
+      "url": "https://github.com/lumen-notes/lumen/pull/480",
+      "createdAt": "2025-04-10T06:07:14Z",
+      "merged": true,
+      "author": "zaaakher",
+      "headRef": "feat/note-from-tags",
+      "base": "3624366d1302bff8089cfdb2dc974c993975cf71",
+      "head": "eb9ff3cc652966eae9800ad5b31edfd100071a83",
+      "files": 4,
+      "commitAuthors": [
+        "colebemis",
+        "zaaakher"
+      ]
+    },
+    {
+      "agentNumber": 182,
+      "language": "TypeScript",
+      "fullName": "langgenius/webapp-conversation",
+      "number": 184,
+      "url": "https://github.com/langgenius/webapp-conversation/pull/184",
+      "createdAt": "2025-09-16T04:52:08Z",
+      "merged": false,
+      "author": "Eric-Guo",
+      "headRef": "main",
+      "base": "55a77ea86d9faea36254feb00048abb0b62c886f",
+      "head": "20f7412d5db9bbd18e575b67023139b726036492",
+      "files": 13,
+      "commitAuthors": [
+        "Eric-Guo"
+      ]
+    },
+    {
+      "agentNumber": 64,
+      "language": "TypeScript",
+      "fullName": "PV-Bhat/vibe-check-mcp-server",
+      "number": 66,
+      "url": "https://github.com/PV-Bhat/vibe-check-mcp-server/pull/66",
+      "createdAt": "2025-10-28T01:28:57Z",
+      "merged": true,
+      "author": "alvinveroy",
+      "headRef": "fix/stdio-transport-cli-wrapper",
+      "base": "93422e70a55e8eb7d44ddec77cced332072cf709",
+      "head": "6642037772f1c6a429aa9a65d1e0f814cb6c0542",
+      "files": 2,
+      "commitAuthors": [
+        "PV-Bhat",
+        "alvinveroy"
+      ]
+    },
+    {
+      "agentNumber": 3535,
+      "language": "TypeScript",
+      "fullName": "tokens-studio/figma-plugin",
+      "number": 3530,
+      "url": "https://github.com/tokens-studio/figma-plugin/pull/3530",
+      "createdAt": "2025-08-29T10:08:29Z",
+      "merged": false,
+      "author": "akshay-gupta7",
+      "headRef": "fix-sync-issue",
+      "base": "4a80edc06fd695740bf8391984b68bbcbcbdcd57",
+      "head": "b53ab740eccdf2f92215d961eebd51295c36f1b1",
+      "files": 15,
+      "commitAuthors": [
+        "akshay-gupta7"
+      ]
+    },
+    {
+      "agentNumber": 1141,
+      "language": "TypeScript",
+      "fullName": "recallnet/js-recall",
+      "number": 1140,
+      "url": "https://github.com/recallnet/js-recall/pull/1140",
+      "createdAt": "2025-08-29T17:33:59Z",
+      "merged": true,
+      "author": "dtbuchholz",
+      "headRef": "dtb/fix-full-trades-scan",
+      "base": "3b849c30d7e3be162162618bd293330f25a97c19",
+      "head": "f322c44df3b6d6c5b2c0dd17423c507cb4d6e616",
+      "files": 4,
+      "commitAuthors": [
+        "dtbuchholz"
+      ]
+    },
+    {
+      "agentNumber": 1953,
+      "language": "TypeScript",
+      "fullName": "Mail-0/Zero",
+      "number": 1950,
+      "url": "https://github.com/Mail-0/Zero/pull/1950",
+      "createdAt": "2025-08-08T01:55:13Z",
+      "merged": true,
+      "author": "MrgSub",
+      "headRef": "ZEROAdd_rate_limiting_to_meet_creation_endpoint",
+      "base": "3ca38991fe026dc69b477cfda01b9a7d5342ece2",
+      "head": "fe63ac7df88f6cc91e080174c304e13fd72b608a",
+      "files": 11,
+      "commitAuthors": [
+        "MrgSub"
+      ]
+    },
+    {
+      "agentNumber": 517,
+      "language": "TypeScript",
+      "fullName": "jeremyckahn/chitchatter",
+      "number": 492,
+      "url": "https://github.com/jeremyckahn/chitchatter/pull/492",
+      "createdAt": "2025-08-26T03:12:27Z",
+      "merged": false,
+      "author": "crazykivi",
+      "headRef": "main",
+      "base": "26cecceece5ee60d9d9815c980cfa8ee634365f3",
+      "head": "b64f5ff132bbb5d43918469e92a4f970b8224343",
+      "files": 14,
+      "commitAuthors": [
+        "crazykivi"
+      ]
+    },
+    {
+      "agentNumber": 1422,
+      "language": "Python",
+      "fullName": "langgenius/dify-official-plugins",
+      "number": 1420,
+      "url": "https://github.com/langgenius/dify-official-plugins/pull/1420",
+      "createdAt": "2025-08-05T12:54:37Z",
+      "merged": true,
+      "author": "shamspias",
+      "headRef": "feat/dynamic-translation-lang",
+      "base": "5c4780a42ed7542234cfbd872a778cb67c50fe11",
+      "head": "5d0a772ed40bde6704b3c4e98ec3d259f355a46d",
+      "files": 6,
+      "commitAuthors": [
+        "shamspias"
+      ]
+    },
+    {
+      "agentNumber": 2332,
+      "language": "Python",
+      "fullName": "browser-use/browser-use",
+      "number": 2331,
+      "url": "https://github.com/browser-use/browser-use/pull/2331",
+      "createdAt": "2025-07-07T11:35:42Z",
+      "merged": true,
+      "author": "mertunsall",
+      "headRef": "revert-2327-cursor/make-tool-call-example-parameter-optional-3d84",
+      "base": "17c309259398338ee58d5badb3c4d09a770d603e",
+      "head": "f7825bf1769bc00c9fe1e99963bff93848a72fe2",
+      "files": 3,
+      "commitAuthors": [
+        "mertunsall"
+      ]
+    },
+    {
+      "agentNumber": 82,
+      "language": "Python",
+      "fullName": "CravateRouge/bloodyAD",
+      "number": 79,
+      "url": "https://github.com/CravateRouge/bloodyAD/pull/79",
+      "createdAt": "2025-09-12T13:20:26Z",
+      "merged": true,
+      "author": "mHijuxS",
+      "headRef": "feature/addJsonParser",
+      "base": "493db15a5710fe0f9613e87545343685e325468a",
+      "head": "8f8ace1109e551a4a5723e968af855b4c5a6dc69",
+      "files": 1,
+      "commitAuthors": [
+        "railoca"
+      ]
+    },
+    {
+      "agentNumber": 364,
+      "language": "Python",
+      "fullName": "coleam00/Archon",
+      "number": 338,
+      "url": "https://github.com/coleam00/Archon/pull/338",
+      "createdAt": "2025-08-19T12:18:43Z",
+      "merged": false,
+      "author": "zakstam",
+      "headRef": "feature/migration-ui-implementation",
+      "base": "4df58d59f5798b2f61ae7e3479879aaf0704dabc",
+      "head": "036a39696339294c44cdfdcdb7a38c85ae7f2eda",
+      "files": 17,
+      "commitAuthors": [
+        "zakstam"
+      ]
+    },
+    {
+      "agentNumber": 3339,
+      "language": "Python",
+      "fullName": "bmaltais/kohya_ss",
+      "number": 3346,
+      "url": "https://github.com/bmaltais/kohya_ss/pull/3346",
+      "createdAt": "2025-07-13T15:43:55Z",
+      "merged": true,
+      "author": "bmaltais",
+      "headRef": "flux-manual-caption",
+      "base": "2a8c05952d27e9122a5ab4a33109d668e86242a2",
+      "head": "6e509ae5b2e80bf495e51e18c37c81d45f978b6b",
+      "files": 2,
+      "commitAuthors": [
+        "bmaltais",
+        "google-labs-jules[bot]"
+      ]
+    },
+    {
+      "agentNumber": 384,
+      "language": "Python",
+      "fullName": "numbagg/numbagg",
+      "number": 400,
+      "url": "https://github.com/numbagg/numbagg/pull/400",
+      "createdAt": "2025-08-05T03:11:13Z",
+      "merged": true,
+      "author": "max-sixty",
+      "headRef": "pr-399",
+      "base": "9f14dc4c48b1d0344901841a9d7c1ac983c76c38",
+      "head": "3ea10f2d53981c65c42999b1bec65f5c6f0f08d4",
+      "files": 2,
+      "commitAuthors": [
+        "max-sixty"
+      ]
+    },
+    {
+      "agentNumber": 61,
+      "language": "Python",
+      "fullName": "megakid/ha_octopus_intelligent",
+      "number": 62,
+      "url": "https://github.com/megakid/ha_octopus_intelligent/pull/62",
+      "createdAt": "2025-09-10T21:15:23Z",
+      "merged": true,
+      "author": "megakid",
+      "headRef": "new_mutate_api",
+      "base": "9800a5b21b5bfe17c0dbe35bcdbe719d33680422",
+      "head": "387bc79e337b268a436eb0e10809f4b5ff00d9f4",
+      "files": 1,
+      "commitAuthors": [
+        "megakid"
+      ]
+    },
+    {
+      "agentNumber": 350,
+      "language": "Python",
+      "fullName": "basicmachines-co/basic-memory",
+      "number": 360,
+      "url": "https://github.com/basicmachines-co/basic-memory/pull/360",
+      "createdAt": "2025-10-15T23:00:25Z",
+      "merged": false,
+      "author": "Laiff",
+      "headRef": "feature/improve-tool-descriptions",
+      "base": "994c8b8e7ee37f0416cf1be01c6166d23440dfd2",
+      "head": "d49f4b09fd7185253b719fd7af8cf16c14bf0223",
+      "files": 13,
+      "commitAuthors": [
+        "Laiff"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "id": 3406214181,
+      "fullName": "apache/datafusion",
+      "number": 17520,
+      "rule": "size 249735 KB over 150000"
+    },
+    {
+      "id": 3364890256,
+      "fullName": "spellshift/realm",
+      "number": 951,
+      "rule": "size 396474 KB over 150000"
+    },
+    {
+      "id": 3488300178,
+      "fullName": "514-labs/moosestack",
+      "number": 2825,
+      "rule": "size 183727 KB over 150000"
+    },
+    {
+      "id": 3363363654,
+      "fullName": "gitbutlerapp/gitbutler",
+      "number": 10005,
+      "rule": "size 320068 KB over 150000"
+    },
+    {
+      "id": 2799374100,
+      "fullName": "bifrost-io/bifrost",
+      "number": 1613,
+      "rule": "repository not readable"
+    },
+    {
+      "id": 3190929212,
+      "fullName": "bionic-gpt/bionic-gpt",
+      "number": 906,
+      "rule": "size 239417 KB over 150000"
+    },
+    {
+      "id": 3220673790,
+      "fullName": "514-labs/moosestack",
+      "number": 2554,
+      "rule": "size 183727 KB over 150000"
+    },
+    {
+      "id": 3369016813,
+      "fullName": "oxc-project/oxc",
+      "number": 13423,
+      "rule": "size 204163 KB over 150000"
+    },
+    {
+      "id": 2981389984,
+      "fullName": "cberner/raptorq",
+      "number": 177,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3371188546,
+      "fullName": "databendlabs/databend",
+      "number": 18658,
+      "rule": "size 387904 KB over 150000"
+    },
+    {
+      "id": 3538088009,
+      "fullName": "ryokun6/ryos",
+      "number": 334,
+      "rule": "size 588942 KB over 150000"
+    },
+    {
+      "id": 3236323443,
+      "fullName": "taiga-family/taiga-ui",
+      "number": 11344,
+      "rule": "size 2023688 KB over 150000"
+    },
+    {
+      "id": 3182916770,
+      "fullName": "reown-com/appkit",
+      "number": 4578,
+      "rule": "size 163049 KB over 150000"
+    },
+    {
+      "id": 3182690498,
+      "fullName": "afadil/wealthfolio",
+      "number": 311,
+      "rule": "size 186312 KB over 150000"
+    },
+    {
+      "id": 3465748990,
+      "fullName": "novuhq/novu",
+      "number": 9253,
+      "rule": "size 503725 KB over 150000"
+    },
+    {
+      "id": 3336783417,
+      "fullName": "IgniteUI/igniteui-cli",
+      "number": 1411,
+      "rule": "size 181942 KB over 150000"
+    },
+    {
+      "id": 2954259718,
+      "fullName": "antiwork/helper",
+      "number": 135,
+      "rule": "repository not readable"
+    },
+    {
+      "id": 3282049635,
+      "fullName": "material-components/material-web",
+      "number": 5831,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3315860475,
+      "fullName": "manaflow-ai/cmux",
+      "number": 80,
+      "rule": "size 3162244 KB over 150000"
+    },
+    {
+      "id": 3226009558,
+      "fullName": "faros-ai/airbyte-connectors",
+      "number": 2173,
+      "rule": "repository not readable"
+    },
+    {
+      "id": 3188102946,
+      "fullName": "motiondivision/motion",
+      "number": 3289,
+      "rule": "size 1664027 KB over 150000"
+    },
+    {
+      "id": 3536709871,
+      "fullName": "mastra-ai/mastra",
+      "number": 9072,
+      "rule": "size 1929251 KB over 150000"
+    },
+    {
+      "id": 3070935368,
+      "fullName": "raycast/extensions",
+      "number": 19251,
+      "rule": "size 18769144 KB over 150000"
+    },
+    {
+      "id": 3482751168,
+      "fullName": "microsoft/vscode",
+      "number": 269787,
+      "rule": "size 1525916 KB over 150000"
+    },
+    {
+      "id": 2946788753,
+      "fullName": "Cap-go/capgo",
+      "number": 1095,
+      "rule": "size 411692 KB over 150000"
+    },
+    {
+      "id": 3213477077,
+      "fullName": "afadil/wealthfolio",
+      "number": 320,
+      "rule": "size 186312 KB over 150000"
+    },
+    {
+      "id": 3493855911,
+      "fullName": "ShunsukeHayashi/Miyabi",
+      "number": 26,
+      "rule": "repository not readable"
+    },
+    {
+      "id": 3164583819,
+      "fullName": "dcSpark/shinkai-local-ai-agents",
+      "number": 1040,
+      "rule": "size 185315 KB over 150000"
+    },
+    {
+      "id": 3236131306,
+      "fullName": "microsoft/vscode-cpptools",
+      "number": 13763,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3352183709,
+      "fullName": "vuejs/language-tools",
+      "number": 5614,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3101522307,
+      "fullName": "MontrealAI/AGI-Alpha-Agent-v0",
+      "number": 1160,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3037618903,
+      "fullName": "crewAIInc/crewAI",
+      "number": 2747,
+      "rule": "size 294566 KB over 150000"
+    },
+    {
+      "id": 3412844444,
+      "fullName": "huggingface/huggingface_hub",
+      "number": 3360,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3128553370,
+      "fullName": "charlesvestal/extending-move",
+      "number": 188,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3332116326,
+      "fullName": "HumanSignal/Adala",
+      "number": 452,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3092878143,
+      "fullName": "mlflow/mlflow",
+      "number": 15893,
+      "rule": "size 1490344 KB over 150000"
+    },
+    {
+      "id": 2813742901,
+      "fullName": "airbytehq/airbyte",
+      "number": 52570,
+      "rule": "size 930819 KB over 150000"
+    },
+    {
+      "id": 3166878308,
+      "fullName": "mlflow/mlflow",
+      "number": 16389,
+      "rule": "size 1490344 KB over 150000"
+    },
+    {
+      "id": 3473632218,
+      "fullName": "567-labs/instructor",
+      "number": 1831,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3474335063,
+      "fullName": "OWASP/CheatSheetSeries",
+      "number": 1840,
+      "rule": "size 2638694 KB over 150000"
+    },
+    {
+      "id": 3088862201,
+      "fullName": "MontrealAI/AGI-Alpha-Agent-v0",
+      "number": 761,
+      "rule": "repository already taken"
+    },
+    {
+      "id": 3462459039,
+      "fullName": "swingerman/ha-dual-smart-thermostat",
+      "number": 434,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3439812517,
+      "fullName": "Lyellr88/MARM-Systems",
+      "number": 17,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3064080896,
+      "fullName": "airbytehq/airbyte",
+      "number": 60279,
+      "rule": "size 930819 KB over 150000"
+    },
+    {
+      "id": 3424031698,
+      "fullName": "martinblech/xmltodict",
+      "number": 383,
+      "rule": "no file of the language"
+    },
+    {
+      "id": 3196885081,
+      "fullName": "SuperClaude-Org/SuperClaude_Framework",
+      "number": 69,
+      "rule": "no file of the language"
+    }
+  ],
+  "humanSkipped": [
+    {
+      "fullName": "obi1kenobi/cargo-semver-checks",
+      "agentNumber": 1317,
+      "searched": 103,
+      "skipped": [
+        {
+          "number": 1318,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1319,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 1316,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1315,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1314,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1313,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1312,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1311,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1310,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1309,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1308,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1320,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1307,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1306,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1305,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1304,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1303,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1302,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1301,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1300,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1299,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1298,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1296,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 1321,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1322,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1323,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 1324,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 1325,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 1326,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "mediar-ai/terminator",
+      "agentNumber": 218,
+      "searched": 171,
+      "skipped": [
+        {
+          "number": 216,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 215,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 214,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 219,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 213,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "FuelLabs/sway",
+      "agentNumber": 7325,
+      "searched": 147,
+      "skipped": [
+        {
+          "number": 7327,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 7323,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 7328,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 7329,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 7331,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 7332,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "GlareDB/glaredb",
+      "agentNumber": 3633,
+      "searched": 457,
+      "skipped": [
+        {
+          "number": 3634,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3631,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3630,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "jdx/mise",
+      "agentNumber": 6216,
+      "searched": 851,
+      "skipped": [
+        {
+          "number": 6215,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "gluesql/glues",
+      "agentNumber": 150,
+      "searched": 46,
+      "skipped": [
+        {
+          "number": 149,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 148,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 151,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 152,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 153,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 154,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 147,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 155,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 146,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 156,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 145,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 144,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 143,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 159,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 160,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 142,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 141,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 140,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 139,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 138,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 137,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 136,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 135,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 134,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 161,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 162,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 133,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 163,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 164,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 165,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 166,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 167,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 168,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 170,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 172,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 173,
+          "rule": "agent branch"
+        },
+        {
+          "number": 174,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 175,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 176,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "nyx-space/anise",
+      "agentNumber": 469,
+      "searched": 72,
+      "skipped": [
+        {
+          "number": 468,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "mitsuhiko/insta",
+      "agentNumber": 750,
+      "searched": 44,
+      "skipped": []
+    },
+    {
+      "fullName": "vinhnx/VTCode",
+      "agentNumber": 133,
+      "searched": 360,
+      "skipped": [
+        {
+          "number": 134,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 135,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 131,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 130,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 129,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 128,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 127,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 126,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 136,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 124,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 137,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 138,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 139,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 140,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 123,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 122,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 143,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 120,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 144,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 145,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 146,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 147,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 148,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 149,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 150,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 153,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 154,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 155,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 156,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 157,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 158,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 160,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 161,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 163,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 164,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "cablehead/xs",
+      "agentNumber": 93,
+      "searched": 53,
+      "skipped": [
+        {
+          "number": 92,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 91,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 94,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 95,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 90,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 89,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 88,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 87,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 86,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 85,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 84,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 83,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "anthropics/claude-code",
+      "agentNumber": 8345,
+      "searched": 137,
+      "skipped": [
+        {
+          "number": 8340,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 8352,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "giselles-ai/giselle",
+      "agentNumber": 944,
+      "searched": 879,
+      "skipped": [
+        {
+          "number": 943,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 945,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 946,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "karakeep-app/karakeep",
+      "agentNumber": 1723,
+      "searched": 111,
+      "skipped": []
+    },
+    {
+      "fullName": "lumen-notes/lumen",
+      "agentNumber": 493,
+      "searched": 16,
+      "skipped": [
+        {
+          "number": 492,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 494,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 495,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 496,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 497,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 491,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 498,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 489,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 488,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 487,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 486,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 483,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "langgenius/webapp-conversation",
+      "agentNumber": 182,
+      "searched": 10,
+      "skipped": [
+        {
+          "number": 181,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 183,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "PV-Bhat/vibe-check-mcp-server",
+      "agentNumber": 64,
+      "searched": 46,
+      "skipped": [
+        {
+          "number": 63,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 62,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 65,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 60,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "tokens-studio/figma-plugin",
+      "agentNumber": 3535,
+      "searched": 145,
+      "skipped": [
+        {
+          "number": 3534,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3533,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3532,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3531,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "recallnet/js-recall",
+      "agentNumber": 1141,
+      "searched": 608,
+      "skipped": []
+    },
+    {
+      "fullName": "Mail-0/Zero",
+      "agentNumber": 1953,
+      "searched": 664,
+      "skipped": [
+        {
+          "number": 1952,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "jeremyckahn/chitchatter",
+      "agentNumber": 517,
+      "searched": 45,
+      "skipped": [
+        {
+          "number": 518,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 519,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 520,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 521,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 522,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 515,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 514,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 513,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 512,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 523,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 524,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 525,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 526,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 508,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 527,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 529,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 507,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 506,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 505,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 504,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 531,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 532,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 502,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 501,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 500,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 533,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 534,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 499,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 535,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 498,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 497,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 496,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 536,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 537,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 495,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 494,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "langgenius/dify-official-plugins",
+      "agentNumber": 1422,
+      "searched": 403,
+      "skipped": []
+    },
+    {
+      "fullName": "browser-use/browser-use",
+      "agentNumber": 2332,
+      "searched": 892,
+      "skipped": []
+    },
+    {
+      "fullName": "CravateRouge/bloodyAD",
+      "agentNumber": 82,
+      "searched": 15,
+      "skipped": [
+        {
+          "number": 83,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 81,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 84,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 85,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 86,
+          "rule": "agent branch"
+        },
+        {
+          "number": 87,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 89,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 90,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 93,
+          "rule": "author is a bot or an agent"
+        },
+        {
+          "number": 94,
+          "rule": "author is a bot or an agent"
+        }
+      ]
+    },
+    {
+      "fullName": "coleam00/Archon",
+      "agentNumber": 364,
+      "searched": 225,
+      "skipped": [
+        {
+          "number": 365,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 361,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 369,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "bmaltais/kohya_ss",
+      "agentNumber": 3339,
+      "searched": 57,
+      "skipped": [
+        {
+          "number": 3340,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3341,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3342,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3343,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3344,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3345,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "numbagg/numbagg",
+      "agentNumber": 384,
+      "searched": 43,
+      "skipped": [
+        {
+          "number": 385,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 386,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 387,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 388,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 389,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 390,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 391,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 383,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 392,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 393,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 394,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 395,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 396,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 397,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 382,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 398,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 399,
+          "rule": "no file of the language"
+        }
+      ]
+    },
+    {
+      "fullName": "MontrealAI/AGI-Alpha-Agent-v0",
+      "agentNumber": 3073,
+      "searched": 1000,
+      "skipped": [
+        {
+          "number": 3074,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3072,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3075,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3071,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3076,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3070,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3077,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3078,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3079,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3080,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3081,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3082,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3083,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3084,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3085,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3086,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3069,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3068,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3067,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3066,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3065,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3064,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3063,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3062,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3061,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3060,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3059,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3058,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3056,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3055,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3054,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3087,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3053,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3051,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3050,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3049,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3048,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3046,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3045,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3044,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3043,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3042,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3041,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3040,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3039,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3038,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3088,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3037,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3036,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3035,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3034,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3033,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3032,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3031,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3089,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3090,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3091,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3092,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3093,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3094,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3095,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3096,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3097,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3098,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3099,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3100,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3101,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3102,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3103,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3104,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3105,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3107,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3108,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3109,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3110,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3111,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3112,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3113,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3114,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3115,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3116,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3117,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3118,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3119,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3120,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3121,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3122,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3123,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3124,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3125,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3126,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3127,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3129,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3130,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3131,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3132,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3133,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3134,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3135,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3136,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3137,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3138,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3139,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3140,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3141,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3142,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3143,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3144,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3145,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3146,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3147,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3148,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3149,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3150,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3151,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3152,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3153,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3154,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3155,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3156,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3157,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3158,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3159,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3160,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3161,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3162,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3163,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3164,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3165,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3166,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3167,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3168,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3169,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3170,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3171,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3172,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3173,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3174,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3175,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3176,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3177,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3178,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3179,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3180,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3181,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3182,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3183,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3184,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3185,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3186,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3187,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3188,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3189,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3190,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3191,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3192,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3193,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3194,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3195,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3196,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3197,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3198,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3199,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3200,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3201,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3202,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3203,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3204,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3205,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3206,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3207,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3208,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3209,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3210,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3211,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3212,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3213,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3214,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3215,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3216,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3217,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3218,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3219,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3220,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3221,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3222,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3223,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3224,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3225,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3226,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3227,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3229,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3230,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3231,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3232,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3233,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3234,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3235,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3236,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3237,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3238,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3239,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3240,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3241,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3242,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3243,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3244,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3245,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3246,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3247,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3248,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3249,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3250,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3251,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3252,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3253,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3254,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3255,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3256,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3257,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3258,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3259,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3260,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3261,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3262,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3263,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3264,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3265,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3266,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3267,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3268,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3269,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3270,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3271,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3272,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3273,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3274,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3275,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3276,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3277,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3278,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3279,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3280,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3281,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3282,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3283,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3284,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3285,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3286,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3287,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3288,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3289,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3290,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3291,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3292,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3293,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3294,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3295,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3296,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3297,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3298,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3299,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3300,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3301,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3302,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3303,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3304,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3305,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3306,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3307,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3308,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3309,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3310,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3311,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3312,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3313,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3314,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3315,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3316,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3317,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3318,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3319,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3320,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3321,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3322,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3323,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3324,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3325,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3326,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3327,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3328,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3329,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3330,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3331,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3332,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3333,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3334,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3335,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3336,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3337,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3338,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3339,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3340,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3341,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3342,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3343,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3344,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3345,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3346,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3347,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3348,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3349,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3350,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3351,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3352,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3353,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3354,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3355,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3356,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3357,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3358,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3359,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3360,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3361,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3362,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3363,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3364,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3365,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3366,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3367,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3368,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3369,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3371,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3372,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3373,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3374,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3375,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3376,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3377,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3378,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3379,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3380,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3381,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3382,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3383,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3384,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3385,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3386,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3387,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3388,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3389,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3390,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3391,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3392,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3393,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3394,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3395,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3396,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3397,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3398,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3399,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3400,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3401,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3402,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3403,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3404,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3405,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3406,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3407,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3408,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3409,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3410,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3411,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3414,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3415,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3416,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3417,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3418,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3419,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3420,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3421,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3422,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3423,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3424,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3425,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3426,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3427,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3428,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3429,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3430,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3431,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3432,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3433,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3434,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3435,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3436,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3437,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3438,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3439,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3440,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3441,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3442,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3443,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3444,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3445,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3446,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3447,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3448,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3449,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3450,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3451,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3452,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3453,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3454,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3455,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3456,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3457,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3458,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3459,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3460,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3461,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3463,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3464,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3465,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3466,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3467,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3468,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3469,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3470,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3471,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3472,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3473,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3474,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3475,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3476,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3477,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3478,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3479,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3480,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3481,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3482,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3483,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3484,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3485,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3486,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3487,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3488,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3489,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3490,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3491,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3492,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3493,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3494,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3495,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3496,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3497,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3498,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3499,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3500,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3501,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3502,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3503,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3504,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3505,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3506,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3507,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3508,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3509,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3510,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3511,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3512,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3513,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3514,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3515,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3516,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3517,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3518,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3519,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3520,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3521,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3522,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3523,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3524,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3525,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3526,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3527,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3528,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3529,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3530,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3531,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3532,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3533,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3534,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3535,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3536,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3537,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3538,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3539,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3540,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3541,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3542,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3543,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3544,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3545,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3546,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3547,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3548,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3549,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3550,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3551,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3552,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3553,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3554,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3555,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3556,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3557,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3558,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3559,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3560,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3561,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3562,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3563,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3564,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3565,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3566,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3567,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3568,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3569,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3570,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3571,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3572,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3573,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3574,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3575,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3576,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3577,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3578,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3579,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3580,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3581,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3582,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3583,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3584,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3585,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3586,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3587,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3588,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3589,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3590,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3591,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3592,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3593,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3594,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3595,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3596,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3597,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3598,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3599,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3600,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3601,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3602,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3603,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3604,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3605,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3606,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3607,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3608,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3609,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3610,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3611,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3612,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3613,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3614,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3615,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3616,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3617,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3618,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3619,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3620,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3621,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3622,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3623,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3624,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3625,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3626,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3627,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3628,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3629,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3630,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3631,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3632,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3633,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3634,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3635,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3636,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3637,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3638,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3639,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3640,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3641,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3642,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3643,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3644,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3645,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3646,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3647,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3648,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3649,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3650,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3651,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3652,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3653,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3654,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3655,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3656,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3657,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3658,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3659,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3660,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3661,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3662,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3663,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3664,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3665,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3666,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3667,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3668,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3669,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3670,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3671,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3672,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3673,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3674,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3675,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3676,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3677,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3678,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3679,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3680,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3681,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3682,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3683,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3684,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3685,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3686,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3687,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3688,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3689,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3690,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3691,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3692,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3693,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3694,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3695,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3696,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3697,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3698,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3699,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3700,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3701,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3702,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3703,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3704,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3705,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3706,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3707,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3708,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3709,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3710,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3711,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3712,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3713,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3714,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3715,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3716,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3717,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3718,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3719,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3720,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3721,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3722,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3723,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3724,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3725,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3726,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3727,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3728,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3729,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3730,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3731,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3732,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3733,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3734,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3735,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3736,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3737,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3738,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3739,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3740,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3741,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3742,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3743,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3744,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3745,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3746,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3747,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3748,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3749,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3750,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3751,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3752,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3753,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3754,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3755,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3756,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3757,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3758,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3759,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3760,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3761,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3762,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3763,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3764,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3765,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3766,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3768,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3769,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3770,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3771,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3772,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3773,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3774,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3775,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3776,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3777,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3778,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3779,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3780,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3781,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3782,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3783,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3785,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3786,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3787,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3788,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3789,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3790,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3791,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3792,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3793,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3794,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3795,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3796,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3797,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3798,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3799,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3800,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3801,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3802,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3803,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3804,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3805,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3806,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3807,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3808,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3809,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3810,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3811,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3812,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3813,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3814,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3815,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3816,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3817,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3818,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3819,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3820,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3821,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3822,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3823,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3824,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3825,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3826,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3827,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3828,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3829,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3830,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3831,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3832,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3833,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3834,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3835,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3836,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3837,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3838,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3839,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3840,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3841,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3842,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3843,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3844,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3845,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3846,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3848,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3849,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3850,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3851,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3852,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3853,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3854,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3855,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3856,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3857,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3858,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3859,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3860,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3861,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3862,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3863,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3864,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3865,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3866,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3867,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3868,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3869,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3870,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3871,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3872,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3873,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3874,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3875,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3876,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3877,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3878,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3879,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3880,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3881,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3882,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3883,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3884,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3885,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3886,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3887,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3888,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3889,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3890,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3891,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3892,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3893,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3894,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3895,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3896,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3897,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3898,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3899,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3900,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 3901,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3902,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3903,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3904,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3905,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3906,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3907,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3908,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3909,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3910,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3911,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3912,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3913,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3914,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3915,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3916,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3917,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3918,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3919,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3920,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3921,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3922,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3923,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3924,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3925,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3926,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3927,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3928,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3929,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3930,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3931,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3932,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3934,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3935,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3936,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3937,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3938,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3939,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3940,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3941,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3942,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3944,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3945,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3946,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3947,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3948,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3949,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3950,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3951,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3952,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3953,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3954,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3955,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3956,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3957,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3958,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3959,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3960,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3961,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3962,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3963,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3964,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3965,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3966,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3967,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3968,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3969,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3970,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3971,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3972,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3973,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3974,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3975,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3976,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3977,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3978,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3979,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3980,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3981,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3982,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3983,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3984,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3985,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3986,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3987,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3988,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3989,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3990,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3992,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3993,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 3994,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3995,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3996,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3997,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3998,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 3999,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4000,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4001,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4002,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4003,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4004,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4005,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4006,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4007,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4008,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4009,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4010,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4011,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4012,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4013,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4014,
+          "rule": "no file of the language"
+        },
+        {
+          "number": 4015,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4016,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4017,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4018,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4019,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4020,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4021,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4022,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4023,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4025,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4026,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4027,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4028,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4029,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4030,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4031,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4032,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4033,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4034,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4035,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4036,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4037,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4038,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4039,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4040,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4041,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4042,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4043,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4044,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4045,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4046,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 4047,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    },
+    {
+      "fullName": "megakid/ha_octopus_intelligent",
+      "agentNumber": 61,
+      "searched": 2,
+      "skipped": []
+    },
+    {
+      "fullName": "basicmachines-co/basic-memory",
+      "agentNumber": 350,
+      "searched": 109,
+      "skipped": [
+        {
+          "number": 352,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 348,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 345,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 344,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 353,
+          "rule": "agent branch"
+        },
+        {
+          "number": 355,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 356,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 343,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 357,
+          "rule": "agent word in the body or a commit"
+        },
+        {
+          "number": 341,
+          "rule": "agent branch"
+        },
+        {
+          "number": 339,
+          "rule": "agent word in the body or a commit"
+        }
+      ]
+    },
+    {
+      "fullName": "conchoecia/odp",
+      "agentNumber": 102,
+      "searched": 17,
+      "skipped": [
+        {
+          "number": 101,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 103,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 104,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 105,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 106,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 107,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 100,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 99,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 98,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 97,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 96,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 95,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 94,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 93,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 91,
+          "rule": "in the AIDev pull_request table"
+        },
+        {
+          "number": 90,
+          "rule": "in the AIDev pull_request table"
+        }
+      ]
+    }
+  ]
+}

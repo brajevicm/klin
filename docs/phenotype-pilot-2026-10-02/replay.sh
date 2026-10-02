@@ -40,6 +40,7 @@ mkdir -p "$here/runs"
 : > "$here/deps.tsv"
 : > "$here/added.tsv"
 : > "$here/tests.tsv"
+: > "$here/changed.tsv"
 while read -r arm name number base head; do
   dir=$clones/${name//\//__}
   key=${name//\//__}-$number
@@ -53,6 +54,8 @@ while read -r arm name number base head; do
   python3 "$deps" new "$work/base" "$work/head" | sed "s|^|$key\t|" >> "$here/deps.tsv"
   python3 "$deps" added "$work/base" "$work/head" | sed "s|^|$key\t|" >> "$here/added.tsv"
   python3 "$here/tests.py" "$dir" "$base" "$head" | sed "s|^|$key\t|" >> "$here/tests.tsv"
+  [ "$(python3 "$here/tests.py" --modifies-test "$dir" "$base" "$head")" = yes ] && printf '%s\ttest-modified\n' "$key" >> "$here/changed.tsv"
+  git -C "$dir" diff --name-only --diff-filter=AMR "$base" "$head" | grep -qE '\.(py|ts|tsx)$' && printf '%s\tdeps-eligible\n' "$key" >> "$here/changed.tsv"
   out=$here/runs/$key.json
   if [ ! -f "$out" ]; then
     prepare "$dir" "$base" "$head"
