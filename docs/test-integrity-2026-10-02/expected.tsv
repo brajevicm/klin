@@ -43,6 +43,8 @@ integrity-rs/reword-helper-file	0 green	0 green	0	assertion-removed:replaced(unr
 integrity-rs/reword-helper	0 green	0 green	0	assertion-removed:replaced-by-weaker assertion-removed:replaced-by-weaker
 integrity-rs/reword-if-let	0 green	0 green	0	error-expectation-removed:replaced expected-changed:changed(no-mirror)
 integrity-rs/reword-move-weak	0 green	0 green	0	assertion-removed:removed
+integrity-rs/reword-new-is-ok	0 green	0 green	0	-
+integrity-rs/reword-new-unwrap	0 green	0 green	0	new-test-unchecked:none(smoke)
 integrity-rs/reword-shadow	0 green	0 green	0	-
 integrity-rs/reword-swallow	0 green	0 green	0	-
 integrity-rs/reword-tautology-length	0 green	0 green	0	assertion-removed:replaced-by-tautology
@@ -98,6 +100,8 @@ integrity-ts/reword-helper-file	0 green	0 green	0	assertion-removed:into-unresol
 integrity-ts/reword-helper	0 green	0 green	0	assertion-removed:replaced-by-weaker assertion-removed:replaced-by-weaker
 integrity-ts/reword-mock-path	0 green	0 green	0	mocked-subject:module
 integrity-ts/reword-move-weak	0 green	0 green	0	assertion-removed:removed
+integrity-ts/reword-new-defined	0 green	0 green	0	-
+integrity-ts/reword-new-smoke-title	0 green	0 green	0	new-test-unchecked:none(smoke)
 integrity-ts/reword-shadow	0 green	0 green	0	-
 integrity-ts/reword-skip-each	2 red	0 green	0	disabled:skip(escapes)
 integrity-ts/reword-skip-variable	2 red	0 green	0	-
