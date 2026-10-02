@@ -1120,6 +1120,19 @@ exception sentence). None of it needs a graph word.
 that builds, and 4 kept an exception. The only shipped gate that acted was
 `public-api`, which caught a removed module in one repair.
 
+## Limits
+
+- Two planted families, written by the same agent that wrote the prototype.
+- 62 ordinary changes in Rust or TypeScript, 20 agent pull requests and 2
+  natural cases. Zero findings on the ordinary sample is a small base for a
+  precision claim.
+- One run per agent and case. The REVIEW prompt says that nothing blocks, so
+  the runs show how agents treat a note, not how they treat a block.
+- The messages were drafted by hand in the form the prototype's rows allow.
+  A shipped message may only claim what its relation shows.
+- The prototype is not klin. It reads the same grammars, but none of its
+  facts comes from klin's extractor.
+
 ## Decision
 
 **Keep design and reuse conformance beyond #48 as Finalize review evidence.**
@@ -1136,16 +1149,3 @@ resolution in the module graph, and an implementation must measure its
 precision again. Similarity search, delegation counting
 and pattern labels do not qualify. The implementation of that review step is
 a separate ticket, which a person decides.
-
-## Limits
-
-- Two planted families, written by the same agent that wrote the prototype.
-- 62 ordinary changes in Rust or TypeScript, 20 agent pull requests and 2
-  natural cases. Zero findings on the ordinary sample is a small base for a
-  precision claim.
-- One run per agent and case. The REVIEW prompt says that nothing blocks, so
-  the runs show how agents treat a note, not how they treat a block.
-- The messages were drafted by hand in the form the prototype's rows allow.
-  A shipped message may only claim what its relation shows.
-- The prototype is not klin. It reads the same grammars, but none of its
-  facts comes from klin's extractor.
