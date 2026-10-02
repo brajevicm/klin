@@ -80,6 +80,14 @@ record() {
   git -C "$1/tree" diff main -- . ':!.claude' ':!.codex' ':!.cursor' ':!.vscode' ':!AGENTS.md' > "$1/change.diff" || true
   git -C "$1/tree" status --porcelain --untracked-files=all >> "$1/change.diff" || true
 }
+all() {
+  local host=$1 out=$2 name rep
+  for name in $(awk -F'\t' 'NR > 1 { print $1 }' "$here/cases.tsv"); do
+    for rep in 1 2; do
+      [ -s "$out/$host/$name-$rep/reply.txt" ] || run "$host" "$name" "$rep" "$out"
+    done
+  done
+}
 score() {
   local out=$1 dir host run_name final base
   printf 'host\tcase\trep\tfinalize_calls\tverdicts\tstops\tchanged\tfinal_tree_is_last_finalize_tree\ttree_changed_after_first_finalize\n'
