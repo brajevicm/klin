@@ -1,0 +1,12 @@
+> Auto routed to Claude Fable 5.1
+
+Added `low_stock(items, limit)` to `inventory.py`, placed after `in_stock`:
+
+```python
+def low_stock(items, limit):
+    return [item for item in items if item["qty"] < limit]
+```
+
+Smoke test: with qty 0/5/10 and `limit=5`, it returns only the qty-0 item (strictly below the limit, matching "below").
+
+Note: `klin finalize` reported the typecheck entry as UNMEASURED because `mypy` isn't installed locally; CI runs that check.

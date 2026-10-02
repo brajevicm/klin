@@ -84,7 +84,7 @@ all() {
   local host=$1 out=$2 name rep
   mkdir -p "$out"
   mkdir "$out/.all-running" 2>/dev/null || { echo "probe: another all runs in $out" >&2; exit 2; }
-  trap 'rmdir "$out/.all-running"' EXIT
+  trap "rmdir -- $(printf '%q' "$out/.all-running")" EXIT
   for name in $(awk -F'\t' 'NR > 1 { print $1 }' "$here/cases.tsv"); do
     for rep in 1 2; do
       [ -s "$out/$host/$name-$rep/reply.txt" ] || run "$host" "$name" "$rep" "$out"

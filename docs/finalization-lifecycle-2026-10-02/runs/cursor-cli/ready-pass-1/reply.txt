@@ -1,0 +1,10 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how items are structured so `total_value` matches the existing data.Items are dicts with `price` and `qty`. I'll add `total_value` in that same style and cover it with a test.`total_value(items)` is in `inventory.py`. It returns the sum of `price * qty` for every item, and an empty list totals to `0`.
+
+```20:21:inventory.py
+def total_value(items):
+    return sum(item["price"] * item["qty"] for item in items)
+```
+
+The new unit test covers a mixed list (including a zero quantity) and the empty case. All three inventory tests pass.

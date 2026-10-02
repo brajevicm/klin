@@ -1,0 +1,12 @@
+> Auto routed to Claude Fable 5.1
+
+The `10|` was a display artifact; the file itself is clean. Adding the function.Added `low_stock(items, limit)` to `inventory.py`, right after `in_stock`:
+
+```python
+def low_stock(items, limit):
+    return [item for item in items if item["qty"] < limit]
+```
+
+It returns items with `qty` strictly below `limit`, matching the existing list-comprehension style. A quick smoke test confirmed it filters correctly (e.g. with qtys 0, 3, 5 and limit 5 it returns the first two).
+
+Note: `klin finalize` reported the typecheck entry as unmeasured because `mypy` isn't installed locally; CI will run that check.

@@ -1,18 +1,15 @@
 diff --git a/inventory.py b/inventory.py
-index f71f59c..4ed011b 100644
+index f71f59c..b064757 100644
 --- a/inventory.py
 +++ b/inventory.py
-@@ -11,6 +11,10 @@ def in_stock(items):
-     return [item for item in items if item["qty"] > 0]
- 
- 
+@@ -16,3 +16,7 @@ def find(items, name):
+         if item["name"] == name:
+             return item
+     return None
++
++
 +def total_value(items):
 +    return sum(item["price"] * item["qty"] for item in items)
-+
-+
- def find(items, name):
-     for item in items:
-         if item["name"] == name:
 diff --git a/tests/test_inventory.py b/tests/test_inventory.py
 index 5ecabae..5c4764b 100644
 --- a/tests/test_inventory.py

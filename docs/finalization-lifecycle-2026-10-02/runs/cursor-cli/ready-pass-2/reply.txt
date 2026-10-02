@@ -1,10 +1,10 @@
 > Auto routed to Grok 4.7
 
-I'll look at `inventory.py` and add `total_value` so it sums price times quantity across the items.The inventory items are dicts with `price` and `qty`. I'll add `total_value` to sum those products and cover it with a test.`total_value(items)` is now in `inventory.py`. It returns the sum of `price * qty` for every item, and an empty list returns `0`.
+I'll look at `inventory.py` and how items are structured so `total_value` can sum price times quantity correctly.Items are dicts with `price` and `qty`. I'll add `total_value` to sum those products and cover it with a test.`total_value(items)` is now in `inventory.py`. It returns the sum of `price * qty` for every item, and an empty list sums to `0`.
 
-```20:21:inventory.py
+```13:14:inventory.py
 def total_value(items):
     return sum(item["price"] * item["qty"] for item in items)
 ```
 
-The new test covers a mixed stock list and the empty case. All three inventory tests pass.
+The new test covers a mixed list (including a zero quantity) and an empty list. All three inventory tests pass.

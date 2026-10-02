@@ -587,7 +587,7 @@ trees are not kept.
 These are two runs per case and host: observations, not rates. No band
 calls for Opus reruns or for the person-only line of section 8. [measured]
 
-Cursor, which counts toward no band:
+Cursor app observations, which count toward no band:
 
 - `ready-pass-first`: the agent added the function, checked it with
   `python3 -c`, and replied. It never mentioned klin and never called
@@ -600,24 +600,42 @@ Cursor, which counts toward no band:
   run, so this is the intended behavior.
 - `ready-pass` in the app: not completed.
 
-Cursor CLI (`cursor-agent` 2026.10.01, account default model, which routed
-to Claude Fable 5.1 or Grok 4.7), `runs/cursor-cli/`. The CLI ran the
-`sessionStart` hook and no Stop hook. The agent's login shell found an
-older klin first, so the session line named the stand-in by its absolute
-path. Overlapping `probe.sh all` processes and reruns left multiple chats
-for seven cases. Only five run folders remain: each has exactly one chat
-under `~/.cursor/projects/tmp-probe352-cli-cursor-<case>-tree/agent-transcripts`
-and one session line in its `probe.log`. The removed folders are
-`ready-pass-1`, `clarify-2`, `question-2`, `review-1`, `review-2`,
-`unknown-1` and `unknown-2`. No clean extra run remained to score, and Cursor
-gets no band:
+Cursor CLI (`cursor-agent` 2026.10.01-14929f9, account default model,
+auto-routed to Claude Fable 5.1 or Grok 4.7): the earlier incomplete set is
+kept in `runs/cursor-cli-incomplete/` and counts toward no band. Overlapping
+processes and reruns left multiple chats for seven cases; only five clean
+folders remained.
 
-- `ready-pass` 2 and `ready-fail` 1, 2: finalize before the reply, 3 of
-  3. Both `ready-fail` runs added a test and ended on the finalized tree.
-- `clarify-1`: no question. The agent added `DISCOUNT_RATE = None` with an
-  error naming FIN-12, then finalized. Under section 15 this is a readiness
-  run.
-- `question-1`: no finalize call and no change.
+The person then ran `probe.sh all cursor /tmp/probe352-cli2` once in one
+terminal. All 12 runs completed, each with one logged `sessionStart` and no
+Stop event. The session line named the stand-in by absolute path. The
+command reported `out: unbound variable` only at exit: its cleanup trap
+referred to the function's expired local variable. The trap is now fixed;
+`probe-test.sh` checks cleanup over already-completed cases without starting
+agents. No probe case was rerun. `runs/cursor-cli/` holds the fresh set's
+`probe.log`, `reply.txt` and `change.diff`; `score.tsv` holds the score output.
+Every reply and diff was read before applying section 15. [measured]
+
+| Section 15 rule | Cursor CLI result | Disposition |
+| --- | --- | --- |
+| 1. Readiness | 8 of 8 named readiness runs called finalize before replying | Adopt as written; no person-only line |
+| 2. Clarification | 0 finalize calls in the 3 actual clarification/question runs | The wording holds; no rerun |
+| 3. REVIEW and INCOMPLETE | 0 of 4 trees changed after the report; all 4 replies named the item | The report texts hold |
+| 4. Repair | 2 of 2 ended on the last finalized tree, after a finding and a test edit | Repair passes |
+
+`clarify-1` asked for the rate, changed nothing and did not finalize.
+`clarify-2` left `DISCOUNT_RATE = None`, added an optional explicit rate and
+an error pointing to FIN-12, finalized, and asked no question in its reply.
+Under section 15's reply-based distinction, that is an additional readiness
+observation, not a clarification failure. Both `question` runs changed
+nothing and did not finalize. The raw score therefore shows one finalize
+call among the four named `clarify`/`question` cases; reading the replies
+makes it zero among the three actual clarification/question runs. Even
+counting the raw call would remain below rule 2's threshold. [measured]
+
+These are toy-repository observations from the account's automatic model
+routing, not a reliability rate or evidence of Cursor CLI Stop delivery.
+The earlier app observations remain outside the bands.
 
 ### Findings the probe surfaced
 
@@ -717,10 +735,10 @@ still stands.
 8. **Tool provenance**: an ignored-file change, such as an ESLint upgrade in
    `node_modules`, does not invalidate a record. #354 decides whether it
    should.
-9. **Cursor has no complete scored set.** The app has two runs by hand,
-   one without a logged session event. The CLI has five clean runs after
-   excluding folders with multiple chats (section 10). Neither set counts
-   toward the registered bands; Cursor readiness remains unsettled.
+9. **Cursor evidence is limited to the CLI toy probe.** The fresh 12-run
+   set reaches the adopt-as-written band (section 10), with automatic model
+   routing and no logged Stop events. The app observations remain outside
+   the bands; longer tasks and app reliability are not established.
 10. **On Codex, `klin finalize` cannot write under `.git`** in the default
    sandbox. Section 10's finding 1 keeps the identity. The record, the cache,
    the lock and the stale-finalize block of section 8 need a place the
@@ -732,7 +750,10 @@ still stands.
 
 ## 14. Decision
 
-**Adopt explicit finalization.**
+**Adopt explicit finalization.** Claude Code, Codex and the fresh Cursor CLI
+set each reach section 15's adopt-as-written band. No person-only line or
+report rewording is triggered; this remains a recommendation, not approval
+to implement.
 
 The contract:
 
@@ -762,7 +783,7 @@ The experience acceptance of the ticket, item by item:
 
 | Item | Under this contract | Where |
 | --- | --- | --- |
-| The normal first-class-host path needs no explicit human finalization step | Yes on Claude Code and Codex: the agents called `klin finalize` in 16 of 16 ready-type runs with no prompt from a person (section 10). Cursor is not settled | Sections 5, 9 |
+| The normal first-class-host path needs no explicit human finalization step | Yes in the probes: Claude Code and Codex called `klin finalize` in 16 of 16 ready-type runs, and Cursor CLI in 8 of 8 named readiness runs, with no prompt from a person (section 10). Cursor app observations remain outside the bands | Sections 5, 9 |
 | Clarification and yield stay cheap, with no Deep work | Yes: only an explicit call starts Deep work. A Stop computes nothing new unless a finalize ran under the same prompt | Sections 3, 6, 8 |
 | A developer reproduces finalization state and invalidation without klin internals | Yes: `klin finalize` over the same tree, and `klin finalize --check` for the state and why | Sections 5, 9 |
 | The agent gets concise, actionable repair feedback, with no internal phase names | Yes: a finding names a site and a repair, a REVIEW and an INCOMPLETE say what not to do, and a repeat costs one line | Section 9 |

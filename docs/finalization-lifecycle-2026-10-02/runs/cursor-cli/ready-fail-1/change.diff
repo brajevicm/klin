@@ -12,7 +12,7 @@ index f71f59c..3dd88a4 100644
 +    item["qty"] += n
 +    return item
 diff --git a/tests/test_inventory.py b/tests/test_inventory.py
-index 5ecabae..97e0da0 100644
+index 5ecabae..8788670 100644
 --- a/tests/test_inventory.py
 +++ b/tests/test_inventory.py
 @@ -1,6 +1,6 @@
@@ -23,14 +23,16 @@ index 5ecabae..97e0da0 100644
  
  
  class InventoryTest(unittest.TestCase):
-@@ -11,6 +11,11 @@ class InventoryTest(unittest.TestCase):
+@@ -11,6 +11,13 @@ class InventoryTest(unittest.TestCase):
      def test_find_returns_none_for_a_missing_name(self):
          self.assertIsNone(find([], "a"))
  
-+    def test_restock_adds_to_qty_and_returns_the_item(self):
++    def test_restock_adds_n_and_returns_the_item(self):
 +        item = make_item("a", 1.0, 2)
-+        self.assertIs(restock(item, 5), item)
-+        self.assertEqual(item["qty"], 7)
++        self.assertIs(restock(item, 3), item)
++        self.assertEqual(item["qty"], 5)
++        self.assertEqual(item["name"], "a")
++        self.assertEqual(item["price"], 1.0)
 +
  
  if __name__ == "__main__":

@@ -12,7 +12,7 @@ index f71f59c..3dd88a4 100644
 +    item["qty"] += n
 +    return item
 diff --git a/tests/test_inventory.py b/tests/test_inventory.py
-index 5ecabae..866b601 100644
+index 5ecabae..97e0da0 100644
 --- a/tests/test_inventory.py
 +++ b/tests/test_inventory.py
 @@ -1,6 +1,6 @@
@@ -29,8 +29,8 @@ index 5ecabae..866b601 100644
  
 +    def test_restock_adds_to_qty_and_returns_the_item(self):
 +        item = make_item("a", 1.0, 2)
-+        self.assertIs(restock(item, 3), item)
-+        self.assertEqual(item["qty"], 5)
++        self.assertIs(restock(item, 5), item)
++        self.assertEqual(item["qty"], 7)
 +
  
  if __name__ == "__main__":
