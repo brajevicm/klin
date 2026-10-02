@@ -13,7 +13,7 @@ The corpus is `docs/finalization-lifecycle-2026-10-02/`:
   `identity-10k.txt` holds its output, from
   `identity.sh <scratch-directory> 10000 100`.
 - `probe.sh`, `cases.tsv`, `context.txt`, `fixture/` and `bin/` are an agent
-  probe for section 10. **The probe did not run.** Section 10 says why.
+  probe for section 10. The runs and their limitations are recorded there.
 
 Each claim below carries one of three tags:
 
@@ -604,11 +604,16 @@ Cursor CLI (`cursor-agent` 2026.10.01, account default model, which routed
 to Claude Fable 5.1 or Grok 4.7), `runs/cursor-cli/`. The CLI ran the
 `sessionStart` hook and no Stop hook. The agent's login shell found an
 older klin first, so the session line named the stand-in by its absolute
-path. Two `probe.sh all` processes overlapped, so only 6 of 12 runs are
-clean, and Cursor gets no band:
+path. Overlapping `probe.sh all` processes and reruns left multiple chats
+for seven cases. Only five run folders remain: each has exactly one chat
+under `~/.cursor/projects/tmp-probe352-cli-cursor-<case>-tree/agent-transcripts`
+and one session line in its `probe.log`. The removed folders are
+`ready-pass-1`, `clarify-2`, `question-2`, `review-1`, `review-2`,
+`unknown-1` and `unknown-2`. No clean extra run remained to score, and Cursor
+gets no band:
 
-- `ready-pass` 1, 2 and `ready-fail` 1, 2: finalize before the reply, 4 of
-  4. Both `ready-fail` runs added a test and ended on the finalized tree.
+- `ready-pass` 2 and `ready-fail` 1, 2: finalize before the reply, 3 of
+  3. Both `ready-fail` runs added a test and ended on the finalized tree.
 - `clarify-1`: no question. The agent added `DISCOUNT_RATE = None` with an
   error naming FIN-12, then finalized. Under section 15 this is a readiness
   run.
@@ -712,9 +717,10 @@ still stands.
 8. **Tool provenance**: an ignored-file change, such as an ESLint upgrade in
    `node_modules`, does not invalidate a record. #354 decides whether it
    should.
-9. **Cursor rests on two runs by hand.** `cursor-agent` is not installed
-   here, so Cursor gets `ready-pass` and `clarify` once each, driven by a
-   person. They are observations, not rates.
+9. **Cursor has no complete scored set.** The app has two runs by hand,
+   one without a logged session event. The CLI has five clean runs after
+   excluding folders with multiple chats (section 10). Neither set counts
+   toward the registered bands; Cursor readiness remains unsettled.
 10. **On Codex, `klin finalize` cannot write under `.git`** in the default
    sandbox. Section 10's finding 1 keeps the identity. The record, the cache,
    the lock and the stale-finalize block of section 8 need a place the
