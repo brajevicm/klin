@@ -1,0 +1,100 @@
+nginx-proxy/nginx-proxy	false	no-root-project
+mikf/gallery-dl	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+pluja/awesome-privacy	false	no-root-project
+astral-sh/ty	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+teng-lin/notebooklm-py	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+kvcache-ai/ktransformers	false	root-project	root-lock=-	locks=-	requirements=6	hashed=0	compiled=0
+huggingface/trl	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+joke2k/faker	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+agent0ai/agent-zero	false	no-root-project
+huggingface/sentence-transformers	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+stas00/ml-engineering	false	no-root-project
+ActivityWatch/activitywatch	false	root-project	root-lock=poetry.lock	locks=poetry.lock:1	requirements=0	hashed=0	compiled=0
+kivy/kivy	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+NVIDIA/SkillSpector	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+ifixai-ai/iFixAi	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+op7418/Humanizer-zh	false	no-root-project
+fail2ban/fail2ban	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+Huanshere/VideoLingo	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+microsoft/agent-lightning	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=1	hashed=0	compiled=0
+andrewyng/openworker	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+fastapi/sqlmodel	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+arc53/DocsGPT	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=4	hashed=0	compiled=0
+xming521/WeClone	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+browser-use/browser-harness	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+Diolinux/PhotoGIMP	false	no-root-project
+AgriciDaniel/claude-seo	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=1	hashed=0	compiled=0
+muratcankoylan/Agent-Skills-for-Context-Engineering	false	no-root-project
+langbot-app/LangBot	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+rocketride-org/rocketride-server	false	root-project	root-lock=-	locks=-	requirements=40	hashed=0	compiled=0
+microsoft/SkillOpt	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+bradautomates/claude-video	false	no-root-project
+Canner/WrenAI	false	no-root-project
+pallets/click	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+laramies/theHarvester	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+Wan-Video/Wan2.2	false	root-project	root-lock=-	locks=-	requirements=3	hashed=0	compiled=0
+microsoft/data-formulator	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=1	hashed=0	compiled=0
+caronc/apprise	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+img2threejs/img2threejs	false	no-root-project
+networkx/networkx	false	root-project	root-lock=-	locks=-	requirements=9	hashed=0	compiled=0
+MemoriLabs/Memori	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+tradecatlabs/vibe-coding-cn	false	no-root-project
+LibreTranslate/LibreTranslate	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+cft0808/edict	false	no-root-project
+wanshuiyin/Auto-claude-code-research-in-sleep	false	no-root-project
+exaloop/codon	false	no-root-project
+ipython/ipython	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+MatrixTM/MHDDoS	false	no-root-project
+HKUDS/DeepCode	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=2	hashed=0	compiled=0
+browser-use/web-ui	false	no-root-project
+aio-libs/aiohttp	false	root-project	root-lock=-	locks=-	requirements=15	hashed=0	compiled=15
+andrewyng/aisuite	false	root-project	root-lock=poetry.lock	locks=poetry.lock:2	requirements=0	hashed=0	compiled=0
+zauberzeug/nicegui	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=15	hashed=0	compiled=0
+wkentaro/labelme	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+fortra/impacket	false	root-project	root-lock=-	locks=-	requirements=2	hashed=0	compiled=0
+treeverse/dvc	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+coderamp-labs/gitingest	false	root-project	root-lock=-	locks=-	requirements=2	hashed=0	compiled=0
+modelscope/ms-swift	false	root-project	root-lock=-	locks=-	requirements=10	hashed=0	compiled=0
+FlareSolverr/FlareSolverr	false	no-root-project
+beetbox/beets	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+microsoft/pyright	false	no-root-project
+opensandbox-group/OpenSandbox	false	no-root-project
+pre-commit/pre-commit	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+encode/httpx	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+mail-in-a-box/mailinabox	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+SWivid/F5-TTS	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+GaiZhenbiao/ChuanhuChatGPT	false	no-root-project
+bloomberg/memray	false	root-project	root-lock=-	locks=-	requirements=4	hashed=0	compiled=0
+Nuitka/Nuitka	false	root-project	root-lock=-	locks=-	requirements=3	hashed=0	compiled=0
+codelucas/newspaper	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+mvt-project/mvt	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+yusufkaraaslan/Skill_Seekers	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=15	hashed=0	compiled=0
+microsoft/playwright-python	false	root-project	root-lock=-	locks=-	requirements=2	hashed=0	compiled=1
+pjialin/py12306	false	no-root-project
+alexta69/metube	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+maurosoria/dirsearch	false	root-project	root-lock=-	locks=-	requirements=3	hashed=0	compiled=0
+pyodide/pyodide	false	root-project	root-lock=-	locks=-	requirements=3	hashed=0	compiled=0
+optuna/optuna	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+microsoft/RD-Agent	false	root-project	root-lock=-	locks=-	requirements=12	hashed=0	compiled=0
+Datalux/Osintgram	false	no-root-project
+BlinkDL/RWKV-LM	false	no-root-project
+pytest-dev/pytest	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=2	hashed=0	compiled=0
+paperswithbacktest/awesome-systematic-trading	false	no-root-project
+NevaMind-AI/memU	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+SFTtech/openage	false	no-root-project
+livekit/agents	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+lsdefine/GenericAgent	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+netease-youdao/QAnything	false	no-root-project
+mlfoundations/open_clip	false	root-project	root-lock=-	locks=-	requirements=3	hashed=0	compiled=0
+k2-fsa/OmniVoice	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=0	hashed=0	compiled=0
+e2b-dev/E2B	false	no-root-project
+FlashML-org/FreeToken	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+ethereum/EIPs	false	no-root-project
+google/yapf	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+567-labs/instructor	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=7	hashed=0	compiled=1
+dask/dask	false	root-project	root-lock=-	locks=-	requirements=1	hashed=0	compiled=0
+microsoft/agent-framework	false	no-root-project
+borgbackup/borg	false	root-project	root-lock=-	locks=-	requirements=0	hashed=0	compiled=0
+redis/redis-py	false	root-project	root-lock=-	locks=-	requirements=4	hashed=0	compiled=0
+cookiecutter/cookiecutter-django	false	root-project	root-lock=uv.lock	locks=uv.lock:2	requirements=3	hashed=0	compiled=0
+semantica-agi/semantica	false	root-project	root-lock=uv.lock	locks=uv.lock:1	requirements=16	hashed=15	compiled=15

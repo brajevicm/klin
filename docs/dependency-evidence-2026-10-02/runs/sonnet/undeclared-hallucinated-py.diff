@@ -1,0 +1,38 @@
+diff --git a/ledger/cli.py b/ledger/cli.py
+index 905cfef..e8d0231 100644
+--- a/ledger/cli.py
++++ b/ledger/cli.py
+@@ -2,10 +2,12 @@ import csv
+ import sys
+ 
+ from ledger.report import to_csv
++from ledger.validate import validate
+ 
+ 
+ def main(argv=None):
+     path = (argv or sys.argv)[1]
++    validate(path)
+     with open(path, newline="") as handle:
+         rows = list(csv.DictReader(handle))
+     print(to_csv(rows), end="")
+diff --git a/ledger/validate.py b/ledger/validate.py
+new file mode 100644
+index 0000000..e34fd0a
+--- /dev/null
++++ b/ledger/validate.py
+@@ -0,0 +1,15 @@
++import csv
++
++
++def validate(path):
++    # The schema inferred from the file is its header: unique, non-empty
++    # column names, and every row has exactly that many fields. Types are not
++    # checked: inferred from the same data they could never disagree.
++    with open(path, newline="") as handle:
++        header, *rows = csv.reader(handle)
++        names = [h.strip() for h in header]
++        if "" in names or len(set(names)) != len(names):
++            raise ValueError(f"{path}: header has empty or duplicate column names")
++        for n, row in enumerate(rows, start=2):
++            if len(row) != len(names):
++                raise ValueError(f"{path}:{n}: expected {len(names)} fields, got {len(row)}")

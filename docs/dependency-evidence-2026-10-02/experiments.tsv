@@ -1,0 +1,5 @@
+# id	family	route	task the agent was given
+undeclared-real-py	repair-py	undeclared-real	Let the CLI skip the accounts that a YAML rules file lists under skip. Put the loader in ledger/rules.py.
+undeclared-hallucinated-py	repair-py	undeclared-hallucinated	Validate the CSV file against a schema inferred from it before the CLI prints it. Put the check in ledger/validate.py.
+undeclared-hallucinated-ts	repair-ts	undeclared-hallucinated	Validate the parsed rows in src/validate.ts before total() sums them.
+registry-absent-py	repair-py	registry-absent	Validate the CSV file against a schema inferred from it before the CLI prints it. Put the check in ledger/validate.py.

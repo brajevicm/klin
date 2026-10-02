@@ -1,0 +1,9 @@
+{
+  "name": "shop",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "csv-row-guard": "1.2.0",
+    "is-number": "7.0.0"
+  }
+}

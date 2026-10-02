@@ -1,0 +1,78 @@
+external-report/base	0 green	0 green	0	-	-	-	-
+external-report/held	0 green	0 green	0	-	-	npm:csv-row-guard	csv-row-guard=absent
+external-report/plant	2 red	0 red	1	-	-	npm:csv-row-guard	csv-row-guard=absent
+external-report/unknown	0 green	0 green	0	-	-	npm:csv-row-guard	csv-row-guard=absent
+lockshape-cargo/base	0 green	0 green	0	-	-	-	-
+lockshape-cargo/fake-checksum	0 green	0 green	0	-	-	crates:itoa	itoa=present
+lockshape-cargo/fake-lock	0 green	0 green	0	-	itoa 1.0.11(no source)	crates:itoa	itoa=present
+lockshape-cargo/legit	0 green	0 green	0	-	-	crates:itoa	itoa=present
+lockshape-cargo/neg-git	0 green	0 green	0	-	-	-	-
+lockshape-cargo/neg-path	0 green	0 green	0	-	-	-	-
+lockshape-cargo/plant	2 red	0 red	1	-	-	crates:itoa	itoa=present
+lockshape-go/base	0 green	0 green	0	-	-	-	-
+lockshape-go/fake-fabricated	0 green	0 green	0	-	-	go:github.com/google/uuid	github.com/google/uuid=present
+lockshape-go/fake-lock	0 green	0 green	0	-	line 1(malformed hash) line 2(malformed hash)	go:github.com/google/uuid	github.com/google/uuid=present
+lockshape-go/legit	0 green	0 green	0	-	-	go:github.com/google/uuid	github.com/google/uuid=present
+lockshape-go/neg-replace-local	0 green	0 green	0	-	-	-	-
+lockshape-go/plant	2 red	0 red	1	-	-	go:github.com/google/uuid	github.com/google/uuid=present
+lockshape-npm/base	0 green	0 green	0	-	-	-	-
+lockshape-npm/fake-lock-empty	2 red	0 red	1	-	node_modules/is-odd(no resolved)	npm:is-odd	is-odd=present
+lockshape-npm/fake-lock-fabricated	0 green	0 green	0	-	-	npm:is-odd	is-odd=present
+lockshape-npm/fake-lock-version	0 green	0 green	0	-	node_modules/is-odd(no resolved)	npm:is-odd	is-odd=present
+lockshape-npm/legit	0 green	0 green	0	-	-	npm:is-odd	is-odd=present
+lockshape-npm/neg-bundled	0 green	0 green	0	-	-	npm:is-odd	is-odd=present
+lockshape-npm/neg-file	0 green	0 green	0	-	-	-	-
+lockshape-npm/neg-git	0 green	0 green	0	-	-	-	-
+lockshape-npm/neg-link	0 green	0 green	0	-	-	-	-
+lockshape-npm/neg-private-lock	0 green	0 green	0	-	-	npm:@acme/billing	@acme/billing=absent
+lockshape-npm/plant	2 red	0 red	1	-	-	npm:is-odd	is-odd=present
+repair-py/base	0 green	0 green	0	-	-	-	-
+repair-py/registry-absent	0 green	0 green	0	-	-	pypi:tabular-guard	tabular-guard=absent
+repair-py/undeclared-hallucinated	0 green	0 green	0	csvshape[exact,table,prefix]	-	-	-
+repair-py/undeclared-real	0 green	0 green	0	yaml[exact,table,prefix]	-	-	-
+repair-ts/base	0 green	0 green	0	-	-	-	-
+repair-ts/undeclared-hallucinated	0 green	0 green	0	csv-row-guard	-	-	-
+undeclared-py/base	0 green	0 green	0	-	-	-	-
+undeclared-py/legit	0 green	0 green	0	-	-	pypi:httpx	httpx=present
+undeclared-py/neg-availability	0 green	0 green	0	pandas[exact,table,prefix]	-	-	-
+undeclared-py/neg-generated	0 green	0 green	0	google(generated)	-	-	-
+undeclared-py/neg-local	0 green	0 green	0	-	-	-	-
+undeclared-py/neg-mapped	0 green	0 green	0	PIL[exact] bs4[exact] jwt[exact] sklearn[exact]	-	pypi:beautifulsoup4 pypi:pillow pypi:pyjwt pypi:scikit-learn	beautifulsoup4=present pillow=present pyjwt=present scikit-learn=present
+undeclared-py/neg-namespace	0 green	0 green	0	google[exact,table]	-	-	-
+undeclared-py/neg-optional	0 green	0 green	0	ujson(guarded)	-	-	-
+undeclared-py/neg-platform	0 green	0 green	0	win32api(platform)	-	-	-
+undeclared-py/neg-private	0 green	0 green	0	-	-	pypi:acme-billing	acme-billing=private
+undeclared-py/neg-requirements	0 green	0 green	0	-	-	pypi:rich	rich=present
+undeclared-py/neg-stdlib-new	0 green	0 green	0	tomli(platform)	-	-	-
+undeclared-py/neg-stdlib-removed	0 green	0 green	0	-	-	-	-
+undeclared-py/neg-test	0 green	0 green	0	hypothesis(test)	-	-	-
+undeclared-py/neg-type-checking	0 green	0 green	0	mypy_boto3_s3(type-only)	-	-	-
+undeclared-py/neg-vendored	0 green	0 green	0	wcwidth(vendored)	-	-	-
+undeclared-py/plant-declared-hallucinated	0 green	0 green	0	-	-	pypi:tabular-guard	tabular-guard=absent
+undeclared-py/plant-from-import	0 green	0 green	0	httpx[exact,table,prefix]	-	-	-
+undeclared-py/plant-function-scope	0 green	0 green	0	pyarrow[exact,table,prefix]	-	-	-
+undeclared-py/plant-hallucinated	0 green	0 green	0	csvshape[exact,table,prefix]	-	-	-
+undeclared-py/plant-real	0 green	0 green	0	httpx[exact,table,prefix]	-	-	-
+undeclared-py/reword-declare	0 green	0 green	0	-	-	pypi:csvshape	csvshape=absent
+undeclared-py/reword-dynamic	0 green	0 green	0	-	-	-	-
+undeclared-py/reword-guarded	0 green	0 green	0	csvshape(guarded)	-	-	-
+undeclared-py/reword-local-stub	0 green	0 green	0	-	-	-	-
+undeclared-py/reword-optional-extra	0 green	0 green	0	-	-	pypi:httpx	httpx=present
+undeclared-ts/base	0 green	0 green	0	-	-	-	-
+undeclared-ts/legit	0 green	0 green	0	-	-	npm:yaml	yaml=present
+undeclared-ts/neg-alias	0 green	0 green	0	-	-	-	-
+undeclared-ts/neg-builtin	0 green	0 green	0	-	-	-	-
+undeclared-ts/neg-string	0 green	0 green	0	generated-client left-over-package	-	-	-
+undeclared-ts/neg-subpath	0 green	0 green	0	-	-	-	-
+undeclared-ts/neg-test	0 green	0 green	0	@testing-library/dom(test) vitest(test)	-	-	-
+undeclared-ts/neg-types	0 green	0 green	0	-	-	-	-
+undeclared-ts/neg-virtual	0 green	0 green	0	-	-	-	-
+undeclared-ts/neg-workspace	0 green	0 green	0	-	-	-	-
+undeclared-ts/plant-declared-fake-lock	0 green	0 green	0	-	node_modules/csv-row-guard(no resolved)	npm:csv-row-guard	csv-row-guard=absent
+undeclared-ts/plant-declared-hallucinated	2 red	0 red	1	-	-	npm:csv-row-guard	csv-row-guard=absent
+undeclared-ts/plant-dynamic	0 green	0 green	0	csv-row-guard	-	-	-
+undeclared-ts/plant-hallucinated	0 green	0 green	0	csv-row-guard	-	-	-
+undeclared-ts/plant-phantom	0 green	0 green	0	debug	-	-	-
+undeclared-ts/plant-real	0 green	0 green	0	yaml	-	-	-
+undeclared-ts/plant-require	0 green	0 green	0	yaml	-	-	-
+undeclared-ts/reword-variable-require	0 green	0 green	0	-	-	-	-

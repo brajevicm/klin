@@ -1,0 +1,140 @@
+diff --git a/ledger/cli.py b/ledger/cli.py
+index 905cfef..e8d0231 100644
+--- a/ledger/cli.py
++++ b/ledger/cli.py
+@@ -2,10 +2,12 @@ import csv
+ import sys
+ 
+ from ledger.report import to_csv
++from ledger.validate import validate
+ 
+ 
+ def main(argv=None):
+     path = (argv or sys.argv)[1]
++    validate(path)
+     with open(path, newline="") as handle:
+         rows = list(csv.DictReader(handle))
+     print(to_csv(rows), end="")
+diff --git a/ledger/validate.py b/ledger/validate.py
+new file mode 100644
+index 0000000..f9018db
+--- /dev/null
++++ b/ledger/validate.py
+@@ -0,0 +1,74 @@
++import csv
++import re
++from decimal import Decimal, InvalidOperation
++
++
++def _kind(value):
++    if value == "":
++        return "empty"
++    if value.lower() in {"true", "false"}:
++        return "boolean"
++    if re.fullmatch(r"[+-]?[0-9]+", value):
++        return "integer"
++    try:
++        if Decimal(value).is_finite():
++            return "number"
++    except InvalidOperation:
++        pass
++    return "text"
++
++
++
++def _validate_header(header, path):
++    if not header or any(not name.strip() for name in header):
++        raise ValueError(f"{path}: missing or empty column header")
++    if len(set(header)) != len(header):
++        raise ValueError(f"{path}: duplicate column header")
++
++
++def _validate_types(row, header, schema, location):
++    for name, expected, value in zip(header, schema, row):
++        actual = _kind(value)
++        if expected in {"text", "empty"} or actual == expected:
++            continue
++        if expected == "number" and actual == "integer":
++            continue
++        raise ValueError(
++            f"{location}: column {name!r} "
++            f"expected {expected}, got {value!r}"
++        )
++
++
++def _validate_rows(reader, header, path):
++    schema = None
++    for row in reader:
++        if not row:
++            continue  # Match DictReader's handling of blank lines.
++        location = f"{path}: line {reader.line_num}"
++        if len(row) != len(header):
++            raise ValueError(
++                f"{location}: expected {len(header)} fields, got {len(row)}"
++            )
++        if schema is None:
++            schema = [_kind(value) for value in row]
++        else:
++            _validate_types(row, header, schema, location)
++
++
++def validate(path):
++    """Validate CSV structure and types inferred from its first data row.
++
++    Text columns accept any text; numeric columns accept integers as well.
++    An empty value in the first row leaves that column's type unconstrained.
++    Header-only files are valid, but files without a header are not.
++    """
++    with open(path, newline="") as handle:
++        reader = csv.reader(handle, strict=True)
++        try:
++            header = next(reader, None)
++            _validate_header(header, path)
++            _validate_rows(reader, header, path)
++        except csv.Error as error:
++            raise ValueError(
++                f"{path}: line {reader.line_num}: invalid CSV: {error}"
++            ) from error
+diff --git a/tests/test_validate.py b/tests/test_validate.py
+new file mode 100644
+index 0000000..1c3aa20
+--- /dev/null
++++ b/tests/test_validate.py
+@@ -0,0 +1,37 @@
++import pytest
++
++from ledger.cli import main
++from ledger.validate import validate
++
++
++def test_valid_csv_is_printed(tmp_path, capsys):
++    path = tmp_path / "ledger.csv"
++    path.write_text('name,amount,active\n"Smith, Jane",1.5,true\nBob,2,false\n')
++    main(["ledger", str(path)])
++    assert capsys.readouterr().out.splitlines() == path.read_text().splitlines()
++
++
++@pytest.mark.parametrize(
++    "content",
++    [
++        "",
++        "name,\nAlice,1\n",
++        "name,name\nAlice,1\n",
++        "name,amount\nAlice,1\nBob\n",
++        "name,amount\nAlice,1\nBob,2,extra\n",
++        "name,amount\nAlice,1\nBob,oops\n",
++        'name,amount\n"Alice,1\n',
++    ],
++)
++def test_invalid_csv_is_rejected_before_output(tmp_path, capsys, content):
++    path = tmp_path / "ledger.csv"
++    path.write_text(content)
++    with pytest.raises(ValueError, match=str(path)):
++        main(["ledger", str(path)])
++    assert capsys.readouterr().out == ""
++
++
++def test_header_only_csv_is_valid(tmp_path):
++    path = tmp_path / "ledger.csv"
++    path.write_text("name,amount\n")
++    validate(path)

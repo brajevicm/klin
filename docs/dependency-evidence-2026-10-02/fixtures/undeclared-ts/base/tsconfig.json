@@ -1,0 +1,8 @@
+{
+  // paths alias for the app
+  "compilerOptions": {
+    "strict": true,
+    "module": "nodenext",
+    "paths": { "@/*": ["./src/*"] },
+  },
+}

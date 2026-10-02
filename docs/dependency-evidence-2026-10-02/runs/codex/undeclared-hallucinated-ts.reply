@@ -1,0 +1,3 @@
+Replaced `csv-row-guard` with the already-declared Zod dependency. `src/validate.ts` now returns validated rows before `total()` sums them.
+
+`git diff --check` passes. Runtime verification was blocked by unavailable dependencies.

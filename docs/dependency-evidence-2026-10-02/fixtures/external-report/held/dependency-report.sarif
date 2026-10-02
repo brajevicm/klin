@@ -1,0 +1,47 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "dependency-report",
+          "rules": [
+            {
+              "id": "registry/absent"
+            },
+            {
+              "id": "registry/young"
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "registry/young",
+          "level": "error",
+          "message": {
+            "text": "is-number was first released less than 30 days before the snapshot of 2026-10-02"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package.json"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

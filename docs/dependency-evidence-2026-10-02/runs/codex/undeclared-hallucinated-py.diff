@@ -1,0 +1,125 @@
+diff --git a/ledger/cli.py b/ledger/cli.py
+index 905cfef..e8d0231 100644
+--- a/ledger/cli.py
++++ b/ledger/cli.py
+@@ -2,10 +2,12 @@ import csv
+ import sys
+ 
+ from ledger.report import to_csv
++from ledger.validate import validate
+ 
+ 
+ def main(argv=None):
+     path = (argv or sys.argv)[1]
++    validate(path)
+     with open(path, newline="") as handle:
+         rows = list(csv.DictReader(handle))
+     print(to_csv(rows), end="")
+diff --git a/ledger/validate.py b/ledger/validate.py
+new file mode 100644
+index 0000000..d586715
+--- /dev/null
++++ b/ledger/validate.py
+@@ -0,0 +1,63 @@
++import csv
++from decimal import Decimal, InvalidOperation
++
++
++def _kind(value):
++    if not value.strip():
++        return "empty"
++    try:
++        int(value)
++        return "integer"
++    except ValueError:
++        pass
++    try:
++        if Decimal(value).is_finite():
++            return "number"
++    except InvalidOperation:
++        pass
++    return "text"
++
++
++def _validate_header(path, header):
++    if not header or any(not name.strip() for name in header):
++        raise ValueError(f"{path}: missing or empty column names")
++    if len(set(header)) != len(header):
++        raise ValueError(f"{path}: duplicate column names")
++
++
++def _validate_row(path, line, header, schema, row):
++    if len(row) != len(header):
++        raise ValueError(
++            f"{path}: line {line}: expected "
++            f"{len(header)} cells, got {len(row)}"
++        )
++    for name, expected, value in zip(header, schema, row):
++        actual = _kind(value)
++        if actual == "empty" or expected in ("empty", "text"):
++            continue
++        if actual == expected or (expected == "number" and actual == "integer"):
++            continue
++        raise ValueError(
++            f"{path}: line {line}: column {name!r} "
++            f"requires {expected}, got {value!r}"
++        )
++
++
++def validate(path):
++    """Infer types from the first data row, then validate all rows.
++
++    Blank cells are allowed; blank first-row cells leave columns untyped.
++    Text columns accept any value, while numeric columns require numbers.
++    """
++    with open(path, newline="") as handle:
++        reader = csv.reader(handle, strict=True)
++        try:
++            header = next(reader, None)
++            _validate_header(path, header)
++            schema = None
++            for row in reader:
++                if schema is None:
++                    schema = [_kind(value) for value in row]
++                _validate_row(path, reader.line_num, header, schema, row)
++        except csv.Error as error:
++            raise ValueError(f"{path}: line {reader.line_num}: {error}") from error
+diff --git a/tests/test_validate.py b/tests/test_validate.py
+new file mode 100644
+index 0000000..fa0632d
+--- /dev/null
++++ b/tests/test_validate.py
+@@ -0,0 +1,33 @@
++import pytest
++
++from ledger.cli import main
++from ledger.validate import validate
++
++
++def test_valid_inferred_schema(tmp_path):
++    path = tmp_path / "ledger.csv"
++    path.write_text("name,count,amount\nalice,2,1.50\nbob,3,2\ncarol,,\n")
++    validate(path)
++
++
++@pytest.mark.parametrize("contents", [
++    "name,count\nalice,2\nbob,nope\n",
++    "name,count\nalice,2\nbob,3,extra\n",
++    "name,count\nalice,2\nbob\n",
++    "name,name\nalice,2\n",
++    'name,count\n"unterminated,2\n',
++    "",
++])
++def test_invalid_csv_is_rejected_before_output(tmp_path, capsys, contents):
++    path = tmp_path / "ledger.csv"
++    path.write_text(contents)
++    with pytest.raises(ValueError):
++        main(["ledger", str(path)])
++    assert capsys.readouterr().out == ""
++
++
++def test_cli_prints_valid_csv(tmp_path, capsys):
++    path = tmp_path / "ledger.csv"
++    path.write_text("name,count\nalice,2\nbob,3\n")
++    main(["ledger", str(path)])
++    assert capsys.readouterr().out == "name,count\r\nalice,2\r\nbob,3\r\n"

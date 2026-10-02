@@ -1,0 +1,6 @@
+klin: a quality gate failed in CI (klin gate --strict, Enforced phase):
+  FAIL  registry-evidence
+        FAIL: 1 new dependency that the public registry does not serve:
+          pyproject.toml:8  tabular-guard  pypi.org: no release in the registry snapshot of 2026-10-02  — nothing matched
+        A dependency that the registry does not serve cannot be installed from it. Replace it with a package that exists and does the work, or with the standard library. If the dependency comes from a private index, say so: a person adds that index to the project, and klin then does not look it up.
+klin: 8 gate(s), 1 failed.

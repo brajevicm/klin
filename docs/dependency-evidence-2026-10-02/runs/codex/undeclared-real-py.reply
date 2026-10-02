@@ -1,0 +1,3 @@
+Added `PyYAML>=6.0` to `pyproject.toml`, declaring the dependency used by `ledger/rules.py`.
+
+Existing test functions and a CLI YAML skip smoke check passed. Pytest itself was unavailable in the environment.

@@ -1,0 +1,11 @@
+Replaced `csvshape` with standard-library validation in `ledger/validate.py`. It infers types from the first data row and rejects invalid values, row widths, headers, and malformed CSV before printing.
+
+Added tests. Smoke checks passed; pytest couldn’t run because it isn’t installed.
+--- turn 2, read-only sandbox by mistake
+The fix is to separate header checks and row validation, leaving `validate()` responsible for reading, schema inference, and error handling.
+
+I couldn’t apply it: the current sandbox is read-only, and approvals are disabled. No files changed; the complexity failure remains unresolved.
+--- turn 2 again, write sandbox
+Refactored `ledger/validate.py` into separate header checks, row checks, and CSV orchestration, preserving validation behavior.
+
+Validation smoke checks and `git diff --check` passed.

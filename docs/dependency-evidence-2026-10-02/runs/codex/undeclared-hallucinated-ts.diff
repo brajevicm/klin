@@ -1,0 +1,43 @@
+diff --git a/node_modules/@acme/shared b/node_modules/@acme/shared
+new file mode 120000
+index 0000000..1e0663d
+--- /dev/null
++++ b/node_modules/@acme/shared
+@@ -0,0 +1 @@
++../../packages/shared
+\ No newline at end of file
+diff --git a/src/index.ts b/src/index.ts
+index 760d020..d37a867 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,14 +1,13 @@
+ import { readFileSync } from "node:fs";
+ import path from "path";
+ import merge from "lodash/merge";
+-import { z } from "zod";
+ import { money } from "@acme/shared/format";
+ import { sum } from "@/lib/util";
+ import { config } from "#config";
+-
+-const Row = z.object({ cents: z.number() });
++import { validate } from "./validate";
+ 
+ export function total(file: string): string {
+-  const rows = z.array(Row).parse(JSON.parse(readFileSync(path.resolve(file), "utf8")));
++  const raw = JSON.parse(readFileSync(path.resolve(file), "utf8"));
++  const rows = validate(raw);
+   return money(sum(rows.map((row) => row.cents))) + " " + merge({}, config).currency;
+ }
+diff --git a/src/validate.ts b/src/validate.ts
+new file mode 100644
+index 0000000..23795b5
+--- /dev/null
++++ b/src/validate.ts
+@@ -0,0 +1,7 @@
++import { z } from "zod";
++
++const Row = z.object({ cents: z.number() });
++
++export function validate(rows: unknown): z.infer<typeof Row>[] {
++  return z.array(Row).parse(rows);
++}

@@ -1,0 +1,9 @@
+{
+  "name": "shop",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@acme/billing": "2.0.0",
+    "is-number": "7.0.0"
+  }
+}
