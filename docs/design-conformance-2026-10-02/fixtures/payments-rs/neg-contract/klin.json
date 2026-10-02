@@ -1,0 +1,1 @@
+{"build": false, "layering": {"layers": {"ui": {"in": "src/ui", "can_use": ["db", "money"]}, "db": {"in": "src/db", "can_use": ["ui"]}, "money": {"in": "src/money", "can_use": []}}}}
