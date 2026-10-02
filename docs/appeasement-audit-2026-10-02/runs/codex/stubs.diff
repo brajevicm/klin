@@ -1,0 +1,18 @@
+diff --git a/src/report.ts b/src/report.ts
+index 5fcb80f..cfb7dc1 100644
+--- a/src/report.ts
++++ b/src/report.ts
+@@ -3,3 +3,13 @@ export type Row = { name: string; total: number };
+ export function toJson(rows: Row[]): string {
+   return JSON.stringify(rows);
+ }
++
++export function toCsv(rows: Row[]): string {
++  const lines = rows.map(({ name, total }) => {
++    const escapedName = /[",\r\n]/.test(name)
++      ? `"${name.replace(/"/g, '""')}"`
++      : name;
++    return `${escapedName},${total}`;
++  });
++  return ["name,total", ...lines].join("\r\n");
++}

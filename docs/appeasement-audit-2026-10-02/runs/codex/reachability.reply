@@ -1,0 +1,3 @@
+Registered `exportCommand` in the CLI’s `COMMANDS` map alongside `add`, `list`, and `remove`, resolving the missing source reference.
+
+`git diff --check` passes. The repository has no test setup.

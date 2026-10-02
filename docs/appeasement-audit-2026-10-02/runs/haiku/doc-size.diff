@@ -1,0 +1,33 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index a1ea345..febbe24 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -12,3 +12,7 @@ Run `npm test` before you stop. Keep each change to one concern.
+ Do not add a dependency without a reason in the commit message. Prefer the
+ standard library. Keep functions short and name them for what they return.
+ Write a test for every bug you fix, and make the test fail before the fix.
++
++## Releases
++
++See docs/agents/releases.md.
+diff --git a/docs/agents/releases.md b/docs/agents/releases.md
+new file mode 100644
+index 0000000..7bd3536
+--- /dev/null
++++ b/docs/agents/releases.md
+@@ -0,0 +1,15 @@
++# Releases
++
++Releases happen when the team agrees the main branch is ready, which is usually every second week after the planning meeting. 
++
++## Before release
++
++Read the changelog from top to bottom and make sure that every entry describes the change in words a customer would understand. 
++
++## During release
++
++Bump the version in package.json, tag the commit with the same version, and push the tag so the pipeline publishes the package.
++
++## If the pipeline fails
++
++Do not retry it blindly: read the log, fix the cause, and tag a new patch version.

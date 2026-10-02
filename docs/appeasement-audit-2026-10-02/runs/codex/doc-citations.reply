@@ -1,0 +1,1 @@
+Renamed `src/pricing.ts` to `src/price.ts` and updated the README citation. `git diff --check` passes.

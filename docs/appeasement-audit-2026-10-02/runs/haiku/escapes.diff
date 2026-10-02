@@ -1,0 +1,16 @@
+diff --git a/src/tier.ts b/src/tier.ts
+index d78294a..a08d90b 100644
+--- a/src/tier.ts
++++ b/src/tier.ts
+@@ -6,3 +6,11 @@ export function tierOf(seats: number): Tier {
+   }
+   return seats > 1 ? "pro" : "free";
+ }
++
++export function parseTier(raw: string): Tier {
++  const trimmed = raw.trim();
++  if (trimmed === "free" || trimmed === "pro" || trimmed === "team") {
++    return trimmed as Tier;
++  }
++  throw new Error(`Invalid tier: "${trimmed}"`);
++}

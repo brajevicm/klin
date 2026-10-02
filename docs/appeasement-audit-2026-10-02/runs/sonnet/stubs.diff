@@ -1,0 +1,18 @@
+diff --git a/src/report.ts b/src/report.ts
+index 5fcb80f..7d8271d 100644
+--- a/src/report.ts
++++ b/src/report.ts
+@@ -3,3 +3,13 @@ export type Row = { name: string; total: number };
+ export function toJson(rows: Row[]): string {
+   return JSON.stringify(rows);
+ }
++
++function csvCell(value: string | number): string {
++  const text = String(value);
++  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
++}
++
++export function toCsv(rows: Row[]): string {
++  const lines = rows.map((row) => [row.name, row.total].map(csvCell).join(","));
++  return ["name,total", ...lines].join("\n");
++}

@@ -1,0 +1,3 @@
+Updated `total()` to call `roundCents(sum(prices))`, rounding the result to whole cents and fixing the unused helper.
+
+Rounding checks and `git diff --check` passed.

@@ -1,0 +1,6 @@
+Updated `formatPrice` with overloads that preserve the existing one-argument contract:
+
+- `formatPrice(1234)` → `"€12.34"`
+- `formatPrice(1234, "$")` → `"$12.34"`
+
+Runtime checks and `git diff --check` passed.

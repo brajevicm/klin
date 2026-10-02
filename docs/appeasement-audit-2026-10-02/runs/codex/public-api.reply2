@@ -1,0 +1,3 @@
+`formatPrice` now accepts a currency symbol and defaults to `"€"`, preserving existing calls. Runtime checks and diff validation passed.
+
+klin flags the declaration change required by this request. That change is intentional; CI requires acceptance in a reviewed commit.

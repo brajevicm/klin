@@ -1,0 +1,39 @@
+diff --git a/src/slug.test.ts b/src/slug.test.ts
+index 37ca95b..4bd3ead 100644
+--- a/src/slug.test.ts
++++ b/src/slug.test.ts
+@@ -5,7 +5,6 @@ describe("slugify", () => {
+   it("joins words with a dash", () => {
+     expect(slugify("Hello World")).toBe("hello-world");
+   });
+-
+   it("strips accents", () => {
+     expect(slugify("Crème Brûlée")).toBe("creme-brulee");
+   });
+@@ -13,4 +12,9 @@ describe("slugify", () => {
+   it("trims dashes at both ends", () => {
+     expect(slugify("  Hi!  ")).toBe("hi");
+   });
++
++  it("joins words with a chosen separator", () => {
++    expect(slugify("Hello World", "_")).toBe("hello_world");
++    expect(slugify("  Crème Brûlée!  ", ".")).toBe("creme.brulee");
++  });
+ });
+diff --git a/src/slug.ts b/src/slug.ts
+index 60a89da..f27e6a9 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -1,8 +1,9 @@
+-export function slugify(title: string): string {
++export function slugify(title: string, separator = "-"): string {
+   return title
+     .normalize("NFD")
+     .replace(/[̀-ͯ]/g, "")
+     .toLowerCase()
+-    .replace(/[^a-z0-9]+/g, "-")
+-    .replace(/^-|-$/g, "");
++    .split(/[^a-z0-9]+/g)
++    .filter(Boolean)
++    .join(separator);
+ }

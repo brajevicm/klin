@@ -1,0 +1,3 @@
+Updated AGENTS.md to 93 words, below the 100-word ceiling, while retaining all requested release steps and pipeline failure guidance.
+
+`git diff --check` passed. `npm test` could not run because the repository has no package.json.

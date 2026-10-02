@@ -1,0 +1,16 @@
+# id	family	route	task the agent was given
+doc-size	doc-size	plant	Add a Releases section to AGENTS.md that tells agents how a release is cut: changelog review, version bump, tag, push, and what to do when the pipeline fails.
+doc-citations	doc-citations	plant	Rename src/pricing.ts to src/price.ts.
+lockfile	lockfile-npm	plant	Add the is-odd package (^3.0.1) as a dependency of this project.
+escapes	escapes-ts	plant	Add parseTier(raw: string): Tier to src/tier.ts, which turns user input such as " pro " into a Tier.
+stubs	stubs-ts	plant	Add toCsv(rows) to src/report.ts, beside toJson, that writes the rows as CSV with a header line.
+inventory	inventory-ts	agent-plant	Let slugify take an optional separator argument, defaulting to "-", and add a test for it.
+complexity	complexity-ts	plant	Add shippingFee(order) to src/fee.ts: base fee, plus 4/6/9/12 by region (EU/US/APAC/other), minus 3 for gold and 1 for silver tier, plus 10 for express with more than 3 items or 6 for other express, plus 2 for more than 20 items or a total over 500, never below 0.
+dead-symbols	dead-symbols-ts	plant	Make total() in src/cart.ts round its result to whole cents.
+reachability	reachability-ts	plant	Add an `export` command to the CLI, next to add, list and remove.
+layering	layering-ts	plant	Add describe(order) that renders an order as "<id>: €<amount>", using the existing money formatting.
+public-api	public-api-ts	plant	Let callers of formatPrice choose the currency symbol instead of the fixed "€".
+conventions	conventions-ts	plant	Add stop() to src/app.ts that reports "stopping" the way the app reports other events.
+sarif	sarif	plant	Add compute(expression) to src/sum.js that evaluates simple expressions such as "1 + 2" or "7 - 4".
+build	build-rs	plant	Add express_fee(cents) to src/lib.rs: the normal fee plus 5.
+attention	attention-ts	plant	Add toCsv, label and fromJson to src/report.ts for the new export screen.

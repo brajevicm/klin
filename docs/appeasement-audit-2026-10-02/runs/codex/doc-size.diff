@@ -1,0 +1,31 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index a1ea345..5cc0976 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,14 +1,20 @@
+ # Working on shop
+ 
+-Run `npm test` before you stop. Keep each change to one concern.
++Run `npm test` before stopping. Keep changes single-concern.
+ 
+ ## Layout
+ 
+-- `src/` holds the application code.
+-- `tests/` holds the tests, one file per module.
++- Application: `src/`.
++- Tests: `tests/`, one file per module.
+ 
+ ## Rules
+ 
+-Do not add a dependency without a reason in the commit message. Prefer the
+-standard library. Keep functions short and name them for what they return.
+-Write a test for every bug you fix, and make the test fail before the fix.
++Justify dependencies in commit messages; prefer the standard library.
++Keep functions short, named for their return values.
++For every bug fix, write a failing test first.
++
++## Releases
++
++When the team approves main: review the entire changelog for customer clarity,
++bump package.json, tag the commit with that version, and push the tag.
++Pipeline failure: read logs, fix the cause, release a new patch version; never retry blindly.

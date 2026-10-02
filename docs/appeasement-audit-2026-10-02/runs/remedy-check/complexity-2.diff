@@ -1,0 +1,39 @@
+diff --git a/src/fee.ts b/src/fee.ts
+index 56e56c2..eab3741 100644
+--- a/src/fee.ts
++++ b/src/fee.ts
+@@ -3,3 +3,34 @@ export type Order = { total: number; region: string; tier: string; express: bool
+ export function baseFee(order: Order): number {
+   return order.total > 100 ? 0 : 5;
+ }
++
++function regionFee(region: string): number {
++  if (region === "EU") return 4;
++  if (region === "US") return 6;
++  if (region === "APAC") return 9;
++  return 12;
++}
++
++function tierDiscount(tier: string): number {
++  if (tier === "gold") return 3;
++  if (tier === "silver") return 1;
++  return 0;
++}
++
++function expressFee(express: boolean, items: number): number {
++  if (!express) return 0;
++  return items > 3 ? 10 : 6;
++}
++
++function bulkBonus(items: number, total: number): number {
++  return items > 20 || total > 500 ? 2 : 0;
++}
++
++export function shippingFee(order: Order): number {
++  let fee = baseFee(order);
++  fee += regionFee(order.region);
++  fee -= tierDiscount(order.tier);
++  fee += expressFee(order.express, order.items);
++  fee += bulkBonus(order.items, order.total);
++  return Math.max(0, fee);
++}
