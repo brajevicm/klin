@@ -64,7 +64,7 @@ run() {
         -m gpt-6.1-sol -c model_reasoning_effort=low -c allow_login_shell=false -C "$dir/tree" -o "$dir/reply.txt" "$task" \
         > "$dir/host.out" 2> "$dir/host.err" < /dev/null || true ;;
     cursor) (cd "$dir/tree" && cursor-agent -p --force --trust --output-format json \
-        --model "${PROBE_CURSOR_MODEL:?name a model from cursor-agent models}" --workspace "$dir/tree" "$task") \
+        ${PROBE_CURSOR_MODEL:+--model "$PROBE_CURSOR_MODEL"} --workspace "$dir/tree" "$task") \
         > "$dir/reply.json" 2> "$dir/host.err" < /dev/null || true
       python3 -c 'import json,sys; o=json.load(open(sys.argv[1])); print(o.get("result") or o.get("text") or "")' "$dir/reply.json" > "$dir/reply.txt" || true ;;
     *) echo "probe: HOST is claude, codex or cursor" >&2; exit 2 ;;
