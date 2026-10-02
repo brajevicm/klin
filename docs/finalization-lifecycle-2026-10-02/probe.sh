@@ -12,16 +12,36 @@ tree_of() {
 hooks() {
   python3 -c 'import json,sys; b=sys.argv[1]; h=lambda e: [{"hooks": [{"type": "command", "command": json.dumps(b + "/hook")[1:-1] + " " + e}]}]; print(json.dumps({"hooks": {"SessionStart": h("session"), "Stop": h("stop")}}))' "$1"
 }
+cursor_hooks() {
+  python3 -c 'import json,sys; c=lambda e: [{"command": sys.argv[1] + "/hook " + e}]; print(json.dumps({"version": 1, "hooks": {"sessionStart": c("session"), "stop": c("stop")}}))' "$1"
+}
 stage() {
-  local tree=$1
+  local tree=$1 host=${2:-agents}
   mkdir -p "$tree"; cp -R "$here/fixture/." "$tree/"
-  mkdir -p "$tree/.claude" "$tree/.codex"
-  hooks "$here/bin" > "$tree/.claude/settings.json"
-  hooks "$here/bin" > "$tree/.codex/hooks.json"
+  if [ "$host" = cursor ]; then
+    mkdir -p "$tree/.cursor" "$tree/.vscode"
+    cursor_hooks "$here/bin" > "$tree/.cursor/hooks.json"
+    python3 -c 'import json,sys; print(json.dumps({"terminal.integrated.env.osx": {"PATH": sys.argv[1] + ":${env:PATH}"}}))' "$here/bin" > "$tree/.vscode/settings.json"
+  else
+    mkdir -p "$tree/.claude" "$tree/.codex"
+    hooks "$here/bin" > "$tree/.claude/settings.json"
+    hooks "$here/bin" > "$tree/.codex/hooks.json"
+  fi
   printf '__pycache__/\n' > "$tree/.gitignore"
   git_ -C "$tree" init -q -b main
   git_ -C "$tree" add -A
   git_ -C "$tree" commit -qm base
+}
+cursor() {
+  local name=$1 out=$2 mode
+  local dir="$out/cursor/$name-1"
+  mode=$(awk -F'\t' -v c="$name" '$1 == c { print $2 }' "$here/cases.tsv")
+  [ -n "$mode" ] || { echo "probe: no case $name in cases.tsv" >&2; exit 2; }
+  rm -rf "$dir"; mkdir -p "$dir"; stage "$dir/tree" cursor
+  : > "$dir/probe.log"
+  printf 'PROBE_MODE=%q\nPROBE_LOG=%q\nPROBE_CONTEXT=%q\n' "$mode" "$dir/probe.log" "$here/context.txt" \
+    > "$(git -C "$dir/tree" rev-parse --absolute-git-dir)/probe.env"
+  echo "$dir/tree"
 }
 run() {
   local host=$1 name=$2 rep=$3 out=$4
@@ -42,8 +62,11 @@ run() {
         > "$dir/host.out" 2> "$dir/host.err" < /dev/null || true ;;
     *) echo "probe: HOST is claude or codex" >&2; exit 2 ;;
   esac
-  git -C "$dir/tree" diff main -- . ':!.claude' ':!.codex' > "$dir/change.diff" || true
-  git -C "$dir/tree" status --porcelain --untracked-files=all >> "$dir/change.diff" || true
+  record "$dir"
+}
+record() {
+  git -C "$1/tree" diff main -- . ':!.claude' ':!.codex' ':!.cursor' ':!.vscode' > "$1/change.diff" || true
+  git -C "$1/tree" status --porcelain --untracked-files=all >> "$1/change.diff" || true
 }
 score() {
   local out=$1 dir host run_name final base

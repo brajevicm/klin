@@ -291,6 +291,10 @@ The smallest surface that carries the lifecycle:
      form belongs in CI;
    - `build` keeps its place on Stop. It is not an external entry.
 
+   `klin gate --list` prints each entry's phase, stated or derived, as it
+   prints `pinned:` values. The move of `run` entries off the Stop goes in
+   the release note. There is no runtime NOTE about it (section 15).
+
    Which entries klin recommends is #363's question, not this note's.
 4. **One line of session context**: the Stop, session and prompt hooks
    already run. The session hook adds one line in front of the agent on every
@@ -422,21 +426,24 @@ things change around it.
    behavior change. Such an entry runs at Stop today (SPEC 8.3). Under the
    proposal it runs at finalize, unless the entry says `phase: "stop"`.
    klin is pre-1.0, so a default can change, but the SPEC and the
-   configuration reference must say so.
+   configuration reference must say so. A person decided this default, and
+   that `klin gate --list` and the release note carry it (section 15).
 2. **A stale finalize under the current prompt.** When a Stop finds a
    `finalized` record under the current prompt counter, it computes the
    identity, about 40 ms at 10,000 files. If the tree differs, the agent said
    "ready" and then changed the tree. The proposal: the Stop says so and
    spends a gate block from the existing budget of two, so it stays bounded
-   by ADR 0022. A clarification turn never meets this rule, because it
-   called no finalize. A person may prefer a NOTE without a block. Section
-   12 lists that choice.
+   by ADR 0022. When both blocks are spent, the Stop reports it and blocks
+   nothing. A clarification turn never meets this rule, because it called
+   no finalize. A person chose the block over a NOTE (section 15).
 3. **A turn that changed the tree and never finalized.** The Stop does not
    block on it, because a clarification turn looks the same. On Claude Code
    and Codex, a person-only `systemMessage` line can say "this turn changed N
    files and was not finalized", which is true while a question is pending
    too. Cursor has no person-only channel at stop: its `followup_message`
    would start an agent turn. There, the journal and `klin stats` carry it.
+   A person decided to leave the line out unless the probe lands in the
+   middle band of section 15.
 4. **The session hook** prints one more line (section 5).
 5. **A side observation, not part of this proposal.** The fresh-index tree
    hash that the prompt and session hooks run on every event (`turn::run`
@@ -503,7 +510,7 @@ Protocol version 1 does not change.
 - A second call over the same tree prints "unchanged since the last
   finalize" and the cached verdict, so a repeat costs one line of context.
 
-## 10. The agent probe, prepared and not run
+## 10. The agent probe, registered and not yet run
 
 The AX questions of the ticket need real agents: does the agent call
 `klin finalize` without a person's prompt, does it skip the call on a
@@ -520,16 +527,19 @@ a probe for them:
   that needs a question (`clarify`), a REVIEW, an INCOMPLETE, and a question
   with no edit.
 - `probe.sh run HOST CASE REP OUT` lays a fresh tree and runs `claude -p`
-  (Sonnet) or `codex exec` (gpt-6.1-sol, low effort) on it. `probe.sh score
+  (Sonnet) or `codex exec` (gpt-6.1-sol, low effort) on it. `probe.sh stage
+  DIR` lays a tree for a person to open in Cursor, which loads
+  `.cursor/hooks.json` from it. `probe.sh score
   OUT` prints one row per run: finalize calls, verdicts, stops, whether the
   final tree is the last finalized tree, and whether the tree changed after
   the first finalize.
 
-**It did not run.** The session's permission classifier refused to start
-agents with their permission prompts and sandbox turned off, which a
-non-interactive edit run needs. A person can run it, for example two
-repetitions of each case on both hosts, 24 runs in all. Until then, every AX
-statement in this note is **[inference]**.
+**It has not run yet.** The session's permission classifier refused to
+start agents with their permission prompts and sandbox turned off, which a
+non-interactive edit run needs. A person runs it: 6 cases, 2 hosts and 2
+repetitions, 24 runs in all, plus two Cursor runs by hand. Section 15 holds
+the rules that read the result, written before any run. Until the results
+are in, every AX statement in this note is **[inference]**.
 
 ## 11. Adversarial cases
 
@@ -591,18 +601,22 @@ still stands.
 3. **The host's tool wait.** Claude Code's Bash waits 2 minutes by default.
    A finalize longer than that moves to the background, and the agent may go
    on editing. Codex's and Cursor's waits are not on the pages read.
-4. **Stale-finalize block or NOTE.** Section 8 proposes a block from the
-   existing budget. A person decides between that and a NOTE.
-5. **The person-only line** may be noise on clarification turns.
+4. **The stale-finalize block** costs one agent turn when an agent edits
+   after a finalize for a reason a person would accept.
+5. **No person-only line** means that, on a repository with no CI, a skipped
+   finalize shows only in `klin stats`, unless the probe lands in the middle
+   band.
 6. **Moving `run` entries off the Stop** changes shipped behavior for any
-   repository that relies on them at Stop.
+   repository that relies on them at Stop. The release note and `klin gate
+   --list` are the only signals.
 7. **The identity's residual gap**: a change and revert that also restores
    mtime and ctime inside one run.
 8. **Tool provenance**: an ignored-file change, such as an ESLint upgrade in
    `node_modules`, does not invalidate a record. #354 decides whether it
    should.
-9. **Cursor's matrix row is documentation only** for the new parts. No
-   Cursor run in this note, and `cursor-agent` is not installed here.
+9. **Cursor rests on two runs by hand.** `cursor-agent` is not installed
+   here, so Cursor gets `ready-pass` and `clarify` once each, driven by a
+   person. They are observations, not rates.
 
 ## 14. Decision
 
@@ -640,8 +654,50 @@ The experience acceptance of the ticket, item by item:
 | Clarification and yield stay cheap, with no Deep work | Yes: only an explicit call starts Deep work. A Stop computes nothing new unless a finalize ran under the same prompt | Sections 3, 6, 8 |
 | A developer reproduces finalization state and invalidation without klin internals | Yes: `klin finalize` over the same tree, and `klin finalize --check` for the state and why | Sections 5, 9 |
 | The agent gets concise, actionable repair feedback, with no internal phase names | Yes: a finding names a site and a repair, a REVIEW and an INCOMPLETE say what not to do, and a repeat costs one line | Section 9 |
-| A skipped or failed local finalize is visible, and never shown as a CI failure | Partly: the journal and `klin stats` on every host, a person-only line on Claude Code and Codex, and nothing at the moment on Cursor. Every local line says "local" and names no CI result | Sections 4, 8 |
+| A skipped or failed local finalize is visible, and never shown as a CI failure | Partly: the journal, `klin stats` and `klin finalize --check` on every host. A person-only line on Claude Code and Codex comes only if the probe lands in the middle band (section 15). Every local line says "local" and names no CI result | Sections 4, 8, 15 |
 
-This recommendation does not authorize implementation. A person reviews it,
-decides the open choices of section 13 (items 4 to 6), and runs or waives the
-probe of section 10, before anyone files an implementation ticket.
+This recommendation does not authorize implementation. A person made the
+choices of section 15. The probe of section 10 runs under the rules there,
+and its result may narrow this decision per host. Only after that does
+anyone file an implementation ticket.
+
+## 15. The person's decisions and the registered probe rules
+
+A person made these choices on 2026-10-02, after reading sections 1 to 14
+and before any probe run.
+
+| Question | Decision |
+| --- | --- |
+| Run or waive the agent probe | Run all 24 runs. The person starts them in their own terminal, and the agent scores them |
+| Models | Claude Sonnet and gpt-6.1-sol on low effort, as #361 used. If Sonnet lands in the middle or low band, the failing cases run again with Opus before the decision changes |
+| Cursor | `ready-pass` and `clarify` once each, driven by a person in the Cursor app. They are observations and do not count toward the bands |
+| An edit after a successful finalize under the same prompt | The Stop blocks once, from the existing budget of two gate blocks |
+| A person-only "not finalized" line | Not now. It is added only if the probe lands in the middle band |
+| The default phase of a `sarif` entry with `run` | `finalize` |
+| How that move reaches existing users | The release note, and `klin gate --list` prints every entry's phase. No runtime NOTE |
+| The default phase of a report-only `sarif` entry | `ci` |
+
+The rules that read the probe, per host, fixed before the first run:
+
+1. **Readiness.** The cases `ready-pass`, `ready-fail`, `review` and
+   `unknown` give 8 runs per host. A run counts when the agent ran `klin
+   finalize` before its final reply.
+   - 7 or 8 runs: adopt as written.
+   - 4 to 6 runs: adopt, and add the person-only line of section 8.
+   - 3 or fewer runs: section 14 changes to "Do not add finalization yet"
+     for that host, and records the evidence that is missing.
+2. **Clarification.** The cases `clarify` and `question` give 4 runs per
+   host. If the agent ran `klin finalize` in 2 or more of them, the session
+   line's wording fails. It is reworded once, and those 4 runs are run
+   again.
+3. **REVIEW and INCOMPLETE.** If an agent changed code after a REVIEW or an
+   INCOMPLETE in 2 or more of the 4 runs of those cases on one host, the
+   text of that report fails and is rewritten. This rule does not change
+   the decision.
+4. **Repair.** `ready-fail` passes when the final tree is the last finalized
+   tree. A miss is reported. It does not change the decision.
+
+The `clarify` task has no stated discount rate, so an agent may invent one
+and finalize. Such a run counts against rule 2 only if the reply also asks
+the person a question. A run that invents a rate without a question is a
+readiness run, and it is reported as such.

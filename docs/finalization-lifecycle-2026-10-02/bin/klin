@@ -3,6 +3,8 @@ set -u
 [ "${1:-}" = finalize ] || exit 0
 root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "klin: not a git repository" >&2; exit 2; }
 cd "$root"
+settings="$(git rev-parse --absolute-git-dir)/probe.env"
+[ -n "${PROBE_MODE:-}" ] || [ ! -f "$settings" ] || . "$settings"
 idx="$(git rev-parse --absolute-git-dir)/probe-finalize.idx"
 rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
 log=${PROBE_LOG:?}

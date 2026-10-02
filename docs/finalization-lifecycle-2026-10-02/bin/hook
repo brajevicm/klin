@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 set -u
 event=$(cat)
+root=$(git rev-parse --show-toplevel); cd "$root"
+settings="$(git rev-parse --absolute-git-dir)/probe.env"
+[ -n "${PROBE_LOG:-}" ] || [ ! -f "$settings" ] || . "$settings"
+field() { printf '%s' "$event" | python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1]))' "$1"; }
+cursor=$(field cursor_version)
 case ${1:?} in
-  session) cat "${PROBE_CONTEXT:?}" ;;
+  session)
+    if [ "$cursor" = None ]; then cat "${PROBE_CONTEXT:?}"
+    else python3 -c 'import json,sys; print(json.dumps({"additional_context": open(sys.argv[1]).read()}))' "${PROBE_CONTEXT:?}"
+    fi ;;
   stop)
-    root=$(git rev-parse --show-toplevel); cd "$root"
     idx="$(git rev-parse --absolute-git-dir)/probe-stop.idx"
     rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
-    active=$(printf '%s' "$event" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("stop_hook_active"))')
-    printf 'stop\t%s\t%s\t%s\n' "$(date +%s)" "$active" "$tree" >> "${PROBE_LOG:?}"
+    if [ "$cursor" = None ]; then said=$(field stop_hook_active)
+    else said="$(field status)/$(field loop_count)"
+    fi
+    printf 'stop\t%s\t%s\t%s\n' "$(date +%s)" "$said" "$tree" >> "${PROBE_LOG:?}"
     printf '%s\n' "$event" >> "${PROBE_LOG%.log}.stops.jsonl" ;;
 esac
 exit 0
