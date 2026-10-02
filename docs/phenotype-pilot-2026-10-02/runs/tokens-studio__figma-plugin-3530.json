@@ -1,0 +1,1461 @@
+{
+  "arm": "human",
+  "repository": "tokens-studio/figma-plugin",
+  "number": 3530,
+  "base": "4a80edc06fd695740bf8391984b68bbcbcbdcd57",
+  "head": "b53ab740eccdf2f92215d961eebd51295c36f1b1",
+  "exit": 1,
+  "ms": 8302,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 700
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CLAUDE.md",
+          "LICENSE.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json",
+          "packages/tokens-studio-for-figma/package.json",
+          "packages/tokens-studio-for-figma/token-transformer/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "packages/tokens-studio-for-figma/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 5,752 function(s) at 4a80edc; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 5,752 functions at 4a80edc, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 64
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Badge.tsx",
+            "pattern": "*Badge.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Display.tsx",
+            "pattern": "*Display.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*DownShiftInput.tsx",
+            "pattern": "*DownShiftInput.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Dropdown.tsx",
+            "pattern": "*Dropdown.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Form.tsx",
+            "pattern": "*Form.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Selector.tsx",
+            "pattern": "*Selector.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/Inspector*.tsx",
+            "pattern": "Inspector*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/Storage*.tsx",
+            "pattern": "Storage*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/AppContainer/startupProcessSteps/*Factory.ts",
+            "pattern": "*Factory.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/AppContainer/startupProcessSteps"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/DownshiftInput/*Input.tsx",
+            "pattern": "*Input.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/DownshiftInput"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/*Entry.tsx",
+            "pattern": "*Entry.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/ManageThemesModal"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/MoreButton/More*.tsx",
+            "pattern": "More*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/MoreButton"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/StyledDragger/Styled*.tsx",
+            "pattern": "Styled*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/StyledDragger"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/hooks/use*.tsx",
+            "pattern": "use*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/hooks"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/store/*Tokens.tsx",
+            "pattern": "*Tokens.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/store"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/store/models/*State.tsx",
+            "pattern": "*State.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/store/models"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*ProviderType.ts",
+            "pattern": "*ProviderType.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*Status.ts",
+            "pattern": "*Status.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*Types.ts",
+            "pattern": "*Types.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/figmaStorage/*Property.ts",
+            "pattern": "*Property.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/figmaStorage"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Node.ts",
+            "pattern": "*Node.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Plugin.ts",
+            "pattern": "*Plugin.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Target.ts",
+            "pattern": "*Target.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Variable.ts",
+            "pattern": "*Variable.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/figmaUtils/styleMatchers/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin/figmaUtils/styleMatchers"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*SetSelector.ts",
+            "pattern": "*SetSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*TokensSelector.ts",
+            "pattern": "*TokensSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*TypeSelector.ts",
+            "pattern": "*TypeSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/active*.ts",
+            "pattern": "active*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/collapsed*.ts",
+            "pattern": "collapsed*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/get*.ts",
+            "pattern": "get*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/show*.ts",
+            "pattern": "show*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/styles*.ts",
+            "pattern": "styles*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/token*.ts",
+            "pattern": "token*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/variables*.ts",
+            "pattern": "variables*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/*Storage.ts",
+            "pattern": "*Storage.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/schemas/*Schema.ts",
+            "pattern": "*Schema.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/schemas"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/*Studio.ts",
+            "pattern": "*Studio.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql/*Mutation.ts",
+            "pattern": "*Mutation.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql/*Query.ts",
+            "pattern": "*Query.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/*Options.ts",
+            "pattern": "*Options.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/Node*.ts",
+            "pattern": "Node*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/payloads/*Payload.ts",
+            "pattern": "*Payload.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/payloads"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/redux/*Action.ts",
+            "pattern": "*Action.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/redux"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/tokens/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/tokens"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/values/*Value.ts",
+            "pattern": "*Value.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/values"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Equal.ts",
+            "pattern": "*Equal.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Key.ts",
+            "pattern": "*Key.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Map.ts",
+            "pattern": "*Map.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Value.ts",
+            "pattern": "*Value.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/remove*.ts",
+            "pattern": "remove*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/alias/check*.tsx",
+            "pattern": "check*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/alias"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/is/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/is"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/is/*Type.ts",
+            "pattern": "*Type.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/is"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/tokens-studio/tokensStudio.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bd46f50040d78a50",
+        "line": 105,
+        "matched": null,
+        "outcome": "new",
+        "text": "async (context: TokensStudioCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 3,
+          "lines": 68
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/models/reducers/tokenState/setTokenData.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e5bda39606d1298a",
+        "line": 11,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/models/reducers/tokenState/setTokenData.ts",
+          "line": 11,
+          "text": "export function setTokenData(state: TokenState, payload: SetTokenDataPayload): TokenState {",
+          "values": {
+            "cc": 13,
+            "lines": 55
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function setTokenData(state: TokenState, payload: SetTokenDataPayload): TokenState {",
+        "values": {
+          "cc": 13,
+          "lines": 67
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e471c44941239f66",
+        "line": 30,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+          "line": 30,
+          "text": "export const useADO = () => {",
+          "values": {
+            "cc": 1,
+            "lines": 307
+          }
+        },
+        "outcome": "worsened",
+        "text": "export const useADO = () => {",
+        "values": {
+          "cc": 1,
+          "lines": 325
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "455adffd82cc954d",
+        "line": 58,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+          "line": 58,
+          "text": "const pushTokensToADO = React.useCallback(async (context: AdoCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 6,
+            "lines": 73
+          }
+        },
+        "outcome": "worsened",
+        "text": "const pushTokensToADO = React.useCallback(async (context: AdoCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 6,
+          "lines": 82
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5fa484723220c1da",
+        "line": 199,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/ado/ado.tsx",
+          "line": 190,
+          "text": "const syncTokensWithADO = React.useCallback(async (context: AdoCredentials): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 10,
+            "lines": 66
+          }
+        },
+        "outcome": "worsened",
+        "text": "const syncTokensWithADO = React.useCallback(async (context: AdoCredentials): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 10,
+          "lines": 75
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/bitbucket/bitbucket.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7e08ee9151bb14e6",
+        "line": 29,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/bitbucket/bitbucket.tsx",
+          "line": 29,
+          "text": "export function useBitbucket() {",
+          "values": {
+            "cc": 1,
+            "lines": 317
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useBitbucket() {",
+        "values": {
+          "cc": 1,
+          "lines": 326
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/bitbucket/bitbucket.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "621a5d9e7ab57b1e",
+        "line": 68,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/bitbucket/bitbucket.tsx",
+          "line": 68,
+          "text": "const pushTokensToBitbucket = useCallback(async (context: BitbucketCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 6,
+            "lines": 68
+          }
+        },
+        "outcome": "worsened",
+        "text": "const pushTokensToBitbucket = useCallback(async (context: BitbucketCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 6,
+          "lines": 77
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/generic/versionedStorage.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "01bcb625e9b8eaaf",
+        "line": 113,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/generic/versionedStorage.ts",
+          "line": 113,
+          "text": "export function useGenericVersionedStorage() {",
+          "values": {
+            "cc": 1,
+            "lines": 192
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useGenericVersionedStorage() {",
+        "values": {
+          "cc": 1,
+          "lines": 201
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/generic/versionedStorage.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e6c4b9bbf90c4473",
+        "line": 221,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/generic/versionedStorage.ts",
+          "line": 221,
+          "text": "async (",
+          "values": {
+            "cc": 5,
+            "lines": 72
+          }
+        },
+        "outcome": "worsened",
+        "text": "async (",
+        "values": {
+          "cc": 5,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "b59498ab88461c2e",
+        "line": 31,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+          "line": 31,
+          "text": "export function useGitHub() {",
+          "values": {
+            "cc": 1,
+            "lines": 349
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useGitHub() {",
+        "values": {
+          "cc": 1,
+          "lines": 367
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bd70b8b6b0f16ea8",
+        "line": 62,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+          "line": 62,
+          "text": "const pushTokensToGitHub = useCallback(async (context: GithubCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 14,
+            "lines": 92
+          }
+        },
+        "outcome": "worsened",
+        "text": "const pushTokensToGitHub = useCallback(async (context: GithubCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 14,
+          "lines": 101
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5ceb9e2479021dad",
+        "line": 233,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/github/github.tsx",
+          "line": 224,
+          "text": "const syncTokensWithGitHub = useCallback(async (context: GithubCredentials): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 13,
+            "lines": 76
+          }
+        },
+        "outcome": "worsened",
+        "text": "const syncTokensWithGitHub = useCallback(async (context: GithubCredentials): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 13,
+          "lines": 85
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "047afaf9e5913c26",
+        "line": 45,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+          "line": 45,
+          "text": "export function useGitLab() {",
+          "values": {
+            "cc": 1,
+            "lines": 325
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useGitLab() {",
+        "values": {
+          "cc": 1,
+          "lines": 343
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a260813715676768",
+        "line": 68,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+          "line": 68,
+          "text": "const pushTokensToGitLab = useCallback(async (context: GitlabCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 6,
+            "lines": 72
+          }
+        },
+        "outcome": "worsened",
+        "text": "const pushTokensToGitLab = useCallback(async (context: GitlabCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 6,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6bda3b9ce21ed635",
+        "line": 212,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/gitlab/gitlab.tsx",
+          "line": 203,
+          "text": "const syncTokensWithGitLab = useCallback(async (context: GitlabCredentials): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 13,
+            "lines": 76
+          }
+        },
+        "outcome": "worsened",
+        "text": "const syncTokensWithGitLab = useCallback(async (context: GitlabCredentials): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 13,
+          "lines": 85
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/jsonbin.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "542ec7c1c4015d94",
+        "line": 76,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/jsonbin.tsx",
+          "line": 76,
+          "text": "export function useJSONbin() {",
+          "values": {
+            "cc": 1,
+            "lines": 176
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useJSONbin() {",
+        "values": {
+          "cc": 1,
+          "lines": 185
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/supernova/supernova.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "db645360896be832",
+        "line": 29,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/supernova/supernova.tsx",
+          "line": 29,
+          "text": "export function useSupernova() {",
+          "values": {
+            "cc": 1,
+            "lines": 180
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useSupernova() {",
+        "values": {
+          "cc": 1,
+          "lines": 189
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/supernova/supernova.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a8bbd8be3e09170a",
+        "line": 45,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/supernova/supernova.tsx",
+          "line": 45,
+          "text": "async (context: SupernovaCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 5,
+            "lines": 71
+          }
+        },
+        "outcome": "worsened",
+        "text": "async (context: SupernovaCredentials, overrides?: PushOverrides): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 5,
+          "lines": 80
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/tokens-studio/tokensStudio.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "05a50060d8db483a",
+        "line": 79,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/tokens-studio/tokensStudio.tsx",
+          "line": 79,
+          "text": "export function useTokensStudio() {",
+          "values": {
+            "cc": 1,
+            "lines": 231
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function useTokensStudio() {",
+        "values": {
+          "cc": 1,
+          "lines": 249
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/tokens-studio/tokensStudio.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e8f7043956726493",
+        "line": 221,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/tokens-studio/tokensStudio.tsx",
+          "line": 212,
+          "text": "async (context: TokensStudioCredentials): Promise<RemoteResponseData> => {",
+          "values": {
+            "cc": 11,
+            "lines": 60
+          }
+        },
+        "outcome": "worsened",
+        "text": "async (context: TokensStudioCredentials): Promise<RemoteResponseData> => {",
+        "values": {
+          "cc": 11,
+          "lines": 69
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/url.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7f72f6e3da8db661",
+        "line": 20,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/url.tsx",
+          "line": 20,
+          "text": "export default function useURL() {",
+          "values": {
+            "cc": 1,
+            "lines": 99
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function useURL() {",
+        "values": {
+          "cc": 1,
+          "lines": 108
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/providers/url.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "47bde382b141716e",
+        "line": 30,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/providers/url.tsx",
+          "line": 30,
+          "text": "const pullTokensFromURL = useCallback(async (context: UrlCredentials): Promise<RemoteResponseData | null> => {",
+          "values": {
+            "cc": 8,
+            "lines": 77
+          }
+        },
+        "outcome": "worsened",
+        "text": "const pullTokensFromURL = useCallback(async (context: UrlCredentials): Promise<RemoteResponseData | null> => {",
+        "values": {
+          "cc": 8,
+          "lines": 86
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/remoteTokens.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "563275337ea7719e",
+        "line": 50,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/remoteTokens.tsx",
+          "line": 50,
+          "text": "export default function useRemoteTokens() {",
+          "values": {
+            "cc": 1,
+            "lines": 680
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function useRemoteTokens() {",
+        "values": {
+          "cc": 1,
+          "lines": 693
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/store/remoteTokens.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "66817ceddac9826b",
+        "line": 108,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/store/remoteTokens.tsx",
+          "line": 108,
+          "text": "async ({",
+          "values": {
+            "cc": 42,
+            "lines": 201
+          }
+        },
+        "outcome": "worsened",
+        "text": "async ({",
+        "values": {
+          "cc": 42,
+          "lines": 214
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 8,
+        "name": "doc-size",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 11,
+        "ms": 128,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 222,
+        "ms": 47,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1417,
+          "measured": 1417,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 309,
+        "ms": 1562,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 2834
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1416,
+          "measured": 1416,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 60,
+        "ms": 2173,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 2832,
+          "reads": 2832
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 288,
+          "measured": 288,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1474,
+        "ms": 254,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1412,
+          "measured": 1412,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 24,
+        "footprint": null,
+        "graph": null,
+        "held": 247,
+        "ms": 1460,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 2824,
+          "reads": 2824
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1371,
+          "measured": 1371,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 2742,
+          "ms": 1198,
+          "parses": 2742,
+          "reads": 2742,
+          "shared": 0,
+          "states": 1578
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 83160,
+          "declaration_text_bytes": 288778,
+          "declarations": 4884,
+          "export_leaves": 1106,
+          "export_text_bytes": 64158,
+          "exported_alias_bytes": 2198,
+          "exported_aliases": 314,
+          "exports": 944,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 2742,
+          "import_text_bytes": 1039028,
+          "imports": 12094,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 206198,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.999722953317634,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 14436,
+          "reference_canonical_bytes": 205514,
+          "reference_distinct_names": 7219,
+          "reference_name_bytes": 2074404,
+          "reference_representation_after_bytes": 3777952,
+          "reference_representation_before_bytes": 7555904,
+          "references": 236122,
+          "signature_bytes": 392160,
+          "signatures": 4528,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 4,
+        "ms": 1226,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 2442,
+            "distinct_names": 7283,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 582,
+            "query_ms": 0,
+            "references": 111875
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2442,
+            "distinct_names": 7281,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 621,
+            "query_ms": 0,
+            "references": 111590
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 30,
+            "ignored_ms": 14,
+            "renames_ms": 0,
+            "walk_ms": 12,
+            "worktree_add_ms": 256,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 366,
+          "measured": 366,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2742
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 862,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 2442,
+            "distinct_names": 7283,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 8,
+            "references": 111875
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2442,
+            "distinct_names": 7281,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 9,
+            "references": 111590
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 0,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2742
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 4448,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 4444,
+          "modules": 2744,
+          "ms": 7,
+          "sources": 2744
+        },
+        "held": 0,
+        "ms": 12,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "CLAUDE.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 700,
+          "words": 695
+        }
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "4 dead symbol(s) the base already held:\n  packages/tokens-studio-for-figma/src/AsyncMessageChannel.ts:40  constructor(inFigmaSandbox: boolean) {\n  packages/tokens-studio-for-figma/src/plugin/SharedDataHandler.ts:7  constructor(ns: string) {\n  packages/tokens-studio-for-figma/src/supabase.ts:37  constructor(apiUrl: string, apikey: string) {\n  packages/tokens-studio-for-figma/src/utils/TokenResolver.ts:20  constructor(tokens: SingleToken[]) {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  TypeScript package @tokens-studio/figma-plugin (packages/tokens-studio-for-figma/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package token-transformer (packages/tokens-studio-for-figma/token-transformer/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package tokens-studio-plugin-monorepo (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "4a80edc06fd695740bf8391984b68bbcbcbdcd57",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

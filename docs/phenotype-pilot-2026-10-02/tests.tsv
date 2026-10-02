@@ -1,0 +1,8 @@
+cablehead__xs-93	assertion-rewritten	src/commands/tests.rs	159	assert_eq!(values, vec!["single value output".to_string()]);
+cablehead__xs-93	assertion-rewritten	src/commands/tests.rs	409	assert_eq!(values_a, vec!["output_from_cmd_a".to_string()]);
+cablehead__xs-93	assertion-rewritten	src/commands/tests.rs	443	assert_eq!(values_b, vec!["output_from_cmd_b".to_string()]);
+FuelLabs__sway-7322	assertion-rewritten	sway-core/src/semantic_analysis/ast_node/expression/typed_expression.rs	3510	assert!(warnings.is_empty() && errors.is_empty());
+vinhnx__VTCode-113	assertion-rewritten	tests/llm_focused_test.rs	22	assert_eq!(providers.len(), 5);
+vinhnx__VTCode-113	assertion-rewritten	tests/llm_providers_test.rs	24	assert_eq!(providers.len(), 5);
+vinhnx__VTCode-113	assertion-rewritten	vtcode-core/src/config/models.rs	581	assert_eq!(
+recallnet__js-recall-1140	assertion-rewritten	apps/api/e2e/tests/competition.test.ts	1949	expect(stats?.totalTrades).toBe(3);

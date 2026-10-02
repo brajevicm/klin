@@ -1,0 +1,526 @@
+{
+  "arm": "human",
+  "repository": "anthropics/claude-code",
+  "number": 8480,
+  "base": "5062ed93fc67f9322f807ecbf391ae4376cf8e83",
+  "head": "e0ac0b9c05c142ddca9cf1a009077eddac84e42a",
+  "exit": 1,
+  "ms": 364,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CHANGELOG.md",
+          "LICENSE.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 16 function(s) at 5062ed9; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "the floor of 25, over 16 function(s) at 5062ed9; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 25
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "ime-fix/__tests__/useImeAwareSubmit.test.tsx",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "87377de0ad41a0c6",
+        "line": 39,
+        "matched": null,
+        "outcome": "new",
+        "text": "} as any;",
+        "values": {
+          "count": 5,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "ime-fix/withImeGuard.tsx",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "c13bff2ee4c09bc1",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "[key: string]: any;",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/ChatInput.example.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "6e61d98470438817",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "export const ChatInput: React.FC<ChatInputProps> = ({",
+        "values": {
+          "cc": 2,
+          "lines": 32
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/useImeAwareSubmit.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9211adfdb238a8ff",
+        "line": 12,
+        "matched": null,
+        "outcome": "new",
+        "text": "export const useImeAwareSubmit = ({",
+        "values": {
+          "cc": 1,
+          "lines": 51
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/useImeAwareSubmit.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d82d87a5464fba03",
+        "line": 28,
+        "matched": null,
+        "outcome": "new",
+        "text": "const handleKeyDown = useCallback((",
+        "values": {
+          "cc": 5,
+          "lines": 27
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/useImeAwareSubmitAdvanced.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "8939f4adc3878cf3",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "export const useImeAwareSubmitAdvanced = ({",
+        "values": {
+          "cc": 1,
+          "lines": 97
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/useImeAwareSubmitAdvanced.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "492f886604f72f05",
+        "line": 39,
+        "matched": null,
+        "outcome": "new",
+        "text": "const handleKeyDown = useCallback((",
+        "values": {
+          "cc": 8,
+          "lines": 40
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/withImeGuard.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f0c58ceb7737b543",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function withImeGuard<P extends WithImeGuardProps>(",
+        "values": {
+          "cc": 1,
+          "lines": 40
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "ime-fix/withImeGuard.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "977e229afd8ccff5",
+        "line": 16,
+        "matched": null,
+        "outcome": "new",
+        "text": "return (props: P) => {",
+        "values": {
+          "cc": 1,
+          "lines": 36
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 38,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 9,
+          "measured": 9,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 6,
+        "ms": 15,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 13
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 8,
+          "measured": 8,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 5,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 11,
+          "reads": 11
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 8,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 8,
+          "measured": 8,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 7,
+        "footprint": null,
+        "graph": null,
+        "held": 3,
+        "ms": 31,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 11,
+          "reads": 11
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 7,
+          "measured": 7,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 9,
+          "ms": 12,
+          "parses": 9,
+          "reads": 9,
+          "shared": 0,
+          "states": 32
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 580,
+          "declaration_text_bytes": 1600,
+          "declarations": 36,
+          "export_leaves": 0,
+          "export_text_bytes": 40,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 4,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 9,
+          "import_text_bytes": 750,
+          "imports": 8,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 303,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.5932203389830508,
+          "reference_canonical_allocation_ratio_milli": 1593,
+          "reference_canonical_allocations": 282,
+          "reference_canonical_bytes": 2732,
+          "reference_distinct_names": 177,
+          "reference_name_bytes": 11691,
+          "reference_representation_after_bytes": 24624,
+          "reference_representation_before_bytes": 49248,
+          "references": 1539,
+          "signature_bytes": 2932,
+          "signatures": 36,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 12,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 22,
+            "distinct_names": 180,
+            "files": 7,
+            "index_ms": 0,
+            "measure_ms": 9,
+            "query_ms": 0,
+            "references": 935
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 14,
+            "distinct_names": 105,
+            "files": 2,
+            "index_ms": 0,
+            "measure_ms": 2,
+            "query_ms": 0,
+            "references": 554
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 67,
+            "ignored_ms": 7,
+            "renames_ms": 0,
+            "walk_ms": 0,
+            "worktree_add_ms": 43,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 17,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 9
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 2,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 2,
+          "modules": 9,
+          "ms": 0,
+          "sources": 9
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [],
+    "status": "FAIL",
+    "summary": "klin: 8 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "5062ed93fc67f9322f807ecbf391ae4376cf8e83",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

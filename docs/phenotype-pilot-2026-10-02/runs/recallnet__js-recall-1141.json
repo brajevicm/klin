@@ -1,0 +1,678 @@
+{
+  "arm": "agent",
+  "repository": "recallnet/js-recall",
+  "number": 1141,
+  "base": "621f33c211cd4b6157f51e56dd9047452ada722d",
+  "head": "5c53be67ee48f6664b1a4931a2838b8b4ff61a41",
+  "exit": 1,
+  "ms": 5802,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 800
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1100
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "apps/api/package.json",
+          "apps/comps/package.json",
+          "package.json",
+          "packages/conversions/package.json",
+          "packages/db/package.json",
+          "packages/eslint-config/package.json",
+          "packages/fonts/package.json",
+          "packages/rewards/package.json",
+          "packages/services/package.json",
+          "packages/staking-contracts/package.json",
+          "packages/typescript-config/package.json",
+          "packages/ui2/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "packages/staking-contracts/test"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 4,433 function(s) at 621f33c; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,433 functions at 621f33c, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 97
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/api/src/controllers/*.controller.ts",
+            "pattern": "*.controller.ts",
+            "roots": [
+              "apps/api/src/controllers"
+            ]
+          },
+          {
+            "name": "apps/api/src/lib/*-utils.ts",
+            "pattern": "*-utils.ts",
+            "roots": [
+              "apps/api/src/lib"
+            ]
+          },
+          {
+            "name": "apps/api/src/routes/*.routes.ts",
+            "pattern": "*.routes.ts",
+            "roots": [
+              "apps/api/src/routes"
+            ]
+          },
+          {
+            "name": "apps/api/src/services/*.service.ts",
+            "pattern": "*.service.ts",
+            "roots": [
+              "apps/api/src/services"
+            ]
+          },
+          {
+            "name": "apps/comps/components/*-button.tsx",
+            "pattern": "*-button.tsx",
+            "roots": [
+              "apps/comps/components"
+            ]
+          },
+          {
+            "name": "apps/comps/components/*-skeleton.tsx",
+            "pattern": "*-skeleton.tsx",
+            "roots": [
+              "apps/comps/components"
+            ]
+          },
+          {
+            "name": "apps/comps/components/modals/*-agent.tsx",
+            "pattern": "*-agent.tsx",
+            "roots": [
+              "apps/comps/components/modals"
+            ]
+          },
+          {
+            "name": "apps/comps/lib/*-client.ts",
+            "pattern": "*-client.ts",
+            "roots": [
+              "apps/comps/lib"
+            ]
+          },
+          {
+            "name": "apps/comps/providers/*-provider.tsx",
+            "pattern": "*-provider.tsx",
+            "roots": [
+              "apps/comps/providers"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 97",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 97 lines)",
+        "file": "apps/comps/app/competitions/[id]/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "734d040396877ed5",
+        "line": 149,
+        "matched": null,
+        "outcome": "new",
+        "text": "const isVotingAvailable = () => {",
+        "values": {
+          "cc": 11,
+          "lines": 26
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 97",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 97 lines)",
+        "file": "apps/comps/app/competitions/[id]/page.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0d95ff6fe8e26038",
+        "line": 38,
+        "matched": {
+          "accepted": false,
+          "file": "apps/comps/app/competitions/[id]/page.tsx",
+          "line": 38,
+          "text": "export default function CompetitionPage({",
+          "values": {
+            "cc": 34,
+            "lines": 305
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function CompetitionPage({",
+        "values": {
+          "cc": 34,
+          "lines": 333
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 32,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 12,
+          "measured": 12,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 261,
+        "ms": 25,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 558,
+          "measured": 558,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 313,
+        "ms": 639,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 1116
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 556,
+          "measured": 556,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 28,
+        "ms": 772,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1112,
+          "reads": 1112
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 65,
+          "measured": 65,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1066,
+        "ms": 366,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 555,
+          "measured": 549,
+          "not_measured": 0,
+          "unreadable": 6
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 215,
+        "ms": 1552,
+        "name": "complexity",
+        "names": null,
+        "notes": 6,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 1110,
+          "reads": 1110
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 538,
+          "measured": 532,
+          "not_measured": 0,
+          "unreadable": 6
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1076,
+          "ms": 1264,
+          "parses": 1076,
+          "reads": 1076,
+          "shared": 0,
+          "states": 1456
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 89220,
+          "declaration_text_bytes": 250774,
+          "declarations": 5560,
+          "export_leaves": 420,
+          "export_text_bytes": 16692,
+          "exported_alias_bytes": 308,
+          "exported_aliases": 44,
+          "exports": 226,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1064,
+          "import_text_bytes": 442968,
+          "imports": 5140,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 44078,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9998687491796823,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 15237,
+          "reference_canonical_bytes": 201349,
+          "reference_distinct_names": 7619,
+          "reference_name_bytes": 2397260,
+          "reference_representation_after_bytes": 4465536,
+          "reference_representation_before_bytes": 8931072,
+          "references": 279096,
+          "signature_bytes": 378234,
+          "signatures": 4076,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 6,
+        "ms": 1291,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 2780,
+            "distinct_names": 7814,
+            "files": 532,
+            "index_ms": 6,
+            "measure_ms": 635,
+            "query_ms": 0,
+            "references": 133369
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2780,
+            "distinct_names": 7813,
+            "files": 532,
+            "index_ms": 5,
+            "measure_ms": 630,
+            "query_ms": 0,
+            "references": 133343
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 43,
+            "ignored_ms": 10,
+            "renames_ms": 0,
+            "walk_ms": 7,
+            "worktree_add_ms": 161,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 7,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 66,
+          "measured": 66,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1076
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 717,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 2780,
+            "distinct_names": 7814,
+            "files": 532,
+            "index_ms": 5,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 133369
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2780,
+            "distinct_names": 7813,
+            "files": 532,
+            "index_ms": 6,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 133343
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 12,
+          "measured": 0,
+          "not_measured": 12,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1076
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 736,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 722,
+          "modules": 1076,
+          "ms": 1,
+          "sources": 1076
+        },
+        "held": 0,
+        "ms": 4,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 1,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "AGENTS.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 800,
+          "words": 796
+        }
+      },
+      {
+        "file": "CLAUDE.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 1100,
+          "words": 1093
+        }
+      },
+      {
+        "file": "apps/comps/components/agent-profile/comps-table.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/competition-info.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/main-page/new-hightlights.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/unified-leaderboard/skill-detail/skill-detail-page.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/user-agents/agents-summary.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "packages/db/src/repositories/competition.ts",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/agent-profile/comps-table.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/competition-info.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/main-page/new-hightlights.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/unified-leaderboard/skill-detail/skill-detail-page.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/comps/components/user-agents/agents-summary.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "packages/db/src/repositories/competition.ts",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TypeScript grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "6 dead symbol(s) the base already held:\n  apps/api/e2e/utils/log-reporter.ts:25  onInit(): void {\n  apps/api/e2e/utils/log-reporter.ts:29  onTestRunStart(): void {\n  apps/api/e2e/utils/log-reporter.ts:37  onTestCaseReady(testCase: TestCase): void {\n  apps/api/e2e/utils/log-reporter.ts:45  onTestCaseResult(testCase: TestCase): void {\n  apps/api/e2e/utils/log-reporter.ts:117  onTestRunEnd(\n  apps/comps/lib/types.ts:4  interface ColumnMeta<TData, TValue> {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "12 package(s) or target(s) with no supported public surface:\n  TypeScript package @recallnet/conversions (packages/conversions/package.json): its exports names no TypeScript source klin supports: ./dist/atto-conversions.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/atto-conversions.d.ts names no file the tree holds\n  TypeScript package @recallnet/db (packages/db/package.json): its exports names no TypeScript source klin supports: ./dist/coders/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/coders/index.d.ts names no file the tree holds; ./dist/coders/index.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/coders/index.d.cts names no file the tree holds; ./dist/errors.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/errors.d.ts names no file the tree holds; ./dist/errors.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/errors.d.cts names no file the tree holds; ./dist/repositories/admin.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/admin.d.ts names no file the tree holds; ./dist/repositories/admin.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/admin.d.cts names no file the tree holds; ./dist/repositories/agent.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent.d.ts names no file the tree holds; ./dist/repositories/agent.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent.d.cts names no file the tree holds; ./dist/repositories/agent-nonce.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent-nonce.d.ts names no file the tree holds; ./dist/repositories/agent-nonce.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent-nonce.d.cts names no file the tree holds; ./dist/repositories/agent-score.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent-score.d.ts names no file the tree holds; ./dist/repositories/agent-score.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/agent-score.d.cts names no file the tree holds; ./dist/repositories/balance.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/balance.d.ts names no file the tree holds; ./dist/repositories/balance.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/balance.d.cts names no file the tree holds; ./dist/repositories/boost.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/boost.d.ts names no file the tree holds; ./dist/repositories/boost.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/boost.d.cts names no file the tree holds; ./dist/repositories/competition.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/competition.d.ts names no file the tree holds; ./dist/repositories/competition.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/competition.d.cts names no file the tree holds; ./dist/repositories/competition-rewards.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/competition-rewards.d.ts names no file the tree holds; ./dist/repositories/competition-rewards.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/competition-rewards.d.cts names no file the tree holds; ./dist/repositories/leaderboard.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/leaderboard.d.ts names no file the tree holds; ./dist/repositories/leaderboard.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/leaderboard.d.cts names no file the tree holds; ./dist/repositories/perps.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/perps.d.ts names no file the tree holds; ./dist/repositories/perps.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/perps.d.cts names no file the tree holds; ./dist/repositories/rewards.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/rewards.d.ts names no file the tree holds; ./dist/repositories/rewards.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/rewards.d.cts names no file the tree holds; ./dist/repositories/stakes.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/stakes.d.ts names no file the tree holds; ./dist/repositories/stakes.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/stakes.d.cts names no file the tree holds; ./dist/repositories/trade.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/trade.d.ts names no file the tree holds; ./dist/repositories/trade.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/trade.d.cts names no file the tree holds; ./dist/repositories/trading-constraints.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/trading-constraints.d.ts names no file the tree holds; ./dist/repositories/trading-constraints.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/trading-constraints.d.cts names no file the tree holds; ./dist/repositories/user.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/user.d.ts names no file the tree holds; ./dist/repositories/user.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/user.d.cts names no file the tree holds; ./dist/repositories/vote.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/vote.d.ts names no file the tree holds; ./dist/repositories/vote.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/repositories/vote.d.cts names no file the tree holds; ./dist/schema/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/index.d.ts names no file the tree holds; ./dist/schema/index.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/index.d.cts names no file the tree holds; ./dist/schema/core/defs.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/defs.d.ts names no file the tree holds; ./dist/schema/core/defs.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/defs.d.cts names no file the tree holds; ./dist/schema/core/relations.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/relations.d.ts names no file the tree holds; ./dist/schema/core/relations.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/relations.d.cts names no file the tree holds; ./dist/schema/core/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/types.d.ts names no file the tree holds; ./dist/schema/core/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/core/types.d.cts names no file the tree holds; ./dist/schema/indexing/defs.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/indexing/defs.d.ts names no file the tree holds; ./dist/schema/indexing/defs.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/indexing/defs.d.cts names no file the tree holds; ./dist/schema/indexing/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/indexing/types.d.ts names no file the tree holds; ./dist/schema/indexing/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/indexing/types.d.cts names no file the tree holds; ./dist/schema/ranking/defs.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/defs.d.ts names no file the tree holds; ./dist/schema/ranking/defs.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/defs.d.cts names no file the tree holds; ./dist/schema/ranking/relations.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/relations.d.ts names no file the tree holds; ./dist/schema/ranking/relations.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/relations.d.cts names no file the tree holds; ./dist/schema/ranking/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/types.d.ts names no file the tree holds; ./dist/schema/ranking/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/ranking/types.d.cts names no file the tree holds; ./dist/schema/trading/defs.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/defs.d.ts names no file the tree holds; ./dist/schema/trading/defs.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/defs.d.cts names no file the tree holds; ./dist/schema/trading/relations.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/relations.d.ts names no file the tree holds; ./dist/schema/trading/relations.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/relations.d.cts names no file the tree holds; ./dist/schema/trading/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/types.d.ts names no file the tree holds; ./dist/schema/trading/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/trading/types.d.cts names no file the tree holds; ./dist/schema/voting/defs.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/defs.d.ts names no file the tree holds; ./dist/schema/voting/defs.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/defs.d.cts names no file the tree holds; ./dist/schema/voting/relations.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/relations.d.ts names no file the tree holds; ./dist/schema/voting/relations.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/relations.d.cts names no file the tree holds; ./dist/schema/voting/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/types.d.ts names no file the tree holds; ./dist/schema/voting/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/schema/voting/types.d.cts names no file the tree holds; ./dist/types.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/types.d.ts names no file the tree holds; ./dist/types.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/types.d.cts names no file the tree holds\n  TypeScript package @recallnet/eslint-config (packages/eslint-config/package.json): its exports names no TypeScript source klin supports: ./base.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react-internal.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @recallnet/fonts (packages/fonts/package.json): its exports names no TypeScript source klin supports: ./src/index.ts names no file the tree holds\n  TypeScript package @recallnet/rewards (packages/rewards/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./dist/index.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.cts names no file the tree holds\n  TypeScript package @recallnet/services (packages/services/package.json): its exports names no TypeScript source klin supports: ./dist/boost.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/boost.d.ts names no file the tree holds\n  TypeScript package @recallnet/staking-contracts (packages/staking-contracts/package.json): its exports names no TypeScript source klin supports: ./dist/rewards-allocator.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/rewards-allocator.d.ts names no file the tree holds; ./dist/rewards-allocator.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/rewards-allocator.d.cts names no file the tree holds; ./dist/rewards-claimer.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/rewards-claimer.d.ts names no file the tree holds; ./dist/rewards-claimer.cjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/rewards-claimer.d.cts names no file the tree holds\n  TypeScript package @recallnet/typescript-config (packages/typescript-config/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @recallnet/ui2 (packages/ui2/package.json): its exports names no TypeScript source klin supports: a subpath pattern, which klin does not expand; ./src/styles/globals.css is not a TypeScript source or declaration file, and klin does not map generated output back to source; a subpath pattern, which klin does not expand; a subpath pattern, which klin does not expand; ./postcss.config.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package api (apps/api/package.json): its main names no TypeScript source klin supports: dist/src/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package comps (apps/comps/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package recall-monorepo (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "621f33c211cd4b6157f51e56dd9047452ada722d",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

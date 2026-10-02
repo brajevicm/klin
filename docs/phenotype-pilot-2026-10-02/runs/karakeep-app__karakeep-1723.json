@@ -1,0 +1,681 @@
+{
+  "arm": "agent",
+  "repository": "karakeep-app/karakeep",
+  "number": 1723,
+  "base": "f8ae986692f82efe8c1f3940907aab553e4f5a49",
+  "head": "cea4d13e1286ac336188c1a2a1235ef45a41bc5b",
+  "exit": 1,
+  "ms": 3396,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "GEMINI.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "apps/browser-extension/package.json",
+          "apps/cli/package.json",
+          "apps/landing/package.json",
+          "apps/mcp/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "apps/workers/package.json",
+          "docs/package.json",
+          "package.json",
+          "packages/api/package.json",
+          "packages/db/package.json",
+          "packages/e2e_tests/package.json",
+          "packages/open-api/package.json",
+          "packages/sdk/package.json",
+          "packages/shared-react/package.json",
+          "packages/shared/package.json",
+          "packages/trpc/package.json",
+          "tooling/github/package.json",
+          "tooling/oxlint/package.json",
+          "tooling/prettier/package.json",
+          "tooling/tailwind/package.json",
+          "tooling/typescript/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "packages/e2e_tests/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,281 function(s) at f8ae986; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,281 functions at f8ae986, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 65
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/web/components/admin/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "apps/web/components/admin"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/bookmarks/*Editor.tsx",
+            "pattern": "*Editor.tsx",
+            "roots": [
+              "apps/web/components/dashboard/bookmarks"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/lists/*ListModal.tsx",
+            "pattern": "*ListModal.tsx",
+            "roots": [
+              "apps/web/components/dashboard/lists"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/preview/*ContentSection.tsx",
+            "pattern": "*ContentSection.tsx",
+            "roots": [
+              "apps/web/components/dashboard/preview"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/rules/Rule*.tsx",
+            "pattern": "Rule*.tsx",
+            "roots": [
+              "apps/web/components/dashboard/rules"
+            ]
+          },
+          {
+            "name": "apps/web/components/signin/*Form.tsx",
+            "pattern": "*Form.tsx",
+            "roots": [
+              "apps/web/components/signin"
+            ]
+          },
+          {
+            "name": "apps/workers/workers/*Worker.ts",
+            "pattern": "*Worker.ts",
+            "roots": [
+              "apps/workers/workers"
+            ]
+          },
+          {
+            "name": "packages/shared/utils/*Utils.ts",
+            "pattern": "*Utils.ts",
+            "roots": [
+              "packages/shared/utils"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "condition": "over its word ceiling",
+        "file": "AGENTS.md",
+        "fix_advice": "An instruction that can be a gate costs no words — encode it as a gate and point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling is a decision to say why in the commit.",
+        "gate": "doc-size",
+        "outcome": "new",
+        "values": {
+          "ceiling": 50,
+          "words": 392
+        }
+      },
+      {
+        "condition": "over its word ceiling",
+        "file": "CLAUDE.md",
+        "fix_advice": "An instruction that can be a gate costs no words — encode it as a gate and point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling is a decision to say why in the commit.",
+        "gate": "doc-size",
+        "outcome": "new",
+        "values": {
+          "ceiling": 50,
+          "words": 392
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/mobile/app/dashboard/(tabs)/settings.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f969018b339277c9",
+        "line": 15,
+        "matched": {
+          "accepted": false,
+          "file": "apps/mobile/app/dashboard/(tabs)/settings.tsx",
+          "line": 15,
+          "text": "export default function Dashboard() {",
+          "values": {
+            "cc": 4,
+            "lines": 83
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function Dashboard() {",
+        "values": {
+          "cc": 6,
+          "lines": 108
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/mobile/app/dashboard/_layout.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "471069962022f70b",
+        "line": 16,
+        "matched": {
+          "accepted": false,
+          "file": "apps/mobile/app/dashboard/_layout.tsx",
+          "line": 16,
+          "text": "export default function Dashboard() {",
+          "values": {
+            "cc": 1,
+            "lines": 126
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function Dashboard() {",
+        "values": {
+          "cc": 1,
+          "lines": 134
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/mobile/app/dashboard/bookmarks/[slug]/index.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d2d643a28bff4a71",
+        "line": 378,
+        "matched": {
+          "accepted": false,
+          "file": "apps/mobile/app/dashboard/bookmarks/[slug]/index.tsx",
+          "line": 377,
+          "text": "export default function ListView() {",
+          "values": {
+            "cc": 12,
+            "lines": 79
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function ListView() {",
+        "values": {
+          "cc": 12,
+          "lines": 81
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 22,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 6,
+          "measured": 6,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 53,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 22,
+          "measured": 22,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 406,
+        "ms": 32,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 545,
+          "measured": 545,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 101,
+        "ms": 338,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 1089
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 543,
+          "measured": 543,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 15,
+        "ms": 400,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1085,
+          "reads": 1085
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 193,
+        "ms": 70,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 543,
+          "measured": 541,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 145,
+        "ms": 792,
+        "name": "complexity",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 1085,
+          "reads": 1085
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 532,
+          "measured": 530,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1063,
+          "ms": 683,
+          "parses": 1063,
+          "reads": 1063,
+          "shared": 0,
+          "states": 1378
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 45929,
+          "declaration_text_bytes": 140633,
+          "declarations": 3221,
+          "export_leaves": 462,
+          "export_text_bytes": 15844,
+          "exported_alias_bytes": 2555,
+          "exported_aliases": 365,
+          "exports": 210,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1059,
+          "import_text_bytes": 479556,
+          "imports": 5958,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 41686,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.999410956214412,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 10183,
+          "reference_canonical_bytes": 119510,
+          "reference_distinct_names": 5093,
+          "reference_name_bytes": 1027567,
+          "reference_representation_after_bytes": 2262688,
+          "reference_representation_before_bytes": 4525376,
+          "references": 141418,
+          "signature_bytes": 209497,
+          "signatures": 2989,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 11,
+        "ms": 700,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1611,
+            "distinct_names": 5194,
+            "files": 530,
+            "index_ms": 3,
+            "measure_ms": 345,
+            "query_ms": 0,
+            "references": 67033
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1610,
+            "distinct_names": 5190,
+            "files": 529,
+            "index_ms": 3,
+            "measure_ms": 341,
+            "query_ms": 0,
+            "references": 66933
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 25,
+            "ignored_ms": 15,
+            "renames_ms": 0,
+            "walk_ms": 11,
+            "worktree_add_ms": 262,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 3,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 36,
+          "measured": 36,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1063
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 419,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1611,
+            "distinct_names": 5194,
+            "files": 530,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 67033
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1610,
+            "distinct_names": 5190,
+            "files": 529,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 66933
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 23,
+          "measured": 7,
+          "not_measured": 16,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1063
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 992,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 956,
+          "modules": 1063,
+          "ms": 1,
+          "sources": 1063
+        },
+        "held": 0,
+        "ms": 5,
+        "name": "public-api",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 2,
+          "items": 22,
+          "measured": 12,
+          "ms": 2,
+          "opaque": 10,
+          "surfaces": 14
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "apps/landing/src/Homepage.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Privacy.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Homepage.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Privacy.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "11 dead symbol(s) the base already held:\n  apps/cli/src/vite-env.d.ts:7  interface ImportMeta {\n  apps/web/@types/i18next.d.ts:7  interface CustomTypeOptions {\n  apps/web/server/auth.ts:102  async authorize(credentials) {\n  packages/shared/assetdb.ts:121  constructor(rootPath: string) {\n  packages/shared/assetdb.ts:298  constructor(s3Client: S3Client, bucketName: string) {\n  packages/shared/inference.ts:70  constructor() {\n  packages/shared/inference.ts:168  async generateEmbeddingFromText(\n  packages/shared/inference.ts:186  constructor() {\n  packages/shared/inference.ts:299  async generateEmbeddingFromText(\n  packages/shared/searchQueryParser.ts:58  private constructor(\n  packages/trpc/index.ts:44  errorFormatter(opts) {"
+      },
+      {
+        "file": "tooling/tailwind/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./globals.css\" — @karakeep/tailwind-config \"./native\" — ./globals.css is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "16 package(s) or target(s) with no supported public surface:\n  TypeScript package @karakeep/api (packages/api/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/cli (apps/cli/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @karakeep/docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/e2e_tests (packages/e2e_tests/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/github (tooling/github/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/landing (apps/landing/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/mcp (apps/mcp/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/prettier-config (tooling/prettier/package.json): its exports names no TypeScript source klin supports: ./index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @karakeep/shared-react (packages/shared-react/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/trpc (packages/trpc/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/tsconfig (tooling/typescript/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/web (apps/web/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/workers (apps/workers/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package browser-extension (apps/browser-extension/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package karakeep (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package oxlint (tooling/oxlint/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "f8ae986692f82efe8c1f3940907aab553e4f5a49",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

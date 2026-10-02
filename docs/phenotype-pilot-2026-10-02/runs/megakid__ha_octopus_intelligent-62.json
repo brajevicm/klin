@@ -1,0 +1,382 @@
+{
+  "arm": "human",
+  "repository": "megakid/ha_octopus_intelligent",
+  "number": 62,
+  "base": "9800a5b21b5bfe17c0dbe35bcdbe719d33680422",
+  "head": "387bc79e337b268a436eb0e10809f4b5ff00d9f4",
+  "exit": 1,
+  "ms": 239,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 156 function(s) at 9800a5b; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 156 functions at 9800a5b, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 31
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 31",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 31 lines)",
+        "file": "custom_components/octopus_intelligent/graphql_client.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "04278b7a58b9289c",
+        "line": 123,
+        "matched": {
+          "accepted": false,
+          "file": "custom_components/octopus_intelligent/graphql_client.py",
+          "line": 123,
+          "text": "async def __async_set_charge_preferences(self, session, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int):",
+          "values": {
+            "cc": 5,
+            "lines": 34
+          }
+        },
+        "outcome": "worsened",
+        "text": "async def __async_set_charge_preferences(self, session, account_id: str, readyByHoursAfterMidnight: float, targetSocPercent: int):",
+        "values": {
+          "cc": 6,
+          "lines": 46
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 13,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 13,
+          "measured": 13,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 22,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 26
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 12,
+          "measured": 12,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 13,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 24,
+          "reads": 24
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 12,
+          "measured": 12,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 7,
+        "ms": 44,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 24,
+          "reads": 24
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0,
+          "states": 0
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 0,
+          "declaration_text_bytes": 0,
+          "declarations": 0,
+          "export_leaves": 0,
+          "export_text_bytes": 0,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 0,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 0,
+          "import_text_bytes": 0,
+          "imports": 0,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 0,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 0.0,
+          "reference_canonical_allocation_ratio_milli": 0,
+          "reference_canonical_allocations": 0,
+          "reference_canonical_bytes": 0,
+          "reference_distinct_names": 0,
+          "reference_name_bytes": 0,
+          "reference_representation_after_bytes": 0,
+          "reference_representation_before_bytes": 0,
+          "references": 0,
+          "signature_bytes": 0,
+          "signatures": 0,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 0,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 12,
+            "ignored_ms": 6,
+            "renames_ms": 0,
+            "walk_ms": 0,
+            "worktree_add_ms": 18,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 0,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "edges": 0,
+          "modules": 0,
+          "ms": 0,
+          "sources": 0
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [],
+    "status": "FAIL",
+    "summary": "klin: 7 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "9800a5b21b5bfe17c0dbe35bcdbe719d33680422",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

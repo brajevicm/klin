@@ -1,0 +1,3 @@
+anthropics__claude-code-8480	ts	exact	@testing-library/react	ime-fix/__tests__/useImeAwareSubmit.test.tsx:7	excluded	test
+anthropics__claude-code-8480	ts	exact	@testing-library/react-hooks	ime-fix/__tests__/useImeAwareSubmit.test.tsx:6	excluded	test
+anthropics__claude-code-8480	ts	exact	react	ime-fix/ChatInput.example.tsx:6	finding	-

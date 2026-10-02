@@ -1,0 +1,12 @@
+{
+  "arm": "agent",
+  "repository": "MontrealAI/AGI-Alpha-Agent-v0",
+  "number": 3073,
+  "base": "09a39cc21d4ce79781c54e29d19d7b1a76472603",
+  "head": "35bffe634035d44f92e764643ebaa33c19403605",
+  "exit": 137,
+  "ms": 451332,
+  "report": null,
+  "stdout": "",
+  "stderr": ""
+}

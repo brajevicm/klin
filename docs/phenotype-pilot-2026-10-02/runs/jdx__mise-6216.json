@@ -1,0 +1,577 @@
+{
+  "arm": "agent",
+  "repository": "jdx/mise",
+  "number": 6216,
+  "base": "15a9aede95c8ad953842c206df3b6c9a3960100f",
+  "head": "bfc02629b4a1adef0d10d6cd26d1df87cfb92c13",
+  "exit": 1,
+  "ms": 7178,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 950
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CHANGELOG.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "README.md",
+          "SECURITY.md",
+          "tasks.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "crates/vfox/Cargo.toml",
+          "docs/package.json",
+          "package.json"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 2,747 functions at 15a9aed, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 11
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 2,747 functions at 15a9aed, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 50
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "crates/vfox/src/hooks/*_install.rs",
+            "pattern": "*_install.rs",
+            "roots": [
+              "crates/vfox/src/hooks"
+            ]
+          },
+          {
+            "name": "crates/vfox/src/hooks/backend_*.rs",
+            "pattern": "backend_*.rs",
+            "roots": [
+              "crates/vfox/src/hooks"
+            ]
+          },
+          {
+            "name": "src/cli/args/*_arg.rs",
+            "pattern": "*_arg.rs",
+            "roots": [
+              "src/cli/args"
+            ]
+          },
+          {
+            "name": "src/task/task_*.rs",
+            "pattern": "task_*.rs",
+            "roots": [
+              "src/task"
+            ]
+          },
+          {
+            "name": "src/toolset/tool_*.rs",
+            "pattern": "tool_*.rs",
+            "roots": [
+              "src/toolset"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 11, lines 50",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 50 lines)",
+        "file": "src/cli/run.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "fc5c6affa8a12b5a",
+        "line": 216,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub async fn run(mut self) -> Result<()> {",
+        "values": {
+          "cc": 14,
+          "lines": 38
+        }
+      },
+      {
+        "ceiling": "cc 11, lines 50",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 50 lines)",
+        "file": "src/cli/mod.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5c350da8253ec11c",
+        "line": 362,
+        "matched": {
+          "accepted": false,
+          "file": "src/cli/mod.rs",
+          "line": 362,
+          "text": "async fn get_command(self) -> Result<Commands> {",
+          "values": {
+            "cc": 9,
+            "lines": 51
+          }
+        },
+        "outcome": "worsened",
+        "text": "async fn get_command(self) -> Result<Commands> {",
+        "values": {
+          "cc": 9,
+          "lines": 52
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 9,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 6,
+          "measured": 6,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 70,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 122,
+        "ms": 10,
+        "name": "lockfile",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 363,
+          "measured": 363,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 626,
+        "ms": 1005,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 594,
+          "reads": 726
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 308,
+          "measured": 308,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 57,
+        "ms": 467,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 616,
+          "reads": 616
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 18,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 306,
+          "measured": 304,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 187,
+        "ms": 1034,
+        "name": "complexity",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 612,
+          "reads": 612
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 303,
+          "measured": 301,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 606,
+          "ms": 1642,
+          "parses": 606,
+          "reads": 606,
+          "shared": 0,
+          "states": 2266
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 82405,
+          "declaration_text_bytes": 319739,
+          "declarations": 6823,
+          "export_leaves": 78,
+          "export_text_bytes": 4490,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 68,
+          "extern_crate_bytes": 60,
+          "extern_crates": 8,
+          "files": 602,
+          "import_text_bytes": 527085,
+          "imports": 5474,
+          "module_declarations": 728,
+          "module_text_bytes": 18560,
+          "nesting_bytes": 4996,
+          "nesting_entries": 994,
+          "nestings": 994,
+          "owner_bytes": 21102,
+          "owners": 2271,
+          "path_bytes": 13226,
+          "qualified_paths": 444,
+          "reference_canonical_allocation_ratio": 1.9994212962962963,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 10365,
+          "reference_canonical_bytes": 112264,
+          "reference_distinct_names": 5184,
+          "reference_name_bytes": 1257148,
+          "reference_representation_after_bytes": 3218720,
+          "reference_representation_before_bytes": 6437440,
+          "references": 201170,
+          "signature_bytes": 384822,
+          "signatures": 6823,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 12,
+        "ms": 1663,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 3412,
+            "distinct_names": 5581,
+            "files": 301,
+            "index_ms": 4,
+            "measure_ms": 830,
+            "query_ms": 0,
+            "references": 94358
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3411,
+            "distinct_names": 5578,
+            "files": 301,
+            "index_ms": 4,
+            "measure_ms": 814,
+            "query_ms": 0,
+            "references": 94302
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 107,
+            "ignored_ms": 90,
+            "renames_ms": 0,
+            "walk_ms": 92,
+            "worktree_add_ms": 673,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 3,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 17,
+          "measured": 17,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 594
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1210,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 3334,
+            "distinct_names": 5267,
+            "files": 295,
+            "index_ms": 3,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 90735
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3333,
+            "distinct_names": 5264,
+            "files": 295,
+            "index_ms": 3,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 90691
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 1,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 606
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 3693,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 3277,
+          "modules": 750,
+          "ms": 5,
+          "sources": 750
+        },
+        "held": 0,
+        "ms": 9,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 84,
+          "measured": 84,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "docs/package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "docs/package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "crates/vfox/src/lua_mod/cmd.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "crates/vfox/src/lua_mod/html.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "crates/vfox/src/lua_mod/cmd.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "crates/vfox/src/lua_mod/html.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "12 dead symbol(s) the base already held:\n  src/cli/settings/ls.rs:216  fn display_option_path(o: &Option<PathBuf>) -> String {\n  src/config/settings.rs:517  fn bool_string<'de, D>(deserializer: D) -> Result<bool, D::Error>\n  src/config/settings.rs:528  fn set_by_comma<T, C>(input: &str) -> Result<C, <T as FromStr>::Err>\n  src/toolset/outdated_info.rs:132  fn display_current(current: &Option<String>) -> String {\n  src/toolset/outdated_info.rs:140  fn display_bump(bump: &Option<String>) -> String {\n  xtasks/fig/addCustomGenerators.ts:57  const get_object_literal_name = (node: ts.Node): string => {\n  xtasks/fig/generators.ts:53  const pluginWithAlias: Fig.Generator = {\n  xtasks/fig/generators.ts:129  const allPluginsGenerator: Fig.Generator =\n  xtasks/fig/generators.ts:143  type GitHubAssetInfo = {\n  xtasks/fig/src/mise.ts:53  const pluginWithAlias: Fig.Generator = {\n  xtasks/fig/src/mise.ts:129  const allPluginsGenerator: Fig.Generator =\n  xtasks/fig/src/mise.ts:143  type GitHubAssetInfo = {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  Rust package mise (Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package @mise/docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package mise (package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "15a9aede95c8ad953842c206df3b6c9a3960100f",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

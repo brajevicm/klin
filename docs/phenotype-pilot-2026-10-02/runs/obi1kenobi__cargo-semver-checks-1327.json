@@ -1,0 +1,12 @@
+{
+  "arm": "human",
+  "repository": "obi1kenobi/cargo-semver-checks",
+  "number": 1327,
+  "base": "85f7671bdce6468430a6a75bc2b4e08688f3d241",
+  "head": "04c79891e8dd91a618e59ad1c61c5ad31f6f2495",
+  "exit": 134,
+  "ms": 3153,
+  "report": null,
+  "stdout": "",
+  "stderr": "\nthread 'main' (22442730) has overflowed its stack\nfatal runtime error: stack overflow, aborting"
+}

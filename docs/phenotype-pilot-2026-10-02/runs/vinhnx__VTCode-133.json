@@ -1,0 +1,750 @@
+{
+  "arm": "agent",
+  "repository": "vinhnx/VTCode",
+  "number": 133,
+  "base": "c675045819b37efd9f4a27cb4588363c5367ce89",
+  "head": "b03494ecc5ca9acbd4f5c755e134655686d567c6",
+  "exit": 0,
+  "ms": 5210,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1600
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "README.md",
+          "RELEASES.md",
+          "ROADMAP.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "npm/package.json",
+          "tools/Cargo.toml",
+          "vtcode-core/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests",
+          "vtcode-core/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 2,501 functions at c675045, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 2,501 functions at c675045, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 71
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 8,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3,
+        "ms": 49,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 129,
+        "ms": 9,
+        "name": "lockfile",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 307,
+          "measured": 307,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 101,
+        "ms": 810,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 564,
+          "reads": 614
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 287,
+          "measured": 287,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 4,
+        "ms": 461,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 574,
+          "reads": 574
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 47,
+          "measured": 47,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 161,
+        "ms": 40,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 288,
+          "measured": 287,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 154,
+        "ms": 1013,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 576,
+          "reads": 576
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 282,
+          "measured": 281,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 564,
+          "ms": 1683,
+          "parses": 564,
+          "reads": 564,
+          "shared": 0,
+          "states": 1834
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 112386,
+          "declaration_text_bytes": 309959,
+          "declarations": 6745,
+          "export_leaves": 620,
+          "export_text_bytes": 38750,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 336,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 562,
+          "import_text_bytes": 376200,
+          "imports": 3008,
+          "module_declarations": 631,
+          "module_text_bytes": 23495,
+          "nesting_bytes": 8075,
+          "nesting_entries": 1437,
+          "nestings": 1339,
+          "owner_bytes": 37772,
+          "owners": 2864,
+          "path_bytes": 19764,
+          "qualified_paths": 340,
+          "reference_canonical_allocation_ratio": 1.9998346287415247,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 12093,
+          "reference_canonical_bytes": 154483,
+          "reference_distinct_names": 6047,
+          "reference_name_bytes": 1456788,
+          "reference_representation_after_bytes": 3004832,
+          "reference_representation_before_bytes": 6009664,
+          "references": 187802,
+          "signature_bytes": 403822,
+          "signatures": 6745,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 1702,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 3377,
+            "distinct_names": 6694,
+            "files": 281,
+            "index_ms": 4,
+            "measure_ms": 841,
+            "query_ms": 0,
+            "references": 90030
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3368,
+            "distinct_names": 6685,
+            "files": 281,
+            "index_ms": 4,
+            "measure_ms": 843,
+            "query_ms": 0,
+            "references": 89902
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 18,
+            "ignored_ms": 10,
+            "renames_ms": 0,
+            "walk_ms": 3,
+            "worktree_add_ms": 85,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 845,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 2,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 564
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1454,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 1170,
+          "modules": 609,
+          "ms": 3,
+          "sources": 609
+        },
+        "held": 0,
+        "ms": 15,
+        "name": "public-api",
+        "names": null,
+        "notes": 40,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 78,
+          "items": 6418,
+          "measured": 5986,
+          "ms": 7,
+          "opaque": 432,
+          "surfaces": 4
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "npm/package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "npm/package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "src/agent/runloop/unified/turn.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "src/agent/runloop/unified/turn.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 48,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub async fn complete(&self, context: &CompletionContext) -> Vec<CompletionSuggestion> { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 119,
+        "outcome": "unresolved",
+        "text": "pub async fn record_feedback(&self, suggestion_id: &str, accepted: bool) { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/suggestions.rs",
+        "gate": "public-api",
+        "line": 23,
+        "outcome": "unresolved",
+        "text": "pub fn new(text: String, kind: CompletionKind, context: CompletionContext) -> Self { — vtcode_core — an inherent impl of CompletionSuggestion outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/suggestions.rs",
+        "gate": "public-api",
+        "line": 38,
+        "outcome": "unresolved",
+        "text": "pub fn update_acceptance_rate(&mut self, accepted: bool) { — vtcode_core — an inherent impl of CompletionSuggestion outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_quality/metrics/mod.rs",
+        "gate": "public-api",
+        "line": 22,
+        "outcome": "unresolved",
+        "text": "pub fn quality_score(&self) -> f64 { — vtcode_core — an inherent impl of QualityMetrics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/intelligence.rs",
+        "gate": "public-api",
+        "line": 621,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/intelligence.rs",
+        "gate": "public-api",
+        "line": 625,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_completions( — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 486,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 496,
+        "outcome": "unresolved",
+        "text": "pub async fn record_operation(&self, operation: &str) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 502,
+        "outcome": "unresolved",
+        "text": "pub async fn record_error(&self, operation: &str) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 508,
+        "outcome": "unresolved",
+        "text": "pub async fn record_memory_usage(&self, usage_bytes: usize) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 519,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_report(&self) -> PerformanceReport { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 29,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 48,
+        "outcome": "unresolved",
+        "text": "pub async fn start_operation(&self, operation_id: String) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub async fn end_operation(&self, operation_id: String, success: bool) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 92,
+        "outcome": "unresolved",
+        "text": "pub async fn record_context_prediction(&self, correct: bool) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 114,
+        "outcome": "unresolved",
+        "text": "pub async fn update_cache_hit_rate(&self, hit_rate: f64) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 120,
+        "outcome": "unresolved",
+        "text": "pub async fn update_memory_usage(&self, memory_mb: usize) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 126,
+        "outcome": "unresolved",
+        "text": "pub async fn get_metrics(&self) -> PerformanceMetrics { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 132,
+        "outcome": "unresolved",
+        "text": "pub async fn average_response_time(&self) -> Duration { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 143,
+        "outcome": "unresolved",
+        "text": "pub async fn percentile_95_response_time(&self) -> Duration { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 157,
+        "outcome": "unresolved",
+        "text": "pub async fn check_phase1_targets(&self) -> Phase1Status { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 173,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_report(&self) -> String { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/token_budget.rs",
+        "gate": "public-api",
+        "line": 46,
+        "outcome": "unresolved",
+        "text": "pub fn for_model(model: &str, max_tokens: usize) -> Self { — vtcode_core — an inherent impl of TokenBudgetConfig outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/gemini/models/mod.rs",
+        "gate": "public-api",
+        "line": 102,
+        "outcome": "unresolved",
+        "text": "pub fn auto() -> Self { — vtcode_core — an inherent impl of ToolConfig outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 260,
+        "outcome": "unresolved",
+        "text": "pub fn user(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 270,
+        "outcome": "unresolved",
+        "text": "pub fn assistant(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 281,
+        "outcome": "unresolved",
+        "text": "pub fn assistant_with_tools(content: String, tool_calls: Vec<ToolCall>) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 291,
+        "outcome": "unresolved",
+        "text": "pub fn system(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 309,
+        "outcome": "unresolved",
+        "text": "pub fn tool_response(tool_call_id: String, content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 320,
+        "outcome": "unresolved",
+        "text": "pub fn tool_response_with_name( — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 331,
+        "outcome": "unresolved",
+        "text": "pub fn validate_for_provider(&self, provider: &str) -> Result<(), String> { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 385,
+        "outcome": "unresolved",
+        "text": "pub fn has_tool_calls(&self) -> bool { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 392,
+        "outcome": "unresolved",
+        "text": "pub fn get_tool_calls(&self) -> Option<&[ToolCall]> { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 397,
+        "outcome": "unresolved",
+        "text": "pub fn is_tool_response(&self) -> bool { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 523,
+        "outcome": "unresolved",
+        "text": "pub fn function(name: String, description: String, parameters: Value) -> Self { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 535,
+        "outcome": "unresolved",
+        "text": "pub fn function_name(&self) -> &str { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 540,
+        "outcome": "unresolved",
+        "text": "pub fn validate(&self) -> Result<(), String> { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  Rust package anstyle-migration-tool (tools/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package vtcode (npm/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "c675045819b37efd9f4a27cb4588363c5367ce89",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

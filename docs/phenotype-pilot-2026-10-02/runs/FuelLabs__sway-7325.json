@@ -1,0 +1,722 @@
+{
+  "arm": "agent",
+  "repository": "FuelLabs/sway",
+  "number": 7325,
+  "base": "5d5ca3494954451e2b8799d7165d34516efe8d52",
+  "head": "ec7bb2674bd075084cdee2fd82fd086836489ad3",
+  "exit": 0,
+  "ms": 19581,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "forc-pkg/Cargo.toml",
+          "forc-plugins/forc-client/Cargo.toml",
+          "forc-plugins/forc-crypto/Cargo.toml",
+          "forc-plugins/forc-debug/Cargo.toml",
+          "forc-plugins/forc-doc/Cargo.toml",
+          "forc-plugins/forc-fmt/Cargo.toml",
+          "forc-plugins/forc-lsp/Cargo.toml",
+          "forc-plugins/forc-mcp/Cargo.toml",
+          "forc-plugins/forc-migrate/Cargo.toml",
+          "forc-plugins/forc-node/Cargo.toml",
+          "forc-plugins/forc-publish/Cargo.toml",
+          "forc-plugins/forc-tx/Cargo.toml",
+          "forc-test/Cargo.toml",
+          "forc-tracing/Cargo.toml",
+          "forc-util/Cargo.toml",
+          "forc/Cargo.toml",
+          "scripts/mdbook-forc-documenter/Cargo.toml",
+          "sway-ast/Cargo.toml",
+          "sway-core/Cargo.toml",
+          "sway-error/Cargo.toml",
+          "sway-features/Cargo.toml",
+          "sway-ir/Cargo.toml",
+          "sway-ir/sway-ir-macros/Cargo.toml",
+          "sway-lsp/Cargo.toml",
+          "sway-lsp/tests/utils/Cargo.toml",
+          "sway-parse/Cargo.toml",
+          "sway-types/Cargo.toml",
+          "sway-utils/Cargo.toml",
+          "swayfmt/Cargo.toml",
+          "swayfmt/test_macros/Cargo.toml",
+          "templates/sway-predicate-test-rs/template/Cargo.toml",
+          "templates/sway-script-test-rs/template/Cargo.toml",
+          "templates/sway-test-rs/template/Cargo.toml",
+          "test/Cargo.toml",
+          "test/src/sdk-harness/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "forc-plugins/forc-client/tests",
+          "forc-plugins/forc-debug/tests",
+          "forc-plugins/forc-doc/tests",
+          "forc-plugins/forc-node/tests",
+          "forc/tests",
+          "sway-ir/tests",
+          "sway-lsp/tests",
+          "sway-parse/tests",
+          "swayfmt/tests",
+          "templates/sway-predicate-test-rs/template/tests",
+          "templates/sway-script-test-rs/template/tests",
+          "templates/sway-test-rs/template/tests",
+          "test"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 7,867 functions at 5d5ca34, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 14
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 7,867 functions at 5d5ca34, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 90
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "sway-ast/src/item/item_*.rs",
+            "pattern": "item_*.rs",
+            "roots": [
+              "sway-ast/src/item"
+            ]
+          },
+          {
+            "name": "sway-core/src/asm_lang/virtual_*.rs",
+            "pattern": "virtual_*.rs",
+            "roots": [
+              "sway-core/src/asm_lang"
+            ]
+          },
+          {
+            "name": "sway-core/src/decl_engine/*_id.rs",
+            "pattern": "*_id.rs",
+            "roots": [
+              "sway-core/src/decl_engine"
+            ]
+          },
+          {
+            "name": "sway-core/src/semantic_analysis/*_analysis.rs",
+            "pattern": "*_analysis.rs",
+            "roots": [
+              "sway-core/src/semantic_analysis"
+            ]
+          },
+          {
+            "name": "sway-core/src/semantic_analysis/*_context.rs",
+            "pattern": "*_context.rs",
+            "roots": [
+              "sway-core/src/semantic_analysis"
+            ]
+          },
+          {
+            "name": "sway-core/src/semantic_analysis/type_check_*.rs",
+            "pattern": "type_check_*.rs",
+            "roots": [
+              "sway-core/src/semantic_analysis"
+            ]
+          },
+          {
+            "name": "sway-error/src/*_error.rs",
+            "pattern": "*_error.rs",
+            "roots": [
+              "sway-error/src"
+            ]
+          },
+          {
+            "name": "sway-ir/src/optimize/*_demotion.rs",
+            "pattern": "*_demotion.rs",
+            "roots": [
+              "sway-ir/src/optimize"
+            ]
+          },
+          {
+            "name": "sway-lsp/src/traverse/*_tree.rs",
+            "pattern": "*_tree.rs",
+            "roots": [
+              "sway-lsp/src/traverse"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 66,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 36,
+          "measured": 36,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 760,
+        "ms": 25,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 859,
+          "measured": 859,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1019,
+        "ms": 3167,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1684,
+          "reads": 1718
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 848,
+          "measured": 848,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 205,
+        "ms": 1585,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1696,
+          "reads": 1696
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5811,
+          "measured": 5811,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 6310,
+        "ms": 218,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 846,
+          "measured": 846,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 500,
+        "ms": 3337,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1692,
+          "reads": 1692
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 840,
+          "measured": 840,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1680,
+          "ms": 5421,
+          "parses": 1680,
+          "reads": 1680,
+          "shared": 0,
+          "states": 3666
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 270540,
+          "declaration_text_bytes": 819450,
+          "declarations": 18310,
+          "export_leaves": 828,
+          "export_text_bytes": 35520,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 414,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1680,
+          "import_text_bytes": 1450746,
+          "imports": 7744,
+          "module_declarations": 1740,
+          "module_text_bytes": 49824,
+          "nesting_bytes": 11022,
+          "nesting_entries": 1906,
+          "nestings": 1738,
+          "owner_bytes": 64490,
+          "owners": 5672,
+          "path_bytes": 71052,
+          "qualified_paths": 728,
+          "reference_canonical_allocation_ratio": 2.0,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 35374,
+          "reference_canonical_bytes": 483122,
+          "reference_distinct_names": 17687,
+          "reference_name_bytes": 5879696,
+          "reference_representation_after_bytes": 12100096,
+          "reference_representation_before_bytes": 24200192,
+          "references": 756256,
+          "signature_bytes": 1361394,
+          "signatures": 18310,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 13,
+        "ms": 5503,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 9155,
+            "distinct_names": 18646,
+            "files": 840,
+            "index_ms": 17,
+            "measure_ms": 2642,
+            "query_ms": 0,
+            "references": 358690
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 9155,
+            "distinct_names": 18646,
+            "files": 840,
+            "index_ms": 17,
+            "measure_ms": 2786,
+            "query_ms": 0,
+            "references": 358682
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 150,
+            "ignored_ms": 108,
+            "renames_ms": 0,
+            "walk_ms": 116,
+            "worktree_add_ms": 1335,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 35,
+          "measured": 35,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1680
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 3034,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 9155,
+            "distinct_names": 18646,
+            "files": 840,
+            "index_ms": 15,
+            "measure_ms": 2,
+            "query_ms": 0,
+            "references": 358690
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 9155,
+            "distinct_names": 18646,
+            "files": 840,
+            "index_ms": 15,
+            "measure_ms": 2,
+            "query_ms": 0,
+            "references": 358682
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 31,
+          "measured": 28,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1680
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 5616,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 4930,
+          "modules": 1670,
+          "ms": 23,
+          "sources": 1670
+        },
+        "held": 0,
+        "ms": 45,
+        "name": "public-api",
+        "names": null,
+        "notes": 26,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 50,
+          "items": 8574,
+          "measured": 7846,
+          "ms": 12,
+          "opaque": 728,
+          "surfaces": 56
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "13 dead symbol(s) the base already held:\n  forc-plugins/forc-lsp/src/main.rs:7  static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;\n  forc-plugins/forc-mcp/src/forc_call/mod.rs:83  async fn call_contract(\n  forc-plugins/forc-mcp/src/forc_call/mod.rs:220  async fn transfer_assets(\n  forc-plugins/forc-mcp/src/forc_call/mod.rs:277  async fn get_execution_trace(\n  sway-core/src/asm_generation/evm/evm_asm_builder.rs:455  fn compile_get_storage_key(\n  sway-core/src/transform/to_parsed_lang/convert_parse_tree.rs:4663  fn generic_args_to_type_parameters(\n  sway-error/src/warning.rs:327  const FUTURE_HARD_ERROR_HELP: &str =\n  sway-lsp/benches/bench_main.rs:8  static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;\n  sway-lsp/src/config.rs:102  enum LevelFilterDef {\n  sway-lsp/src/utils/debug.rs:60  fn literal_to_string(literal: &Literal) -> String {\n  sway-lsp/tests/lib.rs:299  fn did_cache_test() {\n  sway-lsp/tests/lib.rs:320  fn did_change_stress_test() {\n  sway-lsp/tests/lib.rs:2317  async fn write_all_example_asts() {"
+      },
+      {
+        "file": "forc-pkg/src/pkg.rs",
+        "gate": "public-api",
+        "line": 1161,
+        "outcome": "unresolved",
+        "text": "pub fn id(&self) -> PinnedId { — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/pkg.rs",
+        "gate": "public-api",
+        "line": 1166,
+        "outcome": "unresolved",
+        "text": "pub fn unpinned(&self, path: &Path) -> Pkg { — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/git/mod.rs",
+        "gate": "public-api",
+        "line": 147,
+        "outcome": "unresolved",
+        "text": "pub const PREFIX: &'static str = \"git\"; — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/ipfs.rs",
+        "gate": "public-api",
+        "line": 35,
+        "outcome": "unresolved",
+        "text": "pub const PREFIX: &'static str = \"ipfs\"; — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 203,
+        "outcome": "unresolved",
+        "text": "pub fn from_manifest_dep( — forc_pkg — an inherent impl of Source outside the module that declares it, and 6 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 264,
+        "outcome": "unresolved",
+        "text": "pub fn from_manifest_dep_patched( — forc_pkg — an inherent impl of Source outside the module that declares it, and 6 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 295,
+        "outcome": "unresolved",
+        "text": "pub fn apply_patch( — forc_pkg — an inherent impl of Source outside the module that declares it, and 6 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 354,
+        "outcome": "unresolved",
+        "text": "pub fn semver(&self) -> Option<semver::Version> { — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 367,
+        "outcome": "unresolved",
+        "text": "pub fn display_compiling<'a>(&'a self, manifest_dir: &'a Path) -> DisplayCompiling<'a, Self> { — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/mod.rs",
+        "gate": "public-api",
+        "line": 375,
+        "outcome": "unresolved",
+        "text": "pub fn unpinned(&self, path: &Path) -> Source { — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/path.rs",
+        "gate": "public-api",
+        "line": 34,
+        "outcome": "unresolved",
+        "text": "pub const PREFIX: &'static str = \"path\"; — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-pkg/src/source/reg/mod.rs",
+        "gate": "public-api",
+        "line": 165,
+        "outcome": "unresolved",
+        "text": "pub const PREFIX: &str = \"registry\"; — forc_pkg — an inherent impl of Pinned outside the module that declares it, and 7 modules declare a type of that name"
+      },
+      {
+        "file": "forc-plugins/forc-client/src/cmd/call.rs",
+        "gate": "public-api",
+        "line": 416,
+        "outcome": "unresolved",
+        "text": "pub fn validate_and_get_operation(&self) -> Result<Operation, String> { — forc_client — an inherent impl of Command outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "forc-plugins/forc-crypto/src/keys/vanity.rs",
+        "gate": "public-api",
+        "line": 83,
+        "outcome": "unresolved",
+        "text": "pub fn validate(&self) -> anyhow::Result<()> { — forc_crypto — an inherent impl of Arg outside the module that declares it, and 4 modules declare a type of that name"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — arg_demotion is provided by this glob and by the glob at sway-ir/src/optimize.rs:17"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — const_demotion is provided by this glob and by the glob at sway-ir/src/optimize.rs:19"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — cse is provided by this glob and by the glob at sway-ir/src/optimize.rs:25"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — dce is provided by this glob and by the glob at sway-ir/src/optimize.rs:27"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — misc_demotion is provided by this glob and by the glob at sway-ir/src/optimize.rs:35"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — simplify_cfg is provided by this glob and by the glob at sway-ir/src/optimize.rs:39"
+      },
+      {
+        "file": "sway-ir/src/lib.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub use optimize::*; — sway_ir — sroa is provided by this glob and by the glob at sway-ir/src/optimize.rs:41"
+      },
+      {
+        "file": "sway-types/src/lib.rs",
+        "gate": "public-api",
+        "line": 156,
+        "outcome": "unresolved",
+        "text": "pub fn bytes(&self) -> io::Result<slice::Iter<'_, u8>> { — sway_types — an inherent impl of Source outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "sway-types/src/span.rs",
+        "gate": "public-api",
+        "line": 63,
+        "outcome": "unresolved",
+        "text": "pub fn new(text: &str) -> Self { — sway_types — an inherent impl of Source outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "sway-types/src/span.rs",
+        "gate": "public-api",
+        "line": 71,
+        "outcome": "unresolved",
+        "text": "pub fn line_col_zero_index(&self, position: usize) -> LineCol { — sway_types — an inherent impl of Source outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "sway-types/src/span.rs",
+        "gate": "public-api",
+        "line": 88,
+        "outcome": "unresolved",
+        "text": "pub fn line_col_one_index(&self, position: usize) -> LineCol { — sway_types — an inherent impl of Source outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  Rust package forc-fmt (forc-plugins/forc-fmt/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package forc-lsp (forc-plugins/forc-lsp/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package test (test/Cargo.toml): has no library target, and a binary has no public surface"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 9 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "5d5ca3494954451e2b8799d7165d34516efe8d52",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

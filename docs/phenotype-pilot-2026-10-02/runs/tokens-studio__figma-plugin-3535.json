@@ -1,0 +1,927 @@
+{
+  "arm": "agent",
+  "repository": "tokens-studio/figma-plugin",
+  "number": 3535,
+  "base": "a6e27e1580088267bc16187c50d604eaf00f579a",
+  "head": "3f044c52ce2fa2a60553ead2df49fdcdd0f828ec",
+  "exit": 1,
+  "ms": 8571,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 700
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CLAUDE.md",
+          "LICENSE.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json",
+          "packages/tokens-studio-for-figma/package.json",
+          "packages/tokens-studio-for-figma/token-transformer/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "packages/tokens-studio-for-figma/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 5,752 function(s) at a6e27e1; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 5,752 functions at a6e27e1, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 64
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Badge.tsx",
+            "pattern": "*Badge.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Display.tsx",
+            "pattern": "*Display.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*DownShiftInput.tsx",
+            "pattern": "*DownShiftInput.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Dropdown.tsx",
+            "pattern": "*Dropdown.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Form.tsx",
+            "pattern": "*Form.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Modal.tsx",
+            "pattern": "*Modal.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/*Selector.tsx",
+            "pattern": "*Selector.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/Inspector*.tsx",
+            "pattern": "Inspector*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/Storage*.tsx",
+            "pattern": "Storage*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/AppContainer/startupProcessSteps/*Factory.ts",
+            "pattern": "*Factory.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/AppContainer/startupProcessSteps"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/DownshiftInput/*Input.tsx",
+            "pattern": "*Input.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/DownshiftInput"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/*Entry.tsx",
+            "pattern": "*Entry.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/ManageThemesModal"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/MoreButton/More*.tsx",
+            "pattern": "More*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/MoreButton"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/components/StyledDragger/Styled*.tsx",
+            "pattern": "Styled*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/components/StyledDragger"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/hooks/use*.tsx",
+            "pattern": "use*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/hooks"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/store/*Tokens.tsx",
+            "pattern": "*Tokens.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/store"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/app/store/models/*State.tsx",
+            "pattern": "*State.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/app/store/models"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*ProviderType.ts",
+            "pattern": "*ProviderType.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*Status.ts",
+            "pattern": "*Status.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/constants/*Types.ts",
+            "pattern": "*Types.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/constants"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/figmaStorage/*Property.ts",
+            "pattern": "*Property.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/figmaStorage"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Node.ts",
+            "pattern": "*Node.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Plugin.ts",
+            "pattern": "*Plugin.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Target.ts",
+            "pattern": "*Target.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/*Variable.ts",
+            "pattern": "*Variable.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/plugin/figmaUtils/styleMatchers/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/plugin/figmaUtils/styleMatchers"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*SetSelector.ts",
+            "pattern": "*SetSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*TokensSelector.ts",
+            "pattern": "*TokensSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/*TypeSelector.ts",
+            "pattern": "*TypeSelector.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/active*.ts",
+            "pattern": "active*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/collapsed*.ts",
+            "pattern": "collapsed*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/get*.ts",
+            "pattern": "get*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/show*.ts",
+            "pattern": "show*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/styles*.ts",
+            "pattern": "styles*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/token*.ts",
+            "pattern": "token*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/selectors/variables*.ts",
+            "pattern": "variables*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/selectors"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/*Storage.ts",
+            "pattern": "*Storage.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/schemas/*Schema.ts",
+            "pattern": "*Schema.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/schemas"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/*Studio.ts",
+            "pattern": "*Studio.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql/*Mutation.ts",
+            "pattern": "*Mutation.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql/*Query.ts",
+            "pattern": "*Query.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/storage/tokensStudio/graphql"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/*Options.ts",
+            "pattern": "*Options.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/Node*.ts",
+            "pattern": "Node*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/payloads/*Payload.ts",
+            "pattern": "*Payload.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/payloads"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/redux/*Action.ts",
+            "pattern": "*Action.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/redux"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/tokens/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/tokens"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/types/values/*Value.ts",
+            "pattern": "*Value.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/types/values"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Equal.ts",
+            "pattern": "*Equal.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Key.ts",
+            "pattern": "*Key.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Map.ts",
+            "pattern": "*Map.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/*Value.ts",
+            "pattern": "*Value.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/remove*.ts",
+            "pattern": "remove*.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/alias/check*.tsx",
+            "pattern": "check*.tsx",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/alias"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/is/*Token.ts",
+            "pattern": "*Token.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/is"
+            ]
+          },
+          {
+            "name": "packages/tokens-studio-for-figma/src/utils/is/*Type.ts",
+            "pattern": "*Type.ts",
+            "roots": [
+              "packages/tokens-studio-for-figma/src/utils/is"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/components/TokenGroup/TokenGroupHeading.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "74be344b1e1c97bb",
+        "line": 37,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function TokenGroupHeading({",
+        "values": {
+          "cc": 4,
+          "lines": 155
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/utils/themeListToTree.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "aa8bf30b6002aca5",
+        "line": 21,
+        "matched": null,
+        "outcome": "new",
+        "text": "const tree = items.reduce<TreeItem[]>((acc, curr) => {",
+        "values": {
+          "cc": 11,
+          "lines": 47
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 64",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 64 lines)",
+        "file": "packages/tokens-studio-for-figma/src/app/components/TokensBottomBar.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "de24787041268efe",
+        "line": 31,
+        "matched": {
+          "accepted": false,
+          "file": "packages/tokens-studio-for-figma/src/app/components/TokensBottomBar.tsx",
+          "line": 31,
+          "text": "export default function TokensBottomBar({ handleError }: Props) {",
+          "values": {
+            "cc": 4,
+            "lines": 109
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function TokensBottomBar({ handleError }: Props) {",
+        "values": {
+          "cc": 4,
+          "lines": 110
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 11,
+        "ms": 37,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 222,
+        "ms": 23,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1418,
+          "measured": 1418,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 309,
+        "ms": 1731,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 2835
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1417,
+          "measured": 1417,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 60,
+        "ms": 2216,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 2833,
+          "reads": 2833
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 288,
+          "measured": 288,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1474,
+        "ms": 282,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1413,
+          "measured": 1413,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 268,
+        "ms": 1600,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 2825,
+          "reads": 2825
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1372,
+          "measured": 1372,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 2743,
+          "ms": 1196,
+          "parses": 2743,
+          "reads": 2743,
+          "shared": 0,
+          "states": 1579
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 83176,
+          "declaration_text_bytes": 288807,
+          "declarations": 4885,
+          "export_leaves": 1106,
+          "export_text_bytes": 64158,
+          "exported_alias_bytes": 2198,
+          "exported_aliases": 314,
+          "exports": 944,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 2743,
+          "import_text_bytes": 1038972,
+          "imports": 12093,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 206312,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.999031007751938,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 14441,
+          "reference_canonical_bytes": 205558,
+          "reference_distinct_names": 7224,
+          "reference_name_bytes": 2074402,
+          "reference_representation_after_bytes": 3778832,
+          "reference_representation_before_bytes": 7557664,
+          "references": 236177,
+          "signature_bytes": 392216,
+          "signatures": 4529,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 4,
+        "ms": 1226,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 2443,
+            "distinct_names": 7288,
+            "files": 1372,
+            "index_ms": 6,
+            "measure_ms": 600,
+            "query_ms": 0,
+            "references": 111906
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2442,
+            "distinct_names": 7281,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 602,
+            "query_ms": 0,
+            "references": 111589
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 36,
+            "ignored_ms": 14,
+            "renames_ms": 0,
+            "walk_ms": 11,
+            "worktree_add_ms": 318,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 366,
+          "measured": 366,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2743
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 813,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 2443,
+            "distinct_names": 7288,
+            "files": 1372,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 8,
+            "references": 111906
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2442,
+            "distinct_names": 7281,
+            "files": 1371,
+            "index_ms": 5,
+            "measure_ms": 1,
+            "query_ms": 8,
+            "references": 111589
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 0,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 2743
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 4448,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 4444,
+          "modules": 2745,
+          "ms": 7,
+          "sources": 2745
+        },
+        "held": 0,
+        "ms": 12,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "CLAUDE.md",
+        "gate": "doc-size",
+        "outcome": "near-ceiling",
+        "values": {
+          "ceiling": 700,
+          "words": 695
+        }
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "4 dead symbol(s) the base already held:\n  packages/tokens-studio-for-figma/src/AsyncMessageChannel.ts:40  constructor(inFigmaSandbox: boolean) {\n  packages/tokens-studio-for-figma/src/plugin/SharedDataHandler.ts:7  constructor(ns: string) {\n  packages/tokens-studio-for-figma/src/supabase.ts:37  constructor(apiUrl: string, apikey: string) {\n  packages/tokens-studio-for-figma/src/utils/TokenResolver.ts:20  constructor(tokens: SingleToken[]) {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  TypeScript package @tokens-studio/figma-plugin (packages/tokens-studio-for-figma/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package token-transformer (packages/tokens-studio-for-figma/token-transformer/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package tokens-studio-plugin-monorepo (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "a6e27e1580088267bc16187c50d604eaf00f579a",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

@@ -1,0 +1,485 @@
+{
+  "arm": "agent",
+  "repository": "basicmachines-co/basic-memory",
+  "number": 350,
+  "base": "a09066e0f018b3b51c5336014cfdd39f37ef2320",
+  "head": "d1fb0c780f74c0be504798d37fb0a972e2c924e0",
+  "exit": 1,
+  "ms": 2154,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1550
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "BUGFIX-project-delete.md",
+          "CHANGELOG.md",
+          "CLA.md",
+          "CLAUDE.md",
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "README.md",
+          "SECURITY.md",
+          "llms-install.md",
+          "v0.15.0-RELEASE-DOCS.md"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 2,027 functions at a09066e, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 11
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 2,027 functions at a09066e, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 67
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 11, lines 67",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 67 lines)",
+        "file": "src/basic_memory/services/directory_service.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "e820a5dad155e53c",
+        "line": 184,
+        "matched": null,
+        "outcome": "new",
+        "text": "def _build_directory_tree_from_entities(",
+        "values": {
+          "cc": 12,
+          "lines": 71
+        }
+      },
+      {
+        "ceiling": "cc 11, lines 67",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 67 lines)",
+        "file": "tests/api/test_directory_router.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "13b194cee099fec9",
+        "line": 283,
+        "matched": null,
+        "outcome": "new",
+        "text": "async def test_get_directory_structure_endpoint(test_graph, client, project_url):",
+        "values": {
+          "cc": 18
+        }
+      },
+      {
+        "ceiling": "cc 11, lines 67",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 67 lines)",
+        "file": "tests/api/test_directory_router.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3bb85fef054b6c76",
+        "line": 338,
+        "matched": null,
+        "outcome": "new",
+        "text": "async def test_get_directory_structure_mocked(client, project_url):",
+        "values": {
+          "cc": 22
+        }
+      },
+      {
+        "ceiling": "cc 11, lines 67",
+        "condition": "over the complexity gate (cyclomatic > 11 or body > 67 lines)",
+        "file": "tests/services/test_directory_service.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f5571ff633935171",
+        "line": 228,
+        "matched": null,
+        "outcome": "new",
+        "text": "async def test_directory_structure(directory_service: DirectoryService, test_graph):",
+        "values": {
+          "cc": 13
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 10,
+          "measured": 10,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 7,
+        "ms": 76,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 261,
+          "measured": 261,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 248,
+        "ms": 328,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 522
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 261,
+          "measured": 261,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3,
+        "ms": 391,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 522,
+          "reads": 522
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 126,
+          "measured": 126,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1360,
+        "ms": 241,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 261,
+          "measured": 261,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 4,
+        "footprint": null,
+        "graph": null,
+        "held": 128,
+        "ms": 808,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 522,
+          "reads": 522
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0,
+          "states": 0
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 0,
+          "declaration_text_bytes": 0,
+          "declarations": 0,
+          "export_leaves": 0,
+          "export_text_bytes": 0,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 0,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 0,
+          "import_text_bytes": 0,
+          "imports": 0,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 0,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 0.0,
+          "reference_canonical_allocation_ratio_milli": 0,
+          "reference_canonical_allocations": 0,
+          "reference_canonical_bytes": 0,
+          "reference_distinct_names": 0,
+          "reference_name_bytes": 0,
+          "reference_representation_after_bytes": 0,
+          "reference_representation_before_bytes": 0,
+          "references": 0,
+          "signature_bytes": 0,
+          "signatures": 0,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 0,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 32,
+            "ignored_ms": 9,
+            "renames_ms": 0,
+            "walk_ms": 3,
+            "worktree_add_ms": 87,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 9,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 0,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "edges": 0,
+          "modules": 0,
+          "ms": 0,
+          "sources": 0
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "a09066e0f018b3b51c5336014cfdd39f37ef2320",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

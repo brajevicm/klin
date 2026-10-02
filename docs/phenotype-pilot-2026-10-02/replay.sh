@@ -61,7 +61,7 @@ while read -r arm name number base head; do
     prepare "$dir" "$base" "$head"
     started=$(python3 -c 'import time; print(time.time())')
     set +e
-    report=$(env -u GITHUB_BASE_REF -u GITHUB_EVENT_PATH $(env | sed -n 's/^\(KLIN_[A-Z_]*\)=.*/-u \1/p') \
+    report=$(cd "$dir" && env -u GITHUB_BASE_REF -u GITHUB_EVENT_PATH $(env | sed -n 's/^\(KLIN_[A-Z_]*\)=.*/-u \1/p') \
       perl -e 'alarm 600; exec @ARGV' "$klin" gate --json 2> "$work/stderr")
     status=$?
     set -e

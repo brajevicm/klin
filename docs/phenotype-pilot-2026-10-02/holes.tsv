@@ -1,0 +1,22 @@
+change	family	kind	count
+PV-Bhat__vibe-check-mcp-server-64	shapes:mock-name	excluded test	1
+anthropics__claude-code-8345	shapes:broad-handler	excluded commented	1
+anthropics__claude-code-8345	shapes:constant-return	excluded commented	6
+anthropics__claude-code-8345	shapes:empty-handler	excluded commented	2
+anthropics__claude-code-8480	deps:undeclared	excluded test	2
+anthropics__claude-code-8480	shapes:mock-name	excluded test	6
+basicmachines-co__basic-memory-350	shapes:mock-name	excluded test	3
+bmaltais__kohya_ss-3339	shapes:mock-name	excluded test	2
+cablehead__xs-82	shapes:default-handler	excluded specific	1
+coleam00__Archon-338	shapes:broad-handler	excluded commented	5
+coleam00__Archon-338	shapes:broad-handler	excluded escapes	1
+coleam00__Archon-338	shapes:empty-handler	excluded commented	1
+coleam00__Archon-338	shapes:mock-name	excluded test	34
+conchoecia__odp-102	shapes:empty-handler	excluded specific	1
+gluesql__glues-150	shapes:empty-handler	excluded test	1
+langgenius__dify-official-plugins-1422	shapes:broad-handler	excluded commented	2
+nyx-space__anise-469	klin:complexity	unparsed	1
+nyx-space__anise-469	klin:dead-symbols	unparsed	1
+nyx-space__anise-469	klin:public-api	unparsed	1
+recallnet__js-recall-1140	shapes:broad-handler	excluded commented	1
+tokens-studio__figma-plugin-3535	shapes:mock-name	excluded test	5

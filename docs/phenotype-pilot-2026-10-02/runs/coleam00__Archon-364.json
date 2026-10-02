@@ -1,0 +1,545 @@
+{
+  "arm": "agent",
+  "repository": "coleam00/Archon",
+  "number": 364,
+  "base": "cd22089b87ca4184393bc68bd1e898602d1f0396",
+  "head": "a9616bfc1d85323db3e643b929cb0c2db56367aa",
+  "exit": 1,
+  "ms": 3748,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CLAUDE-ARCHON.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "archon-ui-main/package.json",
+          "docs/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "archon-ui-main/test",
+          "python/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,907 function(s) at cd22089; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,907 functions at cd22089, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 92
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "archon-ui-main/src/components/knowledge-base/*Card.tsx",
+            "pattern": "*Card.tsx",
+            "roots": [
+              "archon-ui-main/src/components/knowledge-base"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/components/knowledge-base/Knowledge*.tsx",
+            "pattern": "Knowledge*.tsx",
+            "roots": [
+              "archon-ui-main/src/components/knowledge-base"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/components/project-tasks/Task*.tsx",
+            "pattern": "Task*.tsx",
+            "roots": [
+              "archon-ui-main/src/components/project-tasks"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/contexts/*Context.tsx",
+            "pattern": "*Context.tsx",
+            "roots": [
+              "archon-ui-main/src/contexts"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/pages/*Page.tsx",
+            "pattern": "*Page.tsx",
+            "roots": [
+              "archon-ui-main/src/pages"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 92",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 92 lines)",
+        "file": "python/src/server/services/storage/credential_provider.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1c922995f5c47759",
+        "line": 70,
+        "matched": null,
+        "outcome": "new",
+        "text": "async def get_credentials_by_category(self, category: str) -> dict[str, Any]:",
+        "values": {
+          "cc": 13,
+          "lines": 73
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 9,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 40,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 51,
+        "ms": 20,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 383,
+          "measured": 383,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 273,
+        "ms": 531,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 760
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 382,
+          "measured": 382,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 8,
+        "ms": 670,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 758,
+          "reads": 758
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 31,
+          "measured": 31,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 370,
+        "ms": 66,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 382,
+          "measured": 380,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 258,
+        "ms": 1303,
+        "name": "complexity",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 758,
+          "reads": 758
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 143,
+          "measured": 141,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 286,
+          "ms": 471,
+          "parses": 286,
+          "reads": 286,
+          "shared": 0,
+          "states": 814
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 30182,
+          "declaration_text_bytes": 110616,
+          "declarations": 2240,
+          "export_leaves": 62,
+          "export_text_bytes": 4714,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 48,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 282,
+          "import_text_bytes": 112534,
+          "imports": 1232,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 14628,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 2.0,
+          "reference_canonical_allocation_ratio_milli": 2000,
+          "reference_canonical_allocations": 7728,
+          "reference_canonical_bytes": 90286,
+          "reference_distinct_names": 3864,
+          "reference_name_bytes": 741856,
+          "reference_representation_after_bytes": 1587136,
+          "reference_representation_before_bytes": 3174272,
+          "references": 99196,
+          "signature_bytes": 138378,
+          "signatures": 1764,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 42,
+        "ms": 482,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1120,
+            "distinct_names": 4133,
+            "files": 141,
+            "index_ms": 2,
+            "measure_ms": 235,
+            "query_ms": 0,
+            "references": 46046
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1120,
+            "distinct_names": 4133,
+            "files": 141,
+            "index_ms": 2,
+            "measure_ms": 236,
+            "query_ms": 0,
+            "references": 46046
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 18,
+            "ignored_ms": 11,
+            "renames_ms": 0,
+            "walk_ms": 6,
+            "worktree_add_ms": 98,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 3,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 17,
+          "measured": 17,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 286
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 307,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1120,
+            "distinct_names": 4133,
+            "files": 141,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 46046
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1120,
+            "distinct_names": 4133,
+            "files": 141,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 46046
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 0,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 286
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 678,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 664,
+          "modules": 286,
+          "ms": 1,
+          "sources": 286
+        },
+        "held": 0,
+        "ms": 2,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "archon-ui-main/src/components/BackendStartupError.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "archon-ui-main/src/components/prp/sections/RolloutPlanSection.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "archon-ui-main/src/components/BackendStartupError.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "archon-ui-main/src/components/prp/sections/RolloutPlanSection.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "42 dead symbol(s) the base already held:\n  archon-ui-main/src/components/project-tasks/DataTab.tsx:25  const defaultNodes: Node[] = [\n  archon-ui-main/src/components/project-tasks/DataTab.tsx:30  const defaultEdges: Edge[] = [{\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:37  type CustomNodeTypes = Node<PageNodeData, 'page'> | Node<ServiceNodeData, 'service'>;\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:100  const defaultNodes: Node[] = [\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:132  const defaultEdges: Edge[] = [\n  archon-ui-main/src/components/project-tasks/TaskTableView.tsx:65  const reorderTasks = (tasks: Task[], fromIndex: number, toIndex: number): Task[] => {\n  archon-ui-main/src/components/prp/utils/sectionDetector.ts:134  function isPersonaStructure(value: any): boolean {\n  archon-ui-main/src/env.d.ts:9  interface ImportMeta {\n  archon-ui-main/src/pages/ProjectPage.tsx:28  const getProjectIcon = (iconName?: string) => {\n  archon-ui-main/src/services/agentChatService.ts:60  constructor() {\n  archon-ui-main/src/services/agentChatService.ts:77  private isSessionValidationCached(sessionId: string): boolean {\n  archon-ui-main/src/services/agentChatService.ts:95  private cacheSessionValidation(sessionId: string, valid: boolean): void {\n  archon-ui-main/src/services/agentChatService.ts:530  disconnectAll(): void {\n  archon-ui-main/src/services/agentChatService.ts:624  getCurrentSessionId(): string | null {\n  archon-ui-main/src/services/agentChatService.ts:637  getActiveSessions(): string[] {\n  archon-ui-main/src/services/agentChatService.ts:724  getServerStatus(): 'online' | 'offline' | 'unknown' | 'connecting' {\n  archon-ui-main/src/services/knowledgeBaseService.ts:257  async getKnowledgeItemDetails(sourceId: string) {\n  archon-ui-main/src/services/knowledgeBaseService.ts:264  async searchKnowledgeBase(query: string, options: SearchOptions = {}) {\n  archon-ui-main/src/services/mcpClientService.ts:237  async testClientConfig(config: MCPClientConfig): Promise<{ success: boolean; message: string }> {\n  archon-ui-main/src/services/mcpClientService.ts:291  async getAllAvailableTools(): Promise<AllToolsResponse> {\n  … and 22 more"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  TypeScript package archon-ui (archon-ui-main/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "cd22089b87ca4184393bc68bd1e898602d1f0396",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

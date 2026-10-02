@@ -1,0 +1,500 @@
+{
+  "arm": "agent",
+  "repository": "jeremyckahn/chitchatter",
+  "number": 517,
+  "base": "a74bb8b5da221c597dc4fb43b3bce1e4d62aa863",
+  "head": "3bd71178b755f8133fb28a8069096f7cc8e91b9b",
+  "exit": 0,
+  "ms": 924,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 600
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "e2e/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 857 function(s) at a74bb8b; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 857 functions at a74bb8b, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 68
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "src/components/Room/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "src/components/Room"
+            ]
+          },
+          {
+            "name": "src/components/Shell/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "src/components/Shell"
+            ]
+          },
+          {
+            "name": "src/components/Shell/Peer*.tsx",
+            "pattern": "Peer*.tsx",
+            "roots": [
+              "src/components/Shell"
+            ]
+          },
+          {
+            "name": "src/contexts/*Context.ts",
+            "pattern": "*Context.ts",
+            "roots": [
+              "src/contexts"
+            ]
+          },
+          {
+            "name": "src/hooks/use*.ts",
+            "pattern": "use*.ts",
+            "roots": [
+              "src/hooks"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 6,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 21,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 91,
+        "ms": 17,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 166,
+          "measured": 166,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 15,
+        "ms": 80,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 332
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 166,
+          "measured": 166,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 92,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 332,
+          "reads": 332
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 16,
+          "measured": 16,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 138,
+        "ms": 25,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 166,
+          "measured": 166,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 38,
+        "ms": 196,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 332,
+          "reads": 332
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 163,
+          "measured": 163,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 326,
+          "ms": 159,
+          "parses": 326,
+          "reads": 326,
+          "shared": 0,
+          "states": 311
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 11234,
+          "declaration_text_bytes": 31021,
+          "declarations": 733,
+          "export_leaves": 82,
+          "export_text_bytes": 3618,
+          "exported_alias_bytes": 14,
+          "exported_aliases": 2,
+          "exports": 82,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 326,
+          "import_text_bytes": 135112,
+          "imports": 1684,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 10638,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9995201535508638,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 4167,
+          "reference_canonical_bytes": 50932,
+          "reference_distinct_names": 2084,
+          "reference_name_bytes": 237473,
+          "reference_representation_after_bytes": 396672,
+          "reference_representation_before_bytes": 793344,
+          "references": 24792,
+          "signature_bytes": 42051,
+          "signatures": 695,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 6,
+        "ms": 163,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 367,
+            "distinct_names": 2094,
+            "files": 163,
+            "index_ms": 0,
+            "measure_ms": 75,
+            "query_ms": 0,
+            "references": 12079
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 366,
+            "distinct_names": 2093,
+            "files": 163,
+            "index_ms": 0,
+            "measure_ms": 84,
+            "query_ms": 0,
+            "references": 12073
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 20,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 51,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 22,
+          "measured": 22,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 326
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 104,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 367,
+            "distinct_names": 2094,
+            "files": 163,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 12079
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 366,
+            "distinct_names": 2093,
+            "files": 163,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 12073
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 326
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 214,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 214,
+          "modules": 326,
+          "ms": 0,
+          "sources": 326
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "6 dead symbol(s) the base already held:\n  sdk/react-app-env.d.ts:7  interface ImportMeta {\n  sdk/sdk.ts:31  static get observedAttributes() {\n  sdk/sdk.ts:147  connectedCallback() {\n  sdk/sdk.ts:160  disconnectedCallback() {\n  sdk/sdk.ts:164  attributeChangedCallback(name: string) {\n  src/react-app-env.d.ts:8  interface ImportMeta {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package chitchatter (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 10 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "a74bb8b5da221c597dc4fb43b3bce1e4d62aa863",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

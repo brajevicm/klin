@@ -1,0 +1,1091 @@
+{
+  "arm": "agent",
+  "repository": "GlareDB/glaredb",
+  "number": 3633,
+  "base": "8001afa4cff0cecfec79f2cb292108da08aa4c35",
+  "head": "9133c0d2057f64575cc158b48422d10cc547e20f",
+  "exit": 0,
+  "ms": 10437,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "bench_bin/Cargo.toml",
+          "crates/docgen/Cargo.toml",
+          "crates/ext_csv/Cargo.toml",
+          "crates/ext_delta/Cargo.toml",
+          "crates/ext_iceberg/Cargo.toml",
+          "crates/ext_parquet/Cargo.toml",
+          "crates/ext_spark/Cargo.toml",
+          "crates/ext_tpch_gen/Cargo.toml",
+          "crates/glaredb/Cargo.toml",
+          "crates/glaredb_bench/Cargo.toml",
+          "crates/glaredb_core/Cargo.toml",
+          "crates/glaredb_error/Cargo.toml",
+          "crates/glaredb_http/Cargo.toml",
+          "crates/glaredb_parser/Cargo.toml",
+          "crates/glaredb_proto/Cargo.toml",
+          "crates/glaredb_rt_native/Cargo.toml",
+          "crates/glaredb_slt/Cargo.toml",
+          "crates/glaredb_wasm/Cargo.toml",
+          "crates/logutil/Cargo.toml",
+          "crates/rayexec_io/Cargo.toml",
+          "crates/rayexec_python/Cargo.toml",
+          "test_bin/Cargo.toml"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 4,898 functions at 8001afa, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 4,898 functions at 8001afa, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 57
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "crates/ext_parquet/src/column/*_reader.rs",
+            "pattern": "*_reader.rs",
+            "roots": [
+              "crates/ext_parquet/src/column"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/arrays/row/row_*.rs",
+            "pattern": "row_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/arrays/row"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/execution/operators/catalog/create_*.rs",
+            "pattern": "create_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/execution/operators/catalog"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/expr/*_expr.rs",
+            "pattern": "*_expr.rs",
+            "roots": [
+              "crates/glaredb_core/src/expr"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/functions/aggregate/builtin/regr_*.rs",
+            "pattern": "regr_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/functions/aggregate/builtin"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/functions/cast/builtin/to_*.rs",
+            "pattern": "to_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/functions/cast/builtin"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/functions/scalar/builtin/string/regexp_*.rs",
+            "pattern": "regexp_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/functions/scalar/builtin/string"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/functions/table/builtin/list_*.rs",
+            "pattern": "list_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/functions/table/builtin"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/logical/logical_*.rs",
+            "pattern": "logical_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/logical"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/logical/binder/*_binder.rs",
+            "pattern": "*_binder.rs",
+            "roots": [
+              "crates/glaredb_core/src/logical/binder"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/logical/binder/bind_*.rs",
+            "pattern": "bind_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/logical/binder"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/logical/planner/plan_*.rs",
+            "pattern": "plan_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/logical/planner"
+            ]
+          },
+          {
+            "name": "crates/glaredb_core/src/logical/resolver/resolved_*.rs",
+            "pattern": "resolved_*.rs",
+            "roots": [
+              "crates/glaredb_core/src/logical/resolver"
+            ]
+          },
+          {
+            "name": "crates/glaredb_parser/src/ast/create_*.rs",
+            "pattern": "create_*.rs",
+            "roots": [
+              "crates/glaredb_parser/src/ast"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 0,
+    "findings": [],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 17,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 23,
+          "measured": 23,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 251,
+        "ms": 12,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 635,
+          "measured": 635,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 639,
+        "ms": 1486,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1244,
+          "reads": 1262
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 628,
+          "measured": 628,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 242,
+        "ms": 837,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1248,
+          "reads": 1248
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 12,
+        "ms": 15,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 628,
+          "measured": 627,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 321,
+        "ms": 1776,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1248,
+          "reads": 1248
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 626,
+          "measured": 625,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1244,
+          "ms": 3859,
+          "parses": 1244,
+          "reads": 1244,
+          "shared": 0,
+          "states": 1536
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 211422,
+          "declaration_text_bytes": 690306,
+          "declarations": 15465,
+          "export_leaves": 230,
+          "export_text_bytes": 6912,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 226,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1242,
+          "import_text_bytes": 1698082,
+          "imports": 11177,
+          "module_declarations": 1582,
+          "module_text_bytes": 29305,
+          "nesting_bytes": 17718,
+          "nesting_entries": 3274,
+          "nestings": 3256,
+          "owner_bytes": 52475,
+          "owners": 4105,
+          "path_bytes": 61359,
+          "qualified_paths": 156,
+          "reference_canonical_allocation_ratio": 1.996785758437384,
+          "reference_canonical_allocation_ratio_milli": 1996,
+          "reference_canonical_allocations": 16152,
+          "reference_canonical_bytes": 189558,
+          "reference_distinct_names": 8089,
+          "reference_name_bytes": 2802456,
+          "reference_representation_after_bytes": 6072800,
+          "reference_representation_before_bytes": 12145600,
+          "references": 379550,
+          "signature_bytes": 934769,
+          "signatures": 15465,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 12,
+        "ms": 3895,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 7746,
+            "distinct_names": 9086,
+            "files": 625,
+            "index_ms": 7,
+            "measure_ms": 2041,
+            "query_ms": 0,
+            "references": 179295
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7719,
+            "distinct_names": 9060,
+            "files": 617,
+            "index_ms": 8,
+            "measure_ms": 1821,
+            "query_ms": 0,
+            "references": 178752
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 23,
+            "ignored_ms": 14,
+            "renames_ms": 0,
+            "walk_ms": 10,
+            "worktree_add_ms": 168,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 115,
+          "measured": 115,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1244
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1894,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 7746,
+            "distinct_names": 9086,
+            "files": 625,
+            "index_ms": 7,
+            "measure_ms": 0,
+            "query_ms": 1,
+            "references": 179295
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 7719,
+            "distinct_names": 9060,
+            "files": 617,
+            "index_ms": 7,
+            "measure_ms": 0,
+            "query_ms": 1,
+            "references": 178752
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 21,
+          "measured": 18,
+          "not_measured": 3,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1244
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 7934,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 7736,
+          "modules": 1624,
+          "ms": 13,
+          "sources": 1624
+        },
+        "held": 0,
+        "ms": 36,
+        "name": "public-api",
+        "names": null,
+        "notes": 77,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 150,
+          "items": 6631,
+          "measured": 5773,
+          "ms": 11,
+          "opaque": 858,
+          "surfaces": 36
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "crates/glaredb_wasm/src/shell.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "crates/glaredb_wasm/src/shell.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "12 dead symbol(s) the base already held:\n  crates/ext_parquet/src/metadata/properties.rs:859  const DEFAULT_READ_BLOOM_FILTER: bool = false;\n  crates/glaredb_core/src/arrays/string.rs:42  const _SIZE_ASSERTION: () = assert!(std::mem::size_of::<Self>() == 16);\n  crates/glaredb_core/src/arrays/string.rs:189  const _SIZE_ASSERTION: () = assert!(std::mem::size_of::<Self>() == 16);\n  crates/glaredb_core/src/shell/lineedit.rs:203  fn consume_history(&mut self, text: &str) -> Result<()> {\n  crates/glaredb_parser/src/ast/expr.rs:340  const _PREC_EXPONENTIATION: u8 = 100;\n  crates/glaredb_parser/src/ast/expr.rs:342  const _PREC_AT: u8 = 110; // AT TIME ZONE\n  crates/glaredb_parser/src/ast/expr.rs:343  const _PREC_COLLATE: u8 = 120;\n  crates/rayexec_python/src/event_loop.rs:119  fn __call__(&self, _py_fut: Py<PyAny>) -> Result<()> {\n  crates/rayexec_python/src/event_loop.rs:131  fn __call__(&self) -> Result<()> {\n  crates/rayexec_python/src/lib.rs:13  fn binding_module(m: &Bound<'_, PyModule>) -> PyResult<()> {\n  crates/rayexec_python/src/session.rs:71  fn close(&mut self, _py: Python) -> Result<()> {\n  crates/rayexec_python/src/session.rs:104  fn __repr__(&self) -> Result<String> {"
+      },
+      {
+        "file": "crates/ext_parquet/src/basic.rs",
+        "gate": "public-api",
+        "line": 492,
+        "outcome": "unresolved",
+        "text": "pub fn get_sort_order( — ext_parquet — an inherent impl of ColumnOrder outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/basic.rs",
+        "gate": "public-api",
+        "line": 580,
+        "outcome": "unresolved",
+        "text": "pub fn sort_order(&self) -> SortOrder { — ext_parquet — an inherent impl of ColumnOrder outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 37,
+        "outcome": "unresolved",
+        "text": "pub const BOOLEAN: Type = Type(0); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 38,
+        "outcome": "unresolved",
+        "text": "pub const INT32: Type = Type(1); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 39,
+        "outcome": "unresolved",
+        "text": "pub const INT64: Type = Type(2); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 40,
+        "outcome": "unresolved",
+        "text": "pub const INT96: Type = Type(3); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 41,
+        "outcome": "unresolved",
+        "text": "pub const FLOAT: Type = Type(4); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 42,
+        "outcome": "unresolved",
+        "text": "pub const DOUBLE: Type = Type(5); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 43,
+        "outcome": "unresolved",
+        "text": "pub const BYTE_ARRAY: Type = Type(6); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 44,
+        "outcome": "unresolved",
+        "text": "pub const FIXED_LEN_BYTE_ARRAY: Type = Type(7); — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 45,
+        "outcome": "unresolved",
+        "text": "pub const ENUM_VALUES: &'static [Self] = &[ — ext_parquet — an inherent impl of Type outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 111,
+        "outcome": "unresolved",
+        "text": "pub const UTF8: ConvertedType = ConvertedType(0); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 113,
+        "outcome": "unresolved",
+        "text": "pub const MAP: ConvertedType = ConvertedType(1); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 115,
+        "outcome": "unresolved",
+        "text": "pub const MAP_KEY_VALUE: ConvertedType = ConvertedType(2); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 118,
+        "outcome": "unresolved",
+        "text": "pub const LIST: ConvertedType = ConvertedType(3); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 120,
+        "outcome": "unresolved",
+        "text": "pub const ENUM: ConvertedType = ConvertedType(4); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 133,
+        "outcome": "unresolved",
+        "text": "pub const DECIMAL: ConvertedType = ConvertedType(5); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 138,
+        "outcome": "unresolved",
+        "text": "pub const DATE: ConvertedType = ConvertedType(6); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 143,
+        "outcome": "unresolved",
+        "text": "pub const TIME_MILLIS: ConvertedType = ConvertedType(7); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 148,
+        "outcome": "unresolved",
+        "text": "pub const TIME_MICROS: ConvertedType = ConvertedType(8); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 153,
+        "outcome": "unresolved",
+        "text": "pub const TIMESTAMP_MILLIS: ConvertedType = ConvertedType(9); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 158,
+        "outcome": "unresolved",
+        "text": "pub const TIMESTAMP_MICROS: ConvertedType = ConvertedType(10); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 166,
+        "outcome": "unresolved",
+        "text": "pub const UINT_8: ConvertedType = ConvertedType(11); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 167,
+        "outcome": "unresolved",
+        "text": "pub const UINT_16: ConvertedType = ConvertedType(12); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 168,
+        "outcome": "unresolved",
+        "text": "pub const UINT_32: ConvertedType = ConvertedType(13); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 169,
+        "outcome": "unresolved",
+        "text": "pub const UINT_64: ConvertedType = ConvertedType(14); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 177,
+        "outcome": "unresolved",
+        "text": "pub const INT_8: ConvertedType = ConvertedType(15); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 178,
+        "outcome": "unresolved",
+        "text": "pub const INT_16: ConvertedType = ConvertedType(16); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 179,
+        "outcome": "unresolved",
+        "text": "pub const INT_32: ConvertedType = ConvertedType(17); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 180,
+        "outcome": "unresolved",
+        "text": "pub const INT_64: ConvertedType = ConvertedType(18); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 184,
+        "outcome": "unresolved",
+        "text": "pub const JSON: ConvertedType = ConvertedType(19); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 188,
+        "outcome": "unresolved",
+        "text": "pub const BSON: ConvertedType = ConvertedType(20); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 199,
+        "outcome": "unresolved",
+        "text": "pub const INTERVAL: ConvertedType = ConvertedType(21); — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 200,
+        "outcome": "unresolved",
+        "text": "pub const ENUM_VALUES: &'static [Self] = &[ — ext_parquet — an inherent impl of ConvertedType outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 358,
+        "outcome": "unresolved",
+        "text": "pub const PLAIN: Encoding = Encoding(0); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 363,
+        "outcome": "unresolved",
+        "text": "pub const PLAIN_DICTIONARY: Encoding = Encoding(2); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 366,
+        "outcome": "unresolved",
+        "text": "pub const RLE: Encoding = Encoding(3); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 369,
+        "outcome": "unresolved",
+        "text": "pub const BIT_PACKED: Encoding = Encoding(4); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 372,
+        "outcome": "unresolved",
+        "text": "pub const DELTA_BINARY_PACKED: Encoding = Encoding(5); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 375,
+        "outcome": "unresolved",
+        "text": "pub const DELTA_LENGTH_BYTE_ARRAY: Encoding = Encoding(6); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 378,
+        "outcome": "unresolved",
+        "text": "pub const DELTA_BYTE_ARRAY: Encoding = Encoding(7); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 380,
+        "outcome": "unresolved",
+        "text": "pub const RLE_DICTIONARY: Encoding = Encoding(8); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 387,
+        "outcome": "unresolved",
+        "text": "pub const BYTE_STREAM_SPLIT: Encoding = Encoding(9); — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 388,
+        "outcome": "unresolved",
+        "text": "pub const ENUM_VALUES: &'static [Self] = &[ — ext_parquet — an inherent impl of Encoding outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 527,
+        "outcome": "unresolved",
+        "text": "pub const DATA_PAGE: PageType = PageType(0); — ext_parquet — an inherent impl of PageType outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 528,
+        "outcome": "unresolved",
+        "text": "pub const INDEX_PAGE: PageType = PageType(1); — ext_parquet — an inherent impl of PageType outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 529,
+        "outcome": "unresolved",
+        "text": "pub const DICTIONARY_PAGE: PageType = PageType(2); — ext_parquet — an inherent impl of PageType outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 530,
+        "outcome": "unresolved",
+        "text": "pub const DATA_PAGE_V2: PageType = PageType(3); — ext_parquet — an inherent impl of PageType outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 531,
+        "outcome": "unresolved",
+        "text": "pub const ENUM_VALUES: &'static [Self] = &[ — ext_parquet — an inherent impl of PageType outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 680,
+        "outcome": "unresolved",
+        "text": "pub fn new<F1, F2, F3, F4, F5, F6, F7, F8>(max: F1, min: F2, null_count: F3, distinct_count: F4, max_value: F5, min_value: F6, is_max_value_exact: F7, is_min_value_exact: F8) -> Statistics where F1: Into<Option<Vec<u8>>>, F2: Into<Option<Vec<u8>>>, F3: Into<Option<i64>>, F4: Into<Option<i64>>, F5: Into<Option<Vec<u8>>>, F6: Into<Option<Vec<u8>>>, F7: Into<Option<bool>>, F8: Into<Option<bool>> { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 2161,
+        "outcome": "unresolved",
+        "text": "pub fn new<F5>(num_values: i32, encoding: Encoding, definition_level_encoding: Encoding, repetition_level_encoding: Encoding, statistics: F5) -> DataPageHeader where F5: Into<Option<Statistics>> { — ext_parquet — an inherent impl of DataPageHeader outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 2308,
+        "outcome": "unresolved",
+        "text": "pub fn new<F3>(num_values: i32, encoding: Encoding, is_sorted: F3) -> DictionaryPageHeader where F3: Into<Option<bool>> { — ext_parquet — an inherent impl of DictionaryPageHeader outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 2411,
+        "outcome": "unresolved",
+        "text": "pub fn new<F7, F8>(num_values: i32, num_nulls: i32, num_rows: i32, encoding: Encoding, definition_levels_byte_length: i32, repetition_levels_byte_length: i32, is_compressed: F7, statistics: F8) -> DataPageHeaderV2 where F7: Into<Option<bool>>, F8: Into<Option<Statistics>> { — ext_parquet — an inherent impl of DataPageHeaderV2 outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 3007,
+        "outcome": "unresolved",
+        "text": "pub fn new<F4, F5, F6, F7, F8>(type_: PageType, uncompressed_page_size: i32, compressed_page_size: i32, crc: F4, data_page_header: F5, index_page_header: F6, dictionary_page_header: F7, data_page_header_v2: F8) -> PageHeader where F4: Into<Option<i32>>, F5: Into<Option<DataPageHeader>>, F6: Into<Option<IndexPageHeader>>, F7: Into<Option<DictionaryPageHeader>>, F8: Into<Option<DataPageHeaderV2>> { — ext_parquet — an inherent impl of PageHeader outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 3306,
+        "outcome": "unresolved",
+        "text": "pub fn new(page_type: PageType, encoding: Encoding, count: i32) -> PageEncodingStats { — ext_parquet — an inherent impl of PageEncodingStats outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/format.rs",
+        "gate": "public-api",
+        "line": 4952,
+        "outcome": "unresolved",
+        "text": "pub fn new<F5, F6, F7, F8, F9>(version: i32, schema: Vec<SchemaElement>, num_rows: i64, row_groups: Vec<RowGroup>, key_value_metadata: F5, created_by: F6, column_orders: F7, encryption_algorithm: F8, footer_signing_key_metadata: F9) -> FileMetaData where F5: Into<Option<Vec<KeyValue>>>, F6: Into<Option<String>>, F7: Into<Option<Vec<ColumnOrder>>>, F8: Into<Option<EncryptionAlgorithm>>, F9: Into<Option<Vec<u8>>> { — ext_parquet — an inherent impl of FileMetaData outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/mod.rs",
+        "gate": "public-api",
+        "line": 169,
+        "outcome": "unresolved",
+        "text": "pub fn new( — ext_parquet — an inherent impl of FileMetaData outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/mod.rs",
+        "gate": "public-api",
+        "line": 188,
+        "outcome": "unresolved",
+        "text": "pub fn schema(&self) -> &GroupType { — ext_parquet — an inherent impl of FileMetaData outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/mod.rs",
+        "gate": "public-api",
+        "line": 194,
+        "outcome": "unresolved",
+        "text": "pub fn column_order(&self, i: usize) -> ColumnOrder { — ext_parquet — an inherent impl of FileMetaData outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 291,
+        "outcome": "unresolved",
+        "text": "pub fn new<T: ParquetValueType>( — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 333,
+        "outcome": "unresolved",
+        "text": "pub fn is_min_max_deprecated(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 347,
+        "outcome": "unresolved",
+        "text": "pub fn is_min_max_backwards_compatible(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 353,
+        "outcome": "unresolved",
+        "text": "pub fn distinct_count(&self) -> Option<u64> { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 359,
+        "outcome": "unresolved",
+        "text": "pub fn null_count(&self) -> u64 { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 364,
+        "outcome": "unresolved",
+        "text": "pub fn has_nulls(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 370,
+        "outcome": "unresolved",
+        "text": "pub fn has_min_max_set(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 375,
+        "outcome": "unresolved",
+        "text": "pub fn min_is_exact(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 380,
+        "outcome": "unresolved",
+        "text": "pub fn max_is_exact(&self) -> bool { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 386,
+        "outcome": "unresolved",
+        "text": "pub fn min_bytes(&self) -> &[u8] { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 392,
+        "outcome": "unresolved",
+        "text": "pub fn max_bytes(&self) -> &[u8] { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/metadata/statistics.rs",
+        "gate": "public-api",
+        "line": 397,
+        "outcome": "unresolved",
+        "text": "pub fn physical_type(&self) -> Type { — ext_parquet — an inherent impl of Statistics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/ext_parquet/src/page.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub fn try_from_format(header: format::PageHeader, physical_type: Type) -> Result<Self> { — ext_parquet — an inherent impl of PageHeader outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/glaredb_core/src/arrays/format/mod.rs",
+        "gate": "public-api",
+        "line": 42,
+        "outcome": "unresolved",
+        "text": "pub const fn new(options: FormatOptions<'a>) -> Self { — glaredb_core — an inherent impl of Formatter outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/glaredb_core/src/arrays/format/mod.rs",
+        "gate": "public-api",
+        "line": 47,
+        "outcome": "unresolved",
+        "text": "pub fn format_scalar_value<'b>( — glaredb_core — an inherent impl of Formatter outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "crates/glaredb_core/src/arrays/format/mod.rs",
+        "gate": "public-api",
+        "line": 61,
+        "outcome": "unresolved",
+        "text": "pub fn format_array_value<'b>( — glaredb_core — an inherent impl of Formatter outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "3 package(s) or target(s) with no supported public surface:\n  Rust package bench_bin (bench_bin/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package docgen (crates/docgen/Cargo.toml): has no library target, and a binary has no public surface\n  Rust package glaredb (crates/glaredb/Cargo.toml): has no library target, and a binary has no public surface"
+      },
+      {
+        "file": "crates/glaredb_wasm/src/shell.rs",
+        "gate": "public-api",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      }
+    ],
+    "status": "PASS",
+    "summary": "klin: 9 gate(s), all passed.",
+    "window": {
+      "after": "the working tree",
+      "before": "8001afa4cff0cecfec79f2cb292108da08aa4c35",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

@@ -1,0 +1,738 @@
+{
+  "arm": "agent",
+  "repository": "PV-Bhat/vibe-check-mcp-server",
+  "number": 64,
+  "base": "4f93f93a7d1aa8dc31400da5f2ded4abc09a5577",
+  "head": "037b041f04cf80bb791093470f26b5ce36611d3a",
+  "exit": 1,
+  "ms": 597,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 200
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 338 function(s) at 4f93f93; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 338 functions at 4f93f93, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 39
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/httpTransportWrapper.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "3fce5ac850c6f23d",
+        "line": 15,
+        "matched": null,
+        "outcome": "new",
+        "text": "const existing = (transport as any)[WRAPPED_SYMBOL];",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/httpTransportWrapper.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "b19823a82df89b20",
+        "line": 20,
+        "matched": null,
+        "outcome": "new",
+        "text": "let storedValue = (transport as any)._enableJsonResponse ?? false;",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/httpTransportWrapper.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "66fdf564b51e48c1",
+        "line": 37,
+        "matched": null,
+        "outcome": "new",
+        "text": "(transport as any)[WRAPPED_SYMBOL] = true;",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "8940a57240d62e7b",
+        "line": 46,
+        "matched": null,
+        "outcome": "new",
+        "text": "if ((request as any).jsonrpc !== '2.0') {",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "d4bdcd14e80468e1",
+        "line": 50,
+        "matched": null,
+        "outcome": "new",
+        "text": "if ((request as any).method !== 'tools/call') {",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "b1e9693562a61a68",
+        "line": 54,
+        "matched": null,
+        "outcome": "new",
+        "text": "if ((request as any).id !== undefined && (request as any).id !== null) {",
+        "values": {
+          "count": 2,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "a466fab063f5189c",
+        "line": 59,
+        "matched": null,
+        "outcome": "new",
+        "text": "(request as any).id = id;",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "c4cd9d44bd274c16",
+        "line": 64,
+        "matched": null,
+        "outcome": "new",
+        "text": "onmessage?: (message: any, extra?: any) => void;",
+        "values": {
+          "count": 2,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/utils/jsonRpcCompat.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "e8eab5f995dfb79b",
+        "line": 77,
+        "matched": null,
+        "outcome": "new",
+        "text": "wrappedHandler = function (this: unknown, message: JsonRpcRequestLike, extra?: any) {",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "72901df401c4cddc",
+        "line": 4,
+        "matched": null,
+        "outcome": "new",
+        "text": "onmessage?: (message: any, extra?: any) => void;",
+        "values": {
+          "count": 2,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "85385910a0113470",
+        "line": 7,
+        "matched": null,
+        "outcome": "new",
+        "text": "sent: any[] = [];",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "a5b9aca2ad3205ca",
+        "line": 10,
+        "matched": null,
+        "outcome": "new",
+        "text": "send = vi.fn(async (message: any) => {",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "4df9280371039dde",
+        "line": 67,
+        "matched": null,
+        "outcome": "new",
+        "text": "await server.connect(transport as any);",
+        "values": {
+          "count": 5,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "0e0e2281565f42dd",
+        "line": 136,
+        "matched": null,
+        "outcome": "new",
+        "text": "delete (invalidPayload.params as any).arguments.plan;",
+        "values": {
+          "count": 2,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "tests/jsonrpc-compat.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "6f6a71d422dada66",
+        "line": 426,
+        "matched": null,
+        "outcome": "new",
+        "text": "expect((serverInstance.transport as any)._enableJsonResponse).toBe(false);",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 39",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 39 lines)",
+        "file": "src/index.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "06e18e2bda42f8dc",
+        "line": 335,
+        "matched": null,
+        "outcome": "new",
+        "text": "app.post('/mcp', async (req, res) => {",
+        "values": {
+          "cc": 18,
+          "lines": 56
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 39",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 39 lines)",
+        "file": "src/index.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9837f3936d8da8eb",
+        "line": 320,
+        "matched": {
+          "accepted": false,
+          "file": "src/index.ts",
+          "line": 317,
+          "text": "export async function startHttpServer(options: HttpServerOptions = {}): Promise<HttpServerInstance> {",
+          "values": {
+            "cc": 13,
+            "lines": 73
+          }
+        },
+        "outcome": "worsened",
+        "text": "export async function startHttpServer(options: HttpServerOptions = {}): Promise<HttpServerInstance> {",
+        "values": {
+          "cc": 13,
+          "lines": 115
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 6,
+          "measured": 6,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 8,
+        "ms": 49,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 21,
+        "ms": 9,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 54,
+          "measured": 54,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 15,
+        "footprint": null,
+        "graph": null,
+        "held": 13,
+        "ms": 43,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 104
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 44,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 100,
+          "reads": 100
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 21,
+          "measured": 21,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 92,
+        "ms": 26,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 8,
+        "ms": 107,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 100,
+          "reads": 100
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 46,
+          "measured": 46,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 88,
+          "ms": 74,
+          "parses": 88,
+          "reads": 88,
+          "shared": 0,
+          "states": 318
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 6620,
+          "declaration_text_bytes": 25663,
+          "declarations": 479,
+          "export_leaves": 12,
+          "export_text_bytes": 442,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 12,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 88,
+          "import_text_bytes": 27563,
+          "imports": 355,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 2083,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9014989293361884,
+          "reference_canonical_allocation_ratio_milli": 1901,
+          "reference_canonical_allocations": 1776,
+          "reference_canonical_bytes": 17070,
+          "reference_distinct_names": 934,
+          "reference_name_bytes": 101826,
+          "reference_representation_after_bytes": 224816,
+          "reference_representation_before_bytes": 449632,
+          "references": 14051,
+          "signature_bytes": 25698,
+          "signatures": 479,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 76,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 250,
+            "distinct_names": 936,
+            "files": 46,
+            "index_ms": 0,
+            "measure_ms": 40,
+            "query_ms": 0,
+            "references": 7153
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 229,
+            "distinct_names": 844,
+            "files": 42,
+            "index_ms": 0,
+            "measure_ms": 33,
+            "query_ms": 0,
+            "references": 6277
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 7,
+            "renames_ms": 0,
+            "walk_ms": 0,
+            "worktree_add_ms": 38,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 52,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 88
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 111,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 111,
+          "modules": 88,
+          "ms": 0,
+          "sources": 88
+        },
+        "held": 0,
+        "ms": 0,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package @pv-bhat/vibe-check-mcp (package.json): its main names no TypeScript source klin supports: build/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "4f93f93a7d1aa8dc31400da5f2ded4abc09a5577",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

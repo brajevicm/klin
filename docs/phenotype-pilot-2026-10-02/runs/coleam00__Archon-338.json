@@ -1,0 +1,784 @@
+{
+  "arm": "human",
+  "repository": "coleam00/Archon",
+  "number": 338,
+  "base": "4df58d59f5798b2f61ae7e3479879aaf0704dabc",
+  "head": "036a39696339294c44cdfdcdb7a38c85ae7f2eda",
+  "exit": 1,
+  "ms": 3810,
+  "report": {
+    "derived": [
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CLAUDE-ARCHON.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "archon-ui-main/package.json",
+          "docs/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "archon-ui-main/test",
+          "python/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,820 function(s) at 4df58d5; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,820 functions at 4df58d5, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 94
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "archon-ui-main/src/components/knowledge-base/*Card.tsx",
+            "pattern": "*Card.tsx",
+            "roots": [
+              "archon-ui-main/src/components/knowledge-base"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/components/knowledge-base/Knowledge*.tsx",
+            "pattern": "Knowledge*.tsx",
+            "roots": [
+              "archon-ui-main/src/components/knowledge-base"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/components/project-tasks/Task*.tsx",
+            "pattern": "Task*.tsx",
+            "roots": [
+              "archon-ui-main/src/components/project-tasks"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/contexts/*Context.tsx",
+            "pattern": "*Context.tsx",
+            "roots": [
+              "archon-ui-main/src/contexts"
+            ]
+          },
+          {
+            "name": "archon-ui-main/src/pages/*Page.tsx",
+            "pattern": "*Page.tsx",
+            "roots": [
+              "archon-ui-main/src/pages"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "archon-ui-main/src/components/settings/MigrationStatusModal.tsx",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "9824a93b2c87fbe1",
+        "line": 22,
+        "matched": null,
+        "outcome": "new",
+        "text": "const [migrationResult, setMigrationResult] = useState<any>(null);",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "archon-ui-main/src/services/migrationService.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "564530ee71a7bbcf",
+        "line": 62,
+        "matched": null,
+        "outcome": "new",
+        "text": "instructions?: any;",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "archon-ui-main/test/services/migrationService.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "e77ec37bf00b2277",
+        "line": 33,
+        "matched": null,
+        "outcome": "new",
+        "text": "(global.fetch as any).mockResolvedValueOnce({",
+        "values": {
+          "count": 3,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "archon-ui-main/test/services/migrationService.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "1d28ed74ba845e3f",
+        "line": 45,
+        "matched": null,
+        "outcome": "new",
+        "text": "(global.fetch as any).mockRejectedValueOnce(new Error('Network error'));",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "archon-ui-main/test/services/migrationService.test.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "f0957efcd7c61686",
+        "line": 92,
+        "matched": null,
+        "outcome": "new",
+        "text": "(global.fetch as any).mockRejectedValueOnce(new Error('Not found'));",
+        "values": {
+          "count": 1,
+          "escape": "any"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "python/src/server/services/migration_service.py",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "d62e2c43b9fe03b2",
+        "line": 248,
+        "matched": null,
+        "outcome": "new",
+        "text": "except:",
+        "values": {
+          "count": 1,
+          "escape": "bare except"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "python/tests/test_migration_api.py",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "b2efaa7c0ae1e7d3",
+        "line": 304,
+        "matched": null,
+        "outcome": "new",
+        "text": "@pytest.mark.skip(reason=\"Health endpoint requires full app initialization which is complex to mock\")",
+        "values": {
+          "count": 1,
+          "escape": "skipped test"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/components/layouts/MainLayout.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "651a2d0c268f43f7",
+        "line": 43,
+        "matched": null,
+        "outcome": "new",
+        "text": "const checkBackendHealth = async (retryCount = 0) => {",
+        "values": {
+          "cc": 11,
+          "lines": 66
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/components/settings/MigrationStatusModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bbf56e1a7f46066c",
+        "line": 14,
+        "matched": null,
+        "outcome": "new",
+        "text": "export const MigrationStatusModal: React.FC<MigrationStatusModalProps> = ({ isOpen, onClose }) => {",
+        "values": {
+          "cc": 5,
+          "lines": 351
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/components/settings/MigrationStatusModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "81202c72bc2e3d92",
+        "line": 101,
+        "matched": null,
+        "outcome": "new",
+        "text": "const getStatusContent = () => {",
+        "values": {
+          "cc": 23,
+          "lines": 191
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/services/serverHealthService.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a73acb400f645388",
+        "line": 35,
+        "matched": null,
+        "outcome": "new",
+        "text": "async checkHealth(): Promise<boolean> {",
+        "values": {
+          "cc": 19,
+          "lines": 59
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "python/src/server/services/migration_service.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f3bbefc03712c948",
+        "line": 146,
+        "matched": null,
+        "outcome": "new",
+        "text": "async def check_migration_status(self) -> MigrationStatus:",
+        "values": {
+          "cc": 14,
+          "lines": 70
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/components/layouts/MainLayout.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5355b913ea5ee1d5",
+        "line": 25,
+        "matched": {
+          "accepted": false,
+          "file": "archon-ui-main/src/components/layouts/MainLayout.tsx",
+          "line": 23,
+          "text": "export const MainLayout: React.FC<MainLayoutProps> = ({",
+          "values": {
+            "cc": 4,
+            "lines": 177
+          }
+        },
+        "outcome": "worsened",
+        "text": "export const MainLayout: React.FC<MainLayoutProps> = ({",
+        "values": {
+          "cc": 4,
+          "lines": 316
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/components/ui/PowerButton.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "159b024988517d14",
+        "line": 24,
+        "matched": {
+          "accepted": false,
+          "file": "archon-ui-main/src/components/ui/PowerButton.tsx",
+          "line": 24,
+          "text": "export const PowerButton: React.FC<PowerButtonProps> = ({",
+          "values": {
+            "cc": 9,
+            "lines": 150
+          }
+        },
+        "outcome": "worsened",
+        "text": "export const PowerButton: React.FC<PowerButtonProps> = ({",
+        "values": {
+          "cc": 15,
+          "lines": 150
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 94",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 94 lines)",
+        "file": "archon-ui-main/src/pages/SettingsPage.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0500e29cc1dc2970",
+        "line": 20,
+        "matched": {
+          "accepted": false,
+          "file": "archon-ui-main/src/pages/SettingsPage.tsx",
+          "line": 18,
+          "text": "export const SettingsPage = () => {",
+          "values": {
+            "cc": 7,
+            "lines": 243
+          }
+        },
+        "outcome": "worsened",
+        "text": "export const SettingsPage = () => {",
+        "values": {
+          "cc": 15,
+          "lines": 325
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 37,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 51,
+        "ms": 20,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 380,
+          "measured": 380,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 7,
+        "footprint": null,
+        "graph": null,
+        "held": 270,
+        "ms": 625,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 753
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 379,
+          "measured": 379,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 8,
+        "ms": 639,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 751,
+          "reads": 751
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 325,
+        "ms": 63,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 379,
+          "measured": 378,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 8,
+        "footprint": null,
+        "graph": null,
+        "held": 250,
+        "ms": 1389,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 751,
+          "reads": 751
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 145,
+          "measured": 144,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 286,
+          "ms": 468,
+          "parses": 286,
+          "reads": 286,
+          "shared": 0,
+          "states": 815
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 30408,
+          "declaration_text_bytes": 111375,
+          "declarations": 2253,
+          "export_leaves": 62,
+          "export_text_bytes": 4714,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 48,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 284,
+          "import_text_bytes": 114174,
+          "imports": 1242,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 14749,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9820512820512821,
+          "reference_canonical_allocation_ratio_milli": 1982,
+          "reference_canonical_allocations": 7730,
+          "reference_canonical_bytes": 90304,
+          "reference_distinct_names": 3900,
+          "reference_name_bytes": 740179,
+          "reference_representation_after_bytes": 1582832,
+          "reference_representation_before_bytes": 3165664,
+          "references": 98927,
+          "signature_bytes": 139188,
+          "signatures": 1767,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 42,
+        "ms": 479,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1134,
+            "distinct_names": 4177,
+            "files": 144,
+            "index_ms": 2,
+            "measure_ms": 240,
+            "query_ms": 0,
+            "references": 46591
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1119,
+            "distinct_names": 4104,
+            "files": 140,
+            "index_ms": 2,
+            "measure_ms": 228,
+            "query_ms": 0,
+            "references": 45182
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 23,
+            "ignored_ms": 10,
+            "renames_ms": 0,
+            "walk_ms": 5,
+            "worktree_add_ms": 94,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 2,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 17,
+          "measured": 17,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 286
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 264,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1134,
+            "distinct_names": 4177,
+            "files": 144,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 46591
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1119,
+            "distinct_names": 4104,
+            "files": 140,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 45182
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 0,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 286
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 684,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 670,
+          "modules": 286,
+          "ms": 0,
+          "sources": 286
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "archon-ui-main/src/components/prp/sections/RolloutPlanSection.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "archon-ui-main/src/components/prp/sections/RolloutPlanSection.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "42 dead symbol(s) the base already held:\n  archon-ui-main/src/components/project-tasks/DataTab.tsx:25  const defaultNodes: Node[] = [\n  archon-ui-main/src/components/project-tasks/DataTab.tsx:30  const defaultEdges: Edge[] = [{\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:37  type CustomNodeTypes = Node<PageNodeData, 'page'> | Node<ServiceNodeData, 'service'>;\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:100  const defaultNodes: Node[] = [\n  archon-ui-main/src/components/project-tasks/FeaturesTab.tsx:132  const defaultEdges: Edge[] = [\n  archon-ui-main/src/components/project-tasks/TaskTableView.tsx:65  const reorderTasks = (tasks: Task[], fromIndex: number, toIndex: number): Task[] => {\n  archon-ui-main/src/components/prp/utils/sectionDetector.ts:134  function isPersonaStructure(value: any): boolean {\n  archon-ui-main/src/env.d.ts:9  interface ImportMeta {\n  archon-ui-main/src/pages/ProjectPage.tsx:28  const getProjectIcon = (iconName?: string) => {\n  archon-ui-main/src/services/agentChatService.ts:60  constructor() {\n  archon-ui-main/src/services/agentChatService.ts:77  private isSessionValidationCached(sessionId: string): boolean {\n  archon-ui-main/src/services/agentChatService.ts:95  private cacheSessionValidation(sessionId: string, valid: boolean): void {\n  archon-ui-main/src/services/agentChatService.ts:530  disconnectAll(): void {\n  archon-ui-main/src/services/agentChatService.ts:624  getCurrentSessionId(): string | null {\n  archon-ui-main/src/services/agentChatService.ts:637  getActiveSessions(): string[] {\n  archon-ui-main/src/services/agentChatService.ts:724  getServerStatus(): 'online' | 'offline' | 'unknown' | 'connecting' {\n  archon-ui-main/src/services/knowledgeBaseService.ts:257  async getKnowledgeItemDetails(sourceId: string) {\n  archon-ui-main/src/services/knowledgeBaseService.ts:264  async searchKnowledgeBase(query: string, options: SearchOptions = {}) {\n  archon-ui-main/src/services/mcpClientService.ts:237  async testClientConfig(config: MCPClientConfig): Promise<{ success: boolean; message: string }> {\n  archon-ui-main/src/services/mcpClientService.ts:291  async getAllAvailableTools(): Promise<AllToolsResponse> {\n  … and 22 more"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  TypeScript package archon-ui (archon-ui-main/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "4df58d59f5798b2f61ae7e3479879aaf0704dabc",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

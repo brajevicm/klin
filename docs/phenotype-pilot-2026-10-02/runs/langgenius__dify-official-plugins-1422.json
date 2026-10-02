@@ -1,0 +1,453 @@
+{
+  "arm": "agent",
+  "repository": "langgenius/dify-official-plugins",
+  "number": 1422,
+  "base": "a1c984e03c9627a6c22ba8b87e059d2d980e933b",
+  "head": "856ff338ca77c83c8a078e47a7eee4aaa39b9e28",
+  "exit": 1,
+  "ms": 5176,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 3,424 functions at a1c984e, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 14
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,424 functions at a1c984e, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 74
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 14, lines 74",
+        "condition": "over the complexity gate (cyclomatic > 14 or body > 74 lines)",
+        "file": "models/bedrock/models/text_embedding/text_embedding.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5f9aeee542c4340a",
+        "line": 44,
+        "matched": null,
+        "outcome": "new",
+        "text": "def _invoke(",
+        "values": {
+          "cc": 10,
+          "lines": 84
+        }
+      },
+      {
+        "ceiling": "cc 14, lines 74",
+        "condition": "over the complexity gate (cyclomatic > 14 or body > 74 lines)",
+        "file": "models/bedrock/models/llm/llm.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "5e7b55f65ef6aa16",
+        "line": 858,
+        "matched": {
+          "accepted": false,
+          "file": "models/bedrock/models/llm/llm.py",
+          "line": 838,
+          "text": "def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:",
+          "values": {
+            "cc": 21,
+            "lines": 94
+          }
+        },
+        "outcome": "worsened",
+        "text": "def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:",
+        "values": {
+          "cc": 22,
+          "lines": 97
+        }
+      },
+      {
+        "ceiling": "cc 14, lines 74",
+        "condition": "over the complexity gate (cyclomatic > 14 or body > 74 lines)",
+        "file": "models/bedrock/models/rerank/rerank.py",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "412ab3aa1790df96",
+        "line": 37,
+        "matched": {
+          "accepted": false,
+          "file": "models/bedrock/models/rerank/rerank.py",
+          "line": 24,
+          "text": "def _invoke(",
+          "values": {
+            "cc": 7,
+            "lines": 79
+          }
+        },
+        "outcome": "worsened",
+        "text": "def _invoke(",
+        "values": {
+          "cc": 9,
+          "lines": 90
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 28,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1264,
+          "measured": 1264,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 92,
+        "ms": 904,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 2524
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1264,
+          "measured": 1264,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 51,
+        "ms": 939,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 2524,
+          "reads": 2524
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 11,
+        "ms": 16,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1264,
+          "measured": 1264,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 221,
+        "ms": 1843,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 2524,
+          "reads": 2524
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0,
+          "states": 0
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 0,
+          "declaration_text_bytes": 0,
+          "declarations": 0,
+          "export_leaves": 0,
+          "export_text_bytes": 0,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 0,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 0,
+          "import_text_bytes": 0,
+          "imports": 0,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 0,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 0.0,
+          "reference_canonical_allocation_ratio_milli": 0,
+          "reference_canonical_allocations": 0,
+          "reference_canonical_bytes": 0,
+          "reference_distinct_names": 0,
+          "reference_name_bytes": 0,
+          "reference_representation_after_bytes": 0,
+          "reference_representation_before_bytes": 0,
+          "references": 0,
+          "signature_bytes": 0,
+          "signatures": 0,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 2,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 1,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 74,
+            "ignored_ms": 34,
+            "renames_ms": 0,
+            "walk_ms": 37,
+            "worktree_add_ms": 793,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 13,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 0,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "edges": 0,
+          "modules": 0,
+          "ms": 0,
+          "sources": 0
+        },
+        "held": 0,
+        "ms": 2,
+        "name": "public-api",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 0
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [],
+    "status": "FAIL",
+    "summary": "klin: 8 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "a1c984e03c9627a6c22ba8b87e059d2d980e933b",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}
