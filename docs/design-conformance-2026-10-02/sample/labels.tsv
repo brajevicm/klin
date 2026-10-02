@@ -1,0 +1,102 @@
+# set	repository	head	candidate	status	site	label	reason
+ordinary	firecrawl/pdf-inspector	bf680092	near-clone	lexical	src/tounicode.rs:519	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	firecrawl/pdf-inspector	e1797b1f	near-clone	lexical	src/extractor/fonts.rs:1198	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	gfx-rs/wgpu	1122932c	delegation-only	finding	wgpu/src/backend/wgpu_core.rs:453	not-appropriate	accessor that clones a field
+ordinary	gfx-rs/wgpu	988891de	delegation-only	finding	wgpu/src/backend/wgpu_core.rs:564	not-appropriate	accessor that clones a field
+ordinary	louis-e/arnis	daee5a7b	near-clone	lexical	src/elevation/providers/tile_math.rs:14	not-appropriate	another output (width and height against area)
+ordinary	louis-e/arnis	daee5a7b	near-clone	lexical	src/ground_decoration.rs:541	appropriate	pick_weighted repeats the weighted-pick loop of pick_weighted_value
+ordinary	louis-e/arnis	daee5a7b	near-clone	structural	src/ground_decoration.rs:541	appropriate	same pair as the lexical row
+ordinary	louis-e/arnis	d4852aa3	near-clone	lexical	src/element_processing/highways.rs:2685	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	d4852aa3	near-clone	lexical	src/floodfill_cache.rs:533	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	d4852aa3	near-clone	lexical	src/osm_parser.rs:1832	appropriate	is_closed_way repeats is_closed_polygon on way.nodes
+ordinary	louis-e/arnis	d4852aa3	near-clone	lexical	src/osm_parser.rs:1854	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	d4852aa3	near-clone	lexical	src/world_utils.rs:679	not-appropriate	shared NBT navigation steps, another edit
+ordinary	louis-e/arnis	641c2100	delegation-only	finding	src/gui.rs:335	not-appropriate	a Tauri command entry point
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/one_world.rs:194	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/osm_parser.rs:815	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/projection/mod.rs:94	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/projection/mod.rs:207	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/world_editor/java.rs:226	not-appropriate	shares two lines of path building only
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/world_editor/java.rs:302	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	7e9a4344	near-clone	lexical	src/world_utils.rs:857	appropriate	touch_last_played repeats the level.dat read, decompress and parse of update_level_name
+ordinary	louis-e/arnis	7e9a4344	wrapper-bypass	finding	src/one_world.rs:220	not-appropriate	File::open only happened to be called once; is_arnis_pack is no wrapper of it
+ordinary	louis-e/arnis	788d5e9c	near-clone	lexical	src/canopy/mod.rs:585	appropriate	write_whole repeats the public write_atomic
+ordinary	louis-e/arnis	788d5e9c	near-clone	lexical	src/elevation/postprocess.rs:1631	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	788d5e9c	near-clone	lexical	src/osm_tiles.rs:320	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	788d5e9c	near-clone	lexical	src/osm_tiles.rs:338	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	e7cdeb99	delegation-only	finding	src/caves/rng.rs:113	not-appropriate	newtype method of the RNG wrapper
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/decoration.rs:66	not-appropriate	a 3D coordinate hash, not the 64-bit mixer
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/rng.rs:12	not-appropriate	Stafford13 mixer that matches the Java RNG; other constants
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/schems.rs:178	appropriate	dimension repeats short_field with a positive check
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/schems.rs:192	not-appropriate	NBT batch decoder of i32 varints with a 5-byte limit; another contract
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/schems.rs:420	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	e7cdeb99	near-clone	structural	src/caves/schems.rs:420	appropriate	rot_dir repeats rotate_dir; only the fallback for up/down differs
+ordinary	louis-e/arnis	e7cdeb99	near-clone	structural	src/caves/schems.rs:622	not-appropriate	two string matches of the same shape and other meaning
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/shape.rs:44	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/shape.rs:82	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/caves/shape.rs:140	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	e7cdeb99	near-clone	lexical	src/world_editor/mod.rs:1180	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	fc19146b	near-clone	lexical	src/osm_tiles.rs:97	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	fc19146b	near-clone	lexical	src/osm_tiles.rs:422	appropriate	a third copy of the varint reader (mvt.rs Reader.varint)
+ordinary	louis-e/arnis	fc19146b	near-clone	structural	src/osm_tiles.rs:422	appropriate	same varint copy, matched to pmtiles.rs Varints.next
+ordinary	louis-e/arnis	80553b38	near-clone	lexical	src/element_processing/buildings.rs:4896	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	80553b38	near-clone	lexical	src/element_processing/buildings.rs:5102	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	80553b38	near-clone	lexical	src/element_processing/buildings.rs:9545	not-appropriate	same shape, another predicate (drop > 2 against any lower)
+ordinary	louis-e/arnis	80553b38	near-clone	structural	src/element_processing/buildings.rs:9545	not-appropriate	same pair as the lexical row
+ordinary	louis-e/arnis	80553b38	near-clone	lexical	src/element_processing/buildings.rs:10867	appropriate	parse_roof_direction_degrees is a subset of compass_bearing_degrees
+ordinary	louis-e/arnis	80553b38	near-clone	structural	src/element_processing/buildings.rs:10867	appropriate	same pair as the lexical row
+ordinary	refactoringhq/tolaria	44740e4a	near-clone	lexical	src/components/FilePreview.tsx:480	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	refactoringhq/tolaria	d0e41fe6	near-clone	lexical	src-tauri/src/frontmatter/ops.rs:112	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	whyour/qinglong	801a71d7	delegation-only	finding	cli/src/internal/execution/runner.ts:59	not-appropriate	module-private AbortController wrapper with a domain name
+ordinary	whyour/qinglong	801a71d7	delegation-only	finding	cli/src/internal/runtime/cancellation.ts:21	not-appropriate	AsyncLocalStorage accessor with a domain name
+ordinary	whyour/qinglong	801a71d7	delegation-only	finding	cli/src/internal/runtime/cancellation.ts:59	not-appropriate	AsyncLocalStorage wrapper with a domain name
+ordinary	whyour/qinglong	801a71d7	delegation-only	finding	cli/src/internal/runtime/output.ts:12	not-appropriate	AsyncLocalStorage wrapper with a domain name
+ordinary	whyour/qinglong	801a71d7	near-clone	lexical	cli/src/internal/runtime/files.ts:24	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	integration-tests/type-tests/cacheOverride/classicSignature/index.ts:139	not-appropriate	type test file; the path rule missed integration-tests/type-tests
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	integration-tests/type-tests/cacheOverride/defaults/index.ts:118	not-appropriate	type test file
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	integration-tests/type-tests/cacheOverride/invalid/index.ts:146	not-appropriate	type test file
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	integration-tests/type-tests/cacheOverride/modernSignature/index.ts:110	not-appropriate	type test file
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	src/cache/core/Scalar.ts:73	not-appropriate	public API method that calls the configured function
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	src/cache/core/Scalar.ts:77	not-appropriate	public API method that calls the configured function
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	src/cache/inmemory/readFromStore.ts:1056	not-appropriate	accessor over a private set
+ordinary	apollographql/apollo-client	0c925a43	delegation-only	finding	src/cache/inmemory/readFromStore.ts:1064	not-appropriate	accessor over a private map
+ordinary	apollographql/apollo-client	0c925a43	near-clone	lexical	src/utilities/internal/getDirectiveArgValue.ts:12	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	delegation-only	finding	lib/github.ts:18	not-appropriate	formatter built on Intl.NumberFormat
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	near-clone	lexical	components/profile/PasswordForm.tsx:12	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	near-clone	lexical	components/profile/ProfileForm.tsx:12	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	near-clone	lexical	lib/actions/finnhub.actions.ts:127	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	near-clone	lexical	lib/actions/user.actions.ts:29	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	Open-Dev-Society/OpenStock	3cf500ad	near-clone	lexical	lib/nodemailer/index.ts:102	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	mountain-loop/yaak	34815f32	near-clone	lexical	plugins/importer-insomnia/src/templates.ts:87	not-appropriate	a separate plugin package; the Insomnia version handles tags
+agent	GlareDB/glaredb	9133c0d2	family-bypass	finding	crates/glaredb_core/src/functions/scalar/builtin/numeric/atan2.rs:37	not-appropriate	atan2 takes two arguments, so the unary family does not fit; the reviewer accepted it
+agent	jdx/mise	bfc02629	wrapper-bypass	finding	src/cli/run.rs:244	appropriate	the run timeout repeats run_with_timeout_async with its own error text
+agent	anthropics/claude-code	6983942b	delegation-only	finding	integrations/autonomous-web-orchestrator.ts:523	not-appropriate	accessor
+agent	anthropics/claude-code	6983942b	delegation-only	finding	integrations/browser-workflow-engine.ts:542	not-appropriate	accessor
+agent	anthropics/claude-code	6983942b	delegation-only	finding	integrations/feedback-loop.ts:51	not-appropriate	constructor that loads state
+agent	anthropics/claude-code	6983942b	delegation-only	finding	integrations/visual-autonomous-agent.ts:628	not-appropriate	accessor
+agent	anthropics/claude-code	6983942b	delegation-only	finding	integrations/visual-context-integration.ts:423	not-appropriate	accessor
+agent	recallnet/js-recall	5c53be67	near-clone	lexical	apps/comps/app/competitions/[id]/page.tsx:149	not-appropriate	the neighbor does another job; only names or shape are shared
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/element_processing/landuse.rs:232	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/ground_decoration.rs:15	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/ground_decoration.rs:26	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/ground_decoration.rs:28	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/ground_decoration.rs:275	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/ground_generation.rs:33	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/terrain_surface.rs:12	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/terrain_surface.rs:14	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/terrain_surface.rs:18	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/trees/schematic.rs:14	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	daee5a7b	component-cycle	finding	src/world_editor/mod.rs:1991	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/canopy/mod.rs:72	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/grid_ops.rs:3	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/ground.rs:103	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/one_world.rs:8	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/one_world.rs:11	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/one_world.rs:13	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/one_world.rs:433	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/projection/mod.rs:5	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	7e9a4344	component-cycle	finding	src/projection/mod.rs:83	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	e7cdeb99	component-cycle	finding	src/caves/decoration.rs:11	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	e7cdeb99	component-cycle	finding	src/caves/mod.rs:63	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	fc19146b	component-cycle	finding	src/osm_tiles.rs:8	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle
+ordinary	louis-e/arnis	fc19146b	component-cycle	finding	src/osm_tiles.rs:130	not-appropriate	flat crate: every top-level module is a component, and the base modules already form one tangle

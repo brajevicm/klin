@@ -1,0 +1,14 @@
+diff --git a/src/payments/refunds.ts b/src/payments/refunds.ts
+new file mode 100644
+index 0000000..3acce7f
+--- /dev/null
++++ b/src/payments/refunds.ts
+@@ -0,0 +1,8 @@
++import { transport } from "../http/transport";
++
++export async function refundAll(chargeIds: string[]): Promise<void> {
++  for (const chargeId of chargeIds) {
++    // Not postJson: it retries 3 times, and a retried refund POST could refund twice.
++    await transport.http.send("POST", "/refunds", { body: JSON.stringify({ charge: chargeId }), retries: 0 });
++  }
++}

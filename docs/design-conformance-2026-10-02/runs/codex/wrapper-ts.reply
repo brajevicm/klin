@@ -1,0 +1,3 @@
+Updated `refundAll(chargeIds)` to refund each charge sequentially through `postJson`, following the existing payment code’s retry and JSON handling.
+
+Build verification was blocked because TypeScript (`tsc`) isn’t installed.

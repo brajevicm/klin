@@ -578,3 +578,437 @@ are an upper bound.
   `sample/findings.tsv`. `CLONES` holds the ten #343 repositories and
   `PILOT_CLONES` the #357 pilot repositories, each cloned under
   `<owner>__<name>`.
+- `sample/contracts.sh CLONES PILOT_CLONES` writes `sample/contracts.tsv`.
+- `relations time ROOT` on each start tree wrote `sample/time.tsv`.
+- `sample/languages.tsv` counts the Rust and TypeScript files of each
+  ordinary change. `sample/labels.tsv` holds one label per labeled finding.
+- `experiments.tsv` lists the repair cases, `runs/messages/` the drafted
+  REVIEW notes, `runs/<agent>/<case>.diff` each final tree (a planted case
+  against its base, a natural case against the reviewed commit, lockfiles and
+  `target/` left out), `runs/codex/*.reply` the codex replies,
+  `runs/outcomes.tsv` the outcome of every run and `runs/baseline.tsv` the
+  twelve pattern-label replies.
+
+### Changes after the rules were registered
+
+No prototype change and no corpus change came after the rules commit
+(`709ac685`). These changes to the procedure did:
+
+1. **Prompt delivery.** Each Claude subagent got a one-line message that told
+   it to read its full prompt from a file and follow it. The file holds the
+   registered prompt text exactly. Codex got the text directly.
+2. **Second turn.** Sonnet's `cycle-rs` run removed the public `ui::labels`
+   module, and the shipped `public-api` gate blocked the next stop. As in
+   #361, that agent got the block message and one more turn.
+3. **Diffs.** The first diffs held Rust `target/` files that agents built.
+   The judge then left `target/` out. A natural case's diff is against the
+   reviewed commit, so it shows only the agent's own edits.
+4. **Labels.** Every finding was labeled, except `component-cycle` in Rust:
+   49 findings, so every second one (24) was labeled by the k-th rule.
+5. **Type checks.** No tree had `tsc`, so no TypeScript tree was type-checked
+   by any agent or by the judge. The GlareDB trees did not compile, because
+   `protoc` is absent and the network is off.
+
+## Headline results
+
+1. **The family relation finds real agent work, and klin can say it in the
+   repository's words.** On GlareDB#3633, `family-bypass` names all 8 new
+   files: "18 of 23 sibling files implement `UnaryInputNumericOperation`".
+   Seven of the 8 are real bypasses. `atan2` is a real exception, because it
+   takes two arguments. On karakeep#1723, `wrapper-bypass` names the hook the
+   reviewer named.
+2. **No candidate is a BLOCK candidate.** Every candidate that finds its
+   plants also finds a hard negative or loses its finding to a cheap attack,
+   or both. Renaming a type and moving one branch into a helper
+   (`attack-split`) removes every finding of the family and registration
+   candidates.
+3. **Three candidates meet the REVIEW rules:** `family-bypass`,
+   `registration-bypass` and `wrapper-bypass`, in both languages, plus
+   `component-cycle` for TypeScript only. On 62 ordinary changes, they found
+   0, 0, 1 and 0 findings.
+4. **Similarity is noise here.** `near-clone lexical` gave 85.3 not-
+   appropriate findings per 100 Rust changes. Both `near-clone` variants
+   missed the Type-3 plant with renamed identifiers (0.42 structural, 0.18
+   lexical), while the different-meaning hard negative scored 0.71 and 1.00
+   structural.
+5. **Agents repaired every case.** Of 33 runs, 32 ended with the conforming
+   repair or the kept exception. One run kept the direct call with a stated
+   reason. No run was an appeasement, an over-refactor or harmful. All three
+   agents kept `atan2` and `ManualInvoice` as exceptions.
+6. **The pattern-label baseline names the wrong things.** It flagged a
+   "violation" in 5 of 6 hard negatives (for example "DIP: depends on the
+   global `console`"), and missed the wrapper in both wrapper plants.
+
+## 3. Corpus and samples
+
+The planted corpus holds 66 routes: 33 per family, each with a `base` row.
+`expected.tsv` holds every row. klin's shipped gates pass every route at both
+stops and in CI, because no shipped gate states these relations. The Rust `plant-clone-copy` route was first 26
+lines long and klin's `complexity` gate blocked it, so the route was made two
+lines shorter before the rules commit.
+
+The ordinary sample: 100 changes, of which 34 touch Rust and 28 touch
+TypeScript (`sample/languages.tsv`). 41 changes touch neither. The agent
+stratum: 20 pull requests with 107 Rust and TypeScript files. The replay of
+all 122 changes took 31 minutes, most of it `git archive` of the large
+trees.
+
+## 4. Results per candidate
+
+### Planted corpus
+
+`F` is a finding, `U` an `unknown` row, `P` a `policy` row, `-` nothing. A
+row for a language that has no such route is blank.
+
+| Route | `family-bypass` TS / RS | `registration-bypass` TS / RS | `wrapper-bypass` TS / RS | `near-clone structural` TS / RS | `delegation-only` TS / RS | `component-cycle` TS / RS |
+| --- | --- | --- | --- | --- | --- | --- |
+| `plant-family` | F / F | F / F | | | | |
+| `plant-unregistered` | - / - | F / F | | | | |
+| `plant-wrapper` | | | F / F | | | |
+| `plant-clone` | | | | - / - | | |
+| `plant-clone-copy` | | | | F / F | | |
+| `plant-delegation` | - / - | | | | F / F | |
+| `plant-cycle` | | | | | | F / F |
+| `legit`, `legit-wrapper` | - / - | - / - | - / - | | | |
+| `neg-special` | **F / F** | | | | | |
+| `neg-migration` | **F / F** | | | | | |
+| `neg-structural` | **F** / | | | | | |
+| `neg-decorated` / `neg-macro` | U / U | | | | | |
+| `neg-dynamic` | | U / U | | | | |
+| `neg-one-impl`, `neg-one-sibling`, `neg-generated` | - / - | - / - | | | | |
+| `neg-policy`, `neg-boundary`, `neg-trait-forward` | | | | | - / - | |
+| `neg-similar` | | | | **F / F** | | |
+| `neg-contract` | | | | | | P / P |
+| `neg-shared` | | | | | | - / - |
+
+`lexical` found `plant-clone-copy` in both languages and nothing else of the
+corpus.
+
+### Ordinary sample and agent stratum
+
+`N` and `A` are per 100 ordinary changes of the language (34 Rust, 28
+TypeScript). `P` is computed where five or more findings were labeled.
+
+| Candidate | Rust findings | Rust `N` | Rust `A` | Rust `P` | TS findings | TS `N` | TS `A` | TS `P` |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `family-bypass` | 0 | 0 | 0 | - | 0 | 0 | 0 | - |
+| `registration-bypass` | 0 | 0 | 0 | - | 0 | 0 | 0 | - |
+| `wrapper-bypass` | 1 | 2.9 | 2.9 | - | 0 | 0 | 0 | - |
+| `near-clone structural` | 6 | 5.9 | 17.6 | 0.67 | 0 | 0 | 0 | - |
+| `near-clone lexical` | 36 | 85.3 | 105.9 | 0.19 | 9 | 32.1 | 32.1 | 0.00 |
+| `delegation-only` | 4 | 11.8 | 11.8 | - | 13 | 46.4 | 46.4 | 0.00 |
+| `component-cycle` | 49 | 144.1 | 144.1 | 0.00 | 0 | 0 | 0 | - |
+
+What the rows hold:
+
+- `wrapper-bypass` (Rust): `std::fs::File::open` in arnis, which the base
+  called only once, inside a function that is no wrapper of it.
+- `near-clone structural` (Rust, arnis): 4 real reuse cases (a second
+  weighted-pick loop, a third varint reader, a compass-bearing parser that is
+  a subset of an existing one, a second `rotate_dir`) and 2 functions of the
+  same shape and another meaning.
+- `near-clone lexical`: 7 of 45 are real reuse, among them a second
+  `write_atomic` and a repeated `level.dat` loader. The other 38 share only
+  names or common words with their neighbor.
+- `delegation-only`: accessors (`self.x.clone()`, `this.map.get(k)`), named
+  `AsyncLocalStorage` wrappers, a Tauri command, public API methods, and 4
+  type-test files that the path rule did not mark as tests.
+- `component-cycle` (Rust): every finding is in arnis, a flat crate in which
+  every top-level file is a component and the base modules already form one
+  tangle. Each new module that joins the tangle reads as a new cycle.
+
+The agent stratum (20 pull requests) holds one `family-bypass` row (`atan2`
+at GlareDB's final head, not-appropriate: the reviewer accepted it), one
+`wrapper-bypass` row and five `delegation-only` rows. The wrapper row is
+real: jdx/mise#6216 wraps the whole run in `tokio::time::timeout` itself,
+while the base calls that function only inside `run_with_timeout_async`,
+which 8 sites use. The five delegation rows are accessors in
+anthropics/claude-code#8345.
+
+Of the three agent pull requests that reviewers coded `reuse` in #357, two are
+Rust or TypeScript. The prototype finds both at the commit that the reviewer
+commented on, by the candidate that names the reviewer's own words. The
+third, dify-official-plugins#1422, is Python and out of scope.
+
+### Unknown and policy rows
+
+- 7 `registration-bypass` rows in mountain-loop/yaak read `unknown`, because
+  a TypeScript file near the branch imports code at run time. Each of them is
+  a false relation: a Rust `match` in `crates/yaak/src/import.rs` binds
+  `value`, and the TypeScript branches name a local `value`. Without the
+  run-time marker, these 7 rows would be findings. The binding must be
+  resolved through imports, in one language, before a message can claim it.
+- 4 `component-cycle` rows in Open-Dev-Society/OpenStock read `unknown`: the
+  tree has 134 to 245 alias imports (`@/`), which neither the prototype nor
+  klin's resolver resolves. On such a tree the candidate sees almost nothing.
+
+### Stated contracts
+
+5 of 30 trees hold a stated design rule (`sample/contracts.tsv`):
+
+- gfx-rs/wgpu `clippy.toml`: `disallowed-types` for
+  `std::collections::HashMap` and `HashSet`, "use hashbrown::HashMap
+  instead". This is a stated reuse rule.
+- apollographql/apollo-client `eslint.config.mjs`: `no-restricted-imports`,
+  "Please use named export `{ equal }` from @wry/equality instead", and a
+  `no-restricted-syntax` rule.
+- tokens-studio/figma-plugin `.eslintrc.js`: `no-restricted-syntax` against
+  `for...in`, labels and `with`. These are style, not design.
+- gluesql/glues and jdx/mise `deny.toml`: `[bans]` tables for crate versions,
+  not design.
+
+No tree holds a dependency-cruiser, import-linter, `eslint-plugin-boundaries`
+or Nx boundary rule, and none holds a klin `layering` section. The stated
+reuse rules that exist are already enforced by the repository's own linter.
+
+## 5. Attacks
+
+| Attack | What it removes | Who still finds the defect | Cost of the attack |
+| --- | --- | --- | --- |
+| `attack-adapter` (trivial wrapper) | `family-bypass`, because the file now holds a type that implements the family | `registration-bypass`: the adapter is unregistered and the branch stays | one forwarding type |
+| `attack-interface` (meaningless interface) | nothing | `family-bypass` and `registration-bypass` | none |
+| `attack-registration` (artificial registration) | the `unregistered` form | `registration-bypass` (the branch) | none |
+| `attack-rename` | `family-bypass` (no `*Provider` suffix, no shared methods, no shared name form) | `registration-bypass` (the branch) | renaming |
+| `attack-split` (branch in a helper) | both | nothing | renaming plus one helper |
+| `neg-one-impl` (one-implementation abstraction) | not an attack in its legitimate form: no candidate finds it | - | - |
+| `attack-wrapper-alias` (TS) / `attack-wrapper-path` (Rust) | `wrapper-bypass` | nothing | one line |
+| `attack-clone-split` | `near-clone` | nothing | splitting |
+| `attack-delegation-default` | `delegation-only` | nothing | one no-op per argument |
+| `attack-barrel` (wrong direction through a re-export) | nothing | `component-cycle` finds both new edges | - |
+| `attack-alias` (TS) | `component-cycle`, one `unknown` row stays | nothing | a `tsconfig` alias |
+| `attack-root-reexport` (Rust) | `component-cycle` | nothing | one `pub use` at the crate root |
+
+So the cheapest route to green is a legitimate repair only for the wrong
+direction through a barrel. For every other candidate, a rename, an alias or
+a split removes the finding at a cost no larger than the plant. #355: "A
+future gate is useful only when the cheapest obvious route to green is also a
+legitimate repair." No candidate meets that rule for a gate. A REVIEW note
+does not need to: it asks for a judgement, and nothing turns green.
+
+The attacks rest on the same cause. Each candidate keys a relation by a
+name or a spelling that syntax shows, not by a resolved symbol: a type suffix,
+a call path's text, a binding's name, an import specifier.
+
+## 6. Precision and measurement holes
+
+- **Family membership by syntax.** TypeScript is typed by structure, so a
+  class without `implements` can be a member (`neg-structural`). Only the type
+  checker proves it. Rust macros and TypeScript decorators can create or
+  register a member out of sight. The prototype reads these as `unknown`.
+- **Exceptions look like bypasses.** `atan2`, `ManualInvoice` and a migration
+  to a new interface are all sibling-like and outside the dominant family. The
+  relation cannot tell an intended exception from a bypass.
+- **Call paths by text.** `wrapper-bypass` compares written text, so a `use`
+  or a local alias hides the path. It needs the callee resolved to a
+  declaration, which klin's references do not hold (they hold names only).
+- **Bindings by name.** `registration-bypass` matched a Rust binding to a
+  TypeScript identifier (yaak). It needs references resolved to the
+  registration's declaration.
+- **Components by directory.** A flat Rust crate makes every module a
+  component, and Rust modules of one crate may depend on each other freely. In
+  TypeScript, path aliases hide most edges of some trees.
+- **Similarity.** Shape similarity does not track meaning: a different-meaning
+  function scored 1.00, a renamed reimplementation 0.42. Name similarity
+  depends on naming, which the attack controls.
+- **Labels.** One agent labeled every row, and no person reviewed them, as in
+  #343, #362 and #364.
+
+## 7. Performance and architecture
+
+`sample/time.tsv` holds `relations time` on each start tree. The prototype
+parses every file and extracts every relation in one pass, untuned:
+
+| Tree | Files | Parse ms | Extract ms | Impl bytes | Call bytes | Registration bytes | Shingle bytes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| gfx-rs/wgpu | 855 | 740 | 2,828 | 356,055 | 1,056,609 | 695,818 | 3,786,128 |
+| refactoringhq/tolaria | 1,695 | 841 | 2,338 | 35,077 | 321,280 | 71,463 | 2,821,632 |
+| apollographql/apollo-client | 760 | 752 | 2,462 | 7,152 | 51,862 | 295,938 | 699,752 |
+| mountain-loop/yaak | 1,061 | 357 | 1,106 | 140,926 | 236,290 | 118,831 | 1,874,248 |
+| denisidoro/navi | 52 | 9 | 27 | 4,111 | 2,505 | 1,822 | 52,472 |
+
+Extraction costs 1.4 to 3.3 ms per file on the large trees. Most of it is the
+shingle walk of `near-clone`, which the dispositions reject.
+
+What each REVIEW candidate needs:
+
+| Candidate | Fact | In `FileFacts` now? | Base evidence | Affected closure |
+| --- | --- | --- | --- | --- |
+| `family-bypass` | `implements(type, trait)`, a type's methods, top-level names | No. A trait implementation's methods carry no `owner`, and no fact names the trait. Declarations and names exist. | per directory: about 4 to 360 KB on these trees | the changed file's directory |
+| `registration-bypass` | `implements`, plus literal collections that name types, plus resolved references to their bindings | No | whole tree: 2 to 700 KB | every function that reads a family's registration |
+| `wrapper-bypass` | a call's resolved callee and its enclosing declaration | No. References hold a name and a line. | whole tree: 3 KB to 1.1 MB of specific calls | the base callers of each changed call |
+| `component-cycle` (TS) | resolved module edges | Yes: the module graph of `layering` | the module graph | the whole graph |
+
+None of these candidates needs a second parser: one pass over the tree-sitter
+tree that klin already builds gives every fact. Each one needs base evidence
+of the whole tree or of a directory. A REVIEW note is not judged at each Stop.
+So the work belongs at Finalize, once per change, where a warm run over 20
+changed files would read its directories and the cached base facts. This note
+does not measure a klin-integrated warm run. The prototype's per-file cost is
+the upper bound above.
+
+## 8. Agent repair experiments
+
+`runs/outcomes.tsv` holds every run. Eleven cases, three agents:
+
+| Case | Sonnet | Haiku | gpt-6.1-sol |
+| --- | --- | --- | --- |
+| `family-ts` | correct | correct | correct |
+| `family-rs` | correct | correct | correct |
+| `family-glaredb` | correct, `cot` now returns `-inf` for `-0`, stated | correct | correct |
+| `exception-ts` | correct: kept, said why | correct: kept, rewrote the comment | correct: kept, said why |
+| `registration-ts` | correct (the reply was only "placeholder") | correct | correct |
+| `registration-rs` | correct | correct | correct |
+| `wrapper-ts` | kept with a reason: "a retried refund POST could refund twice" | correct | correct |
+| `wrapper-rs` | correct | correct | correct |
+| `wrapper-karakeep` | correct | correct | correct |
+| `cycle-ts` | correct | correct | correct |
+| `cycle-rs` | correct in 2 turns | correct | correct |
+
+| Outcome | Sonnet | Haiku | gpt-6.1-sol | All |
+| --- | ---: | ---: | ---: | ---: |
+| correct | 10 | 11 | 11 | 32 |
+| kept with a reason | 1 | 0 | 0 | 1 |
+| appeasement | 0 | 0 | 0 | 0 |
+| over-refactor | 0 | 0 | 0 | 0 |
+| unresolved | 0 | 0 | 0 | 0 |
+| harmful | 0 | 0 | 0 | 0 |
+| escalated to the person | 0 | 0 | 0 | 0 |
+| extra turns | 1 | 0 | 0 | 1 |
+
+On GlareDB, all three agents made the repair that the pull request itself
+made after the review (`5f4ac7d4`): seven functions moved to
+`UnaryInputNumericOperation`, and `atan2` stayed. No agent redesigned
+`ManualInvoice`, so decision rule 7 holds.
+
+Two observations matter for the message:
+
+- **A wrapper carries policy.** `postJson` retries 3 times. Five of six
+  wrapper runs moved `refundAll` onto it, so refunds now retry. Sonnet's
+  TypeScript run refused for that reason, and its Rust run named the risk and
+  switched anyway. The relation cannot tell whether the new code avoids the
+  wrapper on purpose. That is the reason for REVIEW and not BLOCK.
+- **The note was enough.** No run asked the person. No run added an interface,
+  a wrapper or a registration that only silences the note.
+
+The only shipped gate that acted was `public-api`, on Sonnet's `cycle-rs`
+run. The repair moved `status_label` out of `ui` and removed `ui::labels`,
+and the second turn kept the old path as a re-export.
+
+### Pattern-label baseline
+
+`runs/baseline.tsv` holds the twelve replies:
+
+| Route | TS: names a violation / names the planted relation | Rust |
+| --- | --- | --- |
+| `plant-family` | yes / yes ("two competing selection mechanisms") | yes / yes |
+| `plant-wrapper` | yes / no (DIP, SRP, OCP, `postJson` not named) | yes / no |
+| `plant-delegation` | yes / yes ("adds no behavior beyond delegation") | yes / yes |
+| `neg-special` | yes (DIP, "factory anti-pattern") | yes (DIP, SRP) |
+| `neg-migration` | yes (DIP for `console`) | no |
+| `neg-one-impl` | yes (OCP for the registry edit) | yes (SRP) |
+
+The baseline found the relation where the diff itself shows it, and missed it
+where the relation lives in the base (the wrapper). It named a violation in 5
+of 6 hard negatives. A message that says "violates DIP" for a `console.info`
+call is the bad output that #355 describes.
+
+## 9. Disposition per candidate
+
+| Candidate | Disposition | Rule that decides it |
+| --- | --- | --- |
+| `family-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 0, `A` 0, 12/12 runs correct with the exception case kept, hard negatives found and `attack-split` removes it, so not BLOCK |
+| `registration-bypass` | **REVIEW candidate**, Rust and TypeScript, only with bindings resolved | 1.1 holds, `N` 0, `A` 0, 6/6 runs correct, `attack-split` removes it, the yaak rows show that a binding matched by name is a false relation |
+| `wrapper-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 2.9 (Rust) and 0, `A` under 10, 8 of 9 runs correct and 1 kept with a reason, one line of alias removes it |
+| `component-cycle` | **REVIEW candidate** for TypeScript, **reject** for Rust | TS: `N` 0, 6/6 runs correct, alias hole named, Rust: `N` 144.1 |
+| `near-clone structural` | **reject** | 1.1 fails: the Type-3 plant is missed in both languages |
+| `near-clone lexical` | **reject** | 1.1 fails, and `N` 85.3 (Rust), 32.1 (TS) |
+| `delegation-only` | **candidate generation only** for Rust, **reject** for TypeScript | Rust `N` 11.8, TS `N` 46.4 |
+| pattern-label baseline | **reject** | flags 5 of 6 hard negatives, misses both wrapper plants |
+| stated contracts (R7) | **delegate** to the repository's own linter, through the shipped `sarif` seam or a #363 recipe | the reuse rules found (wgpu, apollo-client) are already linter rules |
+
+Choices for a person:
+
+- `near-clone structural` found 4 real reuse cases in 6 Rust rows. It is
+  rejected by rule 1.1, because it misses the renamed reimplementation. A
+  person may choose to keep it as candidate generation for a reviewer, which
+  the registered rules do not allow.
+- `wrapper-bypass` would need a stated exception form (for example a comment
+  that names the wrapper) before it is prominent. This note does not test one.
+- The REVIEW candidates found almost nothing on 62 ordinary human changes and
+  found the reviewer's point on both natural agent cases. Whether that yield
+  justifies a Finalize step is a product decision.
+
+## 10. New shared structural fact
+
+No new shared fact is justified by this note alone. Each relation below has
+only REVIEW consumers, and each of them runs at Finalize, not at Stop. If a
+person admits the REVIEW candidates, the implementation ticket needs these
+named relations:
+
+| Relation | Consumers | Why it is not in `FileFacts` today |
+| --- | --- | --- |
+| `implements(type, trait)`: a Rust `impl F for T` and a TypeScript `implements`/`extends` clause, with the method names | `family-bypass`, `registration-bypass` | a trait implementation's methods carry no `owner` and no fact names the trait |
+| a call's resolved callee and its enclosing declaration | `wrapper-bypass`, `registration-bypass` (the binding a branch reads) | a `Reference` holds a name and a line, not a path or a target |
+
+`component-cycle` for TypeScript needs no new fact: the module graph of
+`layering` holds its edges. The registration expression (a literal list of
+type names) is local to `registration-bypass` and is not a shared fact.
+
+## 11. SPEC language, if a person admits the REVIEW candidates
+
+> **Design-conformance evidence is review evidence.** At Finalize, klin may
+> report a change that bypasses a relation the base already states: a new
+> sibling type that does not implement the trait or interface that two or more
+> sibling files implement, a new member or branch that a family's registration
+> does not hold, or a new call of a path that the base calls only inside one
+> exported wrapper. A note names the existing relation, the new relation and
+> why klin cannot decide: the members, the registration or the wrapper with
+> their locations, and the count. It never names a design pattern or a
+> principle, and it never fails a Stop or CI. A relation that a decorator, a
+> macro or run-time discovery may form reads as unknown and makes no note. A
+> person who keeps an exception needs no configuration: the note asks for a
+> reason in the reply.
+
+## 12. UX, DX and AX
+
+**UX.** Each note says "Why klin is unsure" and names the exception it
+cannot rule out. In all 7 runs that met a real exception, the agent kept it:
+the 3 `exception-ts` runs, `atan2` in the 3 GlareDB runs, and the retry reason
+in Sonnet's `wrapper-ts` run.
+
+**DX.** The minimum evidence of a note is: the existing relation set
+("StripeProvider (stripe.ts) and PayPalProvider (paypal.ts) implement
+PaymentProvider"), the new relation ("AdyenProvider ... does not implement
+PaymentProvider"), the unresolved part (decorators, macros, run-time
+discovery read as unknown, so no note), and the reason it is REVIEW (the
+exception sentence). None of it needs a graph word.
+
+**AX.** 32 of 33 runs made the repository's own repair. The only shipped gate
+that acted was `public-api`, which caught a removed module in one repair.
+
+## Decision
+
+**Keep design and reuse conformance beyond #48 as Finalize review evidence.**
+
+No relation in this note can block: each one has an exception that syntax
+cannot rule out, and each one falls to a rename, an alias or a split at no
+more cost than the plant. Three relations (`family-bypass`,
+`registration-bypass`, `wrapper-bypass`) and the TypeScript component cycle
+meet the REVIEW rules, name the repository's own relation, and got the right
+repair from every agent. Similarity search, delegation counting and pattern
+labels do not. The relations they would need (`implements` and resolved
+callees) belong to the implementation ticket of that review step, which a
+person decides.
+
+## Limits
+
+- Two planted families, written by the same agent that wrote the prototype.
+- 62 ordinary changes in Rust or TypeScript, 20 agent pull requests and 2
+  natural cases. Zero findings on the ordinary sample is a small base for a
+  precision claim.
+- One run per agent and case. The REVIEW prompt says that nothing blocks, so
+  the runs show how agents treat a note, not how they treat a block.
+- The messages were drafted by hand in the form the prototype's rows allow.
+  A shipped message may only claim what its relation shows.
+- The prototype is not klin. It reads the same grammars, but none of its
+  facts comes from klin's extractor.

@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  wrapper-bypass
+        src/payments/refunds.rs:3  crate::http::transport::send
+        existing: the base calls crate::http::transport::send only inside post_json (src/http/client.rs:1), and 4 call sites use post_json
+        new: refund_all calls crate::http::transport::send directly
+        Why klin is unsure: a direct call can be on purpose, for example when the caller needs different behavior. If refund_all needs what post_json does, use post_json. If it needs the direct call, keep it and say why in your reply.

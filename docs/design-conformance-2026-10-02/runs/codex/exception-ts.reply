@@ -1,0 +1,3 @@
+Kept the change as written. `ManualInvoice` creates an invoice reference for offline bank transfer, so it intentionally does not implement `PaymentProvider`. It is absent from the checkout registry, which offers only Stripe and PayPal.
+
+Build verification was unavailable because `tsc` is not installed.

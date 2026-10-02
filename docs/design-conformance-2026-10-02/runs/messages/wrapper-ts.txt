@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  wrapper-bypass
+        src/payments/refunds.ts:5  transport.http.send
+        existing: the base calls transport.http.send only inside postJson (src/http/client.ts:3), and 4 call sites use postJson
+        new: refundAll calls transport.http.send directly
+        Why klin is unsure: a direct call can be on purpose, for example when the caller needs different behavior. If refundAll needs what postJson does, use postJson. If it needs the direct call, keep it and say why in your reply.

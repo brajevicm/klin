@@ -1,0 +1,13 @@
+diff --git a/src/payments/refunds.ts b/src/payments/refunds.ts
+new file mode 100644
+index 0000000..1d5dc3d
+--- /dev/null
++++ b/src/payments/refunds.ts
+@@ -0,0 +1,7 @@
++import { postJson } from "../http/client";
++
++export async function refundAll(chargeIds: string[]): Promise<void> {
++  for (const chargeId of chargeIds) {
++    await postJson("/refunds", { charge: chargeId });
++  }
++}

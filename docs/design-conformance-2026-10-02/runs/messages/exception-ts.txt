@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  family-bypass
+        src/payments/manual.ts:5  class ManualInvoice
+        existing: StripeProvider (stripe.ts) and PayPalProvider (paypal.ts) implement PaymentProvider
+        new: ManualInvoice defines charge and refund like them, but does not implement PaymentProvider
+        Why klin is unsure: a type can stay outside a family on purpose, for example for another contract or during a migration. If ManualInvoice is a payment provider like the others, make it one in the same way. If it is not, keep it and say why in your reply.

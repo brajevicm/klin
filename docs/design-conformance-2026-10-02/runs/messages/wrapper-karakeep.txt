@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  wrapper-bypass
+        apps/mobile/app/dashboard/settings/bookmark-default-view.tsx:15  api.users.updateSettings.useMutation
+        existing: the base calls api.users.updateSettings.useMutation only inside useUpdateUserSettings (packages/shared-react/hooks/users.ts:3), and 1 call sites use useUpdateUserSettings
+        new: BookmarkDefaultViewSettings calls api.users.updateSettings.useMutation directly
+        Why klin is unsure: a direct call can be on purpose, for example when the caller needs different behavior. If BookmarkDefaultViewSettings needs what useUpdateUserSettings does, use useUpdateUserSettings. If it needs the direct call, keep it and say why in your reply.

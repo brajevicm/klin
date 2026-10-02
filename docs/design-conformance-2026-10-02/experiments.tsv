@@ -1,0 +1,12 @@
+# id	candidate	family or natural	route or commit	task the agent was given
+family-ts	family-bypass	payments-ts	plant-family	Add Adyen as a payment provider that checkout can use.
+family-rs	family-bypass	payments-rs	plant-family	Add Adyen as a payment provider that checkout can use.
+family-glaredb	family-bypass	GlareDB/glaredb	44da22233567b0879e69d3ce418dd4751f3484fb	Add the missing trigonometric functions: acosh, asinh, atanh, cosh, sinh, tanh, cot and atan2.
+exception-ts	family-bypass	payments-ts	neg-special	Add a manual bank-transfer invoice that settles offline. Checkout must not offer it.
+registration-ts	registration-bypass	payments-ts	plant-unregistered	Add Adyen as a payment provider that checkout can use.
+registration-rs	registration-bypass	payments-rs	plant-unregistered	Add Adyen as a payment provider that checkout can use.
+wrapper-ts	wrapper-bypass	payments-ts	plant-wrapper	Add refundAll(chargeIds) in src/payments/refunds.ts that refunds each charge through the payment API.
+wrapper-rs	wrapper-bypass	payments-rs	plant-wrapper	Add refund_all(charge_ids) in src/payments/refunds.rs that refunds each charge through the payment API.
+wrapper-karakeep	wrapper-bypass	karakeep-app/karakeep	87b397269b9af499b53e0b5c947807d20288d5d3	Add a mobile setting for the default view when a bookmark is opened: reader or browser.
+cycle-ts	component-cycle	payments-ts	plant-cycle	Log the order's status label when an order is saved.
+cycle-rs	component-cycle	payments-rs	plant-cycle	Log the order's status label when an order is saved.

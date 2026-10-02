@@ -1,0 +1,13 @@
+# route	names a violation	names the planted relation	what the reply named
+payments-ts/plant-family	yes	yes	OCP and DIP in checkout; "hardcoded provider check for Adyen conflicts with the existing registry pattern, creating two competing selection mechanisms"
+payments-rs/plant-family	yes	yes	OCP and DIP; "special-case hardcoded logic sidesteps existing registry-based lookup"; "AdyenProvider lacks common payment-provider trait interface"
+payments-ts/plant-wrapper	yes	no	DIP (imports a concrete transport singleton), SRP, OCP; postJson is not named
+payments-rs/plant-wrapper	yes	no	DIP, SRP, primitive obsession, magic number, missing abstraction; post_json is not named
+payments-ts/plant-delegation	yes	yes	"PaymentService class adds no behavior beyond delegation"; also DIP for the inline new
+payments-ts/neg-special	yes	no	DIP and "factory anti-pattern" for new ManualInvoice(), SRP for console.info
+payments-rs/neg-special	yes	no	DIP for save_order, SRP for charge, "hardcoded I/O" for println!
+payments-ts/neg-migration	yes	no	DIP for the global console
+payments-rs/neg-migration	no	-	none
+payments-ts/neg-one-impl	yes	no	OCP for the registry edit, DIP for the default new HttpAdyenApi()
+payments-rs/plant-delegation	yes	yes	"Middle-Man anti-pattern": PaymentService delegates every method without adding behavior; also SRP and a "temporary object"
+payments-rs/neg-one-impl	yes	no	SRP for HttpAdyenApi methods, string-built URL

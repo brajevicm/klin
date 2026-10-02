@@ -1,0 +1,3 @@
+Updated `refund_all` to use `post_json`, matching existing payment calls and preserving the shared retry behavior. It refunds each charge sequentially and returns on the first error.
+
+`cargo test` and `git diff --check` passed. The repository currently has no tests.
