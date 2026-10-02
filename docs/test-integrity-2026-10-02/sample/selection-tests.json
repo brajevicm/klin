@@ -1,0 +1,399 @@
+{
+  "repositories": [
+    {
+      "fullName": "firecrawl/pdf-inspector",
+      "start": "ef52f77850b29189048797a48b24862251f54fe7",
+      "changes": [
+        {
+          "base": "3400b4725efa26a7810e9838341c30ce42618255",
+          "head": "bf6800920a1dc719c862d974e54eb5305ba8cbd1"
+        },
+        {
+          "base": "c48b7cacc7b02794b6d980c6189e7ae896ba9065",
+          "head": "3400b4725efa26a7810e9838341c30ce42618255"
+        },
+        {
+          "base": "e1797b1f482a3fe02296bd9e833230e89cbee8ea",
+          "head": "ac275044ed043342e24c1442123aaa3781835436"
+        },
+        {
+          "base": "9a055d5f3ccd674c9faf2f425069825302f16f54",
+          "head": "e1797b1f482a3fe02296bd9e833230e89cbee8ea"
+        },
+        {
+          "base": "2dbd16b3ea4ea943af2802bd72e45dd264eacb9f",
+          "head": "9a055d5f3ccd674c9faf2f425069825302f16f54"
+        },
+        {
+          "base": "f856d3481d41d564c64d20baa2a4796d98aed03c",
+          "head": "f06bb340755171c1723573c0db9c40f56e84c15c"
+        },
+        {
+          "base": "1e0bcd3e22b41f3e55fb83c7865044bd7a2f79aa",
+          "head": "e24bc5851a158c4aa635d03b1493dd04b0b16f4d"
+        },
+        {
+          "base": "7a3401129cfc647816fa469d4ee6d153e5a793aa",
+          "head": "1e0bcd3e22b41f3e55fb83c7865044bd7a2f79aa"
+        },
+        {
+          "base": "6f24415c7c5b7b7f28e69a42034b44431aa1531e",
+          "head": "d29de3a401ab59fbd9bfb79169d53ef12894a165"
+        },
+        {
+          "base": "43c3ae9cd828e7df5fad2b2b37244bdd81b0409b",
+          "head": "6f24415c7c5b7b7f28e69a42034b44431aa1531e"
+        }
+      ]
+    },
+    {
+      "fullName": "gfx-rs/wgpu",
+      "start": "de137ce7289642b96d9cb2dd5371b92ef49cbeda",
+      "changes": [
+        {
+          "base": "5a7601baf4ecbf5db82cf6cea3e21c6c4301c8fe",
+          "head": "fcd059f4232989b32a5dfa2b87a52bdfc4859f50"
+        },
+        {
+          "base": "2c3e503258dd444f77a3eb6f722cab8c40ed473b",
+          "head": "5a7601baf4ecbf5db82cf6cea3e21c6c4301c8fe"
+        },
+        {
+          "base": "74e9e08cd3ba101a7825b3f8607610c0fa05151e",
+          "head": "67299ee4a69d630ff87039df38460f8df6dd58d4"
+        },
+        {
+          "base": "2930d30d78d8ad09f92cbfbfb5b6abcd4c8888fd",
+          "head": "74e9e08cd3ba101a7825b3f8607610c0fa05151e"
+        },
+        {
+          "base": "94d9f2424e295c2f36db1dd742f5ee297d42815f",
+          "head": "6293e039ca26aace1cab6fd2b075f7c3547d2e9b"
+        },
+        {
+          "base": "103a70e581e2ed14ea1fb4edbe377fd8acba7b52",
+          "head": "b8bfc58e81d73e262600dc0ab06e4666d31095eb"
+        },
+        {
+          "base": "323acfb729a00c3030e362faa27252afe6368792",
+          "head": "103a70e581e2ed14ea1fb4edbe377fd8acba7b52"
+        },
+        {
+          "base": "f12c3e4508cb706c1e1faeb973bdb9c6970f5e15",
+          "head": "2b137c1e1791f062216f1b8810726e46b6e0bbf5"
+        },
+        {
+          "base": "b9f7ddad5312e45b05b11a7d7d3d920142e20832",
+          "head": "c8dc1509b9ef925363cc83102f545db57e4343bc"
+        },
+        {
+          "base": "468e87264a34d554ca28d31e30e479ac34fc7483",
+          "head": "b9f7ddad5312e45b05b11a7d7d3d920142e20832"
+        }
+      ]
+    },
+    {
+      "fullName": "louis-e/arnis",
+      "start": "daee5a7bff2403499c2369ae37328a7fea480f19",
+      "changes": [
+        {
+          "base": "d4852aa3d73daaf312ec25287dd828bbeee8f9be",
+          "head": "daee5a7bff2403499c2369ae37328a7fea480f19"
+        },
+        {
+          "base": "641c2100df8c455cdd72d76fd7ca5ca61853bacf",
+          "head": "d4852aa3d73daaf312ec25287dd828bbeee8f9be"
+        },
+        {
+          "base": "7e9a4344c53c838ad4f140e8e4bd6a3536798f5c",
+          "head": "641c2100df8c455cdd72d76fd7ca5ca61853bacf"
+        },
+        {
+          "base": "69811f59d213b2316ac80accc3e260be6e852850",
+          "head": "7e9a4344c53c838ad4f140e8e4bd6a3536798f5c"
+        },
+        {
+          "base": "e7cdeb99e274f1c3040030bfedd956fdc66278fe",
+          "head": "788d5e9ca9ded85a88229dbdc0b4e886e5582b6c"
+        },
+        {
+          "base": "80553b383f855b5d63fdafff8e26e5b9af2c1e7c",
+          "head": "fc19146b3f72ee4a87d4fd158558eb4e6d6fbe29"
+        },
+        {
+          "base": "a967f6570cdead099889e719d2173c4ed285cd0e",
+          "head": "80553b383f855b5d63fdafff8e26e5b9af2c1e7c"
+        },
+        {
+          "base": "a432b62baca8875382045e1a05420879e37aa556",
+          "head": "45c735fb1d93b3e287bb3aa4f73f38f74e558624"
+        },
+        {
+          "base": "ae63f7ff538960fd4d0697c9b11f6a1c6a0121d1",
+          "head": "a432b62baca8875382045e1a05420879e37aa556"
+        },
+        {
+          "base": "3384d3e042e105247df737968f02c481c142d866",
+          "head": "fe619c8c8ad1d961d55e42bbdce4938f18fa9d6d"
+        }
+      ]
+    },
+    {
+      "fullName": "eythaann/Seelen-UI",
+      "start": "26fe9c1a672ca6a49664644b5a828d33cc21e55d",
+      "changes": [
+        {
+          "base": "69334ab873619bd4998472dc34137a233c058bbf",
+          "head": "a9b8d89f53b440edc93a6f77ed8ef0ab2d44b5b8"
+        },
+        {
+          "base": "b71cd1757c43064a02a28679be6aaba98c378b24",
+          "head": "531172767b28be9c8dd496e2d8adfc4867f6d57d"
+        },
+        {
+          "base": "96400bf020e573cd6a609a4cca91cf7379c22e19",
+          "head": "b057258671b5f5507d5c6401582a3659789790c0"
+        },
+        {
+          "base": "165d99ac7ca3927586f3d91f46447b16a24c9f9d",
+          "head": "4eb01e6e8cee97a9a51bb68934ee9bef159ff07b"
+        },
+        {
+          "base": "edd63fe5abf37bf607d92965da0f3f47db833bb1",
+          "head": "5b2a20d1fdbcdf9dfc27765730471873342fadc8"
+        },
+        {
+          "base": "1cb8162182123be0eab254dbbde65f92074ac459",
+          "head": "37f516d3ac32b0beecc2af6390def72c8a5f7786"
+        },
+        {
+          "base": "d6e9360015fe71732f007871d54cb194b59689e5",
+          "head": "c3baf99a14f49573e58864afd6f3ad32a66fcb50"
+        },
+        {
+          "base": "81c3d74ab86cfe761439d129020d0ce643431e87",
+          "head": "d6e9360015fe71732f007871d54cb194b59689e5"
+        },
+        {
+          "base": "4cda505040359c2ad658b78c54946613eed95e21",
+          "head": "835358ade20ebb079c1e22e95ecbb25153debb51"
+        },
+        {
+          "base": "4c029fda33668a4401a7740c0a29d51b57463873",
+          "head": "e39e75d009d10423058d31c2e10c2b5d3a3957b0"
+        }
+      ]
+    },
+    {
+      "fullName": "denisidoro/navi",
+      "start": "7389f9544b9cbbf845acadb96c1b18a13ca988c4",
+      "changes": [
+        {
+          "base": "a171c2938d5ebdf566c8cdc180052ba09e9f6932",
+          "head": "f7330b9ad5bd95b7d1a3c96d00e0a77deb589147"
+        },
+        {
+          "base": "1ac218cb1e0e80649ef23c8a916e67efc3086833",
+          "head": "9973dc88573bedf448b3c91a236c5722636446d9"
+        },
+        {
+          "base": "f1463e9e7ba5b87cc2d32511fab47317c2fbe58c",
+          "head": "1ac218cb1e0e80649ef23c8a916e67efc3086833"
+        },
+        {
+          "base": "20c658a50334c56defe15978e5e8f9a05efe4de2",
+          "head": "b560ba572e43d64a58266614a36a9f17f60c2bfd"
+        },
+        {
+          "base": "acec1a376a2643082d40dd213220f7063a122377",
+          "head": "6f316ec7eb2f1f56a7609048e67860eb84c1aacf"
+        },
+        {
+          "base": "7abdb057e66e292fc39e7ab5253348500085efa0",
+          "head": "8cf9c96e542a79c891c7f4be5095b9752eeec6c1"
+        },
+        {
+          "base": "3f6dc72c34cec55680210c7bdbc90e2c91e60df4",
+          "head": "7abdb057e66e292fc39e7ab5253348500085efa0"
+        },
+        {
+          "base": "0c824199341ade036f967589143cd33820c613d4",
+          "head": "13fe757a8a4cd54757393fc082a388b9441f10cc"
+        },
+        {
+          "base": "9d862344e648b91be774e8ca633dc39990abc8fa",
+          "head": "d2b0935e9bb08e69f3958b7d57ed06bfb0e7b5c5"
+        },
+        {
+          "base": "8b78d5486351ee9f3849ebe59f6f9f46c72de9a3",
+          "head": "9d862344e648b91be774e8ca633dc39990abc8fa"
+        }
+      ]
+    },
+    {
+      "fullName": "refactoringhq/tolaria",
+      "start": "04030c3e0a23ce93f39a83d821b1b87ec03aec4e",
+      "changes": [
+        {
+          "base": "d9e02a167907a9ef51d55d98127bc298888322fa",
+          "head": "04030c3e0a23ce93f39a83d821b1b87ec03aec4e"
+        },
+        {
+          "base": "7435ef89016da9f2fb1fc4738823ffd7cb37aa00",
+          "head": "44740e4ae18d3759bcbfe54483e64e3154dd379b"
+        },
+        {
+          "base": "83e0c2b860b48009876096c0ff42598a72003607",
+          "head": "d0e41fe6ecc8e5c17bd3b1ccdd85a729f77381ba"
+        },
+        {
+          "base": "0987b82e0a736b05b84e08de8f10101ddb273955",
+          "head": "f27bd5a33a6e60b13ecc6c09434b550d388d2aac"
+        },
+        {
+          "base": "7da2f991ec8bd53b42ef4038bb3da9ad01ee07cb",
+          "head": "ebbcef5a67732a8f65bb98f3320eaa1182ab4ace"
+        },
+        {
+          "base": "f7d86c99121adf7005b656b4acd9b3b5a40262da",
+          "head": "7da2f991ec8bd53b42ef4038bb3da9ad01ee07cb"
+        },
+        {
+          "base": "a9dc8110364cc945be45d3c8222af5ff985e632a",
+          "head": "f7d86c99121adf7005b656b4acd9b3b5a40262da"
+        },
+        {
+          "base": "5a566049811b761dbc618a879b5fed100075a714",
+          "head": "a9dc8110364cc945be45d3c8222af5ff985e632a"
+        },
+        {
+          "base": "1ae4aef35313dd7f4b0c8a3cf631d9193aae47ff",
+          "head": "1bfde90bd4db84215702288b3ccc40aadb28bd71"
+        },
+        {
+          "base": "7cf80d6327b5a8d96bc0dfe5a6bd3016bda07bba",
+          "head": "1ae4aef35313dd7f4b0c8a3cf631d9193aae47ff"
+        }
+      ]
+    },
+    {
+      "fullName": "whyour/qinglong",
+      "start": "44129ca0883eeb3be4f21376e1b139b2c3d3752c",
+      "changes": []
+    },
+    {
+      "fullName": "apollographql/apollo-client",
+      "start": "c9fcb07e174418c80c40e0c9aaa1f484159c12e5",
+      "changes": [
+        {
+          "base": "d4f87701204441f66b40db157b2bbd8783e46e57",
+          "head": "37f700eb4c65ec7683111e128bca087d4a97cf41"
+        },
+        {
+          "base": "70e3a11d93c8ef8d64aa2a7d12b02b773a57c7ca",
+          "head": "0c925a434823778a5ad8b4842c304390d7339406"
+        },
+        {
+          "base": "b1243494bfffa9d088d0e1a4fb8e956140130454",
+          "head": "56ca81b40962d1aeef3d753e562672dfed042ea2"
+        },
+        {
+          "base": "3dd3e9a6f195ea5dd27a973f153a0538ccdffd20",
+          "head": "d4f0771976766b54e0a95a3d51b708b64eb3cfe0"
+        },
+        {
+          "base": "2f383e7e484ceaec72df205b52abf8430cc59891",
+          "head": "2b39cc8b2e0a6b0a6c1dfc2f64fa2940c59b23bd"
+        },
+        {
+          "base": "851841979a73aecda5123f48e58e251c45ebbf53",
+          "head": "2f383e7e484ceaec72df205b52abf8430cc59891"
+        },
+        {
+          "base": "abd07814bbe80d9307458a450dd28addf1d38ef1",
+          "head": "a406cc9669246972a8f067462422aec716b6213b"
+        },
+        {
+          "base": "efc2b7d472948e3d155312467065028b1d79bbcd",
+          "head": "abd07814bbe80d9307458a450dd28addf1d38ef1"
+        },
+        {
+          "base": "61b6c00d2d2b2a85a55608c127fc4a85c3451079",
+          "head": "e4df809e87a1d2b72728df53327f531f65411ed3"
+        },
+        {
+          "base": "aa61f21e32842a255db060362497818ac153abf4",
+          "head": "c207b886026114943dc7f5c85e997a1938e74cfe"
+        }
+      ]
+    },
+    {
+      "fullName": "Open-Dev-Society/OpenStock",
+      "start": "0248d5d9284b8b9fae4ae82a211d30fe4b88fe09",
+      "changes": [
+        {
+          "base": "e844ac413c740214948a6fb3696797256a8435b3",
+          "head": "130a69734d26da4b101cc1412ef54a7650d1d325"
+        },
+        {
+          "base": "1819bdf8a584c0b64ebd246f6e4b3c2e8edcc9eb",
+          "head": "e844ac413c740214948a6fb3696797256a8435b3"
+        },
+        {
+          "base": "eac13c65be699336d67c7fd49446acddd39585a8",
+          "head": "3cf500ad4c82161591c881c8c0a8eb244bac08e2"
+        },
+        {
+          "base": "4597c9a668118844b588f95eddb9342eed31c41d",
+          "head": "05cf71bc8a97131f5718bd6b810bd68d5293de32"
+        }
+      ]
+    },
+    {
+      "fullName": "mountain-loop/yaak",
+      "start": "7f302536168585be4603aea09491a78b75c57070",
+      "changes": [
+        {
+          "base": "6c2a18d506aef3a9988288cd11a413d6c7fdf823",
+          "head": "7f302536168585be4603aea09491a78b75c57070"
+        },
+        {
+          "base": "411aa262c7a6e819ca0e77e6e95825c78775013a",
+          "head": "0a57d8eb6123e6c87c90f71eedf10bc3630d76b3"
+        },
+        {
+          "base": "34815f327a73e686f8d630a9847720c8291e914e",
+          "head": "411aa262c7a6e819ca0e77e6e95825c78775013a"
+        },
+        {
+          "base": "6fc43a60e23b7680a31dd06ccb5e668460b9d87d",
+          "head": "34815f327a73e686f8d630a9847720c8291e914e"
+        },
+        {
+          "base": "23d369d84e26b47542bbc2eae5b7bc879a9efc26",
+          "head": "6fc43a60e23b7680a31dd06ccb5e668460b9d87d"
+        },
+        {
+          "base": "6e7f23a778e1d89a6add5216ded9f52ec2108ef7",
+          "head": "23d369d84e26b47542bbc2eae5b7bc879a9efc26"
+        },
+        {
+          "base": "46464cfacfe486d4d75bc5e252b7791abe9d80b0",
+          "head": "aa10c44a456b49494e2de53132a5b5e51fa07ab3"
+        },
+        {
+          "base": "4859aba1428cff70347ba69c10f7d28b55ce478d",
+          "head": "ab616fd91586d0f1b43a0c3103f745cb3bccaab9"
+        },
+        {
+          "base": "c9990d8492fbe4ed587e25c77f44aee1674d870b",
+          "head": "ae518dfb4c96d3c28d1e2b8f75a62bea20b26186"
+        },
+        {
+          "base": "8a6e4810fd465eb99918de532ed3d6d4f19939da",
+          "head": "06142d007a74df51004511b370dd824d2a3d1c0c"
+        }
+      ]
+    }
+  ]
+}

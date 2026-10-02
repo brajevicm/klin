@@ -1,0 +1,7 @@
+klin: every gate passed, with 1 note:
+  NOTE  tests
+        NOTE: 1 expected value changed together with the same value in production code:
+          src/slug.test.ts:14  expected value changed  it("caps the length", () => {
+            toHaveLength(40) became toHaveLength(60), and src/slug.ts changed 40 to 60 in the same change
+        The test now expects what the code now does, so it cannot show whether 60 is right. When the task asks for the new value, nothing needs to change.
+klin: 7 gate(s), 0 failed.

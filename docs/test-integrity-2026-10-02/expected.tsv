@@ -1,0 +1,119 @@
+integrity-rs/base	0 green	0 green	0	-
+integrity-rs/case-all-checks-removed	0 green	0 green	0	all-checks-removed:none-left
+integrity-rs/case-disabled	0 green	0 green	0	disabled:cfg-never
+integrity-rs/case-new-test-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-rs/case-weakened	0 green	0 green	0	weakened:exact->tautology
+integrity-rs/legit	0 green	0 green	0	-
+integrity-rs/neg-cfg-platform	0 green	0 green	0	-
+integrity-rs/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
+integrity-rs/neg-equivalent	0 green	0 green	0	-
+integrity-rs/neg-error-spec-same-name	2 red	0 green	0	error-expectation-removed:replaced
+integrity-rs/neg-helper-file-plain	0 green	0 green	0	assertion-removed:replaced(unresolved)
+integrity-rs/neg-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved)
+integrity-rs/neg-helper	0 green	0 green	0	-
+integrity-rs/neg-merge	0 green	0 green	0	-
+integrity-rs/neg-move-file	0 green	0 green	0	-
+integrity-rs/neg-new-helper-file-plain	0 green	0 green	0	-
+integrity-rs/neg-new-smoke	0 green	0 green	0	new-test-unchecked:none(smoke)
+integrity-rs/neg-should-panic-to-result	0 green	0 green	0	-
+integrity-rs/neg-snapshot-literal	0 green	0 green	0	-
+integrity-rs/neg-spec-change	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
+integrity-rs/neg-split	0 green	0 green	0	-
+integrity-rs/neg-stronger	0 green	0 green	0	-
+integrity-rs/neg-table	0 green	0 green	0	-
+integrity-rs/plant-cfg-never	0 green	0 green	0	disabled:cfg-never
+integrity-rs/plant-early-return	0 green	0 green	0	disabled:early-return
+integrity-rs/plant-error-removed	0 green	0 green	0	all-checks-removed:none-left error-expectation-removed:replaced
+integrity-rs/plant-existence	0 green	0 green	0	assertion-removed:replaced-by-weaker
+integrity-rs/plant-ignore	2 red	0 red	1	disabled:ignore(escapes)
+integrity-rs/plant-mirror	0 green	0 green	0	expected-changed:mirrors-production
+integrity-rs/plant-new-tautology	0 green	0 green	0	new-test-unchecked:tautology-only
+integrity-rs/plant-new-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-rs/plant-remove-all	0 green	0 green	0	all-checks-removed:none-left
+integrity-rs/plant-remove	0 green	0 green	0	assertion-removed:removed
+integrity-rs/plant-self-equal	0 green	0 green	0	weakened:exact->tautology
+integrity-rs/plant-should-panic-removed	0 green	0 green	0	all-checks-removed:none-left
+integrity-rs/plant-tautology	0 green	0 green	0	all-checks-removed:tautology-only
+integrity-rs/plant-weaker	0 green	0 green	0	assertion-removed:replaced-by-weaker
+integrity-rs/reword-bug-expected	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
+integrity-rs/reword-cfg-feature	0 green	0 green	0	-
+integrity-rs/reword-conditional-check	0 green	0 green	0	-
+integrity-rs/reword-conditional-return	0 green	0 green	0	-
+integrity-rs/reword-copy-constant	0 green	0 green	0	expected-changed:changed(no-mirror)
+integrity-rs/reword-count-pad	0 green	0 green	0	assertion-removed:replaced
+integrity-rs/reword-helper-file	0 green	0 green	0	assertion-removed:replaced(unresolved)
+integrity-rs/reword-helper	0 green	0 green	0	assertion-removed:replaced-by-weaker assertion-removed:replaced-by-weaker
+integrity-rs/reword-if-let	0 green	0 green	0	error-expectation-removed:replaced expected-changed:changed(no-mirror)
+integrity-rs/reword-move-weak	0 green	0 green	0	assertion-removed:removed
+integrity-rs/reword-new-is-ok	0 green	0 green	0	-
+integrity-rs/reword-new-unwrap	0 green	0 green	0	new-test-unchecked:none(smoke)
+integrity-rs/reword-shadow	0 green	0 green	0	-
+integrity-rs/reword-swallow	0 green	0 green	0	-
+integrity-rs/reword-tautology-length	0 green	0 green	0	assertion-removed:replaced-by-tautology
+integrity-ts/base	0 green	0 green	0	-
+integrity-ts/case-all-checks-removed	0 green	0 green	0	all-checks-removed:none-left
+integrity-ts/case-disabled	0 green	0 green	0	disabled:early-return
+integrity-ts/case-mirror-note	0 green	0 green	0	expected-changed:mirrors-production
+integrity-ts/case-new-test-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-ts/legit	0 green	0 green	0	-
+integrity-ts/neg-async	0 green	0 green	0	-
+integrity-ts/neg-chai-property	0 green	0 green	0	new-test-unchecked:none(unknown)
+integrity-ts/neg-describe-step	0 green	0 green	0	-
+integrity-ts/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
+integrity-ts/neg-each	2 red	0 green	0	-
+integrity-ts/neg-equivalent	0 green	0 green	0	-
+integrity-ts/neg-error-spec-same-name	0 green	0 green	0	error-expectation-removed:replaced
+integrity-ts/neg-error-spec	2 red	0 green	0	-
+integrity-ts/neg-helper-file-plain	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved) assertion-removed:into-unresolved-helper(unresolved)
+integrity-ts/neg-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved) assertion-removed:into-unresolved-helper(unresolved)
+integrity-ts/neg-helper	0 green	0 green	0	-
+integrity-ts/neg-merge	0 green	0 green	0	-
+integrity-ts/neg-mock-collaborator	0 green	0 green	0	-
+integrity-ts/neg-move-file	0 green	0 green	0	-
+integrity-ts/neg-new-helper-file-plain	0 green	0 green	0	-
+integrity-ts/neg-new-smoke	0 green	0 green	0	new-test-unchecked:none(smoke)
+integrity-ts/neg-property	0 green	0 green	0	-
+integrity-ts/neg-skip-platform	2 red	0 green	0	-
+integrity-ts/neg-snapshot	0 green	0 green	0	expected-changed:changed(no-mirror)
+integrity-ts/neg-spec-change	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
+integrity-ts/neg-split	0 green	0 green	0	-
+integrity-ts/neg-spy-collaborator	0 green	0 green	0	mocked-subject:spy(collaborator)
+integrity-ts/neg-stronger	0 green	0 green	0	expected-changed:changed(no-mirror)
+integrity-ts/neg-table	0 green	0 green	0	-
+integrity-ts/plant-describe-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-ts/plant-early-return	0 green	0 green	0	disabled:early-return
+integrity-ts/plant-error-removed	0 green	0 green	0	error-expectation-removed:replaced
+integrity-ts/plant-existence	0 green	0 green	0	weakened:exact->existence
+integrity-ts/plant-mirror	0 green	0 green	0	expected-changed:mirrors-production
+integrity-ts/plant-mock-module	0 green	0 green	0	mocked-subject:module
+integrity-ts/plant-new-tautology	0 green	0 green	0	new-test-unchecked:tautology-only
+integrity-ts/plant-new-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-ts/plant-remove-all	0 green	0 green	0	all-checks-removed:none-left
+integrity-ts/plant-remove-implicit	0 green	0 green	0	all-checks-removed:none-left
+integrity-ts/plant-remove	0 green	0 green	0	assertion-removed:removed
+integrity-ts/plant-self-equal	0 green	0 green	0	weakened:exact->tautology
+integrity-ts/plant-skip-if	2 red	0 green	0	disabled:skip-if-constant
+integrity-ts/plant-skip	2 red	0 red	1	disabled:skip(escapes)
+integrity-ts/plant-spy	0 green	0 green	0	mocked-subject:spy
+integrity-ts/plant-tautology	0 green	0 green	0	all-checks-removed:tautology-only
+integrity-ts/plant-todo	2 red	0 green	0	all-checks-removed:none-left(stubs) disabled:todo
+integrity-ts/plant-weaker-async	0 green	0 green	0	weakened:exact->existence
+integrity-ts/plant-weaker	0 green	0 green	0	weakened:exact->partial
+integrity-ts/reword-bug-expected	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
+integrity-ts/reword-conditional-check	0 green	0 green	0	-
+integrity-ts/reword-conditional-return	0 green	0 green	0	-
+integrity-ts/reword-copy-constant	0 green	0 green	0	expected-changed:changed(no-mirror)
+integrity-ts/reword-count-pad	0 green	0 green	0	assertion-removed:replaced-by-weaker
+integrity-ts/reword-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved) assertion-removed:into-unresolved-helper(unresolved)
+integrity-ts/reword-helper	0 green	0 green	0	assertion-removed:replaced-by-weaker assertion-removed:replaced-by-weaker
+integrity-ts/reword-mock-path	0 green	0 green	0	mocked-subject:module
+integrity-ts/reword-move-weak	0 green	0 green	0	assertion-removed:removed
+integrity-ts/reword-new-defined	0 green	0 green	0	-
+integrity-ts/reword-new-smoke-title	0 green	0 green	0	new-test-unchecked:none(smoke)
+integrity-ts/reword-shadow	0 green	0 green	0	-
+integrity-ts/reword-skip-each	2 red	0 green	0	disabled:skip(escapes)
+integrity-ts/reword-skip-variable	2 red	0 green	0	-
+integrity-ts/reword-swallow	0 green	0 green	0	-
+integrity-ts/reword-tautology-length	0 green	0 green	0	assertion-removed:replaced-by-tautology
+integrity-ts/reword-tautology-typeof	0 green	0 green	0	assertion-removed:replaced
+integrity-ts/reword-try-catch	0 green	0 green	0	error-expectation-removed:replaced

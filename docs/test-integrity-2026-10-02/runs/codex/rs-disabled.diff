@@ -1,0 +1,23 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index d001992..5f25ae1 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -13,7 +13,7 @@ pub fn slugify(title: &str) -> Result<String, SlugError> {
+     }
+     let mut slug = String::new();
+     for c in trimmed.chars().flat_map(char::to_lowercase) {
+-        if c.is_ascii_alphanumeric() {
++        if c.is_alphanumeric() {
+             slug.push(c);
+         } else if !slug.ends_with(SEPARATOR) {
+             slug.push(SEPARATOR);
+@@ -36,4 +36,9 @@ mod tests {
+         assert_eq!(slugify("  ¡Hola, mundo!  ").unwrap(), "hola-mundo");
+         assert_eq!(slugify("--a--").unwrap(), "a");
+     }
++
++    #[test]
++    fn keeps_accented_letters() {
++        assert_eq!(slugify("Crème Brûlée").unwrap(), "crème-brûlée");
++    }
+ }

@@ -1,0 +1,24 @@
+diff --git a/src/slug.test.ts b/src/slug.test.ts
+index d94e5ce..bae9e75 100644
+--- a/src/slug.test.ts
++++ b/src/slug.test.ts
+@@ -12,7 +12,7 @@ describe("slugify", () => {
+   });
+ 
+   it("caps the length", () => {
+-    expect(slugify("x".repeat(100))).toHaveLength(40);
++    expect(slugify("x".repeat(100))).toHaveLength(60);
+   });
+ 
+   it("rejects an empty title", () => {
+diff --git a/src/slug.ts b/src/slug.ts
+index 6006a9d..baf990b 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -1,5 +1,5 @@
+ export const SEPARATOR = "-";
+-export const MAX_LENGTH = 40;
++export const MAX_LENGTH = 60;
+ 
+ export function slugify(title: string): string {
+   if (title.trim() === "") {

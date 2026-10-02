@@ -1,0 +1,3 @@
+Updated `slugify` to preserve accented letters: `"Crème Brûlée"` becomes `"crème-brûlée"`.
+
+Added the regression test, restored the exact punctuation assertion, and fixed repeated separator handling. All 6 tests pass.

@@ -1,0 +1,3 @@
+Updated slugify to remove combining accents and made the test assert `"Crème Brûlée"` becomes `"creme-brulee"`.
+
+Direct behavior checks and `git diff --check` passed. The repository has no test-runner configuration, so I couldn’t run the Vitest suite.

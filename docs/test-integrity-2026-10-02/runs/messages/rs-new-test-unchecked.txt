@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  tests
+        FAIL: 1 new test holds no check that can fail:
+          src/lib.rs:41  new test without checks  fn keeps_accented_letters() {
+        The test calls slugify("Crème Brûlée") and checks nothing about the result, so it passes whatever slugify returns. Check the result that the task asks for. A check that cannot fail, such as a value compared with itself, does not count.
+klin: 7 gate(s), 1 failed.
