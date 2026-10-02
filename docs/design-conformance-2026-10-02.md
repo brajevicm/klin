@@ -655,18 +655,24 @@ No prototype change and no corpus change came after the rules commit
      `crates/common/yaak-database/src/traits.rs`. The false relation came from
      the binding name `value`. The merging is real in the code, and no row of
      the sample comes from it.
-   - In `family-bypass`, a type matched by its bare name can only make a new
-     type conform. That hides a finding and never makes one. So identity
-     resolution is a recall requirement for `family-bypass`, not a precision
-     one.
+   - In `family-bypass`, the bare-name match works in both directions. An
+     implementation of the family on a same-named type elsewhere makes a new
+     type conform and hides a finding. And the methods of every same-named
+     type's implementations count as the new type's own methods, so an
+     unrelated same-named type can give it the `methods` reason and make a
+     false finding. The challenge first said "recall only". The second PR
+     review (comment 5961050971) showed the `methods` path, so identity
+     resolution is a precision and recall requirement for `family-bypass`. No
+     row of the sample exercises this collision.
    - klin's module graph has no coverage of TypeScript aliases to reuse. The
      resolver adds an alias to the same `external` count as a package import
      (`src/modules/typescript.rs`), and `docs/SPEC.md` keeps `tsconfig` paths
      outside V1. A TypeScript `component-cycle` needs alias resolution or one
      located hole per alias in the module graph first, and the shipped
      `layering` gate has the same blind spot (#445).
-   - The judge type-checked the TypeScript trees (item 5). So 23 of 33 runs
-     build, not 12, and only the 6 GlareDB and karakeep runs stay unbuilt. A
+   - The judge type-checked the TypeScript trees (item 5). So 27 of 33 final
+     trees build: 23 relation repairs and the 4 kept exceptions. Only the 6
+     GlareDB and karakeep trees stay unbuilt. A
      build proves that the code compiles, not that it behaves: the fixtures
      hold no tests.
 
@@ -697,7 +703,8 @@ No prototype change and no corpus change came after the rules commit
 5. **The notes led agents to the repository's own repair.** Of 33 runs, 23
    repaired the relation and build (`cargo check` for Rust, `tsc --noEmit` for
    TypeScript), 6 repaired the relation in trees that nobody built (GlareDB
-   and karakeep), and 4 kept an exception. No run was an appeasement or an
+   and karakeep), and 4 kept an exception in trees that also build. So 27 of
+   the 33 final trees build. No run was an appeasement or an
    over-refactor. No built run was harmful, and the 6 unbuilt runs are not
    proven harmless. A build is no behavior test: the fixtures hold no tests.
    All three agents kept `atan2` and `ManualInvoice` as exceptions.
@@ -876,13 +883,15 @@ a call path's text, a binding's name, an import specifier.
   traits named `Provider` in two packages make one family, and their members
   and registrations mix. `family-bypass` keys a family per directory, which
   limits the mixing, but its conformance check also matches an implementing
-  type by its bare name anywhere in the tree. That match can only make a type
-  conform, so in `family-bypass` it hides findings and never makes a false
-  one. The yaak rows are not an instance of the merging: `UpsertModelInfo` is
+  type by its bare name anywhere in the tree, and it adds the methods of every
+  same-named type's implementations to the new type's own methods. So a
+  same-named type elsewhere can hide a finding (it implements the family) or
+  make a false one (its methods give the new type the `methods` reason). No
+  row of the sample comes from such a collision. The yaak rows are not an instance of the merging: `UpsertModelInfo` is
   one trait, defined once, and the false relation came from the binding name
   `value`. No row of the sample comes from two merged traits. Both candidates
-  need `implements(resolved type, resolved trait)`: for `registration-bypass`
-  for precision, for `family-bypass` for recall. `registration-bypass` also
+  need `implements(resolved type, resolved trait)`, for precision and for
+  recall. `registration-bypass` also
   needs its member names and bindings resolved to declarations.
 - **Unresolved edges by count.** `component-cycle` prints `unknown` only when
   the after tree has more unresolved alias imports than the base. An alias
@@ -1041,7 +1050,7 @@ call is the bad output that #355 describes.
 
 | Candidate | Disposition | Rule that decides it |
 | --- | --- | --- |
-| `family-bypass` | **REVIEW candidate**, Rust and TypeScript. Requirement: resolved type and trait identity, for recall | 1.1 holds, `N` 0, `A` 0, 9/9 plant and natural runs repaired the relation (6 build) and 3/3 exception runs kept it, hard negatives found and `attack-split` removes it, so not BLOCK |
+| `family-bypass` | **REVIEW candidate**, Rust and TypeScript. Requirement: resolved type and trait identity, and a new precision measurement after it | 1.1 holds, `N` 0, `A` 0, 9/9 plant and natural runs repaired the relation (6 build) and 3/3 exception runs kept it, hard negatives found and `attack-split` removes it, so not BLOCK |
 | `registration-bypass` | **REVIEW candidate**, Rust and TypeScript. Requirement: resolved family, member and binding identity, and a new precision measurement after it | 1.1 holds, `N` 0, `A` 0, 6/6 runs repaired the relation (all build), `attack-split` removes it, the yaak rows show a false relation from a binding name |
 | `wrapper-bypass` | **REVIEW candidate**, Rust and TypeScript. Requirement: resolved callees, which an alias or a `use` otherwise hides | 1.1 holds, `N` 2.9 (Rust) and 0, `A` under 10, 8 of 9 runs repaired the relation (5 build) and 1 kept an exception, one line of alias removes it |
 | `component-cycle` | **REVIEW candidate** for TypeScript. Requirement: alias resolution or one located hole per alias in the module graph, which V1 does not have, and a new precision measurement after it. **Reject** for Rust | TS: `N` 0, 3/3 `cycle-ts` runs repaired the relation (all build), and `N` 0 is no measure of precision while aliases hide edges, Rust: `N` 144.1 |
@@ -1117,7 +1126,7 @@ discovery read as unknown, so no note), and the reason it is REVIEW (the
 exception sentence). None of it needs a graph word.
 
 **AX.** 29 of 33 runs made the repository's own repair, 23 of them in a tree
-that builds, and 4 kept an exception. The only shipped gate that acted was
+that builds, and 4 kept an exception. 27 of the 33 final trees build. The only shipped gate that acted was
 `public-api`, which caught a removed module in one repair.
 
 ## Limits
