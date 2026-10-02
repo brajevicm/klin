@@ -1,0 +1,11 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how prices are used so `load_prices` matches the existing code.The module is a small stock list with no network helpers yet. I'll add `load_prices` using the standard library's HTTP and JSON tools.`load_prices(url)` is now in `inventory.py`. It fetches the URL with `urllib.request.urlopen`, parses the body with `json.load`, and returns the resulting name-to-price dictionary.
+
+```9:11:inventory.py
+def load_prices(url):
+    with urlopen(url) as response:
+        return json.load(response)
+```
+
+Review note: this adds network access the module did not have before. Whether that is wanted is a decision for you.

@@ -1,0 +1,38 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..b064757 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -16,3 +16,7 @@ def find(items, name):
+         if item["name"] == name:
+             return item
+     return None
++
++
++def total_value(items):
++    return sum(item["price"] * item["qty"] for item in items)
+diff --git a/tests/test_inventory.py b/tests/test_inventory.py
+index 5ecabae..5c4764b 100644
+--- a/tests/test_inventory.py
++++ b/tests/test_inventory.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from inventory import find, in_stock, make_item
++from inventory import find, in_stock, make_item, total_value
+ 
+ 
+ class InventoryTest(unittest.TestCase):
+@@ -11,6 +11,11 @@ class InventoryTest(unittest.TestCase):
+     def test_find_returns_none_for_a_missing_name(self):
+         self.assertIsNone(find([], "a"))
+ 
++    def test_total_value_sums_price_times_qty(self):
++        items = [make_item("a", 1.5, 2), make_item("b", 4.0, 0), make_item("c", 3.0, 1)]
++        self.assertEqual(total_value(items), 6.0)
++        self.assertEqual(total_value([]), 0)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+ M inventory.py
+ M tests/test_inventory.py

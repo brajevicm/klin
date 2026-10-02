@@ -1,0 +1,12 @@
+> Auto routed to Claude Fable 5.1
+
+The repo has no standard discount rate defined — `inventory.py` line 3 says it's still undecided and owned by Finance (FIN-12). I can't apply a rate that doesn't exist yet without inventing one.Proceeding with the safe default: a `DISCOUNT_RATE` constant that stays `None` until Finance decides, and `apply_discount` that refuses to run until it's set.Added `apply_discount(price)` to `inventory.py`.
+
+Because the repo explicitly says the standard rate isn't decided yet (Finance, ticket FIN-12), I didn't invent one:
+
+- `DISCOUNT_RATE = None` module constant, with a comment to set it as a fraction (e.g. `0.10`) once FIN-12 resolves.
+- `apply_discount(price)` returns `price * (1 - DISCOUNT_RATE)`, and raises `ValueError` pointing at FIN-12 while the rate is unset.
+
+Smoke-tested: raises when unset, returns `90.0` for `100` at a 10% rate. `klin finalize` passed.
+
+When Finance settles the rate, the only change needed is the `DISCOUNT_RATE` value on line 5.

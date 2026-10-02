@@ -1,0 +1,14 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how items are structured so `low_stock` matches the existing code.`in_stock` already filters on `qty`. I'll add `low_stock` in the same style, returning items with quantity strictly below the limit.`low_stock(items, limit)` is now in `inventory.py`. It returns every item whose `qty` is strictly below `limit`, using the same list-comprehension style as `in_stock`.
+
+```10:15:inventory.py
+def in_stock(items):
+    return [item for item in items if item["qty"] > 0]
+
+
+def low_stock(items, limit):
+    return [item for item in items if item["qty"] < limit]
+```
+
+Typecheck did not run here because `mypy` is not installed. That is a tool limitation, not a problem in this change. CI runs that check.

@@ -1,0 +1,40 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..b960ee1 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -11,6 +11,10 @@ def in_stock(items):
+     return [item for item in items if item["qty"] > 0]
+ 
+ 
++def low_stock(items, limit):
++    return [item for item in items if item["qty"] < limit]
++
++
+ def find(items, name):
+     for item in items:
+         if item["name"] == name:
+diff --git a/tests/test_inventory.py b/tests/test_inventory.py
+index 5ecabae..6c0a6d0 100644
+--- a/tests/test_inventory.py
++++ b/tests/test_inventory.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from inventory import find, in_stock, make_item
++from inventory import find, in_stock, low_stock, make_item
+ 
+ 
+ class InventoryTest(unittest.TestCase):
+@@ -11,6 +11,10 @@ class InventoryTest(unittest.TestCase):
+     def test_find_returns_none_for_a_missing_name(self):
+         self.assertIsNone(find([], "a"))
+ 
++    def test_low_stock_returns_items_below_limit(self):
++        items = [make_item("a", 1.0, 2), make_item("b", 2.0, 5), make_item("c", 3.0, 5)]
++        self.assertEqual([item["name"] for item in low_stock(items, 5)], ["a"])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+ M inventory.py
+ M tests/test_inventory.py

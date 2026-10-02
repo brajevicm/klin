@@ -1,0 +1,5 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how prices are used so `load_prices` matches the rest of the module.The module is a small stock list with no network helpers yet. I'll add `load_prices` using `urllib` and `json` so it fetches a name-to-price object and returns a dict.`load_prices(url)` is now in `inventory.py`. It fetches the URL with `urllib.request`, parses the body with `json`, and returns the name-to-price mapping as a dict. A JSON value that is not an object raises `ValueError`.
+
+This adds network access the module did not have before. That is intentional for downloading prices, and it is left for you to confirm.

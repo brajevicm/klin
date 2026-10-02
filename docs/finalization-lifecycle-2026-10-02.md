@@ -598,7 +598,21 @@ Cursor, which counts toward no band:
   names FIN-12, and asked the person for the rate. It did not call `klin
   finalize`. Under section 15, an edit plus a question is a clarification
   run, so this is the intended behavior.
-- `ready-pass`: pending.
+- `ready-pass` in the app: not completed.
+
+Cursor CLI (`cursor-agent` 2026.10.01, account default model, which routed
+to Claude Fable 5.1 or Grok 4.7), `runs/cursor-cli/`. The CLI ran the
+`sessionStart` hook and no Stop hook. The agent's login shell found an
+older klin first, so the session line named the stand-in by its absolute
+path. Two `probe.sh all` processes overlapped, so only 6 of 12 runs are
+clean, and Cursor gets no band:
+
+- `ready-pass` 1, 2 and `ready-fail` 1, 2: finalize before the reply, 4 of
+  4. Both `ready-fail` runs added a test and ended on the finalized tree.
+- `clarify-1`: no question. The agent added `DISCOUNT_RATE = None` with an
+  error naming FIN-12, then finalized. Under section 15 this is a readiness
+  run.
+- `question-1`: no finalize call and no change.
 
 ### Findings the probe surfaced
 
