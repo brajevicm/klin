@@ -1,0 +1,37 @@
+diff --git a/app/cli.py b/app/cli.py
+index 26422af..8d2da80 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -1,6 +1,7 @@
+-from app.report import to_json
++from app.report import to_csv, to_json
+ from app.rows import load_rows
+ 
+ 
+-def main(path):
+-    return to_json(load_rows(path))
++def main(path, fmt):
++    rows = load_rows(path)
++    return to_csv(rows) if fmt == "csv" else to_json(rows)
+diff --git a/app/report.py b/app/report.py
+index e2dcdba..c0b8d22 100644
+--- a/app/report.py
++++ b/app/report.py
+@@ -1,5 +1,17 @@
++import csv
+ import json
++from io import StringIO
+ 
+ 
+ def to_json(rows):
+     return json.dumps(rows)
++
++
++def to_csv(rows):
++    if not rows:
++        return ""
++    output = StringIO()
++    writer = csv.DictWriter(output, fieldnames=rows[0].keys())
++    writer.writeheader()
++    writer.writerows(rows)
++    return output.getvalue()

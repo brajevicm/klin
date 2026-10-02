@@ -1,0 +1,38 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 02a3da5..c537711 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -4,3 +4,8 @@ pub mod rows;
+ pub fn main(path: &str) -> String {
+     report::to_json(&rows::load_rows(path))
+ }
++
++pub fn main_csv(path: &str) -> String {
++    let rows = rows::load_rows(path);
++    report::to_csv(&rows)
++}
+diff --git a/src/report.rs b/src/report.rs
+index 79cc967..32bd28a 100644
+--- a/src/report.rs
++++ b/src/report.rs
+@@ -10,3 +10,20 @@ pub fn to_json(rows: &[Row]) -> String {
+         .collect();
+     format!("[{}]", items.join(","))
+ }
++
++pub fn to_csv(rows: &[Row]) -> String {
++    let mut csv = String::from("name,amount\n");
++    for row in rows {
++        if row.name.contains([',', '"', '\n', '\r']) {
++            csv.push('"');
++            csv.push_str(&row.name.replace('"', "\"\""));
++            csv.push('"');
++        } else {
++            csv.push_str(&row.name);
++        }
++        csv.push(',');
++        csv.push_str(&row.amount.to_string());
++        csv.push('\n');
++    }
++    csv
++}

@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  escapes
+        FAIL: 1 new escape site(s) where the code opts out of a check, beyond the 0 the base holds:
+          src/tiers.ts:6  swallowed error  } catch {  — nothing matched
+        This catch discards every error and returns a constant, so a broken config reads as an empty one. Handle the failure the task names and let the others reach the caller: catch only the error you expect, give it the answer the task documents, and rethrow the rest.
+klin: 6 gate(s), 1 failed.

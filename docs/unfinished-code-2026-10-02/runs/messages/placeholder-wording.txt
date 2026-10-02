@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  stubs
+        FAIL: 1 new stub site(s) where the code stands in for work nobody did, beyond the 0 the base holds:
+          src/report.ts:11  placeholder wording  // Simplified version: a real implementation would quote fields and add a header.  — nothing matched
+        The comment says this code is a stand-in for a real implementation. Do the work the comment describes, then delete the comment. If you cannot do that work in this turn, say so in your reply.
+klin: 6 gate(s), 1 failed.

@@ -1,0 +1,5 @@
+Implemented `to_csv(rows)` with a header and proper CSV escaping. Empty input returns an empty string.
+
+`main(path, fmt="json")` selects CSV with `fmt="csv"` and preserves the JSON default.
+
+Checks passed for headers, escaping, empty input, iterable input, and format selection.

@@ -1,0 +1,3 @@
+Updated `loadTiers(path)` to return `["free"]` only for missing files (`ENOENT`) and rethrow all other errors. `start()` uses it.
+
+Verified configured and empty tiers, missing-file fallback, and propagation of parse and read errors.

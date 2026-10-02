@@ -1,0 +1,5 @@
+Implemented CSV output with a `name,amount` header and proper escaping for commas, quotes, and line breaks. Removed the placeholder comment.
+
+`main(path, "csv")` selects CSV; omitting the format preserves JSON output.
+
+Verified escaping, empty input, and format selection.

@@ -1,0 +1,3 @@
+Updated `load_tiers(path)` to return `["free"]` only when the file is missing. Invalid JSON and missing `tiers` errors now propagate. `start()` uses the helper.
+
+Verified these cases and checked diff whitespace; all passed.

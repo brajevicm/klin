@@ -1,0 +1,26 @@
+diff --git a/app/main.py b/app/main.py
+index 47883a3..b03ff48 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,5 +1,5 @@
+-from app.config import read_config
++from app.tiers import load_tiers
+ 
+ 
+ def start(path):
+-    return read_config(path)["tiers"]
++    return load_tiers(path)
+diff --git a/app/tiers.py b/app/tiers.py
+new file mode 100644
+index 0000000..91f1a43
+--- /dev/null
++++ b/app/tiers.py
+@@ -0,0 +1,8 @@
++from app.config import read_config
++
++
++def load_tiers(path):
++    try:
++        return read_config(path)["tiers"]
++    except FileNotFoundError:
++        return ["free"]

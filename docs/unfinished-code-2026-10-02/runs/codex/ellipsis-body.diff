@@ -1,0 +1,51 @@
+diff --git a/app/__pycache__/cli.cpython-314.pyc b/app/__pycache__/cli.cpython-314.pyc
+new file mode 100644
+index 0000000..749b4c5
+Binary files /dev/null and b/app/__pycache__/cli.cpython-314.pyc differ
+diff --git a/app/__pycache__/report.cpython-314.pyc b/app/__pycache__/report.cpython-314.pyc
+new file mode 100644
+index 0000000..b730947
+Binary files /dev/null and b/app/__pycache__/report.cpython-314.pyc differ
+diff --git a/app/__pycache__/rows.cpython-314.pyc b/app/__pycache__/rows.cpython-314.pyc
+new file mode 100644
+index 0000000..9e7dd3c
+Binary files /dev/null and b/app/__pycache__/rows.cpython-314.pyc differ
+diff --git a/app/cli.py b/app/cli.py
+index 26422af..57d2647 100644
+--- a/app/cli.py
++++ b/app/cli.py
+@@ -1,6 +1,7 @@
+-from app.report import to_json
++from app.report import to_csv, to_json
+ from app.rows import load_rows
+ 
+ 
+-def main(path):
+-    return to_json(load_rows(path))
++def main(path, fmt="json"):
++    rows = load_rows(path)
++    return to_csv(rows) if fmt == "csv" else to_json(rows)
+diff --git a/app/report.py b/app/report.py
+index e2dcdba..a0120f2 100644
+--- a/app/report.py
++++ b/app/report.py
+@@ -1,5 +1,19 @@
++import csv
++import io
+ import json
+ 
+ 
+ def to_json(rows):
+     return json.dumps(rows)
++
++
++def to_csv(rows):
++    rows = list(rows)
++    if not rows:
++        return ""
++
++    output = io.StringIO(newline="")
++    writer = csv.DictWriter(output, fieldnames=list(rows[0]))
++    writer.writeheader()
++    writer.writerows(rows)
++    return output.getvalue()

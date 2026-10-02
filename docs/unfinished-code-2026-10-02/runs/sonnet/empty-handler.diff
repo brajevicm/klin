@@ -1,0 +1,39 @@
+diff --git a/app/__pycache__/config.cpython-314.pyc b/app/__pycache__/config.cpython-314.pyc
+new file mode 100644
+index 0000000..b3edb24
+Binary files /dev/null and b/app/__pycache__/config.cpython-314.pyc differ
+diff --git a/app/__pycache__/main.cpython-314.pyc b/app/__pycache__/main.cpython-314.pyc
+new file mode 100644
+index 0000000..4353d98
+Binary files /dev/null and b/app/__pycache__/main.cpython-314.pyc differ
+diff --git a/app/__pycache__/tiers.cpython-314.pyc b/app/__pycache__/tiers.cpython-314.pyc
+new file mode 100644
+index 0000000..f539dc4
+Binary files /dev/null and b/app/__pycache__/tiers.cpython-314.pyc differ
+diff --git a/app/main.py b/app/main.py
+index 47883a3..b03ff48 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,5 +1,5 @@
+-from app.config import read_config
++from app.tiers import load_tiers
+ 
+ 
+ def start(path):
+-    return read_config(path)["tiers"]
++    return load_tiers(path)
+diff --git a/app/tiers.py b/app/tiers.py
+new file mode 100644
+index 0000000..3cba89a
+--- /dev/null
++++ b/app/tiers.py
+@@ -0,0 +1,9 @@
++from app.config import read_config
++
++
++def load_tiers(path):
++    try:
++        config = read_config(path)
++    except FileNotFoundError:
++        return ["free"]
++    return config["tiers"]

@@ -1,0 +1,3 @@
+Updated `load_tiers` to return `vec!["free"]` only for missing files. Other errors preserve the existing panic behavior, and `start()` uses the helper.
+
+Verified configured tiers, missing files, empty files, and other read errors.

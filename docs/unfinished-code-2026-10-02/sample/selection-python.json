@@ -1,0 +1,255 @@
+{
+  "cutoff": "2026-09-29T00:00:00Z",
+  "repositories": [
+    {
+      "language": "Python",
+      "fullName": "mikf/gallery-dl",
+      "defaultBranch": "master",
+      "start": "8b9a56d6b1a53bc13a80894625fd58b24de3063a",
+      "changes": [
+        {
+          "head": "8b9a56d6b1a53bc13a80894625fd58b24de3063a",
+          "base": "19a64031b7e695dc76d7d689a1c9d7470fc0bfc7"
+        },
+        {
+          "head": "19a64031b7e695dc76d7d689a1c9d7470fc0bfc7",
+          "base": "d9eebbea041a52e347a2b181bdd64536a875d004"
+        },
+        {
+          "head": "d9eebbea041a52e347a2b181bdd64536a875d004",
+          "base": "2adf2a8e0041ec55afdcc2211fd5c7ca239a9352"
+        },
+        {
+          "head": "2adf2a8e0041ec55afdcc2211fd5c7ca239a9352",
+          "base": "4f0abb2606e2c63423b13e8a072ec7fbaa79d036"
+        },
+        {
+          "head": "4f0abb2606e2c63423b13e8a072ec7fbaa79d036",
+          "base": "86047cf67a12bdb6ff1085774f8ad9fc347e8da9"
+        },
+        {
+          "head": "86047cf67a12bdb6ff1085774f8ad9fc347e8da9",
+          "base": "8939a870a1b319634489839a8b224803dccb13ec"
+        },
+        {
+          "head": "8939a870a1b319634489839a8b224803dccb13ec",
+          "base": "f2ebb9936a7986a1f41f6acde02b269beedff735"
+        },
+        {
+          "head": "f2ebb9936a7986a1f41f6acde02b269beedff735",
+          "base": "d93587c8e10b98b02af06c407c6be22d13e51f8d"
+        },
+        {
+          "head": "d93587c8e10b98b02af06c407c6be22d13e51f8d",
+          "base": "01f5dff21fbbde04c9729cecdabac7306a997121"
+        },
+        {
+          "head": "01f5dff21fbbde04c9729cecdabac7306a997121",
+          "base": "840876248d73b885c5eb58edce5af05b73fb339c"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "astral-sh/ty",
+      "defaultBranch": "main",
+      "start": "f40d21a17daeb1d52ae883b4625f7591ff5838fb",
+      "changes": [
+        {
+          "head": "f40d21a17daeb1d52ae883b4625f7591ff5838fb",
+          "base": "8e4aef298ab0e39007e59fb2cedcaddbebc34afc"
+        },
+        {
+          "head": "8e4aef298ab0e39007e59fb2cedcaddbebc34afc",
+          "base": "bef3a06e67d863b41e841d4d75cf254f787e598a"
+        },
+        {
+          "head": "bef3a06e67d863b41e841d4d75cf254f787e598a",
+          "base": "6a60da5e9c53395e7ee46fed3fceedeb218a143b"
+        },
+        {
+          "head": "6a60da5e9c53395e7ee46fed3fceedeb218a143b",
+          "base": "8dd9a7f7fa35a18275d82117e6593ba45507065f"
+        },
+        {
+          "head": "8dd9a7f7fa35a18275d82117e6593ba45507065f",
+          "base": "d4e4bf90906c7677049bc3a29d1735de7d22052d"
+        },
+        {
+          "head": "d4e4bf90906c7677049bc3a29d1735de7d22052d",
+          "base": "94ce7333abb356b2068dc98d37a68c993da6d09b"
+        },
+        {
+          "head": "94ce7333abb356b2068dc98d37a68c993da6d09b",
+          "base": "901eeaa9cd9ac06f34e85e4f721f76a0dc36e217"
+        },
+        {
+          "head": "901eeaa9cd9ac06f34e85e4f721f76a0dc36e217",
+          "base": "09bf0b1b2114a628f3e2296d3d9d28245066c98b"
+        },
+        {
+          "head": "09bf0b1b2114a628f3e2296d3d9d28245066c98b",
+          "base": "89d6ffe529dd44f64adc0d28f80744b7c7ab217f"
+        },
+        {
+          "head": "89d6ffe529dd44f64adc0d28f80744b7c7ab217f",
+          "base": "9c214798cfcc59069e986876564638fadf32d774"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "teng-lin/notebooklm-py",
+      "defaultBranch": "main",
+      "start": "4d6a4e5494d721cea4d87e2d4c226afee305eee8",
+      "changes": [
+        {
+          "head": "4d6a4e5494d721cea4d87e2d4c226afee305eee8",
+          "base": "4e7960984b6359b576a462660ef32d4d98c9e78c"
+        },
+        {
+          "head": "4e7960984b6359b576a462660ef32d4d98c9e78c",
+          "base": "2cd62cd7bd540dbda559385ea44b1b309fa41fd0"
+        },
+        {
+          "head": "2cd62cd7bd540dbda559385ea44b1b309fa41fd0",
+          "base": "833078ddfc625f46765728e2e6fd3a67778a0da8"
+        },
+        {
+          "head": "833078ddfc625f46765728e2e6fd3a67778a0da8",
+          "base": "6e80bd3ba3da69e63d75bf6f712b41d1d65c3ee7"
+        },
+        {
+          "head": "6e80bd3ba3da69e63d75bf6f712b41d1d65c3ee7",
+          "base": "af19e326e69771c1323e1a865d2933edbc20450e"
+        },
+        {
+          "head": "af19e326e69771c1323e1a865d2933edbc20450e",
+          "base": "4d92743240852b4832ce45d76894a5d247e8e286"
+        },
+        {
+          "head": "4d92743240852b4832ce45d76894a5d247e8e286",
+          "base": "ca86547706c7ba1ee2190e67a01282509a5f4130"
+        },
+        {
+          "head": "ca86547706c7ba1ee2190e67a01282509a5f4130",
+          "base": "cf889298c1a2757b542fd54437f8e79e8f2cda0e"
+        },
+        {
+          "head": "cf889298c1a2757b542fd54437f8e79e8f2cda0e",
+          "base": "2c56ebbee6775a33f18f6f689b484b85dfc506cd"
+        },
+        {
+          "head": "2c56ebbee6775a33f18f6f689b484b85dfc506cd",
+          "base": "8a0eaae6a37dd99e6ad84ef687a93b96f3dac4cf"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "kvcache-ai/ktransformers",
+      "defaultBranch": "main",
+      "start": "c40722bf04c494f2492b7eb9e86ef01a4ede45b3",
+      "changes": [
+        {
+          "head": "c40722bf04c494f2492b7eb9e86ef01a4ede45b3",
+          "base": "f7607c0f66c643220ff43b822b24483c98c41392"
+        },
+        {
+          "head": "f7607c0f66c643220ff43b822b24483c98c41392",
+          "base": "105359b4bf70073af9fab992ad29920666acccc9"
+        },
+        {
+          "head": "105359b4bf70073af9fab992ad29920666acccc9",
+          "base": "4bf0974553a7e6e4041352f4356f275624791100"
+        },
+        {
+          "head": "4bf0974553a7e6e4041352f4356f275624791100",
+          "base": "0b954fe4ca2f9e79519da66156e6a3f92b686232"
+        },
+        {
+          "head": "0b954fe4ca2f9e79519da66156e6a3f92b686232",
+          "base": "0dce4c9b097710951d1b3e232f50b973ff0a5505"
+        },
+        {
+          "head": "0dce4c9b097710951d1b3e232f50b973ff0a5505",
+          "base": "f312728aa9655881b622bbb5d63a21b454ea1f38"
+        },
+        {
+          "head": "f312728aa9655881b622bbb5d63a21b454ea1f38",
+          "base": "4882505c9a66a6784b3360a1b6ba9b23d53d0291"
+        },
+        {
+          "head": "4882505c9a66a6784b3360a1b6ba9b23d53d0291",
+          "base": "105cee4bd1dce07369a254cad7727da44a30a890"
+        },
+        {
+          "head": "105cee4bd1dce07369a254cad7727da44a30a890",
+          "base": "440df948027128318bc30a11a545433eb0c7d383"
+        },
+        {
+          "head": "440df948027128318bc30a11a545433eb0c7d383",
+          "base": "27b04cef5c89b7226ffcd902b96f273eb3e52501"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "huggingface/trl",
+      "defaultBranch": "main",
+      "start": "9fa0abbd2999fab19e7894cbb9a5cabb42ba4e96",
+      "changes": [
+        {
+          "head": "9fa0abbd2999fab19e7894cbb9a5cabb42ba4e96",
+          "base": "2270d95a3739a4bb6ae53c942a521bd0aa5dde22"
+        },
+        {
+          "head": "2270d95a3739a4bb6ae53c942a521bd0aa5dde22",
+          "base": "b29d4bea3fa874c8b0154a78b7ad59bb5a6df674"
+        },
+        {
+          "head": "b29d4bea3fa874c8b0154a78b7ad59bb5a6df674",
+          "base": "468876877598b8913a00c8bff1218781d1c99cab"
+        },
+        {
+          "head": "468876877598b8913a00c8bff1218781d1c99cab",
+          "base": "d947c4f5098c8d6ca30ea7ff58b98e6570fd6a01"
+        },
+        {
+          "head": "d947c4f5098c8d6ca30ea7ff58b98e6570fd6a01",
+          "base": "4c2d04825b7129140b8e8ed07c8399debe06f7bd"
+        },
+        {
+          "head": "4c2d04825b7129140b8e8ed07c8399debe06f7bd",
+          "base": "e8f888454cea71d2c387d049a8488ca537aba382"
+        },
+        {
+          "head": "e8f888454cea71d2c387d049a8488ca537aba382",
+          "base": "0f23835538872e6405431110fe415f95f06ce636"
+        },
+        {
+          "head": "0f23835538872e6405431110fe415f95f06ce636",
+          "base": "6de4f740b1280605dd1124521a6d1cb525263808"
+        },
+        {
+          "head": "6de4f740b1280605dd1124521a6d1cb525263808",
+          "base": "05ce0987c7deb4cd45c776e51c8cdf0174aee000"
+        },
+        {
+          "head": "05ce0987c7deb4cd45c776e51c8cdf0174aee000",
+          "base": "85de470dc548e5d1bc5c9f38107c922c394f45d0"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "fullName": "nginx-proxy/nginx-proxy",
+      "rule": "no pyproject.toml, setup.py or setup.cfg at the root"
+    },
+    {
+      "fullName": "pluja/awesome-privacy",
+      "rule": "no pyproject.toml, setup.py or setup.cfg at the root"
+    }
+  ]
+}
