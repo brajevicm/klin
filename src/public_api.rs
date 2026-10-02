@@ -258,10 +258,7 @@ fn finding(
         values.insert(NOW.into(), now.into());
     }
     Finding {
-        file: match &surface.manifest {
-            Some(manifest) => format!("{} ({manifest})", surface.id),
-            None => surface.id.clone(),
-        },
+        file: surface.identity(),
         line: item
             .and_then(|item| item.origin.as_ref())
             .map_or(0, |(_, line)| *line),
@@ -396,6 +393,7 @@ fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
     }
     let mut named: Vec<coverage::Unresolved> = Vec::new();
     for surface in &side.derived.surfaces {
+        let identity = surface.identity();
         let inside = surface
             .files
             .iter()
@@ -411,7 +409,7 @@ fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
                 file: side.current.get(file).unwrap_or(file).clone(),
                 line,
                 text: text.clone(),
-                why: format!("{} — {}", surface.id, why),
+                why: format!("{identity} — {why}"),
             });
         }
     }

@@ -206,6 +206,45 @@ fn an_unqualified_rust_surface_acceptance_is_stale() {
 }
 
 #[test]
+fn an_unresolved_form_moved_to_a_namesake_surface_is_new() {
+    for unresolved in ["pub use missing::*;\n", "pub mod missing;\n"] {
+        let tree = Tree::new();
+        tree.write("klin.json", "{}");
+        tree.write("Cargo.toml", "[workspace]\nmembers = [\"a\", \"b\"]\n");
+        tree.write("common/bad.rs", unresolved);
+        tree.write("common/good.rs", "// no public items\n");
+        for swapped in [false, true] {
+            let roots = if swapped {
+                [("a", "good"), ("b", "bad")]
+            } else {
+                [("a", "bad"), ("b", "good")]
+            };
+            for (package, root) in roots {
+                tree.write(&format!("{package}/Cargo.toml"), &format!(
+                    "[package]\nname = \"{package}\"\nversion = \"0.1.0\"\n[lib]\nname = \"shared\"\npath = \"../common/{root}.rs\"\n"
+                ));
+            }
+            if !swapped {
+                tree.base();
+                let held = by_hand(&tree);
+                assert_eq!(held.code, 0, "{}", held.out);
+                assert!(held.says("NOTE: 1 form(s)"), "{}", held.out);
+                continue;
+            }
+            for run in [by_hand(&tree), changed(&tree)] {
+                assert_eq!(run.code, 2, "{}", run.out);
+                assert!(
+                    run.says("FAIL: 1 form(s) inside a supported public surface"),
+                    "{}",
+                    run.out
+                );
+                assert!(run.says("shared (b/Cargo.toml) —"), "{}", run.out);
+            }
+        }
+    }
+}
+
+#[test]
 fn a_root_pub_item_a_pub_mod_chain_and_a_pub_use_are_external_and_the_rest_is_not() {
     let tree = Tree::new();
     library(&tree);

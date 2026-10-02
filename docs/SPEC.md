@@ -2619,11 +2619,11 @@ that identity, and the base holds no break by construction. For a Cargo library,
 finding's `file` is always `CRATE (MANIFEST)`, such as
 `shared (a/Cargo.toml)`, while the consumer name in `--report` stays `shared`.
 The owning manifest is part of accepted-entry matching, JSON site identity,
-and removed-module grouping even when the crate name is unique in either
-tree. An accepted break for one library cannot hold the same item break in a
-namesake, and an unqualified crate-name entry for a Cargo library matches
-nothing and follows
-the normal stale-entry rules; klin never rewrites accepted entries.
+removed-module grouping and unresolved-hole evidence even when the crate
+name is unique in either tree. An accepted break for one library cannot hold
+the same item break in a namesake, and an unqualified crate-name entry for a
+Cargo library matches nothing and follows the normal stale-entry rules;
+klin never rewrites accepted entries.
 Pinned by `accepting_a_namesake_break_cannot_hold_another_librarys_break`,
 `identical_breaks_in_namesake_libraries_have_distinct_json_ids`,
 `an_unqualified_rust_surface_acceptance_is_stale` and
@@ -2655,7 +2655,11 @@ path through a module no file answers, and an unresolved module or specifier
 inside a surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while
 other findings still print, because a green run must not imply a surface it
 claims to support was completely measured. A hole the base holds too is a
-NOTE in every run (8.6). Pinned by
+NOTE in every run (8.6). Unresolved-hole matching includes the same
+owner-qualified Cargo surface identity as compatibility findings: a form
+that moves from one namesake surface to another is new at its destination,
+even when its source file, text and underlying reason are unchanged. Pinned
+by `an_unresolved_form_moved_to_a_namesake_surface_is_new` and
 `export_equals_and_an_ambient_module_are_still_holes`. The `OK:` line counts
 the items and surfaces judged, how many are measured and opaque, the library
 targets and entry points found, and the packages or targets with no supported

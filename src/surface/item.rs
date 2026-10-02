@@ -81,6 +81,14 @@ pub struct Inapplicable {
 }
 
 impl Surface {
+    /// The identity findings and unresolved evidence share, qualified by a Cargo library's owner.
+    pub fn identity(&self) -> String {
+        match &self.manifest {
+            Some(manifest) => format!("{} ({manifest})", self.id),
+            None => self.id.clone(),
+        }
+    }
+
     pub fn item(&self, path: &str, kind: &str) -> Option<&Item> {
         self.items
             .iter()
