@@ -1,0 +1,11 @@
+> Auto routed to Claude Fable 5.1
+
+No `__init__.py` in `tests/`, so discovery needs the plain form.Added `restock` to `inventory.py`:
+
+```python
+def restock(item, n):
+    item["qty"] += n
+    return item
+```
+
+`klin finalize` flagged the new function as untested, so I also added `test_restock_adds_to_qty_and_returns_the_item` in `tests/test_inventory.py` (asserts the same dict is returned and `qty` goes 2 → 5). All 3 tests pass and `klin finalize` reports FINALIZED.

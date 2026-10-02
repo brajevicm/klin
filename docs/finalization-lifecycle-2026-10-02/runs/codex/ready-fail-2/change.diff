@@ -1,0 +1,38 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..66f127f 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -7,6 +7,11 @@ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+ 
++def restock(item, n):
++    item["qty"] += n
++    return item
++
++
+ def in_stock(items):
+     return [item for item in items if item["qty"] > 0]
+ 
+diff --git a/tests/test_inventory.py b/tests/test_inventory.py
+index 5ecabae..6565f87 100644
+--- a/tests/test_inventory.py
++++ b/tests/test_inventory.py
+@@ -1,9 +1,14 @@
+ import unittest
+ 
+-from inventory import find, in_stock, make_item
++from inventory import find, in_stock, make_item, restock
+ 
+ 
+ class InventoryTest(unittest.TestCase):
++    def test_restock_updates_quantity_and_returns_same_item(self):
++        item = make_item("a", 1.0, 3)
++        self.assertIs(restock(item, 4), item)
++        self.assertEqual(item["qty"], 7)
++
+     def test_in_stock_drops_empty_items(self):
+         items = [make_item("a", 1.0, 0), make_item("b", 2.0, 3)]
+         self.assertEqual([item["name"] for item in in_stock(items)], ["b"])
+ M inventory.py
+ M tests/test_inventory.py

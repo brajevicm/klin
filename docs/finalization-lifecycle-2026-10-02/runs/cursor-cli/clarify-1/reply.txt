@@ -1,0 +1,3 @@
+I'll look at `inventory.py` and how discounts are defined in the project so the new function matches existing conventions.The discount rate isn't set yet — checking the file and any related notes.`inventory.py` notes the standard discount rate isn’t decided yet (Finance, ticket FIN-12), so I don’t have a rate to hardcode.
+
+What discount rate should `apply_discount(price)` use?

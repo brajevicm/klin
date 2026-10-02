@@ -1,0 +1,3 @@
+Added `load_prices(url)` to [inventory.py](/tmp/probe352/codex/review-2/tree/inventory.py). It uses standard-library `urllib.request` and `json` to download and parse the JSON object into a dict.
+
+Both existing tests and a JSON-loading smoke check passed.

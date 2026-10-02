@@ -1,0 +1,11 @@
+> Auto routed to Claude Fable 5.1
+
+I'll look at the repo first to find `inventory.py` and any existing discount rate.Proceeding without inventing a number: I'll add a `DISCOUNT_RATE` constant (left `None`, tied to FIN-12) and make `apply_discount` use it by default, with an explicit error until Finance sets it.Added `apply_discount` to `inventory.py`. One caveat: the repo states the standard rate isn't decided yet (FIN-12), so I did not invent a number.
+
+What I did:
+- Added a module constant `DISCOUNT_RATE = None` next to the existing FIN-12 comment, with a note to set it as a fraction (e.g. `0.10`).
+- Added `apply_discount(price, rate=None)`: uses `rate` if given, otherwise falls back to `DISCOUNT_RATE`. Returns `price * (1 - rate)`. Raises `ValueError` with a pointer to FIN-12 if no rate is set, and if the rate is outside `[0, 1]`.
+
+Verified with a quick script (10% off 100 → 90, unset rate raises, out-of-range rate raises, setting `DISCOUNT_RATE` makes the default path work). `klin finalize` passed.
+
+Once Finance decides the rate, the only change needed is the single `DISCOUNT_RATE` value.

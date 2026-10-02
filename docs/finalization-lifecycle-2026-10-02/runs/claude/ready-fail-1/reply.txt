@@ -1,0 +1,3 @@
+I added `restock(item, n)` to `inventory.py`. It adds `n` to `item["qty"]` and returns the same item.
+
+I also added a test for it in `tests/test_inventory.py`. All 3 tests in that file pass, and `klin finalize` reports every check passed. The first finalize run had failed because nothing tested the new function, which is why the test exists.

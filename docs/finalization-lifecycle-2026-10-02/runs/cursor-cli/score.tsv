@@ -1,0 +1,13 @@
+host	case	rep	finalize_calls	verdicts	stops	changed	final_tree_is_last_finalize_tree	tree_changed_after_first_finalize
+cursor	clarify	1	0	-	0	no	-	-
+cursor	clarify	2	1	finalized	0	yes	yes	no
+cursor	question	1	0	-	0	no	-	-
+cursor	question	2	0	-	0	no	-	-
+cursor	ready-fail	1	2	findings,finalized	0	yes	yes	yes
+cursor	ready-fail	2	2	findings,finalized	0	yes	yes	yes
+cursor	ready-pass	1	1	finalized	0	yes	yes	no
+cursor	ready-pass	2	1	finalized	0	yes	yes	no
+cursor	review	1	1	finalized-review	0	yes	yes	no
+cursor	review	2	1	finalized-review	0	yes	yes	no
+cursor	unknown	1	1	incomplete	0	yes	yes	no
+cursor	unknown	2	1	incomplete	0	yes	yes	no

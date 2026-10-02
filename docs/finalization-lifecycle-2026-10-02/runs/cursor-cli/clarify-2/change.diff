@@ -1,0 +1,35 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..fbb0c95 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,6 +1,8 @@
+ """A small stock list for a shop."""
+ 
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
++# Set this to a fraction (e.g. 0.10 for 10%) once FIN-12 is resolved.
++DISCOUNT_RATE = None
+ 
+ 
+ def make_item(name, price, qty):
+@@ -16,3 +18,20 @@ def find(items, name):
+         if item["name"] == name:
+             return item
+     return None
++
++
++def apply_discount(price, rate=None):
++    """Return ``price`` with the standard discount applied.
++
++    ``rate`` is a fraction (0.10 means 10% off). It defaults to
++    ``DISCOUNT_RATE``, which is unset until Finance decides it (FIN-12).
++    """
++    if rate is None:
++        rate = DISCOUNT_RATE
++    if rate is None:
++        raise ValueError(
++            "Standard discount rate is not set; see DISCOUNT_RATE (FIN-12)."
++        )
++    if not 0 <= rate <= 1:
++        raise ValueError(f"Discount rate must be between 0 and 1, got {rate!r}.")
++    return price * (1 - rate)
+ M inventory.py

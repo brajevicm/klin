@@ -1,0 +1,12 @@
+> Auto routed to Claude Fable 5.1
+
+Proceeding without inventing a number: I'll add a `DISCOUNT_RATE` constant that's explicitly unset (pending FIN-12) and have `apply_discount` fail loudly until Finance fills it in.Added `apply_discount(price)` to `inventory.py`.
+
+Because the file itself says the rate is undecided and owned by Finance (FIN-12), I didn't invent a number. Instead:
+
+- Added a module-level `DISCOUNT_RATE = None` with a comment pointing at FIN-12.
+- `apply_discount(price)` returns `price * (1 - DISCOUNT_RATE)`, but raises a clear `ValueError` naming FIN-12 while the rate is unset.
+
+Verified: unset rate raises as expected; with `DISCOUNT_RATE = 0.10`, `apply_discount(100)` returns `90.0`. `klin finalize` passed.
+
+Once Finance decides, the only change needed is setting `DISCOUNT_RATE` to the agreed fraction.

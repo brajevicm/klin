@@ -1,0 +1,1 @@
+klin runs in this repository. When you believe your change is ready to hand back, run `klin finalize` before your final reply, and act on what it prints. Do not run it when you stop to ask a question, or when you changed no file.

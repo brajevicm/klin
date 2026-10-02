@@ -1,0 +1,7 @@
+case	mode	task
+ready-pass	pass	Add a function total_value(items) to inventory.py that returns the sum of price times qty over all items.
+ready-fail	fail-once	Add a function restock(item, n) to inventory.py that adds n to the item quantity and returns the item.
+clarify	pass	Add a function apply_discount(price) to inventory.py that applies our standard discount rate to a price.
+review	review	Add a function load_prices(url) to inventory.py that downloads a JSON object of name-to-price pairs from the URL with the standard library and returns it as a dict.
+unknown	unknown	Add a function low_stock(items, limit) to inventory.py that returns the items whose qty is below limit.
+question	pass	Which functions does inventory.py define, and what does each one return?

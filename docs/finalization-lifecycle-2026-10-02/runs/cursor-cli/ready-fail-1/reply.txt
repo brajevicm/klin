@@ -1,0 +1,11 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how items store quantity so `restock` can add `n` and return the item.Items are dicts with a `qty` field. I'll add `restock` so it increments that quantity and returns the same item.The finalize check says the new behavior isn't covered. I'll inspect the test and how that check decides what counts.The check wants a test that calls `restock`. The existing test already does that, so I’ll tighten it and run finalize again.`restock(item, n)` is in `inventory.py`. It adds `n` to the item's `qty` and returns that same item.
+
+```21:23:inventory.py
+def restock(item, n):
+    item["qty"] += n
+    return item
+```
+
+A test covers the quantity update and the return value. All three inventory tests pass.

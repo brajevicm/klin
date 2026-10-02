@@ -1,0 +1,3 @@
+Added `load_prices(url)` in [inventory.py](/tmp/probe352/codex/review-1/tree/inventory.py) using `urllib.request` and `json`.
+
+Existing tests and a JSON download check passed. `klin finalize` flagged the requested network access for human review; it also reported sandbox errors writing its Git index lock.

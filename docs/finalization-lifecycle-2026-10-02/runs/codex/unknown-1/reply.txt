@@ -1,0 +1,3 @@
+Added `low_stock(items, limit)` to `inventory.py`, returning items whose `qty < limit`.
+
+Both existing tests pass. `klin finalize` was incomplete because `.git` writes are restricted and `mypy` is unavailable; CI runs the typecheck.

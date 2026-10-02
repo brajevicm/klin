@@ -1,0 +1,14 @@
+> Auto routed to Grok 4.7
+
+I'll look at `inventory.py` and how prices are used so `load_prices` matches the existing code.The module is a small stock list with no network helper yet. I'll add `load_prices` using the standard library and cover it with a test that doesn't hit the network.`load_prices(url)` is now in `inventory.py`. It fetches the URL with `urllib.request.urlopen`, parses the body with `json.loads`, and returns the name-to-price mapping as a dict.
+
+```10:13:inventory.py
+def load_prices(url):
+    with urlopen(url) as response:
+        prices = json.loads(response.read().decode())
+    return prices
+```
+
+The new unit test stubs the download and checks that `{"apple": 1.5, "pear": 2.0}` comes back unchanged. All three inventory tests pass.
+
+This change adds network access that the module did not have before. Whether that is wanted is a decision for you.

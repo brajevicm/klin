@@ -1,0 +1,5 @@
+I added `load_prices(url)` to `inventory.py`. It opens the URL with `urllib.request.urlopen`, parses the response with `json.load`, and returns the resulting dict. I also added `import json` and `import urllib.request` at the top of the file. The module imports cleanly, but I didn't call the function against a real URL.
+
+`klin finalize` flagged one item for you to review: this change gives the module network access, which it didn't have before. That's what you asked for, so I left the code as it is. Decide whether you want it.
+
+The function doesn't check that the JSON is an object. If the URL returns a list, you'll get a list back. It also sets no timeout, and network or JSON errors propagate to the caller.

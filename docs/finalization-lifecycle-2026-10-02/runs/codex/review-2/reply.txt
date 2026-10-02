@@ -1,0 +1,5 @@
+Added `load_prices(url)` in [inventory.py](/tmp/probe352/codex/review-2/tree/inventory.py), using `urllib.request` and `json`. It returns a dict and rejects non-object JSON.
+
+Existing tests and a download smoke check passed.
+
+`klin finalize` reported the requested network access for review, plus a sandbox error creating its Git lock file.

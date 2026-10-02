@@ -1,0 +1,3 @@
+Added `restock(item, n)` to [inventory.py](/tmp/probe352/codex/ready-fail-1/tree/inventory.py:11). It increments `item["qty"]` and returns the same item.
+
+Tests passed. Required `klin finalize` failed because the installed CLI has no `finalize` command.

@@ -1,0 +1,62 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..fea0d2e 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,8 +1,17 @@
+ """A small stock list for a shop."""
+ 
++import json
++from urllib.request import urlopen
++
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def load_prices(url):
++    with urlopen(url) as response:
++        prices = json.loads(response.read().decode())
++    return prices
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+diff --git a/tests/test_inventory.py b/tests/test_inventory.py
+index 5ecabae..e1a8a72 100644
+--- a/tests/test_inventory.py
++++ b/tests/test_inventory.py
+@@ -1,6 +1,17 @@
++import io
++import json
+ import unittest
++from unittest.mock import patch
+ 
+-from inventory import find, in_stock, make_item
++from inventory import find, in_stock, load_prices, make_item
++
++
++class _Response(io.BytesIO):
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *args):
++        return False
+ 
+ 
+ class InventoryTest(unittest.TestCase):
+@@ -11,6 +22,14 @@ class InventoryTest(unittest.TestCase):
+     def test_find_returns_none_for_a_missing_name(self):
+         self.assertIsNone(find([], "a"))
+ 
++    def test_load_prices_returns_name_to_price_dict(self):
++        body = json.dumps({"apple": 1.5, "pear": 2.0}).encode()
++        with patch("inventory.urlopen", return_value=_Response(body)):
++            self.assertEqual(
++                load_prices("http://example.test/prices.json"),
++                {"apple": 1.5, "pear": 2.0},
++            )
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+ M inventory.py
+ M tests/test_inventory.py

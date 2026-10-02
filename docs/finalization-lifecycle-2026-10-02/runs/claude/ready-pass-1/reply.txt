@@ -1,0 +1,1 @@
+I added `total_value(items)` to `inventory.py`. It returns the sum of `price * qty` over all items, and returns 0 for an empty list. `klin finalize` passed. I didn't run any separate tests.

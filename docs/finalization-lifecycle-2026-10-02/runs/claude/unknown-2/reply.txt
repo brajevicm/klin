@@ -1,0 +1,3 @@
+I added `low_stock(items, limit)` to `inventory.py`. It returns the items whose `qty` is below `limit`, using a strict `<`. I didn't run it or add a test for it.
+
+`klin finalize` reported INCOMPLETE. Its typecheck step couldn't run because mypy isn't installed here (exit 127). That's a limitation of this environment, not a finding in the code, so I changed nothing in response. CI runs that check.

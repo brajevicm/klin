@@ -1,0 +1,3 @@
+Added `restock(item, n)` in [inventory.py](/tmp/probe352/codex/ready-fail-2/tree/inventory.py:10). It adds `n` to `item["qty"]` and returns the same item.
+
+Existing tests and a direct behavior check passed.

@@ -1,0 +1,23 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..31548dc 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,8 +1,17 @@
+ """A small stock list for a shop."""
+ 
++import json
++from urllib.request import urlopen
++
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def load_prices(url):
++    """Download a JSON object mapping item names to prices."""
++    with urlopen(url) as response:
++        return json.load(response)
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+ M inventory.py

@@ -1,0 +1,6 @@
+I added `load_prices(url)` to `inventory.py`. It opens the URL with `urllib.request.urlopen`, parses the response with `json.load`, and returns the result. It uses only the standard library. I haven't run it or tested it against a real URL.
+
+- **Review item:** `klin finalize` flagged that this change adds network access the base code didn't have. It's for you to decide whether you want that, and I haven't changed any code because of it.
+- **Not checked:** The function doesn't check that the JSON is an object of name-to-price pairs. If the URL returns a list or other JSON, it returns that unchanged.
+- **Errors:** Network errors and invalid JSON aren't caught, so they raise to the caller.
+- **No timeout:** `urlopen` is called without one, so a slow server can block the call.

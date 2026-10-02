@@ -1,0 +1,3 @@
+Added `low_stock(items, limit)` in [inventory.py](/tmp/probe352/codex/unknown-1/tree/inventory.py), returning items with `qty < limit`.
+
+Existing tests and boundary checks passed. `klin finalize` could not run because the installed CLI lacks that command.

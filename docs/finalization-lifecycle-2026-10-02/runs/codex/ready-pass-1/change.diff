@@ -1,0 +1,16 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..a19bcc1 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -7,6 +7,10 @@ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+ 
++def total_value(items):
++    return sum(item["price"] * item["qty"] for item in items)
++
++
+ def in_stock(items):
+     return [item for item in items if item["qty"] > 0]
+ 
+ M inventory.py

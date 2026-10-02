@@ -1,0 +1,1 @@
+`inventory.py` says the discount rate is still undecided and owned by Finance (FIN-12). What percentage should `apply_discount(price)` use?

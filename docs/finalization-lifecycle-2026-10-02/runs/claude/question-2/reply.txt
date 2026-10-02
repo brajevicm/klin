@@ -1,0 +1,9 @@
+`inventory.py` defines three functions:
+
+- **`make_item(name, price, qty)`** returns a dict with the keys `"name"`, `"price"` and `"qty"`, set to the arguments you passed.
+- **`in_stock(items)`** returns a new list holding only the items whose `"qty"` is greater than 0.
+- **`find(items, name)`** returns the first item whose `"name"` equals `name`. If none matches, it returns `None`.
+
+A comment at the top says the discount rate isn't decided yet and that Finance owns it (ticket FIN-12). The file has no discount code yet.
+
+I didn't change any files, so I didn't run `klin finalize`.

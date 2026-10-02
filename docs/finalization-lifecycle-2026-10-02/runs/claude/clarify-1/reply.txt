@@ -1,0 +1,7 @@
+I haven't added `apply_discount` yet, because the file says there's no standard discount rate to use. The comment in `inventory.py` reads: "The discount rate is not decided yet. Finance owns it (ticket FIN-12)." I also found no rate anywhere else in the repo.
+
+I don't want to guess a number that would end up in pricing. How would you like to proceed?
+
+1. **You give me the rate** (for example 10%). I'll add `apply_discount(price)` with it as a named constant, `DISCOUNT_RATE`, so it's easy to change once FIN-12 is resolved.
+2. **I add the function with a placeholder.** The rate would be `None`, and the function would raise a clear error until Finance sets the value.
+3. **I make the rate a parameter**, as `apply_discount(price, rate)`. That changes the signature you asked for.

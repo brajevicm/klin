@@ -1,0 +1,16 @@
+> Auto routed to Grok 4.7
+
+I'll add `load_prices(url)` to `inventory.py` so it fetches a JSON name-to-price object with the standard library and returns a dict. First I'm checking how the module is structured.The module is a small stock list with no HTTP helpers yet. I'll add `load_prices` using `urllib` and `json` from the standard library.`load_prices(url)` is now in `inventory.py`. It downloads the response with `urllib.request.urlopen`, parses it with `json.load`, and returns the object as a dict. A JSON array or other non-object raises `ValueError`.
+
+```9:14:inventory.py
+def load_prices(url):
+    with urlopen(url) as response:
+        prices = json.load(response)
+    if not isinstance(prices, dict):
+        raise ValueError("price list must be a JSON object")
+    return prices
+```
+
+A local check returned `{"apple": 1.5, "pear": 2}` from a JSON object and rejected a JSON array. The existing inventory tests still pass.
+
+This adds network access the module did not have before. That is for you to accept or reject.
