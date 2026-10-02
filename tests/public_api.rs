@@ -57,6 +57,77 @@ fn an_unchanged_library_passes_and_the_ok_line_says_what_was_judged() {
     assert!(run.says("1 Rust library target(s)"), "{}", run.out);
 }
 
+/// Two packages whose consumers use the same crate name, committed as the base.
+fn namesakes(tree: &Tree, a: &str, b: &str) {
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", "[workspace]\nmembers = [\"a\", \"b\"]\n");
+    for (package, source) in [("a", a), ("b", b)] {
+        tree.write(
+            &format!("{package}/Cargo.toml"),
+            &format!(
+                "[package]\nname = \"{package}\"\nversion = \"0.1.0\"\n[lib]\nname = \"shared\"\n"
+            ),
+        );
+        tree.write(&format!("{package}/src/lib.rs"), source);
+    }
+    tree.base();
+}
+
+#[test]
+fn libraries_with_the_same_crate_name_keep_their_own_items() {
+    let tree = Tree::new();
+    namesakes(&tree, "pub struct Alpha;\n", "pub struct Beta;\n");
+    tree.write("a/src/lib.rs", "pub struct Alpha;\n\n");
+
+    for run in [by_hand(&tree), changed(&tree)] {
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(
+            run.says("2 external item(s) on 2 surface(s)"),
+            "{}",
+            run.out
+        );
+    }
+}
+
+#[test]
+fn a_namesake_library_does_not_hide_a_contract_change_or_removal() {
+    let tree = Tree::new();
+    namesakes(
+        &tree,
+        "pub fn run() -> u8 { 1 }\n",
+        "pub fn run() -> u8 { 1 }\n",
+    );
+    for (source, kind) in [("pub fn run() -> u16 { 1 }\n", "changed"), ("", "removed")] {
+        tree.write("b/src/lib.rs", source);
+        for run in [by_hand(&tree), changed(&tree)] {
+            assert_eq!(run.code, 1, "{}", run.out);
+            assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+            assert!(
+                run.says(&format!("{kind}, declared at b/src/lib.rs:1")),
+                "{}",
+                run.out
+            );
+        }
+    }
+}
+
+#[test]
+fn removing_a_namesake_library_reports_only_its_surface() {
+    let tree = Tree::new();
+    namesakes(&tree, "pub struct Alpha;\n", "pub struct Beta;\n");
+    tree.write(
+        "b/Cargo.toml",
+        "[package]\nname = \"b\"\nversion = \"0.1.0\"\n",
+    );
+    tree.remove("b/src/lib.rs");
+    tree.write("b/src/main.rs", "fn main() {}\n");
+
+    let run = by_hand(&tree);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(run.says("the whole surface is gone"), "{}", run.out);
+}
+
 #[test]
 fn a_root_pub_item_a_pub_mod_chain_and_a_pub_use_are_external_and_the_rest_is_not() {
     let tree = Tree::new();

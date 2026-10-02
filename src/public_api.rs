@@ -184,7 +184,11 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 fn breaks(was: &Derived, now: &Derived) -> Vec<Finding> {
     let mut out = Vec::new();
     for surface in &was.surfaces {
-        let Some(after) = now.surfaces.iter().find(|held| held.id == surface.id) else {
+        let Some(after) = now.surfaces.iter().find(|held| {
+            held.id == surface.id
+                && held.language == surface.language
+                && held.manifest == surface.manifest
+        }) else {
             out.push(finding(
                 surface,
                 None,

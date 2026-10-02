@@ -2409,7 +2409,16 @@ that tree's own topology, and it builds no name index, no second resolver and
 no parser of its own.
 
 A *surface* is what a consumer addresses. For Rust it is a Cargo library
-target, named by its crate name; a binary target and a Rust directory no
+target, named by its crate name and matched between trees by that name and
+its package manifest path. Two libraries with the same crate name retain
+separate surfaces: unchanged items pass, and a removal or contract change is
+judged only against the library that owned it. Adding or removing a namesake
+library does not change the identity of an existing surface. Moving the
+library root within its package keeps the surface's identity. Pinned by
+`libraries_with_the_same_crate_name_keep_their_own_items`,
+`a_namesake_library_does_not_hide_a_contract_change_or_removal` and
+`removing_a_namesake_library_reports_only_its_surface`.
+A binary target and a Rust directory no
 manifest names are not surfaces. Implicit and custom library roots and every
 library package of a workspace are found the way ADR 0043 finds targets. For
 TypeScript a surface begins only at explicit package metadata that names a
