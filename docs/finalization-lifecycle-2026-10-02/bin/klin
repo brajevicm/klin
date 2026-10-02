@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# A stand-in for the proposed `klin finalize`, for the #352 probe. Every other
+# subcommand does nothing. PROBE_MODE picks the answer, PROBE_LOG the log.
+set -u
+[ "${1:-}" = finalize ] || exit 0
+root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "klin: not a git repository" >&2; exit 2; }
+cd "$root"
+idx="$(git rev-parse --git-dir)/probe-finalize.idx"
+rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
+log=${PROBE_LOG:?}
+calls=$(grep -c '^finalize' "$log" 2>/dev/null || true); calls=$((calls + 1))
+first_tree=$(awk -F'\t' '$1 == "finalize" { print $4; exit }' "$log" 2>/dev/null)
+short=${tree:0:12}
+case ${PROBE_MODE:?} in
+  pass) verdict=finalized; code=0
+    msg="klin finalize: FINALIZED. Every check passed over tree $short. Nothing to repair." ;;
+  fail-once)
+    if [ "$calls" -gt 1 ] && [ "$tree" != "$first_tree" ]; then
+      verdict=finalized; code=0
+      msg="klin finalize: FINALIZED. Every check passed over tree $short. Nothing to repair."
+    else
+      verdict=findings; code=1
+      msg="klin finalize: NOT FINALIZED, 1 finding over tree $short.
+  tests: the change adds behavior that no test calls.
+  Repair: add a test under tests/ that calls the function you added, then run klin finalize again."
+    fi ;;
+  review) verdict=finalized-review; code=0
+    msg="klin finalize: FINALIZED over tree $short, with 1 REVIEW item for the person.
+  REVIEW (not a failure): the change adds network access that the base did not have.
+  A person decides whether that is wanted. Do not change code to make this line go away. Name it in your final reply." ;;
+  unknown) verdict=incomplete; code=3
+    msg="klin finalize: INCOMPLETE over tree $short, not finalized.
+  UNMEASURED: the typecheck entry could not run: mypy is not installed (exit 127).
+  This is a tool limitation, not a finding in your code. Do not change code for it. Name it in your final reply; CI runs the entry." ;;
+esac
+printf 'finalize\t%s\t%s\t%s\t%s\t%s\n' "$(date +%s)" "$calls" "$PROBE_MODE" "$tree" "$verdict" >> "$log"
+echo "$msg"
+exit $code

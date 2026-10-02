@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# The probe's hook for Claude Code and Codex. `hook session` puts the proposed
+# readiness line in front of the agent. `hook stop` logs the stop and the tree,
+# and never blocks.
+set -u
+event=$(cat)
+case ${1:?} in
+  session) cat "${PROBE_CONTEXT:?}" ;;
+  stop)
+    root=$(git rev-parse --show-toplevel); cd "$root"
+    idx="$(git rev-parse --git-dir)/probe-stop.idx"
+    rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
+    active=$(printf '%s' "$event" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("stop_hook_active"))')
+    printf 'stop\t%s\t%s\t%s\n' "$(date +%s)" "$active" "$tree" >> "${PROBE_LOG:?}"
+    printf '%s\n' "$event" >> "${PROBE_LOG%.log}.stops.jsonl" ;;
+esac
+exit 0
