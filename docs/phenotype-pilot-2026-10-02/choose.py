@@ -37,8 +37,16 @@ def gh(path, **fields):
         args += ["-f", f"{key}={value}"]
     done = subprocess.run(args, capture_output=True, text=True)
     if done.returncode != 0:
-        return None
+        if "HTTP 404" in done.stderr:
+            return None
+        raise RuntimeError(f"gh api {path}: {done.stderr.strip()}")
     return json.loads(done.stdout)
+
+
+def commits_of(full_name, number):
+    args = ["gh", "api", "--paginate", "--slurp", f"repos/{full_name}/pulls/{number}/commits?per_page=100"]
+    done = subprocess.run(args, capture_output=True, text=True, check=True)
+    return [commit for page in json.loads(done.stdout) for commit in page]
 
 
 def git(cwd, *args):
@@ -122,7 +130,7 @@ def eligible(clones, language, full_name, number):
         return f"{len(names)} files over {MAX_FILES}"
     if git(directory, "cat-file", "-e", f"{head}:klin.json").returncode == 0:
         return "klin.json at the root"
-    commits = gh(f"repos/{full_name}/pulls/{number}/commits", per_page=100) or []
+    commits = commits_of(full_name, number)
     authors = sorted({(c.get("author") or {}).get("login") or c["commit"]["author"]["name"] for c in commits})
     return {
         "language": language,

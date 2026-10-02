@@ -324,6 +324,14 @@ None of these changes read a result of the sample before it was made:
 3. The first replay ran klin in the klin repository, not in the clones,
    because `replay.sh` did not change directory. Its 9 records were deleted
    before any label. The fixed script ran all 58 changes again.
+4. A review after the results found two gaps in `choose.py` as it ran. It
+   read only the first 100 commits of a candidate, and it read an API error
+   as "no result". A check on 2026-10-02 found no effect on this sample: no
+   human pull request has more than 100 commits or an agent word in any
+   commit, and the 4 repositories skipped as not readable return 404. A
+   search that failed in the middle of a human-arm walk cannot be ruled out
+   after the fact. `choose.py` now reads every commit and stops on any API
+   error other than 404, so a new run cannot repeat either gap.
 
 ### A labeling rule set during labeling
 
@@ -346,7 +354,7 @@ A reader who disagrees can move the line and recount from `labels.tsv`.
 | Changes | 30 (10 Rust, 10 TypeScript, 10 Python) | 28 |
 | Repositories | 30 | 28 of the same 30 |
 | Merged | 20 | 20 |
-| Agents | Claude Code 8, Codex 8, Cursor 4, Jules 4, Copilot 3, Devin 3 | - |
+| Agents | Claude Code 9, Codex 8, Cursor 4, Jules 4, Copilot 3, Devin 2 | - |
 | Files changed | 231 | 264 |
 | klin runs that ended in a report | 28 | 27 |
 
@@ -488,7 +496,7 @@ at least one. 24 comments ask for no change.
 | `other-change` | 3 | 5 | 4 | 4 | - |
 | `unfinished`, `error-masking`, `complexity`, `public-contract`, `cosmetic` | 0 | 0 | 0 | 0 | not seen |
 
-The three `reuse` comments name an existing operation type
+The four `reuse` comments, on three pull requests, name an existing operation type
 (`UnaryInputNumericOperation`, `GlareDB#3633`), an existing settings hook and
 settings store (`karakeep#1723`), and helpers to share across files
 (`dify-official-plugins#1422`). No reviewer comment asks to remove a
@@ -509,7 +517,7 @@ one: "Jules isn't yet a replacement for a human engineer."
 | `removable` (#356) | seen | 2 agent PRs, 1 human |
 | `test-integrity` (#353) | seen | 1 agent PR by comment; `tests.py` found no weakening |
 | `architecture` | seen | 2 agent PRs by comment |
-| klin `public-api` | not seen | every agent site is the same-name false alarm |
+| klin `public-api` | not seen | the 40 labeled agent sites are the same-name false alarm; the one other agent site, a new `Reqwest` error variant in `glues#150`, was not in the sample |
 | `default-handler`, `empty-handler`, `constant-return`, `ellipsis-body`, `throw-body` (#362) | not seen | |
 | `deps` undeclared import (#364) | not seen | 1 human site |
 | klin `doc-size` | not seen | 4 sites, all `undesired` |
