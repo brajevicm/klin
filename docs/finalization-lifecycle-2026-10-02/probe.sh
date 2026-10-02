@@ -53,6 +53,8 @@ run() {
   rm -rf "$dir"; mkdir -p "$dir"; stage "$dir/tree" "$host"
   export PATH="$here/bin:$PATH" PROBE_MODE="$mode" PROBE_LOG="$dir/probe.log" PROBE_CONTEXT="$here/context.txt"
   : > "$dir/probe.log"
+  printf 'PROBE_MODE=%q\nPROBE_LOG=%q\nPROBE_CONTEXT=%q\n' "$mode" "$dir/probe.log" "$here/context.txt" \
+    > "$(git -C "$dir/tree" rev-parse --absolute-git-dir)/probe.env"
   case $host in
     claude) (cd "$dir/tree" && claude -p "$task" --model sonnet --setting-sources project \
         --strict-mcp-config --dangerously-skip-permissions --output-format json) \
@@ -61,7 +63,11 @@ run() {
     codex) codex exec --ignore-user-config --dangerously-bypass-hook-trust -s workspace-write \
         -m gpt-6.1-sol -c model_reasoning_effort=low -c allow_login_shell=false -C "$dir/tree" -o "$dir/reply.txt" "$task" \
         > "$dir/host.out" 2> "$dir/host.err" < /dev/null || true ;;
-    *) echo "probe: HOST is claude or codex" >&2; exit 2 ;;
+    cursor) (cd "$dir/tree" && cursor-agent -p --force --trust --output-format json \
+        --model "${PROBE_CURSOR_MODEL:?name a model from cursor-agent models}" --workspace "$dir/tree" "$task") \
+        > "$dir/reply.json" 2> "$dir/host.err" < /dev/null || true
+      python3 -c 'import json,sys; o=json.load(open(sys.argv[1])); print(o.get("result") or o.get("text") or "")' "$dir/reply.json" > "$dir/reply.txt" || true ;;
+    *) echo "probe: HOST is claude, codex or cursor" >&2; exit 2 ;;
   esac
   record "$dir"
 }

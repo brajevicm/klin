@@ -13,8 +13,9 @@ case ${1:?} in
     else python3 -c 'import json,sys; print(json.dumps({"additional_context": open(sys.argv[1]).read()}))' "${PROBE_CONTEXT:?}"
     fi ;;
   stop)
-    idx="$(git rev-parse --absolute-git-dir)/probe-stop.idx"
-    rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
+    scratch=$(mktemp -d); trap 'rm -rf "$scratch"' EXIT
+    tree=$(export GIT_INDEX_FILE="$scratch/index" GIT_OBJECT_DIRECTORY="$scratch/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$(git rev-parse --absolute-git-dir)/objects"
+      mkdir -p "$GIT_OBJECT_DIRECTORY" && git add -A && git write-tree)
     if [ "$cursor" = None ]; then said=$(field stop_hook_active)
     else said="$(field status)/$(field loop_count)"
     fi

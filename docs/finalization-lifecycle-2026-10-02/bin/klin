@@ -5,8 +5,9 @@ root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "klin: not a git rep
 cd "$root"
 settings="$(git rev-parse --absolute-git-dir)/probe.env"
 [ -n "${PROBE_MODE:-}" ] || [ ! -f "$settings" ] || . "$settings"
-idx="$(git rev-parse --absolute-git-dir)/probe-finalize.idx"
-rm -f "$idx"; GIT_INDEX_FILE=$idx git add -A; tree=$(GIT_INDEX_FILE=$idx git write-tree)
+scratch=$(mktemp -d); trap 'rm -rf "$scratch"' EXIT
+tree=$(export GIT_INDEX_FILE="$scratch/index" GIT_OBJECT_DIRECTORY="$scratch/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="$(git rev-parse --absolute-git-dir)/objects"
+  mkdir -p "$GIT_OBJECT_DIRECTORY" && git add -A && git write-tree)
 log=${PROBE_LOG:?}
 calls=$(awk -F'\t' '$1 == "finalize"' "$log" | wc -l | tr -d ' '); calls=$((calls + 1))
 first_tree=$(awk -F'\t' '$1 == "finalize" { print $5; exit }' "$log")
