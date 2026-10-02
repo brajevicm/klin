@@ -1,34 +1,34 @@
 # agent	case	outcome	turns	escalated	task kept	final prototype rows	final stop / CI	note
-sonnet	family-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
-sonnet	family-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	same
-sonnet	family-glaredb	relation-correct, task preservation unverified	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted to UnaryInputNumericOperation, atan2 kept with its reason; cot now returns -inf for -0, stated in the reply
-sonnet	exception-ts	kept exception	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why ManualInvoice is not a provider
-sonnet	registration-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	final reply text was only "placeholder"; the tree is correct
-sonnet	registration-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	registered, branch removed
-sonnet	wrapper-ts	kept exception	1	no	not type-checked	wrapper-bypass (kept)	0 green / 0	kept transport.http.send with retries 0 and a comment: a retried refund POST could refund twice
-sonnet	wrapper-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	uses post_json; the reply names the same retry risk
-sonnet	wrapper-karakeep	relation-correct, task preservation unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings, drops its own invalidation
-sonnet	cycle-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	moved labels.ts from ui to db
-sonnet	cycle-rs	verified correct	2	no	yes (cargo check)	none	0 green / 0	turn 1 moved status_label to a new status module and removed ui::labels; public-api blocked; turn 2 kept ui::labels as a re-export
-haiku	family-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
-haiku	family-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	same
-haiku	family-glaredb	relation-correct, task preservation unverified	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted, atan2 kept with its reason
-haiku	exception-ts	kept exception	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	kept; rewrote the class comment to say why
-haiku	registration-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	registered, branch removed
-haiku	registration-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	same
-haiku	wrapper-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	uses postJson
-haiku	wrapper-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	uses post_json
-haiku	wrapper-karakeep	relation-correct, task preservation unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings
-haiku	cycle-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	new strings component for statusLabel
-haiku	cycle-rs	verified correct	1	no	yes (cargo check)	none	0 green / 0	status_label at the crate root, ui::labels re-exports it
-codex	family-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	implements PaymentProvider, registered, branch removed
-codex	family-rs	verified correct	1	no	yes (cargo test)	none	0 green / 0	same, and added an integration test
-codex	family-glaredb	relation-correct, task preservation unverified	1	no	not compiled (offline)	atan2 only	natural	7 converted, atan2 kept with its reason
-codex	exception-ts	kept exception	1	no	not type-checked	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why
-codex	registration-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	registered, branch removed
-codex	registration-rs	verified correct	1	no	yes (cargo test)	none	0 green / 0	same
-codex	wrapper-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	uses postJson
-codex	wrapper-rs	verified correct	1	no	yes (cargo test)	none	0 green / 0	uses post_json
-codex	wrapper-karakeep	relation-correct, task preservation unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings
-codex	cycle-ts	relation-correct, task preservation unverified	1	no	not type-checked	none	0 green / 0	new orders/status component, ui/labels re-exports it; the log reads "paid", not "pending"
-codex	cycle-rs	verified correct	1	no	yes (cargo test)	none	0 green / 0	new order_status module, ui::labels re-exports it
+sonnet	family-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	implements PaymentProvider, registered, branch removed
+sonnet	family-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	same
+sonnet	family-glaredb	relation repair, build unverified	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted to UnaryInputNumericOperation, atan2 kept with its reason; cot now returns -inf for -0, stated in the reply
+sonnet	exception-ts	kept exception	1	no	yes (tsc --noEmit)	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why ManualInvoice is not a provider
+sonnet	registration-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	final reply text was only "placeholder"; the tree is correct
+sonnet	registration-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	registered, branch removed
+sonnet	wrapper-ts	kept exception	1	no	yes (tsc --noEmit)	wrapper-bypass (kept)	0 green / 0	kept transport.http.send with retries 0 and a comment: a retried refund POST could refund twice
+sonnet	wrapper-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	uses post_json; the reply names the same retry risk
+sonnet	wrapper-karakeep	relation repair, build unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings, drops its own invalidation
+sonnet	cycle-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	moved labels.ts from ui to db
+sonnet	cycle-rs	relation repair, builds	2	no	yes (cargo check)	none	0 green / 0	turn 1 moved status_label to a new status module and removed ui::labels; public-api blocked; turn 2 kept ui::labels as a re-export
+haiku	family-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	implements PaymentProvider, registered, branch removed
+haiku	family-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	same
+haiku	family-glaredb	relation repair, build unverified	1	no	not compiled (protoc absent)	atan2 only	natural	7 converted, atan2 kept with its reason
+haiku	exception-ts	kept exception	1	no	yes (tsc --noEmit)	family-bypass on ManualInvoice (kept)	0 green / 0	kept; rewrote the class comment to say why
+haiku	registration-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	registered, branch removed
+haiku	registration-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	same
+haiku	wrapper-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	uses postJson
+haiku	wrapper-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	uses post_json
+haiku	wrapper-karakeep	relation repair, build unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings
+haiku	cycle-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	new strings component for statusLabel
+haiku	cycle-rs	relation repair, builds	1	no	yes (cargo check)	none	0 green / 0	status_label at the crate root, ui::labels re-exports it
+codex	family-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	implements PaymentProvider, registered, branch removed
+codex	family-rs	relation repair, builds	1	no	yes (cargo test)	none	0 green / 0	same, and added an integration test
+codex	family-glaredb	relation repair, build unverified	1	no	not compiled (offline)	atan2 only	natural	7 converted, atan2 kept with its reason
+codex	exception-ts	kept exception	1	no	yes (tsc --noEmit)	family-bypass on ManualInvoice (kept)	0 green / 0	no edit; reply says why
+codex	registration-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	registered, branch removed
+codex	registration-rs	relation repair, builds	1	no	yes (cargo test)	none	0 green / 0	same
+codex	wrapper-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	uses postJson
+codex	wrapper-rs	relation repair, builds	1	no	yes (cargo test)	none	0 green / 0	uses post_json
+codex	wrapper-karakeep	relation repair, build unverified	1	no	not type-checked	none	natural	uses useUpdateUserSettings
+codex	cycle-ts	relation repair, builds	1	no	yes (tsc --noEmit)	none	0 green / 0	new orders/status component, ui/labels re-exports it; the log reads "paid", not "pending"
+codex	cycle-rs	relation repair, builds	1	no	yes (cargo test)	none	0 green / 0	new order_status module, ui::labels re-exports it
