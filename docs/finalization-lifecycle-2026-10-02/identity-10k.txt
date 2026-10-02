@@ -1,12 +1,12 @@
 files	10000
-fresh index: add -A + write-tree, clean	417
-kept index: add -A + write-tree, clean	47
-git status --porcelain, clean	35
-fresh index: add -A + write-tree, 20 changed	310
-kept index: add -A + write-tree, 20 changed (warm)	45
-git status --porcelain, 20 changed	36
-snapshot: checkout-index of the tree into a directory	1586
-snapshot: worktree add --detach of a commit of the tree	1432
+fresh index: add -A + write-tree, clean	409
+kept index: add -A + write-tree, clean	38
+git status --porcelain, clean	31
+fresh index: add -A + write-tree, 20 changed	297
+kept index: add -A + write-tree, 20 changed (warm)	38
+git status --porcelain, 20 changed	32
+immutable copy: checkout-index of the tree into a directory	831
+immutable copy: worktree add --detach of a commit of the tree	887
 --- an edit and its revert between two identity reads
 tree id equal: yes
 index stat data equal: no

@@ -1,34 +1,45 @@
 #!/usr/bin/env bash
-# Times the tree-identity mechanisms of the #352 note on a synthetic tree.
-# Usage: identity.sh WORKDIR [FILES] [LINES]
 set -euo pipefail
-work=$1; files=${2:-10000}; lines=${3:-100}
-rm -rf "$work"; mkdir -p "$work/tree"; cd "$work/tree"
-git init -q; git config user.email p@invalid; git config user.name probe
+export LC_ALL=C
+mkdir -p "$1"; work=$(cd "$1" && pwd); files=${2:-10000}; lines=${3:-100}
+rm -rf "$work/tree" "$work/copy" "$work/wt"; mkdir -p "$work/tree"; cd "$work/tree"
+git_() { git -c user.email=p@invalid -c user.name=probe -c commit.gpgsign=false "$@"; }
+git_ init -q
 echo 'node_modules/' > .gitignore
 for ((i = 0; i < files; i++)); do
   d=src/m$((i % 100)); mkdir -p "$d"
   awk -v n="$lines" -v i="$i" 'BEGIN { for (l = 0; l < n; l++) printf "export const v%d_%d = %d;\n", i, l, l }' > "$d/f$i.ts"
 done
-git add -A; git commit -qm base
-ms() { local s e; s=$(perl -MTime::HiRes=time -e 'printf "%d", time*1000'); "$@" >/dev/null; e=$(perl -MTime::HiRes=time -e 'printf "%d", time*1000'); echo $((e - s)); }
+git_ add -A; git_ commit -qm base
+now() { perl -MTime::HiRes=time -e 'printf "%d", time*1000'; }
 median() { sort -n | awk '{ a[NR] = $1 } END { print a[int((NR + 1) / 2)] }'; }
-fresh() { rm -f "$work/fresh.idx"; GIT_INDEX_FILE="$work/fresh.idx" git add -A; GIT_INDEX_FILE="$work/fresh.idx" git write-tree; }
-kept() { GIT_INDEX_FILE="$work/kept.idx" git add -A; GIT_INDEX_FILE="$work/kept.idx" git write-tree; }
-row() { local name=$1; shift; local v; v=$(for _ in 1 2 3 4 5; do ms "$@"; done | median); printf '%s\t%s\n' "$name" "$v"; }
+tree_of() { GIT_INDEX_FILE=$1 git add -A; GIT_INDEX_FILE=$1 git write-tree; }
+fresh() { rm -f "$work/fresh.idx"; tree_of "$work/fresh.idx"; }
+kept() { tree_of "$work/kept.idx"; }
+copy() { mkdir "$work/copy"; GIT_INDEX_FILE="$work/kept.idx" git checkout-index -a --prefix="$work/copy/"; }
+uncopy() { rm -rf "$work/copy"; }
+worktree() { git_ worktree add -q --detach "$work/wt" "$(git_ commit-tree "$(kept)" -p HEAD -m copy)"; }
+unworktree() { git_ worktree remove --force "$work/wt"; }
+nothing() { :; }
+status() { git status --porcelain; }
+row() {
+  local name=$1 timed=$2 after=${3:-nothing} s e
+  for _ in 1 2 3 4 5; do
+    s=$(now); "$timed" >/dev/null; e=$(now); "$after"; echo $((e - s))
+  done | median | sed "s/^/$name	/"
+}
 kept >/dev/null
 echo "files	$files"
 row "fresh index: add -A + write-tree, clean" fresh
 row "kept index: add -A + write-tree, clean" kept
-row "git status --porcelain, clean" git status --porcelain
+row "git status --porcelain, clean" status
 for ((i = 0; i < 20; i++)); do echo "// edit" >> "src/m$i/f$i.ts"; done
 row "fresh index: add -A + write-tree, 20 changed" fresh
 kept >/dev/null
 row "kept index: add -A + write-tree, 20 changed (warm)" kept
-row "git status --porcelain, 20 changed" git status --porcelain
-tree=$(kept)
-row "snapshot: checkout-index of the tree into a directory" bash -c "rm -rf '$work/snap'; mkdir '$work/snap'; GIT_INDEX_FILE='$work/kept.idx' git checkout-index -a --prefix='$work/snap/'"
-row "snapshot: worktree add --detach of a commit of the tree" bash -c "git worktree remove --force '$work/wt' 2>/dev/null || true; c=\$(git commit-tree $tree -p HEAD -m s); git worktree add -q --detach '$work/wt' \$c"
+row "git status --porcelain, 20 changed" status
+row "immutable copy: checkout-index of the tree into a directory" copy uncopy
+row "immutable copy: worktree add --detach of a commit of the tree" worktree unworktree
 echo "--- an edit and its revert between two identity reads"
 before_tree=$(kept); before_stat=$(GIT_INDEX_FILE="$work/kept.idx" git ls-files --debug | shasum)
 cp src/m1/f1.ts "$work/keep"; echo "// mid" >> src/m1/f1.ts; sleep 1.1; cp "$work/keep" src/m1/f1.ts

@@ -1,7 +1,7 @@
 # The finalization lifecycle for agent work (#352)
 
 Research for #352, under #358. Written 2026-10-02 on `main` at `9df768ca`.
-The ticket's baseline is `76097d41`. The Stop path this note reads did not
+The ticket names `76097d41` as its starting commit. The Stop path this note reads did not
 change between the two commits in any way that matters here.
 
 This note changes no shipped behavior, no CLI contract, no hook contract and
@@ -10,6 +10,8 @@ no SPEC semantics. It ends in one recommendation for a person to review.
 The corpus is `docs/finalization-lifecycle-2026-10-02/`:
 
 - `identity.sh` times the tree-identity mechanisms of section 7.
+  `identity-10k.txt` holds its output, from
+  `identity.sh <scratch-directory> 10000 100`.
 - `probe.sh`, `cases.tsv`, `context.txt`, `fixture/` and `bin/` are an agent
   probe for section 10. **The probe did not run.** Section 10 says why.
 
@@ -44,7 +46,7 @@ klin's own probes of the Stop payloads are in `docs/HOST_COMPATIBILITY.md`
 | --- | --- | --- | --- |
 | End-of-turn event | `Stop`: "when Claude finishes responding". It does not run on a user interrupt. An API error fires `StopFailure`, which cannot block. [host doc] | `Stop`, turn-scoped, with `turn_id`. An interrupt fires `Interrupt`, which cannot restart the turn. [host doc] | `stop`: "when the agent loop ends", with `status` `completed`, `aborted` or `error`, and `loop_count`. [host doc] |
 | Can the stop be blocked? | Yes: exit 2 or `decision: "block"`. The reason goes back to Claude, and the turn continues. [host doc] | Yes: exit 2 or `decision: "block"`. Codex makes the reason a new continuation prompt. [host doc] | Only by `followup_message`, which Cursor submits as the next user message. klin measured that an exit-2 stop loses its follow-up. [host doc, measured] |
-| Loop bound | 8 consecutive continuations, then Claude Code overrides the block. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` raises it. [host doc] | None documented. `stop_hook_active` says the turn already continued. [host doc] | `loop_limit` per script: 5 for Cursor hooks, none for imported Claude Code hooks. [host doc] |
+| Loop bound | The Stop section says: "Claude Code applies an 8-consecutive-continuation cap". After eight, it overrides the next block. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` raises it. [host doc] | None documented. `stop_hook_active` says the turn already continued. [host doc] | `loop_limit` per script: 5 for Cursor hooks, none for imported Claude Code hooks. [host doc] |
 | A completion event distinct from Stop | `TaskCompleted` fires when a task is marked completed through `TaskUpdate`, or when an agent-team teammate ends its turn with tasks in progress. Exit 2 refuses the completion. The Task tools are off by default on current models. `TeammateIdle` exists for agent teams only. `/goal` lets a small model judge a condition after each turn. [host doc] | None. [host doc] | None. `status: "completed"` means the loop ended normally. `afterAgentResponse` and `sessionEnd` are observe-only. [host doc] |
 | What the stop payload carries about intent | `stop_hook_active`, `last_assistant_message`, `background_tasks`, `session_crons`. [host doc] | `stop_hook_active`, `last_assistant_message`. [host doc] | `status`, `loop_count`. [host doc] |
 | A clarification turn | Ends in an ordinary `Stop`. In an interactive session Claude can also ask through the `AskUserQuestion` tool, which is a tool call and not a stop. [host doc] | Ends in an ordinary `Stop`. [host doc] | Ends in `stop` with `status: "completed"`. [host doc] |
@@ -86,6 +88,32 @@ The ticket names five mechanisms. Each row is one mechanism.
 | UX for a developer who never calls klin | Nothing to do. The agent calls it. | Not applicable. | Nothing. | Slow commits for the person too, and a second hook system. | Nothing, but every Stop pays Deep work, or klin guesses. |
 | Disposition | **Adopted**, with the context line of section 5. | Rejected: no first-class host has one that fits. | Rejected alone, kept as the trigger for 1. | Rejected as the readiness signal. A person may still wire `klin finalize` into a hook of their own. | Rejected. The ticket forbids text as a signal, and no field tells a question from readiness. |
 
+### Per host
+
+Section 1 gives each host's semantics for mechanisms 2 and 5. For the other
+three:
+
+| Mechanism | Claude Code | Codex CLI | Cursor |
+| --- | --- | --- | --- |
+| 1. `klin finalize` through the agent's shell | Bash. The reply waits up to 2 minutes by default, 10 minutes at most, then the command moves to the background. [host doc, measured] | The shell tool. Its wait is not on the pages read. | The terminal tool. Its wait is not on the pages read. |
+| 3. Instruction only | `SessionStart` stdout and the skill. [host doc] | `SessionStart` plain text, `AGENTS.md` and the skill. [host doc] | `sessionStart` `additional_context` and the skill. [host doc] |
+| 4. Git hooks | Git runs them in the agent's Bash process, with no host involvement. | The same. | The same. |
+
+So mechanism 1 can hold the final reply back on every host while the
+command runs, and Claude Code is the one host where the limit of that wait
+is documented.
+
+### DX of each candidate
+
+| | 1. `klin finalize` | 2. Native event | 3. Instruction only | 4. Git hooks | 5. Inference |
+| --- | --- | --- | --- | --- | --- |
+| Commands and concepts to learn | `klin finalize`, `--check`, `phase` | A host-specific event per host | None | A Git hook manager, `--no-verify` | None |
+| Repository configuration | None for `{}`. `phase` only with a `sarif` section | A new hook line per host | None | A committed hook, or a hook manager | None |
+| Install and upgrade | Ships in the binary. The session line and skill ship with the plugin and `klin install`, as today | A new hook in every plugin and every `klin install` target, and a host version floor | The skill ships as today | A person installs it per clone. klin does not own `.git/hooks` | None |
+| Plugin and standalone equal | Yes, one binary and one embedded text | Only where both routes register the event | Yes | Not applicable | Yes |
+| Reproduce a failed or skipped run | Run `klin finalize` over the same tree | Replay the host event | Not possible | Run the commit again | Not possible: the decision was a guess |
+| New file, daemon, service or database | One state file | None | None | A hook file per clone | None |
+
 The rejection of mechanism 5 holds on the evidence of section 1, not on taste.
 A Claude Code or Codex stop after a question carries the same fields as a
 stop after finished work. A Cursor stop after a question carries
@@ -110,14 +138,15 @@ reasons:
    failure` needs one. This note adds INCOMPLETE.
 4. A failed finalize needs no state of its own either. Its record says
    "findings over tree T", so a second call over the same tree answers from
-   the record and re-runs nothing.
+   the record and re-runs nothing. An INCOMPLETE record is the exception
+   (section 3, step 2).
 
 ### The record
 
 One file, `finalized`, in the state directory beside `turn`. It is written
 atomically under the existing state lock (SPEC 6.5). It holds:
 
-- `tree`: the tree identity of section 6 that the run measured;
+- `tree`: the tree identity of section 7 that the run measured;
 - `klin`: the binary version;
 - `verdict`: `finalized`, `findings` or `incomplete`;
 - `review`: how many REVIEW items the run reported;
@@ -134,7 +163,8 @@ state(current tree C, record R):
     no R, or R.tree != C, or R.klin != this binary   -> WORKING
     R.verdict = findings                              -> WORKING (repair; the
                                                           report is cached for C)
-    R.verdict = incomplete                            -> INCOMPLETE(C)
+    R.verdict = incomplete                            -> INCOMPLETE(C) (the
+                                                          next call measures again)
     R.verdict = finalized                             -> FINALIZED(C), with
                                                           R.review items
 ```
@@ -165,9 +195,13 @@ drift writes no record, because no verdict can name one tree.
 
 1. Take the state lock of SPEC 6.5. A second `klin finalize`, or a Stop,
    waits for it.
-2. Compute T0. If a record names T0 and this binary, print the recorded
-   verdict, say that the tree did not change since that run, and exit with
-   the same code. Nothing is measured again.
+2. Compute T0. If a record names T0 and this binary, and its verdict is
+   `finalized` or `findings`, print the recorded verdict, say that the tree
+   did not change since that run, and exit with the same code. Nothing is
+   measured again. An `incomplete` record is never reused: a tool the person
+   installs lives in ignored files, outside T0, so only a new run can see
+   it. Without this rule an INCOMPLETE would replay after the fix and the
+   agent could never clear it.
 3. Measure the turn window, the window the Stop already judges (SPEC 6.1):
    every gate, plus every external entry whose phase is `finalize`
    (section 5).
@@ -196,9 +230,11 @@ adds no new zone.
   tool, not against a person or a shell path the guard cannot prove.
 - **Enforced** stays exactly what SPEC 15.2 says: `klin gate --strict` on an
   independent checkout. CI never reads `finalized`. CI runs every phase,
-  `stop`, `finalize` and `ci`, over the committed tree. So everything a
-  local finalize checks, CI checks again, and a skipped finalize costs only
-  the earlier feedback. [inference]
+  `stop`, `finalize` and `ci`, over the committed tree. So CI checks again
+  what a local finalize checks, with two exceptions today: CI runs no
+  derived build (#434), and CI records a deleted test as a NOTE where the
+  Stop blocks once (ADR 0031). Outside those two, a skipped finalize costs
+  only the earlier feedback. [inference]
 - With no CI, the local finalize is the deepest check the repository gets,
   and a skipped one means those entries never ran. Section 8 says how the
   person sees that.
@@ -221,7 +257,7 @@ and CI disagree today, and where the proposal moves a claim.
 | --- | --- | --- | --- | --- |
 | A gate finding (complexity, escapes, stubs and the rest) | Judged over the turn window | Judged over the turn window | Judged over the branch window | Agree. The windows differ by design (SPEC 6). |
 | The derived build | Runs, and blocks | Same as Stop | **Does not run** (ADR 0012 text disagrees, #434) | Today: not at all. The CI run is green over a tree the Stop refused. #434 owns the fix. |
-| A deleted test | Blocks once, then a NOTE | A NOTE | A NOTE | Agree after the first stop. The one block is local only (ADR 0031). |
+| A deleted test | Blocks once, then a NOTE | A NOTE | A NOTE | The one block is local only (ADR 0031), so the amendment counts it as a Stop-only catch. Today the developer sees nothing in CI. Proposal: the CI NOTE says that the hook asked about this deletion and that a person reads the reply in review. |
 | A `sarif` entry with `run`, phase `stop` | Runs | Runs | Runs (`klin gate` executes `run` outside the hook, `tests/sarif.rs`) | Agree. |
 | A `sarif` entry, phase `finalize` | Not run | Runs | Runs | Agree. The Stop is silent on it by design. |
 | A `sarif` entry, phase `ci` | Not run | Not run | Runs | Local runs say nothing about it. The phase name says so in `klin gate --list`. |
@@ -328,11 +364,14 @@ Git 2.56.0, macOS, aarch64, median of 5 runs. [measured]
 
 | Mechanism | Clean tree | 20 files changed |
 | --- | ---: | ---: |
-| Fresh private index, `add -A` and `write-tree` (klin today) | 417 ms | 310 ms |
-| Kept private index, `add -A` and `write-tree` | 47 ms | 45 ms |
-| `git status --porcelain` | 35 ms | 36 ms |
-| Snapshot: `checkout-index` of the tree into a directory | — | 1,586 ms |
-| Snapshot: `worktree add --detach` of a commit of the tree | — | 1,432 ms |
+| Fresh private index, `add -A` and `write-tree` (klin today) | 409 ms | 297 ms |
+| Kept private index, `add -A` and `write-tree` | 38 ms | 38 ms |
+| `git status --porcelain` | 31 ms | 32 ms |
+| Immutable copy: `checkout-index` of the tree into a directory | — | 831 ms |
+| Immutable copy: `worktree add --detach` of a commit of the tree | — | 887 ms |
+
+The copy rows time the copy alone, not its removal. The worktree row also
+includes one kept-index identity and the commit it checks out.
 
 A kept index lets Git skip every file whose stat data did not change, so the
 identity costs about one `git status`. That fits the "needs clear product
@@ -342,7 +381,7 @@ value" band of #358, and it runs only when finalize state is in play.
 ### Three ways to bind slow evidence to one tree
 
 1. **Read the live tree, and check that the identity did not change during
-   the measurement.** It costs two kept-index identities, about 90 ms in all
+   the measurement.** It costs two kept-index identities, about 80 ms in all
    at 10,000 files. It runs the tools where their dependencies are installed.
    **Recommended.**
 
@@ -354,8 +393,9 @@ value" band of #358, and it runs only when finalize state is in play.
    data too, and calls any difference a drift. What remains is a change and
    revert that also restores the file's mtime and ctime. A process must do
    that on purpose, and CI re-measures the committed tree anyway.
-2. **Measure an immutable snapshot, and bind the result to it.** It costs
-   1.4 to 1.6 s at 10,000 files, before any tool runs. A snapshot also lacks
+2. **Measure an immutable copy of the tree (the ticket's "snapshot"), and
+   bind the result to it.** It costs about 0.8 to 0.9 s at 10,000 files, before any
+   tool runs. The copy also lacks
    every ignored file, so `node_modules` and `.venv` are absent. Type-aware
    ESLint, `tsc` and `mypy` cannot run there without a link to today's
    dependencies, and SPEC 8.3 already rejected that link for `compare: true`,
@@ -385,7 +425,7 @@ things change around it.
    configuration reference must say so.
 2. **A stale finalize under the current prompt.** When a Stop finds a
    `finalized` record under the current prompt counter, it computes the
-   identity, about 45 ms at 10,000 files. If the tree differs, the agent said
+   identity, about 40 ms at 10,000 files. If the tree differs, the agent said
    "ready" and then changed the tree. The proposal: the Stop says so and
    spends a gate block from the existing budget of two, so it stays bounded
    by ADR 0022. A clarification turn never meets this rule, because it
@@ -399,8 +439,9 @@ things change around it.
    would start an agent turn. There, the journal and `klin stats` carry it.
 4. **The session hook** prints one more line (section 5).
 5. **A side observation, not part of this proposal.** The fresh-index tree
-   hash that `radius` runs on every prompt, and the Stop runs at each block,
-   cost 310 to 417 ms at 10,000 files, against 45 ms for a kept index. A
+   hash that the prompt and session hooks run on every event (`turn::run`
+   in `src/turn.rs`), and the Stop runs at each block, costs about 300 to 410 ms at
+   10,000 files, against about 40 ms for a kept index. A
    kept index for those callers is a separate ticket, and needs its own
    proof that it keeps SPEC 6.5's stamp semantics.
 
@@ -530,6 +571,9 @@ statement in this note is **[inference]**.
 - **16**: the finalize run as a reference algorithm.
 - **17**: CLI tests for invalidation, drift and the cache.
 - **19.2 and 19.3**: the session line and the skill text.
+- **`CONTEXT.md`**, beside the SPEC: the new terms this note uses without a
+  glossary entry. They are Finalize, readiness, tree identity, Deep work,
+  and the states FINALIZED, INCOMPLETE and WORKING.
 
 One fact for SPEC 9.3 regardless of this decision: the current Claude Code
 documentation now states the 8-continuation cap. SPEC 9.3 says the cap "is
@@ -587,6 +631,16 @@ The contract:
 No host event is used, because no first-class host has one that tells
 readiness apart from a question. A custom harness with a real completion
 event may call the same command at that event.
+
+The experience acceptance of the ticket, item by item:
+
+| Item | Under this contract | Where |
+| --- | --- | --- |
+| The normal first-class-host path needs no explicit human finalization step | Yes: the session line tells the agent, and the agent runs the command. This depends on agent reliability, which section 10 has not measured | Sections 5, 9 |
+| Clarification and yield stay cheap, with no Deep work | Yes: only an explicit call starts Deep work. A Stop computes nothing new unless a finalize ran under the same prompt | Sections 3, 6, 8 |
+| A developer reproduces finalization state and invalidation without klin internals | Yes: `klin finalize` over the same tree, and `klin finalize --check` for the state and why | Sections 5, 9 |
+| The agent gets concise, actionable repair feedback, with no internal phase names | Yes: a finding names a site and a repair, a REVIEW and an INCOMPLETE say what not to do, and a repeat costs one line | Section 9 |
+| A skipped or failed local finalize is visible, and never shown as a CI failure | Partly: the journal and `klin stats` on every host, a person-only line on Claude Code and Codex, and nothing at the moment on Cursor. Every local line says "local" and names no CI result | Sections 4, 8 |
 
 This recommendation does not authorize implementation. A person reviews it,
 decides the open choices of section 13 (items 4 to 6), and runs or waives the
