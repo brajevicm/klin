@@ -340,7 +340,11 @@ None of these changes read a result of the sample before it was made:
    `labels.tsv`) after the first results, and it changed three outcomes:
    `complexity` and `escapes` went from `seen` to `frequent`, and
    `public-api` from `not seen` to `seen`. The tables below hold the counts
-   with these rows.
+   with these rows. No decision moves with these outcomes: `complexity` and
+   `escapes` are shipped gates, not research families. A `frequent`
+   outcome for them counts changes with a `valid-review` site, which means
+   a site a person may judge. It is not evidence to admit or change a
+   gate.
 6. The same review found that rules 3 and 4 of "What the outcome decides"
    are circular. The full #357 study consumes the results of #353 and #356,
    so neither can wait until after it. Section "Pilot outcome and what it
@@ -424,11 +428,15 @@ the registered rules.
    `tests.py` found 8 sites in 18 changes that modify a test file. All 8 are
    legitimate: formatting, a changed response type, a count that follows an
    added item, an assertion that got stronger. The two predicates see only an
-   assertion line that leaves a test file. They do not see a deleted or
-   renamed test, a new test with no assertion, a skip, an exact check turned
-   into a tautology, an expected value changed to match production, or
-   weakening through a mock. So this result does not test most of the #353
-   candidate set.
+   assertion line that leaves a test file. They do not see a new test with
+   no assertion, an exact check turned into a tautology, an expected value
+   changed to match production, or weakening through a mock. Deleted tests
+   and skips are measured, by the shipped gates of klin `{}`: `inventory`
+   ran on 50 changes with 0 findings, and `escapes` found 3 skipped-test
+   sites, 2 in `numbagg#384` (agent) and 1 in `Archon#338` (human). Those
+   gates hold the gaps that #361 found, such as inline Rust tests that
+   `inventory` does not read. So the pilot measured deletion and skips, but
+   not the subtle weakening that is the core of #353.
 7. **Reviewers asked for reuse only on agent pull requests.** 3 of the 7
    agent pull requests with a review comment hold a `reuse` comment. None of
    the 12 human pull requests with a comment does. Most pull requests have no
@@ -537,10 +545,10 @@ one: "Jules isn't yet a replacement for a human engineer."
 | `placeholder-wording`, `mock-name` (#362) | seen | 2 agent changes, 0 human; both closed without merge |
 | klin `stubs` | seen | 1 agent change |
 | klin `escapes` | frequent | valid sites: `any` in new TypeScript, new `unwrap` in compiler code, a skipped test, a bare `except`; 3 agent and 2 human changes, 1 of the agent ones `claude-code#8345` |
-| klin `complexity` | frequent (exploratory) | 9 agent and 6 human changes hold a `valid-review` site; most sites are `undesired`; the line between the two was set during labeling |
+| klin `complexity` | frequent (exploratory) | 9 agent and 6 human changes hold a `valid-review` site; most sites are `undesired`; the line between the two was set during labeling; no decision follows |
 | `broad-handler`, `log-handler` (#362) | seen | mostly `undesired` in both arms: noise for the current detector |
 | `removable` (#356) | seen | 2 agent PRs, 1 human |
-| `test-integrity` (#353) | seen | 1 agent PR by comment; the two `tests.py` predicates found no valid weakening, and they cover little of #353 |
+| `test-integrity` (#353) | seen | 1 agent PR by comment; `tests.py` found no valid weakening and `inventory` no deletion; `escapes` found 3 skips; the subtle weakening of #353 is not measured |
 | `architecture` | seen | 2 agent PRs by comment |
 | klin `public-api` | seen | 1 agent change, an intended new `Error` variant in `glues#150`; every other agent site is the same-name false alarm |
 | `default-handler`, `empty-handler`, `constant-return`, `ellipsis-body`, `throw-body` (#362) | not seen | |
@@ -559,8 +567,9 @@ report:
    it.
 2. **#353 stays before the final #357 report, at a lower priority.**
    `test-integrity` is `seen` by one agent pull request. The two `tests.py`
-   predicates found no valid weakening, but they cover little of the #353
-   candidate set, and #361 already showed real test-integrity gaps.
+   predicates found no valid weakening, and `inventory` found no test
+   deletion, but neither sees the subtle weakening that is the core of
+   #353, and #361 already showed real test-integrity gaps.
 3. **#356 is deprioritized.** `removable` is `seen`, not `frequent`. A
    person decides between two options: run #356 later but still before the
    final #357 report, or defer it out of vNext so that the final report
@@ -618,8 +627,8 @@ used no paper rate as a prior. Within those limits:
   comments, with the small base stated above.
 - The #353 motivation (agents weaken tests) is not tested in a useful way.
   The two assertion-line predicates found no valid weakening in 8 agent
-  changes that modify a test file, and they see little of the #353
-  candidate set.
+  changes that modify a test file, and `inventory` found no test deletion.
+  Neither sees the subtle weakening that is the core of #353.
 - Population, language, harness and task all differ from those papers: the
   agents ran in the cloud services of 2025, on small and middle open-source
   projects, on tasks that the owners chose.
@@ -644,7 +653,9 @@ used no paper rate as a prior. Within those limits:
   pilot has no controlled arm.
 - `tests.py` sees two syntactic events only. For a Rust file outside the
   test path rule, it reads everything from the first `#[cfg(test)]` line to
-  the end of the file as test code, not the test module's real bounds.
+  the end of the file as test code, not the test module's real bounds. That
+  reads too much code as test code: it can add a false site, and it cannot
+  hide a weakening inside the test module.
 - The coverage rows and the `complexity` line were added after the first
   results. The note marks both, and `labels.tsv` marks the coverage rows.
 
