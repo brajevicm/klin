@@ -51,9 +51,14 @@ run() {
   task=$(awk -F'\t' -v c="$name" '$1 == c { print $3 }' "$here/cases.tsv")
   [ -n "$task" ] || { echo "probe: no case $name in cases.tsv" >&2; exit 2; }
   rm -rf "$dir"; mkdir -p "$dir"; stage "$dir/tree" "$host"
-  export PATH="$here/bin:$PATH" PROBE_MODE="$mode" PROBE_LOG="$dir/probe.log" PROBE_CONTEXT="$here/context.txt"
+  local context="$here/context.txt"
+  if [ "$host" = cursor ]; then
+    context="$dir/context.txt"
+    sed "s|\`klin finalize\`|\`$here/bin/klin finalize\`|" "$here/context.txt" > "$context"
+  fi
+  export PATH="$here/bin:$PATH" PROBE_MODE="$mode" PROBE_LOG="$dir/probe.log" PROBE_CONTEXT="$context"
   : > "$dir/probe.log"
-  printf 'PROBE_MODE=%q\nPROBE_LOG=%q\nPROBE_CONTEXT=%q\n' "$mode" "$dir/probe.log" "$here/context.txt" \
+  printf 'PROBE_MODE=%q\nPROBE_LOG=%q\nPROBE_CONTEXT=%q\n' "$mode" "$dir/probe.log" "$context" \
     > "$(git -C "$dir/tree" rev-parse --absolute-git-dir)/probe.env"
   case $host in
     claude) (cd "$dir/tree" && claude -p "$task" --model sonnet --setting-sources project \

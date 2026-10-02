@@ -563,7 +563,7 @@ trees are not kept.
      committed in the base, which is a different channel from the proposal.
      Every ready-type run called `klin finalize`, but Codex runs commands
      in a login shell, and that shell resolved the person's installed klin
-     0.4.1 before the stand-in. It answered "unrecognized subcommand", so
+     0.1.0 before the stand-in. It answered "unrecognized subcommand", so
      these runs count for readiness and clarification only.
   3. `runs/codex/` for `ready-fail`, `review` and `unknown`: the same, with
      `allow_login_shell=false`. The stand-in answered. Codex's
