@@ -1,0 +1,136 @@
+# n	label	note	repository	head	candidate	shape	file	line	text
+1	N	OnceCell::set result: Err only when already set	firecrawl/pdf-inspector	bf6800920a	empty-handler	let-underscore	src/tounicode.rs	let _ = self.bytes.set(Some(bytes));
+2	N	xtask logs that the CPU count is unknown and goes on	gfx-rs/wgpu	2c3e503258	log-handler	err-arm-log	xtask/src/test.rs	Err(e) => log::info!("Could not determine the host CPU count: {e}"),
+3	N	Option default for a missing tag	louis-e/arnis	daee5a7bff	default-handler	unwrap-or	src/element_processing/natural.rs	let wetland_type = tags.get("wetland").map(String::as_str).unwrap_or("");
+4	N	lenient hex channel parse in a colour helper	louis-e/arnis	d4852aa3d7	default-handler	unwrap-or	src/element_processing/surfaces.rs	let v = u32::from_str_radix(&hex[i * len..(i + 1) * len], 16).unwrap_or(0);
+5	N	best-effort removal of an untouched template file	louis-e/arnis	d4852aa3d7	empty-handler	let-underscore	src/world_utils.rs	let _ = fs::remove_file(&path);
+6	N	best-effort create_dir_all before a preview write that reports its own error	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/data_processing.rs	let _ = std::fs::create_dir_all(parent);
+7	N	documented warning, spawn move is optional	louis-e/arnis	7e9a4344c5	log-handler	err-arm-log	src/data_processing.rs	Err(e) => eprintln!("Warning: Failed to move the spawn point: {e}"),
+8	N	falls back to a local projection on purpose	louis-e/arnis	7e9a4344c5	broad-handler	err-arm-other	src/ground.rs	Err(_) => return Self::local(),
+9	N	Option default, no error	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/gui.rs	area_count: manifest.as_ref().map(|m| m.areas.len()).unwrap_or(0),
+10	N	Option default, no error	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/gui.rs	revision: manifest.as_ref().map(|m| m.next_area_id).unwrap_or(0),
+11	N	best-effort cleanup on a failure path	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/main.rs	let _ = fs::remove_dir_all(dir);
+12	N	best-effort removal of a replaced preview	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/one_world.rs	let _ = std::fs::remove_file(path);
+13	N	clock before the epoch reads as 0, a common idiom	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/one_world.rs	std::time::SystemTime::now()
+14	N	Option default of an empty iterator	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/overture/mod.rs	let min_x = clipped.iter().map(|n| n.x).min().unwrap_or(0);
+15	N	Option default of an empty iterator	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/overture/mod.rs	let max_x = clipped.iter().map(|n| n.x).max().unwrap_or(0);
+16	N	Option default of an empty iterator	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/overture/mod.rs	let min_z = clipped.iter().map(|n| n.z).min().unwrap_or(0);
+17	N	Option default of an empty iterator	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/overture/mod.rs	let max_z = clipped.iter().map(|n| n.z).max().unwrap_or(0);
+18	N	domain word: placeholder chunks of a region template	louis-e/arnis	7e9a4344c5	placeholder-wording	comment:placeholder	src/world_editor/java.rs	/// template: its placeholder chunks carry another region's positions, and
+19	N	Option default for a non-UTF-8 file name	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/world_editor/java.rs	let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+20	N	Option default for a missing suffix	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or	src/world_editor/java.rs	let mut parts = name.strip_suffix(".mca").unwrap_or("").split('.');
+21	N	domain word: placeholder chunks	louis-e/arnis	7e9a4344c5	placeholder-wording	comment:placeholder	src/world_utils.rs	/// skips the region template, whose placeholder chunks it would not overwrite.
+22	N	inode lookup that is optional on this path	louis-e/arnis	7e9a4344c5	default-handler	unwrap-or-default	src/world_utils.rs	inode: unix_inode(path).unwrap_or_default(),
+23	N	cleanup in Drop	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/world_utils.rs	let _ = fs::remove_file(&self.path);
+24	N	cleanup in Drop	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/world_utils.rs	let _ = fs2::FileExt::unlock(&self.file);
+25	N	unlock after a lock probe	louis-e/arnis	7e9a4344c5	empty-handler	let-underscore	src/world_utils.rs	let _ = fs2::FileExt::unlock(&file);
+26	N	Err means "locked" in a lock probe	louis-e/arnis	7e9a4344c5	broad-handler	err-arm-other	src/world_utils.rs	Err(_) => true,
+27	N	best-effort removal of a damaged cache file, stated in a comment	louis-e/arnis	788d5e9ca9	empty-handler	let-underscore	src/canopy/mod.rs	let _ = std::fs::remove_file(row_block_path(&key, blocks[bi]));
+28	N	best-effort removal of a temp file	louis-e/arnis	788d5e9ca9	empty-handler	let-underscore	src/canopy/mod.rs	let _ = std::fs::remove_file(&tmp);
+29	N	best-effort cache pruning	louis-e/arnis	788d5e9ca9	empty-handler	let-underscore	src/canopy/mod.rs	let _ = std::fs::remove_file(file.path());
+30	N	optional asset pack, warning printed	louis-e/arnis	e7cdeb99e2	log-handler	err-arm-log-default	src/caves/schems.rs	Err(e) => {
+31	N	one bad schem file warns and the rest load	louis-e/arnis	e7cdeb99e2	log-handler	err-arm-log	src/caves/schems.rs	Err(e) => eprintln!("Warning: cave schem {file}: {e}"),
+32	N	domain word: a pack's placeholder block	louis-e/arnis	e7cdeb99e2	placeholder-wording	comment:placeholder	src/caves/schems.rs	"acacia_leaves" => return None, // pack author's placeholder/marker block
+33	N	Option default of an empty iterator	louis-e/arnis	e7cdeb99e2	default-handler	unwrap-or	src/caves/schems.rs	let h = voxels
+34	N	domain word: a tiny stub of water	louis-e/arnis	e7cdeb99e2	placeholder-wording	comment:stub	src/caves/water.rs	return; // clipped too hard by the roof/bbox — skip rather than leave a tiny stub
+35	N	best-effort cache directory	louis-e/arnis	fc19146b3f	empty-handler	let-underscore	src/osm_tiles.rs	let _ = std::fs::create_dir_all(dir);
+36	N	best-effort cache write	louis-e/arnis	fc19146b3f	empty-handler	let-underscore	src/osm_tiles.rs	let _ = std::fs::write(p, &body);
+37	N	falls back to Overpass with a warning	louis-e/arnis	fc19146b3f	broad-handler	err-arm-other	src/retrieve_data.rs	Err(e) => {
+38	N	Option default	denisidoro/navi	9973dc8857	default-handler	unwrap-or	src/parser.rs	line.get(1..).unwrap_or("").trim().to_string()
+39	N	promise failure goes to onError	refactoringhq/tolaria	44740e4ae1	broad-handler	promise-other	src/components/PdfFilePreview.tsx	void paintPdfPage(options, state).catch(() => {
+40	N	promise failure sets the error state	refactoringhq/tolaria	44740e4ae1	broad-handler	promise-other	src/components/PdfFilePreview.tsx	void loadPdfDocument(source)
+41	N	recovers a poisoned lock at exit and logs it	refactoringhq/tolaria	ebbcef5a67	broad-handler	err-arm-other	src-tauri/src/desktop_runtime.rs	Err(poisoned) => {
+42	N	a failing error callback is logged, the task error is already reported	whyour/qinglong	f168efcdae	log-handler	log	back/services/schedule.ts	} catch (error) {
+43	N	validator: an unparsable cron is invalid	whyour/qinglong	bf63425805	broad-handler	other	back/shared/cronSchedule.ts	} catch {
+44	N	validator: an unparsable cron is invalid	whyour/qinglong	a8310e7d51	broad-handler	other	back/schedule/addCron.ts	} catch {
+45	N	best-effort removal of a temp link before it is replaced	whyour/qinglong	801a71d740	empty-handler	empty	back/loaders/deps.ts	} catch (error) {}
+46	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/execution/concurrent.ts	if (!(await fs.stat(filename).catch(() => undefined))) continue;
+47	N	clears an env var when the lookup fails	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/execution/dependencies.ts	} catch {
+48	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/execution/taskRunner.ts	return (await fs.stat(file).catch(() => undefined))?.isFile() ?? false;
+49	N	a missing crontab list reads as empty	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/execution/taskRunner.ts	const list = await fs
+50	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/execution/taskRunner.ts	(await fs.stat(explicit).catch(() => undefined))?.isDirectory()
+51	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/execution/taskRunner.ts	if ((await fs.stat(directory).catch(() => undefined))?.isDirectory()) {
+52	N	report failure is printed to the user	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/execution/taskRunner.ts	} catch {
+53	N	report failure is printed to the user	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/execution/taskRunner.ts	} catch {
+54	N	prints the failure and exits 1	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/integration/cronEntrypoint.ts	} catch {
+55	N	probes candidate paths in a loop	whyour/qinglong	801a71d740	empty-handler	empty	cli/src/internal/integration/cronEntrypoint.ts	} catch {}
+56	N	no os-release reads as unknown	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/maintenance/bot.ts	const release = await fs.readFile('/etc/os-release', 'utf8').catch(() => '');
+57	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/maintenance/bot.ts	const git = await fs
+58	N	existence probe through lstat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/maintenance/bot.ts	const exists = !!(await fs.lstat(repository).catch(() => undefined));
+59	N	health check: failure is "not ok"	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/maintenance/check.ts	} catch {
+60	N	turns the error into a message the caller shows	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/maintenance/check.ts	} catch (error) {
+61	N	a missing directory reads as no entries	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/maintenance/maintenance.ts	for (const entry of await fs
+62	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/maintenance/maintenance.ts	if (!(await fs.stat(file).catch(() => undefined))?.isFile())
+63	N	a failed removal keeps the backup and says so	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/maintenance/upgrade.ts	} catch {
+64	N	turns the failure into a CLI error	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/api.ts	} catch {
+65	N	report failure is printed to the user	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/commandLog.ts	} catch {
+66	N	probe: not writable is false	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/containerEnvironment.ts	} catch {
+67	N	best-effort chown, checked on the next line	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/runtime/containerEnvironment.ts	await runProcess(
+68	N	records the failure as a warning with its code	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/containerEnvironment.ts	} catch (error) {
+69	N	tries the next version source on failure	whyour/qinglong	801a71d740	empty-handler	empty	cli/src/internal/runtime/lifecycle.ts	} catch {}
+70	N	predicate: no readable version is false	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/lifecycle.ts	} catch {
+71	N	stores the failure for the caller	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/process.ts	} catch (error) {
+72	N	stores the failure and kills the child	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/runtime/process.ts	} catch (error) {
+73	N	notification failure is printed to the user	whyour/qinglong	801a71d740	broad-handler	other	cli/src/internal/subscription/subscriptionRunner.ts	} catch {
+74	N	existence probe through stat	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/internal/subscription/subscriptionRunner.ts	if ((await fs.stat(source).catch(() => undefined))?.isFile())
+75	N	best-effort removal before the rethrow	whyour/qinglong	801a71d740	default-handler	promise-return-constant	cli/src/remote/api/download.ts	await unlink(path).catch(() => undefined);
+76	N	invalid URL is a CLI error	whyour/qinglong	801a71d740	broad-handler	other	cli/src/remote/auth/url.ts	} catch {
+77	N	invalid input is a usage error	whyour/qinglong	801a71d740	broad-handler	other	cli/src/remote/commands/open.ts	} catch {
+78	N	unreadable upload is a usage error	whyour/qinglong	801a71d740	broad-handler	other	cli/src/remote/commands/open.ts	} catch {
+79	N	fail(): never, a helper that exists to throw	whyour/qinglong	801a71d740	throw-body	throw	cli/src/shared/errors.ts	export function fail(message: string, exitCode: ExitCode = 1): never {
+80	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+81	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+82	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+83	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+84	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+85	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+86	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+87	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+88	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+89	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+90	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+91	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+92	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+93	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "empty type instantiations", () => {
+94	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "generic record type instantiations", () => {
+95	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "unknown instantiations", () => {
+96	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "any instantiations", () => {
+97	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "tuple instantiations", () => {
+98	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+99	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	bench(prefix + "instantiations", () => {
+100	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	() => {
+101	N	anonymous type-benchmark callback in __benches__	apollographql/apollo-client	0c925a4348	constant-return	return-empty	src/incremental/__benches__/types.bench.ts	() => {
+102	N	deprecation note: removed in a future release	apollographql/apollo-client	0c925a4348	placeholder-wording	comment:future release	src/react/types/types.documentation.ts	* This option is deprecated and will be removed in a future release.
+103	N	deprecation note: removed in a future release	apollographql/apollo-client	0c925a4348	placeholder-wording	comment:future release	src/react/types/types.documentation.ts	* This option is deprecated and will be removed in a future release.
+104	N	product copy: a plan that is coming soon	Open-Dev-Society/OpenStock	e844ac413c	placeholder-wording	literal:coming soon	app/(marketing)/help/page.tsx	answer: 'Yes. We run on sponsors and community contributions. Charts, watchlists and research stay free. OpenStock Cloud, coming soon, adds live quotes and email price alerts for $5 a month. Self-hosting includes both.',
+105	N	product copy: a plan that is coming soon	Open-Dev-Society/OpenStock	3cf500ad4c	placeholder-wording	literal:coming soon	app/(marketing)/help/page.tsx	answer: 'Yes. We run on sponsors and community contributions. Core features (charts, watchlists, alerts) stay free. OpenStock Cloud, coming soon, adds live quotes for $5 a month.',
+106	N	product copy: a plan tagged coming soon	Open-Dev-Society/OpenStock	3cf500ad4c	placeholder-wording	literal:coming soon	app/(marketing)/page.tsx	name: 'OpenStock Cloud', price: '$5', per: '/month', tag: 'Coming soon', cadence: 'Every 15 seconds', perHour: 240,
+107	A	borderline: a failed accounts call renders as no linked accounts, with no log	Open-Dev-Society/OpenStock	3cf500ad4c	default-handler	promise-return-constant	app/(root)/profile/page.tsx	auth.api.listUserAccounts({ headers: await headers() }).catch(() => []),
+108	N	news panel degrades to an empty list	Open-Dev-Society/OpenStock	3cf500ad4c	default-handler	promise-return-constant	app/(root)/watchlist/page.tsx	return <NewsList news={await getNews(symbols).catch(() => [] as MarketNewsArticle[])} />;
+109	N	failure shown to the user in a toast	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	components/watchlist/AlertsPanel.tsx	} catch {
+110	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+111	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+112	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+113	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+114	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+115	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/auth.actions.ts	} catch (e) {
+116	N	logged, and null is the documented miss	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/finnhub.actions.ts	} catch (e) {
+117	N	logged, and null is the documented miss	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/finnhub.actions.ts	} catch (e) {
+118	N	one symbol's news failure is logged and the others go on	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/finnhub.actions.ts	} catch (e) {
+119	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/profile.actions.ts	} catch (e) {
+120	N	logged, and returned as an error result	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/actions/profile.actions.ts	} catch (e) {
+121	N	logged, a daily email skips a user it cannot read	Open-Dev-Society/OpenStock	3cf500ad4c	log-handler	log-default	lib/actions/user.actions.ts	} catch (err) {
+122	N	repository stats are optional decoration	Open-Dev-Society/OpenStock	3cf500ad4c	default-handler	return-constant	lib/github.ts	} catch {
+123	N	documented fallback text when every AI provider fails	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/inngest/functions.ts	} catch (error) {
+124	N	documented fallback text when every AI provider fails	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/inngest/functions.ts	} catch (error) {
+125	N	best-effort release of a claim	Open-Dev-Society/OpenStock	3cf500ad4c	empty-handler	promise-empty	lib/inngest/functions.ts	const release = () => Alert.findByIdAndUpdate(alert._id, { triggered: false, active: true }).catch(() => {});
+126	N	releases the claim, logs, retries on the next run	Open-Dev-Society/OpenStock	3cf500ad4c	broad-handler	other	lib/inngest/functions.ts	} catch (error) {
+127	N	editor attach failure logged in a UI callback	mountain-loop/yaak	6c2a18d506	log-handler	log	apps/yaak-client/components/core/Editor/Editor.tsx	} catch (e) {
+128	N	editor init failure logged in a UI callback	mountain-loop/yaak	6c2a18d506	log-handler	log	apps/yaak-client/components/core/Editor/Editor.tsx	} catch (e) {
+129	N	a stated scope limit: only definite paths convert	mountain-loop/yaak	34815f327a	placeholder-wording	comment:for now	plugins/importer-insomnia/src/templates.ts	// modes cannot express that automatically. Only convert definite paths for now.
+130	N	domain word: a soft-404 stub page	teng-lin/notebooklm-py	af19e326e6	placeholder-wording	comment:stub	src/notebooklm/_app/content_sanity.py	#: carries more script/boilerplate than a soft-404 stub, so a real interstitial can
+131	N	advisory evidence, logged, None documented	teng-lin/notebooklm-py	af19e326e6	log-handler	log-default	src/notebooklm/_app/source_fallback.py	except Exception:
+132	N	logged without secrets, None documented	teng-lin/notebooklm-py	af19e326e6	log-handler	log-default	src/notebooklm/_app/source_fallback.py	except Exception as exc:
+133	N	domain word: a stub source	teng-lin/notebooklm-py	af19e326e6	placeholder-wording	comment:stub	src/notebooklm/_app/source_fallback.py	# add_text response must escape unchanged; never retry it or delete the stub.
+134	N	maps any failure to the "unconfirmed" outcome	teng-lin/notebooklm-py	af19e326e6	broad-handler	other	src/notebooklm/_app/source_fallback.py	except Exception:
+135	N	domain word: a failed stub source	teng-lin/notebooklm-py	af19e326e6	placeholder-wording	literal:stub	src/notebooklm/mcp/tools/sources.py	``cleanup_on_failure=True`` additionally deletes the attributable failed stub

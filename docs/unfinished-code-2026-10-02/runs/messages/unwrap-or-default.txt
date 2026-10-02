@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  escapes
+        FAIL: 1 new escape site(s) where the code opts out of a check, beyond the 0 the base holds:
+          src/tiers.rs:4  swallowed error  config::read(path).map(|config| config.tiers).unwrap_or_default()  — nothing matched
+        .unwrap_or_default() turns every error of this Result into an empty value, so a broken config reads as an empty one. Match the error you expect, give it the answer the task documents, and return or propagate the others.
+klin: 6 gate(s), 1 failed.

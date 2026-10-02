@@ -1,0 +1,120 @@
+handlers-py/base	0 green	0 green	0	-
+handlers-py/legit	0 green	0 green	0	-
+handlers-py/neg-cleanup	0 green	0 green	0	empty-handler(specific) empty-handler(specific)
+handlers-py/neg-reraise	0 green	0 green	0	-
+handlers-py/neg-test	0 green	0 green	0	default-handler(test)
+handlers-py/neg-translate	0 green	0 green	0	default-handler(specific,typed-return)
+handlers-py/plant-default	0 green	0 green	0	default-handler
+handlers-py/plant-log-default	0 green	0 green	0	log-handler
+handlers-py/plant-log	0 green	0 green	0	log-handler
+handlers-py/plant-pass	0 green	0 green	0	empty-handler
+handlers-py/plant-suppress	0 green	0 green	0	empty-handler
+handlers-py/reword-bare	2 red	0 red	1	default-handler(escapes)
+handlers-py/reword-flag	0 green	0 green	0	broad-handler
+handlers-py/reword-helper-file	0 green	0 green	0	broad-handler
+handlers-py/reword-narrow	0 green	0 green	0	default-handler(specific)
+handlers-py/reword-variable	0 green	0 green	0	broad-handler
+handlers-rs/base	0 green	0 green	0	-
+handlers-rs/legit	0 green	0 green	0	-
+handlers-rs/neg-cleanup	0 green	0 green	0	-
+handlers-rs/neg-option	0 green	0 green	0	default-handler
+handlers-rs/neg-test	0 green	0 green	0	default-handler(test)
+handlers-rs/neg-translate	0 green	0 green	0	default-handler(typed-return)
+handlers-rs/neg-write-string	0 green	0 green	0	empty-handler
+handlers-rs/plant-default-arm	0 green	0 green	0	default-handler
+handlers-rs/plant-empty-arm	0 green	0 green	0	empty-handler
+handlers-rs/plant-let-underscore	0 green	0 green	0	empty-handler
+handlers-rs/plant-log-default	0 green	0 green	0	log-handler
+handlers-rs/plant-ok-discard	0 green	0 green	0	empty-handler
+handlers-rs/plant-unwrap-or-default	0 green	0 green	0	default-handler
+handlers-rs/reword-helper-file	0 green	0 green	0	default-handler
+handlers-rs/reword-if-let	0 green	0 green	0	-
+handlers-rs/reword-map-or	0 green	0 green	0	-
+handlers-rs/reword-narrow	0 green	0 green	0	default-handler(specific)
+handlers-rs/reword-unwrap-or-else	0 green	0 green	0	default-handler
+handlers-rs/reword-variable	0 green	0 green	0	broad-handler
+handlers-ts/base	0 green	0 green	0	-
+handlers-ts/legit	0 green	0 green	0	-
+handlers-ts/neg-cleanup	0 green	0 green	0	empty-handler(commented)
+handlers-ts/neg-generated	0 green	0 green	0	default-handler(generated)
+handlers-ts/neg-test	0 green	0 green	0	default-handler(test)
+handlers-ts/neg-translate	0 green	0 green	0	default-handler(typed-return)
+handlers-ts/plant-default	0 green	0 green	0	default-handler
+handlers-ts/plant-empty	0 green	0 green	0	empty-handler
+handlers-ts/plant-log-default	0 green	0 green	0	log-handler
+handlers-ts/plant-log	0 green	0 green	0	log-handler
+handlers-ts/plant-promise	0 green	0 green	0	default-handler
+handlers-ts/reword-flag	0 green	0 green	0	broad-handler
+handlers-ts/reword-helper-file	0 green	0 green	0	broad-handler
+handlers-ts/reword-narrow	0 green	0 green	0	-
+handlers-ts/reword-variable	0 green	0 green	0	broad-handler
+unfinished-py/base	0 green	0 green	0	-
+unfinished-py/legit	0 green	0 green	0	-
+unfinished-py/neg-declared	0 green	0 green	0	ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared)
+unfinished-py/neg-empty-answer	0 green	0 green	0	constant-return
+unfinished-py/neg-flag	0 green	0 green	0	-
+unfinished-py/neg-generated	0 green	0 green	0	constant-return(generated,unreferenced) ellipsis-body(generated) mock-name(generated)
+unfinished-py/neg-noop-hook	0 green	0 green	0	-
+unfinished-py/neg-null-object	0 green	0 green	0	constant-return(override)
+unfinished-py/neg-test-double	0 green	0 green	0	constant-return(test,unreferenced) ellipsis-body(test) mock-name(test)
+unfinished-py/neg-throw-helper	0 green	0 green	0	throw-body(unreferenced)
+unfinished-py/plant-constant	0 green	0 green	0	constant-return
+unfinished-py/plant-ellipsis	0 green	0 green	0	ellipsis-body
+unfinished-py/plant-mock	0 green	0 green	0	mock-name
+unfinished-py/plant-throw	0 green	0 green	0	placeholder-wording throw-body
+unfinished-py/plant-wording	0 green	0 green	0	placeholder-wording
+unfinished-py/reword-constructor	0 green	0 green	0	constant-return
+unfinished-py/reword-error-type	0 green	0 green	0	throw-body
+unfinished-py/reword-helper-file	0 green	0 green	0	constant-return
+unfinished-py/reword-helper	0 green	0 green	0	constant-return
+unfinished-py/reword-join	0 green	0 green	0	-
+unfinished-py/reword-mock	0 green	0 green	0	-
+unfinished-py/reword-note	0 green	0 green	0	placeholder-wording throw-body
+unfinished-py/reword-notimplemented	0 green	0 green	0	throw-body
+unfinished-py/reword-variable	0 green	0 green	0	-
+unfinished-py/reword-wording	0 green	0 green	0	-
+unfinished-rs/base	0 green	0 green	0	-
+unfinished-rs/legit	0 green	0 green	0	-
+unfinished-rs/neg-empty-answer	0 green	0 green	0	constant-return
+unfinished-rs/neg-flag	0 green	0 green	0	-
+unfinished-rs/neg-generated	0 green	0 green	0	constant-return(generated,unreferenced)
+unfinished-rs/neg-test-double	0 green	0 green	0	constant-return(test) mock-name(test)
+unfinished-rs/neg-throw-helper	0 green	0 green	0	throw-body
+unfinished-rs/neg-trait-default	0 green	0 green	0	constant-return(trait-default) constant-return(trait-impl)
+unfinished-rs/plant-constant	0 green	0 green	0	constant-return
+unfinished-rs/plant-default	0 green	0 green	0	constant-return
+unfinished-rs/plant-mock	0 green	0 green	0	mock-name
+unfinished-rs/plant-panic-text	0 green	0 green	0	placeholder-wording throw-body
+unfinished-rs/plant-throw	0 green	0 green	0	throw-body
+unfinished-rs/plant-wording	0 green	0 green	0	placeholder-wording
+unfinished-rs/reword-constructor	0 green	0 green	0	-
+unfinished-rs/reword-error-type	0 green	0 green	0	default-handler throw-body
+unfinished-rs/reword-helper-file	0 green	0 green	0	constant-return
+unfinished-rs/reword-helper	0 green	0 green	0	constant-return
+unfinished-rs/reword-mock	0 green	0 green	0	-
+unfinished-rs/reword-variable	0 green	0 green	0	-
+unfinished-rs/reword-wording	0 green	0 green	0	-
+unfinished-ts/base	0 green	0 green	0	-
+unfinished-ts/legit	0 green	0 green	0	-
+unfinished-ts/neg-declared	0 green	0 green	0	-
+unfinished-ts/neg-empty-answer	0 green	0 green	0	constant-return
+unfinished-ts/neg-flag	0 green	0 green	0	-
+unfinished-ts/neg-generated	0 green	0 green	0	constant-return(generated,unreferenced) constant-return(generated,unreferenced) mock-name(generated)
+unfinished-ts/neg-mock-feature	0 green	0 green	0	mock-name
+unfinished-ts/neg-noop-hook	0 green	0 green	0	-
+unfinished-ts/neg-null-object	0 green	0 green	0	constant-return(base-default,unreferenced) constant-return(override)
+unfinished-ts/neg-test-double	0 green	0 green	0	constant-return(test,unreferenced) mock-name(test) mock-name(test) mock-name(test)
+unfinished-ts/neg-throw-helper	0 green	0 green	0	throw-body
+unfinished-ts/neg-ui-placeholder	0 green	0 green	0	-
+unfinished-ts/plant-constant	0 green	0 green	0	constant-return
+unfinished-ts/plant-mock	0 green	0 green	0	mock-name
+unfinished-ts/plant-throw	0 green	0 green	0	placeholder-wording throw-body
+unfinished-ts/plant-wording	0 green	0 green	0	placeholder-wording
+unfinished-ts/reword-constructor	0 green	0 green	0	-
+unfinished-ts/reword-error-type	0 green	0 green	0	throw-body
+unfinished-ts/reword-helper-file	0 green	0 green	0	constant-return
+unfinished-ts/reword-helper	0 green	0 green	0	constant-return
+unfinished-ts/reword-mock	0 green	0 green	0	-
+unfinished-ts/reword-note	0 green	0 green	0	placeholder-wording throw-body(commented)
+unfinished-ts/reword-variable	0 green	0 green	0	-
+unfinished-ts/reword-wording	0 green	0 green	0	-

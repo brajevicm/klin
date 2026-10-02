@@ -1,0 +1,3 @@
+Updated `load_tiers(path)` to catch only `FileNotFoundError` and return `["free"]`. Other configuration errors propagate, and `start()` uses the helper.
+
+Verified missing files, valid tiers, malformed JSON, and missing `tiers`.

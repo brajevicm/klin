@@ -1,0 +1,5 @@
+Implemented `toCsv(rows)` with a `name,amount` header and proper escaping for commas, quotes, and line breaks.
+
+`main(path, "csv")` selects CSV; omitting the format preserves JSON output.
+
+Checks passed for empty input, escaping, CLI format selection, and diff formatting.

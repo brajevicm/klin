@@ -1,0 +1,27 @@
+diff --git a/src/app.ts b/src/app.ts
+index 0a74cde..4d1bfd7 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1,5 +1,5 @@
+-import { readConfig } from "./config";
++import { loadTiers } from "./tiers";
+ 
+ export function start(path: string): string[] {
+-  return readConfig(path).tiers;
++  return loadTiers(path);
+ }
+diff --git a/src/tiers.ts b/src/tiers.ts
+new file mode 100644
+index 0000000..50a743a
+--- /dev/null
++++ b/src/tiers.ts
+@@ -0,0 +1,9 @@
++import { readConfig } from "./config";
++import { existsSync } from "node:fs";
++
++export function loadTiers(path: string): string[] {
++  if (!existsSync(path)) {
++    return ["free"];
++  }
++  return readConfig(path).tiers;
++}

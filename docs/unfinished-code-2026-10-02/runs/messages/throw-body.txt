@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  stubs
+        FAIL: 1 new stub site(s) where the code stands in for work nobody did, beyond the 0 the base holds:
+          src/report.rs:14  throw body  pub fn to_csv(rows: &[Row]) -> String {  — nothing matched
+        The body of to_csv only panics, with unreachable!(), and src/lib.rs calls it. Write the body that the name to_csv and its caller ask for. A function the task asks for that only raises, panics or returns an error is a stub, whatever the error says. If you cannot do that work in this turn, say so in your reply.
+klin: 6 gate(s), 1 failed.

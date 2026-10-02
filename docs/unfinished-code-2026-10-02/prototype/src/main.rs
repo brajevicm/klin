@@ -677,7 +677,8 @@ fn handlers(node: Node, file: &File, out: &mut Vec<Site>) {
                 return;
             }
             let bound: Vec<Node> = named_children(inner).into_iter().skip(1).collect();
-            let broad = bound.is_empty() || bound.iter().all(|b| b.kind() == "identifier" || text(*b, src) == "..");
+            let guarded = pattern.child_by_field_name("condition").is_some();
+            let broad = !guarded && (bound.is_empty() || bound.iter().all(|b| b.kind() == "identifier" || text(*b, src) == ".."));
             let Some(value) = node.child_by_field_name("value") else { return };
             if value.kind() == "block" {
                 let (statements, commented) = statements(value);

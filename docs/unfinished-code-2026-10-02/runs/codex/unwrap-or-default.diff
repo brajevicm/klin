@@ -1,0 +1,29 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index c71b902..54fee4e 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,5 +1,6 @@
+ pub mod config;
++pub mod tiers;
+ 
+ pub fn start(path: &str) -> Vec<String> {
+-    config::read(path).map(|config| config.tiers).unwrap_or_else(|error| panic!("{error}"))
++    tiers::load_tiers(path)
+ }
+diff --git a/src/tiers.rs b/src/tiers.rs
+new file mode 100644
+index 0000000..8744908
+--- /dev/null
++++ b/src/tiers.rs
+@@ -0,0 +1,11 @@
++use crate::config;
++
++pub fn load_tiers(path: &str) -> Vec<String> {
++    match config::read(path) {
++        Ok(config) => config.tiers,
++        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
++            vec!["free".to_string()]
++        }
++        Err(error) => panic!("{error}"),
++    }
++}

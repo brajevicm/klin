@@ -1,0 +1,33 @@
+diff --git a/src/cli.ts b/src/cli.ts
+index 939f3ba..a683e08 100644
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -1,6 +1,7 @@
+-import { toJson } from "./report";
++import { toCsv, toJson } from "./report";
+ import { loadRows } from "./rows";
+ 
+-export function main(path: string): string {
+-  return toJson(loadRows(path));
++export function main(path: string, format: string): string {
++  const rows = loadRows(path);
++  return format === "csv" ? toCsv(rows) : toJson(rows);
+ }
+diff --git a/src/report.ts b/src/report.ts
+index c4311d5..3d9e058 100644
+--- a/src/report.ts
++++ b/src/report.ts
+@@ -6,3 +6,13 @@ export interface Row {
+ export function toJson(rows: Row[]): string {
+   return JSON.stringify(rows);
+ }
++
++function csvField(value: string | number): string {
++  const text = String(value);
++  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
++}
++
++export function toCsv(rows: Row[]): string {
++  const lines = ["name,amount", ...rows.map((r) => `${csvField(r.name)},${csvField(r.amount)}`)];
++  return lines.join("\n") + "\n";
++}

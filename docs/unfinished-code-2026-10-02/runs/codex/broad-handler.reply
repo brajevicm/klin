@@ -1,0 +1,3 @@
+Updated `load_tiers()` to catch only `FileNotFoundError` and return `["free"]`. Other config errors propagate to the caller. `start()` uses the helper.
+
+Verified missing-file fallback, configured tiers, integration, and error propagation.

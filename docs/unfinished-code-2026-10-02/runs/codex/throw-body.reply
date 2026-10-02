@@ -1,0 +1,3 @@
+Implemented `to_csv` with a `name,amount` header and proper escaping for commas, quotes, and newlines. `main_csv(path)` loads rows and returns the CSV.
+
+Two checks passed, covering serialization and file loading. Formatting and diff checks passed.
