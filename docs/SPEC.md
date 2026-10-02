@@ -2615,9 +2615,21 @@ fails, an opaque clause that changed fails, and everything else passes: a new
 surface, a new item, a widened visibility, an opaque item that became
 measured. Each break carries `break` at 1 with the surface as its file and
 `NAME (KIND)` as its text, so an intentional break is an accepted entry under
-that identity, and the base holds no break by construction. Where one change
-removes a module and the items inside it, the text report prints them as one
-group, the module's line and then the lines of the items it held, while the
+that identity, and the base holds no break by construction. For a Cargo library, the
+finding's `file` is always `CRATE (MANIFEST)`, such as
+`shared (a/Cargo.toml)`, while the consumer name in `--report` stays `shared`.
+The owning manifest is part of accepted-entry matching, JSON site identity,
+and removed-module grouping even when the crate name is unique in either
+tree. An accepted break for one library cannot hold the same item break in a
+namesake, and an unqualified crate-name entry for a Cargo library matches
+nothing and follows
+the normal stale-entry rules; klin never rewrites accepted entries.
+Pinned by `accepting_a_namesake_break_cannot_hold_another_librarys_break`,
+`identical_breaks_in_namesake_libraries_have_distinct_json_ids`,
+`an_unqualified_rust_surface_acceptance_is_stale` and
+`a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once`.
+Where one change removes a module and the items inside it, the text report
+prints them as one group, the module's line and then the lines of the items it held, while the
 11.2 object, the journal, the identities and the accepted entries keep one
 finding per item. Pinned by
 `a_removed_module_prints_as_one_group_and_json_keeps_each_item`. The remedy

@@ -125,7 +125,84 @@ fn removing_a_namesake_library_reports_only_its_surface() {
     let run = by_hand(&tree);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
-    assert!(run.says("the whole surface is gone"), "{}", run.out);
+    assert!(
+        run.says("shared (b/Cargo.toml):0  the whole surface is gone"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn accepting_a_namesake_break_cannot_hold_another_librarys_break() {
+    let tree = Tree::new();
+    let original = "pub fn run() -> u8 { 1 }\n";
+    let broken = "pub fn run() -> u16 { 1 }\n";
+    namesakes(&tree, original, original);
+    tree.write("a/src/lib.rs", broken);
+    let first = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    assert_eq!(first.code, 1, "{}", first.out);
+    let record = first.json();
+    let finding = &record["findings"][0];
+    tree.write(
+        "klin.json",
+        &serde_json::json!({"accepted": [{
+            "gate": "public-api", "file": finding["file"],
+            "text": finding["text"], "break": 1
+        }]})
+        .to_string(),
+    );
+    let accepted = by_hand(&tree);
+    assert_eq!(accepted.code, 0, "{}", accepted.out);
+
+    tree.write("a/src/lib.rs", original);
+    tree.write("b/src/lib.rs", broken);
+    for run in [
+        by_hand(&tree),
+        changed(&tree),
+        tree.run(&["public-api", "--strict"]),
+    ] {
+        assert_eq!(run.code, 1, "{}", run.out);
+        assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+        assert!(run.says("accepted entry"), "{}", run.out);
+    }
+}
+
+#[test]
+fn identical_breaks_in_namesake_libraries_have_distinct_json_ids() {
+    let tree = Tree::new();
+    namesakes(
+        &tree,
+        "pub fn run() -> u8 { 1 }\n",
+        "pub fn run() -> u8 { 1 }\n",
+    );
+    for root in ["a", "b"] {
+        tree.write(&format!("{root}/src/lib.rs"), "pub fn run() -> u16 { 1 }\n");
+    }
+    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    let record = run.json();
+    let findings = record["findings"].as_array().expect("findings");
+    assert_eq!(findings.len(), 2, "{}", run.out);
+    assert_eq!(findings[0]["file"], "shared (a/Cargo.toml)", "{}", run.out);
+    assert_eq!(findings[1]["file"], "shared (b/Cargo.toml)", "{}", run.out);
+    assert_ne!(findings[0]["id"], findings[1]["id"], "{}", run.out);
+    assert!(report(&tree).says("shared::run  function  measured"));
+}
+
+#[test]
+fn an_unqualified_rust_surface_acceptance_is_stale() {
+    let tree = Tree::new();
+    library(&tree);
+    tree.write("src/lib.rs", &LIB.replace("pub fn parse", "pub fn read"));
+    tree.write(
+        "klin.json",
+        r#"{"accepted":[{"gate":"public-api","file":"core","text":"parse (function)","break":1}]}"#,
+    );
+
+    let run = tree.run(&["public-api", "--strict"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
+    assert!(run.says("accepted entry"), "{}", run.out);
 }
 
 #[test]
@@ -229,11 +306,11 @@ fn two_workspace_library_packages_are_distinct_surfaces() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
     assert!(
-        run.says("beta:1  removed") && run.says("run (function)"),
+        run.says("beta (crates/beta/Cargo.toml):1  removed") && run.says("run (function)"),
         "{}",
         run.out
     );
-    assert!(!run.says("alpha:"), "{}", run.out);
+    assert!(!run.says("alpha (crates/alpha/Cargo.toml):"), "{}", run.out);
 }
 
 #[test]
@@ -391,7 +468,7 @@ fn an_item_moved_into_a_workspace_sibling_with_a_changed_contract_fails_as_chang
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
     assert!(
-        run.says("a:1  changed, declared at types/src/lib.rs:1, was `enum MapMode { Read }`, now `enum MapMode { Read, Write }`  MapMode (type)"),
+        run.says("a (a/Cargo.toml):1  changed, declared at types/src/lib.rs:1, was `enum MapMode { Read }`, now `enum MapMode { Read, Write }`  MapMode (type)"),
         "{}",
         run.out
     );
@@ -927,7 +1004,7 @@ fn a_removed_library_surface_fails_once_at_the_surface() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
     assert!(
-        run.says("core:0  the whole surface is gone  (surface)"),
+        run.says("core (Cargo.toml):0  the whole surface is gone  (surface)"),
         "{}",
         run.out
     );
@@ -981,7 +1058,7 @@ fn an_accepted_break_is_held_by_surface_and_item_identity() {
     tree.write("src/lib.rs", &LIB.replace("pub use client::Client;", ""));
     tree.write(
         "klin.json",
-        r#"{"accepted":[{"gate":"public-api","file":"core","text":"Client (type)","break":1},{"gate":"public-api","file":"core","text":"Client::new (method)","break":1}]}"#,
+        r#"{"accepted":[{"gate":"public-api","file":"core (Cargo.toml)","text":"Client (type)","break":1},{"gate":"public-api","file":"core (Cargo.toml)","text":"Client::new (method)","break":1}]}"#,
     );
 
     let run = by_hand(&tree);
@@ -1769,10 +1846,10 @@ fn a_removed_module_prints_as_one_group_and_json_keeps_each_item() {
     ] {
         let lead = lines
             .iter()
-            .position(|line| line.starts_with("  core:") && line.contains(module))
+            .position(|line| line.starts_with("  core (Cargo.toml):") && line.contains(module))
             .unwrap_or_else(|| panic!("no {module} line: {}", run.out));
         assert!(
-            lines[lead + 1].starts_with("    core:") && lines[lead + 1].contains(item),
+            lines[lead + 1].starts_with("    core (Cargo.toml):") && lines[lead + 1].contains(item),
             "{}",
             run.out
         );
@@ -1908,10 +1985,21 @@ fn a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once() {
     let printed = run
         .out
         .lines()
-        .filter(|line| line.trim_start().starts_with("core:"))
+        .filter(|line| line.trim_start().starts_with("core ("))
         .count();
     assert!(run.says("8 new compatibility break(s)"), "{}", run.out);
     assert_eq!(printed, 8, "{}", run.out);
+    let lines: Vec<&str> = run.out.lines().collect();
+    for root in ["a", "b"] {
+        let owner = format!("core ({root}/Cargo.toml):");
+        let lead = lines
+            .iter()
+            .position(|line| line.starts_with(&format!("  {owner}")) && line.contains("m (module)"))
+            .unwrap_or_else(|| panic!("no module for {root}: {}", run.out));
+        for line in &lines[lead + 1..lead + 4] {
+            assert!(line.starts_with(&format!("    {owner}")), "{}", run.out);
+        }
+    }
 }
 
 #[test]

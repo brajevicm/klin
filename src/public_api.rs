@@ -258,7 +258,10 @@ fn finding(
         values.insert(NOW.into(), now.into());
     }
     Finding {
-        file: surface.id.clone(),
+        file: match &surface.manifest {
+            Some(manifest) => format!("{} ({manifest})", surface.id),
+            None => surface.id.clone(),
+        },
         line: item
             .and_then(|item| item.origin.as_ref())
             .map_or(0, |(_, line)| *line),
@@ -324,8 +327,8 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
 }
 
 /// For each finding, the removed module it prints under: the outermost module under the same
-/// surface id that the same change removed and whose path holds the finding's own path. Two
-/// surfaces that share an id share every identity, so their modules group together.
+/// surface identity that the same change removed and whose path holds the finding's own path.
+/// Findings group only under their own owner-qualified surface identity.
 fn held_by_removed_modules(found: &[Finding]) -> Vec<Option<usize>> {
     let removed =
         |finding: &Finding| finding.values.get(KIND).and_then(Value::as_str) == Some(REMOVED);
