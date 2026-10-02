@@ -664,7 +664,7 @@ No prototype change and no corpus change came after the rules commit
      (`src/modules/typescript.rs`), and `docs/SPEC.md` keeps `tsconfig` paths
      outside V1. A TypeScript `component-cycle` needs alias resolution or one
      located hole per alias in the module graph first, and the shipped
-     `layering` gate has the same blind spot.
+     `layering` gate has the same blind spot (#445).
    - The judge type-checked the TypeScript trees (item 5). So 23 of 33 runs
      build, not 12, and only the 6 GlareDB and karakeep runs stay unbuilt. A
      build proves that the code compiles, not that it behaves: the fixtures
