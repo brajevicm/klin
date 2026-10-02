@@ -1,0 +1,3 @@
+Updated `slugify` to preserve accented letters and added an assertion that `"Crème Brûlée"` becomes `"crème-brûlée"`.
+
+All 6 tests pass with `cargo test --offline`.

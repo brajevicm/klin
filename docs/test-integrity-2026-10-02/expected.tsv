@@ -1,6 +1,11 @@
 integrity-rs/base	0 green	0 green	0	-
+integrity-rs/case-all-checks-removed	0 green	0 green	0	all-checks-removed:none-left
+integrity-rs/case-disabled	0 green	0 green	0	disabled:cfg-never
+integrity-rs/case-new-test-unchecked	0 green	0 green	0	new-test-unchecked:none
+integrity-rs/case-weakened	0 green	0 green	0	weakened:exact->tautology
 integrity-rs/legit	0 green	0 green	0	-
 integrity-rs/neg-cfg-platform	0 green	0 green	0	-
+integrity-rs/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
 integrity-rs/neg-equivalent	0 green	0 green	0	-
 integrity-rs/neg-error-spec-same-name	2 red	0 green	0	error-expectation-removed:replaced
 integrity-rs/neg-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved)
@@ -30,6 +35,7 @@ integrity-rs/plant-tautology	0 green	0 green	0	all-checks-removed:tautology-only
 integrity-rs/plant-weaker	0 green	0 green	0	assertion-removed:replaced-by-weaker
 integrity-rs/reword-bug-expected	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
 integrity-rs/reword-cfg-feature	0 green	0 green	0	-
+integrity-rs/reword-conditional-check	0 green	0 green	0	-
 integrity-rs/reword-conditional-return	0 green	0 green	0	-
 integrity-rs/reword-copy-constant	0 green	0 green	0	expected-changed:changed(no-mirror)
 integrity-rs/reword-count-pad	0 green	0 green	0	assertion-removed:replaced
@@ -38,10 +44,16 @@ integrity-rs/reword-helper	0 green	0 green	0	assertion-removed:replaced-by-weake
 integrity-rs/reword-if-let	0 green	0 green	0	error-expectation-removed:replaced expected-changed:changed(no-mirror)
 integrity-rs/reword-move-weak	0 green	0 green	0	assertion-removed:removed
 integrity-rs/reword-shadow	0 green	0 green	0	-
+integrity-rs/reword-swallow	0 green	0 green	0	-
 integrity-rs/reword-tautology-length	0 green	0 green	0	assertion-removed:replaced-by-tautology
 integrity-ts/base	0 green	0 green	0	-
+integrity-ts/case-all-checks-removed	0 green	0 green	0	all-checks-removed:none-left
+integrity-ts/case-disabled	0 green	0 green	0	disabled:early-return
+integrity-ts/case-mirror-note	0 green	0 green	0	expected-changed:mirrors-production
+integrity-ts/case-new-test-unchecked	0 green	0 green	0	new-test-unchecked:none
 integrity-ts/legit	0 green	0 green	0	-
 integrity-ts/neg-async	0 green	0 green	0	-
+integrity-ts/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
 integrity-ts/neg-each	2 red	0 green	0	-
 integrity-ts/neg-equivalent	0 green	0 green	0	-
 integrity-ts/neg-error-spec-same-name	0 green	0 green	0	error-expectation-removed:replaced
@@ -78,6 +90,7 @@ integrity-ts/plant-todo	2 red	0 green	0	all-checks-removed:none-left(stubs) disa
 integrity-ts/plant-weaker-async	0 green	0 green	0	weakened:exact->existence
 integrity-ts/plant-weaker	0 green	0 green	0	weakened:exact->partial
 integrity-ts/reword-bug-expected	0 green	0 green	0	expected-changed:changed(no-mirror) expected-changed:changed(no-mirror)
+integrity-ts/reword-conditional-check	0 green	0 green	0	-
 integrity-ts/reword-conditional-return	0 green	0 green	0	-
 integrity-ts/reword-copy-constant	0 green	0 green	0	expected-changed:changed(no-mirror)
 integrity-ts/reword-count-pad	0 green	0 green	0	assertion-removed:replaced-by-weaker
@@ -88,6 +101,7 @@ integrity-ts/reword-move-weak	0 green	0 green	0	assertion-removed:removed
 integrity-ts/reword-shadow	0 green	0 green	0	-
 integrity-ts/reword-skip-each	2 red	0 green	0	disabled:skip(escapes)
 integrity-ts/reword-skip-variable	2 red	0 green	0	-
+integrity-ts/reword-swallow	0 green	0 green	0	-
 integrity-ts/reword-tautology-length	0 green	0 green	0	assertion-removed:replaced-by-tautology
 integrity-ts/reword-tautology-typeof	0 green	0 green	0	assertion-removed:replaced
 integrity-ts/reword-try-catch	0 green	0 green	0	error-expectation-removed:replaced

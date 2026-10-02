@@ -1,0 +1,3 @@
+The slug limit is now 60 characters, and the test expects 60 as requested. No further edits were needed after the hook report.
+
+Boundary checks passed: slugs up to 60 characters are preserved; longer ones are truncated to 60.

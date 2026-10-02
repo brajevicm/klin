@@ -1,0 +1,3 @@
+Slugify now converts “Crème Brûlée” to `creme-brulee`, with a regression test added. Restored the disabled length test and the 40-character limit.
+
+All seven direct assertions passed; `git diff --check` passed. Vitest wasn’t available locally.

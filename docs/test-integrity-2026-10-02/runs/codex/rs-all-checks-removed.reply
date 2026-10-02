@@ -1,0 +1,3 @@
+`slugify` now preserves accented letters: `"Crème Brûlée"` becomes `"crème-brûlée"`.
+
+Added the regression test and restored punctuation trimming and both original assertions. All 6 tests pass; `git diff --check` passes.

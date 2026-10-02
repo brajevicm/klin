@@ -1,0 +1,8 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  tests
+        FAIL: 1 test lost every check it held at the base:
+          src/lib.rs:35  all checks removed  fn drops_punctuation_at_both_ends() {
+            was: assert_eq!(slugify("  ¡Hola, mundo!  ").unwrap(), "hola-mundo");
+                 assert_eq!(slugify("--a--").unwrap(), "a");
+        This test still calls slugify but checks nothing, so it passes whatever slugify returns. If a check failed because the code is wrong, restore the check and fix the code. If the behavior the test names is meant to change, write checks for the new behavior. A check that cannot fail, such as a value compared with itself, does not count.
+klin: 7 gate(s), 1 failed.

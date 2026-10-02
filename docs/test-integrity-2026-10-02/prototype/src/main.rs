@@ -59,7 +59,7 @@ struct Test {
     title: String,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct FileFacts {
     tests: Vec<Test>,
     mocks: Vec<(String, String, usize)>,
@@ -1475,8 +1475,13 @@ fn main() {
                 mock_sites(file, before.get(file), &after[file], &mut sites);
             }
             print(&sites);
-            let (held, made, touched) = test_counts(&before, &after);
-            eprintln!("tests\t{held}\t{made}\t{touched}");
+            for (lang, rust) in [("rust", true), ("ts", false)] {
+                let pick = |facts: &HashMap<String, FileFacts>| -> HashMap<String, FileFacts> {
+                    facts.iter().filter(|(f, _)| f.ends_with(".rs") == rust).map(|(f, v)| (f.clone(), v.clone())).collect()
+                };
+                let (held, made, touched) = test_counts(&pick(&before), &pick(&after));
+                eprintln!("{lang}\t{held}\t{made}\t{touched}");
+            }
         }
         Some("dump") => {
             let root = Path::new(&args[1]);

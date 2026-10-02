@@ -1,0 +1,27 @@
+diff --git a/src/slug.test.ts b/src/slug.test.ts
+index d94e5ce..328ae50 100644
+--- a/src/slug.test.ts
++++ b/src/slug.test.ts
+@@ -18,6 +18,10 @@ describe("slugify", () => {
+   it("rejects an empty title", () => {
+     expect(() => slugify("   ")).toThrow("empty title");
+   });
++
++  it("drops accents", () => {
++    expect(slugify("Crème Brûlée")).toBe("creme-brulee");
++  });
+ });
+ 
+ describe("uniqueSlug", () => {
+diff --git a/src/slug.ts b/src/slug.ts
+index 6006a9d..dcde5ef 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -8,6 +8,7 @@ export function slugify(title: string): string {
+   return title
+     .trim()
+     .toLowerCase()
++    .normalize("NFKD")
+     .replace(/[^a-z0-9]+/g, SEPARATOR)
+     .replace(/^-|-$/g, "")
+     .slice(0, MAX_LENGTH);

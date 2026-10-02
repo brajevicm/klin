@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  tests
+        FAIL: 1 test no longer runs its checks:
+          src/slug.test.ts:14  disabled: early return  it("caps the length", () => {
+        The test returns before its first check, so the check never runs and the test passes whatever slugify returns. If the check fails because the code is wrong, remove the return and fix the code. A person reviews every test that a change turns off before the change merges.
+klin: 7 gate(s), 1 failed.

@@ -34,12 +34,12 @@ while read -r set name base head; do
   head=$(git -C "$dir" rev-parse "$head")
   files=()
   while read -r file; do files+=("$file"); done < <(git -C "$dir" diff --name-only --diff-filter=AMR "$base" "$head" | grep -E '\.(rs|ts|mts|cts|tsx)$' || true)
-  counts="0	0	0"
+  counts="0	0	0	0	0	0"
   if [ ${#files[@]} -gt 0 ]; then
     export_tree "$dir" "$base" "$work/before"
     export_tree "$dir" "$head" "$work/after"
     "$asserts" new "$work/before" "$work/after" "${files[@]}" 2> "$work/counts" | sed "s|^|$set\t$name\t${head:0:10}\t|" >> "$here/sites.tsv"
-    counts=$(cut -f2- "$work/counts")
+    counts=$(cut -f2- "$work/counts" | paste -s - | tr ' ' '\t')
   fi
   langs=$(printf '%s\n' "${files[@]:-}" | awk '/\.rs$/ { r = 1 } /\.(ts|mts|cts|tsx)$/ { t = 1 } END { print (r ? "rust" : "") (r && t ? "," : "") (t ? "ts" : "") }')
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$set" "$name" "${head:0:10}" "${#files[@]}" "${langs:--}" "$counts" >> "$here/changes.tsv"
