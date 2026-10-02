@@ -2450,6 +2450,13 @@ exposes everything under it, and a plain
 `pub` item inside a private module is external only where a `pub use` exposes
 it.
 `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in ...)` are never external.
+A Rust module already on the active surface traversal is a coverage hole:
+its cyclic module re-export gives unbounded public paths. A named re-export
+already being resolved is also a hole, because its cyclic name cannot be
+resolved. Both name the source and end in a report rather than an abort;
+separate finite aliases of one module are still followed independently.
+Pinned by `a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths`
+and `a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever`.
 A re-export whose path starts, with or without a leading `::`, at a name of
 the crate's extern prelude that reaches a library target the tree holds is
 followed into that library's source, globs included, and each item it

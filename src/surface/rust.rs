@@ -55,6 +55,8 @@ struct Derivation<'a> {
     types: HashMap<(usize, &'a str), Vec<usize>>,
     indexed: HashSet<usize>,
     walked: HashSet<(usize, String)>,
+    walking: HashSet<usize>,
+    naming: HashSet<(usize, String)>,
     sought: HashSet<(usize, String)>,
     globbed: HashSet<(usize, String, String)>,
     glob_names: HashMap<String, (String, u64)>,
@@ -82,6 +84,8 @@ impl<'a> Derivation<'a> {
             types: HashMap::new(),
             indexed: HashSet::new(),
             walked: HashSet::new(),
+            walking: HashSet::new(),
+            naming: HashSet::new(),
             sought: HashSet::new(),
             globbed: HashSet::new(),
             glob_names: HashMap::new(),
@@ -228,7 +232,17 @@ impl<'a> Derivation<'a> {
     /// Every item reachable under `prefix` from one module: what it declares public, the public
     /// modules below it, and what its `pub use` trees expose.
     fn walk(&mut self, at: usize, prefix: &str) {
+        if !self.walking.insert(at) {
+            self.surface.holes.push(Hole {
+                file: self.file(at).to_string(),
+                line: 1,
+                text: prefix.to_string(),
+                why: "cyclic module re-export gives unbounded public paths".to_string(),
+            });
+            return;
+        }
         if !self.walked.insert((at, prefix.to_string())) {
+            self.walking.remove(&at);
             return;
         }
         self.surface.files.push(self.file(at).to_string());
@@ -245,6 +259,7 @@ impl<'a> Derivation<'a> {
                 self.leaf(at, export, leaf, prefix, &own);
             }
         }
+        self.walking.remove(&at);
     }
 
     /// The declarations one module exposes as items of its own: public, and no associated item.
@@ -325,6 +340,16 @@ impl<'a> Derivation<'a> {
     /// no more. A crate root is opaque, because its items are judged under its own surface.
     fn named(&mut self, from: usize, export: &'a Export, leaf: &'a ExportLeaf, path: String) {
         let file = self.file(from);
+        let key = (from, leaf.path.clone());
+        if !self.naming.insert(key.clone()) {
+            self.surface.holes.push(Hole {
+                file: file.to_string(),
+                line: export.line,
+                text: export.text.clone(),
+                why: "cyclic named re-export cannot be resolved".to_string(),
+            });
+            return;
+        }
         match self.graph.resolve(from, &leaf.path) {
             Resolved::Module { module, rest }
                 if rest.is_empty() && self.module(module).parent.is_some() =>
@@ -354,6 +379,7 @@ impl<'a> Derivation<'a> {
                 why: unresolved(&leaf.path),
             }),
         }
+        self.naming.remove(&key);
     }
 
     /// One name looked up in the module a path reached: its public declarations of that name,
