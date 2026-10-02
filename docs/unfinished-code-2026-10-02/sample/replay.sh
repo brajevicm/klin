@@ -7,7 +7,7 @@ repo=$(cd "$here/../../.." && pwd)
 clones=${1:?usage: replay.sh CLONES}
 out=${2:-$here}
 shapes_target=${SHAPES_TARGET:-$(mktemp -d)}
-CARGO_TARGET_DIR=$shapes_target cargo build --quiet --release --offline --manifest-path "$here/../prototype/Cargo.toml"
+CARGO_TARGET_DIR=$shapes_target cargo build --quiet --release --manifest-path "$here/../prototype/Cargo.toml"
 shapes=$shapes_target/release/shapes
 
 export_tree() {
@@ -42,4 +42,6 @@ while read -r name start base head; do
   export_tree "$dir" "$head" "$work/head"
   "$shapes" new "$work/base" "$work/head" "${files[@]}" | sed "s|^|$name\t${head:0:10}\t|" >> "$out/new-sites.tsv"
 done < <(changes)
+awk -F'\t' '{ n = split($4, part, "."); ext = part[n]; lang = ext == "rs" ? "rust" : (ext == "py" || ext == "pyi") ? "python" : "ts"; key = $2 "\t" lang; all[key]++; if ($6 == "-") found[key]++ }
+  END { for (key in all) print key "\t" all[key] "\t" found[key] + 0 }' "$out/start-sites.tsv" | sort > "$out/start-sites-summary.tsv"
 wc -l "$out/changes.tsv" "$out/new-sites.tsv" "$out/start-sites.tsv"

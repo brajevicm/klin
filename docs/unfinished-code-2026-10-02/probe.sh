@@ -11,7 +11,7 @@ trap 'rm -rf "$home"' EXIT
 tools=(RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}" CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}")
 mkdir -p "$out"
 shapes_target=${SHAPES_TARGET:-$(mktemp -d)}
-CARGO_TARGET_DIR=$shapes_target cargo build --quiet --release --offline --manifest-path "$here/prototype/Cargo.toml"
+CARGO_TARGET_DIR=$shapes_target cargo build --quiet --release --manifest-path "$here/prototype/Cargo.toml"
 shapes=$shapes_target/release/shapes
 
 git_() { git -c user.name=probe -c user.email=probe@example.com -c commit.gpgsign=false "$@"; }

@@ -9,3 +9,4 @@ unwrap-or-default	handlers-rs	plant-unwrap-or-default	Add load_tiers(path) in sr
 empty-handler	handlers-py	plant-pass	Add load_tiers(path) in app/tiers.py that returns the tiers of the config file at path, with ["free"] when the file does not exist, and use it in start().
 default-handler-py	handlers-py	plant-default	Add load_tiers(path) in app/tiers.py that returns the tiers of the config file at path, with ["free"] when the file does not exist, and use it in start().
 broad-handler	handlers-py	reword-flag	Add load_tiers(path) in app/tiers.py that returns the tiers of the config file at path, with ["free"] when the file does not exist, and use it in start().
+throw-body-py	unfinished-py	plant-throw	Add to_csv(rows) to app/report.py, beside to_json, that writes the rows as CSV with a header line, and let main choose it with a fmt argument.

@@ -41,6 +41,6 @@ while read -r name branch; do
 done < <(jq -r '.items[] | "\(.full_name) \(.default_branch)"' "$here/search-python.json")
 
 {
-  printf '{"cutoff":"%s","repositories":[%s],"skipped":[%s]}\n' "$cutoff" "$(IFS=,; echo "${picked[*]}")" "$(IFS=,; echo "${skipped[*]:-}")"
+  printf '{"cutoff":"%s","repositories":[%s],"skipped":[%s]}\n' "$cutoff" "$(IFS=,; echo "${picked[*]:-}")" "$(IFS=,; echo "${skipped[*]:-}")"
 } | jq . > "$here/selection-python.json"
 jq -r '.repositories[].fullName, "skipped:", (.skipped[] | "\(.fullName): \(.rule)")' "$here/selection-python.json"

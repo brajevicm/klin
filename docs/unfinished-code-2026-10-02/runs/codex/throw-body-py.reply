@@ -1,0 +1,3 @@
+Implemented `to_csv(rows)` with headers and proper CSV escaping. `main(path, fmt="json")` selects CSV with `fmt="csv"` and preserves the JSON default.
+
+Verified headers, escaping, empty input, iterators, and both CLI formats. All checks passed.

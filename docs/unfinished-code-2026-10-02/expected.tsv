@@ -51,6 +51,7 @@ handlers-ts/reword-variable	0 green	0 green	0	broad-handler
 unfinished-py/base	0 green	0 green	0	-
 unfinished-py/legit	0 green	0 green	0	-
 unfinished-py/neg-declared	0 green	0 green	0	ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared) ellipsis-body(declared)
+unfinished-py/neg-domain-word	0 green	0 green	0	mock-name placeholder-wording
 unfinished-py/neg-empty-answer	0 green	0 green	0	constant-return
 unfinished-py/neg-flag	0 green	0 green	0	-
 unfinished-py/neg-generated	0 green	0 green	0	constant-return(generated,unreferenced) ellipsis-body(generated) mock-name(generated)
@@ -71,13 +72,16 @@ unfinished-py/reword-join	0 green	0 green	0	-
 unfinished-py/reword-mock	0 green	0 green	0	-
 unfinished-py/reword-note	0 green	0 green	0	placeholder-wording throw-body
 unfinished-py/reword-notimplemented	0 green	0 green	0	throw-body
+unfinished-py/reword-throw-variable	0 green	0 green	0	-
 unfinished-py/reword-variable	0 green	0 green	0	-
 unfinished-py/reword-wording	0 green	0 green	0	-
 unfinished-rs/base	0 green	0 green	0	-
 unfinished-rs/legit	0 green	0 green	0	-
+unfinished-rs/neg-domain-word	0 green	0 green	0	placeholder-wording
 unfinished-rs/neg-empty-answer	0 green	0 green	0	constant-return
 unfinished-rs/neg-flag	0 green	0 green	0	-
 unfinished-rs/neg-generated	0 green	0 green	0	constant-return(generated,unreferenced)
+unfinished-rs/neg-mock-feature	0 green	0 green	0	mock-name mock-name mock-name
 unfinished-rs/neg-test-double	0 green	0 green	0	constant-return(test) mock-name(test)
 unfinished-rs/neg-throw-helper	0 green	0 green	0	throw-body
 unfinished-rs/neg-trait-default	0 green	0 green	0	constant-return(trait-default) constant-return(trait-impl)
@@ -92,6 +96,7 @@ unfinished-rs/reword-error-type	0 green	0 green	0	default-handler throw-body
 unfinished-rs/reword-helper-file	0 green	0 green	0	constant-return
 unfinished-rs/reword-helper	0 green	0 green	0	constant-return
 unfinished-rs/reword-mock	0 green	0 green	0	-
+unfinished-rs/reword-throw-variable	0 green	0 green	0	-
 unfinished-rs/reword-variable	0 green	0 green	0	-
 unfinished-rs/reword-wording	0 green	0 green	0	-
 unfinished-ts/base	0 green	0 green	0	-
@@ -116,5 +121,6 @@ unfinished-ts/reword-helper-file	0 green	0 green	0	constant-return
 unfinished-ts/reword-helper	0 green	0 green	0	constant-return
 unfinished-ts/reword-mock	0 green	0 green	0	-
 unfinished-ts/reword-note	0 green	0 green	0	placeholder-wording throw-body(commented)
+unfinished-ts/reword-throw-variable	0 green	0 green	0	-
 unfinished-ts/reword-variable	0 green	0 green	0	-
 unfinished-ts/reword-wording	0 green	0 green	0	-
