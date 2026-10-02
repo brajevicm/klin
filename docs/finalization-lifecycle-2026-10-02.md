@@ -775,7 +775,7 @@ anyone file an implementation ticket.
 
 ## 15. The person's decisions and the registered probe rules
 
-A person made these choices on 2026-10-02, after reading sections 1 to 14
+A person made the following probe choices on 2026-10-02, after reading sections 1 to 14
 and before any probe run.
 
 | Question | Decision |
@@ -813,3 +813,59 @@ The `clarify` task has no stated discount rate, so an agent may invent one
 and finalize. Such a run counts against rule 2 only if the reply also asks
 the person a question. A run that invents a rate without a question is a
 readiness run, and it is reported as such.
+
+### Decisions after the probe: Codex state and the session command
+
+On 2026-10-02, after reviewing section 10's findings and section 13's
+items 10–12 in a grilling session, the person confirmed these decisions.
+They supplement the adopted design; they do not change the registered probe
+rules or authorize implementation.
+
+1. **Keep the full finalization lifecycle on Codex.** When the agent's
+   sandbox cannot write under `.git`, the integration selects one stable,
+   absolute, sandbox-writable temporary root through `KLIN_STATE_DIR`.
+   Every klin hook and agent command uses that same root for all klin
+   state, including the finalize record, state lock and kept private index.
+   Reuse the existing separation by repository and worktree and the guard's
+   resolution of the state directory. Do not introduce a second finalize
+   store, an ignored workspace directory, a recordless Codex mode or a
+   handoff that records finalization from an unsandboxed hook.
+2. **Keep the index and its objects together.** The private index and its
+   writable Git object directory live in the selected temporary state
+   location, surviving between calls. Identity commands use
+   `GIT_INDEX_FILE` and `GIT_OBJECT_DIRECTORY` there, with the repository's
+   object directory as a read-only alternate. `KLIN_STATE_DIR` alone does
+   not redirect Git objects or turn refs; this decision concerns finalize's
+   identity writes and does not relocate the hooks' existing turn refs.
+3. **Temporary state may be cleaned up.** The root survives sessions until
+   temporary-directory cleanup removes it. Cleanup loses local records,
+   cache, history and any stale-finalize block that depended on a record.
+   Missing state never implies FINALIZED; a later finalize measures afresh.
+   The concrete root and its shared selection must be verified across hooks
+   and sandboxed commands during implementation, rather than assuming their
+   `TMPDIR` values match or choosing a fresh root for each invocation.
+4. **An unwritable state location is INCOMPLETE.** Finalize names the
+   state-location problem, exits 3 and writes no successful record. It does
+   not silently run without a record, request sandbox escalation
+   automatically or delegate recording to Stop. Hooks retain their existing
+   fail-open behavior.
+5. **The session line names the actual executable by absolute path.** For
+   the plugin route, name its wrapper, preserving the plugin's pinned
+   version (ADR 0023). For the standalone route, name the installed binary
+   the hooks use. Expand and shell-quote the path; do not rely on the agent's
+   login-shell `PATH` or assume `~/.local/bin/klin` is every user's install
+   location. That path is suitable when it is the actual standalone
+   executable, but its parent is not a sandbox-writable state location by
+   default.
+6. **The command carries its state location explicitly.** On the relocated
+   Codex route, the session line prints a shell-quoted command of this form:
+
+   ```sh
+   KLIN_STATE_DIR='/absolute/writable/root' '/absolute/path/to/klin-wrapper' finalize
+   ```
+
+   The hooks select the same root. The same prefix applies to
+   `finalize --check`; session text does not export an environment variable
+   into later agent shell calls. These command and state decisions do not
+   establish delivery through Codex project hooks: section 13, item 12
+   remains a limitation of the probe, which measured the `AGENTS.md` channel.
