@@ -1,0 +1,3 @@
+Updated the mobile setting to use `useUpdateUserSettings`, which already refreshes the settings cache. Success/error notifications and navigation are preserved.
+
+`git diff --check` passed. Typechecking was blocked because pnpm attempted to create a Corepack cache outside the allowed directory.

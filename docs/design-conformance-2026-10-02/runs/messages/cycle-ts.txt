@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  component-cycle
+        src/db/orders.ts:1  the import of ui/labels
+        existing: ui depends on db (src/ui/receipt.ts imports db/orders), and no db file imports ui
+        new: db/orders.ts imports ui/labels, so db and ui now depend on each other
+        Why klin is unsure: the repository states no layer rule for these directories, so this direction is only what the code did until now. If db should stay below ui, move what db needs out of ui. If the two belong together, keep it and say why in your reply.

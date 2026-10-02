@@ -1,0 +1,782 @@
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/acosh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/acosh.rs
+index 628a03be..cf37a4fd 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/acosh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/acosh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_ACOSH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "acosh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_ACOSH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Acosh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, AcoshOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Acosh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, AcoshOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Acosh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, AcoshOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Acosh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Acosh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Acosh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Acosh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct AcoshOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.acosh())
+-        })
++impl UnaryInputNumericOperation for AcoshOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.acosh()),
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/asinh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/asinh.rs
+index 06aecdd0..04139f2d 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/asinh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/asinh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_ASINH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "asinh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_ASINH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Asinh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, AsinhOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Asinh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, AsinhOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Asinh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, AsinhOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Asinh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Asinh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Asinh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Asinh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct AsinhOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.asinh())
+-        })
++impl UnaryInputNumericOperation for AsinhOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.asinh()),
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/atanh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/atanh.rs
+index 8c07036a..587a9e08 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/atanh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/atanh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_ATANH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "atanh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_ATANH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Atanh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, AtanhOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Atanh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, AtanhOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Atanh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, AtanhOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Atanh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Atanh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Atanh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Atanh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct AtanhOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.atanh())
+-        })
++impl UnaryInputNumericOperation for AtanhOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.atanh()),
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/cosh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/cosh.rs
+index 4f303a01..71bf389c 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/cosh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/cosh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_COSH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "cosh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_COSH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Cosh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, CoshOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Cosh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, CoshOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Cosh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, CoshOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Cosh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Cosh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Cosh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Cosh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct CoshOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.cosh())
+-        })
++impl UnaryInputNumericOperation for CoshOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.cosh()),
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/cot.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/cot.rs
+index f5e48437..1ada8ceb 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/cot.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/cot.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::{Float, One, Zero};
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_COT: ScalarFunctionSet = ScalarFunctionSet {
+     name: "cot",
+@@ -33,60 +30,44 @@ pub const FUNCTION_SET_COT: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Cot::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, CotOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Cot::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, CotOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Cot::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, CotOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Cot<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Cot<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Cot {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Cot<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct CotOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            let tan_val = v.tan();
+-            if tan_val.is_zero() {
+-                buf.put(&S::StorageType::infinity())
+-            } else {
+-                buf.put(&(S::StorageType::one() / tan_val))
+-            }
+-        })
++impl UnaryInputNumericOperation for CotOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| {
++                let tan_val = v.tan();
++                if tan_val.is_zero() {
++                    buf.put(&S::StorageType::infinity())
++                } else {
++                    buf.put(&(S::StorageType::one() / tan_val))
++                }
++            },
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/sinh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/sinh.rs
+index 2ac2d7c0..0acbfcd1 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/sinh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/sinh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_SINH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "sinh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_SINH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Sinh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, SinhOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Sinh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, SinhOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Sinh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, SinhOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Sinh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Sinh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Sinh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Sinh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct SinhOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.sinh())
+-        })
++impl UnaryInputNumericOperation for SinhOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.sinh()),
++        )
+     }
+ }
+diff --git a/crates/glaredb_core/src/functions/scalar/builtin/numeric/tanh.rs b/crates/glaredb_core/src/functions/scalar/builtin/numeric/tanh.rs
+index 44df5155..68d2e301 100644
+--- a/crates/glaredb_core/src/functions/scalar/builtin/numeric/tanh.rs
++++ b/crates/glaredb_core/src/functions/scalar/builtin/numeric/tanh.rs
+@@ -1,9 +1,7 @@
+-use std::fmt::Debug;
+-use std::marker::PhantomData;
+-
+ use glaredb_error::Result;
+ use num_traits::Float;
+ 
++use super::{UnaryInputNumericOperation, UnaryInputNumericScalar};
+ use crate::arrays::array::Array;
+ use crate::arrays::array::physical_type::{
+     MutableScalarStorage,
+@@ -11,15 +9,14 @@ use crate::arrays::array::physical_type::{
+     PhysicalF32,
+     PhysicalF64,
+ };
+-use crate::arrays::batch::Batch;
+ use crate::arrays::datatype::{DataType, DataTypeId};
+ use crate::arrays::executor::OutBuffer;
+ use crate::arrays::executor::scalar::UnaryExecutor;
+-use crate::expr::Expression;
+ use crate::functions::Signature;
+ use crate::functions::documentation::{Category, Documentation};
+ use crate::functions::function_set::ScalarFunctionSet;
+-use crate::functions::scalar::{BindState, RawScalarFunction, ScalarFunction};
++use crate::functions::scalar::RawScalarFunction;
++use crate::util::iter::IntoExactSizeIterator;
+ 
+ pub const FUNCTION_SET_TANH: ScalarFunctionSet = ScalarFunctionSet {
+     name: "tanh",
+@@ -33,55 +30,37 @@ pub const FUNCTION_SET_TANH: ScalarFunctionSet = ScalarFunctionSet {
+     functions: &[
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float16], DataTypeId::Float16),
+-            &Tanh::<PhysicalF16>::new(&DataType::Float16),
++            &UnaryInputNumericScalar::<PhysicalF16, TanhOp>::new(&DataType::Float16),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float32], DataTypeId::Float32),
+-            &Tanh::<PhysicalF32>::new(&DataType::Float32),
++            &UnaryInputNumericScalar::<PhysicalF32, TanhOp>::new(&DataType::Float32),
+         ),
+         RawScalarFunction::new(
+             &Signature::new(&[DataTypeId::Float64], DataTypeId::Float64),
+-            &Tanh::<PhysicalF64>::new(&DataType::Float64),
++            &UnaryInputNumericScalar::<PhysicalF64, TanhOp>::new(&DataType::Float64),
+         ),
+     ],
+ };
+ 
+-#[derive(Debug, Clone, Copy)]
+-pub struct Tanh<S> {
+-    return_type: &'static DataType,
+-    _s: PhantomData<S>,
+-}
+-
+-impl<S> Tanh<S> {
+-    pub const fn new(return_type: &'static DataType) -> Self {
+-        Tanh {
+-            return_type,
+-            _s: PhantomData,
+-        }
+-    }
+-}
+-
+-impl<S> ScalarFunction for Tanh<S>
+-where
+-    S: MutableScalarStorage,
+-    S::StorageType: Float,
+-{
+-    type State = ();
+-
+-    fn bind(&self, inputs: Vec<Expression>) -> Result<BindState<Self::State>> {
+-        Ok(BindState {
+-            state: (),
+-            return_type: self.return_type.clone(),
+-            inputs,
+-        })
+-    }
+-
+-    fn execute(_state: &Self::State, input: &Batch, output: &mut Array) -> Result<()> {
+-        let sel = input.selection();
+-        let val = &input.arrays()[0];
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct TanhOp;
+ 
+-        UnaryExecutor::execute::<S, S, _>(val, sel, OutBuffer::from_array(output)?, |&v, buf| {
+-            buf.put(&v.tanh())
+-        })
++impl UnaryInputNumericOperation for TanhOp {
++    fn execute_float<S>(
++        input: &Array,
++        selection: impl IntoExactSizeIterator<Item = usize>,
++        output: &mut Array,
++    ) -> Result<()>
++    where
++        S: MutableScalarStorage,
++        S::StorageType: Float,
++    {
++        UnaryExecutor::execute::<S, S, _>(
++            input,
++            selection,
++            OutBuffer::from_array(output)?,
++            |&v, buf| buf.put(&v.tanh()),
++        )
+     }
+ }

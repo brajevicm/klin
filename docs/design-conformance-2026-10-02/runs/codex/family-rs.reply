@@ -1,0 +1,3 @@
+Adyen now implements `PaymentProvider` and is registered as `"adyen"`. Checkout uses the shared provider flow, resolving both klin notes.
+
+Added tests for checkout, order persistence, and refunds. `cargo test` passes both tests; `git diff --check` passes.

@@ -1,0 +1,33 @@
+diff --git a/src/db/orders.ts b/src/db/orders.ts
+index 80b02e5..0a67dac 100644
+--- a/src/db/orders.ts
++++ b/src/db/orders.ts
+@@ -1,7 +1,10 @@
++import { statusLabel } from "../orders/status";
++
+ const orders = new Map<string, number>();
+ 
+ export async function saveOrder(chargeId: string, cents: number): Promise<void> {
+   orders.set(chargeId, cents);
++  console.info(`order ${chargeId}: ${statusLabel("paid")}`);
+ }
+ 
+ export function orderTotal(chargeId: string): number | undefined {
+diff --git a/src/orders/status.ts b/src/orders/status.ts
+new file mode 100644
+index 0000000..107f42c
+--- /dev/null
++++ b/src/orders/status.ts
+@@ -0,0 +1,3 @@
++export function statusLabel(status: string): string {
++  return status === "paid" ? "Paid" : "Pending";
++}
+diff --git a/src/ui/labels.ts b/src/ui/labels.ts
+index 107f42c..c707d6b 100644
+--- a/src/ui/labels.ts
++++ b/src/ui/labels.ts
+@@ -1,3 +1 @@
+-export function statusLabel(status: string): string {
+-  return status === "paid" ? "Paid" : "Pending";
+-}
++export { statusLabel } from "../orders/status";

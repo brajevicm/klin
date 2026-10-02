@@ -1,0 +1,3 @@
+Adyen now implements `PaymentProvider` and is registered as `adyen` in the shared registry. Checkout uses its existing dispatch path, resolving both review notes.
+
+`git diff --check` passed. Build verification was blocked because TypeScript (`tsc`) isn’t installed.

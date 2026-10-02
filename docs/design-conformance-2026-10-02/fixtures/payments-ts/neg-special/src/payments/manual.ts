@@ -1,0 +1,21 @@
+import { saveOrder } from "../db/orders";
+
+// Bank transfers settle offline, days later, so this is deliberately not a
+// PaymentProvider: checkout never offers it and nothing charges a card.
+export class ManualInvoice {
+  async charge(cents: number): Promise<string> {
+    const reference = `INV-${Date.now()}`;
+    await saveOrder(reference, cents);
+    return reference;
+  }
+
+  async refund(chargeId: string): Promise<void> {
+    console.info(`refund ${chargeId} by bank transfer`);
+  }
+}
+
+export async function invoiceLater(cents: number, email: string): Promise<string> {
+  const reference = await new ManualInvoice().charge(cents);
+  console.info(`invoice ${reference} sent to ${email}`);
+  return reference;
+}

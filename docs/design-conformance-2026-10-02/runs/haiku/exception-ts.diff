@@ -1,0 +1,29 @@
+diff --git a/src/payments/manual.ts b/src/payments/manual.ts
+new file mode 100644
+index 0000000..6941f4a
+--- /dev/null
++++ b/src/payments/manual.ts
+@@ -0,0 +1,23 @@
++import { saveOrder } from "../db/orders";
++
++// Bank transfers settle offline, days later. Although this has charge and
++// refund methods, it is not a PaymentProvider: it doesn't process payments
++// (no real card is charged), checkout never offers it, and it's not in the
++// registry. The contract is semantic, not structural.
++export class ManualInvoice {
++  async charge(cents: number): Promise<string> {
++    const reference = `INV-${Date.now()}`;
++    await saveOrder(reference, cents);
++    return reference;
++  }
++
++  async refund(chargeId: string): Promise<void> {
++    console.info(`refund ${chargeId} by bank transfer`);
++  }
++}
++
++export async function invoiceLater(cents: number, email: string): Promise<string> {
++  const reference = await new ManualInvoice().charge(cents);
++  console.info(`invoice ${reference} sent to ${email}`);
++  return reference;
++}

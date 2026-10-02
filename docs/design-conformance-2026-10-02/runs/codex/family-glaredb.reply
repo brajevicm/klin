@@ -1,0 +1,3 @@
+Updated the seven unary functions to use the shared numeric helper. `atan2` retains its direct implementation because it requires two inputs.
+
+`git diff --check` passes. SQL tests could not run because `csv` is unavailable offline. Formatting checks also encountered repository-wide differences with the installed stable formatter.

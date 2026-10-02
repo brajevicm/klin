@@ -1,0 +1,31 @@
+diff --git a/src/db/orders.ts b/src/db/orders.ts
+index 80b02e5..46a8298 100644
+--- a/src/db/orders.ts
++++ b/src/db/orders.ts
+@@ -1,7 +1,10 @@
++import { statusLabel } from "../strings/labels";
++
+ const orders = new Map<string, number>();
+ 
+ export async function saveOrder(chargeId: string, cents: number): Promise<void> {
+   orders.set(chargeId, cents);
++  console.info(`order ${chargeId}: ${statusLabel("pending")}`);
+ }
+ 
+ export function orderTotal(chargeId: string): number | undefined {
+diff --git a/src/ui/labels.ts b/src/strings/labels.ts
+similarity index 100%
+rename from src/ui/labels.ts
+rename to src/strings/labels.ts
+diff --git a/src/ui/receipt.ts b/src/ui/receipt.ts
+index ceb4fff..614e1d3 100644
+--- a/src/ui/receipt.ts
++++ b/src/ui/receipt.ts
+@@ -1,6 +1,6 @@
+ import { orderTotal } from "../db/orders";
+ import { formatMoney } from "../money/format";
+-import { statusLabel } from "./labels";
++import { statusLabel } from "../strings/labels";
+ 
+ export function receipt(chargeId: string): string {
+   const total = orderTotal(chargeId);

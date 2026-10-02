@@ -1,0 +1,3 @@
+Saving an order logs `order <charge_id>: Pending`. Moved the status-label helper into a shared module to remove the db/UI dependency cycle, preserving the existing UI API.
+
+`cargo test` and `git diff --check` passed; the repository has no tests.

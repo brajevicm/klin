@@ -1,0 +1,24 @@
+diff --git a/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx b/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
+index fa572f09..518b219a 100644
+--- a/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
++++ b/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
+@@ -6,16 +6,15 @@ import { useToast } from "@/components/ui/Toast";
+ import { api } from "@/lib/trpc";
+ import { Check } from "lucide-react-native";
+ 
++import { useUpdateUserSettings } from "@karakeep/shared-react/hooks/users";
++
+ export default function BookmarkDefaultViewSettings() {
+   const router = useRouter();
+   const { toast } = useToast();
+ 
+-  const utils = api.useUtils();
+   const { data: userSettings } = api.users.settings.useQuery();
+-  const { mutate: updateUserSettings } = api.users.updateSettings.useMutation({
++  const { mutate: updateUserSettings } = useUpdateUserSettings({
+     onSuccess: () => {
+-      // Invalidate and refetch user settings cache
+-      utils.users.settings.invalidate();
+       toast({
+         message: "Bookmark View Mode updated!",
+         showProgress: false,

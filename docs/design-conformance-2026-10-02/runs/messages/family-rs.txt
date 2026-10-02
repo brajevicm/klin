@@ -1,0 +1,11 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (2 notes):
+  REVIEW  family-bypass
+        src/payments/adyen.rs:3  class AdyenProvider
+        existing: StripeProvider (stripe.rs) and PayPalProvider (paypal.rs) implement PaymentProvider
+        new: AdyenProvider is named *Provider and defines charge and refund like them, but does not implement PaymentProvider
+        Why klin is unsure: a type can stay outside a family on purpose, for example for another contract or during a migration. If AdyenProvider is a payment provider like the others, make it one in the same way. If it is not, keep it and say why in your reply.
+  REVIEW  registration-bypass
+        src/payments/checkout.rs:6  the new branch on "adyen" in checkout
+        existing: `providers` (src/payments/registry.rs:6) lists StripeProvider and PayPalProvider, and checkout dispatches PaymentProvider through it
+        new: checkout calls AdyenProvider in a branch of its own, outside that registration
+        Why klin is unsure: a case can be kept out of the registration on purpose, for example during a trial. If checkout should offer Adyen like the others, use the registration in the same way. If not, keep it and say why in your reply.

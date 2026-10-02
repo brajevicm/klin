@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  family-bypass (8 new types)
+        crates/glaredb_core/src/functions/scalar/builtin/numeric/: acosh.rs, asinh.rs, atan2.rs, atanh.rs, cosh.rs, cot.rs, sinh.rs, tanh.rs
+        existing: 23 sibling files declare FUNCTION_SET_<NAME>; 18 of them implement UnaryInputNumericOperation (for example abs.rs, cos.rs), and 5 implement ScalarFunction directly (isfinite.rs, isinf.rs, isnan.rs, pi.rs, power.rs)
+        new: each of the 8 new files declares FUNCTION_SET_<NAME> and implements ScalarFunction directly
+        Why klin is unsure: some siblings implement ScalarFunction on purpose, and klin cannot tell which contract a function needs. If a new function fits UnaryInputNumericOperation like the 18, use it. If one does not, keep it and say why in your reply.

@@ -1,0 +1,3 @@
+Registered Adyen alongside Stripe and PayPal and removed the special checkout branch. Checkout now uses the shared provider flow.
+
+`git diff --check` passed. The build could not run because TypeScript (`tsc`) is not installed.

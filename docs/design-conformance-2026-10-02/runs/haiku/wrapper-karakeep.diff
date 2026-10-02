@@ -1,0 +1,26 @@
+diff --git a/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx b/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
+index fa572f09..6959c00b 100644
+--- a/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
++++ b/apps/mobile/app/dashboard/settings/bookmark-default-view.tsx
+@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
+ import CustomSafeAreaView from "@/components/ui/CustomSafeAreaView";
+ import { Divider } from "@/components/ui/Divider";
+ import { useToast } from "@/components/ui/Toast";
++import { useUpdateUserSettings } from "@karakeep/shared-react/hooks/users";
+ import { api } from "@/lib/trpc";
+ import { Check } from "lucide-react-native";
+ 
+@@ -10,12 +11,9 @@ export default function BookmarkDefaultViewSettings() {
+   const router = useRouter();
+   const { toast } = useToast();
+ 
+-  const utils = api.useUtils();
+   const { data: userSettings } = api.users.settings.useQuery();
+-  const { mutate: updateUserSettings } = api.users.updateSettings.useMutation({
++  const { mutate: updateUserSettings } = useUpdateUserSettings({
+     onSuccess: () => {
+-      // Invalidate and refetch user settings cache
+-      utils.users.settings.invalidate();
+       toast({
+         message: "Bookmark View Mode updated!",
+         showProgress: false,

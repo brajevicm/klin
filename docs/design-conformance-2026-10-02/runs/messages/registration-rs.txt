@@ -1,0 +1,6 @@
+klin: review evidence for this turn — not a failure; nothing blocks your stop (1 note):
+  REVIEW  registration-bypass
+        src/payments/checkout.rs:7  the new branch on "adyen" in checkout
+        existing: `providers` (src/payments/registry.rs:6) lists StripeProvider and PayPalProvider, and checkout dispatches PaymentProvider through it
+        new: AdyenProvider implements PaymentProvider, but no registration lists it, and checkout calls it in a branch of its own
+        Why klin is unsure: a case can be kept out of the registration on purpose, for example during a trial. If checkout should offer Adyen like the others, use the registration in the same way. If not, keep it and say why in your reply.
