@@ -567,8 +567,9 @@ trees are not kept.
      these runs count for readiness and clarification only.
   3. `runs/codex/` for `ready-fail`, `review` and `unknown`: the same, with
      `allow_login_shell=false`. The stand-in answered. Codex's
-     `workspace-write` sandbox refused its writes under `.git`, so the tree
-     ids it logged are not valid, and `fail-once` never saw a changed tree.
+     `workspace-write` sandbox refused its writes under `.git`, so it logged
+     an empty tree id on every call, and `fail-once` compared an empty id
+     with an empty id and never saw the change.
 - **Cursor 3.23.12**, the app, driven by a person. `runs/cursor/`.
   - `ready-pass-first` ran before the hook logged its session event.
   - `clarify-1` ran with session logging.
