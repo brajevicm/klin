@@ -1,0 +1,14 @@
+diff --git a/src/index.ts b/src/index.ts
+index 86dddb1..5732811 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,5 +1,7 @@
+-export function formatPrice(cents: number): string {
+-  return `€${(cents / 100).toFixed(2)}`;
++export function formatPrice(cents: number): string;
++export function formatPrice(cents: number, currency: string): string;
++export function formatPrice(cents: number, currency: string = "€"): string {
++  return `${currency}${(cents / 100).toFixed(2)}`;
+ }
+ 
+ export function parsePrice(text: string): number {

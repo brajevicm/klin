@@ -1,0 +1,3 @@
+Refactored `shippingFee` by extracting regional pricing and simplifying express charges, reducing complexity while preserving all requested rules.
+
+Verified 750 combinations, including threshold boundaries. `git diff --check` passed.

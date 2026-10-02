@@ -1,0 +1,3 @@
+Moved `describe(order)` to [src/ui/format.ts](src/ui/format.ts), where it reuses `money()` to render values such as `"123: €12.50"`. This removes the forbidden domain → UI dependency.
+
+`git diff --check` passes. The next stop will rerun klin.

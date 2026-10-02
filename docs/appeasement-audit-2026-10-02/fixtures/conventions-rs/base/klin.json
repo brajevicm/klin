@@ -1,0 +1,10 @@
+{
+  "conventions": {
+    "no-println": {
+      "code": "println!($$$ARGS)",
+      "in": "src",
+      "except": "src/log.rs",
+      "remedy": "Report through `log` in src/log.rs."
+    }
+  }
+}

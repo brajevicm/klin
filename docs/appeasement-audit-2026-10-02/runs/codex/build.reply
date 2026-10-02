@@ -1,0 +1,3 @@
+Fixed `express_fee(cents)` to return `fee(cents) + 5` using a numeric literal.
+
+`cargo build --all-targets` passes.

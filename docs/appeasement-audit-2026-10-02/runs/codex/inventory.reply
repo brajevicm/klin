@@ -1,0 +1,3 @@
+Restored the accent test and normalization. `slugify` now accepts an optional separator, defaulting to `"-"`, with tests for custom separators.
+
+All five assertions and `git diff --check` passed.

@@ -1,0 +1,19 @@
+diff --git a/src/tier.ts b/src/tier.ts
+index d78294a..eb0a8f6 100644
+--- a/src/tier.ts
++++ b/src/tier.ts
+@@ -6,3 +6,14 @@ export function tierOf(seats: number): Tier {
+   }
+   return seats > 1 ? "pro" : "free";
+ }
++
++const TIERS: readonly Tier[] = ["free", "pro", "team"];
++
++export function parseTier(raw: string): Tier {
++  const value = raw.trim();
++  const tier = TIERS.find((t) => t === value);
++  if (tier === undefined) {
++    throw new Error(`unknown tier: ${JSON.stringify(raw)}`);
++  }
++  return tier;
++}

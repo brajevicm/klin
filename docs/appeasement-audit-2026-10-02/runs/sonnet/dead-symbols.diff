@@ -1,0 +1,17 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index 7ace78f..509a30a 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -1,7 +1,11 @@
++function roundCents(value: number): number {
++  return Math.round(value * 100) / 100;
++}
++
+ function sum(values: number[]): number {
+   return values.reduce((left, right) => left + right, 0);
+ }
+ 
+ export function total(prices: number[]): number {
+-  return sum(prices);
++  return roundCents(sum(prices));
+ }

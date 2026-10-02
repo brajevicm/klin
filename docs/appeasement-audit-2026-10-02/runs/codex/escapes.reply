@@ -1,0 +1,3 @@
+Updated `parseTier` to trim whitespace, validate `"free"`, `"pro"`, or `"team"`, and throw for invalid input. Removed both type escapes.
+
+Runtime assertions and `git diff --check` passed.

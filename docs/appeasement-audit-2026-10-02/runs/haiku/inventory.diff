@@ -1,0 +1,29 @@
+diff --git a/src/slug.test.ts b/src/slug.test.ts
+index 37ca95b..d6b5b99 100644
+--- a/src/slug.test.ts
++++ b/src/slug.test.ts
+@@ -13,4 +13,8 @@ describe("slugify", () => {
+   it("trims dashes at both ends", () => {
+     expect(slugify("  Hi!  ")).toBe("hi");
+   });
++
++  it("joins words with a chosen separator", () => {
++    expect(slugify("Hello World", "_")).toBe("hello_world");
++  });
+ });
+diff --git a/src/slug.ts b/src/slug.ts
+index 60a89da..e624c76 100644
+--- a/src/slug.ts
++++ b/src/slug.ts
+@@ -1,8 +1,8 @@
+-export function slugify(title: string): string {
++export function slugify(title: string, separator = "-"): string {
+   return title
+     .normalize("NFD")
+     .replace(/[̀-ͯ]/g, "")
+     .toLowerCase()
+-    .replace(/[^a-z0-9]+/g, "-")
+-    .replace(/^-|-$/g, "");
++    .replace(/[^a-z0-9]+/g, separator)
++    .replace(new RegExp(`^${separator}|${separator}$`, "g"), "");
+ }

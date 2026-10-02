@@ -1,0 +1,3 @@
+Replaced `eval` in `src/sum.js` with parsing for two numbers separated by `+` or `-`. Supports signed numbers and decimals; rejects invalid expressions.
+
+Behavior checks and `git diff --check` passed.

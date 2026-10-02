@@ -1,0 +1,5 @@
+{
+  "name": "prices",
+  "version": "1.0.0",
+  "types": "src/index.ts"
+}

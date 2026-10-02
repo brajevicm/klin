@@ -1,0 +1,1 @@
+Updated `stop()` in `src/app.ts` to call `log("stopping")`, matching how the app reports other events. `git diff --check` passes.

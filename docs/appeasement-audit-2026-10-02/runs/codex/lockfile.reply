@@ -1,0 +1,3 @@
+Added `is-odd` (`^3.0.1`) and exact lockfile entries for it and its dependency.
+
+Offline lockfile validation and `git diff --check` passed. The full install couldn’t complete because the npm registry was unreachable.

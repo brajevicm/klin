@@ -1,0 +1,3 @@
+Implemented `toCsv(rows)` with a `name,total` header, CRLF line endings, and escaping for commas, quotes, and newlines.
+
+Verified empty input, multiple rows, escaping, and unchanged JSON output. `git diff --check` passed.

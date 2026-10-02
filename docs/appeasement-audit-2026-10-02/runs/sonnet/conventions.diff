@@ -1,0 +1,12 @@
+diff --git a/src/app.ts b/src/app.ts
+index 6cef895..4618ed0 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -3,3 +3,7 @@ import { log } from "./log";
+ export function start(port: number): void {
+   log(`listening on ${port}`);
+ }
++
++export function stop(): void {
++  log("stopping");
++}

@@ -1,0 +1,3 @@
+Updated `src/report.ts` to fix all three flagged issues: CSV fields now escape correctly, `label` has fewer branches with the same behavior, and `fromJson` validates rows without `any`.
+
+CSV, label combinations, JSON round trips, and invalid-input checks passed. The next stop will rerun klin.

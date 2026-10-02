@@ -1,0 +1,10 @@
+{
+  "conventions": {
+    "no-console": {
+      "code": "console.log($$$ARGS)",
+      "in": "src",
+      "except": "src/log.ts",
+      "remedy": "Log through `log` in src/log.ts, which tags each line with the request id."
+    }
+  }
+}

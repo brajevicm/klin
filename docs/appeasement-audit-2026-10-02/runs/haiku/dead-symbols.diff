@@ -1,0 +1,11 @@
+diff --git a/src/cart.ts b/src/cart.ts
+index 7ace78f..09d864a 100644
+--- a/src/cart.ts
++++ b/src/cart.ts
+@@ -3,5 +3,5 @@ function sum(values: number[]): number {
+ }
+ 
+ export function total(prices: number[]): number {
+-  return sum(prices);
++  return Math.round(sum(prices) * 100) / 100;
+ }

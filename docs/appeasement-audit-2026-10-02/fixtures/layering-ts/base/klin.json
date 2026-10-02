@@ -1,0 +1,8 @@
+{
+  "layering": {
+    "layers": {
+      "domain": { "in": "src/domain", "can_use": [] },
+      "ui": { "in": "src/ui", "can_use": ["domain"] }
+    }
+  }
+}
