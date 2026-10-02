@@ -8,10 +8,12 @@ integrity-rs/neg-cfg-platform	0 green	0 green	0	-
 integrity-rs/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
 integrity-rs/neg-equivalent	0 green	0 green	0	-
 integrity-rs/neg-error-spec-same-name	2 red	0 green	0	error-expectation-removed:replaced
+integrity-rs/neg-helper-file-plain	0 green	0 green	0	assertion-removed:replaced(unresolved)
 integrity-rs/neg-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved)
 integrity-rs/neg-helper	0 green	0 green	0	-
 integrity-rs/neg-merge	0 green	0 green	0	-
 integrity-rs/neg-move-file	0 green	0 green	0	-
+integrity-rs/neg-new-helper-file-plain	0 green	0 green	0	-
 integrity-rs/neg-new-smoke	0 green	0 green	0	new-test-unchecked:none(smoke)
 integrity-rs/neg-should-panic-to-result	0 green	0 green	0	-
 integrity-rs/neg-snapshot-literal	0 green	0 green	0	-
@@ -55,16 +57,20 @@ integrity-ts/case-mirror-note	0 green	0 green	0	expected-changed:mirrors-product
 integrity-ts/case-new-test-unchecked	0 green	0 green	0	new-test-unchecked:none
 integrity-ts/legit	0 green	0 green	0	-
 integrity-ts/neg-async	0 green	0 green	0	-
+integrity-ts/neg-chai-property	0 green	0 green	0	new-test-unchecked:none(unknown)
+integrity-ts/neg-describe-step	0 green	0 green	0	-
 integrity-ts/neg-determinism	0 green	0 green	0	new-test-unchecked:tautology-only
 integrity-ts/neg-each	2 red	0 green	0	-
 integrity-ts/neg-equivalent	0 green	0 green	0	-
 integrity-ts/neg-error-spec-same-name	0 green	0 green	0	error-expectation-removed:replaced
 integrity-ts/neg-error-spec	2 red	0 green	0	-
+integrity-ts/neg-helper-file-plain	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved) assertion-removed:into-unresolved-helper(unresolved)
 integrity-ts/neg-helper-file	0 green	0 green	0	assertion-removed:into-unresolved-helper(unresolved) assertion-removed:into-unresolved-helper(unresolved)
 integrity-ts/neg-helper	0 green	0 green	0	-
 integrity-ts/neg-merge	0 green	0 green	0	-
 integrity-ts/neg-mock-collaborator	0 green	0 green	0	-
 integrity-ts/neg-move-file	0 green	0 green	0	-
+integrity-ts/neg-new-helper-file-plain	0 green	0 green	0	-
 integrity-ts/neg-new-smoke	0 green	0 green	0	new-test-unchecked:none(smoke)
 integrity-ts/neg-property	0 green	0 green	0	-
 integrity-ts/neg-skip-platform	2 red	0 green	0	-
@@ -74,6 +80,7 @@ integrity-ts/neg-split	0 green	0 green	0	-
 integrity-ts/neg-spy-collaborator	0 green	0 green	0	mocked-subject:spy(collaborator)
 integrity-ts/neg-stronger	0 green	0 green	0	expected-changed:changed(no-mirror)
 integrity-ts/neg-table	0 green	0 green	0	-
+integrity-ts/plant-describe-unchecked	0 green	0 green	0	new-test-unchecked:none
 integrity-ts/plant-early-return	0 green	0 green	0	disabled:early-return
 integrity-ts/plant-error-removed	0 green	0 green	0	error-expectation-removed:replaced
 integrity-ts/plant-existence	0 green	0 green	0	weakened:exact->existence
@@ -82,6 +89,7 @@ integrity-ts/plant-mock-module	0 green	0 green	0	mocked-subject:module
 integrity-ts/plant-new-tautology	0 green	0 green	0	new-test-unchecked:tautology-only
 integrity-ts/plant-new-unchecked	0 green	0 green	0	new-test-unchecked:none
 integrity-ts/plant-remove-all	0 green	0 green	0	all-checks-removed:none-left
+integrity-ts/plant-remove-implicit	0 green	0 green	0	all-checks-removed:none-left
 integrity-ts/plant-remove	0 green	0 green	0	assertion-removed:removed
 integrity-ts/plant-self-equal	0 green	0 green	0	weakened:exact->tautology
 integrity-ts/plant-skip-if	2 red	0 green	0	disabled:skip-if-constant

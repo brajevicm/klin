@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { screen } from "@testing-library/dom";
 import { slugify, uniqueSlug } from "./slug";
 
 describe("slugify", () => {
@@ -28,5 +29,12 @@ describe("uniqueSlug", () => {
   it("adds a counter when the slug is taken", async () => {
     const taken = new Set(["hello-world", "hello-world-2"]);
     await expect(uniqueSlug("Hello World", async (s) => taken.has(s))).resolves.toBe("hello-world-3");
+  });
+});
+
+describe("rendering", () => {
+  it("shows the slug", () => {
+    document.body.textContent = slugify("Hello World");
+    screen.getByText("hello-world");
   });
 });

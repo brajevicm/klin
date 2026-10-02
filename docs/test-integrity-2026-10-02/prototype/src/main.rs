@@ -57,6 +57,7 @@ struct Test {
     disabled: Vec<(&'static str, bool)>,
     body: String,
     title: String,
+    unknown: bool,
 }
 
 #[derive(Clone, Default)]
@@ -64,6 +65,7 @@ struct FileFacts {
     tests: Vec<Test>,
     mocks: Vec<(String, String, usize)>,
     asserted_names: HashSet<String>,
+    proptest: usize,
 }
 
 struct Site {
@@ -440,6 +442,62 @@ struct Ctx<'a> {
     lang: Lang,
     src: &'a [u8],
     helpers: HashMap<String, Vec<Check>>,
+    foreign: HashSet<String>,
+}
+
+const SUPPORT_SEGMENTS: &[&str] = &[
+    "test", "tests", "__tests__", "testing", "spec", "specs", "e2e", "common", "helper", "helpers", "support",
+    "fixtures", "fixture", "matchers", "test_utils", "testutils", "test-utils", "setup",
+];
+
+fn support_path(path: &str) -> bool {
+    path.split(|c| c == '/' || c == ':' || c == '.').any(|segment| SUPPORT_SEGMENTS.contains(&segment) || segment.ends_with("helpers") || segment.ends_with("matchers"))
+        || path.contains(".test") || path.contains(".spec")
+}
+
+fn foreign_names(root: Node, src: &[u8], lang: Lang) -> HashSet<String> {
+    let mut out = HashSet::new();
+    let mut stack = vec![root];
+    while let Some(node) = stack.pop() {
+        match (lang, node.kind()) {
+            (Lang::Ts, "import_statement") => {
+                let source = node.child_by_field_name("source").map(|n| unquote(text(n, src))).unwrap_or_default();
+                if source.starts_with('.') && support_path(&source) {
+                    let mut inner = vec![node];
+                    while let Some(n) = inner.pop() {
+                        if n.kind() == "identifier" {
+                            out.insert(text(n, src).to_string());
+                        }
+                        inner.extend(named_children(n).into_iter().filter(|c| c.kind() != "string"));
+                    }
+                }
+            }
+            (Lang::Rust, "use_declaration") => {
+                let path = text(node, src);
+                if support_path(path.trim_start_matches("use ").trim_end_matches(';')) {
+                    for id in identifiers(path) {
+                        out.insert(id);
+                    }
+                }
+            }
+            (Lang::Rust, "mod_item") => {
+                if node.child_by_field_name("body").is_none() {
+                    if let Some(name) = node.child_by_field_name("name") {
+                        let name = text(name, src);
+                        if support_path(name) {
+                            out.insert(name.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        stack.extend(named_children(node));
+    }
+    for keyword in ["use", "crate", "super", "self", "pub", "mod"] {
+        out.remove(keyword);
+    }
+    out
 }
 
 fn line_of(node: Node) -> usize {
@@ -669,6 +727,13 @@ fn ts_check(call: Node, ctx: &Ctx) -> Option<Check> {
             text: squash(whole),
         });
     }
+    let namespace = (function.kind() == "member_expression")
+        .then(|| function.child_by_field_name("object"))
+        .flatten()
+        .filter(|o| o.kind() == "identifier" && ctx.foreign.contains(text(*o, src)));
+    if namespace.is_some() || function.kind() == "identifier" && ctx.foreign.contains(ftext) {
+        return Some(helper_check(ftext, args, whole, ctx));
+    }
     if function.kind() == "identifier" && ftext != "expect" && (helper_name(ftext) || ctx.helpers.contains_key(ftext)) {
         return Some(helper_check(ftext, args, whole, ctx));
     }
@@ -771,8 +836,10 @@ fn collect_checks(node: Node, ctx: &Ctx, test: &mut Test) {
                         _ => {}
                     }
                 } else {
-                    let name = text(function, ctx.src).rsplit("::").next().unwrap_or_default().to_string();
-                    if helper_name(&name) || ctx.helpers.contains_key(&name) {
+                    let path = text(function, ctx.src);
+                    let name = path.rsplit("::").next().unwrap_or_default().to_string();
+                    let foreign = ctx.foreign.contains(&name) || path.split("::").any(|segment| ctx.foreign.contains(segment) || segment == "common");
+                    if helper_name(&name) || ctx.helpers.contains_key(&name) || foreign {
                         test.checks.push(helper_check(&name, call_args(node, ctx.src), text(node, ctx.src), ctx));
                     }
                 }
@@ -798,6 +865,12 @@ fn collect_checks(node: Node, ctx: &Ctx, test: &mut Test) {
             }
         }
         (Lang::Ts, "throw_statement") => test.implicit += 1,
+        (Lang::Ts, "expression_statement") => {
+            let expression = named_children(node).into_iter().next();
+            if expression.is_some_and(|e| e.kind() == "member_expression" && text(e, ctx.src).trim_start().starts_with("expect(")) {
+                test.unknown = true;
+            }
+        }
         _ => {}
     }
     let mut cursor = node.walk();
@@ -910,7 +983,24 @@ fn rust_helpers<'t>(node: Node<'t>, src: &[u8], out: &mut Vec<(String, Node<'t>)
     }
 }
 
+const TS_NOT_TESTS: &[&str] = &[
+    "beforeEach", "afterEach", "beforeAll", "afterAll", "use", "step", "extend", "info", "setTimeout", "slow",
+    "configure", "expect",
+];
+
 fn is_ts_test_call<'t>(call: Node<'t>, src: &[u8]) -> Option<(&'static str, Vec<(String, String)>)> {
+    let (kind, modifiers) = ts_test_callee(call, src)?;
+    if modifiers.iter().any(|(m, _)| TS_NOT_TESTS.contains(&m.as_str())) {
+        return None;
+    }
+    if modifiers.iter().any(|(m, _)| m == "describe" || m == "suite") {
+        let rest = modifiers.into_iter().filter(|(m, _)| m != "describe" && m != "suite").collect();
+        return Some(("describe", rest));
+    }
+    Some((kind, modifiers))
+}
+
+fn ts_test_callee<'t>(call: Node<'t>, src: &[u8]) -> Option<(&'static str, Vec<(String, String)>)> {
     let mut function = call.child_by_field_name("function")?;
     let mut modifiers = Vec::new();
     loop {
@@ -1104,7 +1194,7 @@ fn file_facts(path: &str, src: &[u8], timing: &mut Timing) -> Option<FileFacts> 
     timing.parse += started.elapsed();
     let started = Instant::now();
     let root = tree.root_node();
-    let mut ctx = Ctx { lang, src, helpers: HashMap::new() };
+    let mut ctx = Ctx { lang, src, helpers: HashMap::new(), foreign: foreign_names(root, src, lang) };
     let mut bodies = Vec::new();
     match lang {
         Lang::Rust => rust_helpers(root, src, &mut bodies),
@@ -1122,6 +1212,9 @@ fn file_facts(path: &str, src: &[u8], timing: &mut Timing) -> Option<FileFacts> 
         ctx.helpers = resolved;
     }
     let mut facts = FileFacts::default();
+    if lang == Lang::Rust {
+        facts.proptest = String::from_utf8_lossy(src).matches("proptest!").count();
+    }
     match lang {
         Lang::Rust => rust_walk(root, &ctx, "", false, &mut facts),
         Lang::Ts => {
@@ -1143,7 +1236,7 @@ fn file_facts(path: &str, src: &[u8], timing: &mut Timing) -> Option<FileFacts> 
         }
     }
     timing.walk += started.elapsed();
-    if facts.tests.is_empty() && facts.mocks.is_empty() {
+    if facts.tests.is_empty() && facts.mocks.is_empty() && facts.proptest == 0 {
         return None;
     }
     Some(facts)
@@ -1192,6 +1285,7 @@ fn without_test_module(src: &str) -> String {
 fn production_swaps(before: &Path, after: &Path, files: &[String]) -> Vec<(String, String)> {
     let mut removed: BTreeSet<String> = BTreeSet::new();
     let mut added: BTreeSet<String> = BTreeSet::new();
+    let mut pairs: BTreeSet<(String, String)> = BTreeSet::new();
     for file in files {
         if path_is_test(file) || lang_of(file).is_none() {
             continue;
@@ -1206,24 +1300,59 @@ fn production_swaps(before: &Path, after: &Path, files: &[String]) -> Vec<(Strin
             *m.entry(l).or_insert(0) += 1;
             m
         });
-        for (line, n) in &old_lines {
-            if new_lines.get(line).copied().unwrap_or(0) < *n {
-                removed.extend(literal_tokens(line));
-            }
-        }
-        for (line, n) in &new_lines {
-            if old_lines.get(line).copied().unwrap_or(0) < *n {
-                added.extend(literal_tokens(line));
+        let gone: Vec<&str> = old_lines.iter().filter(|(line, n)| new_lines.get(*line).copied().unwrap_or(0) < **n).map(|(l, _)| *l).collect();
+        let came: Vec<&str> = new_lines.iter().filter(|(line, n)| old_lines.get(*line).copied().unwrap_or(0) < **n).map(|(l, _)| *l).collect();
+        for r in &gone {
+            for a in &came {
+                if masked(r) != masked(a) {
+                    continue;
+                }
+                let (old, new) = (literal_tokens(r), literal_tokens(a));
+                if old.len() != new.len() {
+                    continue;
+                }
+                for (o, n) in old.iter().zip(&new) {
+                    if o != n {
+                        removed.insert(o.clone());
+                        added.insert(n.clone());
+                        pairs.insert((o.clone(), n.clone()));
+                    }
+                }
             }
         }
     }
-    let mut out = Vec::new();
-    for r in &removed {
-        for a in &added {
-            if r != a {
-                out.push((r.clone(), a.clone()));
+    let _ = (removed, added);
+    pairs.into_iter().collect()
+}
+
+fn masked(line: &str) -> String {
+    let mut out = String::new();
+    let mut quote: Option<char> = None;
+    let mut prev_ident = false;
+    let mut in_number = false;
+    for c in line.trim().chars() {
+        if let Some(q) = quote {
+            if c == q {
+                quote = None;
             }
+            continue;
         }
+        if c == '"' || c == '\'' || c == '`' {
+            quote = Some(c);
+            out.push('S');
+            prev_ident = false;
+            continue;
+        }
+        if c.is_ascii_digit() && !prev_ident || in_number && (c.is_ascii_digit() || c == '.' || c == '_') {
+            if !in_number {
+                out.push('N');
+            }
+            in_number = true;
+            continue;
+        }
+        in_number = false;
+        prev_ident = c.is_alphanumeric() || c == '_';
+        out.push(c);
     }
     out
 }
@@ -1255,6 +1384,9 @@ fn compare(file: &str, before: Option<&FileFacts>, after: &FileFacts, swaps: &[(
                 if !test.disabled.is_empty() {
                     tags.push("disabled");
                 }
+                if test.unknown {
+                    tags.push("unknown");
+                }
                 let shape = if test.checks.is_empty() { "none" } else { "tautology-only" };
                 out.push(site("new-test-unchecked", shape.into(), tags, test.title.clone()));
             }
@@ -1268,11 +1400,13 @@ fn compare(file: &str, before: Option<&FileFacts>, after: &FileFacts, swaps: &[(
                 out.push(site("disabled", (*shape).into(), if *escaped { vec!["escapes"] } else { vec![] }, test.title.clone()));
             }
         }
-        let before_checks: Vec<&Check> = prior.checks.iter().filter(|c| c.level != Some(Level::Tautology)).collect();
-        if !before_checks.is_empty() && !observable(test) {
+        if observable(prior) && !observable(test) {
             let mut tags = Vec::new();
             if test.statements == 0 {
                 tags.push("stubs");
+            }
+            if test.unknown {
+                tags.push("unknown");
             }
             let shape = if test.checks.is_empty() { "none-left" } else { "tautology-only" };
             out.push(site("all-checks-removed", shape.into(), tags, test.checks.iter().map(|c| c.text.clone()).collect::<Vec<_>>().join(" ")));
@@ -1370,7 +1504,16 @@ fn is_identifier(text: &str) -> bool {
     !text.is_empty() && text.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.' || c == '[' || c == ']') && !text.chars().next().unwrap().is_ascii_digit() && !is_literal(text)
 }
 
-fn test_counts(before: &HashMap<String, FileFacts>, after: &HashMap<String, FileFacts>) -> (usize, usize, usize) {
+struct Counts {
+    held: usize,
+    made: usize,
+    touched: usize,
+    new_tests: usize,
+    changed_both: usize,
+    unknown: usize,
+}
+
+fn test_counts(before: &HashMap<String, FileFacts>, after: &HashMap<String, FileFacts>) -> Counts {
     let keys = |test: &Test| {
         let mut keys: Vec<String> = test.checks.iter().map(Check::key).collect();
         keys.sort();
@@ -1379,15 +1522,21 @@ fn test_counts(before: &HashMap<String, FileFacts>, after: &HashMap<String, File
     let held = before.values().map(|f| f.tests.len()).sum();
     let made = after.values().map(|f| f.tests.len()).sum();
     let mut touched = 0;
+    let mut new_tests = 0;
+    let mut changed_both = 0;
+    let mut unknown = 0;
     for (file, facts) in after {
         let old: HashMap<&str, &Test> = before.get(file).map(|b| b.tests.iter().map(|t| (t.id.as_str(), t)).collect()).unwrap_or_default();
         touched += facts.tests.iter().filter(|t| old.get(t.id.as_str()).is_none_or(|o| keys(o) != keys(t))).count();
+        new_tests += facts.tests.iter().filter(|t| !old.contains_key(t.id.as_str())).count();
+        changed_both += facts.tests.iter().filter(|t| old.get(t.id.as_str()).is_some_and(|o| o.body != t.body)).count();
+        unknown += facts.proptest + facts.tests.iter().filter(|t| t.unknown).count();
     }
     for (file, facts) in before {
         let new: HashSet<&str> = after.get(file).map(|a| a.tests.iter().map(|t| t.id.as_str()).collect()).unwrap_or_default();
         touched += facts.tests.iter().filter(|t| !new.contains(t.id.as_str())).count();
     }
-    (held, made, touched)
+    Counts { held, made, touched, new_tests, changed_both, unknown }
 }
 
 fn added_keys(before: &HashMap<String, FileFacts>, after: &HashMap<String, FileFacts>) -> HashSet<String> {
@@ -1479,8 +1628,8 @@ fn main() {
                 let pick = |facts: &HashMap<String, FileFacts>| -> HashMap<String, FileFacts> {
                     facts.iter().filter(|(f, _)| f.ends_with(".rs") == rust).map(|(f, v)| (f.clone(), v.clone())).collect()
                 };
-                let (held, made, touched) = test_counts(&pick(&before), &pick(&after));
-                eprintln!("{lang}\t{held}\t{made}\t{touched}");
+                let c = test_counts(&pick(&before), &pick(&after));
+                eprintln!("{lang}\t{}\t{}\t{}\t{}\t{}\t{}", c.held, c.made, c.touched, c.new_tests, c.changed_both, c.unknown);
             }
         }
         Some("dump") => {

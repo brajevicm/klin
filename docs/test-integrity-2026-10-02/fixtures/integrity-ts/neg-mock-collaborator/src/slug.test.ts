@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/dom";
 import { slugify, uniqueSlug } from "./slug";
 
 describe("slugify", () => {
@@ -25,5 +26,12 @@ describe("uniqueSlug", () => {
     const taken = vi.fn(async (s: string) => s === "hello-world" || s === "hello-world-2");
     await expect(uniqueSlug("Hello World", taken)).resolves.toBe("hello-world-3");
     expect(taken).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("rendering", () => {
+  it("shows the slug", () => {
+    document.body.textContent = slugify("Hello World");
+    screen.getByText("hello-world");
   });
 });

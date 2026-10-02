@@ -34,7 +34,7 @@ while read -r set name base head; do
   head=$(git -C "$dir" rev-parse "$head")
   files=()
   while read -r file; do files+=("$file"); done < <(git -C "$dir" diff --name-only --diff-filter=AMR "$base" "$head" | grep -E '\.(rs|ts|mts|cts|tsx)$' || true)
-  counts="0	0	0	0	0	0"
+  counts="0	0	0	0	0	0	0	0	0	0	0	0"
   if [ ${#files[@]} -gt 0 ]; then
     export_tree "$dir" "$base" "$work/before"
     export_tree "$dir" "$head" "$work/after"

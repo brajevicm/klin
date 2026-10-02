@@ -59,7 +59,9 @@ asks. The frameworks are the ones the two ecosystems use most:
 
 A `proptest!` body is a macro token tree, so its tests are not read. Neither
 is a Chai property assertion such as `expect(x).to.be.true`, which is no call.
-The results count both as unknown where they occur.
+The results count both as unknown where they occur. A Chai property
+assertion sets the test's `unknown` tag, and each `proptest!` invocation in a
+file named by a change is counted (amended after the owner's review, see "Changes after the owner's review").
 
 A TypeScript file is read only when its path is a test path: a directory
 segment `test`, `tests`, `__tests__`, `spec`, `specs`, `testing`, `e2e`,
@@ -107,7 +109,12 @@ A **helper** is a call to a function of the same file that holds checks,
 resolved to a depth of two, or a call whose name is `assert`, `expect`,
 `check`, `verify`, `ensure` or `should`, or starts with one of them at a word
 boundary (`assert_slug`, `expectSlug`). A helper that the file does not
-define is unresolved.
+define is unresolved. A call to a name that the file imports from a
+test-support module is an unresolved helper whatever its name: in TypeScript,
+a relative import whose path has a segment such as `test`, `tests`,
+`__tests__`, `helpers`, `support`, `fixtures`, `matchers`, `setup` or
+`test-utils`, or a name with `.test` or `.spec`. In Rust, a `use` path or a
+`mod` declaration with such a segment, or `common` (amended after the owner's review, see "Changes after the owner's review").
 
 **Flags.** A test is **smoke** when it calls `.unwrap()` or `.expect(`, uses
 `?`, or returns a type (Rust), or when its title says it does not throw,
@@ -155,7 +162,7 @@ tautology is still **covered**, and no candidate reports it, when:
 | 2 | `all-checks-removed` | A test that both trees hold was observable in the before tree and is not observable in the after tree. Shape `none-left` or `tautology-only`. This site replaces every candidate 1 site of the same test. |
 | 3 | `weakened` | A gone check that is not a tautology, and added checks with the same actual text and the same error flag, all of a lower level. Shape `<before level>-><after level>`. The ticket's "exact equality becomes unconditional truth, existence or self-equality". |
 | 4 | `error-expectation-removed` | A gone error expectation that no rule above covers, in a test whose after version holds no error expectation. Shape `removed` or `replaced`. |
-| 5 | `expected-changed` | An added check with the same actual text and error flag, a level at least as high, and a different expected text. Shape `mirrors-production` when a literal of the before expected text was replaced by a literal of the after expected text, and the same pair of literals was swapped on a line of a production file that the change holds. Otherwise shape `changed`. |
+| 5 | `expected-changed` | An added check with the same actual text and error flag, a level at least as high, and a different expected text. Shape `mirrors-production` when a literal of the before expected text was replaced by a literal of the after expected text, and the same pair of literals was swapped on a line of a production file that the change holds: a removed line and an added line that are equal once their literals are masked (amended after the owner's review, see "Changes after the owner's review"). Otherwise shape `changed`. |
 | 6 | `disabled` | A test the after tree holds that a disabling shape covers, and that the before test, if any, did not hold. The shapes: `skip-if-constant` (`skipIf(K)` with a truthy literal), `run-if-constant` (`runIf(K)` with a falsy literal), `todo`, `fixme`, `skip`, `focus`, `early-return` (the first statement is `return`, `return Ok(())` or `if (true) return`), `cfg-never` (a Rust `#[cfg(P)]` on the test or an enclosing module where `P` never holds, by the rules of SPEC 8.2.1 for `cfg_attr`), and `ignore`. |
 | 7 | `mocked-subject` | TypeScript only. A `vi.mock`, `jest.mock`, `vi.doMock` or `jest.doMock` call, or a chained `vi.spyOn` or `jest.spyOn` call, that a test file holds in the after tree and not in the before tree. Shape `module` or `spy`. |
 | 8 | (hard negatives) | A change in the count of checks with no weakening. Every family holds such routes, and no candidate may find them. |
@@ -192,9 +199,10 @@ tautology in the base is no site.
 prints the sites. It reads production files among them only for the literal
 swaps of candidate 5. It cuts a Rust file at its first `#[cfg(test)]` line
 before it looks for swaps, so an inline test module is not read as production
-code. `asserts new` also prints one line to stderr: the count of tests in the
-named files of each tree, and the count of tests whose checks the change
-touched.
+code. `asserts new` also prints one line to stderr per language: the count
+of tests in the named files of each tree, the count of tests whose checks the
+change touched, the count of new tests, the count of tests that both trees
+hold with a changed body, and the count of unknown cases (amended after the owner's review, see "Changes after the owner's review").
 
 ### Planted corpus
 
@@ -282,6 +290,11 @@ computed only where 5 or more findings were labeled:
   directly to a blocking predicate. So a candidate that fails only rule 4 or
   rule 6 is at most a FINALIZE/REVIEW candidate.
 - **FINALIZE/REVIEW candidate** when rules 1 and 2 hold and `N` is 5 or less.
+- **REVIEW candidate, needs more evidence** when a candidate meets the
+  FINALIZE/REVIEW rule with fewer than 5 labeled findings in a language, so
+  that `P` is not computed. Its false-alarm rate on the sample is known from
+  the opportunity counts, and its recall on real changes is not. Admission
+  needs a sample that holds real positives (amended after the owner's review, see "Changes after the owner's review").
 - **NOTE/evidence only** when rule 1 holds, and rule 2 fails only because a
   hard negative has the same diff as a plant under another task. Such a
   candidate states a fact that syntax proves and a judgment it cannot make. It
@@ -351,24 +364,91 @@ that changed, and states only what section 1 allows the finding to claim.
 
 `docs/test-integrity-2026-10-02/` holds the corpus:
 
-- `fixtures/<family>/` holds the two families, 111 rows in all. `probe.sh`
+- `fixtures/<family>/` holds the two families, 119 rows in all. `probe.sh`
   replays them, `probe.sh --check` compares every row with `expected.tsv`,
   and `probe.sh stage` and `probe.sh finish` lay and judge one repair case, as
   in #361.
 - `sample/select-tests.sh CLONES` writes `sample/selection-tests.json`.
   `sample/replay.sh CLONES PILOT_CLONES` replays the three samples and writes
-  `changes.tsv` (one row per change, with the count of tests per language in
-  both trees) and `sites.tsv` (one row per site).
+  `changes.tsv` (one row per change, with per-language counts of the tests in
+  both trees, the touched tests, the new tests, the changed tests and the
+  unknown cases) and `sites.tsv` (one row per site).
 - `sample/labels.tsv` holds one label per labeled finding.
 - `experiments.tsv` lists the repair cases, `runs/messages/` the drafted
   message of each, and `runs/<agent>/<case>.diff` each final tree against the
   base. `runs/codex/*.reply` holds the codex replies. The corpus does not keep
   the Claude replies, as in #361.
 
+## Changes after the owner's review
+
+The owner's review on PR #446 (2026-10-03) found ten problems. This section
+records what the review found, what this note checked, and what changed. The
+rules commit stays as registered. Each rule that changed is marked in place.
+
+1. **The precision sample misses new tests and disabled shapes.** True for
+   sample 2, which takes only modified files with a changed `assert` or
+   `expect(` line. Samples 1 and 3 take every added and modified file. The
+   prototype now prints opportunity counts: the three samples hold 839 new
+   Rust tests and 943 new TypeScript tests, and 158 and 143 tests that both
+   trees hold with a changed body. So the false-alarm opportunity of
+   `new-test-unchecked` and `all-checks-removed` was not small. The samples
+   hold no real positive of either, so recall is unmeasured. This is the
+   review's point, and the next item addresses it.
+2. **The REVIEW rule rewards zero observations.** Agreed. The decision rules
+   gain the state "REVIEW candidate, needs more evidence", and every REVIEW
+   candidate of section 8 moves to it.
+3. **A helper of another file with a plain name is no check.** Confirmed. The
+   prototype of `3bcb39bc` reads `slugIs(...)` and `slug_is(...)` from a
+   test-support module as no check. On the new routes `neg-helper-file-plain`
+   and `neg-new-helper-file-plain`, it reported `all-checks-removed` and
+   `new-test-unchecked` in both languages, so rule 2 failed for both
+   candidates. The helper rule now reads imports from test-support modules,
+   and the four routes are no finding (two keep an `unresolved` site).
+4. **`all-checks-removed` ignored implicit checks.** Confirmed. The prototype
+   required an explicit check at the base, so removing the only
+   `screen.getByText(...)` was invisible. It now compares whether the test was
+   observable at the base and in the working tree, and the new route
+   `plant-remove-implicit` is a finding. The TypeScript base gained the test
+   `rendering > shows the slug` for this route.
+5. **`test.describe` and unknown coverage.** Confirmed. `test.describe(...)`
+   was read as one test, and `test.step(...)`, `test.beforeEach(...)` and
+   `test.use(...)` were read as tests too, so a check inside a step did not
+   count. On the new route `neg-describe-step` the old prototype reported
+   `new-test-unchecked`. The note claimed that `proptest!` and Chai
+   properties were counted as unknown, and the prototype did not count them.
+   Both are fixed. The sample holds 0 unknown cases of either kind, and no
+   sample site changed except through item 6.
+6. **`mirrors-production` paired every removed literal with every added
+   one.** Confirmed. A literal now pairs only between a removed and an added
+   line that are equal once their literals are masked. On the sample, the
+   TypeScript findings fall from 188 to 2. The 186 rows of the
+   `apollo-client` 4.3 release merge were this artifact. The 38 labels of
+   those rows are removed from `labels.tsv`.
+7. **The implementation boundary did not match the research scope.** Agreed.
+   Section 9 now names shared test extraction as a prerequisite.
+8. **The baseline changed.** `probe.sh` was replayed with klin built from
+   `76097d41`, the ticket's baseline. Every `inventory`, `escapes` and `stubs`
+   column is identical. One row differs: `integrity-rs/legit` blocks at the
+   baseline on `complexity`, because the floor was 5 then and #411 raised it
+   to 10. No conclusion depends on the baseline.
+9. **The repair runs test the copy, not REVIEW.** Agreed, and the claims of
+   sections 6 and 13 are narrowed to say so.
+10. **CI does not guard the corpus.** True, and not changed. No earlier
+    research corpus (#361, #362, #355) is in CI, and CI minutes are
+    constrained. `probe.sh --check` is the manual guard. A CI job for research
+    corpora is a separate decision.
+
+The fixed prototype holds every earlier row of `expected.tsv` unchanged.
+Eight rows were added: `neg-helper-file-plain` and
+`neg-new-helper-file-plain` in both families, and `plant-remove-implicit`,
+`plant-describe-unchecked`, `neg-describe-step` and `neg-chai-property` in
+TypeScript. The old prototype gave a false finding on all six new hard
+negatives and missed `plant-remove-implicit`.
+
 ## Headline results
 
-1. **klin `{}` finds almost none of the planted weakenings.** Of the 72 routes
-   that keep a weakening (31 plants, 33 rewordings, 8 repair cases), the first
+1. **klin `{}` finds almost none of the planted weakenings.** Of the 74 routes
+   that keep a weakening (33 plants, 33 rewordings, 8 repair cases), the first
    stop blocks 6, and CI fails 2. The 2 that CI fails are `.skip(` and
    `#[ignore]`, which `escapes` owns. The other 4 are `inventory` asks, because
    `it.skipIf(true)(`, `it.todo(` and `it.skip.each(` no longer match the `it(`
@@ -378,20 +458,21 @@ that changed, and states only what section 1 allows the finding to claim.
    check's text and removes its effect for one line, and no candidate and no
    shipped gate finds it. A local function that shadows the subject keeps
    every check and removes every effect.
-3. **Real changes hold no appropriate finding.** The 190 changes produced 204
-   findings. 56 were labeled, and none is `appropriate`. The noise is API
+3. **Real changes hold no appropriate finding.** The 190 changes produced 18
+   findings, and all 18 were labeled. None is `appropriate`. The noise is API
    renames, a project's own matcher, determinism tests that compare two calls,
-   intended expected-value changes, and console spies. One release merge
-   (`apollo-client` 4.3) holds 186 of the 188 TypeScript `expected-changed`
-   findings.
-4. **Three candidates qualify as FINALIZE/REVIEW candidates, in both
+   intended expected-value changes, and console spies.
+4. **Three candidates are REVIEW candidates that need more evidence, in both
    languages:** `all-checks-removed`, `disabled` and `new-test-unchecked` with
-   shape `none`. `weakened` qualifies in Rust only. Each holds its hard
-   negatives and produced no finding in the sample, so its precision is
-   unknown, not high.
+   shape `none`. `weakened` is one in Rust only. Each holds its hard
+   negatives and produced no finding in the sample, over 1,782 new tests and
+   301 changed tests. So their false-alarm rate on the sample is low, and
+   their recall on real changes is unmeasured.
    `expected-changed` with shape `mirrors-production` is NOTE/evidence only.
-5. **Agents repaired 23 of 24 planted cases.** No run appeased the finding,
-   and no run produced a regression in the tree it was given. One Haiku run
+5. **Agents repaired 23 of 24 planted cases from a blocking message.** No run
+   appeased the finding, and no run produced a regression in the tree it was
+   given. The runs test whether the copy names the work. They do not test the
+   REVIEW surface, which does not block. One Haiku run
    added the right check but left the defect, and its reply said the code
    already worked. One Haiku run also wrote its repair into the corpus fixture
    outside its directory, which this note reverted (section 6).
@@ -436,8 +517,8 @@ No finding may say "the test is wrong" or "the code is wrong".
 
 ## 2. Corpus and selection
 
-The planted corpus has two families and 111 rows: one `base` and one `legit`
-row per family, 31 plants, 35 hard negatives, 33 rewordings and 8 repair
+The planted corpus has two families and 119 rows: one `base` and one `legit`
+row per family, 33 plants, 41 hard negatives, 33 rewordings and 8 repair
 cases. Section 4 lists the rewordings. Every Rust route compiles and passes
 `cargo test` offline, so each plant is a weakening that a green test run
 hides.
@@ -463,13 +544,13 @@ The labels are agent-drafted (section 14).
 | Candidate | Plants found | Registered hard negatives found | Added after the sample |
 | --- | --- | --- | --- |
 | `assertion-removed` | TS `plant-remove`. Rust `plant-remove`, and `plant-existence` and `plant-weaker` as `replaced-by-weaker`, because the Rust actual text changes | none. `neg-helper-file` is a site with the `unresolved` tag in both languages. | none |
-| `all-checks-removed` | `plant-remove-all` and `plant-tautology` in both, Rust `plant-should-panic-removed`. TS `plant-todo` is a site with the tag `stubs`, because `it.todo` has no body, and `disabled` finds it. | none | none |
+| `all-checks-removed` | `plant-remove-all` and `plant-tautology` in both, Rust `plant-should-panic-removed`, TS `plant-remove-implicit` (added after the review). TS `plant-todo` is a site with the tag `stubs`, because `it.todo` has no body, and `disabled` finds it. | none | none |
 | `weakened` | TS `plant-self-equal`, `plant-existence`, `plant-weaker`, `plant-weaker-async`. Rust `plant-self-equal` | none | none |
 | `error-expectation-removed` | `plant-error-removed` in both | `neg-error-spec-same-name` in both: the error expectation became an exact check of a new value that the task asks for | none |
 | `expected-changed` | `plant-mirror` in both, as `mirrors-production` | none as `mirrors-production`. `neg-spec-change`, `neg-snapshot` and `neg-stronger` are `changed` sites with the `no-mirror` tag. | none |
 | `disabled` | TS `skip-if-constant`, `early-return`, `todo`. Rust `cfg-never`, `early-return`. and the `escapes` shapes `.skip(` and `#[ignore]` with the tag `escapes` | none (`skipIf(process.platform === "win32")`, `#[cfg(not(windows))]`) | none |
 | `mocked-subject` | `plant-mock-module` and `plant-spy` | none (`neg-spy-collaborator` has the `collaborator` tag. `neg-mock-collaborator` uses `vi.fn`, which is no mock site) | none |
-| `new-test-unchecked` | `plant-new-unchecked` and `plant-new-tautology` in both | none (`neg-new-smoke` has the `smoke` tag) | `neg-determinism` in both, as `tautology-only` |
+| `new-test-unchecked` | `plant-new-unchecked` and `plant-new-tautology` in both, TS `plant-describe-unchecked` (added after the review) | none (`neg-new-smoke` has the `smoke` tag, `neg-chai-property` the `unknown` tag, and `neg-new-helper-file-plain` and `neg-describe-step` are no site) | `neg-determinism` in both, as `tautology-only` |
 
 The count-change hard negatives of candidate 8 (`neg-split`, `neg-merge`,
 `neg-table`, `neg-each`, `neg-helper`, `neg-move-file`, `neg-equivalent`,
@@ -488,17 +569,18 @@ test of the language. A blank cell is no finding.
 | `all-checks-removed` | | |
 | `weakened` | | 2 / 0 / 5.1 |
 | `error-expectation-removed` | | |
-| `expected-changed` | 1 / 0 / 1.4 | 188 / 0 of 40 labeled / 482 (estimate) |
+| `expected-changed` | 1 / 0 / 1.4 | 2 / 0 / 5.1 |
 | `disabled` | | |
 | `mocked-subject` | no candidate | 2 / 0 / 5.1 |
 | `new-test-unchecked` | 2 / 0 / 2.9 | |
 
 `P` is computed only where 5 or more findings were labeled: Rust
-`assertion-removed` (7 labeled) and TypeScript `expected-changed` (40
-labeled). The every-k-th rule with k = 5 picked 38 rows. The two
-`OpenStock` rows were labeled as well, because they are the only rows outside
-the release merge. That departs from the registered rule, and it changes
-nothing: `P` is 0 with or without them.
+`assertion-removed` (7 labeled). It is 0.
+
+The opportunity counts give the size of each population. The changes that
+touch a Rust test hold 839 new tests and 158 tests that both trees hold with
+a changed body. The TypeScript ones hold 943 and 143. `changes.tsv` holds the
+counts per change.
 
 The noise, by shape:
 
@@ -516,13 +598,9 @@ The noise, by shape:
   `toEqual` became `toStrictEqualTyped`, a stricter matcher that
   `apollo-client` defines. The prototype reads an unknown matcher as
   `partial`.
-- **Intended expected-value changes** (`expected-changed`): 186 rows of the
-  `apollo-client` 4.3 release merge (266 files) record one documented change,
-  a finished `@defer` or `@stream` result reports `dataState: "complete"`. A
-  merge of that size swaps so many literals that almost every changed
-  expected value mirrors one. The other three rows are a new default model
-  named in a pull request title and a constant raised with its reason in a
-  comment.
+- **Intended expected-value changes** (`expected-changed`, 3 findings): a new
+  default model named in a pull request title (2 rows), and a constant raised
+  with its reason in a comment.
 - **Console spies** (`mocked-subject`, 2 of 2): `vi.spyOn(console, "warn")` and
   `vi.spyOn(console, "error")`. The subject rule matched because `warn` and
   `error` occur as words in the actual text of other checks.
@@ -709,13 +787,13 @@ choice, the line names it. A person makes that choice.
 | Candidate | Rust | TypeScript |
 | --- | --- | --- |
 | `assertion-removed` | reject | reject |
-| `all-checks-removed` | FINALIZE/REVIEW candidate | FINALIZE/REVIEW candidate |
-| `weakened` | FINALIZE/REVIEW candidate | reject |
+| `all-checks-removed` | REVIEW, needs more evidence | REVIEW, needs more evidence |
+| `weakened` | REVIEW, needs more evidence | reject |
 | `error-expectation-removed` | reject | reject |
 | `expected-changed` (`mirrors-production`) | NOTE/evidence only | NOTE/evidence only |
-| `disabled` | FINALIZE/REVIEW candidate | FINALIZE/REVIEW candidate |
+| `disabled` | REVIEW, needs more evidence | REVIEW, needs more evidence |
 | `mocked-subject` | reject | reject |
-| `new-test-unchecked`, shape `none` | FINALIZE/REVIEW candidate | FINALIZE/REVIEW candidate |
+| `new-test-unchecked`, shape `none` | REVIEW, needs more evidence | REVIEW, needs more evidence |
 | `new-test-unchecked`, shape `tautology-only` | reject | reject |
 
 Why, and the choices left open:
@@ -726,10 +804,10 @@ Why, and the choices left open:
   `N` is 2.9. With a guard that throws counted as a check, TS `N` is 2.6.
   Rule 4 still fails through the guard and swallow routes, so the narrowed
   candidate is at most REVIEW, and it needs its own registered sample.
-- **`all-checks-removed`: FINALIZE/REVIEW candidate.** Rules 1 to 3 hold, and
-  the sample holds no finding. Rule 4 fails through a guarded check, a
+- **`all-checks-removed`: REVIEW, needs more evidence.** Rules 1 to 3 hold,
+  and the sample holds no finding over 301 changed tests. Rule 4 fails through a guarded check, a
   swallowed check and a shadowing fake. The repair runs were 6 of 6 correct.
-- **`weakened`: FINALIZE/REVIEW candidate in Rust, reject in TS.** In TS, `N`
+- **`weakened`: REVIEW, needs more evidence, in Rust. Reject in TS.** In TS, `N`
   is 5.1, from a project's own matcher read as `partial`. Choice: an unknown
   matcher read as unresolved gives TS no finding in the sample. The Rust
   sample holds no finding, so the Rust precision is unknown, not high. Most
@@ -743,11 +821,10 @@ Why, and the choices left open:
   because the sample produced no site of this candidate at all.
 - **`expected-changed`: NOTE/evidence only.** The plant and an intended change
   are the same diff under two tasks, and the `ts-mirror-note` runs show it:
-  the task asked for 60, and all three agents rightly kept the change. Choice:
-  the NOTE rule does not read `N`, and TS `N` is 482, from one release merge.
-  A person may cap the evidence per change, keep it only for changes under a
-  size, or reject it.
-- **`disabled`: FINALIZE/REVIEW candidate.** Rules 1 to 3 hold, and the
+  the task asked for 60, and all three agents rightly kept the change. The
+  NOTE rule does not read `N`. With literals paired on one line, `N` is 1.4
+  in Rust and 5.1 in TS, all intended changes.
+- **`disabled`: REVIEW, needs more evidence.** Rules 1 to 3 hold, and the
   sample holds no finding outside the `escapes` tag. Rule 4 fails through a
   constant in a variable (`skipIf(slow)`), a feature that is never set
   (`cfg(feature = "slow-tests")`) and a conditional return. The repair runs
@@ -761,13 +838,13 @@ Why, and the choices left open:
   two console spies. Choice: a spy counts only when its object is a namespace
   imported from the test file's subject module, which gives no finding in the
   sample.
-- **`new-test-unchecked`: FINALIZE/REVIEW candidate for shape `none`, reject
-  for shape `tautology-only`.** On the registered corpus, rules 1 and 2 hold
+- **`new-test-unchecked`: REVIEW, needs more evidence, for shape `none`.
+  Reject for shape `tautology-only`.** On the registered corpus, rules 1 and 2 hold
   for both shapes. `neg-determinism`, added after the sample, is a finding of
   shape `tautology-only`, so rule 2 fails for that shape, through syntax that
   the predicate does not read (an operand that calls a function). Both Rust
   sample findings are that shape, so shape `none` alone has `N` = 0 in both
-  languages, and the sample tells nothing about its precision. The repair
+  languages over 1,782 new tests, and the sample holds no real positive. The repair
   runs were 5 of 6 correct and 1 unresolved. A smoke title, `.unwrap()` or an
   existence check removes the finding at the plant's cost (section 4), so
   rule 4 fails. Choice: read equal texts as a tautology only when no operand
@@ -784,14 +861,21 @@ comes from a different source.
 
 ## 9. Smallest implementation boundary
 
-If a person admits the REVIEW candidates, the smallest boundary is one fact
-per test and three reads of it:
+If a person admits the REVIEW candidates once they have more evidence, the
+smallest boundary is one fact per test and three reads of it. It has one
+prerequisite: test extraction shared with `inventory` that reads what the
+research read, Rust tests in inline `#[cfg(test)]` modules and the
+`#[rstest]`, `#[test_case]` and `#[quickcheck]` attributes among them.
+`inventory` reads neither today, so attaching the fact only to the sites
+`inventory` keys would miss cases of the planted corpus.
 
-1. **The fact.** For each test site that `inventory` already keys, the list of
+1. **The fact.** For each test that the shared extraction reads, the list of
    its checks: family, level, error flag, and the actual and expected texts.
    Rust needs a reader for the arguments of assertion macros. TypeScript needs
    the `expect(...)` matcher table and the `node:assert` names. Helpers
-   resolve in the same file only.
+   resolve in the same file only. A call to a name imported from a
+   test-support module is an unresolved helper, and a test that holds one is
+   not judged.
 2. **`all-checks-removed`**: a test that both trees hold, observable at the
    base and not in the working tree.
 3. **`new-test-unchecked`**: a test that only the working tree holds, with a
@@ -907,11 +991,11 @@ plants with an obvious repair, so the runs do not show resistance in real
 work.
 
 **UX.** A REVIEW finding interrupts no stop. On the sample, the three REVIEW
-candidates admitted in both languages produced no finding in 190 changes. The
-two Rust determinism tests were shape `tautology-only`, which section 8
-rejects. So a person would have been asked about nothing. `expected-changed` would have
-asked about 189 values, 186 of them from one release merge. That is why it is
-evidence only, and why section 8 names a cap.
+candidates in both languages produced no finding in 190 changes. The two
+Rust determinism tests were shape `tautology-only`, which section 8 rejects.
+So a person would have been asked about nothing. `expected-changed` would
+have shown 3 values, all intended. The repair runs used blocking copy, so
+they say nothing about how agents or people treat a REVIEW item.
 
 **DX.** A developer who disputes a finding needs five facts, and an eventual
 `klin explain <finding-id>` would print them:
@@ -936,9 +1020,12 @@ evidence only, and why section 8 names a cap.
 - The prototype is not klin. Its known gaps:
   - it removes whitespace inside string literals when it compares texts.
   - it reads a project's own matcher as `partial`.
-  - it does not read `proptest!` bodies or Chai property assertions.
-  - its `mirrors-production` rule pairs every removed literal with every added
-    one, which a large merge saturates.
+  - it does not read `proptest!` bodies or Chai property assertions. It counts
+    them as unknown.
+  - its `mirrors-production` rule pairs literals only on one changed line, so
+    it misses a constant that moved to another line as it changed.
+- CI does not build the prototype or run `probe.sh --check`. The corpus is
+  guarded only by a manual run.
   - its Rust production reader cuts a file at its first `#[cfg(test)]` line.
 - The repair cases are one-file plants with one obvious repair, and the
   messages are drafts, not klin output. Every message except the NOTE used the

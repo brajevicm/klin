@@ -1,224 +1,224 @@
-ordinary	firecrawl/pdf-inspector	ef52f77850	0	-	0	0	0	0	0	0
-ordinary	firecrawl/pdf-inspector	bf6800920a	3	rust	493	500	7	0	0	0
-ordinary	firecrawl/pdf-inspector	3400b4725e	1	rust	25	26	1	0	0	0
-ordinary	firecrawl/pdf-inspector	c48b7cacc7	0	-	0	0	0	0	0	0
-ordinary	firecrawl/pdf-inspector	ac275044ed	2	rust	386	393	7	0	0	0
-ordinary	firecrawl/pdf-inspector	e1797b1f48	5	rust	530	542	12	0	0	0
-ordinary	firecrawl/pdf-inspector	9a055d5f3c	7	rust	611	615	18	0	0	0
-ordinary	firecrawl/pdf-inspector	2dbd16b3ea	0	-	0	0	0	0	0	0
-ordinary	firecrawl/pdf-inspector	f06bb34075	2	rust	38	39	1	0	0	0
-ordinary	firecrawl/pdf-inspector	f856d3481d	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	de137ce728	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	8f83ab0c0d	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	c9eb295ef0	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	89d7bad71e	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	fcd059f423	10	rust	6	6	0	0	0	0
-ordinary	gfx-rs/wgpu	5a7601baf4	4	rust	217	219	2	0	0	0
-ordinary	gfx-rs/wgpu	2c3e503258	7	rust	5	5	0	0	0	0
-ordinary	gfx-rs/wgpu	babefc0d26	0	-	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	1122932c10	2	rust	0	0	0	0	0	0
-ordinary	gfx-rs/wgpu	988891de66	2	rust	0	0	0	0	0	0
-ordinary	louis-e/arnis	daee5a7bff	28	rust	175	190	23	0	0	0
-ordinary	louis-e/arnis	d4852aa3d7	21	rust	238	250	30	0	0	0
-ordinary	louis-e/arnis	641c2100df	4	rust	26	31	5	0	0	0
-ordinary	louis-e/arnis	7e9a4344c5	29	rust	266	324	65	0	0	0
-ordinary	louis-e/arnis	69811f59d2	0	-	0	0	0	0	0	0
-ordinary	louis-e/arnis	788d5e9ca9	13	rust	111	123	12	0	0	0
-ordinary	louis-e/arnis	e7cdeb99e2	21	rust	101	120	19	0	0	0
-ordinary	louis-e/arnis	fc19146b3f	8	rust	100	115	16	0	0	0
-ordinary	louis-e/arnis	80553b383f	4	rust	99	124	31	0	0	0
-ordinary	louis-e/arnis	a967f6570c	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	26fe9c1a67	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	a9b8d89f53	2	rust	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	69334ab873	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	6908895b4a	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	2f180042d8	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	fa087624a7	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	4ad0a62008	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	dd78666131	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	83df1db2c7	0	-	0	0	0	0	0	0
-ordinary	eythaann/Seelen-UI	8500c7f64c	0	-	0	0	0	0	0	0
-ordinary	denisidoro/navi	7389f9544b	1	rust	0	0	0	0	0	0
-ordinary	denisidoro/navi	17fb318a77	0	-	0	0	0	0	0	0
-ordinary	denisidoro/navi	f7330b9ad5	2	rust	4	7	3	0	0	0
-ordinary	denisidoro/navi	a171c2938d	1	rust	0	0	0	0	0	0
-ordinary	denisidoro/navi	9e6e8da6f5	0	-	0	0	0	0	0	0
-ordinary	denisidoro/navi	51060f94f9	0	-	0	0	0	0	0	0
-ordinary	denisidoro/navi	dc7e18f542	1	rust	0	0	0	0	0	0
-ordinary	denisidoro/navi	cc40723617	1	rust	4	4	0	0	0	0
-ordinary	denisidoro/navi	75eb060927	6	rust	0	0	0	0	0	0
-ordinary	denisidoro/navi	9973dc8857	1	rust	1	4	3	0	0	0
-ordinary	refactoringhq/tolaria	04030c3e0a	2	ts	0	0	0	9	10	1
-ordinary	refactoringhq/tolaria	d9e02a1679	2	ts	0	0	0	0	0	0
-ordinary	refactoringhq/tolaria	44740e4ae1	7	ts	0	0	0	67	71	14
-ordinary	refactoringhq/tolaria	7435ef8901	0	-	0	0	0	0	0	0
-ordinary	refactoringhq/tolaria	d0e41fe6ec	4	rust	50	52	4	0	0	0
-ordinary	refactoringhq/tolaria	83e0c2b860	0	-	0	0	0	0	0	0
-ordinary	refactoringhq/tolaria	f27bd5a33a	2	ts	0	0	0	6	3	3
-ordinary	refactoringhq/tolaria	0987b82e0a	1	rust	32	32	0	0	0	0
-ordinary	refactoringhq/tolaria	9c1bd1ed36	0	-	0	0	0	0	0	0
-ordinary	refactoringhq/tolaria	ebbcef5a67	2	rust	0	1	1	0	0	0
-ordinary	whyour/qinglong	44129ca088	1	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	def4917447	0	-	0	0	0	0	0	0
-ordinary	whyour/qinglong	bc0f35e3f7	0	-	0	0	0	0	0	0
-ordinary	whyour/qinglong	f168efcdae	9	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	bf63425805	4	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	a8310e7d51	4	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	a67d44cde5	0	-	0	0	0	0	0	0
-ordinary	whyour/qinglong	6c487018c2	1	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	801a71d740	74	ts	0	0	0	0	0	0
-ordinary	whyour/qinglong	f051135fc4	1	ts	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	c9fcb07e17	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	f660c1abe7	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	4bb0b7ad64	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	37f700eb4c	3	ts	0	0	0	207	210	3
-ordinary	apollographql/apollo-client	d4f8770120	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	d3c455ffc0	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	0c925a4348	164	ts	0	0	0	727	1417	801
-ordinary	apollographql/apollo-client	70e3a11d93	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	79e7c60fab	0	-	0	0	0	0	0	0
-ordinary	apollographql/apollo-client	54084bc22e	6	ts	0	0	0	100	100	0
-ordinary	Open-Dev-Society/OpenStock	0248d5d928	0	-	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	391e72d780	2	ts	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	87df76a2ce	2	ts	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	130a69734d	4	ts	0	0	0	44	47	4
-ordinary	Open-Dev-Society/OpenStock	e844ac413c	13	ts	0	0	0	8	9	1
-ordinary	Open-Dev-Society/OpenStock	1819bdf8a5	0	-	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	573f9bac85	1	ts	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	75a9ebb6f5	1	ts	0	0	0	0	0	0
-ordinary	Open-Dev-Society/OpenStock	3cf500ad4c	82	ts	0	0	0	44	60	18
-ordinary	Open-Dev-Society/OpenStock	eac13c65be	0	-	0	0	0	0	0	0
-ordinary	mountain-loop/yaak	7f30253616	4	ts	0	0	0	4	19	15
-ordinary	mountain-loop/yaak	6c2a18d506	1	ts	0	0	0	0	0	0
-ordinary	mountain-loop/yaak	0a57d8eb61	2	ts	0	0	0	8	27	19
-ordinary	mountain-loop/yaak	411aa262c7	3	ts	0	0	0	10	3	13
-ordinary	mountain-loop/yaak	34815f327a	11	rust,ts	43	49	6	5	20	15
-ordinary	mountain-loop/yaak	6fc43a60e2	18	rust,ts	58	69	13	28	69	41
-ordinary	mountain-loop/yaak	23d369d84e	6	rust,ts	26	29	5	0	14	14
-ordinary	mountain-loop/yaak	6e7f23a778	0	-	0	0	0	0	0	0
-ordinary	mountain-loop/yaak	b03c41b767	6	rust	3	3	0	0	0	0
-ordinary	mountain-loop/yaak	a0d71eb486	0	-	0	0	0	0	0	0
-tests	firecrawl/pdf-inspector	bf6800920a	3	rust	493	500	7	0	0	0
-tests	firecrawl/pdf-inspector	3400b4725e	1	rust	25	26	1	0	0	0
-tests	firecrawl/pdf-inspector	ac275044ed	2	rust	386	393	7	0	0	0
-tests	firecrawl/pdf-inspector	e1797b1f48	5	rust	530	542	12	0	0	0
-tests	firecrawl/pdf-inspector	9a055d5f3c	7	rust	611	615	18	0	0	0
-tests	firecrawl/pdf-inspector	f06bb34075	2	rust	38	39	1	0	0	0
-tests	firecrawl/pdf-inspector	e24bc5851a	40	rust	1442	1469	28	0	0	0
-tests	firecrawl/pdf-inspector	1e0bcd3e22	3	rust	422	426	4	0	0	0
-tests	firecrawl/pdf-inspector	d29de3a401	5	rust	432	475	43	0	0	0
-tests	firecrawl/pdf-inspector	6f24415c7c	6	rust	211	217	6	0	0	0
-tests	gfx-rs/wgpu	fcd059f423	10	rust	6	6	0	0	0	0
-tests	gfx-rs/wgpu	5a7601baf4	4	rust	217	219	2	0	0	0
-tests	gfx-rs/wgpu	67299ee4a6	1	rust	12	12	0	0	0	0
-tests	gfx-rs/wgpu	74e9e08cd3	2	rust	10	10	1	0	0	0
-tests	gfx-rs/wgpu	6293e039ca	2	rust	12	12	0	0	0	0
-tests	gfx-rs/wgpu	b8bfc58e81	2	rust	192	192	0	0	0	0
-tests	gfx-rs/wgpu	103a70e581	4	rust	182	193	11	0	0	0
-tests	gfx-rs/wgpu	2b137c1e17	1	rust	0	0	0	0	0	0
-tests	gfx-rs/wgpu	c8dc1509b9	3	rust	5	5	0	0	0	0
-tests	gfx-rs/wgpu	b9f7ddad53	3	rust	5	5	0	0	0	0
-tests	louis-e/arnis	daee5a7bff	28	rust	175	190	23	0	0	0
-tests	louis-e/arnis	d4852aa3d7	21	rust	238	250	30	0	0	0
-tests	louis-e/arnis	641c2100df	4	rust	26	31	5	0	0	0
-tests	louis-e/arnis	7e9a4344c5	29	rust	266	324	65	0	0	0
-tests	louis-e/arnis	788d5e9ca9	13	rust	111	123	12	0	0	0
-tests	louis-e/arnis	fc19146b3f	8	rust	100	115	16	0	0	0
-tests	louis-e/arnis	80553b383f	4	rust	99	124	31	0	0	0
-tests	louis-e/arnis	45c735fb1d	48	rust	189	560	372	0	0	0
-tests	louis-e/arnis	a432b62bac	2	rust	8	26	18	0	0	0
-tests	louis-e/arnis	fe619c8c8a	21	rust	154	202	50	0	0	0
-tests	eythaann/Seelen-UI	a9b8d89f53	2	rust	0	0	0	0	0	0
-tests	eythaann/Seelen-UI	531172767b	2	rust	0	0	0	0	0	0
-tests	eythaann/Seelen-UI	b057258671	18	rust	3	3	0	0	0	0
-tests	eythaann/Seelen-UI	4eb01e6e8c	1	rust	4	5	1	0	0	0
-tests	eythaann/Seelen-UI	5b2a20d1fd	4	rust,ts	0	0	0	0	0	0
-tests	eythaann/Seelen-UI	37f516d3ac	3	rust	0	0	0	0	0	0
-tests	eythaann/Seelen-UI	c3baf99a14	7	rust	11	10	11	0	0	0
-tests	eythaann/Seelen-UI	d6e9360015	10	rust,ts	0	11	11	0	0	0
-tests	eythaann/Seelen-UI	835358ade2	9	rust,ts	0	0	0	0	0	0
-tests	eythaann/Seelen-UI	e39e75d009	1	rust	0	4	4	0	0	0
-tests	denisidoro/navi	f7330b9ad5	2	rust	4	7	3	0	0	0
-tests	denisidoro/navi	9973dc8857	1	rust	1	4	3	0	0	0
-tests	denisidoro/navi	1ac218cb1e	8	rust	7	12	5	0	0	0
-tests	denisidoro/navi	b560ba572e	13	rust	3	4	1	0	0	0
-tests	denisidoro/navi	6f316ec7eb	1	rust	3	3	0	0	0	0
-tests	denisidoro/navi	8cf9c96e54	13	rust	14	14	0	0	0	0
-tests	denisidoro/navi	7abdb057e6	6	rust	4	0	4	0	0	0
-tests	denisidoro/navi	13fe757a8a	1	rust	0	0	0	0	0	0
-tests	denisidoro/navi	d2b0935e9b	1	rust	7	7	1	0	0	0
-tests	denisidoro/navi	9d862344e6	16	rust	1	5	4	0	0	0
-tests	refactoringhq/tolaria	04030c3e0a	2	ts	0	0	0	9	10	1
-tests	refactoringhq/tolaria	44740e4ae1	7	ts	0	0	0	67	71	14
-tests	refactoringhq/tolaria	d0e41fe6ec	4	rust	50	52	4	0	0	0
-tests	refactoringhq/tolaria	f27bd5a33a	2	ts	0	0	0	6	3	3
-tests	refactoringhq/tolaria	ebbcef5a67	2	rust	0	1	1	0	0	0
-tests	refactoringhq/tolaria	7da2f991ec	3	ts	0	0	0	15	17	2
-tests	refactoringhq/tolaria	f7d86c9912	8	ts	0	0	0	21	23	4
-tests	refactoringhq/tolaria	a9dc811036	2	ts	0	0	0	2	3	1
-tests	refactoringhq/tolaria	1bfde90bd4	1	ts	0	0	0	4	4	3
-tests	refactoringhq/tolaria	1ae4aef353	3	ts	0	0	0	28	30	2
-tests	apollographql/apollo-client	37f700eb4c	3	ts	0	0	0	207	210	3
-tests	apollographql/apollo-client	0c925a4348	164	ts	0	0	0	727	1417	801
-tests	apollographql/apollo-client	56ca81b409	2	ts	0	0	0	9	10	1
-tests	apollographql/apollo-client	d4f0771976	4	ts	0	0	0	273	284	12
-tests	apollographql/apollo-client	2b39cc8b2e	5	ts	0	0	0	137	146	9
-tests	apollographql/apollo-client	2f383e7e48	2	ts	0	0	0	29	31	2
-tests	apollographql/apollo-client	a406cc9669	2	ts	0	0	0	4	5	1
-tests	apollographql/apollo-client	abd07814bb	2	ts	0	0	0	60	61	1
-tests	apollographql/apollo-client	e4df809e87	2	ts	0	0	0	66	68	2
-tests	apollographql/apollo-client	c207b88602	2	ts	0	0	0	141	144	3
-tests	Open-Dev-Society/OpenStock	130a69734d	4	ts	0	0	0	44	47	4
-tests	Open-Dev-Society/OpenStock	e844ac413c	13	ts	0	0	0	8	9	1
-tests	Open-Dev-Society/OpenStock	3cf500ad4c	82	ts	0	0	0	44	60	18
-tests	Open-Dev-Society/OpenStock	05cf71bc8a	3	ts	0	0	0	28	28	4
-tests	mountain-loop/yaak	7f30253616	4	ts	0	0	0	4	19	15
-tests	mountain-loop/yaak	0a57d8eb61	2	ts	0	0	0	8	27	19
-tests	mountain-loop/yaak	411aa262c7	3	ts	0	0	0	10	3	13
-tests	mountain-loop/yaak	34815f327a	11	rust,ts	43	49	6	5	20	15
-tests	mountain-loop/yaak	6fc43a60e2	18	rust,ts	58	69	13	28	69	41
-tests	mountain-loop/yaak	23d369d84e	6	rust,ts	26	29	5	0	14	14
-tests	mountain-loop/yaak	aa10c44a45	62	rust,ts	40	52	14	0	42	42
-tests	mountain-loop/yaak	ab616fd915	10	rust,ts	0	8	8	0	6	6
-tests	mountain-loop/yaak	ae518dfb4c	2	ts	0	0	0	6	7	1
-tests	mountain-loop/yaak	06142d007a	18	rust,ts	3	7	6	0	0	0
-agent	obi1kenobi/cargo-semver-checks	cddf21b7c6	1	rust	0	1	1	0	0	0
-agent	mediar-ai/terminator	96539ed38f	4	rust	1	1	0	0	0	0
-agent	FuelLabs/sway	ec7bb2674b	1	rust	0	0	0	0	0	0
-agent	GlareDB/glaredb	9133c0d205	10	rust	0	0	0	0	0	0
-agent	jdx/mise	bfc02629b4	5	rust,ts	6	6	0	0	0	0
-agent	gluesql/glues	136ed62a4c	9	rust	0	1	1	0	0	0
-agent	nyx-space/anise	9ab75de52e	5	rust	0	0	0	0	0	0
-agent	mitsuhiko/insta	00ec1b6582	1	rust	1	1	0	0	0	0
-agent	vinhnx/VTCode	b03494ecc5	1	rust	0	9	9	0	0	0
-agent	cablehead/xs	4915da6b27	2	rust	6	6	2	0	0	0
-agent	anthropics/claude-code	6983942b8b	19	ts	0	0	0	0	0	0
-agent	giselles-ai/giselle	b05a750ffc	6	ts	0	0	0	17	17	1
-agent	karakeep-app/karakeep	cea4d13e12	5	ts	0	0	0	0	0	0
-agent	lumen-notes/lumen	56e82a1352	1	ts	0	0	0	0	0	0
-agent	langgenius/webapp-conversation	c4b8029702	18	ts	0	0	0	0	0	0
-agent	PV-Bhat/vibe-check-mcp-server	037b041f04	5	ts	0	0	0	0	13	13
-agent	tokens-studio/figma-plugin	3f044c52ce	9	ts	0	0	0	49	54	5
-agent	recallnet/js-recall	5c53be67ee	3	ts	0	0	0	0	0	0
-agent	Mail-0/Zero	d2ab0370a2	1	ts	0	0	0	0	0	0
-agent	jeremyckahn/chitchatter	3bd71178b7	1	ts	0	0	0	0	0	0
-human	obi1kenobi/cargo-semver-checks	04c79891e8	2	rust	0	0	0	0	0	0
-human	mediar-ai/terminator	95822cb74b	1	rust	0	0	0	0	0	0
-human	FuelLabs/sway	b73f8198ce	34	rust	63	63	2	0	0	0
-human	GlareDB/glaredb	a738fb16c3	1	rust	0	0	0	0	0	0
-human	jdx/mise	25e224d227	4	rust	9	9	0	0	0	0
-human	gluesql/glues	2664fee8d4	1	rust	0	0	0	0	0	0
-human	nyx-space/anise	b28504960e	4	rust	2	2	0	0	0	0
-human	mitsuhiko/insta	77407c341f	10	rust	105	105	29	0	0	0
-human	vinhnx/VTCode	96febe2d70	17	rust	45	46	12	0	0	0
-human	cablehead/xs	a06353b855	2	rust	7	8	1	0	0	0
-human	anthropics/claude-code	e0ac0b9c05	5	ts	0	0	0	0	6	6
-human	giselles-ai/giselle	498e1ec493	1	ts	0	0	0	0	0	0
-human	karakeep-app/karakeep	8e16e27dd1	20	ts	0	0	0	7	7	0
-human	lumen-notes/lumen	eb9ff3cc65	4	ts	0	0	0	0	0	0
-human	langgenius/webapp-conversation	20f7412d5d	8	ts	0	0	0	0	0	0
-human	PV-Bhat/vibe-check-mcp-server	6642037772	1	ts	0	0	0	0	0	0
-human	tokens-studio/figma-plugin	b53ab740ec	12	ts	0	0	0	0	0	0
-human	recallnet/js-recall	f322c44df3	4	ts	0	0	0	95	95	1
-human	Mail-0/Zero	fe63ac7df8	11	ts	0	0	0	0	0	0
-human	jeremyckahn/chitchatter	b64f5ff132	13	ts	0	0	0	5	5	0
+ordinary	firecrawl/pdf-inspector	ef52f77850	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	bf6800920a	3	rust	493	500	7	7	4	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	3400b4725e	1	rust	25	26	1	1	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	c48b7cacc7	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	ac275044ed	2	rust	386	393	7	7	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	e1797b1f48	5	rust	530	542	12	12	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	9a055d5f3c	7	rust	611	615	18	4	14	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	2dbd16b3ea	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	f06bb34075	2	rust	38	39	1	1	0	0	0	0	0	0	0	0
+ordinary	firecrawl/pdf-inspector	f856d3481d	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	de137ce728	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	8f83ab0c0d	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	c9eb295ef0	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	89d7bad71e	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	fcd059f423	10	rust	6	6	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	5a7601baf4	4	rust	217	219	2	2	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	2c3e503258	7	rust	5	5	0	0	2	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	babefc0d26	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	1122932c10	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	gfx-rs/wgpu	988891de66	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	daee5a7bff	28	rust	175	190	23	19	2	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	d4852aa3d7	21	rust	238	250	30	20	4	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	641c2100df	4	rust	26	31	5	5	1	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	7e9a4344c5	29	rust	266	324	74	60	9	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	69811f59d2	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	788d5e9ca9	13	rust	111	123	12	12	2	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	e7cdeb99e2	21	rust	101	120	19	19	0	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	fc19146b3f	8	rust	100	115	16	15	1	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	80553b383f	4	rust	99	124	31	27	2	0	0	0	0	0	0	0
+ordinary	louis-e/arnis	a967f6570c	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	26fe9c1a67	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	a9b8d89f53	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	69334ab873	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	6908895b4a	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	2f180042d8	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	fa087624a7	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	4ad0a62008	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	dd78666131	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	83df1db2c7	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	eythaann/Seelen-UI	8500c7f64c	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	7389f9544b	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	17fb318a77	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	f7330b9ad5	2	rust	4	7	3	3	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	a171c2938d	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	9e6e8da6f5	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	51060f94f9	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	dc7e18f542	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	cc40723617	1	rust	4	4	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	75eb060927	6	rust	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	denisidoro/navi	9973dc8857	1	rust	1	4	3	3	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	04030c3e0a	2	ts	0	0	0	0	0	0	9	10	1	1	0	0
+ordinary	refactoringhq/tolaria	d9e02a1679	2	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	44740e4ae1	7	ts	0	0	0	0	0	0	67	71	14	6	11	0
+ordinary	refactoringhq/tolaria	7435ef8901	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	d0e41fe6ec	4	rust	50	52	4	3	1	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	83e0c2b860	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	f27bd5a33a	2	ts	0	0	0	0	0	0	6	3	3	0	0	0
+ordinary	refactoringhq/tolaria	0987b82e0a	1	rust	32	32	0	0	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	9c1bd1ed36	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	refactoringhq/tolaria	ebbcef5a67	2	rust	0	1	1	1	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	44129ca088	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	def4917447	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	bc0f35e3f7	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	f168efcdae	9	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	bf63425805	4	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	a8310e7d51	4	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	a67d44cde5	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	6c487018c2	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	801a71d740	74	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	whyour/qinglong	f051135fc4	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	c9fcb07e17	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	f660c1abe7	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	4bb0b7ad64	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	37f700eb4c	3	ts	0	0	0	0	0	0	207	210	3	3	0	0
+ordinary	apollographql/apollo-client	d4f8770120	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	d3c455ffc0	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	0c925a4348	164	ts	0	0	0	0	0	0	727	1417	801	694	104	0
+ordinary	apollographql/apollo-client	70e3a11d93	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	79e7c60fab	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	apollographql/apollo-client	54084bc22e	6	ts	0	0	0	0	0	0	100	100	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	0248d5d928	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	391e72d780	2	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	87df76a2ce	2	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	130a69734d	4	ts	0	0	0	0	0	0	44	47	4	3	1	0
+ordinary	Open-Dev-Society/OpenStock	e844ac413c	13	ts	0	0	0	0	0	0	8	9	1	1	0	0
+ordinary	Open-Dev-Society/OpenStock	1819bdf8a5	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	573f9bac85	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	75a9ebb6f5	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	Open-Dev-Society/OpenStock	3cf500ad4c	82	ts	0	0	0	0	0	0	44	60	18	17	0	0
+ordinary	Open-Dev-Society/OpenStock	eac13c65be	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	mountain-loop/yaak	7f30253616	4	ts	0	0	0	0	0	0	4	19	15	15	0	0
+ordinary	mountain-loop/yaak	6c2a18d506	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	mountain-loop/yaak	0a57d8eb61	2	ts	0	0	0	0	0	0	8	27	19	19	0	0
+ordinary	mountain-loop/yaak	411aa262c7	3	ts	0	0	0	0	0	0	10	3	13	3	0	0
+ordinary	mountain-loop/yaak	34815f327a	11	rust,ts	43	49	6	6	0	0	5	20	15	15	0	0
+ordinary	mountain-loop/yaak	6fc43a60e2	18	rust,ts	58	69	13	11	2	0	28	69	41	41	0	0
+ordinary	mountain-loop/yaak	23d369d84e	6	rust,ts	26	29	5	3	2	0	0	14	14	14	0	0
+ordinary	mountain-loop/yaak	6e7f23a778	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+ordinary	mountain-loop/yaak	b03c41b767	6	rust	3	3	0	0	0	0	0	0	0	0	0	0
+ordinary	mountain-loop/yaak	a0d71eb486	0	-	0	0	0	0	0	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	bf6800920a	3	rust	493	500	7	7	4	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	3400b4725e	1	rust	25	26	1	1	0	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	ac275044ed	2	rust	386	393	7	7	0	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	e1797b1f48	5	rust	530	542	12	12	0	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	9a055d5f3c	7	rust	611	615	18	4	14	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	f06bb34075	2	rust	38	39	1	1	0	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	e24bc5851a	40	rust	1442	1469	28	27	23	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	1e0bcd3e22	3	rust	422	426	4	4	1	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	d29de3a401	5	rust	432	475	43	43	4	0	0	0	0	0	0	0
+tests	firecrawl/pdf-inspector	6f24415c7c	6	rust	211	217	6	6	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	fcd059f423	10	rust	6	6	0	0	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	5a7601baf4	4	rust	217	219	2	2	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	67299ee4a6	1	rust	12	12	0	0	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	74e9e08cd3	2	rust	10	10	1	0	5	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	6293e039ca	2	rust	12	12	0	0	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	b8bfc58e81	2	rust	192	192	0	0	1	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	103a70e581	4	rust	182	193	11	11	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	2b137c1e17	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	c8dc1509b9	3	rust	5	5	0	0	0	0	0	0	0	0	0	0
+tests	gfx-rs/wgpu	b9f7ddad53	3	rust	5	5	0	0	0	0	0	0	0	0	0	0
+tests	louis-e/arnis	daee5a7bff	28	rust	175	190	23	19	2	0	0	0	0	0	0	0
+tests	louis-e/arnis	d4852aa3d7	21	rust	238	250	30	20	4	0	0	0	0	0	0	0
+tests	louis-e/arnis	641c2100df	4	rust	26	31	5	5	1	0	0	0	0	0	0	0
+tests	louis-e/arnis	7e9a4344c5	29	rust	266	324	74	60	9	0	0	0	0	0	0	0
+tests	louis-e/arnis	788d5e9ca9	13	rust	111	123	12	12	2	0	0	0	0	0	0	0
+tests	louis-e/arnis	fc19146b3f	8	rust	100	115	16	15	1	0	0	0	0	0	0	0
+tests	louis-e/arnis	80553b383f	4	rust	99	124	31	27	2	0	0	0	0	0	0	0
+tests	louis-e/arnis	45c735fb1d	48	rust	189	560	372	371	4	0	0	0	0	0	0	0
+tests	louis-e/arnis	a432b62bac	2	rust	8	26	18	18	0	0	0	0	0	0	0	0
+tests	louis-e/arnis	fe619c8c8a	21	rust	154	202	55	48	10	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	a9b8d89f53	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	531172767b	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	b057258671	18	rust	3	3	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	4eb01e6e8c	1	rust	4	5	1	1	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	5b2a20d1fd	4	rust,ts	0	0	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	37f516d3ac	3	rust	0	0	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	c3baf99a14	7	rust	11	10	11	5	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	d6e9360015	10	rust,ts	0	11	11	11	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	835358ade2	9	rust,ts	0	0	0	0	0	0	0	0	0	0	0	0
+tests	eythaann/Seelen-UI	e39e75d009	1	rust	0	4	4	4	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	f7330b9ad5	2	rust	4	7	3	3	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	9973dc8857	1	rust	1	4	3	3	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	1ac218cb1e	8	rust	7	12	5	5	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	b560ba572e	13	rust	3	4	1	1	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	6f316ec7eb	1	rust	3	3	0	0	2	0	0	0	0	0	0	0
+tests	denisidoro/navi	8cf9c96e54	13	rust	14	14	0	0	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	7abdb057e6	6	rust	4	0	4	0	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	13fe757a8a	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+tests	denisidoro/navi	d2b0935e9b	1	rust	7	7	1	0	1	0	0	0	0	0	0	0
+tests	denisidoro/navi	9d862344e6	16	rust	1	5	4	4	0	0	0	0	0	0	0	0
+tests	refactoringhq/tolaria	04030c3e0a	2	ts	0	0	0	0	0	0	9	10	1	1	0	0
+tests	refactoringhq/tolaria	44740e4ae1	7	ts	0	0	0	0	0	0	67	71	14	6	11	0
+tests	refactoringhq/tolaria	d0e41fe6ec	4	rust	50	52	4	3	1	0	0	0	0	0	0	0
+tests	refactoringhq/tolaria	f27bd5a33a	2	ts	0	0	0	0	0	0	6	3	3	0	0	0
+tests	refactoringhq/tolaria	ebbcef5a67	2	rust	0	1	1	1	0	0	0	0	0	0	0	0
+tests	refactoringhq/tolaria	7da2f991ec	3	ts	0	0	0	0	0	0	15	17	2	2	0	0
+tests	refactoringhq/tolaria	f7d86c9912	8	ts	0	0	0	0	0	0	21	23	4	2	5	0
+tests	refactoringhq/tolaria	a9dc811036	2	ts	0	0	0	0	0	0	2	3	1	1	0	0
+tests	refactoringhq/tolaria	1bfde90bd4	1	ts	0	0	0	0	0	0	2	2	1	0	1	0
+tests	refactoringhq/tolaria	1ae4aef353	3	ts	0	0	0	0	0	0	28	30	2	2	0	0
+tests	apollographql/apollo-client	37f700eb4c	3	ts	0	0	0	0	0	0	207	210	3	3	0	0
+tests	apollographql/apollo-client	0c925a4348	164	ts	0	0	0	0	0	0	727	1417	801	694	104	0
+tests	apollographql/apollo-client	56ca81b409	2	ts	0	0	0	0	0	0	9	10	1	1	0	0
+tests	apollographql/apollo-client	d4f0771976	4	ts	0	0	0	0	0	0	273	284	12	11	4	0
+tests	apollographql/apollo-client	2b39cc8b2e	5	ts	0	0	0	0	0	0	137	146	9	9	0	0
+tests	apollographql/apollo-client	2f383e7e48	2	ts	0	0	0	0	0	0	29	31	2	2	0	0
+tests	apollographql/apollo-client	a406cc9669	2	ts	0	0	0	0	0	0	4	5	1	1	0	0
+tests	apollographql/apollo-client	abd07814bb	2	ts	0	0	0	0	0	0	60	61	1	1	0	0
+tests	apollographql/apollo-client	e4df809e87	2	ts	0	0	0	0	0	0	66	68	2	2	0	0
+tests	apollographql/apollo-client	c207b88602	2	ts	0	0	0	0	0	0	141	144	3	3	0	0
+tests	Open-Dev-Society/OpenStock	130a69734d	4	ts	0	0	0	0	0	0	44	47	4	3	1	0
+tests	Open-Dev-Society/OpenStock	e844ac413c	13	ts	0	0	0	0	0	0	8	9	1	1	0	0
+tests	Open-Dev-Society/OpenStock	3cf500ad4c	82	ts	0	0	0	0	0	0	44	60	18	17	0	0
+tests	Open-Dev-Society/OpenStock	05cf71bc8a	3	ts	0	0	0	0	0	0	28	28	4	1	2	0
+tests	mountain-loop/yaak	7f30253616	4	ts	0	0	0	0	0	0	4	19	15	15	0	0
+tests	mountain-loop/yaak	0a57d8eb61	2	ts	0	0	0	0	0	0	8	27	19	19	0	0
+tests	mountain-loop/yaak	411aa262c7	3	ts	0	0	0	0	0	0	10	3	13	3	0	0
+tests	mountain-loop/yaak	34815f327a	11	rust,ts	43	49	6	6	0	0	5	20	15	15	0	0
+tests	mountain-loop/yaak	6fc43a60e2	18	rust,ts	58	69	13	11	2	0	28	69	41	41	0	0
+tests	mountain-loop/yaak	23d369d84e	6	rust,ts	26	29	5	3	2	0	0	14	14	14	0	0
+tests	mountain-loop/yaak	aa10c44a45	62	rust,ts	40	52	14	13	0	0	0	42	42	42	0	0
+tests	mountain-loop/yaak	ab616fd915	10	rust,ts	0	8	8	8	0	0	0	6	6	6	0	0
+tests	mountain-loop/yaak	ae518dfb4c	2	ts	0	0	0	0	0	0	6	7	1	1	0	0
+tests	mountain-loop/yaak	06142d007a	18	rust,ts	3	7	6	5	1	0	0	0	0	0	0	0
+agent	obi1kenobi/cargo-semver-checks	cddf21b7c6	1	rust	0	1	1	1	0	0	0	0	0	0	0	0
+agent	mediar-ai/terminator	96539ed38f	4	rust	1	1	0	0	0	0	0	0	0	0	0	0
+agent	FuelLabs/sway	ec7bb2674b	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+agent	GlareDB/glaredb	9133c0d205	10	rust	0	0	0	0	0	0	0	0	0	0	0	0
+agent	jdx/mise	bfc02629b4	5	rust,ts	6	6	0	0	0	0	0	0	0	0	0	0
+agent	gluesql/glues	136ed62a4c	9	rust	0	1	1	1	0	0	0	0	0	0	0	0
+agent	nyx-space/anise	9ab75de52e	5	rust	0	0	0	0	0	0	0	0	0	0	0	0
+agent	mitsuhiko/insta	00ec1b6582	1	rust	1	1	0	0	0	0	0	0	0	0	0	0
+agent	vinhnx/VTCode	b03494ecc5	1	rust	0	9	9	9	0	0	0	0	0	0	0	0
+agent	cablehead/xs	4915da6b27	2	rust	6	6	2	0	2	0	0	0	0	0	0	0
+agent	anthropics/claude-code	6983942b8b	19	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	giselles-ai/giselle	b05a750ffc	6	ts	0	0	0	0	0	0	17	17	1	0	1	0
+agent	karakeep-app/karakeep	cea4d13e12	5	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	lumen-notes/lumen	56e82a1352	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	langgenius/webapp-conversation	c4b8029702	18	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	PV-Bhat/vibe-check-mcp-server	037b041f04	5	ts	0	0	0	0	0	0	0	13	13	13	0	0
+agent	tokens-studio/figma-plugin	3f044c52ce	9	ts	0	0	0	0	0	0	49	54	5	5	5	0
+agent	recallnet/js-recall	5c53be67ee	3	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	Mail-0/Zero	d2ab0370a2	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+agent	jeremyckahn/chitchatter	3bd71178b7	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	obi1kenobi/cargo-semver-checks	04c79891e8	2	rust	0	0	0	0	0	0	0	0	0	0	0	0
+human	mediar-ai/terminator	95822cb74b	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+human	FuelLabs/sway	b73f8198ce	34	rust	63	63	2	0	10	0	0	0	0	0	0	0
+human	GlareDB/glaredb	a738fb16c3	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+human	jdx/mise	25e224d227	4	rust	9	9	0	0	0	0	0	0	0	0	0	0
+human	gluesql/glues	2664fee8d4	1	rust	0	0	0	0	0	0	0	0	0	0	0	0
+human	nyx-space/anise	b28504960e	4	rust	2	2	0	0	0	0	0	0	0	0	0	0
+human	mitsuhiko/insta	77407c341f	10	rust	105	105	29	0	31	0	0	0	0	0	0	0
+human	vinhnx/VTCode	96febe2d70	17	rust	45	46	12	1	16	0	0	0	0	0	0	0
+human	cablehead/xs	a06353b855	2	rust	7	8	1	1	1	0	0	0	0	0	0	0
+human	anthropics/claude-code	e0ac0b9c05	5	ts	0	0	0	0	0	0	0	6	6	6	0	0
+human	giselles-ai/giselle	498e1ec493	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	karakeep-app/karakeep	8e16e27dd1	20	ts	0	0	0	0	0	0	7	7	0	0	7	0
+human	lumen-notes/lumen	eb9ff3cc65	4	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	langgenius/webapp-conversation	20f7412d5d	8	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	PV-Bhat/vibe-check-mcp-server	6642037772	1	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	tokens-studio/figma-plugin	b53ab740ec	12	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	recallnet/js-recall	f322c44df3	4	ts	0	0	0	0	0	0	95	95	1	0	1	0
+human	Mail-0/Zero	fe63ac7df8	11	ts	0	0	0	0	0	0	0	0	0	0	0	0
+human	jeremyckahn/chitchatter	b64f5ff132	13	ts	0	0	0	0	0	0	5	5	0	0	1	0

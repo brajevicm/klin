@@ -28,3 +28,10 @@ describe("uniqueSlug", () => {
     await expect(uniqueSlug("Hello World", async (s) => taken.has(s))).resolves.toBe("hello-world-3");
   });
 });
+
+describe("rendering", () => {
+  it("shows the slug", () => {
+    document.body.textContent = slugify("Hello World");
+    screen.getByText("hello-world");
+  });
+});
