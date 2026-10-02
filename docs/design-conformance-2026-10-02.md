@@ -623,6 +623,23 @@ No prototype change and no corpus change came after the rules commit
    the Terms define a family, because a registration often sits in another
    directory than its members. The prototype did this from the rules commit
    on. The rules text did not say it.
+8. **Changes after the PR review.** The review of PR #444 (comment
+   5960721421) found three overstatements. This note now says them:
+   - The family identity of `registration-bypass` is the last segment of a
+     trait name, grouped across the whole tree. So two unrelated traits of the
+     same name in two packages make one family. Resolved bindings alone do not
+     fix that (section 6).
+   - The `unknown` row of `component-cycle` compares only the count of
+     unresolved alias imports. An alias that goes away while another comes in
+     leaves the count equal, and no `unknown` row appears (section 6).
+   - The outcome classes did not separate a repair whose task nobody verified
+     from a verified one. `runs/outcomes.tsv` and section 8 now use these
+     classes: `verified correct`, `relation-correct, task preservation
+     unverified`, `kept exception`, `appeasement`, `over-refactor`,
+     `unresolved` and `harmful`.
+
+   No run, row or label changed. The dispositions of the four positive
+   candidates are now conditional (section 9).
 
 ## Headline results
 
@@ -637,19 +654,24 @@ No prototype change and no corpus change came after the rules commit
    or both. Renaming a type and moving one branch into a helper
    (`attack-split`) removes every finding of the family and registration
    candidates.
-3. **Three candidates meet the REVIEW rules:** `family-bypass`,
+3. **Four candidates are conditional REVIEW candidates:** `family-bypass`,
    `registration-bypass` and `wrapper-bypass`, in both languages, plus
    `component-cycle` for TypeScript only. On 62 ordinary changes, they found
-   0, 0, 1 and 0 findings.
+   0, 0, 1 and 0 findings. Each one needs a resolved identity or a complete
+   resolution coverage that the prototype does not have, and its precision
+   must be measured again once that exists (section 9).
 4. **Similarity is noise here.** `near-clone lexical` gave 85.3 not-
    appropriate findings per 100 Rust changes. Both `near-clone` variants
    missed the Type-3 plant with renamed identifiers (0.42 structural, 0.18
    lexical), while the different-meaning hard negative scored 0.71 and 1.00
    structural.
-5. **Agents repaired every case.** Of 33 runs, 32 ended with the conforming
-   repair or the kept exception. One run kept the direct call with a stated
-   reason. No run was an appeasement, an over-refactor or harmful. All three
-   agents kept `atan2` and `ManualInvoice` as exceptions.
+5. **The notes led agents to the repository's own repair.** Of 33 runs, 12
+   are verified correct (the Rust fixtures, which compile), 17 made a
+   relation-correct repair whose task preservation nobody verified (no
+   TypeScript tree was type-checked, and GlareDB did not compile), and 4 kept
+   an exception. No run was an appeasement or an over-refactor. No verified
+   run was harmful. The 17 unverified runs are not proven non-harmful. All
+   three agents kept `atan2` and `ManualInvoice` as exceptions.
 6. **The pattern-label baseline names the wrong things.** It flagged a
    "violation" in 5 of 6 hard negatives (for example "DIP: depends on the
    global `console`"), and missed the wrapper in both wrapper plants.
@@ -818,9 +840,25 @@ a call path's text, a binding's name, an import specifier.
 - **Call paths by text.** `wrapper-bypass` compares written text, so a `use`
   or a local alias hides the path. It needs the callee resolved to a
   declaration, which klin's references do not hold (they hold names only).
-- **Bindings by name.** `registration-bypass` matched a Rust binding to a
-  TypeScript identifier (yaak). It needs references resolved to the
-  registration's declaration.
+- **Identity by name.** `registration-bypass` matched a Rust binding to a
+  TypeScript identifier (yaak). The problem is deeper than the binding.
+  `type_name` keeps only the last segment of a trait or type name, and
+  `global_families` keys the whole tree by that string. So two unrelated
+  traits named `Provider` in two packages make one family, and their members
+  and registrations mix. `family-bypass` keys a family per directory, which
+  limits the mixing, but its conformance check also matches an implementing
+  type by its bare name anywhere in the tree. Both candidates need
+  `implements(resolved type, resolved trait)`, and `registration-bypass` also
+  needs its member names and bindings resolved to declarations.
+- **Unresolved edges by count.** `component-cycle` prints `unknown` only when
+  the after tree has more unresolved alias imports than the base. An alias
+  that goes away while another comes in leaves the count equal. An alias that
+  already existed and now closes a cycle also leaves it equal. In both cases
+  no `unknown` row appears, and the candidate reads a partial graph as a
+  complete one. On trees with 134 to 245 alias imports, this is the common
+  case. A shipped version must use the module graph's own resolution
+  coverage: an unresolved import in the changed files, or on the path of a
+  cycle, makes the result unknown, whatever the count.
 - **Components by directory.** A flat Rust crate makes every module a
   component, and Rust modules of one crate may depend on each other freely. In
   TypeScript, path aliases hide most edges of some trees.
@@ -872,34 +910,46 @@ in it.
 
 `runs/outcomes.tsv` holds every run. Each outcome rests on the final tree,
 which the judge read as a diff and ran through the prototype, klin and, for
-the Rust fixtures, `cargo check`. The corpus does not keep the Claude
+the Rust fixtures, `cargo check`. A diff shows whether a repair has the right
+shape for the relation. Only a build or a test shows that the task still
+works. So a run whose tree nobody compiled or type-checked is
+`relation-correct, task preservation unverified`, never `verified correct`. The corpus does not keep the Claude
 replies, as in #361. A reply only adds the `escalated` column and, where an
 agent kept code, its stated reason. Eleven cases, three agents:
 
+`verified` is `verified correct`, `relation` is `relation-correct, task
+preservation unverified`, `kept` is `kept exception`.
+
 | Case | Sonnet | Haiku | gpt-6.1-sol |
 | --- | --- | --- | --- |
-| `family-ts` | correct | correct | correct |
-| `family-rs` | correct | correct | correct |
-| `family-glaredb` | correct, `cot` now returns `-inf` for `-0`, stated | correct | correct |
-| `exception-ts` | correct: kept, said why | correct: kept, rewrote the comment | correct: kept, said why |
-| `registration-ts` | correct (the reply was only "placeholder") | correct | correct |
-| `registration-rs` | correct | correct | correct |
-| `wrapper-ts` | kept with a reason: "a retried refund POST could refund twice" | correct | correct |
-| `wrapper-rs` | correct | correct | correct |
-| `wrapper-karakeep` | correct | correct | correct |
-| `cycle-ts` | correct | correct | correct |
-| `cycle-rs` | correct in 2 turns | correct | correct |
+| `family-ts` | relation | relation | relation |
+| `family-rs` | verified | verified | verified |
+| `family-glaredb` | relation, `cot` now returns `-inf` for `-0`, stated | relation | relation |
+| `exception-ts` | kept, said why | kept, rewrote the comment | kept, said why |
+| `registration-ts` | relation (the reply was only "placeholder") | relation | relation |
+| `registration-rs` | verified | verified | verified |
+| `wrapper-ts` | kept: "a retried refund POST could refund twice" | relation | relation |
+| `wrapper-rs` | verified | verified | verified |
+| `wrapper-karakeep` | relation | relation | relation |
+| `cycle-ts` | relation | relation | relation |
+| `cycle-rs` | verified, in 2 turns | verified | verified |
 
 | Outcome | Sonnet | Haiku | gpt-6.1-sol | All |
 | --- | ---: | ---: | ---: | ---: |
-| correct | 10 | 11 | 11 | 32 |
-| kept with a reason | 1 | 0 | 0 | 1 |
+| verified correct | 4 | 4 | 4 | 12 |
+| relation-correct, task preservation unverified | 5 | 6 | 6 | 17 |
+| kept exception | 2 | 1 | 1 | 4 |
 | appeasement | 0 | 0 | 0 | 0 |
 | over-refactor | 0 | 0 | 0 | 0 |
 | unresolved | 0 | 0 | 0 | 0 |
 | harmful | 0 | 0 | 0 | 0 |
 | escalated to the person | 0 | 0 | 0 | 0 |
 | extra turns | 1 | 0 | 0 | 1 |
+
+`harmful` reads 0 only for what the judge could see. No run broke a
+compiled tree, and no diff removed behavior that the task asked for. The 17
+unverified runs may still break the build or the task, and this note does not
+claim otherwise.
 
 On GlareDB, all three agents made the repair that the pull request itself
 made after the review (`5f4ac7d4`): seven functions moved to
@@ -911,15 +961,16 @@ Two observations matter for the message:
 - **A wrapper carries policy.** `postJson` retries 3 times. Five of six
   planted wrapper runs moved `refundAll` onto it, so refunds now retry. The
   base's Stripe and PayPal refunds already go through `postJson`, so those
-  repairs match the repository, and this note counts them `correct`. Sonnet's
+  repairs match the repository, and this note counts them as repairs of the
+  relation. Sonnet's
   TypeScript run kept the direct call, because a retried refund POST could
   refund twice. Its Rust run named the same risk and switched. Both are
   defensible. The relation cannot tell whether new code avoids the wrapper on
   purpose. That is the reason for REVIEW and not BLOCK.
-- **"Kept with a reason" is not a registered class.** The registered classes
+- **A kept exception outside the exception case.** The registered classes
   give `correct` to a kept exception only in the exception case. So the one
-  kept wrapper run is counted apart and not as `correct`. Rule 2 holds with or
-  without it: 8 of 9 wrapper runs are `correct`.
+  kept wrapper run is `kept exception` and is not counted as a repair. Rule 2
+  holds with or without it: 8 of 9 wrapper runs repaired the relation.
 - **The note was enough.** No run asked the person. No run added an interface,
   a wrapper or a registration that only silences the note.
 
@@ -949,10 +1000,10 @@ call is the bad output that #355 describes.
 
 | Candidate | Disposition | Rule that decides it |
 | --- | --- | --- |
-| `family-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 0, `A` 0, 12/12 runs correct with the exception case kept, hard negatives found and `attack-split` removes it, so not BLOCK |
-| `registration-bypass` | **REVIEW candidate**, Rust and TypeScript, only with bindings resolved | 1.1 holds, `N` 0, `A` 0, 6/6 runs correct, `attack-split` removes it, the yaak rows show that a binding matched by name is a false relation |
-| `wrapper-bypass` | **REVIEW candidate**, Rust and TypeScript | 1.1 holds, `N` 2.9 (Rust) and 0, `A` under 10, 8 of 9 runs correct and 1 kept with a reason, one line of alias removes it |
-| `component-cycle` | **REVIEW candidate** for TypeScript, **reject** for Rust | TS: `N` 0, 3/3 `cycle-ts` runs correct, alias hole named, Rust: `N` 144.1 |
+| `family-bypass` | **conditional REVIEW candidate**, Rust and TypeScript: needs resolved type and trait identity, and its precision measured again after that | 1.1 holds, `N` 0, `A` 0, 9/9 plant and natural runs repaired the relation (3 verified) and 3/3 exception runs kept it, hard negatives found and `attack-split` removes it, so not BLOCK |
+| `registration-bypass` | **conditional REVIEW candidate**, Rust and TypeScript: needs resolved family, member and binding identity, and its precision measured again after that | 1.1 holds, `N` 0, `A` 0, 6/6 runs repaired the relation (3 verified), `attack-split` removes it, the yaak rows show a false relation from names alone |
+| `wrapper-bypass` | **conditional REVIEW candidate**, Rust and TypeScript: needs resolved callees | 1.1 holds, `N` 2.9 (Rust) and 0, `A` under 10, 8 of 9 runs repaired the relation (3 verified) and 1 kept an exception, one line of alias removes it |
+| `component-cycle` | **conditional REVIEW candidate** for TypeScript: needs the module graph's resolution coverage, not a count of holes, **reject** for Rust | TS: `N` 0, 3/3 `cycle-ts` runs repaired the relation (none verified), and `N` 0 is no proof of precision while the alias holes stay unknown, Rust: `N` 144.1 |
 | `near-clone structural` | **reject** | 1.1 fails: the Type-3 plant is missed in both languages |
 | `near-clone lexical` | **reject** | 1.1 fails, and `N` 85.3 (Rust), 32.1 (TS) |
 | `delegation-only` | **candidate generation only** for Rust, **reject** for TypeScript | Rust `N` 11.8, TS `N` 46.4 |
@@ -970,24 +1021,29 @@ Choices for a person:
 - The REVIEW candidates found almost nothing on 62 ordinary human changes and
   found the reviewer's point on both natural agent cases. Whether that yield
   justifies a Finalize step is a product decision.
+- The four conditional candidates go to #357 as candidates, not as admitted
+  REVIEW checks. Each condition above must hold, and the precision must be
+  measured again, before a person admits one.
 
 ## 10. New shared structural fact
 
 No new shared fact is justified by this note alone. Each relation below has
-only REVIEW consumers, and each of them runs at Finalize, not at Stop. If a
-person admits the REVIEW candidates, the implementation ticket needs these
-named relations:
+only conditional REVIEW consumers, and each of them runs at Finalize, not at
+Stop. If a person admits the candidates, the implementation ticket needs these
+named relations, each keyed by a resolved identity and never by a bare name:
 
 | Relation | Consumers | Why it is not in `FileFacts` today |
 | --- | --- | --- |
-| `implements(type, trait)`: a Rust `impl F for T` and a TypeScript `implements`/`extends` clause, with the method names | `family-bypass`, `registration-bypass` | a trait implementation's methods carry no `owner` and no fact names the trait |
-| a call's resolved callee and its enclosing declaration | `wrapper-bypass`, `registration-bypass` (the binding a branch reads) | a `Reference` holds a name and a line, not a path or a target |
+| `implements(resolved type identity, resolved trait identity)`: a Rust `impl F for T` and a TypeScript `implements`/`extends` clause, with the method names | `family-bypass`, `registration-bypass` | a trait implementation's methods carry no `owner`, no fact names the trait, and the prototype's last-segment name merges unrelated traits |
+| a call's resolved callee and its enclosing declaration | `wrapper-bypass`, `registration-bypass` (the members a registration names and the binding a branch reads) | a `Reference` holds a name and a line, not a path or a target |
 
 `component-cycle` for TypeScript needs no new fact: the module graph of
-`layering` holds its edges. The registration expression (a literal list of
-type names) is local to `registration-bypass` and is not a shared fact.
+`layering` holds its edges and its resolution coverage. It must use that
+coverage, not a count of unresolved imports. The registration expression (a
+literal list of type names) is local to `registration-bypass` and is not a
+shared fact.
 
-## 11. SPEC language, if a person admits the REVIEW candidates
+## 11. SPEC language, if a person admits the conditional candidates
 
 > **Design-conformance evidence is review evidence.** At Finalize, klin may
 > report a change that bypasses a relation the base already states: a new
@@ -999,6 +1055,9 @@ type names) is local to `registration-bypass` and is not a shared fact.
 > their locations, and the count. It never names a design pattern or a
 > principle, and it never fails a Stop or CI. A relation that a decorator, a
 > macro or run-time discovery may form reads as unknown and makes no note. A
+> relation keyed by an unresolved name, or a module graph with an unresolved
+> import in the changed files or on the cycle, reads as unknown and makes no
+> note. A
 > person who keeps an exception needs no configuration: the note asks for a
 > reason in the reply.
 
@@ -1015,8 +1074,9 @@ PaymentProvider"), the unresolved part (decorators, macros, run-time
 discovery read as unknown, so no note), and the reason it is REVIEW (the
 exception sentence). None of it needs a graph word.
 
-**AX.** 32 of 33 runs made the repository's own repair. The only shipped gate
-that acted was `public-api`, which caught a removed module in one repair.
+**AX.** 29 of 33 runs made the repository's own repair, 12 of them verified
+by a build, and 4 kept an exception. The only shipped gate that acted was
+`public-api`, which caught a removed module in one repair.
 
 ## Decision
 
@@ -1026,11 +1086,14 @@ No relation in this note can block: each one has an exception that syntax
 cannot rule out, and each one falls to a rename, an alias or a split at no
 more cost than the plant. Three relations (`family-bypass`,
 `registration-bypass`, `wrapper-bypass`) and the TypeScript component cycle
-meet the REVIEW rules, name the repository's own relation, and got the right
-repair from every agent. Similarity search, delegation counting and pattern
-labels do not. The relations they would need (`implements` and resolved
-callees) belong to the implementation ticket of that review step, which a
-person decides.
+name the repository's own relation, and every agent made the relation's
+repair or kept a stated exception. They go to #357 as conditional
+candidates, not as admitted REVIEW checks: each one needs resolved
+identities (`implements` over resolved types and traits, resolved callees and
+bindings) or the module graph's resolution coverage, and its precision must
+be measured again once that exists. Similarity search, delegation counting
+and pattern labels do not qualify. The implementation of that review step is
+a separate ticket, which a person decides.
 
 ## Limits
 
