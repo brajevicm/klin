@@ -332,3 +332,27 @@ w986	valid-review	-	DB error becomes zero metrics; caller cannot tell failure fr
 w994	undesired	-	unwrap in a test helper
 w996	undesired	external-boundary adapter	tool returns the error text to the user
 w998	undesired	-	dump result ignored; the handler already holds the diagnostics
+w034	valid-review	intended public API	coverage row: Provider enum gains DeepSeek, the change's purpose
+w672	valid-review	intended public API	coverage row: Error enum gains Reqwest for the new proxy client
+w021	valid-review	-	coverage row: new cc 21, 97-line function
+w426	undesired	appropriate complexity	coverage row: settings screen component, cc 4 to 6, length is JSX
+w657	undesired	appropriate complexity	coverage row: existing component grew one line
+w759	undesired	appropriate complexity	coverage row: existing function grew 4 lines
+w931	valid-review	-	coverage row: cc 35 to 45 and 40 more lines in one function
+w1005	valid-review	-	coverage row: new cc 15 numeric kernel
+w1108	undesired	appropriate complexity	coverage row: existing function grew 3 lines
+w1196	undesired	appropriate complexity	coverage row: existing function grew 8 lines
+w1311	undesired	appropriate complexity	coverage row: existing constructor grew 3 lines
+w1385	valid-review	-	coverage row: server start function grew from 73 to 115 lines
+w1717	valid-review	-	coverage row: new cc 9, 81-line event processor
+w2214	valid-review	-	coverage row: cc 34 page component grew 28 lines
+w2423	valid-review	-	coverage row: new cc 13 credential lookup
+w2433	valid-review	-	coverage row: function grew from cc 5, 34 lines to cc 8, 54 lines
+w2585	undesired	appropriate complexity	coverage row: match over the request enum, one arm per request
+w248	undesired	appropriate complexity	coverage row: existing 682-line component grew one line
+w1466	undesired	appropriate complexity	coverage row: new cc 6, 38 lines
+w1635	undesired	appropriate complexity	coverage row: sidebar component, cc 12 to 14, one line shorter
+w1908	valid-review	-	coverage row: main grew from cc 23 to 27 and 22 lines
+w2354	valid-review	-	coverage row: new cc 9 start command
+w1853	undesired	-	coverage row: slow benchmark cases skipped with a stated reason
+w1970	valid-review	-	coverage row: any in a new file that only tries a review bot

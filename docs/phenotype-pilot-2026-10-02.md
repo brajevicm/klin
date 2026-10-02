@@ -332,6 +332,19 @@ None of these changes read a result of the sample before it was made:
    search that failed in the middle of a human-arm walk cannot be ruled out
    after the fact. `choose.py` now reads every commit and stops on any API
    error other than 404, so a new run cannot repeat either gap.
+5. The owner's review of PR #440 found that the site sample could miss an
+   affected change, so a family could get a lower outcome only because no
+   valid site of that change was drawn. For every family and arm, each
+   affected change with no labeled site got one more label: its first site
+   in worksheet order. That added 24 labels (marked `coverage row` in
+   `labels.tsv`) after the first results, and it changed three outcomes:
+   `complexity` and `escapes` went from `seen` to `frequent`, and
+   `public-api` from `not seen` to `seen`. The tables below hold the counts
+   with these rows.
+6. The same review found that rules 3 and 4 of "What the outcome decides"
+   are circular. The full #357 study consumes the results of #353 and #356,
+   so neither can wait until after it. Section "Pilot outcome and what it
+   decides" replaces those two rules with a priority order.
 
 ### A labeling rule set during labeling
 
@@ -346,6 +359,9 @@ rule and labeled every `complexity` row again with it:
   change grew by a few lines.
 
 A reader who disagrees can move the line and recount from `labels.tsv`.
+Because the labeler set the line after reading about 40 sites, every
+`complexity` result below is exploratory. It does not carry the weight of
+the registered rules.
 
 ## Sample
 
@@ -382,14 +398,14 @@ A reader who disagrees can move the line and recount from `labels.tsv`.
    26 `placeholder-wording` sites and 14 `mock-name` sites in agent changes,
    against 1 and 0 in human changes. In the agent arm, 29 of the 40 are
    `valid-regression` and the rest are `valid-review`. These are the
-   rewordable candidates that #362 put at REVIEW at best. In this pilot they
-   are the only family whose valid findings appear in the agent arm and not
-   in the human arm.
+   rewordable candidates that #362 put at REVIEW at best. With klin `stubs`,
+   they are the only families whose valid findings appear in the agent arm
+   and not in the human arm.
 3. **klin `{}` fails most changes in both arms, mostly for `complexity`.**
    21 of 30 agent changes and 16 of 28 human changes exit 1. `complexity`
-   fails 20 agent and 14 human changes. Of its 68 labeled sites, 15 are
-   `valid-review` and 53 `undesired`. No `complexity` site is
-   `valid-regression`.
+   fails 20 agent and 14 human changes. Of its 88 labeled sites, 25 are
+   `valid-review` and 63 `undesired` (exploratory, see the labeling rule
+   above). No `complexity` site is `valid-regression`.
 4. **A `public-api` false alarm makes 2,086 of the 2,106 `public-api`
    findings.** Three changes report hundreds of public items as removed:
    `nyx-space/anise#465` and `#469` (911 each) and `mediar-ai/terminator#218`
@@ -404,10 +420,15 @@ A reader who disagrees can move the line and recount from `labels.tsv`.
    SIGKILL stopped it after 451 s on `MontrealAI/AGI-Alpha-Agent-v0#3073`,
    with no output. `anise#469` also exits 2: `complexity`, `dead-symbols` and
    `public-api` report a file they cannot parse.
-6. **No test weakening was found.** `tests.py` found 8 sites in 18 changes
-   that modify a test file. All 8 are legitimate: formatting, a changed
-   response type, a count that follows an added item, an assertion that got
-   stronger.
+6. **The two assertion-line predicates found no valid weakening.**
+   `tests.py` found 8 sites in 18 changes that modify a test file. All 8 are
+   legitimate: formatting, a changed response type, a count that follows an
+   added item, an assertion that got stronger. The two predicates see only an
+   assertion line that leaves a test file. They do not see a deleted or
+   renamed test, a new test with no assertion, a skip, an exact check turned
+   into a tautology, an expected value changed to match production, or
+   weakening through a mock. So this result does not test most of the #353
+   candidate set.
 7. **Reviewers asked for reuse only on agent pull requests.** 3 of the 7
    agent pull requests with a review comment hold a `reuse` comment. None of
    the 12 human pull requests with a comment does. Most pull requests have no
@@ -416,18 +437,20 @@ A reader who disagrees can move the line and recount from `labels.tsv`.
 ## Results per family
 
 `Eligible` is the denominator of the rules. `Valid changes` counts changes
-with a labeled `valid-*` site, so for a sampled family it is a lower bound.
+with a labeled `valid-*` site. For a sampled family, every affected change
+has at least one labeled site (procedure change 5), but a change can still
+hold a valid site that was not drawn, so the count is a lower bound.
 `VR`, `VV`, `U` and `?` are `valid-regression`, `valid-review`, `undesired`
 and `unresolved`.
 
 | Family | Arm | Eligible | Affected | Sites | Labeled VR / VV / U / ? | Valid changes | Pilot outcome |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| klin `complexity` | agent | 30 | 20 | 201 | 0 / 9 / 25 / 0 | 1 | seen |
-| | human | 28 | 14 | 67 | 0 / 6 / 28 / 0 | 4 | |
-| klin `escapes` | agent | 30 | 4 | 124 | 0 / 27 / 4 / 0 | 2 | seen |
+| klin `complexity` (exploratory) | agent | 30 | 20 | 201 | 0 / 17 / 32 / 0 | 9 | frequent |
+| | human | 28 | 14 | 67 | 0 / 8 / 31 / 0 | 6 | |
+| klin `escapes` | agent | 30 | 4 | 124 | 0 / 28 / 5 / 0 | 3 | frequent |
 | | human | 28 | 7 | 23 | 0 / 6 / 17 / 0 | 2 | |
-| klin `public-api` | agent | 30 | 3 | 1,176 | 0 / 0 / 40 / 0 | 0 | not seen |
-| | human | 28 | 3 | 930 | 0 / 1 / 38 / 0 | 1 | |
+| klin `public-api` | agent | 30 | 3 | 1,176 | 0 / 1 / 40 / 0 | 1 | seen |
+| | human | 28 | 3 | 930 | 0 / 2 / 38 / 0 | 2 | |
 | klin `stubs` | agent | 30 | 1 | 2 | 0 / 2 / 0 / 0 | 1 | seen |
 | | human | 28 | 0 | 0 | - | 0 | |
 | klin `doc-size` | agent | 30 | 1 | 2 | 0 / 0 / 2 / 0 | 0 | not seen |
@@ -453,11 +476,12 @@ and `unresolved`.
 | | human | 10 | 3 | 5 | 0 / 0 / 5 / 0 | 0 | |
 
 `complexity`, `escapes` and `public-api` were sampled by the rule of every
-k-th row: 34 agent and 34 human `complexity` rows, 31 agent `escapes` rows,
-and 40 agent and 39 human `public-api` rows. Every other family was labeled
-whole. The
-labels total 333: 29 `valid-regression`, 71 `valid-review`, 233 `undesired`
-and no `unresolved`. The `deps.py` new-dependency fact counted 9 added
+k-th row, and then one coverage row was added for each affected change that
+the sample missed. That gives 49 agent and 39 human `complexity` rows, 33
+agent `escapes` rows, and 41 agent and 40 human `public-api` rows. Every
+other family was labeled whole. The labels total 357: 29
+`valid-regression`, 84 `valid-review`, 244 `undesired` and no
+`unresolved`. The `deps.py` new-dependency fact counted 9 added
 dependencies in all.
 
 ### Concentration in one pull request
@@ -474,10 +498,11 @@ work.
 
 ### Hard negatives in the population
 
-The `undesired` labels hold these classes of #357: 53 `appropriate
-complexity`, 6 `external-boundary adapter` and 0 of the others. One
-`valid-review` site is an intended public API change (`Handler::consume` in
-`sway#7322`). The pilot planted no hard negative. The #361, #362 and #364
+The `undesired` labels hold these classes of #357: 63 `appropriate
+complexity`, 6 `external-boundary adapter` and 0 of the others. Three
+`valid-review` sites are intended public API changes: `Handler::consume` in
+`sway#7322`, a new `Provider` variant in `VTCode#113` and a new `Error`
+variant in `glues#150`. The pilot planted no hard negative. The #361, #362 and #364
 corpora hold the planted controls.
 
 ### Review comments
@@ -511,29 +536,35 @@ one: "Jules isn't yet a replacement for a human engineer."
 | `reuse` (#48, #355) | frequent | only from review comments; no detector ran |
 | `placeholder-wording`, `mock-name` (#362) | seen | 2 agent changes, 0 human; both closed without merge |
 | klin `stubs` | seen | 1 agent change |
-| klin `escapes` | seen | valid sites: `any` in new TypeScript, new `unwrap` in compiler code, a skipped test, a bare `except`; 2 agent and 2 human changes |
-| klin `complexity` | seen | most sites `undesired`; fails 20 of 30 agent changes |
+| klin `escapes` | frequent | valid sites: `any` in new TypeScript, new `unwrap` in compiler code, a skipped test, a bare `except`; 3 agent and 2 human changes, 1 of the agent ones `claude-code#8345` |
+| klin `complexity` | frequent (exploratory) | 9 agent and 6 human changes hold a `valid-review` site; most sites are `undesired`; the line between the two was set during labeling |
 | `broad-handler`, `log-handler` (#362) | seen | mostly `undesired` in both arms: noise for the current detector |
 | `removable` (#356) | seen | 2 agent PRs, 1 human |
-| `test-integrity` (#353) | seen | 1 agent PR by comment; `tests.py` found no weakening |
+| `test-integrity` (#353) | seen | 1 agent PR by comment; the two `tests.py` predicates found no valid weakening, and they cover little of #353 |
 | `architecture` | seen | 2 agent PRs by comment |
-| klin `public-api` | not seen | the 40 labeled agent sites are the same-name false alarm; the one other agent site, a new `Reqwest` error variant in `glues#150`, was not in the sample |
+| klin `public-api` | seen | 1 agent change, an intended new `Error` variant in `glues#150`; every other agent site is the same-name false alarm |
 | `default-handler`, `empty-handler`, `constant-return`, `ellipsis-body`, `throw-body` (#362) | not seen | |
 | `deps` undeclared import (#364) | not seen | 1 human site |
 | klin `doc-size` | not seen | 4 sites, all `undesired` |
 | cosmetic families | not seen | no detector; no reviewer comment |
 
-By the rules of this note:
+Rules 3 and 4 of "What the outcome decides" cannot hold as written, because
+the full #357 study consumes the results of #353 and #356 (procedure change
+6). The pilot can only order the three tickets, all before the final #357
+report:
 
-1. **#356 waits for the full #357 study.** `removable` is `seen`, not
-   `frequent`.
-2. **#353 waits for the full #357 study.** `test-integrity` is `seen` by one
-   agent pull request, and `tests.py` found no weakening in 8 agent changes
-   that modify a test file.
-3. **#355 keeps its experiment before the full study.** `reuse` is
-   `frequent`: 3 of 7 commented agent pull requests, against 0 of 12 human
-   ones. The evidence is reviewer comments only, on 7 pull requests. That is
-   a small base, and no detector confirms it.
+1. **#355 is next.** `reuse` is `frequent`: 3 of 7 commented agent pull
+   requests, against 0 of 12 human ones. The evidence is reviewer comments
+   only, on 7 pull requests. That is a small base, and no detector confirms
+   it.
+2. **#353 stays before the final #357 report, at a lower priority.**
+   `test-integrity` is `seen` by one agent pull request. The two `tests.py`
+   predicates found no valid weakening, but they cover little of the #353
+   candidate set, and #361 already showed real test-integrity gaps.
+3. **#356 is deprioritized.** `removable` is `seen`, not `frequent`. A
+   person decides between two options: run #356 later but still before the
+   final #357 report, or defer it out of vNext so that the final report
+   leaves it out.
 4. Every family that is `seen` or `frequent` stays in the full study. The
    `not seen` families get a lower place. Zero of 30 still allows a true rate
    of up to about 10%.
@@ -541,24 +572,25 @@ By the rules of this note:
 ## Findings for klin today
 
 These are not phenotype results. They are defects or noise of the shipped
-binary that the pilot met on real repositories. The note files no ticket.
-A person decides.
+binary that the pilot met on real repositories. The first three have their
+own tickets.
 
-1. **`public-api` with two crates of one `[lib] name`.** Three changes in
-   two repositories, and 2,086 false sites. A reproduction:
+1. **`public-api` with two crates of one `[lib] name` (#441).** Three
+   changes in two repositories, and 2,086 false sites. A reproduction:
    check out `nyx-space/anise` at the base of #465 and run `klin gate` with
    `{}` on the change, which edits one blank line in `anise/src/`.
-2. **Stack overflow on `obi1kenobi/cargo-semver-checks`.** Both changes
-   abort with exit 134 before any report. A 64 MB main stack does not help,
-   so the recursion may have no bound. This note did not find the file.
-3. **A run killed after 451 s** on `MontrealAI/AGI-Alpha-Agent-v0`, a
-   repository of 1,925 tracked files. The cause is not known. Memory is one
-   possible cause.
+2. **Stack overflow on `obi1kenobi/cargo-semver-checks` (#442).** Both
+   changes abort with exit 134 before any report. A 64 MB main stack does
+   not help, so the recursion may have no bound. This note did not find the
+   file.
+3. **A run killed after 451 s (#443)** on `MontrealAI/AGI-Alpha-Agent-v0`,
+   a repository of 1,925 tracked files. The cause is not known. Memory is
+   one possible cause.
 4. **`doc-size` on ordinary agent files.** A 381-word `CLAUDE.md` and a
    392-word `AGENTS.md` fail at a ceiling of 50 words. #361 and #435 already
    hold this.
-5. **`complexity` noise.** 53 of 68 labeled sites in both arms are
-   `undesired`. Most are React components and hooks with `cc` 1 to 5, match
+5. **`complexity` noise (exploratory).** 63 of 88 labeled sites in both
+   arms are `undesired`. Most are React components and hooks with `cc` 1 to 5, match
    tables over enums, and long existing functions that a change grew by a
    parameter. #389 and #411 hold the floor decisions.
 
@@ -584,9 +616,10 @@ used no paper rate as a prior. Within those limits:
   final change.
 - The #355 motivation (non-reuse in generated code) matches the review
   comments, with the small base stated above.
-- The #353 motivation (agents weaken tests) is not reproduced: no
-  weakening in 8 agent changes that modify a test file. With 8 changes the
-  pilot cannot reject it either.
+- The #353 motivation (agents weaken tests) is not tested in a useful way.
+  The two assertion-line predicates found no valid weakening in 8 agent
+  changes that modify a test file, and they see little of the #353
+  candidate set.
 - Population, language, harness and task all differ from those papers: the
   agents ran in the cloud services of 2025, on small and middle open-source
   projects, on tasks that the owners chose.
@@ -609,6 +642,11 @@ used no paper rate as a prior. Within those limits:
   Absence of a comment is not absence of a problem.
 - The repair and appeasement parts of #357 need the controlled arm. This
   pilot has no controlled arm.
+- `tests.py` sees two syntactic events only. For a Rust file outside the
+  test path rule, it reads everything from the first `#[cfg(test)]` line to
+  the end of the file as test code, not the test module's real bounds.
+- The coverage rows and the `complexity` line were added after the first
+  results. The note marks both, and `labels.tsv` marks the coverage rows.
 
 ## How to reproduce
 
@@ -632,7 +670,7 @@ keeps:
 - `worksheet.tsv` and `holes.tsv`: every finding, and the excluded sites
   and measurement holes.
 - `labels.tsv`: one label per sampled finding, SHA-256
-  `0f93f636f0cb993cac206d4004446cf6e7cb415da49944cfc5452126705888e1`.
+  `fdc00e8701852b8b771bf2f1b5b8a43e7f606f0075c3fcfd3a2d43ac930cb401`.
 - `comments.json` and `codes.tsv`: the entered comments and their codes,
   SHA-256 `b9920def3762be07d01c195a81d6aa67b39ccefe3436870e3e77949ea74f82a6`.
 - `summary.tsv`: the output of `summary.py`.
