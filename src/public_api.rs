@@ -184,7 +184,11 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 fn breaks(was: &Derived, now: &Derived) -> Vec<Finding> {
     let mut out = Vec::new();
     for surface in &was.surfaces {
-        let Some(after) = now.surfaces.iter().find(|held| held.id == surface.id) else {
+        let Some(after) = now.surfaces.iter().find(|held| {
+            held.id == surface.id
+                && held.language == surface.language
+                && held.manifest == surface.manifest
+        }) else {
             out.push(finding(
                 surface,
                 None,
@@ -254,7 +258,7 @@ fn finding(
         values.insert(NOW.into(), now.into());
     }
     Finding {
-        file: surface.id.clone(),
+        file: surface.identity(),
         line: item
             .and_then(|item| item.origin.as_ref())
             .map_or(0, |(_, line)| *line),
@@ -320,8 +324,8 @@ fn evaluator(hook: bool) -> Evaluator<'static> {
 }
 
 /// For each finding, the removed module it prints under: the outermost module under the same
-/// surface id that the same change removed and whose path holds the finding's own path. Two
-/// surfaces that share an id share every identity, so their modules group together.
+/// surface identity that the same change removed and whose path holds the finding's own path.
+/// Findings group only under their own owner-qualified surface identity.
 fn held_by_removed_modules(found: &[Finding]) -> Vec<Option<usize>> {
     let removed =
         |finding: &Finding| finding.values.get(KIND).and_then(Value::as_str) == Some(REMOVED);
@@ -389,6 +393,7 @@ fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
     }
     let mut named: Vec<coverage::Unresolved> = Vec::new();
     for surface in &side.derived.surfaces {
+        let identity = surface.identity();
         let inside = surface
             .files
             .iter()
@@ -404,7 +409,7 @@ fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
                 file: side.current.get(file).unwrap_or(file).clone(),
                 line,
                 text: text.clone(),
-                why: format!("{} — {}", surface.id, why),
+                why: format!("{identity} — {why}"),
             });
         }
     }

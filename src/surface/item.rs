@@ -52,6 +52,8 @@ pub struct Item {
 pub struct Surface {
     /// What a consumer names the surface by: the crate name, or the package name and subpath.
     pub id: String,
+    /// The Rust package manifest that owns this surface; crate names need not be unique.
+    pub manifest: Option<String>,
     pub language: &'static str,
     /// Where the surface was discovered, for a report.
     pub source: String,
@@ -79,6 +81,14 @@ pub struct Inapplicable {
 }
 
 impl Surface {
+    /// The identity findings and unresolved evidence share, qualified by a Cargo library's owner.
+    pub fn identity(&self) -> String {
+        match &self.manifest {
+            Some(manifest) => format!("{} ({manifest})", self.id),
+            None => self.id.clone(),
+        }
+    }
+
     pub fn item(&self, path: &str, kind: &str) -> Option<&Item> {
         self.items
             .iter()

@@ -120,6 +120,7 @@ impl<'a> Derivation<'a> {
     ) -> Surface {
         let mut surface = Surface {
             id: format!("{package} {:?}", entry.subpath),
+            manifest: None,
             language: LANGUAGE,
             source: format!("{manifest} {} {:?} -> {file}", entry.field, entry.subpath),
             items: Vec::new(),

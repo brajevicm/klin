@@ -2409,7 +2409,16 @@ that tree's own topology, and it builds no name index, no second resolver and
 no parser of its own.
 
 A *surface* is what a consumer addresses. For Rust it is a Cargo library
-target, named by its crate name; a binary target and a Rust directory no
+target, named by its crate name and matched between trees by that name and
+its package manifest path. Two libraries with the same crate name retain
+separate surfaces: unchanged items pass, and a removal or contract change is
+judged only against the library that owned it. Adding or removing a namesake
+library does not change the identity of an existing surface. Moving the
+library root within its package keeps the surface's identity. Pinned by
+`libraries_with_the_same_crate_name_keep_their_own_items`,
+`a_namesake_library_does_not_hide_a_contract_change_or_removal` and
+`removing_a_namesake_library_reports_only_its_surface`.
+A binary target and a Rust directory no
 manifest names are not surfaces. Implicit and custom library roots and every
 library package of a workspace are found the way ADR 0043 finds targets. For
 TypeScript a surface begins only at explicit package metadata that names a
@@ -2606,9 +2615,21 @@ fails, an opaque clause that changed fails, and everything else passes: a new
 surface, a new item, a widened visibility, an opaque item that became
 measured. Each break carries `break` at 1 with the surface as its file and
 `NAME (KIND)` as its text, so an intentional break is an accepted entry under
-that identity, and the base holds no break by construction. Where one change
-removes a module and the items inside it, the text report prints them as one
-group, the module's line and then the lines of the items it held, while the
+that identity, and the base holds no break by construction. For a Cargo library, the
+finding's `file` is always `CRATE (MANIFEST)`, such as
+`shared (a/Cargo.toml)`, while the consumer name in `--report` stays `shared`.
+The owning manifest is part of accepted-entry matching, JSON site identity,
+removed-module grouping and unresolved-hole evidence even when the crate
+name is unique in either tree. An accepted break for one library cannot hold
+the same item break in a namesake, and an unqualified crate-name entry for a
+Cargo library matches nothing and follows the normal stale-entry rules;
+klin never rewrites accepted entries.
+Pinned by `accepting_a_namesake_break_cannot_hold_another_librarys_break`,
+`identical_breaks_in_namesake_libraries_have_distinct_json_ids`,
+`an_unqualified_rust_surface_acceptance_is_stale` and
+`a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once`.
+Where one change removes a module and the items inside it, the text report
+prints them as one group, the module's line and then the lines of the items it held, while the
 11.2 object, the journal, the identities and the accepted entries keep one
 finding per item. Pinned by
 `a_removed_module_prints_as_one_group_and_json_keeps_each_item`. The remedy
@@ -2634,7 +2655,11 @@ path through a module no file answers, and an unresolved module or specifier
 inside a surface are holes: a `NOTE:` in the hook and exit 2 elsewhere, while
 other findings still print, because a green run must not imply a surface it
 claims to support was completely measured. A hole the base holds too is a
-NOTE in every run (8.6). Pinned by
+NOTE in every run (8.6). Unresolved-hole matching includes the same
+owner-qualified Cargo surface identity as compatibility findings: a form
+that moves from one namesake surface to another is new at its destination,
+even when its source file, text and underlying reason are unchanged. Pinned
+by `an_unresolved_form_moved_to_a_namesake_surface_is_new` and
 `export_equals_and_an_ambient_module_are_still_holes`. The `OK:` line counts
 the items and surfaces judged, how many are measured and opaque, the library
 targets and entry points found, and the packages or targets with no supported

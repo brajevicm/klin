@@ -68,6 +68,7 @@ impl<'a> Derivation<'a> {
             graph,
             surface: Surface {
                 id: named.name.clone(),
+                manifest: named.manifest.clone(),
                 language: LANGUAGE,
                 source: match &named.manifest {
                     Some(manifest) => format!("library target {} of {manifest}", named.root),
