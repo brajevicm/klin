@@ -1,0 +1,190 @@
+gluesql__glues-150	empty-handler	let-underscore	core/tests/proxy.rs	38	test	let _ = req.respond(resp);
+nyx-space__anise-469	placeholder-wording	comment:for now	anise/src/almanac/solar_time.rs	74	-	// For now, DUT1 is assumed to be 0.0 as a placeholder. This will lead to inaccuracies.
+nyx-space__anise-469	mock-name	declaration	anise/src/almanac/solar_time.rs	75	-	let dut1_placeholder_seconds = 0.0; // [seconds]
+nyx-space__anise-469	placeholder-wording	comment:for now	anise/src/almanac/solar_time.rs	171	-	// or a more detailed astronomical series. For now, this approximation is used.
+nyx-space__anise-469	placeholder-wording	comment:for now	anise/src/almanac/solar_time.rs	186	-	// throughout the function would be more robust. For now, assume it's within reasonable bounds
+nyx-space__anise-469	placeholder-wording	comment:for now	anise/src/almanac/solar_time.rs	244	-	///    - Convert reference ET (TDB) to UTC, then to UT1 (using placeholder DUT1 for now).
+nyx-space__anise-469	placeholder-wording	comment:placeholder	anise/src/almanac/solar_time.rs	257	-	///10. Convert UT1 Epoch to UTC Epoch (using placeholder DUT1).
+nyx-space__anise-469	placeholder-wording	comment:placeholder	anise/src/almanac/solar_time.rs	296	-	// Using the same placeholder for DUT1 as in et2lst.
+nyx-space__anise-469	placeholder-wording	comment:replace with actual	anise/src/almanac/solar_time.rs	297	-	// TODO: CRITICAL - Replace with actual DUT1 lookup.
+nyx-space__anise-469	mock-name	declaration	anise/src/almanac/solar_time.rs	298	-	let dut1_placeholder_seconds = 0.0;
+nyx-space__anise-469	placeholder-wording	comment:placeholder	anise/src/almanac/solar_time.rs	389	-	// (Uses the same dut1_placeholder_seconds from Step 4)
+anthropics__claude-code-8345	broad-handler	other	integrations/autonomous-claude.ts	169	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/autonomous-command-handler.ts	127	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/autonomous-orchestrator.ts	157	-	// For now, returning mock data structure
+anthropics__claude-code-8345	placeholder-wording	comment:mock implementation	integrations/autonomous-orchestrator.ts	348	-	// Mock implementation - would integrate with code analysis tools
+anthropics__claude-code-8345	constant-return	return-empty	integrations/autonomous-orchestrator.ts	352	commented	private loadUserFeedback(): UserFeedback[] {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/autonomous-orchestrator.ts	353	-	// Mock data - would integrate with feedback systems
+anthropics__claude-code-8345	constant-return	return-empty	integrations/autonomous-orchestrator.ts	357	commented	private loadMarketTrends(): MarketTrend[] {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/autonomous-orchestrator.ts	358	-	// Mock data - would integrate with market analysis APIs
+anthropics__claude-code-8345	constant-return	return-empty	integrations/autonomous-orchestrator.ts	362	commented	private loadBugReports(): BugReport[] {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/autonomous-orchestrator.ts	363	-	// Mock data - would integrate with issue tracking
+anthropics__claude-code-8345	constant-return	return-empty	integrations/autonomous-orchestrator.ts	367	commented	private loadPerformanceMetrics(): PerformanceMetric[] {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/autonomous-orchestrator.ts	368	-	// Mock data - would integrate with performance monitoring
+anthropics__claude-code-8345	constant-return	return-empty	integrations/autonomous-orchestrator.ts	372	commented	private getLastEvolutionDate(): Date | null {
+anthropics__claude-code-8345	broad-handler	other	integrations/autonomous-web-evolution.ts	461	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/autonomous-web-evolution.ts	477	-	// For now, simulate execution
+anthropics__claude-code-8345	broad-handler	other	integrations/autonomous-web-evolution.ts	572	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/autonomous-web-orchestrator.ts	135	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:in a real implementation	integrations/autonomous-web-orchestrator.ts	286	-	// Save analysis report (in a real implementation)
+anthropics__claude-code-8345	log-handler	log	integrations/autonomous-web-orchestrator.ts	291	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/browser-workflow-engine.ts	210	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/browser-workflow-engine.ts	337	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/browser-workflow-engine.ts	378	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/browser-workflow-engine.ts	410	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log	integrations/browser-workflow-engine.ts	587	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/feedback-loop.ts	152	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/feedback-loop.ts	170	-	} catch (error) {
+anthropics__claude-code-8345	constant-return	return-empty	integrations/feedback-loop.ts	449	commented	private async fetchExternalFeedback(): Promise<FeedbackData[]> {
+anthropics__claude-code-8345	log-handler	log	integrations/feedback-loop.ts	463	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log	integrations/feedback-loop.ts	481	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log	integrations/integration-manager.ts	132	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:mock data	integrations/market-intelligence.ts	106	-	// Mock data structure - in production, this would integrate with:
+anthropics__claude-code-8345	mock-name	declaration	integrations/market-intelligence.ts	114	-	const mockTrends: TechTrend[] = [
+anthropics__claude-code-8345	mock-name	declaration	integrations/market-intelligence.ts	178	-	const mockCompetitors: CompetitorInsight[] = [
+anthropics__claude-code-8345	mock-name	declaration	integrations/market-intelligence.ts	215	-	const mockDemands: UserDemandSignal[] = [
+anthropics__claude-code-8345	mock-name	declaration	integrations/market-intelligence.ts	257	-	const mockOpportunities: MarketOpportunity[] = [
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/market-intelligence.ts	356	-	// For now, returning mock structure
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	96	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log-default	integrations/mcp-browser-client.ts	148	-	} catch (error) {
+anthropics__claude-code-8345	empty-handler	promise-empty	integrations/mcp-browser-client.ts	178	-	this.sendMCPRequest('ping', {}).catch(() => {});
+anthropics__claude-code-8345	empty-handler	empty	integrations/mcp-browser-client.ts	208	commented	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	248	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	285	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	308	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	331	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	354	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	377	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	400	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	423	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	446	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log	integrations/mcp-browser-client.ts	464	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/mcp-browser-client.ts	519	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/multimodal-browser-engine.ts	182	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/multimodal-browser-engine.ts	250	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/multimodal-browser-engine.ts	605	-	// For now, we'll simulate it
+anthropics__claude-code-8345	broad-handler	other	integrations/multimodal-browser-engine.ts	613	-	} catch (recoveryError) {
+anthropics__claude-code-8345	empty-handler	empty	integrations/shinka-evolve-integration.ts	61	commented	} catch {
+anthropics__claude-code-8345	broad-handler	other	integrations/shinka-evolve-integration.ts	73	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/spec-kit-integration.ts	47	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	promise-other	integrations/startup.ts	119	-	initializeEnhancedCapabilities({ silent, checkOnly })
+anthropics__claude-code-8345	broad-handler	other	integrations/visual-autonomous-agent.ts	81	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/visual-autonomous-agent.ts	138	commented	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/visual-autonomous-agent.ts	321	-	} catch (error) {
+anthropics__claude-code-8345	mock-name	literal	integrations/visual-autonomous-agent.ts	431	-	console.log(`         📝 Mock screenshot created: ${screenshot}`);
+anthropics__claude-code-8345	log-handler	log-default	integrations/visual-autonomous-agent.ts	435	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/visual-autonomous-agent.ts	489	-	} catch (error) {
+anthropics__claude-code-8345	log-handler	log	integrations/visual-autonomous-agent.ts	533	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/visual-context-integration.ts	131	-	// For now, we'll simulate the analysis based on common web patterns
+anthropics__claude-code-8345	placeholder-wording	comment:real implementation	integrations/visual-context-integration.ts	135	-	// Simulate AI analysis - in real implementation, this would:
+anthropics__claude-code-8345	mock-name	declaration	integrations/visual-context-integration.ts	143	-	const mockAnalysis: VisualAnalysis = {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/visual-context-integration.ts	342	-	// For now, simulate based on common change patterns
+anthropics__claude-code-8345	mock-name	declaration	integrations/visual-context-integration.ts	346	-	const mockComparison = {
+anthropics__claude-code-8345	mock-name	literal	integrations/visual-context-integration.ts	358	-	console.log(`   📊 Changes detected: ${mockComparison.changes.length}`);
+anthropics__claude-code-8345	mock-name	literal	integrations/visual-context-integration.ts	359	-	console.log(`   🎯 Significance: ${mockComparison.significance}`);
+anthropics__claude-code-8345	broad-handler	other	integrations/web-browser-integration.ts	128	-	} catch (error) {
+anthropics__claude-code-8345	broad-handler	other	integrations/web-browser-integration.ts	217	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/web-browser-integration.ts	239	-	// For now, we'll simulate the actions
+anthropics__claude-code-8345	broad-handler	other	integrations/web-browser-integration.ts	277	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:for now	integrations/web-browser-integration.ts	379	-	// For now, create a placeholder
+anthropics__claude-code-8345	placeholder-wording	literal:placeholder	integrations/web-browser-integration.ts	380	-	writeFileSync(filepath, `Screenshot placeholder for ${name}`);
+anthropics__claude-code-8345	mock-name	literal	integrations/web-browser-integration.ts	380	-	writeFileSync(filepath, `Screenshot placeholder for ${name}`);
+anthropics__claude-code-8345	log-handler	log-default	integrations/web-browser-integration.ts	383	-	} catch (error) {
+anthropics__claude-code-8345	placeholder-wording	comment:mock implementation	integrations/web-search-integration.ts	48	-	// Mock implementation - in production would use:
+anthropics__claude-code-8345	mock-name	declaration	integrations/web-search-integration.ts	55	-	const mockTrends: TrendData[] = technologies.map(tech => ({
+anthropics__claude-code-8345	mock-name	declaration	integrations/web-search-integration.ts	286	-	const mockNews: SearchResult[] = Array(limit).fill(0).map((_, i) => ({
+karakeep-app__karakeep-1723	broad-handler	other	apps/mobile/app/dashboard/settings/bookmark-default-view.tsx	25	-	} catch {
+PV-Bhat__vibe-check-mcp-server-64	mock-name	declaration	tests/jsonrpc-compat.test.ts	3	test	class MockTransport {
+tokens-studio__figma-plugin-3535	mock-name	declaration	packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/__tests__/ManageThemesModal.reorder.test.tsx	6	test	const mockThemes = [
+tokens-studio__figma-plugin-3535	mock-name	declaration	packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/__tests__/ManageThemesModal.reorder.test.tsx	51	test	const mockThemes = [
+tokens-studio__figma-plugin-3535	mock-name	declaration	packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/__tests__/ManageThemesModal.reorder.test.tsx	115	test	const mockThemes = [
+tokens-studio__figma-plugin-3535	mock-name	declaration	packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/__tests__/ManageThemesModal.reorder.test.tsx	152	test	const mockThemes = [
+tokens-studio__figma-plugin-3535	mock-name	declaration	packages/tokens-studio-for-figma/src/app/components/ManageThemesModal/__tests__/ManageThemesModal.reorder.test.tsx	224	test	const mockThemes = [
+langgenius__dify-official-plugins-1422	log-handler	log	models/bedrock/models/llm/llm.py	189	-	except Exception as e:
+langgenius__dify-official-plugins-1422	broad-handler	other	models/bedrock/models/rerank/rerank.py	179	commented	except Exception as e:
+langgenius__dify-official-plugins-1422	broad-handler	other	models/bedrock/models/text_embedding/text_embedding.py	330	commented	except Exception as e:
+coleam00__Archon-364	broad-handler	other	python/src/server/services/storage/base_vector_store.py	358	-	except Exception as e:
+coleam00__Archon-364	broad-handler	other	python/src/server/services/storage/credential_provider.py	160	-	except Exception as e:
+coleam00__Archon-364	broad-handler	other	python/src/server/services/storage/credential_provider.py	209	-	except Exception as e:
+bmaltais__kohya_ss-3339	mock-name	literal	test/test_allowed_paths.py	12	test	self.dummy_file = self.temp_dir_path / "dummy.txt"
+bmaltais__kohya_ss-3339	mock-name	literal	test/test_allowed_paths.py	14	test	f.write("dummy content")
+basicmachines-co__basic-memory-350	mock-name	declaration	tests/api/test_directory_router.py	338	test	async def test_get_directory_structure_mocked(client, project_url):
+basicmachines-co__basic-memory-350	mock-name	literal	tests/api/test_directory_router.py	339	test	"""Test the get_directory_structure endpoint with mocked service."""
+basicmachines-co__basic-memory-350	mock-name	declaration	tests/api/test_directory_router.py	341	test	mock_structure = DirectoryNode(
+conchoecia__odp-102	empty-handler	pass	dev_scripts/PhyloTreeUMAP.py	1208	specific	except (TypeError, ValueError):
+FuelLabs__sway-7322	empty-handler	let-underscore	forc-pkg/src/pkg.rs	1766	-	let _ = sway_core::dump_trait_impls_for_typename(
+FuelLabs__sway-7322	broad-handler	err-arm-other	forc-pkg/src/pkg.rs	2491	-	Err(errs) => return fail(&[], &[], &errs),
+vinhnx__VTCode-113	default-handler	unwrap-or-default	vtcode-core/src/llm/providers/deepseek.rs	43	-	let api_key_value = api_key.unwrap_or_default();
+vinhnx__VTCode-113	default-handler	unwrap-or-default	vtcode-core/src/llm/providers/deepseek.rs	133	-	let content = entry
+vinhnx__VTCode-113	default-handler	unwrap-or	vtcode-core/src/llm/providers/deepseek.rs	420	-	prompt_tokens: usage_value
+vinhnx__VTCode-113	default-handler	unwrap-or	vtcode-core/src/llm/providers/deepseek.rs	424	-	completion_tokens: usage_value
+vinhnx__VTCode-113	default-handler	unwrap-or	vtcode-core/src/llm/providers/deepseek.rs	428	-	total_tokens: usage_value
+vinhnx__VTCode-113	default-handler	unwrap-or-default	vtcode-core/src/llm/providers/deepseek.rs	510	-	let error_text = response.text().await.unwrap_or_default();
+vinhnx__VTCode-113	default-handler	unwrap-or-default	vtcode-core/src/llm/providers/deepseek.rs	567	-	content: response.content.unwrap_or_default(),
+cablehead__xs-82	default-handler	err-arm-return-constant	src/generators/generator.rs	216	specific	Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	11	test	let mockSubmit: jest.Mock;
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	32	test	const mockEvent = {
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	57	test	const mockEvent = {
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	91	test	const mockEvent = {
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	117	test	const mockEvent = {
+anthropics__claude-code-8480	mock-name	declaration	ime-fix/__tests__/useImeAwareSubmit.test.tsx	142	test	const mockEvent = {
+recallnet__js-recall-1140	broad-handler	other	apps/api/src/services/trade-simulator.service.ts	304	-	} catch (error) {
+recallnet__js-recall-1140	broad-handler	other	apps/api/src/services/trade-simulator.service.ts	325	-	} catch (error) {
+recallnet__js-recall-1140	broad-handler	other	apps/api/src/services/trade-simulator.service.ts	355	-	} catch (error) {
+recallnet__js-recall-1140	broad-handler	other	apps/api/src/services/trade-simulator.service.ts	433	commented	} catch (error) {
+recallnet__js-recall-1140	broad-handler	other	apps/api/src/services/trade-simulator.service.ts	469	-	} catch (error) {
+Mail-0__Zero-1950	placeholder-wording	comment:simplified logic	apps/server/src/lib/server-utils.ts	404	-	// Determine if there's a next page token (simplified logic)
+langgenius__dify-official-plugins-1420	broad-handler	other	tools/google_translate/tools/translate.py	34	-	except Exception as e:
+langgenius__dify-official-plugins-1420	broad-handler	other	tools/google_translate/tools/translate.py	55	-	except Exception as e:
+coleam00__Archon-338	log-handler	log	archon-ui-main/src/pages/SettingsPage.tsx	97	-	} catch (err) {
+coleam00__Archon-338	default-handler	promise-return-constant	archon-ui-main/src/services/serverHealthService.ts	62	-	const errorData = await response.json().catch(() => null);
+coleam00__Archon-338	empty-handler	empty	archon-ui-main/src/services/serverHealthService.ts	87	commented	} catch (migrationError) {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	48	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	78	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	108	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	136	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	147	test	const mockScript = '-- SQL migration script\nCREATE TABLE test;';
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	167	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	178	test	const mockScript = '-- SQL migration script\nCREATE TABLE test;';
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/components/MigrationStatusModal.test.tsx	202	test	const mockStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/services/migrationService.test.ts	14	test	const mockStatus: MigrationStatus = {
+coleam00__Archon-338	mock-name	declaration	archon-ui-main/test/services/migrationService.test.ts	78	test	const mockScript = '-- SQL migration script\nCREATE TABLE test;';
+coleam00__Archon-338	broad-handler	other	python/src/server/main.py	261	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	154	commented	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	188	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	267	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	296	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	368	commented	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	453	commented	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/credential_service.py	496	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	136	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	175	-	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	241	commented	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	248	escapes	except:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	269	commented	except Exception as e:
+coleam00__Archon-338	broad-handler	other	python/src/server/services/migration_service.py	316	-	except Exception as e:
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	18	test	def mock_migration_status_complete(self):
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_api.py	19	test	"""Create a mock complete migration status."""
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	59	test	def mock_migration_status_incomplete(self):
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_api.py	60	test	"""Create a mock incomplete migration status."""
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	110	test	def mock_migration_status_no_connection(self):
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_api.py	111	test	"""Create a mock migration status with no database connection."""
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	130	test	mock_client = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	137	test	mock_migration_service = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	173	test	mock_client = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	182	test	mock_migration_service = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	221	test	mock_client = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	225	test	mock_migration_service = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	269	test	mock_client = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_api.py	273	test	mock_migration_service = Mock()
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_api.py	304	test	@pytest.mark.skip(reason="Health endpoint requires full app initialization which is complex to mock")
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	20	test	def mock_supabase_client(self):
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_service.py	21	test	"""Create a mock Supabase client."""
+coleam00__Archon-338	mock-name	literal	python/tests/test_migration_service.py	26	test	"""Create a MigrationService instance with mock client."""
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	53	test	mock_table = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	81	test	mock_table = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	130	test	mock_result = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	149	test	mock_table = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	169	test	mock_table = Mock()
+coleam00__Archon-338	mock-name	declaration	python/tests/test_migration_service.py	261	test	mock_table = Mock()
+megakid__ha_octopus_intelligent-62	empty-handler	pass	custom_components/octopus_intelligent/graphql_client.py	344	-	except Exception:

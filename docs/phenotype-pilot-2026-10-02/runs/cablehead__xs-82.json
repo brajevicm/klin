@@ -1,0 +1,584 @@
+{
+  "arm": "human",
+  "repository": "cablehead/xs",
+  "number": 82,
+  "base": "85be0bf637000e218f73ebbcacc94d82b3f13b9a",
+  "head": "a06353b8551bfe5efd530a85536bb330419829a2",
+  "exit": 1,
+  "ms": 1118,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 100
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "docs/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 322 functions at 85be0bf, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 11
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 322 functions at 85be0bf, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 74
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/generators/tests.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "866767070b1a4f00",
+        "line": 548,
+        "matched": null,
+        "outcome": "new",
+        "text": "assert_eq!(frame.meta.unwrap()[\"reason\"], \"terminate\");",
+        "values": {
+          "count": 1,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/generators/tests.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "2abe2a2c4da35b2a",
+        "line": 14,
+        "matched": {
+          "accepted": false,
+          "file": "src/generators/tests.rs",
+          "line": 13,
+          "text": ".unwrap();",
+          "values": {
+            "count": 18,
+            "escape": "unwrap"
+          }
+        },
+        "outcome": "worsened",
+        "text": ".unwrap();",
+        "values": {
+          "count": 21,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/generators/tests.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "98fe00bb192b37e1",
+        "line": 25,
+        "matched": {
+          "accepted": false,
+          "file": "src/generators/tests.rs",
+          "line": 24,
+          "text": "serve(store, engine).await.unwrap();",
+          "values": {
+            "count": 6,
+            "escape": "unwrap"
+          }
+        },
+        "outcome": "worsened",
+        "text": "serve(store, engine).await.unwrap();",
+        "values": {
+          "count": 7,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/generators/tests.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "f7075d37c8a33bcf",
+        "line": 45,
+        "matched": {
+          "accepted": false,
+          "file": "src/generators/tests.rs",
+          "line": 44,
+          "text": "let frame = recver.recv().await.unwrap();",
+          "values": {
+            "count": 10,
+            "escape": "unwrap"
+          }
+        },
+        "outcome": "worsened",
+        "text": "let frame = recver.recv().await.unwrap();",
+        "values": {
+          "count": 14,
+          "escape": "unwrap"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "src/generators/tests.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "859ce34683d6e9dc",
+        "line": 417,
+        "matched": {
+          "accepted": false,
+          "file": "src/generators/tests.rs",
+          "line": 416,
+          "text": "let hash = store.cas_insert(script).await.unwrap();",
+          "values": {
+            "count": 2,
+            "escape": "unwrap"
+          }
+        },
+        "outcome": "worsened",
+        "text": "let hash = store.cas_insert(script).await.unwrap();",
+        "values": {
+          "count": 3,
+          "escape": "unwrap"
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 22,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 48,
+        "ms": 14,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 52,
+          "measured": 52,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 5,
+        "footprint": null,
+        "graph": null,
+        "held": 236,
+        "ms": 189,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 80,
+          "reads": 104
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 51,
+          "measured": 51,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 83,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 102,
+          "reads": 102
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 17,
+        "ms": 13,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 51,
+          "measured": 51,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 24,
+        "ms": 199,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 102,
+          "reads": 102
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 48,
+          "measured": 48,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 96,
+          "ms": 226,
+          "parses": 96,
+          "reads": 96,
+          "shared": 0,
+          "states": 256
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 9265,
+          "declaration_text_bytes": 31364,
+          "declarations": 713,
+          "export_leaves": 58,
+          "export_text_bytes": 2656,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 26,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 96,
+          "import_text_bytes": 63982,
+          "imports": 589,
+          "module_declarations": 94,
+          "module_text_bytes": 2558,
+          "nesting_bytes": 1440,
+          "nesting_entries": 148,
+          "nestings": 148,
+          "owner_bytes": 1044,
+          "owners": 122,
+          "path_bytes": 2440,
+          "qualified_paths": 46,
+          "reference_canonical_allocation_ratio": 1.9937150837988826,
+          "reference_canonical_allocation_ratio_milli": 1993,
+          "reference_canonical_allocations": 2855,
+          "reference_canonical_bytes": 25206,
+          "reference_distinct_names": 1432,
+          "reference_name_bytes": 223151,
+          "reference_representation_after_bytes": 566400,
+          "reference_representation_before_bytes": 1132800,
+          "references": 35400,
+          "signature_bytes": 42227,
+          "signatures": 713,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 231,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 357,
+            "distinct_names": 1560,
+            "files": 48,
+            "index_ms": 0,
+            "measure_ms": 116,
+            "query_ms": 0,
+            "references": 17024
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 356,
+            "distinct_names": 1552,
+            "files": 48,
+            "index_ms": 0,
+            "measure_ms": 110,
+            "query_ms": 0,
+            "references": 16910
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 16,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 61,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 131,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 1,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 96
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 234,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 188,
+          "modules": 114,
+          "ms": 0,
+          "sources": 114
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 3,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 4,
+          "items": 236,
+          "measured": 198,
+          "ms": 0,
+          "opaque": 38,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "src/nu/commands/append_command.rs",
+        "gate": "public-api",
+        "line": 18,
+        "outcome": "unresolved",
+        "text": "pub fn new(store: Store, context_id: scru128::Scru128Id, base_meta: JsonValue) -> Self { — xs — an inherent impl of AppendCommand outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "src/nu/commands/append_command_buffered.rs",
+        "gate": "public-api",
+        "line": 17,
+        "outcome": "unresolved",
+        "text": "pub fn new(store: Store, output: Arc<Mutex<Vec<Frame>>>) -> Self { — xs — an inherent impl of AppendCommand outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "85be0bf637000e218f73ebbcacc94d82b3f13b9a",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

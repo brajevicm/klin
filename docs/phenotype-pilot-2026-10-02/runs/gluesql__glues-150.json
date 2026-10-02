@@ -1,0 +1,468 @@
+{
+  "arm": "agent",
+  "repository": "gluesql/glues",
+  "number": 150,
+  "base": "22bd5492dda2b538f0da10293c44c3f4495d7ce3",
+  "head": "136ed62a4c4b211687ec3196ba85aed167c7abb9",
+  "exit": 1,
+  "ms": 856,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "core/Cargo.toml",
+          "tui/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "core/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 222 functions at 22bd549, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 23
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 222 functions at 22bd549, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 95
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 23, lines 95",
+        "condition": "over the complexity gate (cyclomatic > 23 or body > 95 lines)",
+        "file": "core/src/proxy/server.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "bb2642768166345d",
+        "line": 17,
+        "matched": null,
+        "outcome": "new",
+        "text": "pub async fn handle(&mut self, req: ProxyRequest) -> ProxyResponse {",
+        "values": {
+          "cc": 44,
+          "lines": 76
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "glues_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "d561db54fe72ae94",
+        "line": 4,
+        "matched": null,
+        "outcome": "new",
+        "text": "Error (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum Error { GlueSql(gluesql::prelude::Error), Reqwest(reqwest::Error), Wip(String) }",
+          "origin": "core/src/error.rs:4",
+          "was": "enum Error { GlueSql(gluesql::prelude::Error), Wip(String) }"
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 15,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 24,
+        "ms": 7,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 83,
+          "measured": 83,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 17,
+        "ms": 119,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 160,
+          "reads": 160
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 83,
+          "measured": 83,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 63,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 160,
+          "reads": 160
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 9,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 83,
+          "measured": 83,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 13,
+        "ms": 151,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 160,
+          "reads": 160
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 83,
+          "measured": 83,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 160,
+          "ms": 194,
+          "parses": 160,
+          "reads": 160,
+          "shared": 0,
+          "states": 85
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 7721,
+          "declaration_text_bytes": 36683,
+          "declarations": 751,
+          "export_leaves": 70,
+          "export_text_bytes": 3594,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 30,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 160,
+          "import_text_bytes": 90404,
+          "imports": 329,
+          "module_declarations": 153,
+          "module_text_bytes": 3803,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 1600,
+          "owners": 186,
+          "path_bytes": 5017,
+          "qualified_paths": 88,
+          "reference_canonical_allocation_ratio": 1.943466172381835,
+          "reference_canonical_allocation_ratio_milli": 1943,
+          "reference_canonical_allocations": 2097,
+          "reference_canonical_bytes": 18766,
+          "reference_distinct_names": 1079,
+          "reference_name_bytes": 220394,
+          "reference_representation_after_bytes": 502960,
+          "reference_representation_before_bytes": 1005920,
+          "references": 31435,
+          "signature_bytes": 55316,
+          "signatures": 751,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 197,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 388,
+            "distinct_names": 1081,
+            "files": 83,
+            "index_ms": 0,
+            "measure_ms": 101,
+            "query_ms": 0,
+            "references": 15588
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 363,
+            "distinct_names": 1019,
+            "files": 77,
+            "index_ms": 0,
+            "measure_ms": 92,
+            "query_ms": 0,
+            "references": 14643
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 15,
+            "ignored_ms": 8,
+            "renames_ms": 0,
+            "walk_ms": 0,
+            "worktree_add_ms": 27,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 119,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 1,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 160
+        },
+        "findings": 1,
+        "footprint": null,
+        "graph": {
+          "dependencies": 530,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "edges": 508,
+          "modules": 157,
+          "ms": 1,
+          "sources": 157
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 0
+          },
+          "holes": 2,
+          "items": 226,
+          "measured": 209,
+          "ms": 0,
+          "opaque": 17,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "core/src/state/notebook.rs",
+        "gate": "public-api",
+        "line": 15,
+        "outcome": "unresolved",
+        "text": "pub use inner_state::{ — glues_core — inner_state::InnerState::* globs an item, not a module, so klin cannot list what it exposes"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  Rust package glues (tui/Cargo.toml): has no library target, and a binary has no public surface"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "22bd5492dda2b538f0da10293c44c3f4495d7ce3",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

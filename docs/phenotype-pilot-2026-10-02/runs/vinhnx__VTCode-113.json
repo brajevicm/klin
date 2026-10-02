@@ -1,0 +1,1154 @@
+{
+  "arm": "human",
+  "repository": "vinhnx/VTCode",
+  "number": 113,
+  "base": "6656a349fc09a8b9c83ef33263f59ea6bfc85b54",
+  "head": "96febe2d7019565026775f88f39a04623711c593",
+  "exit": 1,
+  "ms": 5824,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 1600
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "README.md",
+          "RELEASES.md",
+          "ROADMAP.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "npm/package.json",
+          "tools/Cargo.toml",
+          "vtcode-core/Cargo.toml"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "tests",
+          "vtcode-core/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 2,408 functions at 6656a34, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 2,408 functions at 6656a34, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 72
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "vtcode-core/src/config/api_keys.rs",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "e9dc132aab152ffe",
+        "line": 292,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/api_keys.rs",
+          "line": 270,
+          "text": "unsafe {",
+          "values": {
+            "count": 10,
+            "escape": "unsafe"
+          }
+        },
+        "outcome": "worsened",
+        "text": "unsafe {",
+        "values": {
+          "count": 12,
+          "escape": "unsafe"
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/llm/providers/deepseek.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "14bef2bf08135cfc",
+        "line": 120,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn parse_chat_request(&self, value: &Value) -> Option<LLMRequest> {",
+        "values": {
+          "cc": 10,
+          "lines": 82
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/llm/providers/deepseek.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "7f29a42abd861301",
+        "line": 336,
+        "matched": null,
+        "outcome": "new",
+        "text": "fn parse_response(&self, response_json: Value) -> Result<LLMResponse, LLMError> {",
+        "values": {
+          "cc": 15,
+          "lines": 127
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/config/api_keys.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2a12ab494e7e8f59",
+        "line": 154,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/api_keys.rs",
+          "line": 142,
+          "text": "pub fn get_api_key(provider: &str, sources: &ApiKeySources) -> Result<String> {",
+          "values": {
+            "cc": 14,
+            "lines": 29
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn get_api_key(provider: &str, sources: &ApiKeySources) -> Result<String> {",
+        "values": {
+          "cc": 15,
+          "lines": 30
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/config/models.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c78a933d966701c4",
+        "line": 150,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/models.rs",
+          "line": 138,
+          "text": "pub fn as_str(&self) -> &'static str {",
+          "values": {
+            "cc": 23,
+            "lines": 36
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn as_str(&self) -> &'static str {",
+        "values": {
+          "cc": 25,
+          "lines": 39
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/config/models.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "d42cda2669930d24",
+        "line": 219,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/models.rs",
+          "line": 203,
+          "text": "pub fn display_name(&self) -> &'static str {",
+          "values": {
+            "cc": 23,
+            "lines": 33
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn display_name(&self) -> &'static str {",
+        "values": {
+          "cc": 25,
+          "lines": 36
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/config/models.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "c6996effae33d9dc",
+        "line": 257,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/models.rs",
+          "line": 238,
+          "text": "pub fn description(&self) -> &'static str {",
+          "values": {
+            "cc": 23,
+            "lines": 47
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn description(&self) -> &'static str {",
+        "values": {
+          "cc": 25,
+          "lines": 54
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/config/models.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "3170f84c1641bffd",
+        "line": 515,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/config/models.rs",
+          "line": 474,
+          "text": "fn from_str(s: &str) -> Result<Self, Self::Err> {",
+          "values": {
+            "cc": 23,
+            "lines": 41
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn from_str(s: &str) -> Result<Self, Self::Err> {",
+        "values": {
+          "cc": 25,
+          "lines": 44
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/llm/factory.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ee230316b2594911",
+        "line": 23,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/llm/factory.rs",
+          "line": 22,
+          "text": "pub fn new() -> Self {",
+          "values": {
+            "cc": 1,
+            "lines": 98
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn new() -> Self {",
+        "values": {
+          "cc": 1,
+          "lines": 116
+        }
+      },
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "vtcode-core/src/llm/provider.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "1009aa93665c7bb8",
+        "line": 169,
+        "matched": {
+          "accepted": false,
+          "file": "vtcode-core/src/llm/provider.rs",
+          "line": 169,
+          "text": "pub fn to_provider_format(&self, provider: &str) -> Value {",
+          "values": {
+            "cc": 17,
+            "lines": 30
+          }
+        },
+        "outcome": "worsened",
+        "text": "pub fn to_provider_format(&self, provider: &str) -> Value {",
+        "values": {
+          "cc": 17,
+          "lines": 32
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "00996e63f868c738",
+        "line": 5,
+        "matched": null,
+        "outcome": "new",
+        "text": "llm::BackendKind (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum BackendKind { Gemini, OpenAI, Anthropic, DeepSeek, OpenRouter, XAI }",
+          "origin": "vtcode-core/src/llm/types.rs:5",
+          "was": "enum BackendKind { Gemini, OpenAI, Anthropic, OpenRouter, XAI }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "e206719d2dfb3ceb",
+        "line": 5,
+        "matched": null,
+        "outcome": "new",
+        "text": "llm::types::BackendKind (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum BackendKind { Gemini, OpenAI, Anthropic, DeepSeek, OpenRouter, XAI }",
+          "origin": "vtcode-core/src/llm/types.rs:5",
+          "was": "enum BackendKind { Gemini, OpenAI, Anthropic, OpenRouter, XAI }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "fa8b4296acbe107f",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "config::api_keys::ApiKeySources (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "struct ApiKeySources { gemini_env: String, anthropic_env: String, openai_env: String, openrouter_env: String, xai_env: String, deepseek_env: String, gemini_config: Option<String>, anthropic_config: Option<String>, openai_config: Option<String>, openrouter_config: Option<String>, xai_config: Option<String>, deepseek_config: Option<String> }",
+          "origin": "vtcode-core/src/config/api_keys.rs:13",
+          "was": "struct ApiKeySources { gemini_env: String, anthropic_env: String, openai_env: String, openrouter_env: String, xai_env: String, gemini_config: Option<String>, anthropic_config: Option<String>, openai_config: Option<String>, openrouter_config: Option<String>, xai_config: Option<String> }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "6f2b5697f5096112",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "config::models::Provider (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum Provider { Gemini, OpenAI, Anthropic, DeepSeek, OpenRouter, XAI }",
+          "origin": "vtcode-core/src/config/models.rs:13",
+          "was": "enum Provider { Gemini, OpenAI, Anthropic, OpenRouter, XAI }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "8c0d6472f95c8750",
+        "line": 13,
+        "matched": null,
+        "outcome": "new",
+        "text": "models::Provider (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum Provider { Gemini, OpenAI, Anthropic, DeepSeek, OpenRouter, XAI }",
+          "origin": "vtcode-core/src/config/models.rs:13",
+          "was": "enum Provider { Gemini, OpenAI, Anthropic, OpenRouter, XAI }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "96e505df604466ed",
+        "line": 35,
+        "matched": null,
+        "outcome": "new",
+        "text": "ProviderConfigs (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "struct ProviderConfigs { openai: Option<ProviderConfig>, anthropic: Option<ProviderConfig>, gemini: Option<ProviderConfig>, deepseek: Option<ProviderConfig>, openrouter: Option<ProviderConfig>, xai: Option<ProviderConfig> }",
+          "origin": "vtcode-core/src/utils/dot_config.rs:35",
+          "was": "struct ProviderConfigs { openai: Option<ProviderConfig>, anthropic: Option<ProviderConfig>, gemini: Option<ProviderConfig>, openrouter: Option<ProviderConfig>, xai: Option<ProviderConfig> }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "f46410998cb88062",
+        "line": 35,
+        "matched": null,
+        "outcome": "new",
+        "text": "utils::dot_config::ProviderConfigs (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "struct ProviderConfigs { openai: Option<ProviderConfig>, anthropic: Option<ProviderConfig>, gemini: Option<ProviderConfig>, deepseek: Option<ProviderConfig>, openrouter: Option<ProviderConfig>, xai: Option<ProviderConfig> }",
+          "origin": "vtcode-core/src/utils/dot_config.rs:35",
+          "was": "struct ProviderConfigs { openai: Option<ProviderConfig>, anthropic: Option<ProviderConfig>, gemini: Option<ProviderConfig>, openrouter: Option<ProviderConfig>, xai: Option<ProviderConfig> }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "287036fa258f3061",
+        "line": 86,
+        "matched": null,
+        "outcome": "new",
+        "text": "config::models::ModelId (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum ModelId { Gemini25FlashPreview, Gemini25Flash, Gemini25FlashLite, Gemini25Pro, GPT5, GPT5Mini, GPT5Nano, CodexMiniLatest, ClaudeOpus41, ClaudeSonnet45, ClaudeSonnet4, DeepSeekChat, DeepSeekReasoner, XaiGrok2Latest, XaiGrok2, XaiGrok2Mini, XaiGrok2Reasoning, XaiGrok2Vision, OpenRouterGrokCodeFast1, OpenRouterQwen3Coder, OpenRouterDeepSeekChatV31, OpenRouterOpenAIGPT5, OpenRouterAnthropicClaudeSonnet45, OpenRouterAnthropicClaudeSonnet4 }",
+          "origin": "vtcode-core/src/config/models.rs:86",
+          "was": "enum ModelId { Gemini25FlashPreview, Gemini25Flash, Gemini25FlashLite, Gemini25Pro, GPT5, GPT5Mini, GPT5Nano, CodexMiniLatest, ClaudeOpus41, ClaudeSonnet45, ClaudeSonnet4, XaiGrok2Latest, XaiGrok2, XaiGrok2Mini, XaiGrok2Reasoning, XaiGrok2Vision, OpenRouterGrokCodeFast1, OpenRouterQwen3Coder, OpenRouterDeepSeekChatV31, OpenRouterOpenAIGPT5, OpenRouterAnthropicClaudeSonnet45, OpenRouterAnthropicClaudeSonnet4 }"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where an external surface or item the base exposed is gone or its declared contract changed",
+        "file": "vtcode_core",
+        "fix_advice": "Keep the surface, the item or the declared contract the base had where the task allows it. For a changed contract, a new item beside the unchanged one keeps the base's contract where that serves the task. Do not change what the task asked for only to satisfy this gate. If the break is intended, a person accepts it with an accepted entry in a reviewed commit, and until then CI refuses it.",
+        "gate": "public-api",
+        "id": "a6989446472913f7",
+        "line": 86,
+        "matched": null,
+        "outcome": "new",
+        "text": "models::ModelId (type)",
+        "values": {
+          "break": 1,
+          "kind": "changed",
+          "now": "enum ModelId { Gemini25FlashPreview, Gemini25Flash, Gemini25FlashLite, Gemini25Pro, GPT5, GPT5Mini, GPT5Nano, CodexMiniLatest, ClaudeOpus41, ClaudeSonnet45, ClaudeSonnet4, DeepSeekChat, DeepSeekReasoner, XaiGrok2Latest, XaiGrok2, XaiGrok2Mini, XaiGrok2Reasoning, XaiGrok2Vision, OpenRouterGrokCodeFast1, OpenRouterQwen3Coder, OpenRouterDeepSeekChatV31, OpenRouterOpenAIGPT5, OpenRouterAnthropicClaudeSonnet45, OpenRouterAnthropicClaudeSonnet4 }",
+          "origin": "vtcode-core/src/config/models.rs:86",
+          "was": "enum ModelId { Gemini25FlashPreview, Gemini25Flash, Gemini25FlashLite, Gemini25Pro, GPT5, GPT5Mini, GPT5Nano, CodexMiniLatest, ClaudeOpus41, ClaudeSonnet45, ClaudeSonnet4, XaiGrok2Latest, XaiGrok2, XaiGrok2Mini, XaiGrok2Reasoning, XaiGrok2Vision, OpenRouterGrokCodeFast1, OpenRouterQwen3Coder, OpenRouterDeepSeekChatV31, OpenRouterOpenAIGPT5, OpenRouterAnthropicClaudeSonnet45, OpenRouterAnthropicClaudeSonnet4 }"
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 7,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3,
+        "ms": 53,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 129,
+        "ms": 11,
+        "name": "lockfile",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 307,
+          "measured": 307,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 102,
+        "ms": 929,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 563,
+          "reads": 613
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 287,
+          "measured": 287,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 3,
+        "ms": 558,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 573,
+          "reads": 573
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 47,
+          "measured": 47,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 161,
+        "ms": 42,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 288,
+          "measured": 287,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": null,
+        "findings": 9,
+        "footprint": null,
+        "graph": null,
+        "held": 143,
+        "ms": 1037,
+        "name": "complexity",
+        "names": null,
+        "notes": 1,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 575,
+          "reads": 575
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 282,
+          "measured": 281,
+          "not_measured": 0,
+          "unreadable": 1
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 563,
+          "ms": 1878,
+          "parses": 563,
+          "reads": 563,
+          "shared": 0,
+          "states": 1715
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 105740,
+          "declaration_text_bytes": 295061,
+          "declarations": 6460,
+          "export_leaves": 611,
+          "export_text_bytes": 38101,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 333,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 561,
+          "import_text_bytes": 372328,
+          "imports": 2991,
+          "module_declarations": 628,
+          "module_text_bytes": 23242,
+          "nesting_bytes": 7595,
+          "nesting_entries": 1285,
+          "nestings": 1191,
+          "owner_bytes": 36810,
+          "owners": 2749,
+          "path_bytes": 19723,
+          "qualified_paths": 335,
+          "reference_canonical_allocation_ratio": 1.9965922644402794,
+          "reference_canonical_allocation_ratio_milli": 1996,
+          "reference_canonical_allocations": 11718,
+          "reference_canonical_bytes": 147929,
+          "reference_distinct_names": 5869,
+          "reference_name_bytes": 1398150,
+          "reference_representation_after_bytes": 2893328,
+          "reference_representation_before_bytes": 5786656,
+          "references": 180833,
+          "signature_bytes": 389102,
+          "signatures": 6460,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 0,
+        "ms": 1898,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 3247,
+            "distinct_names": 6489,
+            "files": 281,
+            "index_ms": 4,
+            "measure_ms": 1034,
+            "query_ms": 0,
+            "references": 87229
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 3213,
+            "distinct_names": 6469,
+            "files": 280,
+            "index_ms": 4,
+            "measure_ms": 846,
+            "query_ms": 0,
+            "references": 85976
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 20,
+            "ignored_ms": 12,
+            "renames_ms": 0,
+            "walk_ms": 5,
+            "worktree_add_ms": 82,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 0,
+          "measured": 0,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 0
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 1013,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 0,
+            "distinct_names": 0,
+            "files": 0,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 0
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 2,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 563
+        },
+        "findings": 9,
+        "footprint": null,
+        "graph": {
+          "dependencies": 1432,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 1153,
+          "modules": 606,
+          "ms": 3,
+          "sources": 606
+        },
+        "held": 0,
+        "ms": 15,
+        "name": "public-api",
+        "names": null,
+        "notes": 40,
+        "status": "FAIL",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 78,
+          "items": 6167,
+          "measured": 5738,
+          "ms": 6,
+          "opaque": 429,
+          "surfaces": 4
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "npm/package.json",
+        "gate": "lockfile",
+        "outcome": "note",
+        "text": "npm/package.json has no lockfile beside it in either tree, so its dependencies are not judged"
+      },
+      {
+        "file": "src/agent/runloop/unified/turn.rs",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "src/agent/runloop/unified/turn.rs",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the Rust grammar rejected it"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 48,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub async fn complete(&self, context: &CompletionContext) -> Vec<CompletionSuggestion> { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/mod.rs",
+        "gate": "public-api",
+        "line": 119,
+        "outcome": "unresolved",
+        "text": "pub async fn record_feedback(&self, suggestion_id: &str, accepted: bool) { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/suggestions.rs",
+        "gate": "public-api",
+        "line": 23,
+        "outcome": "unresolved",
+        "text": "pub fn new(text: String, kind: CompletionKind, context: CompletionContext) -> Self { — vtcode_core — an inherent impl of CompletionSuggestion outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_completion/engine/suggestions.rs",
+        "gate": "public-api",
+        "line": 38,
+        "outcome": "unresolved",
+        "text": "pub fn update_acceptance_rate(&mut self, accepted: bool) { — vtcode_core — an inherent impl of CompletionSuggestion outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/code/code_quality/metrics/mod.rs",
+        "gate": "public-api",
+        "line": 22,
+        "outcome": "unresolved",
+        "text": "pub fn quality_score(&self) -> f64 { — vtcode_core — an inherent impl of QualityMetrics outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/intelligence.rs",
+        "gate": "public-api",
+        "line": 621,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/intelligence.rs",
+        "gate": "public-api",
+        "line": 625,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_completions( — vtcode_core — an inherent impl of CompletionEngine outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 486,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 496,
+        "outcome": "unresolved",
+        "text": "pub async fn record_operation(&self, operation: &str) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 502,
+        "outcome": "unresolved",
+        "text": "pub async fn record_error(&self, operation: &str) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 508,
+        "outcome": "unresolved",
+        "text": "pub async fn record_memory_usage(&self, usage_bytes: usize) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/agent/performance.rs",
+        "gate": "public-api",
+        "line": 519,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_report(&self) -> PerformanceReport { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 29,
+        "outcome": "unresolved",
+        "text": "pub fn new() -> Self { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 48,
+        "outcome": "unresolved",
+        "text": "pub async fn start_operation(&self, operation_id: String) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 57,
+        "outcome": "unresolved",
+        "text": "pub async fn end_operation(&self, operation_id: String, success: bool) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 92,
+        "outcome": "unresolved",
+        "text": "pub async fn record_context_prediction(&self, correct: bool) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 114,
+        "outcome": "unresolved",
+        "text": "pub async fn update_cache_hit_rate(&self, hit_rate: f64) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 120,
+        "outcome": "unresolved",
+        "text": "pub async fn update_memory_usage(&self, memory_mb: usize) { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 126,
+        "outcome": "unresolved",
+        "text": "pub async fn get_metrics(&self) -> PerformanceMetrics { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 132,
+        "outcome": "unresolved",
+        "text": "pub async fn average_response_time(&self) -> Duration { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 143,
+        "outcome": "unresolved",
+        "text": "pub async fn percentile_95_response_time(&self) -> Duration { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 157,
+        "outcome": "unresolved",
+        "text": "pub async fn check_phase1_targets(&self) -> Phase1Status { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/performance_monitor.rs",
+        "gate": "public-api",
+        "line": 173,
+        "outcome": "unresolved",
+        "text": "pub async fn generate_report(&self) -> String { — vtcode_core — an inherent impl of PerformanceMonitor outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/core/token_budget.rs",
+        "gate": "public-api",
+        "line": 46,
+        "outcome": "unresolved",
+        "text": "pub fn for_model(model: &str, max_tokens: usize) -> Self { — vtcode_core — an inherent impl of TokenBudgetConfig outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/gemini/models/mod.rs",
+        "gate": "public-api",
+        "line": 102,
+        "outcome": "unresolved",
+        "text": "pub fn auto() -> Self { — vtcode_core — an inherent impl of ToolConfig outside the module that declares it, and 3 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 260,
+        "outcome": "unresolved",
+        "text": "pub fn user(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 270,
+        "outcome": "unresolved",
+        "text": "pub fn assistant(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 281,
+        "outcome": "unresolved",
+        "text": "pub fn assistant_with_tools(content: String, tool_calls: Vec<ToolCall>) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 291,
+        "outcome": "unresolved",
+        "text": "pub fn system(content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 309,
+        "outcome": "unresolved",
+        "text": "pub fn tool_response(tool_call_id: String, content: String) -> Self { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 320,
+        "outcome": "unresolved",
+        "text": "pub fn tool_response_with_name( — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 331,
+        "outcome": "unresolved",
+        "text": "pub fn validate_for_provider(&self, provider: &str) -> Result<(), String> { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 385,
+        "outcome": "unresolved",
+        "text": "pub fn has_tool_calls(&self) -> bool { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 392,
+        "outcome": "unresolved",
+        "text": "pub fn get_tool_calls(&self) -> Option<&[ToolCall]> { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 397,
+        "outcome": "unresolved",
+        "text": "pub fn is_tool_response(&self) -> bool { — vtcode_core — an inherent impl of Message outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 523,
+        "outcome": "unresolved",
+        "text": "pub fn function(name: String, description: String, parameters: Value) -> Self { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 535,
+        "outcome": "unresolved",
+        "text": "pub fn function_name(&self) -> &str { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "vtcode-core/src/llm/provider.rs",
+        "gate": "public-api",
+        "line": 540,
+        "outcome": "unresolved",
+        "text": "pub fn validate(&self) -> Result<(), String> { — vtcode_core — an inherent impl of ToolDefinition outside the module that declares it, and 2 modules declare a type of that name"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  Rust package anstyle-migration-tool (tools/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package vtcode (npm/package.json): its main names no TypeScript source klin supports: index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 3 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "6656a349fc09a8b9c83ef33263f59ea6bfc85b54",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

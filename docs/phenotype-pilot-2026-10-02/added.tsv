@@ -1,0 +1,9 @@
+gluesql__glues-150	crates	axum	core/Cargo.toml	public
+gluesql__glues-150	crates	reqwest	core/Cargo.toml	public
+gluesql__glues-150	crates	serde	core/Cargo.toml	public
+gluesql__glues-150	crates	serde_json	core/Cargo.toml	public
+gluesql__glues-150	crates	tiny_http	core/Cargo.toml	public
+anthropics__claude-code-8345	npm	@anthropic-ai/claude-code	package.json	public
+anthropics__claude-code-8345	npm	@types/node	package.json	public
+anthropics__claude-code-8345	npm	ts-node	package.json	public
+anthropics__claude-code-8345	npm	typescript	package.json	public

@@ -1,0 +1,49 @@
+id	codes	note
+FuelLabs/sway#7325/issue/3182350581	none	reports a Copilot setup timeout
+GlareDB/glaredb#3633/review/2760897250	reuse,other-change	use the existing UnaryInputNumericOperation; narrow types to Float64
+GlareDB/glaredb#3633/line/2039899977	removable	remove the Float16 and Float32 variants
+GlareDB/glaredb#3633/line/2039901923	test-integrity	make test outputs reproducible
+GlareDB/glaredb#3633/line/2039922719	test-integrity	cast test outputs to a fixed precision
+GlareDB/glaredb#3633/line/2039925904	test-integrity	keep the inf case uncast
+GlareDB/glaredb#3633/line/2039940974	removable	remove a line that is no longer needed
+nyx-space/anise#469/issue/3011583559	none	closing remark about the agent
+karakeep-app/karakeep#1723/review/3014044059	removable	asks if the database storage is needed; it adds compatibility checks
+karakeep-app/karakeep#1723/review/3028471073	none	approval
+karakeep-app/karakeep#1723/line/2203284889	other-change	add migration guidance to GEMINI.md
+karakeep-app/karakeep#1723/line/2203550869	architecture,reuse	store the setting with the existing mobile local settings
+karakeep-app/karakeep#1723/line/2203555034	reuse	use the existing useUpdateUserSettings hook
+karakeep-app/karakeep#1723/line/2203555678	removable	drop a backward-compatibility check
+karakeep-app/karakeep#1723/line/2203556096	other-change	label text
+recallnet/js-recall#1141/issue/3340400268	none	status question
+recallnet/js-recall#1141/line/2368943370	correctness	missing ended-status check and server validation
+langgenius/dify-official-plugins#1422/issue/3157118435	other-change	bump the manifest version, resolve conflicts
+langgenius/dify-official-plugins#1422/issue/3159970899	reuse,other-change	reuse helper functions across files; infer the model fields
+langgenius/dify-official-plugins#1422/issue/3166800671	none	merge request
+langgenius/dify-official-plugins#1422/review/3099696465	none	approval
+coleam00/Archon#364/issue/3254497384	architecture	asks how the abstraction integrates with the system
+coleam00/Archon#364/issue/3285509802	none	closing remark
+mediar-ai/terminator#220/issue/3084636693	none	approval with a packaging worry
+FuelLabs/sway#7322/issue/3197245190	other-change	use a narrower span
+FuelLabs/sway#7322/review/3132946295	test-integrity	add tests
+FuelLabs/sway#7322/review/3137587235	test-integrity	tests cover only the happy path
+vinhnx/VTCode#113/issue/3354636216	none	thanks
+vinhnx/VTCode#113/issue/3356502619	none	thanks
+vinhnx/VTCode#113/issue/3356721488	none	release link
+anthropics/claude-code#8480/issue/3353554565	none	support
+anthropics/claude-code#8480/issue/3354483097	none	support
+anthropics/claude-code#8480/issue/3357223997	none	maintainers fixed it elsewhere
+anthropics/claude-code#8480/issue/3363909274	none	release note
+anthropics/claude-code#8480/issue/3378574481	none	thanks
+giselles-ai/giselle#942/review/2863235137	none	approval
+lumen-notes/lumen#480/review/2758475474	other-change	feature scope and tag format
+langgenius/webapp-conversation#184/issue/3295309516	other-change	support more tags
+PV-Bhat/vibe-check-mcp-server#66/issue/3454804539	none	thanks
+PV-Bhat/vibe-check-mcp-server#66/issue/3457491745	none	thanks
+recallnet/js-recall#1140/review/3170009172	none	approval
+CravateRouge/bloodyAD#79/issue/3289428811	dependency,removable	remove uv.lock and the unrequested pyproject change
+coleam00/Archon#338/issue/3239534122	correctness	later migrations are not detected
+coleam00/Archon#338/issue/3254490399	none	closed for a new architecture
+basicmachines-co/basic-memory#360/issue/3408581254	none	CLA bot posting as a user account
+basicmachines-co/basic-memory#360/issue/3408726887	none	asks an agent to review
+basicmachines-co/basic-memory#360/issue/3412453960	other-change	asks for context and the test method
+basicmachines-co/basic-memory#360/issue/3514260047	none	declined on design grounds

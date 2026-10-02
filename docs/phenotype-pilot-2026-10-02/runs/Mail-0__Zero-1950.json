@@ -1,0 +1,624 @@
+{
+  "arm": "human",
+  "repository": "Mail-0/Zero",
+  "number": 1950,
+  "base": "3ca38991fe026dc69b477cfda01b9a7d5342ece2",
+  "head": "fe63ac7df88f6cc91e080174c304e13fd72b608a",
+  "exit": 1,
+  "ms": 3222,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENT.md",
+          "MCP.md",
+          "README.md",
+          "ROADMAP.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "apps/mail/package.json",
+          "apps/server/package.json",
+          "package.json",
+          "packages/cli/package.json",
+          "packages/eslint-config/package.json",
+          "packages/testing/package.json",
+          "packages/tsconfig/package.json",
+          "scripts/package.json"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,538 function(s) at 3ca3899; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,538 functions at 3ca3899, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 71
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/mail/components/context/*-context.tsx",
+            "pattern": "*-context.tsx",
+            "roots": [
+              "apps/mail/components/context"
+            ]
+          },
+          {
+            "name": "apps/mail/components/mail/mail-*.tsx",
+            "pattern": "mail-*.tsx",
+            "roots": [
+              "apps/mail/components/mail"
+            ]
+          },
+          {
+            "name": "apps/mail/components/ui/*-menu.tsx",
+            "pattern": "*-menu.tsx",
+            "roots": [
+              "apps/mail/components/ui"
+            ]
+          },
+          {
+            "name": "apps/mail/lib/hotkeys/*-hotkeys.tsx",
+            "pattern": "*-hotkeys.tsx",
+            "roots": [
+              "apps/mail/lib/hotkeys"
+            ]
+          },
+          {
+            "name": "apps/server/src/thread-workflow-utils/workflow-*.ts",
+            "pattern": "workflow-*.ts",
+            "roots": [
+              "apps/server/src/thread-workflow-utils"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "apps/server/src/routes/autumn.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "6523eefffc7d470d",
+        "line": 50,
+        "matched": null,
+        "outcome": "new",
+        "text": "await autumn!.customers",
+        "values": {
+          "count": 3,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "apps/server/src/routes/autumn.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "afedcb098c4f2bbd",
+        "line": 153,
+        "matched": null,
+        "outcome": "new",
+        "text": "await autumn!.entities.create(customerData.customerId, body).then((data) => data.data),",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "apps/server/src/routes/autumn.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "f56fae48180f895f",
+        "line": 174,
+        "matched": null,
+        "outcome": "new",
+        "text": "await autumn!.entities",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": null,
+        "condition": "where the code opts out of a check",
+        "file": "apps/server/src/routes/autumn.ts",
+        "fix_advice": "Fix what the escape hides: handle the error instead of unwrapping it, address the lint instead of allowing it. Accepting a new escape is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "escapes",
+        "id": "58bd73bf69cf15a4",
+        "line": 196,
+        "matched": null,
+        "outcome": "new",
+        "text": "await autumn!.entities.delete(customerData.customerId, entityId).then((data) => data.data),",
+        "values": {
+          "count": 1,
+          "escape": "non-null assertion"
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 71",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 71 lines)",
+        "file": "apps/mail/components/ui/app-sidebar.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "f1dd0aa0131d7d29",
+        "line": 31,
+        "matched": {
+          "accepted": false,
+          "file": "apps/mail/components/ui/app-sidebar.tsx",
+          "line": 31,
+          "text": "export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {",
+          "values": {
+            "cc": 12,
+            "lines": 145
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {",
+        "values": {
+          "cc": 14,
+          "lines": 144
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 47,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 8,
+          "measured": 8,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 252,
+        "ms": 20,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 357,
+          "measured": 357,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 4,
+        "footprint": null,
+        "graph": null,
+        "held": 175,
+        "ms": 363,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 714
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 355,
+          "measured": 355,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 15,
+        "ms": 411,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 710,
+          "reads": 710
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 5,
+          "measured": 5,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 10,
+        "ms": 11,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 355,
+          "measured": 350,
+          "not_measured": 0,
+          "unreadable": 5
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 205,
+        "ms": 846,
+        "name": "complexity",
+        "names": null,
+        "notes": 5,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 710,
+          "reads": 710
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 353,
+          "measured": 348,
+          "not_measured": 0,
+          "unreadable": 5
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 706,
+          "ms": 689,
+          "parses": 706,
+          "reads": 706,
+          "shared": 0,
+          "states": 1514
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 52470,
+          "declaration_text_bytes": 186901,
+          "declarations": 3814,
+          "export_leaves": 508,
+          "export_text_bytes": 17754,
+          "exported_alias_bytes": 602,
+          "exported_aliases": 86,
+          "exports": 158,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 696,
+          "import_text_bytes": 303523,
+          "imports": 3878,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 26618,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9981006647673314,
+          "reference_canonical_allocation_ratio_milli": 1998,
+          "reference_canonical_allocations": 12624,
+          "reference_canonical_bytes": 144434,
+          "reference_distinct_names": 6318,
+          "reference_name_bytes": 1074324,
+          "reference_representation_after_bytes": 2333296,
+          "reference_representation_before_bytes": 4666592,
+          "references": 145831,
+          "signature_bytes": 204461,
+          "signatures": 3208,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 12,
+        "ms": 705,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1908,
+            "distinct_names": 6502,
+            "files": 348,
+            "index_ms": 3,
+            "measure_ms": 350,
+            "query_ms": 0,
+            "references": 68130
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1906,
+            "distinct_names": 6503,
+            "files": 348,
+            "index_ms": 3,
+            "measure_ms": 341,
+            "query_ms": 0,
+            "references": 68165
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 19,
+            "ignored_ms": 10,
+            "renames_ms": 0,
+            "walk_ms": 4,
+            "worktree_add_ms": 230,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 6,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 20,
+          "measured": 20,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 706
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 396,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1908,
+            "distinct_names": 6502,
+            "files": 348,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 68130
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1906,
+            "distinct_names": 6503,
+            "files": 348,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 68165
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 11,
+          "measured": 5,
+          "not_measured": 6,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 706
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 886,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 872,
+          "modules": 706,
+          "ms": 1,
+          "sources": 706
+        },
+        "held": 0,
+        "ms": 3,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 52,
+          "measured": 50,
+          "ms": 0,
+          "opaque": 2,
+          "surfaces": 10
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "apps/mail/app/(full-width)/hr.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/create/schedule-send-picker.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/home/footer.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/pricing/comparision.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/ui/pricing-dialog.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/app/(full-width)/hr.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/create/schedule-send-picker.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/home/footer.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/pricing/comparision.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/mail/components/ui/pricing-dialog.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "12 dead symbol(s) the base already held:\n  apps/mail/types/speech-recognition.d.ts:1  interface Window {\n  apps/mail/utils/keyboard-layout-map.ts:18  interface Navigator {\n  apps/mail/utils/keyboard-layout-map.ts:453  isAvailable(): boolean {\n  apps/mail/utils/keyboard-layout-map.ts:460  getAllMappings(): Record<string, string> {\n  apps/mail/utils/keyboard-layout-map.ts:473  getKeyCodesSet(): Set<string> {\n  apps/mail/utils/keyboard-layout-map.ts:481  getKeyValuesSet(): Set<string> {\n  apps/mail/utils/keyboard-layout-map.ts:489  hasKeyCode(keyCode: string): boolean {\n  apps/mail/utils/keyboard-layout-map.ts:496  hasKeyValue(keyValue: string): boolean {\n  apps/mail/utils/keyboard-layout-map.ts:507  getKeySetIntersection(setA: Set<string>, setB: Set<string>): Set<string> {\n  apps/mail/utils/keyboard-layout-map.ts:514  getKeySetUnion(setA: Set<string>, setB: Set<string>): Set<string> {\n  apps/mail/utils/keyboard-layout-map.ts:521  getKeySetDifference(setA: Set<string>, setB: Set<string>): Set<string> {\n  apps/server/src/lib/server-utils.ts:32  passThroughOnException(): void {}"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "6 package(s) or target(s) with no supported public surface:\n  TypeScript package @zero/cli (packages/cli/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @zero/mail (apps/mail/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @zero/testing (packages/testing/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @zero/tsconfig (packages/tsconfig/package.json): its exports names no TypeScript source klin supports: ./base.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package scripts (scripts/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package zero (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "3ca38991fe026dc69b477cfda01b9a7d5342ece2",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

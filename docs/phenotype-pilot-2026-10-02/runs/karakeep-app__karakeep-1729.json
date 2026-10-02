@@ -1,0 +1,740 @@
+{
+  "arm": "human",
+  "repository": "karakeep-app/karakeep",
+  "number": 1729,
+  "base": "613137ff99442885c5fe679b2cc1172adfc5a283",
+  "head": "8e16e27dd1b98ea8f66d39f6b386181be32c46aa",
+  "exit": 1,
+  "ms": 3518,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 50
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "CONTRIBUTING.md",
+          "GEMINI.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "apps/browser-extension/package.json",
+          "apps/cli/package.json",
+          "apps/landing/package.json",
+          "apps/mcp/package.json",
+          "apps/mobile/package.json",
+          "apps/web/package.json",
+          "apps/workers/package.json",
+          "docs/package.json",
+          "package.json",
+          "packages/api/package.json",
+          "packages/db/package.json",
+          "packages/e2e_tests/package.json",
+          "packages/open-api/package.json",
+          "packages/sdk/package.json",
+          "packages/shared-react/package.json",
+          "packages/shared/package.json",
+          "packages/trpc/package.json",
+          "tooling/github/package.json",
+          "tooling/oxlint/package.json",
+          "tooling/prettier/package.json",
+          "tooling/tailwind/package.json",
+          "tooling/typescript/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "packages/e2e_tests/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 3,245 function(s) at 613137f; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 3,245 functions at 613137f, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 65
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/web/components/admin/*Dialog.tsx",
+            "pattern": "*Dialog.tsx",
+            "roots": [
+              "apps/web/components/admin"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/bookmarks/*Editor.tsx",
+            "pattern": "*Editor.tsx",
+            "roots": [
+              "apps/web/components/dashboard/bookmarks"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/lists/*ListModal.tsx",
+            "pattern": "*ListModal.tsx",
+            "roots": [
+              "apps/web/components/dashboard/lists"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/preview/*ContentSection.tsx",
+            "pattern": "*ContentSection.tsx",
+            "roots": [
+              "apps/web/components/dashboard/preview"
+            ]
+          },
+          {
+            "name": "apps/web/components/dashboard/rules/Rule*.tsx",
+            "pattern": "Rule*.tsx",
+            "roots": [
+              "apps/web/components/dashboard/rules"
+            ]
+          },
+          {
+            "name": "apps/workers/workers/*Worker.ts",
+            "pattern": "*Worker.ts",
+            "roots": [
+              "apps/workers/workers"
+            ]
+          },
+          {
+            "name": "packages/shared/utils/*Utils.ts",
+            "pattern": "*Utils.ts",
+            "roots": [
+              "packages/shared/utils"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "condition": "over its word ceiling",
+        "file": "AGENTS.md",
+        "fix_advice": "An instruction that can be a gate costs no words — encode it as a gate and point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling is a decision to say why in the commit.",
+        "gate": "doc-size",
+        "outcome": "new",
+        "values": {
+          "ceiling": 50,
+          "words": 381
+        }
+      },
+      {
+        "condition": "over its word ceiling",
+        "file": "CLAUDE.md",
+        "fix_advice": "An instruction that can be a gate costs no words — encode it as a gate and point at it; otherwise move narrative into docs/ and keep the instruction. Raising the ceiling is a decision to say why in the commit.",
+        "gate": "doc-size",
+        "outcome": "new",
+        "values": {
+          "ceiling": 50,
+          "words": 381
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/web/components/dashboard/lists/LockedListAuthModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "2234db7949931e77",
+        "line": 27,
+        "matched": null,
+        "outcome": "new",
+        "text": "export function LockedListAuthModal({",
+        "values": {
+          "cc": 2,
+          "lines": 98
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/web/components/dashboard/lists/EditListModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "25a00ab651f60f5b",
+        "line": 60,
+        "matched": {
+          "accepted": false,
+          "file": "apps/web/components/dashboard/lists/EditListModal.tsx",
+          "line": 59,
+          "text": "export function EditListModal({",
+          "values": {
+            "cc": 23,
+            "lines": 352
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function EditListModal({",
+        "values": {
+          "cc": 26,
+          "lines": 411
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/web/components/dashboard/lists/EditListModal.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "62c8af9de20fb690",
+        "line": 100,
+        "matched": {
+          "accepted": false,
+          "file": "apps/web/components/dashboard/lists/EditListModal.tsx",
+          "line": 97,
+          "text": "useEffect(() => {",
+          "values": {
+            "cc": 12,
+            "lines": 10
+          }
+        },
+        "outcome": "worsened",
+        "text": "useEffect(() => {",
+        "values": {
+          "cc": 14,
+          "lines": 12
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/web/components/dashboard/lists/ListOptions.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "96553d38919533d7",
+        "line": 31,
+        "matched": {
+          "accepted": false,
+          "file": "apps/web/components/dashboard/lists/ListOptions.tsx",
+          "line": 27,
+          "text": "export function ListOptions({",
+          "values": {
+            "cc": 2,
+            "lines": 98
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function ListOptions({",
+        "values": {
+          "cc": 4,
+          "lines": 141
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "apps/web/components/dashboard/sidebar/AllLists.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "94760d2b8c157e99",
+        "line": 21,
+        "matched": {
+          "accepted": false,
+          "file": "apps/web/components/dashboard/sidebar/AllLists.tsx",
+          "line": 21,
+          "text": "export default function AllLists({",
+          "values": {
+            "cc": 1,
+            "lines": 103
+          }
+        },
+        "outcome": "worsened",
+        "text": "export default function AllLists({",
+        "values": {
+          "cc": 1,
+          "lines": 106
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 65",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 65 lines)",
+        "file": "packages/trpc/models/bookmarks.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ecd63e5cca047759",
+        "line": 81,
+        "matched": {
+          "accepted": false,
+          "file": "packages/trpc/models/bookmarks.ts",
+          "line": 79,
+          "text": "static async loadMulti(",
+          "values": {
+            "cc": 17,
+            "lines": 280
+          }
+        },
+        "outcome": "worsened",
+        "text": "static async loadMulti(",
+        "values": {
+          "cc": 18,
+          "lines": 301
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 2,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 26,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 6,
+          "measured": 6,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 55,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 22,
+          "measured": 22,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 405,
+        "ms": 34,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 541,
+          "measured": 541,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 101,
+        "ms": 385,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 1077
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 539,
+          "measured": 539,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 15,
+        "ms": 396,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1073,
+          "reads": 1073
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 193,
+        "ms": 72,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 539,
+          "measured": 537,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 6,
+        "footprint": null,
+        "graph": null,
+        "held": 140,
+        "ms": 802,
+        "name": "complexity",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 1073,
+          "reads": 1073
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 528,
+          "measured": 526,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1051,
+          "ms": 795,
+          "parses": 1051,
+          "reads": 1051,
+          "shared": 0,
+          "states": 1362
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 45596,
+          "declaration_text_bytes": 139667,
+          "declarations": 3201,
+          "export_leaves": 461,
+          "export_text_bytes": 15861,
+          "exported_alias_bytes": 2464,
+          "exported_aliases": 352,
+          "exports": 209,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1047,
+          "import_text_bytes": 470806,
+          "imports": 5841,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 41316,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9907680219996071,
+          "reference_canonical_allocation_ratio_milli": 1990,
+          "reference_canonical_allocations": 10135,
+          "reference_canonical_bytes": 119051,
+          "reference_distinct_names": 5091,
+          "reference_name_bytes": 1013972,
+          "reference_representation_after_bytes": 2233472,
+          "reference_representation_before_bytes": 4466944,
+          "references": 139592,
+          "signature_bytes": 209268,
+          "signatures": 2966,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 11,
+        "ms": 810,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 1609,
+            "distinct_names": 5187,
+            "files": 526,
+            "index_ms": 3,
+            "measure_ms": 460,
+            "query_ms": 0,
+            "references": 66454
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1592,
+            "distinct_names": 5140,
+            "files": 521,
+            "index_ms": 3,
+            "measure_ms": 337,
+            "query_ms": 0,
+            "references": 65765
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 34,
+            "ignored_ms": 17,
+            "renames_ms": 0,
+            "walk_ms": 12,
+            "worktree_add_ms": 255,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 3,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 32,
+          "measured": 32,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1051
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 398,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 1609,
+            "distinct_names": 5187,
+            "files": 526,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 66454
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 1592,
+            "distinct_names": 5140,
+            "files": 521,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 65765
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 23,
+          "measured": 7,
+          "not_measured": 16,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1051
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 988,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 952,
+          "modules": 1051,
+          "ms": 1,
+          "sources": 1051
+        },
+        "held": 0,
+        "ms": 5,
+        "name": "public-api",
+        "names": null,
+        "notes": 2,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 2,
+          "items": 22,
+          "measured": 12,
+          "ms": 1,
+          "opaque": 10,
+          "surfaces": 14
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "apps/landing/src/Homepage.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Privacy.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Homepage.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/landing/src/Privacy.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "11 dead symbol(s) the base already held:\n  apps/cli/src/vite-env.d.ts:7  interface ImportMeta {\n  apps/web/@types/i18next.d.ts:7  interface CustomTypeOptions {\n  apps/web/server/auth.ts:103  async authorize(credentials, req) {\n  packages/shared/assetdb.ts:121  constructor(rootPath: string) {\n  packages/shared/assetdb.ts:298  constructor(s3Client: S3Client, bucketName: string) {\n  packages/shared/inference.ts:70  constructor() {\n  packages/shared/inference.ts:168  async generateEmbeddingFromText(\n  packages/shared/inference.ts:186  constructor() {\n  packages/shared/inference.ts:299  async generateEmbeddingFromText(\n  packages/shared/searchQueryParser.ts:58  private constructor(\n  packages/trpc/index.ts:44  errorFormatter(opts) {"
+      },
+      {
+        "file": "tooling/tailwind/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./globals.css\" — @karakeep/tailwind-config \"./native\" — ./globals.css is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "16 package(s) or target(s) with no supported public surface:\n  TypeScript package @karakeep/api (packages/api/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/cli (apps/cli/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @karakeep/docs (docs/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/e2e_tests (packages/e2e_tests/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/github (tooling/github/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/landing (apps/landing/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/mcp (apps/mcp/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/prettier-config (tooling/prettier/package.json): its exports names no TypeScript source klin supports: ./index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @karakeep/shared-react (packages/shared-react/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/trpc (packages/trpc/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/tsconfig (tooling/typescript/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/web (apps/web/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package @karakeep/workers (apps/workers/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package browser-extension (apps/browser-extension/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package karakeep (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package oxlint (tooling/oxlint/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 2 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "613137ff99442885c5fe679b2cc1172adfc5a283",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

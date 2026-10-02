@@ -1,0 +1,430 @@
+{
+  "arm": "human",
+  "repository": "langgenius/webapp-conversation",
+  "number": 184,
+  "base": "55a77ea86d9faea36254feb00048abb0b62c886f",
+  "head": "20f7412d5db9bbd18e575b67023139b726036492",
+  "exit": 1,
+  "ms": 15562,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "package.json"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 41,865 function(s) at 55a77ea; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "the floor of 25, over 41,865 function(s) at 55a77ea; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 25
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "app/components/base/image-uploader/image-*.tsx",
+            "pattern": "image-*.tsx",
+            "roots": [
+              "app/components/base/image-uploader"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 25",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 25 lines)",
+        "file": "app/components/base/streamdown-markdown.tsx",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "9ea90b3315661d1f",
+        "line": 40,
+        "matched": null,
+        "outcome": "new",
+        "text": "function splitThinkSegments(input: string): Segment[] {",
+        "values": {
+          "cc": 6,
+          "lines": 38
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 14,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 1,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 61,
+        "ms": 11,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 257,
+          "measured": 257,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 493,
+        "ms": 2602,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 514
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 257,
+          "measured": 257,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 4008,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 514,
+          "reads": 514
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 257,
+          "measured": 257,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 2024,
+        "ms": 8299,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 514,
+          "reads": 514
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 141,
+          "measured": 141,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 282,
+          "ms": 119,
+          "parses": 282,
+          "reads": 282,
+          "shared": 0,
+          "states": 387
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 9512,
+          "declaration_text_bytes": 37562,
+          "declarations": 789,
+          "export_leaves": 240,
+          "export_text_bytes": 10616,
+          "exported_alias_bytes": 7,
+          "exported_aliases": 1,
+          "exports": 236,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 282,
+          "import_text_bytes": 87492,
+          "imports": 1152,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 10703,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.9767868051313378,
+          "reference_canonical_allocation_ratio_milli": 1976,
+          "reference_canonical_allocations": 3236,
+          "reference_canonical_bytes": 35470,
+          "reference_distinct_names": 1637,
+          "reference_name_bytes": 167144,
+          "reference_representation_after_bytes": 324000,
+          "reference_representation_before_bytes": 648000,
+          "references": 20250,
+          "signature_bytes": 53185,
+          "signatures": 789,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 2,
+        "ms": 123,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 396,
+            "distinct_names": 1648,
+            "files": 141,
+            "index_ms": 0,
+            "measure_ms": 63,
+            "query_ms": 0,
+            "references": 9450
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 393,
+            "distinct_names": 1639,
+            "files": 141,
+            "index_ms": 0,
+            "measure_ms": 56,
+            "query_ms": 0,
+            "references": 9348
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 20,
+            "ignored_ms": 13,
+            "renames_ms": 0,
+            "walk_ms": 4,
+            "worktree_add_ms": 80,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 282
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 84,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 396,
+            "distinct_names": 1648,
+            "files": 141,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 9450
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 393,
+            "distinct_names": 1639,
+            "files": 141,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 9348
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 1,
+          "measured": 0,
+          "not_measured": 1,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 282
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 204,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 184,
+          "modules": 282,
+          "ms": 0,
+          "sources": 282
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 0,
+          "measured": 0,
+          "ms": 0,
+          "opaque": 0,
+          "surfaces": 0
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "2 dead symbol(s) the base already held:\n  app/components/chat/answer/index.tsx:31  const OpeningStatementIcon: FC<{ className?: string }> = ({ className }) => (\n  app/components/chat/answer/index.tsx:41  const EditIcon: FC<{ className?: string }> = ({ className }) => {"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "1 package(s) or target(s) with no supported public surface:\n  TypeScript package webapp-conversation (package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 8 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "55a77ea86d9faea36254feb00048abb0b62c886f",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

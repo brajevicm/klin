@@ -1,0 +1,737 @@
+{
+  "arm": "agent",
+  "repository": "giselles-ai/giselle",
+  "number": 944,
+  "base": "f138fdfec410b250c353de4f7cb895ebdcb2afb5",
+  "head": "b05a750ffcbbf64c16aab81b948d0f077d2497e5",
+  "exit": 1,
+  "ms": 3428,
+  "report": {
+    "derived": [
+      {
+        "key": "AGENTS.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 200
+      },
+      {
+        "key": "CLAUDE.md",
+        "rule": "the word count at the derivation commit, rounded up to the next 50",
+        "section": "doc_size",
+        "value": 400
+      },
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "CODE_OF_CONDUCT.md",
+          "CONTRIBUTING.md",
+          "README.md",
+          "SECURITY.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "apps/playground/package.json",
+          "apps/studio.giselles.ai/package.json",
+          "internal-packages/workflow-designer-ui/package.json",
+          "package.json",
+          "packages/data-mod/package.json",
+          "packages/data-type/package.json",
+          "packages/flow/package.json",
+          "packages/giselle-engine/package.json",
+          "packages/giselle-sdk/package.json",
+          "packages/github-tool/package.json",
+          "packages/integration/package.json",
+          "packages/language-model/package.json",
+          "packages/rag/package.json",
+          "packages/supabase-driver/package.json",
+          "packages/telemetry/package.json",
+          "packages/test-utils/package.json",
+          "packages/text-editor/package.json",
+          "packages/usage-limits/package.json",
+          "packages/utils/package.json",
+          "packages/web-search/package.json",
+          "packages/workflow-designer/package.json",
+          "packages/workflow-utils/package.json",
+          "packages/workspace/package.json",
+          "tools/storage-migration/package.json",
+          "tools/tsconfig/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "apps/studio.giselles.ai/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "the floor of 10, over 2,753 function(s) at f138fdf; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 10
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 2,753 functions at f138fdf, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 73
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "apps/studio.giselles.ai/app/(main)/settings/team/agent-*.tsx",
+            "pattern": "agent-*.tsx",
+            "roots": [
+              "apps/studio.giselles.ai/app/(main)/settings/team"
+            ]
+          },
+          {
+            "name": "internal-packages/workflow-designer-ui/src/editor/node/ui/github-*.tsx",
+            "pattern": "github-*.tsx",
+            "roots": [
+              "internal-packages/workflow-designer-ui/src/editor/node/ui"
+            ]
+          },
+          {
+            "name": "packages/giselle-engine/src/core/flows/*-trigger.ts",
+            "pattern": "*-trigger.ts",
+            "roots": [
+              "packages/giselle-engine/src/core/flows"
+            ]
+          },
+          {
+            "name": "packages/workflow-designer/src/react/state/use-*.ts",
+            "pattern": "use-*.ts",
+            "roots": [
+              "packages/workflow-designer/src/react/state"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 10, lines 73",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 73 lines)",
+        "file": "packages/giselle-engine/src/core/github/event-handlers.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "295a5be60941980d",
+        "line": 293,
+        "matched": null,
+        "outcome": "new",
+        "text": "export async function processEvent<TEventName extends WebhookEventName>(",
+        "values": {
+          "cc": 9,
+          "lines": 81
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 73",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 73 lines)",
+        "file": "packages/giselle-engine/src/core/flows/run-flow.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "ccf605b8fa10e311",
+        "line": 17,
+        "matched": {
+          "accepted": false,
+          "file": "packages/giselle-engine/src/core/flows/run-flow.ts",
+          "line": 17,
+          "text": "export async function runFlow(args: {",
+          "values": {
+            "cc": 5,
+            "lines": 88
+          }
+        },
+        "outcome": "worsened",
+        "text": "export async function runFlow(args: {",
+        "values": {
+          "cc": 5,
+          "lines": 104
+        }
+      },
+      {
+        "ceiling": "cc 10, lines 73",
+        "condition": "over the complexity gate (cyclomatic > 10 or body > 73 lines)",
+        "file": "packages/giselle-engine/src/core/index.ts",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "0d2ce1bac5f3cd38",
+        "line": 63,
+        "matched": {
+          "accepted": false,
+          "file": "packages/giselle-engine/src/core/index.ts",
+          "line": 63,
+          "text": "export function GiselleEngine(config: GiselleEngineConfig) {",
+          "values": {
+            "cc": 3,
+            "lines": 172
+          }
+        },
+        "outcome": "worsened",
+        "text": "export function GiselleEngine(config: GiselleEngineConfig) {",
+        "values": {
+          "cc": 3,
+          "lines": 173
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 2,
+          "measured": 2,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 8,
+        "name": "doc-size",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 6,
+          "measured": 6,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 1,
+        "ms": 61,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 25,
+          "measured": 25,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 352,
+        "ms": 27,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 780,
+          "measured": 780,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 25,
+        "ms": 334,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 0,
+          "reads": 1560
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 779,
+          "measured": 779,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 9,
+        "ms": 397,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 1558,
+          "reads": 1558
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 28,
+          "measured": 28,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 211,
+        "ms": 37,
+        "name": "inventory",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 778,
+          "measured": 776,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": null,
+        "findings": 3,
+        "footprint": null,
+        "graph": null,
+        "held": 154,
+        "ms": 846,
+        "name": "complexity",
+        "names": null,
+        "notes": 2,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 1556,
+          "reads": 1556
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 776,
+          "measured": 774,
+          "not_measured": 0,
+          "unreadable": 2
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 1552,
+          "ms": 659,
+          "parses": 1552,
+          "reads": 1552,
+          "shared": 0,
+          "states": 1718
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 77034,
+          "declaration_text_bytes": 223570,
+          "declarations": 4819,
+          "export_leaves": 1078,
+          "export_text_bytes": 52218,
+          "exported_alias_bytes": 798,
+          "exported_aliases": 114,
+          "exports": 770,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 1548,
+          "import_text_bytes": 428462,
+          "imports": 5536,
+          "module_declarations": 0,
+          "module_text_bytes": 0,
+          "nesting_bytes": 0,
+          "nesting_entries": 0,
+          "nestings": 0,
+          "owner_bytes": 0,
+          "owners": 0,
+          "path_bytes": 94000,
+          "qualified_paths": 0,
+          "reference_canonical_allocation_ratio": 1.999089916272297,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 10983,
+          "reference_canonical_bytes": 144713,
+          "reference_distinct_names": 5494,
+          "reference_name_bytes": 1016891,
+          "reference_representation_after_bytes": 2009568,
+          "reference_representation_before_bytes": 4019136,
+          "references": 125598,
+          "signature_bytes": 295142,
+          "signatures": 4661,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 13,
+        "ms": 676,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 2410,
+            "distinct_names": 5647,
+            "files": 774,
+            "index_ms": 3,
+            "measure_ms": 325,
+            "query_ms": 0,
+            "references": 59930
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2409,
+            "distinct_names": 5642,
+            "files": 774,
+            "index_ms": 3,
+            "measure_ms": 337,
+            "query_ms": 0,
+            "references": 59696
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 63,
+            "ignored_ms": 19,
+            "renames_ms": 0,
+            "walk_ms": 11,
+            "worktree_add_ms": 247,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 3,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 15,
+          "measured": 15,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1552
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 468,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 2410,
+            "distinct_names": 5647,
+            "files": 774,
+            "index_ms": 3,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 59930
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 2409,
+            "distinct_names": 5642,
+            "files": 774,
+            "index_ms": 2,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 59696
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 25,
+          "measured": 7,
+          "not_measured": 18,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 1552
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 2174,
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "edges": 2100,
+          "modules": 1554,
+          "ms": 3,
+          "sources": 1554
+        },
+        "held": 0,
+        "ms": 8,
+        "name": "public-api",
+        "names": null,
+        "notes": 18,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 0,
+            "typescript": 2
+          },
+          "holes": 34,
+          "items": 54,
+          "measured": 42,
+          "ms": 3,
+          "opaque": 12,
+          "surfaces": 14
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "apps/studio.giselles.ai/services/teams/components/team-creation-form.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "internal-packages/workflow-designer-ui/src/editor/workspace-tour/workspace-tour.tsx",
+        "gate": "complexity",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "apps/studio.giselles.ai/services/teams/components/team-creation-form.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "internal-packages/workflow-designer-ui/src/editor/workspace-tour/workspace-tour.tsx",
+        "gate": "dead-symbols",
+        "outcome": "unparsed",
+        "text": "the TSX grammar rejected it"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "13 dead symbol(s) the base already held:\n  apps/studio.giselles.ai/app/(main)/apps/myapps/page.tsx:11  function DataList({ label, children }: { label: string; children: ReactNode }) {\n  apps/studio.giselles.ai/app/(main)/apps/page.tsx:11  function DataList({ label, children }: { label: string; children: ReactNode }) {\n  apps/studio.giselles.ai/app/api/vector-stores/github/ingest/route.ts:224  async updateEmbedding(data: GitHubRepositoryEmbedding): Promise<void> {\n  apps/studio.giselles.ai/app/dev/connect-spreadsheet/types/next-auth.d.ts:4  interface JWT {\n  apps/studio.giselles.ai/lib/opentelemetry/log.ts:24  onEmit(log: LogRecord) {\n  apps/studio.giselles.ai/next.config.ts:36  async redirects() {\n  internal-packages/workflow-designer-ui/src/editor/properties-panel/text-generation-node-properties-panel/tools/postgres-tools.tsx:6  const POSTGRES_TOOL_CATEGORIES = [\n  internal-packages/workflow-designer-ui/src/ui/user-presence.tsx:44  function getRandomColor() {\n  packages/giselle-engine/src/core/github/handle-webhook.ts:131  async function processV2(args: {\n  packages/giselle-engine/src/react/generations/contexts/generation-runner-system.tsx:69  type FetchNodeGenerations = (\n  packages/language-model/src/google.ts:78  const gemini20FlashLitePreview: GoogleLanguageModel = {\n  packages/language-model/src/openai.ts:64  const o1Preview: OpenAILanguageModel = {\n  packages/language-model/src/openai.ts:72  const o1Mini: OpenAILanguageModel = {"
+      },
+      {
+        "file": "packages/giselle-engine/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \".\" — @giselle-sdk/giselle-engine \"./next-internal\" — ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/giselle-engine/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./client\" — @giselle-sdk/giselle-engine \"./next-internal\" — ./client/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./client/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./client/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./client/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/giselle-engine/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./next\" — @giselle-sdk/giselle-engine \"./next-internal\" — ./next/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/giselle-engine/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./package.json\" — @giselle-sdk/giselle-engine \"./next-internal\" — ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/giselle-engine/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./react\" — @giselle-sdk/giselle-engine \"./next-internal\" — ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/text-editor/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \".\" — @giselle-sdk/text-editor \"./react-internal\" — ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/text-editor/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./package.json\" — @giselle-sdk/text-editor \"./react-internal\" — ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/text-editor/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./react\" — @giselle-sdk/text-editor \"./react-internal\" — ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/workflow-designer/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \".\" — @giselle-sdk/workflow-designer \"./react-internal\" — ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/workflow-designer/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./dist/style.css\" — @giselle-sdk/workflow-designer \"./react-internal\" — ./dist/style.css is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/workflow-designer/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./package.json\" — @giselle-sdk/workflow-designer \"./react-internal\" — ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/workflow-designer/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./react\" — @giselle-sdk/workflow-designer \"./react-internal\" — ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/workflow-utils/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \".\" — @giselle-sdk/workflow-utils \"./internal\" — ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/workflow-utils/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./package.json\" — @giselle-sdk/workflow-utils \"./internal\" — ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/workspace/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \".\" — @giselle-sdk/workspace \"./react-internal\" — ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "packages/workspace/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./package.json\" — @giselle-sdk/workspace \"./react-internal\" — ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      },
+      {
+        "file": "packages/workspace/package.json",
+        "gate": "public-api",
+        "line": 0,
+        "outcome": "unresolved",
+        "text": "exports \"./react\" — @giselle-sdk/workspace \"./react-internal\" — ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "18 package(s) or target(s) with no supported public surface:\n  TypeScript package @giselle-sdk/data-mod (packages/data-mod/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/data-type (packages/data-type/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/flow (packages/flow/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/github-tool (packages/github-tool/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/integration (packages/integration/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds\n  TypeScript package @giselle-sdk/language-model (packages/language-model/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/rag (packages/rag/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/supabase-driver (packages/supabase-driver/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/telemetry (packages/telemetry/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds\n  TypeScript package @giselle-sdk/test-utils (packages/test-utils/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/usage-limits (packages/usage-limits/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds\n  TypeScript package @giselle-sdk/utils (packages/utils/package.json): its exports names no TypeScript source klin supports: ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle-sdk/web-search (packages/web-search/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source\n  TypeScript package @giselle/giselle-sdk-tsconfig (tools/tsconfig/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package giselle-project (package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package giselle-sdk (packages/giselle-sdk/package.json): its exports names no TypeScript source klin supports: ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./dist/index.d.ts names no file the tree holds; ./next/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./next/dist/index.d.ts names no file the tree holds; ./package.json is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.mjs is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.js is not a TypeScript source or declaration file, and klin does not map generated output back to source; ./react/dist/index.d.ts names no file the tree holds\n  TypeScript package playground (apps/playground/package.json): names no TypeScript source entry point in exports, types, typings, main or module\n  TypeScript package studio.giselles.ai (apps/studio.giselles.ai/package.json): names no TypeScript source entry point in exports, types, typings, main or module"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 10 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "f138fdfec410b250c353de4f7cb895ebdcb2afb5",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

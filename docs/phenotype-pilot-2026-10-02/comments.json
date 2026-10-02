@@ -1,0 +1,434 @@
+[
+  {
+    "id": "FuelLabs/sway#7325/issue/3182350581",
+    "repository": "FuelLabs/sway",
+    "number": 7325,
+    "kind": "issue",
+    "author": "zees-dev",
+    "path": null,
+    "body": "didnt work; session timeout on creating copilot instructions (pre-req to use copilot)"
+  },
+  {
+    "id": "GlareDB/glaredb#3633/review/2760897250",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "review",
+    "author": "scsmithr",
+    "path": null,
+    "body": "- Functions that accept a single argument should use `UnaryInputNumericOperation`\r\n- Change the trig functions to only accept and return Float64"
+  },
+  {
+    "id": "GlareDB/glaredb#3633/line/2039899977",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "line",
+    "author": "scsmithr",
+    "path": "crates/glaredb_core/src/functions/scalar/builtin/numeric/atan2.rs",
+    "body": "Remove Float16 and Float32 for atan2"
+  },
+  {
+    "id": "GlareDB/glaredb#3633/line/2039901923",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "line",
+    "author": "scsmithr",
+    "path": "slt/standard/functions/scalars/trigonometric.slt",
+    "body": "Add TODO at the top of this file to `round` outputs to fixed precision for better reproducibility."
+  },
+  {
+    "id": "GlareDB/glaredb#3633/line/2039922719",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "line",
+    "author": "scsmithr",
+    "path": "slt/standard/functions/scalars/trigonometric.slt",
+    "body": "Actually we can do this now. Add `::DECIMAL(18, 5)` to all the function calls"
+  },
+  {
+    "id": "GlareDB/glaredb#3633/line/2039925904",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "line",
+    "author": "scsmithr",
+    "path": "slt/standard/functions/scalars/trigonometric.slt",
+    "body": "Don't add cast to `SELECT cot(0.0)` though, we want the output to be 'inf'."
+  },
+  {
+    "id": "GlareDB/glaredb#3633/line/2039940974",
+    "repository": "GlareDB/glaredb",
+    "number": 3633,
+    "kind": "line",
+    "author": "scsmithr",
+    "path": "slt/standard/functions/scalars/trigonometric.slt",
+    "body": "We can remove this line now."
+  },
+  {
+    "id": "nyx-space/anise#469/issue/3011583559",
+    "repository": "nyx-space/anise",
+    "number": 469,
+    "kind": "issue",
+    "author": "ChristopherRabotin",
+    "path": null,
+    "body": "Jules isn't yet a replacement for a human engineer."
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/review/3014044059",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "review",
+    "author": "MohamedBassem",
+    "path": null,
+    "body": "Overall, looks good to me! I have one question about whether this needs to be stored in the db or not. If not, I think it might simplify things a bit (specially the backward compatibility checks, etc)."
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/review/3028471073",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "review",
+    "author": "MohamedBassem",
+    "path": null,
+    "body": "Looks great, thank you!"
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/line/2203284889",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "line",
+    "author": "MohamedBassem",
+    "path": "GEMINI.md",
+    "body": "I think we can save it a couple of calls if we just quickly tell it how to do the db migration here?"
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/line/2203550869",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "line",
+    "author": "MohamedBassem",
+    "path": "packages/db/drizzle/0058_add_mobile_bookmark_click_default_view_mode.sql",
+    "body": "Instead of storing this in the database, have you considered storing it with the other mobile local settings in `/apps/mobile/lib/settings.ts`, I feel like it's not one of the those settings that require synchronization as people don't really switch mobile apps that frequently, what do you think?"
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/line/2203555034",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "line",
+    "author": "MohamedBassem",
+    "path": "apps/mobile/app/dashboard/settings/bookmark-default-view.tsx",
+    "body": "You can use `useUpdateUserSettings` which takes care of invalidation for you."
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/line/2203555678",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "line",
+    "author": "MohamedBassem",
+    "path": "apps/mobile/app/dashboard/(tabs)/settings.tsx",
+    "body": "The settings endpoint was added in 0.25 and it's been more than a month, I think it's fair to assume that everyone should have it running by now."
+  },
+  {
+    "id": "karakeep-app/karakeep#1723/line/2203556096",
+    "repository": "karakeep-app/karakeep",
+    "number": 1723,
+    "kind": "line",
+    "author": "MohamedBassem",
+    "path": "apps/mobile/app/dashboard/(tabs)/settings.tsx",
+    "body": "How about `Default Bookmark View`?"
+  },
+  {
+    "id": "recallnet/js-recall#1141/issue/3340400268",
+    "repository": "recallnet/js-recall",
+    "number": 1141,
+    "kind": "issue",
+    "author": "stbrody",
+    "path": null,
+    "body": "@stephhuynh18 is this PR still relevant?"
+  },
+  {
+    "id": "recallnet/js-recall#1141/line/2368943370",
+    "repository": "recallnet/js-recall",
+    "number": 1141,
+    "kind": "line",
+    "author": "mzkrasner",
+    "path": "apps/comps/app/competitions/[id]/page.tsx",
+    "body": "I think this method would still need:\r\n\r\n1. A competition ended status check for good form\r\n2. Have preference for server validation when it's available\r\n\r\nfor ex:\r\n\r\n```\r\nconst isVotingAvailable = () => {\r\n  // For authenticated users, trust server validation\r\n  if (competition.userVotingInfo) {\r\n    return competition.userVotingInfo.canVote;\r\n  }\r\n  \r\n  // For unauthenticated users, check client-side\r\n  if (!competition.votingEnabled) return false;\r\n  if (competition.status === \"ended\") return false; // <-- Missing in PR\r\n  \r\n  const now = new Date();\r\n  const votingStart = competition.votingStartDate ? new Date(competition.votingStartDate) : null;\r\n  const votingEnd = competition.votingEndDate ? new Date(competition.votingEndDate) : null;\r\n  \r\n  if (votingStart && now < votingStart) return false;\r\n  if (votingEnd && now > votingEnd) return false;\r\n  \r\n  return true;\r\n};\r\n```"
+  },
+  {
+    "id": "langgenius/dify-official-plugins#1422/issue/3157118435",
+    "repository": "langgenius/dify-official-plugins",
+    "number": 1422,
+    "kind": "issue",
+    "author": "crazywoola",
+    "path": null,
+    "body": "Please bump the version in the manifest and resolve those conflicts."
+  },
+  {
+    "id": "langgenius/dify-official-plugins#1422/issue/3159970899",
+    "repository": "langgenius/dify-official-plugins",
+    "number": 1422,
+    "kind": "issue",
+    "author": "ybalbert001",
+    "path": null,
+    "body": "I have two questions:\r\n1. Why do we need to fill in underlying_model_type and underlying_model_name during configuration? Shouldn't these be inferred from the inference_profile_id?\r\n2. Some functions like \"_get_inference_profile_info_direct\"， should be reused across different files？"
+  },
+  {
+    "id": "langgenius/dify-official-plugins#1422/issue/3166800671",
+    "repository": "langgenius/dify-official-plugins",
+    "number": 1422,
+    "kind": "issue",
+    "author": "ybalbert001",
+    "path": null,
+    "body": "@crazywoola  Please help to merge it"
+  },
+  {
+    "id": "langgenius/dify-official-plugins#1422/review/3099696465",
+    "repository": "langgenius/dify-official-plugins",
+    "number": 1422,
+    "kind": "review",
+    "author": "ybalbert001",
+    "path": null,
+    "body": "Looks good, Please help to merge it"
+  },
+  {
+    "id": "coleam00/Archon#364/issue/3254497384",
+    "repository": "coleam00/Archon",
+    "number": 364,
+    "kind": "issue",
+    "author": "Wirasm",
+    "path": null,
+    "body": "@Krashnicov this looks like a solid contribution, how would it integrate with Archon?"
+  },
+  {
+    "id": "coleam00/Archon#364/issue/3285509802",
+    "repository": "coleam00/Archon",
+    "number": 364,
+    "kind": "issue",
+    "author": "Wirasm",
+    "path": null,
+    "body": "Thank you for the contribution @Krashnicov Feel free to reopne and open a discussion about how you would like to integrate this to Archon"
+  },
+  {
+    "id": "mediar-ai/terminator#220/issue/3084636693",
+    "repository": "mediar-ai/terminator",
+    "number": 220,
+    "kind": "issue",
+    "author": "louis030195",
+    "path": null,
+    "body": "nice\r\n\r\nalways afraid it cause issue when publishing with pypi though, like cannot import or idk (python so unpredictable)"
+  },
+  {
+    "id": "FuelLabs/sway#7322/issue/3197245190",
+    "repository": "FuelLabs/sway",
+    "number": 7322,
+    "kind": "issue",
+    "author": "xunilrj",
+    "path": null,
+    "body": "Would make sense to use the \"trait\" or the \"impl_for\" span instead of the whole declaration? That would always show the start of the impl, and would give more uniform results.\r\n\r\n```\r\nstruct B {\r\n       _ Match implementations for this type\r\n\r\nimpl A for B {\r\n     _ help: trait is A\r\n```"
+  },
+  {
+    "id": "FuelLabs/sway#7322/review/3132946295",
+    "repository": "FuelLabs/sway",
+    "number": 7322,
+    "kind": "review",
+    "author": "IGI-111",
+    "path": null,
+    "body": "Very nice, but we need some tests for this.\r\n\r\nSnapshots should do well here."
+  },
+  {
+    "id": "FuelLabs/sway#7322/review/3137587235",
+    "repository": "FuelLabs/sway",
+    "number": 7322,
+    "kind": "review",
+    "author": "IGI-111",
+    "path": null,
+    "body": "That's a good start on the tests, but this is just the happy path, we should also check whether the impls still get captured:\r\n* when they are in a different file/module\r\n* when they are in a different package altogether"
+  },
+  {
+    "id": "vinhnx/VTCode#113/issue/3354636216",
+    "repository": "vinhnx/VTCode",
+    "number": 113,
+    "kind": "issue",
+    "author": "vinhnx",
+    "path": null,
+    "body": "Thank you for your effort, I will check this PR."
+  },
+  {
+    "id": "vinhnx/VTCode#113/issue/3356502619",
+    "repository": "vinhnx/VTCode",
+    "number": 113,
+    "kind": "issue",
+    "author": "vinhnx",
+    "path": null,
+    "body": "Thank you @oiwn ! "
+  },
+  {
+    "id": "vinhnx/VTCode#113/issue/3356721488",
+    "repository": "vinhnx/VTCode",
+    "number": 113,
+    "kind": "issue",
+    "author": "vinhnx",
+    "path": null,
+    "body": "https://crates.io/crates/vtcode/0.17.1"
+  },
+  {
+    "id": "anthropics/claude-code#8480/issue/3353554565",
+    "repository": "anthropics/claude-code",
+    "number": 8480,
+    "kind": "issue",
+    "author": "Maxwride",
+    "path": null,
+    "body": "I agree with the changes and think that they are very well thoughtout."
+  },
+  {
+    "id": "anthropics/claude-code#8480/issue/3354483097",
+    "repository": "anthropics/claude-code",
+    "number": 8480,
+    "kind": "issue",
+    "author": "luworks",
+    "path": null,
+    "body": "This is a must. Error out so many times when input is chinese and hit enter"
+  },
+  {
+    "id": "anthropics/claude-code#8480/issue/3357223997",
+    "repository": "anthropics/claude-code",
+    "number": 8480,
+    "kind": "issue",
+    "author": "hackyon-anthropic",
+    "path": null,
+    "body": "Sorry for the inconvenience. We just submitted a fix on our end, and will be cutting/rolling it out within a day or two! Will update once it's out"
+  },
+  {
+    "id": "anthropics/claude-code#8480/issue/3363909274",
+    "repository": "anthropics/claude-code",
+    "number": 8480,
+    "kind": "issue",
+    "author": "hackyon-anthropic",
+    "path": null,
+    "body": "We released a new version v2.0.5 that should fix this issue. Please give it a try and let us know if you continue to experience any issues!"
+  },
+  {
+    "id": "anthropics/claude-code#8480/issue/3378574481",
+    "repository": "anthropics/claude-code",
+    "number": 8480,
+    "kind": "issue",
+    "author": "hassandev22",
+    "path": null,
+    "body": "grear"
+  },
+  {
+    "id": "giselles-ai/giselle#942/review/2863235137",
+    "repository": "giselles-ai/giselle",
+    "number": 942,
+    "kind": "review",
+    "author": "shige",
+    "path": null,
+    "body": "Thank you! 👍"
+  },
+  {
+    "id": "lumen-notes/lumen#480/review/2758475474",
+    "repository": "lumen-notes/lumen",
+    "number": 480,
+    "kind": "review",
+    "author": "colebemis",
+    "path": null,
+    "body": "This is great! A few thoughts:\r\n\r\n1. Can we make this work when the sidebar is collapsed? Maybe we create a NewNoteButton component that we use in the SideBar and AppHeader\r\n2. Can we have it insert document-level tags instead of incline tags? So:\r\n\r\n```\r\n---\r\ntags: [my-tag, another-tag]\r\n---\r\n\r\n...\r\n```\r\n\r\ninstead of...\r\n\r\n```\r\n#my-tag #another-tag\r\n\r\n...\r\n```"
+  },
+  {
+    "id": "langgenius/webapp-conversation#184/issue/3295309516",
+    "repository": "langgenius/webapp-conversation",
+    "number": 184,
+    "kind": "issue",
+    "author": "lyzno1",
+    "path": null,
+    "body": "Very good! I think there are also details and summary tags to work with."
+  },
+  {
+    "id": "PV-Bhat/vibe-check-mcp-server#66/issue/3454804539",
+    "repository": "PV-Bhat/vibe-check-mcp-server",
+    "number": 66,
+    "kind": "issue",
+    "author": "PV-Bhat",
+    "path": null,
+    "body": "Thank you for the fix (and attention to detail), @alvinveroy"
+  },
+  {
+    "id": "PV-Bhat/vibe-check-mcp-server#66/issue/3457491745",
+    "repository": "PV-Bhat/vibe-check-mcp-server",
+    "number": 66,
+    "kind": "issue",
+    "author": "PV-Bhat",
+    "path": null,
+    "body": "@alvinveroy Good catch 😬 bumped the version now,\r\nYou have a sharp eye, really appreciate the contributions, hope to see you around here"
+  },
+  {
+    "id": "recallnet/js-recall#1140/review/3170009172",
+    "repository": "recallnet/js-recall",
+    "number": 1140,
+    "kind": "review",
+    "author": "mzkrasner",
+    "path": null,
+    "body": "nice - looks reasonable to me"
+  },
+  {
+    "id": "CravateRouge/bloodyAD#79/issue/3289428811",
+    "repository": "CravateRouge/bloodyAD",
+    "number": 79,
+    "kind": "issue",
+    "author": "CravateRouge",
+    "path": null,
+    "body": "Thank you, I know lot of users wanted this feature!\r\n\r\nCould you modify the commit to remove uv.lock? Is updating to python 3.9 required? If not could you remove changes to pyproject.toml from the commit?"
+  },
+  {
+    "id": "coleam00/Archon#338/issue/3239534122",
+    "repository": "coleam00/Archon",
+    "number": 338,
+    "kind": "issue",
+    "author": "coleam00",
+    "path": null,
+    "body": "This looks fantastic @zaksnet! Sorry it has taken a while to get to all PRs and I apologize for the delay.\r\n\r\nThe one thing that seems missing from this is being able to detect when a user has done the initial setup but then hasn't run additional migration scripts we have added since they got Archon up and running. We have one of these in the migrations/ folder already. Do you have an idea for how we could handle that?"
+  },
+  {
+    "id": "coleam00/Archon#338/issue/3254490399",
+    "repository": "coleam00/Archon",
+    "number": 338,
+    "kind": "issue",
+    "author": "Wirasm",
+    "path": null,
+    "body": "This is a great idea and definitely something we might want to add to the onboarding\r\n\r\nWill close this for now, feel free to reopen fitting the new architecture at #567 once you resolve the conflicts"
+  },
+  {
+    "id": "basicmachines-co/basic-memory#360/issue/3408581254",
+    "repository": "basicmachines-co/basic-memory",
+    "number": 360,
+    "kind": "issue",
+    "author": "CLAassistant",
+    "path": null,
+    "body": "[![CLA assistant check](https://cla-assistant.io/pull/badge/signed)](https://cla-assistant.io/basicmachines-co/basic-memory?pullRequest=360) <br/>All committers have signed the CLA."
+  },
+  {
+    "id": "basicmachines-co/basic-memory#360/issue/3408726887",
+    "repository": "basicmachines-co/basic-memory",
+    "number": 360,
+    "kind": "issue",
+    "author": "phernandez",
+    "path": null,
+    "body": "@claude can you review this PR?\r\n"
+  },
+  {
+    "id": "basicmachines-co/basic-memory#360/issue/3412453960",
+    "repository": "basicmachines-co/basic-memory",
+    "number": 360,
+    "kind": "issue",
+    "author": "phernandez",
+    "path": null,
+    "body": "@Laiff thanks for submitting this PR. Can you include some more context about what this PR is doing and why you created it? I'd also be interested to see the testing method you used and how you evaluated the results. \r\n\r\n"
+  },
+  {
+    "id": "basicmachines-co/basic-memory#360/issue/3514260047",
+    "repository": "basicmachines-co/basic-memory",
+    "number": 360,
+    "kind": "issue",
+    "author": "phernandez",
+    "path": null,
+    "body": "@Laiff Thanks for submitting this PR. However, I'm not going to merge it. I prefer that the tool usage be implemented in plain language so they are easier for humans to understand also. The bml format is a nice idea. Perhaps we can use that in another way somewhere, like an automated tool report. "
+  }
+]

@@ -1,0 +1,358 @@
+id	label	class	note
+w001	undesired	-	public-api: item still in the head; two crates share lib name anise
+w002	undesired	-	public-api: same-name surface (anise, anise-py)
+w003	undesired	appropriate complexity	cc 5, 56-line test scenario; under the cc 8 / 80-line review rule
+w008	valid-review	-	DB error becomes an empty page of trades; caller cannot tell failure from no trades
+w013	undesired	appropriate complexity	match table over the model enum; one arm added
+w033	valid-review	-	any in a new public return type
+w035	undesired	external-boundary adapter	error converted to a result object the caller checks
+w036	valid-regression	-	stub returns [] and says it is mock data that would integrate later
+w042	valid-regression	-	visual analysis simulated, presented as a feature
+w067	undesired	-	public-api: same-name surface
+w069	undesired	-	unsafe env::set_var in a test, required by the 2024 edition
+w070	undesired	-	public-api: same-name surface
+w083	valid-review	-	new unwrap on a span lookup in compiler code
+w089	undesired	-	workflow error logged and recorded as execution.success = false
+w1002	undesired	-	public-api: same-name surface
+w101	undesired	appropriate complexity	React component, cc 1, length is JSX
+w1026	undesired	-	public-api: same-name surface
+w1043	undesired	appropriate complexity	vite config object, cc 2
+w105	undesired	-	as any in a test to read a private transport field
+w1057	valid-review	-	new 44-line cc 12 heuristic generator
+w1072	undesired	-	public-api: same-name surface
+w1080	undesired	appropriate complexity	existing 237-line build function, change adds a few lines
+w1083	undesired	-	public-api: same-name surface
+w1087	valid-review	-	any in a new exported interface
+w1090	undesired	-	doc-size: a 381-word CLAUDE.md is an ordinary agent file
+w1102	undesired	-	failure returned as success false with a recommendation
+w1110	valid-regression	-	AI analysis simulated with a delay, presented as a feature
+w1123	valid-regression	-	browser actions simulated instead of calling the MCP server
+w1126	undesired	appropriate complexity	cc 5, 27 lines, keydown handler
+w1138	valid-review	-	checkpoint failure returns null after a mock-screenshot fallback
+w1143	undesired	-	public-api: same-name surface
+w1150	valid-review	-	any in a new public return type
+w1157	undesired	-	public-api: same-name surface
+w1162	undesired	external-boundary adapter	health check reports unhealthy with the error
+w1164	undesired	appropriate complexity	cc 7, 55 lines
+w117	undesired	-	availability probe sets flags false on any error
+w1187	undesired	-	command failure returned as success false
+w1194	undesired	appropriate complexity	existing 201-line hook, cc 1, change adds a parameter
+w120	undesired	-	public-api: same-name surface
+w1200	valid-review	-	any in a new service return type
+w1210	undesired	-	public-api: item still in the head; two crates share lib name terminator
+w1221	undesired	-	public-api: same-name surface
+w1222	undesired	-	optional content defaults to empty text, a correct empty answer
+w1227	valid-regression	-	recovery action simulated with a timeout and reported as success
+w1237	undesired	-	optional optimization step logs and falls back, as the log says
+w1258	undesired	appropriate complexity	FromStr match table over the model enum
+w1264	valid-review	-	new 85-line test scenario
+w1272	undesired	-	public-api: same-name surface
+w1279	valid-regression	-	hard-coded competitor data returned as market intelligence
+w1281	undesired	-	recovery failure returned as success false with the reason
+w1295	valid-review	-	any in a new public return type
+w1298	undesired	-	public-api: same-name surface
+w1307	valid-review	-	new 101-line orchestration function
+w131	undesired	appropriate complexity	cc 6, 42-line test scenario
+w1319	undesired	-	as any on global.fetch in a test mock
+w1348	undesired	-	public-api: same-name surface
+w1349	undesired	-	public-api: same-name surface
+w1358	undesired	appropriate complexity	existing 189-line hook, cc 1, change adds a parameter
+w1363	valid-review	-	any parameter and return on a new function that returns constants
+w1373	undesired	appropriate complexity	cc 4, 26 lines
+w1383	undesired	-	start failure logged and returned as false
+w1397	undesired	-	server start error logged, loop tries the next server
+w1400	undesired	-	index signature any for pass-through props of a HOC
+w1402	undesired	external-boundary adapter	scroll error returned as success false
+w1407	undesired	-	missing usage count defaults to 0
+w1410	undesired	-	public-api: same-name surface
+w1421	undesired	-	public-api: same-name surface
+w1423	valid-review	-	DUT1 is a stated placeholder value in a new time conversion
+w1424	undesired	appropriate complexity	existing 326-line hook, cc 1, change adds a parameter
+w1433	undesired	-	initialization failure returned as readyForAutonomy false
+w144	undesired	-	public-api: same-name surface
+w1451	undesired	appropriate complexity	match over provider pairs, deepseek arms added
+w1453	undesired	-	credential write failure logged and returned as False; existing contract
+w1463	valid-review	-	new cc 13 result processing on any
+w1479	undesired	-	public-api: same-name surface
+w1487	undesired	appropriate complexity	push callback, cc 3, change adds a parameter
+w1489	undesired	-	public-api: same-name surface
+w1507	undesired	-	message without content reads as empty text
+w1509	valid-review	-	any in new component state
+w151	undesired	appropriate complexity	hook, cc 1, 51 lines
+w1516	undesired	-	doc-size: a 381-word AGENTS.md is an ordinary agent file
+w1525	undesired	-	iptables -N 2>/dev/null || true is the idempotent create idiom
+w1541	undesired	appropriate complexity	existing push callback, change adds a parameter
+w1542	undesired	-	public-api: same-name surface
+w1547	valid-review	-	new cc 19, 98-line keyword parser
+w155	valid-review	-	comment names the DUT1 placeholder of the same approximation
+w1552	undesired	-	public-api: same-name surface
+w1566	undesired	-	non-null assertion on a middleware variable; existing route idiom
+w1567	valid-review	-	any return on a new public method
+w1584	valid-regression	-	hard-coded trend data returned as market intelligence
+w1597	undesired	appropriate complexity	match table over the model enum
+w1613	undesired	-	public-api: same-name surface
+w1618	undesired	-	public-api: same-name surface
+w1639	undesired	-	connection failure recorded in the status object the UI shows
+w387	undesired	-	test follows the changed response type (Vec to single value), same expected text
+w564	undesired	-	rustfmt joined a multi-line assertion; same assertion
+w717	undesired	-	count rises with the added provider and a new contains check
+w1111	undesired	-	test follows the changed response type, same expected text
+w1130	undesired	-	assertion gets stronger: infos must be empty too
+w1546	undesired	-	expected count follows a fourth trade the test adds
+w1811	undesired	-	test follows the changed response type, same expected text
+w2012	undesired	-	count rises with the added provider
+w1654	undesired	-	any in a test transport double
+w1670	valid-review	-	new 84-line command handler
+w1671	undesired	-	tool availability probe
+w1676	undesired	-	public-api: same-name surface
+w1677	undesired	appropriate complexity	React modal, cc 2, length is JSX
+w168	valid-review	-	new test skipped because it is hard to mock; the reason is stated
+w1694	undesired	-	public-api: same-name surface
+w1699	undesired	appropriate complexity	existing 367-line hook, cc 1, change adds a parameter
+w1719	undesired	appropriate complexity	cc 2, length is mock data
+w1728	valid-review	-	any in a new public return type
+w1748	undesired	-	public-api: same-name surface
+w1753	valid-review	-	new cc 8 key handler
+w1755	undesired	appropriate complexity	cc 2, 34 lines
+w1759	undesired	-	public-api: same-name surface
+w1764	undesired	-	doc-size: a 392-word AGENTS.md is an ordinary agent file
+w1771	valid-regression	-	hard-coded screenshot comparison returned as analysis
+w1779	valid-regression	-	mock trend data in place of the integrations it lists
+w1791	undesired	appropriate complexity	hook, cc 1, 97 lines of callbacks
+w1803	undesired	-	initialization failure returned as not ready
+w1804	valid-review	-	any return on a new helper
+w1805	valid-review	-	new unwrap on a span lookup in compiler code
+w1812	undesired	-	public-api: same-name surface
+w1829	undesired	appropriate complexity	demo script, cc 2, length is console output
+w1837	undesired	-	public-api: same-name surface
+w1847	valid-review	-	longitude normalization deferred with "for now" in new code
+w1856	undesired	-	as any on a test event double
+w1864	valid-review	-	bare except around an assignment that cannot fail
+w1868	valid-regression	-	stub returns [] and says it is mock data
+w1879	valid-review	-	any parameters and return on a new method
+w1886	undesired	external-boundary adapter	typing error returned as success false
+w1887	valid-review	-	TODO in a new error enum
+w1890	valid-review	-	DB error becomes an empty page of trades
+w1891	undesired	appropriate complexity	existing function, cc 6, change rewrites the mutation
+w1892	undesired	appropriate complexity	cc 6, 68-line test scenario
+w1894	undesired	-	public-api: same-name surface
+w190	undesired	-	public-api: same-name surface
+w1903	undesired	-	public-api: same-name surface
+w1906	valid-review	-	decrypt failure returns the default value
+w1921	undesired	-	missing API key defaults to empty, checked later
+w1939	undesired	-	top-level CLI promise catch
+w1956	valid-regression	-	random numbers returned as technology trends
+w1960	undesired	appropriate complexity	existing function, a timeout branch added
+w1962	undesired	-	public-api: same-name surface
+w1963	undesired	-	step error returned as success false
+w1967	undesired	-	public-api: same-name surface
+w197	valid-regression	-	mock implementation in place of the search APIs it lists
+w1986	undesired	appropriate complexity	existing sync callback, change adds a parameter
+w199	undesired	-	public-api: same-name surface
+w2007	valid-review	-	any in new code
+w2016	undesired	appropriate complexity	cc 4, 40-line test scenario
+w2017	undesired	-	public-api: same-name surface
+w2026	valid-review	-	screenshot failure returns null next to a placeholder file write
+w2032	undesired	-	page info error returned as success false
+w2040	undesired	-	public-api: same-name surface
+w2052	undesired	-	missing usage count defaults to 0
+w206	undesired	-	unwrap in a test
+w2073	undesired	appropriate complexity	cc 2, length is mock data
+w2074	valid-regression	-	stub returns [] and says it is mock data
+w2076	undesired	appropriate complexity	existing 325-line hook, cc 1, change adds a parameter
+w2085	valid-regression	-	random fake news returned as search results
+w2092	undesired	-	public-api: same-name surface
+w2103	valid-regression	-	writes a text file in place of a screenshot
+w2111	undesired	-	public-api: same-name surface
+w2112	undesired	-	UI status check logs and leaves the page usable
+w2124	undesired	external-boundary adapter	tool reports the service error to the user
+w2134	valid-review	-	any in a new exported interface
+w2146	undesired	-	step error recorded in the result
+w2151	undesired	-	action error returned as success false
+w2153	undesired	-	public-api: same-name surface
+w2156	undesired	-	step error recorded in the result
+w2163	valid-review	-	any in a new return type
+w2181	undesired	-	public-api: same-name surface
+w2199	undesired	appropriate complexity	cc 4, report printer
+w2207	undesired	-	evaluation error returned as success false
+w2219	undesired	-	public-api: same-name surface
+w2231	undesired	-	verification error returned as success false
+w2245	valid-review	-	as any to reach a private SDK field in production code
+w2252	valid-regression	-	placeholder text written as the screenshot file
+w2254	undesired	-	public-api: same-name surface
+w2264	undesired	appropriate complexity	test with a large mocked structure; cc counts asserts
+w2273	valid-regression	-	report "saved (in a real implementation)" but never written
+w2276	valid-review	-	DUT1 fixed at 0.0 as a stated placeholder with a TODO
+w2277	valid-review	-	any[] parameter on a new method
+w2285	undesired	-	public-api: same-name surface
+w2288	undesired	appropriate complexity	HOC, cc 1, 40 lines
+w2297	undesired	-	wait error returned as success false
+w232	valid-review	-	any parameter on a new method
+w2322	undesired	-	public-api: same-name surface
+w2323	undesired	-	set failure logged and returned as False; existing contract
+w2324	undesired	appropriate complexity	cc 4, 70 lines
+w2326	undesired	appropriate complexity	existing pull callback, change adds a parameter
+w2338	undesired	-	health check returns false
+w2344	valid-review	-	any return on a new helper
+w2356	undesired	-	unparsable error body reads as null and is then checked
+w2364	undesired	-	as any on global.fetch in a test mock
+w2366	undesired	-	public-api: same-name surface
+w2369	valid-review	-	DUT1 placeholder repeated with a TODO
+w237	valid-review	-	new cc 9 click handler
+w2381	valid-review	-	DUT1 fixed at 0.0 "for now", inaccuracy stated
+w2390	undesired	-	non-null assertion on a middleware variable; existing route idiom
+w2392	undesired	-	public-api: same-name surface
+w2395	undesired	-	execution error handed to a fallback plan
+w2396	undesired	appropriate complexity	cc 4, server list literal
+w2400	undesired	appropriate complexity	existing sync callback, change adds a parameter
+w2401	undesired	-	close error logged during cleanup
+w2407	undesired	-	expect on a spawn in a CLI entry point
+w2414	valid-review	-	EOT approximation used "for now" with a TODO
+w243	valid-regression	-	hard-coded user demand data returned as intelligence
+w2437	undesired	appropriate complexity	cc 3, validation printer
+w2443	valid-review	-	any return on a new method
+w2448	undesired	-	public-api: same-name surface
+w245	undesired	-	adaptation error logged, partial list returned
+w2461	undesired	-	public-api: same-name surface
+w2465	undesired	appropriate complexity	tooltip component, cc 3, 36 lines
+w247	undesired	-	public-api: same-name surface
+w2472	undesired	appropriate complexity	existing 141-line component, change adds a menu item
+w2484	undesired	-	session failure recorded as success false with the error
+w2486	valid-review	-	credential read error returns the default value
+w2502	undesired	-	delete failure logged and returned as False; existing contract
+w2521	undesired	-	public-api: same-name surface
+w2525	undesired	-	public-api: same-name surface
+w2540	valid-review	-	any in a new exported interface
+w2545	valid-regression	-	stub returns [] and says it is mock data
+w2549	undesired	-	element query error returned as success false
+w2552	valid-review	-	except Exception: pass drops the device lookup error before a legacy fallback
+w2562	undesired	appropriate complexity	existing 325-line page component, change adds a modal check
+w2576	undesired	-	public-api: same-name surface
+w2591	undesired	-	non-null assertion on a middleware variable; existing route idiom
+w2596	valid-review	intended public API	Handler::consume returns infos too; the change needs it, a person decides
+w2598	undesired	-	model info lookup failure logged before the documented fallback path
+w2605	valid-review	-	a made-up screenshot path stands in for a failed capture
+w2612	valid-review	-	TODO says the DUT1 lookup must replace the placeholder
+w2613	valid-regression	-	screenshot comparison simulated "for now"
+w2614	valid-review	-	new cc 9 hybrid executor
+w2629	valid-review	-	new cc 15, 77-line resolver
+w2634	valid-review	-	nine TODO markers in a new time conversion module
+w2636	undesired	-	per-file enhancement error logged, loop goes on
+w2641	valid-regression	-	hard-coded market opportunities returned as intelligence
+w2643	undesired	-	public-api: same-name surface
+w265	undesired	-	settings check error recorded in the result dict
+w266	valid-review	-	any in a new exported interface
+w276	valid-regression	-	hard-coded visual analysis returned as AI analysis
+w277	valid-review	-	new cc 13 webhook input builder
+w280	undesired	-	public-api: same-name surface
+w296	undesired	appropriate complexity	cc 5, 49-line test scenario
+w309	valid-review	-	any return on a new public method
+w318	undesired	-	public-api: same-name surface
+w326	undesired	-	fire-and-forget ping; the timeout handles a failure
+w330	undesired	-	analysis failure returns an unknown status object
+w338	valid-review	-	react imported by new example files; no manifest in the tree declares it
+w350	undesired	-	public-api: same-name surface
+w356	undesired	-	prepare failure logged and returned as success False
+w357	valid-review	-	new cc 11 retry loop
+w362	valid-regression	-	returns a fixed mock structure "for now"
+w373	undesired	-	public-api: same-name surface
+w401	valid-review	-	any in a new public return type
+w408	undesired	-	unwrap in a test
+w409	valid-regression	-	returns a fixed mock structure "for now"
+w419	undesired	-	execution error recorded as success false
+w428	undesired	-	initialization error returned as success false
+w430	undesired	-	public-api: same-name surface
+w433	undesired	-	public-api: same-name surface
+w443	valid-review	-	new cc 10 test scenario
+w447	valid-regression	-	code quality always reported as fair; mock implementation
+w469	undesired	-	doc-size: a 392-word CLAUDE.md is an ordinary agent file
+w471	valid-review	-	any parameter on a new method
+w486	undesired	-	public-api: same-name surface
+w500	undesired	-	public-api: same-name surface
+w507	undesired	-	os.getenv cannot raise here; the handler is dead weight, not masking
+w514	undesired	-	click error returned as success false
+w528	valid-review	-	DUT1 placeholder variable with a TODO
+w554	valid-review	-	as any on a request object in production code
+w555	undesired	appropriate complexity	modal component, cc 5, length is JSX
+w556	undesired	-	public-api: same-name surface
+w558	undesired	appropriate complexity	cc 2, length is mock data
+w560	undesired	-	public-api: same-name surface
+w572	undesired	-	non-null assertion on a middleware variable; existing route idiom
+w576	valid-review	-	new cc 23 status renderer
+w580	undesired	-	workflow file load error logged at startup
+w592	undesired	-	per-action failure recorded as FAILED and logged
+w597	undesired	-	navigation error returned as success false
+w608	undesired	appropriate complexity	existing 530-line plot function, change edits tooltip markup
+w610	valid-review	-	any in a new return type
+w621	undesired	-	public-api: same-name surface
+w623	undesired	-	missing usage count defaults to 0
+w625	undesired	-	optional history load logs and starts empty
+w660	valid-regression	-	logs and returns the hard-coded comparison
+w662	undesired	-	public-api: same-name surface
+w674	valid-regression	-	placeholder text written as the screenshot file
+w675	undesired	-	public-api: same-name surface
+w680	valid-review	-	any in a new exported interface
+w681	undesired	-	optional history save logs the error
+w689	undesired	-	health endpoint reports the migration check error
+w692	undesired	-	expect on a file mode change in a CLI entry point
+w699	undesired	-	UI save failure shown to the user as a toast
+w704	undesired	appropriate complexity	cc 1, length is mock data
+w720	valid-review	-	any in a new public return type
+w723	valid-regression	-	terminal command execution simulated and reported as success
+w732	undesired	-	public-api: same-name surface
+w745	undesired	appropriate complexity	cc 1, length is mock sentiment
+w754	undesired	-	public-api: same-name surface
+w770	undesired	appropriate complexity	existing 108-line function, change adds a dump branch
+w791	undesired	-	Err arm returns the build failure to the caller
+w792	undesired	appropriate complexity	cc 6, 50-line test scenario
+w793	undesired	-	workflow failure returned with its errors
+w797	undesired	-	workflow failure recorded as success false
+w798	undesired	-	public-api: same-name surface
+w826	undesired	-	public-api: same-name surface
+w833	undesired	-	cycle failure recorded with the error
+w834	undesired	-	unwrap in a test
+w839	undesired	-	as any on global.fetch in a test mock
+w843	undesired	-	non-null assertion after an explicit null check
+w865	valid-review	-	new cc 19 health check
+w868	undesired	-	public-api: same-name surface
+w870	valid-review	-	any in a new exported interface
+w878	undesired	appropriate complexity	cc 3, 29 lines
+w883	undesired	-	"simplified logic" describes a real next-page rule
+w886	undesired	-	public-api: same-name surface
+w908	undesired	appropriate complexity	12-line effect; cc counts ?? fallbacks
+w934	valid-regression	-	logs and returns the hard-coded comparison
+w940	valid-review	-	doc names the DUT1 placeholder "for now"
+w944	undesired	-	element search error returned as success false
+w945	undesired	-	public-api: same-name surface
+w947	undesired	appropriate complexity	cc 6, prompt template
+w954	undesired	-	public-api: same-name surface
+w960	undesired	-	error body read for a message; empty if unreadable
+w963	undesired	-	unwrap in a test
+w986	valid-review	-	DB error becomes zero metrics; caller cannot tell failure from none
+w994	undesired	-	unwrap in a test helper
+w996	undesired	external-boundary adapter	tool returns the error text to the user
+w998	undesired	-	dump result ignored; the handler already holds the diagnostics
+w034	valid-review	intended public API	coverage row: Provider enum gains DeepSeek, the change's purpose
+w672	valid-review	intended public API	coverage row: Error enum gains Reqwest for the new proxy client
+w021	valid-review	-	coverage row: new cc 21, 97-line function
+w426	undesired	appropriate complexity	coverage row: settings screen component, cc 4 to 6, length is JSX
+w657	undesired	appropriate complexity	coverage row: existing component grew one line
+w759	undesired	appropriate complexity	coverage row: existing function grew 4 lines
+w931	valid-review	-	coverage row: cc 35 to 45 and 40 more lines in one function
+w1005	valid-review	-	coverage row: new cc 15 numeric kernel
+w1108	undesired	appropriate complexity	coverage row: existing function grew 3 lines
+w1196	undesired	appropriate complexity	coverage row: existing function grew 8 lines
+w1311	undesired	appropriate complexity	coverage row: existing constructor grew 3 lines
+w1385	valid-review	-	coverage row: server start function grew from 73 to 115 lines
+w1717	valid-review	-	coverage row: new cc 9, 81-line event processor
+w2214	valid-review	-	coverage row: cc 34 page component grew 28 lines
+w2423	valid-review	-	coverage row: new cc 13 credential lookup
+w2433	valid-review	-	coverage row: function grew from cc 5, 34 lines to cc 8, 54 lines
+w2585	undesired	appropriate complexity	coverage row: match over the request enum, one arm per request
+w248	undesired	appropriate complexity	coverage row: existing 682-line component grew one line
+w1466	undesired	appropriate complexity	coverage row: new cc 6, 38 lines
+w1635	undesired	appropriate complexity	coverage row: sidebar component, cc 12 to 14, one line shorter
+w1908	valid-review	-	coverage row: main grew from cc 23 to 27 and 22 lines
+w2354	valid-review	-	coverage row: new cc 9 start command
+w1853	undesired	-	coverage row: slow benchmark cases skipped with a stated reason
+w1970	valid-review	-	coverage row: any in a new file that only tries a review bot

@@ -1,0 +1,482 @@
+{
+  "arm": "agent",
+  "repository": "mitsuhiko/insta",
+  "number": 750,
+  "base": "62bb0a3ec47eabda55689188b5ec99916b973c52",
+  "head": "00ec1b6582631ffaeedea37eacb2d4728e1c654c",
+  "exit": 1,
+  "ms": 1490,
+  "report": {
+    "derived": [
+      {
+        "key": null,
+        "rule": "every Markdown file at the tree root, resolved against it",
+        "section": "doc_citations",
+        "value": [
+          "CHANGELOG.md",
+          "CONTRIBUTING.md",
+          "README.md"
+        ]
+      },
+      {
+        "key": "manifests",
+        "rule": "the manifests the survey found that klin can read a lockfile for",
+        "section": "lockfile",
+        "value": [
+          "Cargo.toml",
+          "cargo-insta/Cargo.toml",
+          "insta/Cargo.toml",
+          "vscode-insta/package.json"
+        ]
+      },
+      {
+        "key": "test roots",
+        "rule": "the roots that match a language's test convention",
+        "section": "inventory",
+        "value": [
+          "cargo-insta/tests",
+          "insta/tests"
+        ]
+      },
+      {
+        "key": "cc",
+        "rule": "95th percentile of 787 functions at 62bb0a3, floor 10; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 13
+      },
+      {
+        "key": "lines",
+        "rule": "95th percentile of 787 functions at 62bb0a3, floor 25; recorded scope: whole repository",
+        "section": "complexity",
+        "value": 72
+      },
+      {
+        "key": null,
+        "rule": "the file families the derivation commit proves reached",
+        "section": "reachability",
+        "value": [
+          {
+            "name": "vscode-insta/src/*Provider.ts",
+            "pattern": "*Provider.ts",
+            "roots": [
+              "vscode-insta/src"
+            ]
+          }
+        ]
+      }
+    ],
+    "exit": 1,
+    "findings": [
+      {
+        "ceiling": "cc 13, lines 72",
+        "condition": "over the complexity gate (cyclomatic > 13 or body > 72 lines)",
+        "file": "cargo-insta/src/cli.rs",
+        "fix_advice": "Reduce the function's responsibility or decision complexity. Split at coherent behavior boundaries, not into arbitrary helpers that only get under the gate. Accepting new debt is a policy decision for a person, in the config, in a reviewed commit.",
+        "gate": "complexity",
+        "id": "a529ae796deaf45f",
+        "line": 254,
+        "matched": {
+          "accepted": false,
+          "file": "cargo-insta/src/cli.rs",
+          "line": 254,
+          "text": "fn query_snapshot(",
+          "values": {
+            "cc": 23,
+            "lines": 132
+          }
+        },
+        "outcome": "worsened",
+        "text": "fn query_snapshot(",
+        "values": {
+          "cc": 24,
+          "lines": 140
+        }
+      }
+    ],
+    "gates": [
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 2,
+        "ms": 30,
+        "name": "doc-citations",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 4,
+          "measured": 4,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 39,
+        "ms": 9,
+        "name": "lockfile",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 51,
+          "measured": 51,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 140,
+        "ms": 220,
+        "name": "escapes",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 84,
+          "reads": 102
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 49,
+          "measured": 49,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 14,
+        "ms": 124,
+        "name": "stubs",
+        "names": null,
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": {
+          "parses": 98,
+          "reads": 98
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 103,
+          "measured": 103,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 232,
+        "ms": 27,
+        "name": "inventory",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 49,
+          "measured": 49,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": null,
+        "findings": 1,
+        "footprint": null,
+        "graph": null,
+        "held": 42,
+        "ms": 296,
+        "name": "complexity",
+        "names": null,
+        "notes": 0,
+        "status": "FAIL",
+        "surface": null,
+        "work": {
+          "parses": 98,
+          "reads": 98
+        }
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 49,
+          "measured": 49,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 98,
+          "ms": 386,
+          "parses": 98,
+          "reads": 98,
+          "shared": 0,
+          "states": 524
+        },
+        "findings": 0,
+        "footprint": {
+          "declaration_name_bytes": 26744,
+          "declaration_text_bytes": 76636,
+          "declarations": 1798,
+          "export_leaves": 116,
+          "export_text_bytes": 5930,
+          "exported_alias_bytes": 0,
+          "exported_aliases": 0,
+          "exports": 44,
+          "extern_crate_bytes": 0,
+          "extern_crates": 0,
+          "files": 98,
+          "import_text_bytes": 60040,
+          "imports": 552,
+          "module_declarations": 86,
+          "module_text_bytes": 2234,
+          "nesting_bytes": 1364,
+          "nesting_entries": 196,
+          "nestings": 196,
+          "owner_bytes": 5866,
+          "owners": 614,
+          "path_bytes": 2772,
+          "qualified_paths": 52,
+          "reference_canonical_allocation_ratio": 1.999476165531692,
+          "reference_canonical_allocation_ratio_milli": 1999,
+          "reference_canonical_allocations": 3817,
+          "reference_canonical_bytes": 38247,
+          "reference_distinct_names": 1909,
+          "reference_name_bytes": 317039,
+          "reference_representation_after_bytes": 754496,
+          "reference_representation_before_bytes": 1508992,
+          "references": 47156,
+          "signature_bytes": 84734,
+          "signatures": 1772,
+          "sizes": {
+            "declaration": 184,
+            "export": 136,
+            "export_leaf": 48,
+            "extern_crate": 72,
+            "file_facts": 200,
+            "import": 136,
+            "module_declaration": 112,
+            "name": 8,
+            "reference": 16
+          }
+        },
+        "graph": null,
+        "held": 2,
+        "ms": 392,
+        "name": "dead-symbols",
+        "names": {
+          "after": {
+            "declarations": 899,
+            "distinct_names": 2195,
+            "files": 49,
+            "index_ms": 1,
+            "measure_ms": 195,
+            "query_ms": 0,
+            "references": 22336
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 899,
+            "distinct_names": 2194,
+            "files": 49,
+            "index_ms": 1,
+            "measure_ms": 191,
+            "query_ms": 0,
+            "references": 22332
+          },
+          "layout": {
+            "cache_name_ms": 0,
+            "changes_ms": 17,
+            "ignored_ms": 9,
+            "renames_ms": 0,
+            "walk_ms": 1,
+            "worktree_add_ms": 53,
+            "written": null
+          },
+          "lost_ms": 0
+        },
+        "notes": 1,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 3,
+          "not_measured": 0,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 14
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": null,
+        "held": 0,
+        "ms": 183,
+        "name": "reachability",
+        "names": {
+          "after": {
+            "declarations": 48,
+            "distinct_names": 227,
+            "files": 7,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 885
+          },
+          "base_ms": 0,
+          "before": {
+            "declarations": 48,
+            "distinct_names": 227,
+            "files": 7,
+            "index_ms": 0,
+            "measure_ms": 0,
+            "query_ms": 0,
+            "references": 885
+          },
+          "layout": null
+        },
+        "notes": 0,
+        "status": "ok",
+        "surface": null,
+        "work": null
+      },
+      {
+        "accepted": 0,
+        "coverage": {
+          "excluded": 0,
+          "found": 3,
+          "measured": 1,
+          "not_measured": 2,
+          "unreadable": 0
+        },
+        "facts": {
+          "cache_read_ms": 0,
+          "cache_write_ms": 0,
+          "cached": 0,
+          "extracted": 0,
+          "ms": 0,
+          "parses": 0,
+          "reads": 0,
+          "shared": 98
+        },
+        "findings": 0,
+        "footprint": null,
+        "graph": {
+          "dependencies": 220,
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "edges": 192,
+          "modules": 92,
+          "ms": 0,
+          "sources": 92
+        },
+        "held": 0,
+        "ms": 1,
+        "name": "public-api",
+        "names": null,
+        "notes": 1,
+        "status": "ok",
+        "surface": {
+          "dispatches": {
+            "rust": 2,
+            "typescript": 2
+          },
+          "holes": 0,
+          "items": 360,
+          "measured": 336,
+          "ms": 0,
+          "opaque": 24,
+          "surfaces": 2
+        },
+        "work": null
+      }
+    ],
+    "notes": [
+      {
+        "file": "insta/tests/link-to-inputs",
+        "gate": "inventory",
+        "line": 0,
+        "outcome": "deleted",
+        "text": "the test site test file in insta/tests/link-to-inputs went in this window"
+      },
+      {
+        "file": "",
+        "gate": "dead-symbols",
+        "outcome": "note",
+        "text": "2 dead symbol(s) the base already held:\n  insta/src/content/yaml/vendored/scanner.rs:281  fn eof(&self) -> bool {\n  insta/src/runtime.rs:879  const _DOCTEST1: bool = false;"
+      },
+      {
+        "file": "",
+        "gate": "public-api",
+        "outcome": "note",
+        "text": "2 package(s) or target(s) with no supported public surface:\n  Rust package cargo-insta (cargo-insta/Cargo.toml): has no library target, and a binary has no public surface\n  TypeScript package insta (vscode-insta/package.json): its main names no TypeScript source klin supports: ./out/extension is not a TypeScript source or declaration file, and klin does not map generated output back to source"
+      }
+    ],
+    "status": "FAIL",
+    "summary": "klin: 9 gate(s), 1 failed.",
+    "window": {
+      "after": "the working tree",
+      "before": "62bb0a3ec47eabda55689188b5ec99916b973c52",
+      "how": "the merge-base with main",
+      "kind": "branch"
+    }
+  },
+  "stdout": null,
+  "stderr": ""
+}

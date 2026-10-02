@@ -1,0 +1,45 @@
+family	arm	eligible	affected	sites	per100	valid-regression	valid-review	undesired	unresolved	valid changes	outcome
+deps:undeclared	agent	21	0	0	0.0	0	0	0	0	0	not seen
+deps:undeclared	human	19	1	1	5.3	0	1	0	0	1	-
+klin:complexity	agent	30	20	201	670.0	0	17	32	0	9	frequent
+klin:complexity	human	28	14	67	239.3	0	8	31	0	6	-
+klin:doc-size	agent	30	1	2	6.7	0	0	2	0	0	not seen
+klin:doc-size	human	28	1	2	7.1	0	0	2	0	0	-
+klin:escapes	agent	30	4	124	413.3	0	28	5	0	3	frequent
+klin:escapes	human	28	7	23	82.1	0	6	17	0	2	-
+klin:public-api	agent	30	3	1176	3920.0	0	1	40	0	1	seen
+klin:public-api	human	28	3	930	3321.4	0	2	38	0	2	-
+klin:stubs	agent	30	1	2	6.7	0	2	0	0	1	seen
+klin:stubs	human	28	0	0	0.0	0	0	0	0	0	-
+shapes:broad-handler	agent	30	3	38	126.7	0	1	37	0	1	seen
+shapes:broad-handler	human	28	4	15	53.6	0	4	11	0	2	-
+shapes:default-handler	agent	30	0	0	0.0	0	0	0	0	0	not seen
+shapes:default-handler	human	28	2	8	28.6	0	0	8	0	0	-
+shapes:empty-handler	agent	30	1	1	3.3	0	0	1	0	0	not seen
+shapes:empty-handler	human	28	2	2	7.1	0	1	1	0	1	-
+shapes:log-handler	agent	30	2	11	36.7	0	2	9	0	1	seen
+shapes:log-handler	human	28	1	1	3.6	0	0	1	0	0	-
+shapes:mock-name	agent	30	2	14	46.7	11	3	0	0	2	seen
+shapes:mock-name	human	28	0	0	0.0	0	0	0	0	0	-
+shapes:placeholder-wording	agent	30	2	26	86.7	18	8	0	0	2	seen
+shapes:placeholder-wording	human	28	1	1	3.6	0	0	1	0	0	-
+tests:assertion-rewritten	agent	8	1	3	37.5	0	0	3	0	0	not seen
+tests:assertion-rewritten	human	10	3	5	50.0	0	0	5	0	0	-
+
+code	arm	pull requests with a comment	pull requests with the code	comments	outcome
+architecture	agent	7	2	2	seen
+architecture	human	12	0	0	-
+correctness	agent	7	1	1	seen
+correctness	human	12	1	1	-
+dependency	agent	7	0	0	not seen
+dependency	human	12	1	1	-
+none	agent	7	6	7	frequent
+none	human	12	8	17	-
+other-change	agent	7	3	5	frequent
+other-change	human	12	4	4	-
+removable	agent	7	2	4	seen
+removable	human	12	1	1	-
+reuse	agent	7	3	4	frequent
+reuse	human	12	0	0	-
+test-integrity	agent	7	1	3	seen
+test-integrity	human	12	1	2	-
