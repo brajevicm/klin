@@ -1,0 +1,5 @@
+{
+  "sarif": [
+    { "name": "dependency-report", "run": "mkdir -p reports && cp dependency-report.sarif reports/deps.sarif", "report": "reports/deps.sarif" }
+  ]
+}

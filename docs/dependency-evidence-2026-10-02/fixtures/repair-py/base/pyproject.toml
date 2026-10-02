@@ -1,0 +1,11 @@
+[project]
+name = "ledger"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "requests>=2.31",
+  "python-dateutil>=2.9",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]

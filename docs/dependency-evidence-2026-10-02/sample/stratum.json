@@ -1,0 +1,643 @@
+{
+  "rule": "10 most recent first-parent commits at or before start with a new direct dependency, within 2000",
+  "repositories": [
+    {
+      "fullName": "firecrawl/pdf-inspector",
+      "start": "ef52f77850b29189048797a48b24862251f54fe7",
+      "changes": [
+        {
+          "head": "9d3caa4c2067c396efbec4a3535a1977d244c04b",
+          "base": "dc9bdc162a611b957fc6afc7139970793bacdd0e"
+        },
+        {
+          "head": "e460a45f73b51bbdcfbbb0784f040f2c24458258",
+          "base": "12d30b43b01ebd602eb7086d7cf6d65e7dc7194c"
+        },
+        {
+          "head": "12d30b43b01ebd602eb7086d7cf6d65e7dc7194c",
+          "base": "dd467dd78d131576f1f95288968339e05faed189"
+        },
+        {
+          "head": "dd467dd78d131576f1f95288968339e05faed189",
+          "base": "d9b83993dfdba4f41c2598f4f31465ef5fe3ce1d"
+        },
+        {
+          "head": "d9b83993dfdba4f41c2598f4f31465ef5fe3ce1d",
+          "base": "2543abe3715848589903754f30b5dca54f6b33a6"
+        },
+        {
+          "head": "98990cc55028a83aa8c712df938dd5dc19523350",
+          "base": "a15ec2d68d51dbe6a39d1da688ec7a3f642d846c"
+        },
+        {
+          "head": "5b287341a083a7d1da497b6f99d918a84e5a38a2",
+          "base": "55d50ad1c45860e8f7b7c84bba806e6736767c6c"
+        },
+        {
+          "head": "c80bedf4bd49fd235cc6485907fe6eedb4f2f6b8",
+          "base": "cffe253d1d213651c8ea449f04440bbea68cce2a"
+        },
+        {
+          "head": "85890648c9162a27b003451ba8466e50790e9490",
+          "base": "6e55e38b55fe78cd3cfda98773286bb4abb69110"
+        },
+        {
+          "head": "86476eb6b2eff9f30889da0c5802dbd682222278",
+          "base": "9868c02f6e184c5213e184e6e18cb7fd92637394"
+        }
+      ]
+    },
+    {
+      "fullName": "gfx-rs/wgpu",
+      "start": "de137ce7289642b96d9cb2dd5371b92ef49cbeda",
+      "changes": [
+        {
+          "head": "818586c4d1a8e3529e3db016e68260f0a76f3971",
+          "base": "9dfc67706867deee5f79a8c759b56468af301e79"
+        },
+        {
+          "head": "80693405c4a77702dd3f6c888ab480473745fcad",
+          "base": "8c3078974086f0aaf4587515a5c844fc906c0cd4"
+        },
+        {
+          "head": "667b53cbef506f7a2f47e7f3c57544af1b203a00",
+          "base": "cdc9d0c4dd474312fbb72baaf58a376c7d5104a5"
+        },
+        {
+          "head": "d0ecda96cd1490feda71d9f5c345efee1a105e1c",
+          "base": "f9f55b7d510963b7308359dbbf2a7b91c5351ee5"
+        },
+        {
+          "head": "35743f2848da3d4259a2ff7b12508f827e36a37d",
+          "base": "da3efab0e9e027f946dca99aedb58756429558c6"
+        },
+        {
+          "head": "3fb225a9c6240bd7e9db3d202410db6d894368ec",
+          "base": "87bfa5ebb2a8863e057936329122300c1436e5d4"
+        },
+        {
+          "head": "013ed8769edfb2c629eae5f7363dc9b446c0be0b",
+          "base": "65a5c2b3bc793566a2927d5c580e3dec8ac34589"
+        },
+        {
+          "head": "5bc99d51b760c8c86b229ceb401982c0cf13395f",
+          "base": "ae87ffe28041a7ebd82d8d3c2fa0e2343f0f0234"
+        },
+        {
+          "head": "098aaae40aedc3cba4fec0b6f86bd688747ed92d",
+          "base": "a53ffffe385bbebfc2bf40067c29f3161070d8e7"
+        },
+        {
+          "head": "f778c388be6dc458d4c58bbf71f6143055b1ff3b",
+          "base": "fff3d25eb1f6339534062abbf8ce5c1206e5c649"
+        }
+      ]
+    },
+    {
+      "fullName": "louis-e/arnis",
+      "start": "daee5a7bff2403499c2369ae37328a7fea480f19",
+      "changes": [
+        {
+          "head": "7e9a4344c53c838ad4f140e8e4bd6a3536798f5c",
+          "base": "69811f59d213b2316ac80accc3e260be6e852850"
+        },
+        {
+          "head": "044c606978804de985f94a74380708da255edba5",
+          "base": "e302ba351ced385e1a90d90af943e2abda699a82"
+        },
+        {
+          "head": "17cdd620f24223243254cf0582c6729bb63fa9c2",
+          "base": "7da4b1e5ab45707d793365154d6d7cf2664c6d62"
+        },
+        {
+          "head": "7e2ba53b3b1282760f192b1afc803a8e8f0b52fe",
+          "base": "36f5579f239456c2af123dc528260672146fcb91"
+        },
+        {
+          "head": "b2259edc9c9a905b19f2975bd969a60721d36f2b",
+          "base": "e9b663c4aeb3286c0afeb09d57cee725dbbe7ee9"
+        },
+        {
+          "head": "011757baab8677fda07085d0e17dbc90aabeccc2",
+          "base": "3e0fe0d83f5399ae0a21df7945b6f22b4e927060"
+        },
+        {
+          "head": "9a21648636f9c2d64b22faca025f7c8a7405626d",
+          "base": "00d02dfdeed089f196fe944ff2ee78f0c1bdb24b"
+        },
+        {
+          "head": "eb975a5eb58f16d70d258892ac69dd6cf9bbc75b",
+          "base": "7b24d6af8ae21f64bbd506c0dc8d53110ddc0388"
+        },
+        {
+          "head": "b975ea19d780210ae1cb0ea3068117127e0914e8",
+          "base": "489e571a4262e04db3e0e842371ac0eb3ddd43c9"
+        },
+        {
+          "head": "f1dc3b8ffb70198baf025a289627bc57716ed74d",
+          "base": "f473e980a29c51a19329a6a42bf94f9bc397c51f"
+        }
+      ]
+    },
+    {
+      "fullName": "eythaann/Seelen-UI",
+      "start": "26fe9c1a672ca6a49664644b5a828d33cc21e55d",
+      "changes": [
+        {
+          "head": "165d99ac7ca3927586f3d91f46447b16a24c9f9d",
+          "base": "da0611a81a94ddcae2da91ec7fc8897789815b6b"
+        },
+        {
+          "head": "edc06d4feae00efb4e356c34a47d0b5241d0453c",
+          "base": "af18686b756e914b4c3ee0bd39050ff25736b503"
+        },
+        {
+          "head": "dafb961c848624226910ec2e5c11eaf7738d854c",
+          "base": "d6723c03c770b6d1544ffc56da921f0850f93ed0"
+        },
+        {
+          "head": "3076c56cae470e288a33b3c69c36a17e43e952c1",
+          "base": "9c9f8a6d695804682d20b7ebd31f427999201148"
+        },
+        {
+          "head": "6a99edc9a2a41cd85a4ccf1a3f0a48fabec4a420",
+          "base": "f4639de58bc0a5fd722cc4c1b17856c572b5fea3"
+        },
+        {
+          "head": "c19ea6d310990dd98fccc9271e618a980e0a5984",
+          "base": "68655c26997afdaed5bf5af14f6217219b6b2925"
+        },
+        {
+          "head": "dc8722a16f098b4080a3f0c40613500d2c5eb4ba",
+          "base": "7115f80caef65df0ba1503a7a7917c5f80926901"
+        },
+        {
+          "head": "b5bc93ac934ef1c18b9ea6a2721fee725aac93a5",
+          "base": "56a392f2b2bed559aa8f0f3836a5da3e7882ddb6"
+        },
+        {
+          "head": "398a1d02bfa1a0ba9113ea339950dc7634b586a4",
+          "base": "81865eacfc8aa0c07aa79572e034449a52f737e7"
+        },
+        {
+          "head": "6657c50a5fb72f3e213f830a6b7c1c1542acb100",
+          "base": "3857aaf406233d9bf166ddf794ed8458ff246efa"
+        }
+      ]
+    },
+    {
+      "fullName": "denisidoro/navi",
+      "start": "7389f9544b9cbbf845acadb96c1b18a13ca988c4",
+      "changes": [
+        {
+          "head": "d8d0c099aea61a6d9717fab02ce446497b007c48",
+          "base": "03555ec40c86e0903a2b57706fed0b915d2f97af"
+        },
+        {
+          "head": "b560ba572e43d64a58266614a36a9f17f60c2bfd",
+          "base": "20c658a50334c56defe15978e5e8f9a05efe4de2"
+        },
+        {
+          "head": "6f316ec7eb2f1f56a7609048e67860eb84c1aacf",
+          "base": "acec1a376a2643082d40dd213220f7063a122377"
+        },
+        {
+          "head": "8963749e6aea4ee03589e9ed4967d841f0856971",
+          "base": "2b03c890344d0f51cad4751b753f12442087be6f"
+        },
+        {
+          "head": "b56d70a6ca099fb3670fb5dcd4ac43cca6f72fc5",
+          "base": "8cf9c96e542a79c891c7f4be5095b9752eeec6c1"
+        },
+        {
+          "head": "7fb2b53463fdfd19972c62fd6c6ac604e594fc19",
+          "base": "d8d0d813682d9cd73c8d817c248e7fb4c4390791"
+        },
+        {
+          "head": "243a2c8472068cad0bdb4d97787b94ebe5db4ceb",
+          "base": "78c99dcb4b2204e8b2b352465f330cfeb261f38a"
+        },
+        {
+          "head": "58dec4b8e82fae4ad461dd0a915b0b1c654c52bd",
+          "base": "f415e6fd344e303ef15ff18a4544fc5c33992f3b"
+        },
+        {
+          "head": "5c43c5173a89589b7017de5945d493d00c1a4e9b",
+          "base": "c1a2bd8d30d6bed474f42c614764231a8be7d6fe"
+        },
+        {
+          "head": "8e324d5bd142a73e93006b6d392ece02a6a42f5e",
+          "base": "0ddf77c1b9121472447d5732c5e816bc0353dcfa"
+        }
+      ]
+    },
+    {
+      "fullName": "refactoringhq/tolaria",
+      "start": "04030c3e0a23ce93f39a83d821b1b87ec03aec4e",
+      "changes": [
+        {
+          "head": "44740e4ae18d3759bcbfe54483e64e3154dd379b",
+          "base": "7435ef89016da9f2fb1fc4738823ffd7cb37aa00"
+        },
+        {
+          "head": "0b817a3e2ce66f3770bfd1d8690797089bd5045e",
+          "base": "5417069d6d77929f5a3652eb4fb216f4cc1c1f8c"
+        },
+        {
+          "head": "82afd143c1eb5f65b3d795068a031e54341bdaec",
+          "base": "70a90705c38b21d37903a08f791057b416591438"
+        },
+        {
+          "head": "5dbbc155b5d8d1b3ad7b08d23fe4c7157758015d",
+          "base": "c755269bb50b9b93d3f07213a8b211a56f728482"
+        },
+        {
+          "head": "ae2ad574a713dc5f0788aaf70a6346d964da1794",
+          "base": "707958732db36d1f1b6569ad8531f2bdcc578d1d"
+        },
+        {
+          "head": "567d40b6df4721865d58525ef2010c39e6973a1c",
+          "base": "91bc0ef3a8703f533c069db9fc8107d817a0a0b9"
+        },
+        {
+          "head": "398ae5b8843516f4f0089d9820a62301dda1b2fa",
+          "base": "3c051941e14c4b0e0d52f799dc9fa920620d251b"
+        },
+        {
+          "head": "59629a488e73ea2cf8f367701b601caa3611ee24",
+          "base": "96e149146cd3083d085deb670aa5f232a3ff18ec"
+        },
+        {
+          "head": "ce242dc4b832cc6dd6ebf59b83cfaf7e9b344a16",
+          "base": "326c3f3fdad3078db2ab40438aed0c464a17455a"
+        },
+        {
+          "head": "60bb75a331f73deb41cb43b25b2e0b5a88bd54a7",
+          "base": "28aaa371eab27b6d622bef4483fff923ecfd2147"
+        }
+      ]
+    },
+    {
+      "fullName": "whyour/qinglong",
+      "start": "44129ca0883eeb3be4f21376e1b139b2c3d3752c",
+      "changes": [
+        {
+          "head": "f168efcdaeba2ba3e0be0bfaa3040aa0a5f644c5",
+          "base": "bf63425805bed9248ba17568c07e382c8e205887"
+        },
+        {
+          "head": "801a71d7402f5d4b582318ed88ad00633357a531",
+          "base": "f051135fc4abf9f1df806111d0015c210954861d"
+        },
+        {
+          "head": "24d539fc05f7cf3106fd4bb003d1848b013fcb7f",
+          "base": "214e23a63d6cdf33fb93451ba04f8a85a8359a5f"
+        },
+        {
+          "head": "e8ac195c96180ea31ac6ba127e782747b15ac2e1",
+          "base": "c0b752714842cf382e3b6f0a9eb90681b473cba1"
+        },
+        {
+          "head": "c3072e7712b9c7bcad0784593ade908c3b5b2fc4",
+          "base": "3fafe4d24dd455cbffd0af75cc7ebc05c6216858"
+        },
+        {
+          "head": "d871585eeecd5b36877a5a8ba693f39b70be1ede",
+          "base": "729b405b0f0cb0452c15c8550957254c1b9a2446"
+        },
+        {
+          "head": "6df651aa63a44b23d5b72bbc28b961292cde3757",
+          "base": "924dfd6a6f1c4083195953a3b8a45851ab84bdf7"
+        },
+        {
+          "head": "647ed3b66c233fcad88bad4555dc633ccd8d7a18",
+          "base": "4667af4ebecf91426fac4e74606414f863c6fab8"
+        },
+        {
+          "head": "05f8bbd26ee7cd817c62a03d98d26b1052f38fd4",
+          "base": "7d43b14f81815bdee753cd8d306e86e8a45359e6"
+        },
+        {
+          "head": "678e3e2dc64da22f62fdfc4d55065a2cef9c2bc9",
+          "base": "75f91e14737efb91b50e7881e2abc9b2ef1e680b"
+        }
+      ]
+    },
+    {
+      "fullName": "apollographql/apollo-client",
+      "start": "c9fcb07e174418c80c40e0c9aaa1f484159c12e5",
+      "changes": [
+        {
+          "head": "0c925a434823778a5ad8b4842c304390d7339406",
+          "base": "70e3a11d93c8ef8d64aa2a7d12b02b773a57c7ca"
+        },
+        {
+          "head": "7e018e8913c6d7443c0c088f8a082bb459fb3654",
+          "base": "38de46287232ed6b4d33d3c583d127018ac2ad3f"
+        },
+        {
+          "head": "eee2c4d26c362ce77b14375ddeae498de2ab1da1",
+          "base": "5d58ed0b293462b9d47cf4590b5a24f6e234a749"
+        },
+        {
+          "head": "2d1627c14d886e8b5ead44072f3e7d461b3ac6c8",
+          "base": "cdcd7eda5d210e50efdff03f5184a875987164bf"
+        },
+        {
+          "head": "12ecde91bef352c94b7a27ca262951f85c1c513f",
+          "base": "eeb5f3c277beedafca282a7f2f9fa7d624f314a6"
+        },
+        {
+          "head": "8e2a9d64d10e6ac0457dcfe6f389a91bcf483317",
+          "base": "95e613eb4233ea8cc5a9da11f9f6456857501bdd"
+        },
+        {
+          "head": "ca53c19f217e5c0180484c5cd3fcd3c5226e07bc",
+          "base": "a923b06dea048c6141535c71465ebf0dedda1d92"
+        },
+        {
+          "head": "a923b06dea048c6141535c71465ebf0dedda1d92",
+          "base": "bc7ca1ea94417f377b5686f993475f6d56cc183c"
+        },
+        {
+          "head": "6e70bd963e71688c68887e1395e5ff4898350066",
+          "base": "5b3a6cfa25f3976f24b8f79cd660608dba9b28f2"
+        },
+        {
+          "head": "73a8af67d676f7855c2766ceff9f1b0ccb1c3db1",
+          "base": "a31af05602802f445ef701eef47bb2ccb5d01fb3"
+        }
+      ]
+    },
+    {
+      "fullName": "Open-Dev-Society/OpenStock",
+      "start": "0248d5d9284b8b9fae4ae82a211d30fe4b88fe09",
+      "changes": [
+        {
+          "head": "addb7e2c33f473de0827554ab76bd79296c3c9d5",
+          "base": "08304b51a44946fcef116099c9cc92b379945617"
+        },
+        {
+          "head": "c229dd3c72c556bf0e5a734572b8fc6db077d58f",
+          "base": "a4cd4db6328e3b184cb498bca8f67cc20f03638f"
+        },
+        {
+          "head": "756fca8f7d530e027c0bb46ecbe9a9122d2bb253",
+          "base": "c2d0daa7fa7c67a428b4d645b405a3132dc725e7"
+        },
+        {
+          "head": "bde774ad4b245fcfcb6693b74e1a1d1f530e857d",
+          "base": "bb4191b4b7166a89bb616c94a41580de5cf3b23a"
+        },
+        {
+          "head": "cc7e86d5a21185777f0a4cf53ec0343b3ca8f006",
+          "base": "ad0a0cb5cea9bebc5a266df068e5856e70bee23a"
+        },
+        {
+          "head": "ad0a0cb5cea9bebc5a266df068e5856e70bee23a",
+          "base": "8411bea1108cb048783c82df5720d87f4363b78b"
+        },
+        {
+          "head": "f04252379965753a066642e31f0d3ac921387c2f",
+          "base": "e2d1d61daca73ad22221f246f2defee745a587bd"
+        }
+      ]
+    },
+    {
+      "fullName": "mountain-loop/yaak",
+      "start": "7f302536168585be4603aea09491a78b75c57070",
+      "changes": [
+        {
+          "head": "aa10c44a456b49494e2de53132a5b5e51fa07ab3",
+          "base": "46464cfacfe486d4d75bc5e252b7791abe9d80b0"
+        },
+        {
+          "head": "8c8be31aa2e41d5cd470c8464b9305446a551285",
+          "base": "ff5db718ce974f22e951d134ee83ac8918ee6e72"
+        },
+        {
+          "head": "aa76d501f09d44de4a2c6b0d1f3968e3242bcfc0",
+          "base": "ce8cb5e7bcd37f06136cfe895ea9d1ec71736a50"
+        },
+        {
+          "head": "69083918f96f1ea13f98498efb59105368c61c89",
+          "base": "4b2dcf9a1ac2656d6ae85e028397d3ac1c8502bf"
+        },
+        {
+          "head": "7ca772347f69269345da40d85f45a64a618dd9da",
+          "base": "b89c44834593b63cfe2e02517cb8f29a239531d9"
+        },
+        {
+          "head": "8bca013ab4975d617c023d1bb4124cd16abc6171",
+          "base": "10e962a0e684d3c629bada67c27d37b6e1252260"
+        },
+        {
+          "head": "78954e10c88dffa57d44d17a2736c2f9c1780e58",
+          "base": "9eb7a001da011926489cbe09f3105953e273afcf"
+        },
+        {
+          "head": "6f91f7606487c3e352ec658eebbc74d53ebbe4b9",
+          "base": "32e92d484bd20d0ce83868ebfa8cafb912bb244e"
+        },
+        {
+          "head": "32e92d484bd20d0ce83868ebfa8cafb912bb244e",
+          "base": "cdbbef34f834f2b2eb177a323125b21ae08e502b"
+        },
+        {
+          "head": "1f91cddab9cbd3c08101cf9b12f2718c9599ef42",
+          "base": "be004425fa3ee54b8063042efe4876aec9dfdc39"
+        }
+      ]
+    },
+    {
+      "fullName": "mikf/gallery-dl",
+      "start": "8b9a56d6b1a53bc13a80894625fd58b24de3063a",
+      "changes": [
+        {
+          "head": "20dc9d6443e878af54bd306b6f1b258884a0d0d2",
+          "base": "d3beadd5316e81592986fedee95bcf99c4e98e41"
+        },
+        {
+          "head": "4057cd93ede69be501fd977a7c20b37c6719e064",
+          "base": "785c8477db48ae0f014d68ac2dd19a9db99b2881"
+        },
+        {
+          "head": "68d5315be450de5f9e17a34c2c019a7ad02067fd",
+          "base": "989ab3474af5ba849e1b179772e3c7a09e9b3496"
+        }
+      ]
+    },
+    {
+      "fullName": "astral-sh/ty",
+      "start": "f40d21a17daeb1d52ae883b4625f7591ff5838fb",
+      "changes": [
+        {
+          "head": "8e4aef298ab0e39007e59fb2cedcaddbebc34afc",
+          "base": "bef3a06e67d863b41e841d4d75cf254f787e598a"
+        },
+        {
+          "head": "546f2202cb5f4433385b665ba8535dfd743059dc",
+          "base": "4767fced34d982fe3d7ae1028b030ab52d1b3ce3"
+        },
+        {
+          "head": "e6c0420ac6378a0d53b879ee8a05b28de62e0d80",
+          "base": "35e23aa481211acfc35dd7ff9f1a0be384f4fab7"
+        },
+        {
+          "head": "b225fd8b4af6dfa0280bb5da979ce3658978d290",
+          "base": "09c637de618e5926ef14ca1dd6925e175e78e275"
+        },
+        {
+          "head": "c14037ab2ad6d678c7426ad57978d3c771a8ec17",
+          "base": "cbfaf725ff20441c4597d5c672c2cac1c8cfa46e"
+        },
+        {
+          "head": "52d16b44bcc060bec0a0381a1ea8052bf4479f14",
+          "base": "579134e19e9a3ecaa3e1ab0b83818c11a4002905"
+        },
+        {
+          "head": "b499d67f3e872ba0ccefa3fea906632012500af2",
+          "base": "1273091c25921e809aa9c102e386eed35a1fcdbc"
+        }
+      ]
+    },
+    {
+      "fullName": "teng-lin/notebooklm-py",
+      "start": "4d6a4e5494d721cea4d87e2d4c226afee305eee8",
+      "changes": [
+        {
+          "head": "af19e326e69771c1323e1a865d2933edbc20450e",
+          "base": "4d92743240852b4832ce45d76894a5d247e8e286"
+        },
+        {
+          "head": "d5df15e7781a23ab661234992cbf9184e018f11e",
+          "base": "823b3267954eb57cebff409427c979e31ae6616d"
+        },
+        {
+          "head": "2d47b372776ee4a54ed021314b364dca56ada137",
+          "base": "0ac23bfafd14d15b11130c1398726187841f2111"
+        },
+        {
+          "head": "27972416a2bb0d39bd2889c794cb836464ed48e6",
+          "base": "781dd4c9158492f0d8fc059a71e075784b8f6672"
+        },
+        {
+          "head": "781dd4c9158492f0d8fc059a71e075784b8f6672",
+          "base": "b667c7516eebc31d367f81a1d5cf959a41031e4e"
+        },
+        {
+          "head": "e5beff998f7d4d836e73492dbca336322327c70f",
+          "base": "50fabb751469564cd19ec9c70360d107f951cdd1"
+        },
+        {
+          "head": "50fabb751469564cd19ec9c70360d107f951cdd1",
+          "base": "b8548cbdae8e7e35b41eb7ad923459d96fc445e4"
+        },
+        {
+          "head": "40ef9916b0a04ef57ed90bd87ceaf62d7c83dff0",
+          "base": "b67b296d27624455ff7b7a682590e4675b20a5a4"
+        },
+        {
+          "head": "c7e2968f90a0b23db7aa35571442aa7c7e6de9bf",
+          "base": "3f1b2db08454a35d624307976080de51315dac4a"
+        },
+        {
+          "head": "89edf68a0e580d682d8be21fbd751c87fba824b7",
+          "base": "a8f873ef17e0ba74103baba70fc6ccbda6fd3474"
+        }
+      ]
+    },
+    {
+      "fullName": "kvcache-ai/ktransformers",
+      "start": "c40722bf04c494f2492b7eb9e86ef01a4ede45b3",
+      "changes": [
+        {
+          "head": "85308615b98bf9262f5e90341f51cb7e87a08a4d",
+          "base": "9544a8960d4dcc3db6046fc7d2a963b48136f72e"
+        },
+        {
+          "head": "15c624dcaeabddcf4cba83756737d9df22a6adf1",
+          "base": "9e69fccb026b1359bb850b8b7bef09be23b6cbb7"
+        },
+        {
+          "head": "d8046e1bb41c64b330eb29ad99ff33d62861d8ec",
+          "base": "e7d277d1639c85a14ed233d6f42b4271b477233b"
+        },
+        {
+          "head": "51745a9ea1a846d393a9e4e1b5b60bedb278f8b9",
+          "base": "2cffdf7033aa569e79280e4f6b72ced92442ab90"
+        },
+        {
+          "head": "743f6f719baef44128becf44d38fc5cfa4e12a4a",
+          "base": "94c25626dca35a5fb39fe6d83f3c51a40efe2027"
+        },
+        {
+          "head": "e40ba6dfae17ab24212ddcc6ab4b32594258f04d",
+          "base": "b09e99fd8776134c847ab69535c73c510cd54e1e"
+        },
+        {
+          "head": "0d7482fcc4a0b04aa0fb8ac442ad762a8fd40a9d",
+          "base": "1a925769d9b3a71d1755ceea27a73ab5c2ee18ea"
+        },
+        {
+          "head": "d7ab3b41b7c80eb55ac012099aba8e35991f0b3c",
+          "base": "5180fe8714336eb932927dad2e02921cb836e90f"
+        },
+        {
+          "head": "d44800c1cfb99e986acc570ff1da38003f3ee098",
+          "base": "a064cc852567a1d016132eff514afb042eaf6c09"
+        },
+        {
+          "head": "ffb1f7bf095bcf4b8e25383820053e2c8e92f5ee",
+          "base": "ba92cf1a3bc63188efbebf527c94ed6b179a41b5"
+        }
+      ]
+    },
+    {
+      "fullName": "huggingface/trl",
+      "start": "9fa0abbd2999fab19e7894cbb9a5cabb42ba4e96",
+      "changes": [
+        {
+          "head": "5f5744ae4c3ca3c43374b50793a6382acaebb113",
+          "base": "a8cc0ade54646baa240a9cb51137ff7f1ae4159d"
+        },
+        {
+          "head": "9e2c72aa3a7d03c4318df60ac8ee1c0cab84caff",
+          "base": "8027c6e23edf9c762042ae52c99f63905e49f29c"
+        },
+        {
+          "head": "61711ac450e1df609d4e0eb1bb1990797d06a7f9",
+          "base": "a61de46a8941bd50667a316fe49525fe10255cf7"
+        },
+        {
+          "head": "6ad4f300bc183c2d9b79bc98e1c107dbffef55d0",
+          "base": "ca8d909b85a472401b3fec715afd9c67b9481f36"
+        },
+        {
+          "head": "25813b6ca649d963bec830b1e532b7e9feab3cd2",
+          "base": "bf187bbf85d5ee7208a3a1e0febaa0f3efd6a190"
+        },
+        {
+          "head": "b86b7602bc54149059091d203217040711fcb2a3",
+          "base": "bc6004009296cdc13e01eed3b036b913bbb6e4f2"
+        },
+        {
+          "head": "fd296b55754af62d0db99536e0e2e2a6621f5257",
+          "base": "3ac3cf685fcd30d9fb051f594364bd3de3991eb9"
+        },
+        {
+          "head": "e9aaa618d8ccb607a92b3c41ad27671a56b2db3c",
+          "base": "40dc4bd993f699c8c36a5bc0cf31511b8866aadf"
+        },
+        {
+          "head": "ca21dd94c1e19caa23fbdafa1942466ec28b57ae",
+          "base": "fda5a7fcde8431122a1d9fbc23b774ca89442063"
+        },
+        {
+          "head": "07b5011b7864d4a27b71e30963a0a4ca610da3fd",
+          "base": "7a57fd41e41b33c7fd03a24abb45dd1cdebcbc49"
+        }
+      ]
+    }
+  ]
+}

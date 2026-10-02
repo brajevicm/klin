@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  undeclared-import
+        FAIL: 1 new package this window imports that no package.json of the tree declares:
+          src/validate.ts:1  csv-row-guard  (read: package.json, packages/shared/package.json)  — nothing matched
+        Declare the package in the package.json the project installs from, through the project's own install so the lockfile records it, or use a package the project already declares or a Node.js built-in. Declare only a package that exists: a name that no registry serves fails the install.
+klin: 8 gate(s), 1 failed.

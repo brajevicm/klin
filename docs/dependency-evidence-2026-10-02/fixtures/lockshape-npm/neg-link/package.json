@@ -1,0 +1,9 @@
+{
+  "name": "shop",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@shop/util": "file:packages/util",
+    "is-number": "7.0.0"
+  }
+}

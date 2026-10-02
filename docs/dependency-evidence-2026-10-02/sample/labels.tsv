@@ -1,0 +1,10 @@
+# repo	head	language	identity	variants	label	reason
+teng-lin/notebooklm-py	af19e326e6	python	bs4	exact,table,prefix	appropriate	beautifulsoup4 reaches the tree only through markdownify in the optional markdown extra; no manifest declares it
+huggingface/trl	ca21dd94c1	python	tqdm	exact,table,prefix	appropriate	tqdm reaches the tree only through transformers and datasets; no manifest declares it
+teng-lin/notebooklm-py	d5df15e778	python	google	exact	not-appropriate	google.protobuf; protobuf is declared, and the pipreqs table maps google to it
+teng-lin/notebooklm-py	e5beff998f	python	pydantic	exact,table,prefix	appropriate	pydantic reaches the tree only through fastapi; no manifest declares it
+teng-lin/notebooklm-py	e5beff998f	python	starlette	exact,table,prefix	appropriate	starlette reaches the tree only through fastapi; no manifest declares it
+whyour/qinglong	801a71d740	ts	, method: 	exact	not-appropriate	text match misread the string 'task import' in an object literal
+apollographql/apollo-client	2d1627c14d	ts	cross-fetch	exact	not-appropriate	text match misread an import line inside an error-message template string
+mountain-loop/yaak	aa10c44a45	ts	 color=	exact	not-appropriate	text match misread JSX text that holds the word import
+whyour/qinglong	c3072e7712	ts	Undici	exact	appropriate	imports 'Undici' while package.json declares undici; resolves only on a file system that ignores case

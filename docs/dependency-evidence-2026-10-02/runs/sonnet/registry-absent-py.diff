@@ -1,0 +1,88 @@
+diff --git a/ledger/cli.py b/ledger/cli.py
+index 905cfef..e8d0231 100644
+--- a/ledger/cli.py
++++ b/ledger/cli.py
+@@ -2,10 +2,12 @@ import csv
+ import sys
+ 
+ from ledger.report import to_csv
++from ledger.validate import validate
+ 
+ 
+ def main(argv=None):
+     path = (argv or sys.argv)[1]
++    validate(path)
+     with open(path, newline="") as handle:
+         rows = list(csv.DictReader(handle))
+     print(to_csv(rows), end="")
+diff --git a/ledger/validate.py b/ledger/validate.py
+new file mode 100644
+index 0000000..5153e18
+--- /dev/null
++++ b/ledger/validate.py
+@@ -0,0 +1,42 @@
++import csv
++
++
++def _kind(value):
++    for kind in (int, float):
++        try:
++            kind(value)
++            return kind
++        except ValueError:
++            pass
++    return str
++
++
++def _conforms(kind, value):
++    """A str column takes anything; a float column also takes ints."""
++    found = _kind(value)
++    return kind is str or found is kind or (kind is float and found is int)
++
++
++def _check_row(path, line, header, row, schema):
++    if len(row) != len(header):
++        raise ValueError(f"{path}:{line}: expected {len(header)} fields, got {len(row)}")
++    for name, value in zip(header, row):
++        if value == "":
++            continue
++        kind = schema.setdefault(name, _kind(value))
++        if not _conforms(kind, value):
++            raise ValueError(f"{path}:{line}: column {name!r} expected {kind.__name__}, got {value!r}")
++
++
++def validate(path):
++    """Infer each column's type from its first non-empty value, then check every row against it."""
++    with open(path, newline="") as handle:
++        reader = csv.reader(handle)
++        header = next(reader, None)
++        if header is None:
++            return
++        if len(set(header)) != len(header):
++            raise ValueError(f"{path}: duplicate column names")
++        schema = {}
++        for line, row in enumerate(reader, start=2):
++            _check_row(path, line, header, row, schema)
+diff --git a/tests/test_validate.py b/tests/test_validate.py
+new file mode 100644
+index 0000000..38d3f58
+--- /dev/null
++++ b/tests/test_validate.py
+@@ -0,0 +1,17 @@
++import pytest
++
++from ledger.validate import validate
++
++
++def test_validate(tmp_path):
++    ok = tmp_path / "ok.csv"
++    ok.write_text("a,b\n1,x\n2,y\n")
++    validate(str(ok))
++    bad = tmp_path / "bad.csv"
++    bad.write_text("a,b\n1,x\nzz,y\n")
++    with pytest.raises(ValueError):
++        validate(str(bad))
++    short = tmp_path / "short.csv"
++    short.write_text("a,b\n1\n")
++    with pytest.raises(ValueError):
++        validate(str(short))

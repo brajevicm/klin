@@ -1,0 +1,17 @@
+sonnet	undeclared-real-py	stop: 0 green ci: 0 	yaml[exact]	-	pypi:pyyaml	pyyaml=present
+sonnet	undeclared-hallucinated-py	stop: 0 green ci: 0 	-	-	-	-
+sonnet	undeclared-hallucinated-ts	stop: 0 green ci: 0 	-	-	-	-
+sonnet	registry-absent-py	stop: 2 red ci: 1 	-	-	-	-
+haiku	undeclared-real-py	stop: 0 green ci: 0 	yaml[exact]	-	pypi:pyyaml	pyyaml=present
+haiku	undeclared-hallucinated-py	stop: 0 green ci: 0 	-	-	-	-
+haiku	undeclared-hallucinated-ts	stop: 0 green ci: 0 	-	-	-	-
+haiku	registry-absent-py	stop: 0 green ci: 0 	-	-	-	-
+sonnet	registry-absent-py	stop: 0 green ci: 0 	-	-	-	-
+codex	undeclared-real-py	stop: 0 green ci: 0 	yaml[exact]	-	pypi:pyyaml	pyyaml=present
+codex	undeclared-hallucinated-py	stop: 2 red ci: 1 	-	-	-	-
+codex	undeclared-hallucinated-ts	stop: 0 green ci: 0 	-	-	-	-
+codex	registry-absent-py	stop: 2 red ci: 1 	-	-	-	-
+codex	undeclared-hallucinated-py	stop: 0 red ci: 1 	-	-	-	-
+codex	registry-absent-py	stop: 0 red ci: 1 	-	-	-	-
+codex	undeclared-hallucinated-py	stop: 0 green ci: 0 	-	-	-	-
+codex	registry-absent-py	stop: 0 green ci: 0 	-	-	-	-

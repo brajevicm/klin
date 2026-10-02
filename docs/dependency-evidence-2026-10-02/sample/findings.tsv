@@ -1,0 +1,55 @@
+ordinary	whyour/qinglong	801a71d740	ts	exact	, method: 	cli/src/remote/api/openOperations.ts:101	finding	-
+ordinary	whyour/qinglong	801a71d740	ts	exact	fixture-module	cli/test/internal/local.test.cjs:509	excluded	test
+ordinary	teng-lin/notebooklm-py	af19e326e6	python	exact	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+ordinary	teng-lin/notebooklm-py	af19e326e6	python	table	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+ordinary	teng-lin/notebooklm-py	af19e326e6	python	prefix	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+ordinary	kvcache-ai/ktransformers	c40722bf04	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	f7607c0f66	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	105359b4bf	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	4bf0974553	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	0b954fe4ca	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	0dce4c9b09	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	f312728aa9	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	4882505c9a	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	105cee4bd1	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+ordinary	kvcache-ai/ktransformers	440df94802	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; setup.py: extras_require is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/kt-sft/setup.py: install_requires is not a literal list
+stratum	firecrawl/pdf-inspector	86476eb6b2	python	exact	pytest	tests/test_python.py:4	excluded	test
+stratum	firecrawl/pdf-inspector	86476eb6b2	python	table	pytest	tests/test_python.py:4	excluded	test
+stratum	firecrawl/pdf-inspector	86476eb6b2	python	prefix	pytest	tests/test_python.py:4	excluded	test
+stratum	whyour/qinglong	801a71d740	ts	exact	, method: 	cli/src/remote/api/openOperations.ts:101	finding	-
+stratum	whyour/qinglong	801a71d740	ts	exact	fixture-module	cli/test/internal/local.test.cjs:509	excluded	test
+stratum	whyour/qinglong	c3072e7712	ts	exact	Undici	back/services/config.ts:6	finding	-
+stratum	apollographql/apollo-client	2d1627c14d	ts	exact	cross-fetch	src/link/http/checkFetcher.ts:12	finding	-
+stratum	apollographql/apollo-client	2d1627c14d	ts	exact	crypto-hash	scripts/codemods/ac3-to-ac4/src/__tests__/links.test.ts:128	excluded	example,test
+stratum	apollographql/apollo-client	2d1627c14d	ts	exact	jest-resolve	src/config/jest/resolver.ts:4	excluded	type-only
+stratum	Open-Dev-Society/OpenStock	c229dd3c72	ts	exact	@jest/globals	scripts/verify-watchlist.mjs:14	excluded	example
+stratum	Open-Dev-Society/OpenStock	c229dd3c72	ts	exact	node-fetch	scripts/migrate-users-to-kit.mjs:5	excluded	example
+stratum	mountain-loop/yaak	aa10c44a45	ts	exact	 color=	apps/yaak-client/components/ImportDataDialog.tsx:534	finding	-
+stratum	teng-lin/notebooklm-py	af19e326e6	python	exact	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+stratum	teng-lin/notebooklm-py	af19e326e6	python	table	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+stratum	teng-lin/notebooklm-py	af19e326e6	python	prefix	bs4	src/notebooklm/_app/source_fetch.py:117	finding	-
+stratum	teng-lin/notebooklm-py	d5df15e778	python	exact	google	src/notebooklm/_android/artifact_proto.py:30	finding	-
+stratum	teng-lin/notebooklm-py	d5df15e778	python	exact	grpc	src/notebooklm/_android/proto/google/internal/labs/tailwind/orchestration/v1/account_pb2_grpc.py:3	excluded	generated,guarded,test
+stratum	teng-lin/notebooklm-py	d5df15e778	python	exact	grpc_tools	scripts/regenerate_android_protos.py:162	excluded	example
+stratum	teng-lin/notebooklm-py	d5df15e778	python	table	grpc	src/notebooklm/_android/proto/google/internal/labs/tailwind/orchestration/v1/account_pb2_grpc.py:3	excluded	generated,guarded,test
+stratum	teng-lin/notebooklm-py	d5df15e778	python	table	grpc_tools	scripts/regenerate_android_protos.py:162	excluded	example
+stratum	teng-lin/notebooklm-py	d5df15e778	python	prefix	grpc	src/notebooklm/_android/proto/google/internal/labs/tailwind/orchestration/v1/account_pb2_grpc.py:3	excluded	generated,guarded,test
+stratum	teng-lin/notebooklm-py	d5df15e778	python	prefix	grpc_tools	scripts/regenerate_android_protos.py:162	excluded	example
+stratum	teng-lin/notebooklm-py	e5beff998f	python	exact	pydantic	src/notebooklm/server/routes/artifacts.py:41	finding	-
+stratum	teng-lin/notebooklm-py	e5beff998f	python	exact	starlette	src/notebooklm/server/_errors.py:30	finding	-
+stratum	teng-lin/notebooklm-py	e5beff998f	python	table	pydantic	src/notebooklm/server/routes/artifacts.py:41	finding	-
+stratum	teng-lin/notebooklm-py	e5beff998f	python	table	starlette	src/notebooklm/server/_errors.py:30	finding	-
+stratum	teng-lin/notebooklm-py	e5beff998f	python	prefix	pydantic	src/notebooklm/server/routes/artifacts.py:41	finding	-
+stratum	teng-lin/notebooklm-py	e5beff998f	python	prefix	starlette	src/notebooklm/server/_errors.py:30	finding	-
+stratum	kvcache-ai/ktransformers	85308615b9	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; kt-sft/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	15c624dcae	python	*	-	-	unknown	pyproject.toml: dynamic dependencies; setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; kt-sft/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	d8046e1bb4	python	*	-	-	unknown	archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; kt-sft/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	51745a9ea1	python	*	-	-	unknown	archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; kt-sft/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	743f6f719b	python	*	-	-	unknown	KT-SFT/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list; archive/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	e40ba6dfae	python	*	-	-	unknown	setup.py: install_requires is not a literal list; setup.py: install_requires is not a literal list; KT-SFT/setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	0d7482fcc4	python	*	-	-	unknown	setup.py: install_requires is not a literal list; setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	d7ab3b41b7	python	*	-	-	unknown	setup.py: install_requires is not a literal list
+stratum	kvcache-ai/ktransformers	d44800c1cf	python	*	-	-	unknown	setup.py: install_requires is not a literal list
+stratum	huggingface/trl	ca21dd94c1	python	exact	tqdm	trl/__init__.py:214	finding	-
+stratum	huggingface/trl	ca21dd94c1	python	table	tqdm	trl/__init__.py:214	finding	-
+stratum	huggingface/trl	ca21dd94c1	python	prefix	tqdm	trl/__init__.py:214	finding	-

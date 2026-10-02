@@ -1,0 +1,6 @@
+klin: a quality gate failed — fix what each names, then stop again (gate block 1 of 2 in this turn):
+  FAIL  undeclared-import
+        FAIL: 1 new module this window imports that no manifest of the tree declares:
+          ledger/rules.py:1  yaml  (read: pyproject.toml)  — nothing matched
+        Declare the distribution that provides this module in the manifest the project installs from, or use a module the project already declares or the standard library. A module name and its distribution name can differ. Declare only a distribution that exists: a name that no registry serves fails the install.
+klin: 7 gate(s), 1 failed.

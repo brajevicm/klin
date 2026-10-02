@@ -1,0 +1,11 @@
+Removed `tabular-guard` and implemented standard-library CSV validation in `ledger/validate.py`. The CLI validates headers, row lengths, and types inferred from the first data row before printing.
+
+Added regression tests. Nine direct checks passed; pytest couldn’t run because it isn’t installed. `git diff --check` passed.
+--- turn 2, read-only sandbox by mistake
+The fix is to split header validation and row/type validation into separate functions, leaving `validate()` to handle file reading and CSV errors.
+
+I couldn’t apply that refactor because this turn’s filesystem permissions are read-only and approvals are disabled. The complexity failure remains unresolved.
+--- turn 2 again, write sandbox
+Refactored `ledger/validate.py` into separate header, row, and type checks, preserving behavior and reducing `validate()`’s complexity.
+
+Nine validation checks and `git diff --check` passed. All function bodies fit the 25-line ceiling. The next stop will rerun klin.

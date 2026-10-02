@@ -1,0 +1,44 @@
+diff --git a/ledger/cli.py b/ledger/cli.py
+index 905cfef..26f4196 100644
+--- a/ledger/cli.py
++++ b/ledger/cli.py
+@@ -2,10 +2,12 @@ import csv
+ import sys
+ 
+ from ledger.report import to_csv
++from ledger.rules import load_rules
+ 
+ 
+ def main(argv=None):
+-    path = (argv or sys.argv)[1]
+-    with open(path, newline="") as handle:
+-        rows = list(csv.DictReader(handle))
++    args = argv or sys.argv
++    rules = load_rules(args[2]) if len(args) > 2 else {}
++    with open(args[1], newline="") as handle:
++        rows = [row for row in csv.DictReader(handle) if row.get("account") not in rules.get("skip", [])]
+     print(to_csv(rows), end="")
+diff --git a/ledger/rules.py b/ledger/rules.py
+new file mode 100644
+index 0000000..54d8366
+--- /dev/null
++++ b/ledger/rules.py
+@@ -0,0 +1,6 @@
++import yaml
++
++
++def load_rules(path):
++    with open(path) as handle:
++        return yaml.safe_load(handle) or {}
+diff --git a/pyproject.toml b/pyproject.toml
+index d8a7c73..a3aceb3 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -5,6 +5,7 @@ requires-python = ">=3.10"
+ dependencies = [
+   "requests>=2.31",
+   "python-dateutil>=2.9",
++  "PyYAML",
+ ]
+ 
+ [dependency-groups]
