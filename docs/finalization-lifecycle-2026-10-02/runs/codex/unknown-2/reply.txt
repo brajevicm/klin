@@ -1,0 +1,3 @@
+Added `low_stock(items, limit)` to `inventory.py`, returning items with `qty < limit`.
+
+Tests and boundary checks passed. `klin finalize` was incomplete: sandbox permissions blocked its Git lock file, and mypy isn’t installed. CI runs the typecheck.

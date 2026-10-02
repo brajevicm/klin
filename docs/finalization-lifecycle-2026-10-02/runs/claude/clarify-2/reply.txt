@@ -1,0 +1,7 @@
+I haven't added `apply_discount` yet, because the repo doesn't define a standard discount rate. A comment at the top of `inventory.py` says: "The discount rate is not decided yet. Finance owns it (ticket FIN-12)." I didn't want to make up a number that could end up in real prices.
+
+Which would you like?
+1. **You give me the rate.** I'll use it as a named constant, e.g. `DISCOUNT_RATE = 0.10`, and `apply_discount(price)` will return `price * (1 - DISCOUNT_RATE)`.
+2. **I use a placeholder.** I'll add the function with a clearly marked placeholder rate (such as `0.0`, so nothing changes) and a TODO pointing to FIN-12. You swap in the real rate once Finance decides.
+
+Tell me which option, and the rate if you pick the first.

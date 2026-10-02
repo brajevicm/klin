@@ -27,6 +27,7 @@ stage() {
     hooks "$here/bin" > "$tree/.claude/settings.json"
     hooks "$here/bin" > "$tree/.codex/hooks.json"
   fi
+  [ "$host" != codex ] || cp "$here/context.txt" "$tree/AGENTS.md"
   printf '__pycache__/\n' > "$tree/.gitignore"
   git_ -C "$tree" init -q -b main
   git_ -C "$tree" add -A
@@ -49,7 +50,7 @@ run() {
   mode=$(awk -F'\t' -v c="$name" '$1 == c { print $2 }' "$here/cases.tsv")
   task=$(awk -F'\t' -v c="$name" '$1 == c { print $3 }' "$here/cases.tsv")
   [ -n "$task" ] || { echo "probe: no case $name in cases.tsv" >&2; exit 2; }
-  rm -rf "$dir"; mkdir -p "$dir"; stage "$dir/tree"
+  rm -rf "$dir"; mkdir -p "$dir"; stage "$dir/tree" "$host"
   export PATH="$here/bin:$PATH" PROBE_MODE="$mode" PROBE_LOG="$dir/probe.log" PROBE_CONTEXT="$here/context.txt"
   : > "$dir/probe.log"
   case $host in
@@ -58,14 +59,14 @@ run() {
         > "$dir/reply.json" 2> "$dir/host.err" || true
       python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("result",""))' "$dir/reply.json" > "$dir/reply.txt" || true ;;
     codex) codex exec --ignore-user-config --dangerously-bypass-hook-trust -s workspace-write \
-        -m gpt-6.1-sol -c model_reasoning_effort=low -C "$dir/tree" -o "$dir/reply.txt" "$task" \
+        -m gpt-6.1-sol -c model_reasoning_effort=low -c allow_login_shell=false -C "$dir/tree" -o "$dir/reply.txt" "$task" \
         > "$dir/host.out" 2> "$dir/host.err" < /dev/null || true ;;
     *) echo "probe: HOST is claude or codex" >&2; exit 2 ;;
   esac
   record "$dir"
 }
 record() {
-  git -C "$1/tree" diff main -- . ':!.claude' ':!.codex' ':!.cursor' ':!.vscode' > "$1/change.diff" || true
+  git -C "$1/tree" diff main -- . ':!.claude' ':!.codex' ':!.cursor' ':!.vscode' ':!AGENTS.md' > "$1/change.diff" || true
   git -C "$1/tree" status --porcelain --untracked-files=all >> "$1/change.diff" || true
 }
 score() {

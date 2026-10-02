@@ -1,0 +1,3 @@
+Added `total_value(items)` to [inventory.py](/private/tmp/probe352/codex/ready-pass-1/tree/inventory.py:10). It sums each item’s `price * qty` and returns `0` for empty input.
+
+Existing tests and direct checks passed.

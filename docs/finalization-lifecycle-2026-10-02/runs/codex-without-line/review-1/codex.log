@@ -1,0 +1,156 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.0
+--------
+workdir: /tmp/probe352/codex/review-1/tree
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: low
+reasoning summaries: none
+session id: 01a0fc9c-8dfd-7201-8235-759c388de4ef
+--------
+user
+Add a function load_prices(url) to inventory.py that downloads a JSON object of name-to-price pairs from the URL with the standard library and returns it as a dict.
+warning: `--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.
+warning: `--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation.
+hook: UserPromptSubmit
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+hook: UserPromptSubmit Completed
+codex
+I’ll check `inventory.py` and add `load_prices(url)` using the standard library.
+exec
+/bin/zsh -lc "pwd; rg --files -g 'AGENTS.md' -g 'inventory.py' -g '*test*' -g 'pyproject.toml'; test -d .codegraph && echo CODEGRAPH_PRESENT" in /tmp/probe352/codex/review-1/tree
+ exited 1 in 0ms:
+/private/tmp/probe352/codex/review-1/tree
+inventory.py
+tests/test_inventory.py
+
+exec
+/bin/zsh -lc 'cat inventory.py tests/test_inventory.py; git status --short' in /tmp/probe352/codex/review-1/tree
+ succeeded in 0ms:
+"""A small stock list for a shop."""
+
+# The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+
+
+def make_item(name, price, qty):
+    return {"name": name, "price": price, "qty": qty}
+
+
+def in_stock(items):
+    return [item for item in items if item["qty"] > 0]
+
+
+def find(items, name):
+    for item in items:
+        if item["name"] == name:
+            return item
+    return None
+import unittest
+
+from inventory import find, in_stock, make_item
+
+
+class InventoryTest(unittest.TestCase):
+    def test_in_stock_drops_empty_items(self):
+        items = [make_item("a", 1.0, 0), make_item("b", 2.0, 3)]
+        self.assertEqual([item["name"] for item in in_stock(items)], ["b"])
+
+    def test_find_returns_none_for_a_missing_name(self):
+        self.assertIsNone(find([], "a"))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+apply patch
+patch: completed
+/tmp/probe352/codex/review-1/tree/inventory.py
+diff --git a/inventory.py b/inventory.py
+index f71f59c6674e1d2ddca340e1fd42a6ba8ad7a687..31548dc2a94e659edd8c3645f6c0cf8dbc6edd49
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,8 +1,17 @@
+ """A small stock list for a shop."""
+ 
++import json
++from urllib.request import urlopen
++
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def load_prices(url):
++    """Download a JSON object mapping item names to prices."""
++    with urlopen(url) as response:
++        return json.load(response)
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+
+exec
+/bin/zsh -lc "python -m unittest discover -s tests; python -c 'from inventory import load_prices; assert load_prices(\"data:application/json,%7B%22apple%22%3A1.5%7D\") == {\"apple\": 1.5}'" in /tmp/probe352/codex/review-1/tree
+ succeeded in 508ms:
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+
+diff --git a/inventory.py b/inventory.py
+index f71f59c6674e1d2ddca340e1fd42a6ba8ad7a687..31548dc2a94e659edd8c3645f6c0cf8dbc6edd49
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,8 +1,17 @@
+ """A small stock list for a shop."""
+ 
++import json
++from urllib.request import urlopen
++
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def load_prices(url):
++    """Download a JSON object mapping item names to prices."""
++    with urlopen(url) as response:
++        return json.load(response)
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+
+codex
+Added `load_prices(url)` to [inventory.py](/tmp/probe352/codex/review-1/tree/inventory.py) using `urllib.request` and `json`. It downloads and parses the JSON object, returning a dict.
+
+Existing tests and a JSON-loading smoke check pass.
+diff --git a/inventory.py b/inventory.py
+index f71f59c6674e1d2ddca340e1fd42a6ba8ad7a687..31548dc2a94e659edd8c3645f6c0cf8dbc6edd49
+--- a/inventory.py
++++ b/inventory.py
+@@ -1,8 +1,17 @@
+ """A small stock list for a shop."""
+ 
++import json
++from urllib.request import urlopen
++
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def load_prices(url):
++    """Download a JSON object mapping item names to prices."""
++    with urlopen(url) as response:
++        return json.load(response)
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+
+hook: Stop
+hook: Stop Completed
+tokens used
+18,088

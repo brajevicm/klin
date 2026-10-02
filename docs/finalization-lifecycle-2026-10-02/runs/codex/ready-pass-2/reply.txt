@@ -1,0 +1,3 @@
+Added `total_value(items)` to [inventory.py](/private/tmp/probe352/codex/ready-pass-2/tree/inventory.py). It sums `price * qty`, returning `0` for empty input.
+
+Tests and direct checks passed. `klin finalize` failed because the installed CLI does not recognize `finalize`.

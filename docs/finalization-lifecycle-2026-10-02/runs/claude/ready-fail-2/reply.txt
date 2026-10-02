@@ -1,0 +1,5 @@
+I added `restock(item, n)` to `inventory.py`. It adds `n` to `item["qty"]` and returns the same item.
+
+`klin finalize` first failed because no test called the new function, so I added `test_restock_adds_to_qty_and_returns_the_item` to `tests/test_inventory.py`. After that, `klin finalize` passed and all 3 tests pass.
+
+Plain `python -m unittest discover -s tests` fails because `tests/` isn't importable. I ran the file directly with `python -m unittest tests/test_inventory.py` instead.

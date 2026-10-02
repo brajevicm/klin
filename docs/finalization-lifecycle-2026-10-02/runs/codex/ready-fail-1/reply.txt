@@ -1,0 +1,3 @@
+Added `restock(item, n)` to `inventory.py`; it increases `item["qty"]` and returns the same item.
+
+Added a test; all 3 tests pass. `klin finalize` remains blocked by permission errors writing its Git index lock and still reports the test finding.

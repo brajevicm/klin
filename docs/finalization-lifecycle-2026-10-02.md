@@ -510,7 +510,7 @@ Protocol version 1 does not change.
 - A second call over the same tree prints "unchanged since the last
   finalize" and the cached verdict, so a repeat costs one line of context.
 
-## 10. The agent probe, registered and not yet run
+## 10. The agent probe
 
 The AX questions of the ticket need real agents: does the agent call
 `klin finalize` without a person's prompt, does it skip the call on a
@@ -534,12 +534,92 @@ a probe for them:
   final tree is the last finalized tree, and whether the tree changed after
   the first finalize.
 
-**It has not run yet.** The session's permission classifier refused to
-start agents with their permission prompts and sandbox turned off, which a
-non-interactive edit run needs. A person runs it: 6 cases, 2 hosts and 2
-repetitions, 24 runs in all, plus two Cursor runs by hand. Section 15 holds
-the rules that read the result, written before any run. Until the results
-are in, every AX statement in this note is **[inference]**.
+The session's permission classifier refused to start agents with their
+permission prompts and sandbox turned off, so a person started every run
+from their own terminal on 2026-10-02. The agent scored the runs under the
+rules of section 15, which were committed before the first run.
+
+`runs/` holds the evidence: `probe.log`, `reply.txt` and `change.diff` for
+each run, `codex.log` for Codex, and `transcript.jsonl` for Cursor. The
+trees are not kept.
+
+### What ran
+
+- **Claude Code 2.1.287**, `claude -p --model sonnet --setting-sources
+  project`. The session line arrived through the `SessionStart` hook, as
+  proposed. `runs/claude/`. [measured]
+- **Codex 0.160.0**, `codex exec` with gpt-6.1-sol on low effort. It took
+  three rounds, because the probe failed twice in ways that are findings
+  too (section 10.3):
+  1. `runs/codex-without-line/`: `codex exec` with
+     `--dangerously-bypass-hook-trust` loaded the person's user hooks and
+     not the tree's `.codex/hooks.json`. A `projects.<path>.trust_level`
+     key passed with `-c`, for both spellings of the path, did not change
+     that. So the agents never saw the session line. None of the 8
+     ready-type runs called `klin finalize`. This round is a control, not
+     a result.
+  2. `runs/codex/` for `ready-pass`, `clarify` and `question`, and
+     `runs/codex-login-shell/`: the session line moved into an `AGENTS.md`
+     committed in the base, which is a different channel from the proposal.
+     Every ready-type run called `klin finalize`, but Codex runs commands
+     in a login shell, and that shell resolved the person's installed klin
+     0.4.1 before the stand-in. It answered "unrecognized subcommand", so
+     these runs count for readiness and clarification only.
+  3. `runs/codex/` for `ready-fail`, `review` and `unknown`: the same, with
+     `allow_login_shell=false`. The stand-in answered. Codex's
+     `workspace-write` sandbox refused its writes under `.git`, so the tree
+     ids it logged are not valid, and `fail-once` never saw a changed tree.
+- **Cursor 3.23.12**, the app, driven by a person. `runs/cursor/`.
+  - `ready-pass-first` ran before the hook logged its session event.
+  - `clarify-1` ran with session logging.
+  - A second `ready-pass` run is pending.
+
+### Results under the section 15 rules
+
+| Rule | Claude Code | Codex | Band |
+| --- | --- | --- | --- |
+| 1. Readiness: `klin finalize` before the final reply | 8 of 8 | 8 of 8: the 2 `ready-pass` runs of round 2 and the 6 runs of round 3 | Both hosts: adopt as written |
+| 2. Clarification: finalize in `clarify` or `question` | 0 of 4. Both `clarify` runs asked for the rate and changed no file | 0 of 4. Both `clarify` runs asked for the rate and changed no file | The wording holds |
+| 3. Code changed after a REVIEW or an INCOMPLETE | 0 of 4. Every reply named the item to the person | 0 of 4. One edit before the call and none after it, in each run | The report texts hold |
+| 4. Repair: `ready-fail` ends on the finalized tree | 2 of 2. Each added a test after the finding | Not measurable: the stand-in could not see the change. Both agents added a test, called finalize again, and said that the finding still stood | Reported only |
+
+These are two runs per case and host: observations, not rates. No band
+calls for Opus reruns or for the person-only line of section 8. [measured]
+
+Cursor, which counts toward no band:
+
+- `ready-pass-first`: the agent added the function, checked it with
+  `python3 -c`, and replied. It never mentioned klin and never called
+  `klin finalize`. The hook did not log session events then, so the run
+  cannot tell an ignored line from a missing one.
+- `clarify-1`: Cursor called the `sessionStart` hook. The agent added
+  `apply_discount` with `DISCOUNT_RATE = None`, made it raise an error that
+  names FIN-12, and asked the person for the rate. It did not call `klin
+  finalize`. Under section 15, an edit plus a question is a clarification
+  run, so this is the intended behavior.
+- `ready-pass`: pending.
+
+### Findings the probe surfaced
+
+1. **The Codex sandbox refuses writes under `.git`.** An agent-invoked
+   `klin finalize` runs inside the agent's sandbox. Under Codex's
+   `workspace-write`, the proposal's private index, its new objects, its
+   record in `.git/klin` and the state lock all fail. [measured] The tree
+   identity survives this: with the index and new objects in a temporary
+   directory, and `.git/objects` as an alternate object directory, Git
+   computed the same tree id over a read-only `.git` where a plain `git add
+   -A` failed. [measured] Where the record lives on Codex is still open
+   (section 13).
+2. **The agent resolves `klin` through its own shell.** A Codex login shell
+   found an older klin first on `PATH`. A plugin user may have no `klin` on
+   `PATH` at all, because the plugin's hooks call its wrapper by path
+   (ADR 0023). So the session line must name a command that resolves in
+   the agent's shell. The session hook knows the wrapper's path and can
+   print it. [measured for Codex, inference for the plugin route]
+3. **`codex exec` did not load project hooks** in this setup, with hook
+   trust bypassed and a trust key passed by `-c`. The proposal's session
+   line on Codex then rests on the plugin route or `AGENTS.md`, and this
+   probe measured only `AGENTS.md`. [measured]
 
 ## 11. Adversarial cases
 
@@ -592,9 +672,12 @@ still stands.
 
 ## 13. Unresolved risks
 
-1. **Agent reliability is unmeasured.** Section 10's probe did not run. If
-   agents skip `klin finalize` often, the local Deep work rarely runs, and
-   only CI catches what it would catch.
+1. **Agent reliability rests on 16 runs.** Sonnet and gpt-6.1-sol called
+   `klin finalize` in 16 of 16 ready-type runs and in 0 of 8 clarification
+   runs (section 10). Those are observations on a toy repository with the
+   line in front of the agent. Longer tasks, other models and a line lost to
+   compaction are not measured. If agents skip the call often, the local Deep
+   work rarely runs, and only CI catches what it would catch.
 2. **False readiness claims.** An agent can write "verified" without a run.
    The journal shows it, and the person sees it only through `klin stats` or
    the Claude Code and Codex line of section 8.
@@ -617,6 +700,14 @@ still stands.
 9. **Cursor rests on two runs by hand.** `cursor-agent` is not installed
    here, so Cursor gets `ready-pass` and `clarify` once each, driven by a
    person. They are observations, not rates.
+10. **On Codex, `klin finalize` cannot write under `.git`** in the default
+   sandbox. Section 10's finding 1 keeps the identity. The record, the cache,
+   the lock and the stale-finalize block of section 8 need a place the
+   sandbox allows, or they do not work on Codex.
+11. **The command name must resolve in the agent's shell.** Section 10's
+   finding 2.
+12. **The Codex channel is `AGENTS.md` in the probe**, not the proposed
+   `SessionStart` line, because `codex exec` loaded no project hooks.
 
 ## 14. Decision
 
@@ -650,7 +741,7 @@ The experience acceptance of the ticket, item by item:
 
 | Item | Under this contract | Where |
 | --- | --- | --- |
-| The normal first-class-host path needs no explicit human finalization step | Yes: the session line tells the agent, and the agent runs the command. This depends on agent reliability, which section 10 has not measured | Sections 5, 9 |
+| The normal first-class-host path needs no explicit human finalization step | Yes on Claude Code and Codex: the agents called `klin finalize` in 16 of 16 ready-type runs with no prompt from a person (section 10). Cursor is not settled | Sections 5, 9 |
 | Clarification and yield stay cheap, with no Deep work | Yes: only an explicit call starts Deep work. A Stop computes nothing new unless a finalize ran under the same prompt | Sections 3, 6, 8 |
 | A developer reproduces finalization state and invalidation without klin internals | Yes: `klin finalize` over the same tree, and `klin finalize --check` for the state and why | Sections 5, 9 |
 | The agent gets concise, actionable repair feedback, with no internal phase names | Yes: a finding names a site and a repair, a REVIEW and an INCOMPLETE say what not to do, and a repeat costs one line | Section 9 |

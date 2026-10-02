@@ -1,0 +1,17 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..66f127f 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -7,6 +7,11 @@ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+ 
++def restock(item, n):
++    item["qty"] += n
++    return item
++
++
+ def in_stock(items):
+     return [item for item in items if item["qty"] > 0]
+ 
+ M inventory.py

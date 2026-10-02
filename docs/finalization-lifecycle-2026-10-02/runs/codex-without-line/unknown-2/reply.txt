@@ -1,0 +1,3 @@
+Added `low_stock(items, limit)` to [inventory.py](/private/tmp/probe352/codex/unknown-2/tree/inventory.py:12). It returns items with `qty < limit`, preserving their order.
+
+Existing tests and boundary/empty-input checks pass.

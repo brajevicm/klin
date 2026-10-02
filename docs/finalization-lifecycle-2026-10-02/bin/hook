@@ -8,6 +8,7 @@ field() { printf '%s' "$event" | python3 -c 'import json,sys; print(json.load(sy
 cursor=$(field cursor_version)
 case ${1:?} in
   session)
+    printf 'session\t%s\t%s\n' "$(date +%s)" "$cursor" >> "${PROBE_LOG:?}"
     if [ "$cursor" = None ]; then cat "${PROBE_CONTEXT:?}"
     else python3 -c 'import json,sys; print(json.dumps({"additional_context": open(sys.argv[1]).read()}))' "${PROBE_CONTEXT:?}"
     fi ;;

@@ -1,0 +1,3 @@
+Added `restock(item, n)` to `inventory.py`. It increases `item["qty"]` by `n` and returns the same item.
+
+All 3 tests pass, including the new restock test. `klin finalize` remains blocked by denied writes to `.git/probe-finalize.idx.lock` and still reports the test finding despite the added coverage.
