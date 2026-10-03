@@ -13,7 +13,9 @@ policy a person owns.
 
 The two conformance levels of `docs/SPEC.md` section 15 name the same split:
 Feedback is hooks only, Enforced is hooks plus a required `klin gate --strict`
-run on a checkout the agent never touched.
+run on a checkout the agent never touched. Enforced names klin's measurements:
+`klin gate` outside the hook runs no project build, so the project's own CI
+must separately build, type-check and test what it requires.
 
 ## Zone 1: the agent-controlled worktree
 
@@ -65,7 +67,9 @@ step runs under `set -euo pipefail` with `curl ... -LsSf`, so a download that
 fails, or an installer that rejects a checksum, fails the job instead of
 skipping the gate.
 
-This is the first enforcement boundary for klin's measurements.
+This is the first enforcement boundary for klin's measurements. It is not the
+project's build boundary: the project's own CI owns its build, type-check and
+test requirements.
 
 ## Zone 4: repository policy and human approval
 
