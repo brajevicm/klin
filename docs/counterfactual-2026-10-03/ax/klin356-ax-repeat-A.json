@@ -1,0 +1,8 @@
+{
+  "action": "keep",
+  "rationale": "The working source already delegates route through the named adapt boundary requested for maintainers. The repeated proposal would remove that intent despite preserving identity behavior under the frozen oracle. It has not been applied, so no repair is needed; repeating REVIEW provides no reason to change working code.",
+  "files_changed": 0,
+  "research_agent_response_turns_total": 2,
+  "context_packet_bytes": 969,
+  "repeat_created_code_repair_loop": false
+}

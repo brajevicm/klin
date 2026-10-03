@@ -1,0 +1,9 @@
+{
+  "arm": "A",
+  "task": "boundary",
+  "feedback": "REVIEW boundary: a candidate removed 3 edit lines under frozen oracle 581e5d4a3335. Preserve requested intent: Keep a named adaptation boundary for maintainers even though current behavior is identity. Independent holdout: pass. Inspect one candidate; do not edit merely to clear this observation.",
+  "final_files": {
+    "router.mjs": "export const route = s => s;\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\n"
+  },
+  "oracle_id": "6333c07d26e3940c6357ce5837e6c48e6db5b2d2e0f268d3eb631d012c8032bb"
+}

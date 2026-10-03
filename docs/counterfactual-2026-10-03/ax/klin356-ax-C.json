@@ -1,0 +1,24 @@
+{
+  "arm": "C",
+  "understanding": "The candidate inlines the identity operation and deletes the named adapt boundary. Passing a behavioral holdout establishes current identity behavior, but does not preserve the explicitly requested future adaptation point. Restoring route calling adapt and the named identity adapter directly preserves that intent; the unchanged separators carry no design significance.",
+  "action": "restore",
+  "repaired_files": {
+    "router.mjs": "export const route = s => adapt(s);\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\n\nconst adapt = s => s;\n"
+  },
+  "oracle_command": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {readFileSync} from \"node:fs\"; import {route} from \"/private/tmp/klin356-ax-C-fixture/router.mjs\"; const source = readFileSync(\"/private/tmp/klin356-ax-C-fixture/router.mjs\", \"utf8\"); assert.match(source, /export const route = s => adapt\\(s\\);/); assert.match(source, /const adapt = s => s;/); for (const value of [undefined, null, false, 0, \"\", \"input\", {}, []]) assert.strictEqual(route(value), value); console.log(\"PASS: named adaptation boundary and identity behavior\");'",
+  "test": {
+    "actually_run": true,
+    "exit_code": 0,
+    "stdout": "PASS: named adaptation boundary and identity behavior\n",
+    "coverage": "Checks the named adapter declaration and route delegation, then strict identity preservation for undefined, null, booleans, numbers, strings, objects and arrays.",
+    "limitation": "This is a local intent and behavior check; the inaccessible frozen oracle was not run."
+  },
+  "context_bytes": {
+    "packet_bytes": 641,
+    "input_prompt_bytes": 1045,
+    "scope": "Packet and immediate parent task prompt only; excludes inherited context and tool output."
+  },
+  "repeated_repair_loop": false,
+  "research_sub_agent_turn_count": 1,
+  "host_turn_count": null
+}

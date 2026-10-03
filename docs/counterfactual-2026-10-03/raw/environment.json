@@ -1,0 +1,12 @@
+{
+  "runtimes": {
+    "ledger": "Python 3.14.8",
+    "router": "v24.17.0"
+  },
+  "platform": "darwin",
+  "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "node": "/Users/brajevicm/.local/state/fnm_multishells/52877_1791050177634/bin/node",
+  "corpus_id": "b17b9018258f0eec0f4641ac401d840b0757facc5bac69fc87f39caa93bf0b8f",
+  "timeout": 2.0,
+  "output_bound": 16384
+}

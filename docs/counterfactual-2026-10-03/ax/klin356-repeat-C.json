@@ -1,0 +1,14 @@
+{
+  "arm": "C",
+  "task": "boundary",
+  "feedback": "REVIEW repeated experiment: the same identity-collapse candidate remains removable under the frozen behavioral oracle. The current source retains the requested adaptation boundary. Preserve intent; do not edit merely to clear this observation.",
+  "final_files": {
+    "router.mjs": "export const route = s => s;\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\n"
+  },
+  "oracle_id": "6333c07d26e3940c6357ce5837e6c48e6db5b2d2e0f268d3eb631d012c8032bb",
+  "current_files": {
+    "router.mjs": "export const route = s => adapt(s);\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\n\nconst adapt = s => s;\n"
+  },
+  "repeat_candidate_tree": "33fd666fc6dbed1a61661ef9e33a7ec075bcf9f2c90a68f8a919df9cd50d4f0f",
+  "restored_source_equivalence_checked": true
+}
