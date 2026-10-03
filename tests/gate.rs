@@ -1711,3 +1711,23 @@ fn a_coverage_loss_under_strict_fails_the_run() {
     assert_ne!(run.code, 0, "{}", run.out);
     assert!(run.says("FAIL: 1 file(s) left scrutiny"), "{}", run.out);
 }
+
+#[test]
+fn a_minified_bundle_reports_a_resource_error_in_json() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("bundle.js", &"function bundled(){};".repeat(4_000));
+    let run = tree.run(&["gate", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = run.json();
+    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    assert!(
+        list(&report, "findings").iter().any(|finding| {
+            field(finding, "outcome") == "error"
+                && field(finding, "text")
+                    .contains("bundle.js:1: source-line resource ceiling exceeded")
+        }),
+        "{}",
+        run.out
+    );
+}

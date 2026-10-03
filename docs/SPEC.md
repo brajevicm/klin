@@ -4261,6 +4261,18 @@ journal cannot prove. No word of the agent's glossary appears in the text.
 
 ## 13. Performance Budget
 
+Before parsing grammar-backed source, klin MUST refuse any source line longer
+than 65,536 UTF-8 bytes, excluding its line terminator. This deterministic
+resource ceiling applies equally to both trees and every language read by the
+shared parser. The error MUST name the file, one-based line, measured byte
+count and ceiling as a `source-line resource ceiling exceeded` error (exit 2),
+rather than silently exclude the file or truncate its site identity. Survey
+and tolerant readers that already omit refused parses omit this source too.
+This bounds the amplification of source-line site text on minified bundles;
+it is not a total process memory budget. The CLI pin is
+`an_oversized_source_line_reports_a_named_resource_error`.
+
+
 The Stop hook, excluding the project's own build, SHOULD finish within 5
 seconds on a tree of 2,000 source files when scoped with `--changed` to 20
 files and the survey cache is warm. The first stop on a new base MAY take the
