@@ -14,9 +14,9 @@ recipes-py/inj-suppress-file	0	0	2	1	ruff-review:S307
 recipes-py/inj-suppress-nosemgrep	2	1	2	1	escapes:rows = db.execute(f"SELECT id, name, email FROM users WHERE name = '{name}'").fetchall()  # nosemgrep  # noqa ruff-review:S608
 recipes-py/inj-legit	0	0	0	0	-
 recipes-py/sec-plant-key	0	0	0	0	-
-recipes-py/sec-plant-password	0	0	2	1	ruff-review:S106
+recipes-py/sec-plant-password	0	0	0	0	-
 recipes-py/sec-plant-constant	0	0	0	0	-
-recipes-py/sec-neg-name	0	0	2	1	ruff-review:S105
+recipes-py/sec-neg-name	0	0	0	0	-
 recipes-py/sec-neg-test	0	0	0	0	-
 recipes-py/sec-reword-split	0	0	0	0	-
 recipes-py/sec-reword-base64	0	0	0	0	-
@@ -33,10 +33,10 @@ recipes-py/err-reword-suppress	0	0	0	0	-
 recipes-py/err-reword-name	0	0	2	1	ruff-review:BLE001
 recipes-py/err-suppress-noqa	2	1	2	1	escapes:except Exception ruff-review:BLE001 ruff-review:S110
 recipes-py/err-legit	0	0	0	0	-
-recipes-py/dead-plant-import	0	0	2	1	ruff-review:F401
-recipes-py/dead-plant-variable	0	0	2	1	ruff-review:F841
+recipes-py/dead-plant-import	0	0	0	0	-
+recipes-py/dead-plant-variable	0	0	0	0	-
 recipes-py/dead-plant-unreachable	0	0	0	0	-
-recipes-py/dead-plant-commented	0	0	2	1	ruff-review:ERA001
+recipes-py/dead-plant-commented	0	0	0	0	-
 recipes-py/dead-neg-reexport	0	0	0	0	-
 recipes-py/dead-reword-underscore	0	0	0	0	-
 recipes-py/dead-reword-import-as	0	0	0	0	-

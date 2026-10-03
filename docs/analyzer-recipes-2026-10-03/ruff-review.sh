@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ruff-review.sh: the recipe-level probes of the exact Ruff recipe. For each
-# Python suppression route, and for one plant per family, the findings under
+# Python suppression route, one plant per admitted family, and representative
+# excluded-family controls, the findings under
 # the shell seam, under env -i with an empty HOME, and under a sandbox that
 # denies the network, plus every file the run wrote in the tree or in HOME.
 set -u
@@ -9,8 +10,8 @@ tools=${TOOLS:?TOOLS names the directory of the pinned tools}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 printf '(version 1)\n(allow default)\n(deny network-outbound (remote ip))\n(deny network-inbound (local ip))\n' > "$work/nonet.sb"
-for route in inj-plant-sql inj-plant-exec inj-plant-eval inj-neg-const sec-plant-key sec-plant-password sec-plant-constant sec-neg-name \
-  err-plant-pass dead-plant-variable inj-suppress-noqa inj-suppress-file inj-suppress-nosemgrep err-suppress-noqa debug-suppress-noqa; do
+for route in inj-plant-sql inj-plant-exec inj-plant-eval inj-neg-const err-plant-pass \
+  sec-plant-password dead-plant-variable inj-suppress-noqa inj-suppress-file inj-suppress-nosemgrep err-suppress-noqa debug-suppress-noqa; do
   tree=$work/$route
   mkdir -p "$tree"
   cp -R "$here/fixtures/recipes-py/base/." "$tree"

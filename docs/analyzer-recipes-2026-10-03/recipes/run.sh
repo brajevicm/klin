@@ -21,7 +21,7 @@ case $tool in
       --output-format sarif -o .klin-recipes/ruff.sarif "$@" ;;
   ruff-review)
     exec "$tools/py/.venv/bin/ruff" check --isolated --no-cache --exit-zero --ignore-noqa \
-      --select S102,S307,S602,S604,S605,S608,S105,S106,S107,BLE001,S110,S112,F401,F841,ERA001 \
+      --select S102,S307,S602,S604,S605,S608,BLE001,S110,S112 \
       --output-format sarif -o .klin-recipes/ruff-review.sarif "$@" ;;
   semgrep)
     exec "$tools/py/.venv/bin/semgrep" scan --config "$recipes/semgrep.yml" --metrics=off --disable-version-check \

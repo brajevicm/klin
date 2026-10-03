@@ -63,7 +63,7 @@ measure() {
 printf 'repository\ttool\tscope\trun\texit\treport\tms\n' > "$runs"
 printf 'repository\ttool\twhole ms\t20 files ms\n'
 if [ "${RECIPE_ONLY:-}" = ruff-review ]; then
-  for name in teng-lin/notebooklm-py kvcache-ai/ktransformers; do
+  for name in mikf/gallery-dl astral-sh/ty teng-lin/notebooklm-py kvcache-ai/ktransformers huggingface/trl; do
     measure "$name" '\.pyi?$' ruff-review
   done
   exit 0

@@ -315,6 +315,33 @@ section was committed before any of the runs below.
    findings the recipe gives, including any known miss and any tolerated hard
    negative, so a change in either is a failed test.
 
+### Rules for the third review
+
+The owner's third review found that the candidate `ruff-review` runner still
+contained the secrets and dead-code families that its own rerun rejected, and
+that Finalize timing covered only two of the five Python repositories. This
+section is committed before the reruns below.
+
+1. **The final exact recipe.** `ruff-review` now contains only the families
+   that survived the second-review admission: Python injection
+   (`S102,S307,S602,S604,S605,S608`) and swallowed errors
+   (`BLE001,S110,S112`). Secrets and dead-code rules are absent from the
+   runner, not merely ignored in the prose decision.
+2. **Acceptance rerun.** `probe.sh` runs every Python fixture with
+   `PY_RECIPES=ruff-review` and must match `expected-ruff-review.tsv`.
+   Representative secrets/dead controls also run through `ruff-review.sh`
+   and must produce no recipe finding.
+3. **Finalize cost on the whole Python population.** With
+   `RECIPE_ONLY=ruff-review`, `cost.sh` measures the exact final recipe on
+   all five Python repositories used by the study: `mikf/gallery-dl`,
+   `astral-sh/ty`, `teng-lin/notebooklm-py`,
+   `kvcache-ai/ktransformers`, and `huggingface/trl`. The registered
+   Finalize rule remains unchanged: the whole-tree median must be at most
+   60 seconds on every repository.
+4. **Measurement validity is unchanged.** Only reports satisfying the
+   complete-measurement predicate registered by the second review enter the
+   medians.
+
 ### How to reproduce
 
 ```bash

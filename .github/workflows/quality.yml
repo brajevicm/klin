@@ -32,3 +32,52 @@ jobs:
       - run: cargo nextest run --locked
       - run: cargo build --locked
       - run: ./target/debug/klin gate --strict
+
+  ruff-review-research:
+    if: github.event.pull_request.number == 454
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+      - name: Build klin and install pinned Ruff
+        run: |
+          cargo build --release --locked
+          python3 -m venv "$RUNNER_TEMP/tools/py/.venv"
+          "$RUNNER_TEMP/tools/py/.venv/bin/python" -m pip install --disable-pip-version-check "ruff==0.16.10"
+      - name: Verify the final Ruff recipe fixtures
+        env:
+          TOOLS: ${{ runner.temp }}/tools
+        run: |
+          actual="$RUNNER_TEMP/expected-ruff-review.tsv"
+          printf 'route\tstop {}\tci {}\tstop recipe\tci recipe\tci findings with the recipe\n' > "$actual"
+          PY_RECIPES=ruff-review OUT="$RUNNER_TEMP/probe" \
+            bash docs/analyzer-recipes-2026-10-03/probe.sh recipes-py >> "$actual"
+          diff -u docs/analyzer-recipes-2026-10-03/expected-ruff-review.tsv "$actual"
+          bash docs/analyzer-recipes-2026-10-03/ruff-review.sh | tee "$RUNNER_TEMP/ruff-review.txt"
+          echo "=== RUFF REVIEW PROBE ==="
+          cat "$RUNNER_TEMP/ruff-review.txt"
+      - name: Prepare all five Python repositories
+        run: |
+          mkdir -p "$RUNNER_TEMP/clones"
+          selection=docs/unfinished-code-2026-10-02/sample/selection-python.json
+          for name in mikf/gallery-dl astral-sh/ty teng-lin/notebooklm-py kvcache-ai/ktransformers huggingface/trl; do
+            start=$(jq -r --arg n "$name" '.repositories[] | select(.fullName == $n) | .start' "$selection")
+            dir="$RUNNER_TEMP/clones/${name//\//__}"
+            git init -q "$dir"
+            git -C "$dir" remote add origin "https://github.com/$name.git"
+            git -C "$dir" fetch -q --depth=1 origin "$start"
+            git -C "$dir" checkout -q --detach FETCH_HEAD
+          done
+      - name: Measure the final Ruff recipe on every Python repository
+        env:
+          TOOLS: ${{ runner.temp }}/tools
+          RECIPE_ONLY: ruff-review
+        run: |
+          bash docs/analyzer-recipes-2026-10-03/cost.sh "$RUNNER_TEMP/clones" \
+            | tee "$RUNNER_TEMP/cost-ruff-review.tsv"
+          echo "=== COST SUMMARY ==="
+          cat "$RUNNER_TEMP/cost-ruff-review.tsv"
+          echo "=== COST RUNS ==="
+          cat docs/analyzer-recipes-2026-10-03/cost-runs-ruff-review.tsv
