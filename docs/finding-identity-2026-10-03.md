@@ -58,8 +58,8 @@ These words belong to this note. They are not terms of `CONTEXT.md`.
    text absent from the parent's file? Every difference where the prototype
    is stricter than today was then read by hand.
 5. Performance was measured with `hyperfine` on a klin clone with 20 changed
-   files, and with the `structural_300k` `warm20` row under `KLIN_BIN`
-   (section 8).
+   files, and with the `structural_300k` and `structural_1m` `warm20` rows
+   under `KLIN_BIN` (section 8).
 
 ## 1. Current matching failure modes
 
@@ -472,19 +472,35 @@ Measurements, on an Apple silicon Mac with no other load:
 `reachability` (8 to 9 ms) and `dead-symbols`, which carry no identity: the
 `proto3` matcher grouped every gate by file and built text maps per file.
 `proto4` sends every gate whose findings and entries carry no identity
-through today's matcher, unchanged, and the cost is gone. An implementation
-must keep that fast path.
+through today's matcher, unchanged, and at 300k the cost is gone. An
+implementation must keep that fast path.
 
-The controlled 1M/20 row did not run. The owner asked that no 1M row run on
-this machine. The command for it:
+- **`structural_1m` `warm20`**, run at the owner's request after the rest of
+  this note, the same way: 1,033,827 lines, 20 changed files, three rows a
+  binary, alternating:
+  [`perf-1m-warm20.txt`](finding-identity-2026-10-03/perf-1m-warm20.txt).
 
-```bash
-KLIN_BIN=<binary> KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm20 cargo test --release --locked --test performance -- --ignored perf --nocapture
-```
+  | Binary | Hook medians (ms) | `complexity_ms` | `dead-symbols_ms` | `reachability_ms` |
+  |---|---|---|---|---|
+  | baseline | 1342, 1321, 1326 | 27, 27, 27 | 554, 552, 553 | 298, 297, 299 |
+  | `proto4` | 1349, 1339, 1326 | 28, 28, 28 | 565, 561, 556 | 303, 304, 304 |
 
-The 300k result and the whole-tree upper bound put the identity well under
-the preferred 10 ms at 20 changed files, so it is a candidate for the
-ordinary Stop.
+The 1M row does not repeat the 300k result:
+
+- The identity's own cost is 1 ms: `complexity_ms` is 1 ms higher in each
+  pair.
+- The hook is 8 ms slower on the mean of the three medians, and 13 ms slower
+  on their median. The median is above the preferred 10 ms.
+- Most of that is in `dead-symbols` (3 to 11 ms) and `reachability` (5 to
+  7 ms), which carry no identity and take today's matcher unchanged. One
+  candidate cause is the `proto4` check that scans every finding and entry
+  for an identity before it picks the matcher. Another is a different code
+  layout in the binary. This note did not prove either.
+
+So the identity is a candidate for the ordinary Stop at about 1 ms, and the
+rest of the 1M cost belongs to how the judge picks its path. An
+implementation must show at 1M/20 that a gate with no identity costs what it
+costs today (section 9).
 
 ## 9. Smallest implementation boundary
 
@@ -494,7 +510,9 @@ If a person admits this, the first ticket is `complexity` alone:
    not a member of `values`. `Identity` holds the version and either the key
    with `persists`, or the ambiguity reason.
 2. The ratchet's judge keeps today's path, unchanged, for a gate whose
-   findings and entries carry no identity. For a gate with identities, it
+   family declares no identity. The gate states this once, so the judge does
+   not scan its findings to find out, and the 1M/20 row shows no change for
+   such a gate (section 8). For a gate with identities, it
    groups by file and applies the pairing rule and the move-target rule of
    section 4. The body-hash pass does not change.
 3. `complexity` computes the key in its existing walk, marks duplicates per
@@ -544,7 +562,8 @@ with its replay.
   that shows real verdicts, and only one verdict changed in 600 commits.
 - F2 appeared only in the exposure replay.
 - No `dead-symbols` replay ran.
-- The 1M row did not run.
+- The 1M rows show 8 to 13 ms more for the whole hook, mostly in gates with
+  no identity, and this note did not find the cause.
 
 ## Decision
 
