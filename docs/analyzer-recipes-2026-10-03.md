@@ -614,7 +614,10 @@ characters, and Semgrep's rule id alone fills it.
 ## 6. Cost and phase
 
 `cost.tsv`: the median of the runs that wrote a SARIF report, of 5 runs at
-the start commit. `cost-runs.tsv` holds every run with its exit status.
+the start commit. These rows used that weaker check, which accepts a report
+that says the run failed. Only `cost-ruff-review.tsv`, the recommended
+recipe, ran under the complete-measurement check of the second review's
+rules, and its raw runs are in `cost-runs-ruff-review.tsv`. `cost-runs.tsv` holds every run with its exit status.
 "20 files" passes 20 tracked source files by name. `ESLint, injection` is
 the exact recipe of three rules, `recipes/eslint-injection.config.mjs`.
 
