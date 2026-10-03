@@ -1408,8 +1408,8 @@ not judge a root `AGENTS.md` or `CLAUDE.md` that the derivation commit does
 not hold, and does not judge a nested `AGENTS.md` such as `src/AGENTS.md`. A
 host may load both into the agent's context, so overflow moved into either
 file passes the gate. The new root file gets a NOTE line that names it,
-and the nested file gets none. A `file` entry with a `ceiling` pin judges such a file.
-Pinned by
+and the nested file gets none. A `file` entry with a `ceiling` pin judges
+such a file. Pinned by
 `a_new_root_claude_md_and_a_nested_agents_md_are_not_judged_by_default` in
 `tests/doc_size.rs` (#435).
 
