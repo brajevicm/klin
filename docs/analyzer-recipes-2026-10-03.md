@@ -304,12 +304,16 @@ because pnpm 11 refuses its lockfile.
 
 ## Headline results
 
-- **No family is admitted as failing.** Six family and language pairs pass
-  the review rules: `injection` and `secrets` in both languages, and
-  `swallowed` and `dead` in Python. Five pairs are rejected: TypeScript
+- **No family is admitted as failing.** Five family and language pairs pass
+  the review rules: TypeScript `secrets`, and Python `injection`, `secrets`,
+  `swallowed` and `dead`. Six pairs are rejected: TypeScript `injection`,
   `swallowed`, `dead`, `debug` and `condition`, and Python `debug`. Python
   `condition` is not measured.
-- **The review pairs found nothing appropriate on 100 real changes.** Their
+- **The fixed Semgrep rules failed on a holdout.** After the PR review, the
+  Semgrep rules that were fixed on the sample ran on 100 new changes. They
+  failed three TypeScript lines, none appropriate: N is 6, so TypeScript
+  `injection` is rejected (section 3).
+- **The review pairs found nothing appropriate on real changes.** Their
   failures were 0 to 2 per language, every one `not-appropriate`. So the
   sample shows their noise is low. It does not show that they catch real
   slop. Only the planted corpus shows that.
@@ -330,9 +334,12 @@ because pnpm 11 refuses its lockfile.
 - **A minor tool release changes the results.** The same Ruff rule list gave
   other results in four of five Python repositories, and ESLint in each
   TypeScript repository where both versions finished (section 11).
-- **Under the registered form rules, the decision is "Adopt named recipes"**
-  for Ruff, Semgrep and ESLint, at review strength only. Gitleaks stays a
-  documented recipe, because its report does not say which files it read.
+- **Type-aware ESLint ran out of memory on the largest repository.** Each
+  whole-tree run on tolaria ended in "JavaScript heap out of memory" with no
+  report. The first cost script counted those crashes as 70.8 s runs.
+- **The decision is "Adopt named recipes" for Ruff alone,** at review
+  strength, at Finalize and in CI, not at Stop (#358). Semgrep's rules are
+  klin's own text, so Semgrep stays a documented recipe with Gitleaks.
 
 ## 1. Candidate families and the planted corpus
 
@@ -398,7 +405,9 @@ TypeScript and 26 Python changes touch a file of their language. The other
 | Python | dead | 2 | 2 | 0 | 2 | 4 | — | 1 |
 | Python | debug | 1 | 1 | 0 | 1 | 2 | — | 0 |
 
-N for TypeScript `dead` scales the sampled share, 28 of 31, to all 61
+The Semgrep counts in this table are exploratory, because the Semgrep rules
+were fixed after this sample (section 3, "The Semgrep holdout"). Admission
+uses the holdout for them. N for TypeScript `dead` scales the sampled share, 28 of 31, to all 61
 failures. The `(configuration)` row is ESLint's error for a rule that a
 project directive names and the recipe does not load
 (`@next/next/no-img-element`). It is a failure of the generated
@@ -432,14 +441,14 @@ The rules of the section "Decision rules", applied as registered:
 
 | Language | Family | Rule 1 (≥ 2/3 plants) | Rule 2 (hard negatives) | N | Repair (section 5) | Disposition |
 | --- | --- | --- | --- | ---: | --- | --- |
-| TypeScript | injection | 3/3 | 1 fails | 0 | 4/4 correct | **admit as review** |
-| TypeScript | secrets | 2/3 | 0 | 2 | 4/4 correct | **admit as review** |
+| TypeScript | injection | 3/3 | 1 fails | 6 (holdout) | 4/4 correct | reject |
+| TypeScript | secrets | 2/3 | 0 | 0 (Semgrep from the holdout) | 4/4 correct | **admit as review** |
 | TypeScript | swallowed | 2/3 | 0 | 28 | not run | reject |
 | TypeScript | dead | 4/4 | 0 | about 110 | not run | reject |
 | TypeScript | debug | 2/2 | 2 fail | 26 | not run | reject |
 | TypeScript | condition | 3/3 | 1 fails | 54 | not run | reject |
-| Python | injection | 3/3 | 1 fails | 0 | 4/4 correct | **admit as review** |
-| Python | secrets | 3/3 | 1 fails | 4 | 3 correct, 1 task undone | **admit as review** |
+| Python | injection | 3/3 | 1 fails | 0 (Semgrep from the holdout) | 4/4 correct | **admit as review** |
+| Python | secrets | 3/3 | 1 fails | 4 (Semgrep from the holdout) | 3 correct, 1 task undone | **admit as review** |
 | Python | swallowed | 3/3 | 0 | 2 | 2 correct, 2 appeasement | **admit as review** |
 | Python | dead | 3/4 | 0 | 4 | 4/4 correct | **admit as review** |
 | Python | debug | 3/3 | 2 fail | 2 | not run | reject |
@@ -448,6 +457,26 @@ The rules of the section "Decision rules", applied as registered:
 No pair is admitted as failing. Python `dead` and `swallowed` miss it on N
 alone (4 and 2 against 1). Python `swallowed` would also fail rule 4. The
 other review pairs fail rule 2.
+
+### The Semgrep holdout
+
+The Semgrep rules were fixed after they saw the sample, so section 2's
+Semgrep counts are exploratory. The rerun rules took 100 new changes from the
+same repositories (`sample/selection-holdout.json`): 32 TypeScript and 24
+Python changes touch a file of their language. The fixed rules failed three
+TypeScript lines, all in whyour/qinglong (`sample/holdout/labels.tsv`):
+
+- two HTTP calls, `request.get(` with a templated URL, which
+  `sql-template-ts` matches because `get` is one of its method names;
+- one `ALTER TABLE` that builds table and column names from a static
+  migration manifest. Names cannot be bound parameters.
+
+All three are `not-appropriate`, so N for the TypeScript Semgrep entries is 6
+per 100 changes, over the review limit of 5. TypeScript `injection` is
+rejected. ESLint alone catches one of its three plants, so it fails rule 1
+without Semgrep. The other Semgrep entries had no failure on the holdout.
+On the original sample, the fixed `sql-template-ts` had no failure, so that
+sample alone would have admitted the pair.
 
 Where the rules leave a choice, it is a person's:
 
@@ -517,37 +546,53 @@ characters, and Semgrep's rule id alone fills it.
 
 ## 6. Cost and phase
 
-`cost.tsv`: median of 5 runs at the start commit, on the largest repository
-of each language. "20 files" passes 20 tracked source files by name.
+`cost.tsv`: the median of the runs that wrote a SARIF report, of 5 runs at
+the start commit. `cost-runs.tsv` holds every run with its exit status.
+"20 files" passes 20 tracked source files by name. `ESLint, injection` is
+the exact recipe of three rules, `recipes/eslint-injection.config.mjs`.
 
 | Repository | Tool | Whole tree | 20 files |
 | --- | --- | ---: | ---: |
-| refactoringhq/tolaria, 1,526 TypeScript files | ESLint, type-aware | 70.8 s | 1.20 s |
-| | Semgrep | 7.0 s | 1.29 s |
-| | Gitleaks | 3.8 s | — |
-| teng-lin/notebooklm-py, 1,617 Python files | Ruff | 0.14 s | 0.03 s |
-| | Semgrep | 2.3 s | 1.22 s |
-| | Gitleaks | 22.2 s | — |
+| refactoringhq/tolaria, 1,526 TypeScript files | ESLint, all entries | no report: 5 of 5 runs out of memory | 1.23 s |
+| | ESLint, injection | no report: 5 of 5 runs out of memory | 1.06 s |
+| | Semgrep | 6.8 s | 1.31 s |
+| | Gitleaks | 3.9 s | — |
+| whyour/qinglong | ESLint, injection | 4.8 s | 3.09 s |
+| apollographql/apollo-client | ESLint, injection | 26.8 s | 1.66 s |
+| Open-Dev-Society/OpenStock | ESLint, injection | 2.5 s | 2.19 s |
+| mountain-loop/yaak | ESLint, injection | 12.5 s | 2.16 s |
+| teng-lin/notebooklm-py, 1,617 Python files | Ruff | 0.11 s | 0.03 s |
+| | Semgrep | 2.5 s | 1.29 s |
+| | Gitleaks | 22.3 s | — |
 
-Gitleaks `dir` takes one path, so it has no 20-file row. Five runs in the
-cost script ended in `Abort trap: 6`. The section "Limits" names them.
+Every whole-tree ESLint run on tolaria exited 134 after about 70 s, with
+"FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed -
+JavaScript heap out of memory". The first cost script counted those crashes
+as times, and the first draft of this note reported "70.8 s". Those were the
+five `Abort trap: 6` lines. Gitleaks `dir` takes one path, so it has no
+20-file row.
+
 In the replay, the per-change medians through klin were ESLint 2.7 s
 (largest 12.3 s), Semgrep 1.3 s, Ruff 71 ms, and Gitleaks 0.4 s (TypeScript)
 and 1.8 s (Python, largest 29.3 s).
 
-The phase rules, applied per review pair and tool:
+The phase rules, with the #358 Stop guidance of the rerun rules:
 
 | Tool | Pairs | Stop | Finalize | Phase |
 | --- | --- | --- | --- | --- |
-| Ruff | Python injection, secrets, swallowed, dead | 0.03 s, no project dependency | 0.14 s | **Stop** |
-| Semgrep | injection and secrets, both languages | 1.29 s > 1 s | 7.0 s | **Finalize** |
-| Gitleaks | secrets, both languages | no file scope | 22.2 s | **Finalize** |
-| ESLint | TypeScript injection (`no-eval`, `@typescript-eslint/no-implied-eval`, `no-new-func`) | 1.20 s > 1 s, reads `node_modules` | 70.8 s > 60 s | **CI only** |
+| Ruff | Python injection, secrets, swallowed, dead | 30 ms on one repository, a new external process, no value shown on real changes: not a Stop entry under #358 | 0.11 s | **Finalize** |
+| Semgrep | secrets (TypeScript), injection and secrets (Python) | 1.29 s | 6.8 s | **Finalize** |
+| Gitleaks | secrets, both languages | no file scope | 22.3 s | **Finalize** |
+| ESLint, injection | none: TypeScript `injection` is rejected | 1.06 to 3.09 s, reads `node_modules` | out of memory on tolaria | — |
 
-A review entry never fails a gate, so a Stop entry adds lines to the report
-and never a block. The ESLint figure is for the type-aware recipe. The core
-`no-implied-eval` needs no types. A recipe of the three core rules was not
-timed.
+#358 asks for the incremental time on the controlled 1M / 20-changed
+workload. This note did not run it. Ruff could become a Stop entry only with
+that time and with value evidence from #357.
+
+A run out of memory is the `tool-error` of section 7. Through the shipped
+seam it is ERR, and at Stop it would block the agent. A named type-aware
+ESLint recipe would need a heap size, which is an environment input beyond
+`PATH` and `HOME`, or the changed files only.
 
 ## 7. Missing and failing tools
 
@@ -811,7 +856,7 @@ The split agreed with #362 section 7, per family:
 | TypeScript unused names | `dead-symbols` | ESLint `no-unused-vars` rejected here | native only |
 | Commented-out code | none | Ruff `ERA001` (review here), sonarjs `no-commented-code` | recipe, review |
 | Secrets | none | Gitleaks, Ruff `S105`-`S107`, local Semgrep | recipe, review |
-| SQL and shell text built from a value | none | Ruff `S608`, `S602`; local Semgrep for TypeScript | recipe, review |
+| SQL and shell text built from a value | none | Ruff `S608`, `S602` (review here); local Semgrep for TypeScript (rejected on the holdout) | Python: recipe, review; TypeScript: neither |
 | Debug output | none | `T201`, `no-console` rejected here | neither |
 | Unnecessary conditions | none, needs types | `no-unnecessary-condition` rejected here | neither |
 
@@ -821,11 +866,11 @@ The split agreed with #362 section 7, per family:
   for its execution and scope, but its results stay review. So a required
   recipe that is `unavailable`, `unsupported` or `partial` makes CI
   `incomplete` (#354 section 12), and never a code FAIL.
-- **Stop** requires nothing. A Ruff entry runs at Stop because it is cheap,
-  and its absence is a NOTE.
-- **Finalize** (#352, now `__agent ready` under #452) may run Semgrep and
-  Gitleaks inside the one interval of #352 section 7. Gitleaks cannot make a
-  `complete` claim (section 8), so it cannot satisfy a requirement.
+- **Stop** runs no recipe (section 6) and requires nothing.
+- **Finalize** (#352, now `__agent ready` under #452) may run Ruff, and a
+  person's documented Semgrep and Gitleaks entries, inside the one interval
+  of #352 section 7. Gitleaks cannot make a `complete` claim (section 8), so
+  it cannot satisfy a requirement.
 - **CI** runs every recipe a person names, on its own checkout, with no
   local record.
 
@@ -850,9 +895,11 @@ The split agreed with #362 section 7, per family:
   packages, and the project's own dependencies for type-aware rules. The
   standalone route and the plugin route of klin install neither, so the
   setup is the same on both routes: the person's.
-- **UX: Stop time.** Only Ruff fits a Stop (30 ms for 20 files). Semgrep's
-  1.2 to 1.3 s and ESLint's 1.2 s for 20 files would be felt as a pause on
-  each Stop, and type-aware ESLint took 12 s on one sample change.
+- **UX: Stop time.** No recipe runs at Stop. Ruff took 30 ms for 20 files,
+  which #358 counts as "needs clear product value", and this note shows
+  none on real changes. Semgrep's 1.3 s and ESLint's 1.1 to 3.1 s for 20
+  files would be felt as a pause on each Stop. Type-aware ESLint took 12 s on
+  one sample change, and ran out of memory on one whole tree.
 
 ## 16. SPEC and README language the result would require
 
@@ -863,11 +910,12 @@ None of this is written into `docs/SPEC.md` by this ticket.
 > `{}` runs klin's own checks and no analyzer. It does not look for injected
 > SQL or shell text, secrets in source, swallowed errors, unused imports and
 > locals, debug output, or conditions the types make unnecessary. For the
-> first four in Python, and for injection and secrets in TypeScript, the
-> recipes in REFERENCE.md report findings for review. klin does not block on
-> them. Debug output, unused names in TypeScript and unnecessary conditions
-> have no recipe, because the analyzers that state them failed too much
-> ordinary code.
+> first four in Python, a Ruff recipe reports findings for review, before
+> the agent declares the work ready and in CI. For secrets in TypeScript,
+> REFERENCE.md shows a Gitleaks entry you can add yourself. klin does not
+> block on any of them. Injection in TypeScript, debug output, unused names
+> in TypeScript and unnecessary conditions have no recipe, because the
+> analyzers that state them failed too much ordinary code.
 
 **SPEC 8.3**, for the shipped seam, whatever happens to named recipes:
 
@@ -911,22 +959,24 @@ which the CI cost decisions of #368 must allow.
 
 - **One labeler, an agent.** No person labeled a row. The planted corpus,
   the recipes and the labels come from the same agent.
-- **No positive on real code.** The six review pairs have no `appropriate`
-  failure in the sample. Their recall comes from the planted corpus alone.
+- **No positive on real code.** The five review pairs have no `appropriate`
+  failure in the sample or the holdout. Their recall comes from the planted corpus alone.
   P is not computed for any of them, because the rules need 5 labeled rows.
 - **A small sample.** 54 changes touch a file of their language. A family
   with one appropriate failure per 100 changes could show none here.
 - **Klin's own Semgrep rules.** This note wrote them, found a bug in two of
   them after the rules were registered, and fixed it (section "Changes after
   the rules were registered"). Their precision is this note's, not a
-  maintained rule set's.
+  maintained rule set's. The holdout of section 3 comes from the same ten
+  repositories, ten commits earlier, so it is new changes and not new code
+  bases.
 - **Dependencies at the start commit.** The TypeScript dependencies were
   installed once per repository, at the start commit, with install scripts
   off. A change that updated a dependency ran against the older one.
-- **Timing.** One machine. The cost runs overlapped the Haiku repair runs,
-  so the times may be high. Five cost runs ended in `Abort trap: 6`, and
-  this note did not find which tool aborted. The medians use the runs that
-  ended.
+- **Timing.** One machine, and no controlled workload: #358 asks for the
+  1M / 20-changed Stop workload, which this note did not run. The rerun of
+  `cost.sh` keeps every run with its exit status, and the medians use only
+  runs that wrote a report.
 - **Drift scope.** ESLint 9.30.0 ran for more than 15 minutes over tolaria's
   whole tree before this note stopped it. The ESLint drift rows cover 200
   files per repository, and each drift run stops at 300 seconds.
@@ -942,42 +992,47 @@ which the CI cost decisions of #368 must allow.
 
 ## Decision
 
-**Adopt named recipes**, as the registered form rules give it, at review
-strength only:
+**Adopt named recipes**, for Ruff alone, at review strength only. This is
+the result of the registered rules and of the rerun rules that the PR review
+added:
 
 | Tool | Families and entries | Phase | Input and scope | Completeness | Pinning |
 | --- | --- | --- | --- | --- | --- |
-| Ruff 0.16.10 | Python injection (`S102`, `S307`, `S602`, `S604`, `S605`, `S608`), secrets (`S105`-`S107`), swallowed (`BLE001`, `S110`, `S112`), dead (`F401`, `F841`, `ERA001`) | Stop, Finalize, CI | the live tree; the changed files by name; `--isolated --no-cache` | `complete` for the named files; a file that does not parse is an `invalid-syntax` finding | exact version; the rules ship in the binary |
-| Semgrep 1.179.0 | TypeScript and Python injection and secrets, from klin's own rule file | Finalize, CI | the live tree, or a staged copy; `.semgrepignore` off or in the basis | `complete` from the JSON report's `paths.scanned` and `errors` | exact version and the rule file's digest |
-| ESLint 10.12.0 | TypeScript injection: `no-eval`, `@typescript-eslint/no-implied-eval`, `no-new-func` | CI only | the live tree and the project's `tsconfig.json` and installed types; the lockfile digest in the basis | `complete` from `artifacts`; any error notification makes it `partial` | exact versions of ESLint, its plugins, TypeScript and Node |
+| Ruff 0.16.10 | Python injection (`S102`, `S307`, `S602`, `S604`, `S605`, `S608`), secrets (`S105`-`S107`), swallowed (`BLE001`, `S110`, `S112`), dead (`F401`, `F841`, `ERA001`) | Finalize and CI; not Stop (#358) | the live tree with the #352 identity check; the window's changed files by name; `--isolated --no-cache` | `complete` for the named files; a file that does not parse is an `invalid-syntax` finding | exact version; the rules ship in the binary; a new version is "measurement basis changed" |
 
-Every recipe runs under the invocation contract of section 9, reports the
-states of section 7, and never fails a gate. Gitleaks stays a documented,
-user-owned recipe: its report cannot show which files it read. `E722` stays
-native (`escapes`). Debug output, unnecessary conditions, and TypeScript
-swallowed errors and unused names get no recipe.
+The recipe runs under the invocation contract of section 9, reports the
+states of section 7, and never fails a gate. Its results are review findings.
+
+The rest:
+
+- **Semgrep** stays a documented, user-owned recipe. Its rules here are
+  klin's own text, so a named recipe would make klin own detector semantics.
+  If a person wants them in klin, they need their own admission as a klin
+  detector, with a holdout of their own.
+- **Gitleaks** stays a documented, user-owned recipe: its report cannot show
+  which files it read.
+- **ESLint** gets no recipe. Its one family here, TypeScript `injection`,
+  failed the holdout, and type-aware ESLint ran out of memory on the
+  largest repository.
+- `E722` stays native (`escapes`). Debug output, unnecessary conditions, and
+  TypeScript injection, swallowed errors and unused names get no recipe.
 
 What the evidence does and does not carry:
 
 - It carries the contract. The shipped seam reads unknown as green, and reads
-  absence as code work (section 7). A named recipe can avoid both, because
-  each of the three tools runs offline under `env -i`, writes nothing into
-  the tree, and has a report or a named-file rule that proves its scope.
+  absence as code work (section 7). Ruff avoids both under a named recipe:
+  it runs offline under `env -i`, writes nothing into the tree with
+  `--no-cache`, and proves its scope for the files it is given by name.
 - It does not carry value. No admitted pair caught one appropriate site in
-  100 real changes, and nothing here measured how often agents write these
+  the 100 sample changes, nor its Semgrep entries in the 100 holdout changes, and nothing here measured how often agents write these
   shapes. #357 measures prevalence.
 
-So three choices remain a person's, and this note recommends none of them
-over the registered result:
+So two choices remain a person's:
 
-1. **Ruff only.** Drop Semgrep, because klin would own its rules (section
-   10), and drop ESLint, because it is CI only, needs a Node tree, and
-   catches one plant of the family. Ruff is one binary, runs in 30 ms, and
-   carries four of the six pairs.
-2. **Document recipes only.** Ship no named recipe until a #357 prevalence
+1. **Document recipes only.** Ship no named recipe until a #357 prevalence
    result shows these shapes in agent work. Keep the four SPEC 8.3 changes
    of section 16 for the user-owned seam either way.
-3. **Python `debug` with exclusions** (section 3).
+2. **Python `debug` with exclusions** (section 3).
 
 The SPEC 8.3 changes of section 16, items 1 to 4, fix defects of the shipped
 seam that this note measured. They stand whatever happens to named recipes.
