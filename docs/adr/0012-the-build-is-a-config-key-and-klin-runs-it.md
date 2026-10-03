@@ -1,8 +1,10 @@
 # The build is a config key, and klin runs it
 
-> The decision on #434 amends this: only the hook runs the build. `klin gate`
-> outside the hook, `--strict` and CI included, runs no build entry, so the
-> project's own CI must run the build and refuse a tree that does not build.
+> The decision on #434 amends this for the current product: the Stop hook is
+> the only klin path that runs the build. `klin gate` outside the hook,
+> `--strict` and CI included, runs no build entry, so the project's own CI
+> must run the build and refuse a tree that does not build. This does not
+> constrain a future agent-readiness path from using local build feedback.
 >
 > ADR 0048 amends this: a build block needs a tree that changed since the
 > last one, and a shell exit of 127 is an unmeasured build whose gates run.
