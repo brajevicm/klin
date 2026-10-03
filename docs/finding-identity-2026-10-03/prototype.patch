@@ -1,0 +1,371 @@
+diff --git a/src/complexity.rs b/src/complexity.rs
+index 1a3337c4..e4c52d99 100644
+--- a/src/complexity.rs
++++ b/src/complexity.rs
+@@ -1,5 +1,5 @@
+ use std::cell::OnceCell;
+-use std::collections::{BTreeSet, HashMap};
++use std::collections::{BTreeSet, HashMap, HashSet};
+ use std::path::{Path, PathBuf};
+ use std::rc::Rc;
+ 
+@@ -288,6 +288,7 @@ struct Function {
+     text: Rc<str>,
+     body: u64,
+     test: bool,
++    identity: Result<String, &'static str>,
+ }
+ 
+ impl Function {
+@@ -319,6 +320,13 @@ impl Function {
+             };
+             values.insert(key.name.into(), self.length().into());
+         }
++        if std::env::var_os("KLIN_NO_IDENTITY").is_none() {
++            let identity = match &self.identity {
++                Ok(key) => format!("{IDENTITY_VERSION}:{key}"),
++                Err(reason) => format!("{IDENTITY_VERSION}?{reason}"),
++            };
++            values.insert("identity".into(), identity.into());
++        }
+         Finding {
+             file: self.file.clone(),
+             line: self.line,
+@@ -401,7 +409,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+     let said = out.covered(&sweep.files.coverage(at.only));
+     let mut owned = None;
+     let laid = base::laid(at.prior, &mut owned, || contract::own_base(at, out))?;
+-    let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
++    let (mut prior, before, before_work, before_keys) = at_the_base(&spec, at, laid)?;
++    let mut now = now;
++    persists(&mut now, &before_keys);
++    persists(&mut prior, &keys(&sweep.functions));
+     out.record(|records| records.work = Some(sweep.work + before_work));
+     let lost = sweep.files.lost(&before, project, at.only);
+     let unjudged = tests.said(laid);
+@@ -438,7 +449,7 @@ fn at_the_base(
+     spec: &Spec,
+     at: &Context,
+     prior: &base::Prior,
+-) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
++) -> Result<(Vec<Finding>, Files, ContentCost, HashSet<(String, String)>), Error> {
+     let project = at.project;
+     let selection = Selection {
+         scope: Scope::at_base(
+@@ -456,9 +467,40 @@ fn at_the_base(
+         None,
+         Some(prior.renamed()),
+     )?;
++    let keys = keys(&before.functions);
+     let mut found = over(&before.functions, spec);
+     found.retain(|finding| project.was_held(&finding.file));
+-    Ok((found, before.files, before.work))
++    Ok((found, before.files, before.work, keys))
++}
++
++fn keys(functions: &[Function]) -> HashSet<(String, String)> {
++    functions
++        .iter()
++        .filter_map(|function| {
++            function
++                .identity
++                .as_ref()
++                .ok()
++                .map(|key| (function.file.clone(), key.clone()))
++        })
++        .collect()
++}
++
++/// Whether each identified site's key names a function of the other tree, in the same file.
++fn persists(found: &mut [Finding], other: &HashSet<(String, String)>) {
++    for finding in found {
++        let Some(key) = finding
++            .values
++            .get("identity")
++            .and_then(Value::as_str)
++            .and_then(|identity| identity.split_once(':'))
++            .map(|(_, key)| key.to_string())
++        else {
++            continue;
++        };
++        let held = other.contains(&(finding.file.clone(), key));
++        finding.values.insert("identity_persists".into(), held.into());
++    }
+ }
+ 
+ fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
+@@ -1052,6 +1094,7 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
+     let lines = file.lines();
+     let mut sites = HashMap::new();
+     let mut out = Vec::new();
++    let wanted = std::env::var_os("KLIN_NO_IDENTITY").is_none();
+     walk_functions(file, &mut |node, cc| {
+         let row = node.start_position().row;
+         let key = (holder_row(node).filter(|holder| *holder < row), row);
+@@ -1067,11 +1110,100 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
+             text,
+             body: record::body_hash(node.utf8_text(file.bytes()).unwrap_or_default()),
+             test: false,
++            identity: match wanted {
++                false => Err("off"),
++                true => identity(node, file.source),
++            },
+         });
+     });
++    let mut seen: HashMap<String, usize> = HashMap::new();
++    for function in &out {
++        if let Ok(key) = &function.identity {
++            *seen.entry(key.clone()).or_default() += 1;
++        }
++    }
++    for function in &mut out {
++        if function
++            .identity
++            .as_ref()
++            .is_ok_and(|key| seen.get(key).copied().unwrap_or(0) > 1)
++        {
++            function.identity = Err("duplicate");
++        }
++    }
+     out
+ }
+ 
++const IDENTITY_VERSION: &str = "complexity/1";
++
++const MODIFIERS: &[&str] = &["static", "get", "set"];
++
++/// The named path from the file to one function, innermost last. A function the syntax names
++/// only by a binding takes the binding's name. Err where a step has no name the syntax gives.
++fn identity(site: Node, source: &str) -> Result<String, &'static str> {
++    let text = |node: Node| node.utf8_text(source.as_bytes()).unwrap_or_default();
++    let mut path = Vec::new();
++    let mut at = Some(site);
++    while let Some(node) = at {
++        let field = node
++            .child_by_field_name("name")
++            .or_else(|| (node.kind() == "pair").then(|| node.child_by_field_name("key")).flatten())
++            .or_else(|| {
++                (node.kind() == "assignment_expression")
++                    .then(|| node.child_by_field_name("left"))
++                    .flatten()
++            });
++        if node.kind() == "impl_item" {
++            let named = |field: &str| {
++                node.child_by_field_name(field).map(|part| {
++                    let part = match part.kind() {
++                        "generic_type" => part.child_by_field_name("type").unwrap_or(part),
++                        _ => part,
++                    };
++                    text(part).split_whitespace().collect::<Vec<_>>().join(" ")
++                })
++            };
++            let mut step = format!("impl {}", named("type").unwrap_or_default());
++            if let Some(name) = named("trait") {
++                step.push_str(&format!(" as {name}"));
++            }
++            path.push(step);
++        } else if let Some(name) = field {
++            match name.kind() {
++                "computed_property_name" | "subscript_expression" => {
++                    return Err(if node == site { "computed" } else { "ancestry" });
++                }
++                kind if kind.contains("pattern") => {
++                    return Err(if node == site { "anonymous" } else { "ancestry" });
++                }
++                _ => {}
++            }
++            let mut step = text(name).to_string();
++            let mut cursor = node.walk();
++            for modifier in node
++                .children(&mut cursor)
++                .filter(|child| !child.is_named() && MODIFIERS.contains(&child.kind()))
++            {
++                step = format!("{} {step}", modifier.kind());
++            }
++            path.push(step);
++        } else if node == site || node.kind().contains("function") || node.kind().contains("lambda") || node.kind().contains("closure") || node.kind() == "method_definition" {
++            let named_by_parent = node.parent().is_some_and(|parent| {
++                matches!(
++                    parent.kind(),
++                    "variable_declarator" | "pair" | "public_field_definition" | "field_definition" | "assignment_expression"
++                )
++            });
++            if !named_by_parent {
++                return Err(if node == site { "anonymous" } else { "ancestry" });
++            }
++        }
++        at = node.parent();
++    }
++    path.reverse();
++    Ok(path.join(" > "))
++}
++
+ fn marked_as_tests(found: &mut [Function], test_file: bool, file: &ParsedFile) {
+     let modules = match (test_file, file.language.id) {
+         (false, LanguageId::Rust) if file.source.contains("test") => {
+diff --git a/src/ratchet.rs b/src/ratchet.rs
+index f3626660..dd0d18cf 100644
+--- a/src/ratchet.rs
++++ b/src/ratchet.rs
+@@ -299,10 +299,58 @@ fn match_group(
+     entries: Vec<Values>,
+     metrics: &[&str],
+     by_line: bool,
++) -> (Vec<(Finding, Values)>, Vec<Finding>, Vec<Values>) {
++    match_eligible(findings, entries, metrics, by_line, |_, _| true)
++}
++
++const IDENTITY: &str = "identity";
++
++fn identified(values: &Values) -> Option<(&str, &str)> {
++    values
++        .get(IDENTITY)
++        .and_then(Value::as_str)
++        .and_then(|identity| identity.split_once(':'))
++}
++
++fn persists(values: &Values) -> bool {
++    values
++        .get("identity_persists")
++        .and_then(Value::as_bool)
++        .unwrap_or(false)
++}
++
++/// Two identified sites of one version pair by key. Where the keys differ, the declaration text
++/// may still pair them, unless either key names a site of the other tree: then identity proves
++/// each has its own counterpart.
++fn same_site(finding: &Finding, entry: &Values) -> bool {
++    if !is_accepted(entry)
++        && let (Some((now_version, now)), Some((was_version, was))) =
++            (identified(&finding.values), identified(entry))
++        && now_version == was_version
++    {
++        if now == was {
++            return true;
++        }
++        if persists(&finding.values) || persists(entry) {
++            return false;
++        }
++    }
++    text(entry, "text") == finding.text
++}
++
++fn match_eligible(
++    findings: Vec<Finding>,
++    entries: Vec<Values>,
++    metrics: &[&str],
++    by_line: bool,
++    eligible: impl Fn(&Finding, &Values) -> bool,
+ ) -> (Vec<(Finding, Values)>, Vec<Finding>, Vec<Values>) {
+     let mut candidates = Vec::new();
+     for (at_finding, finding) in findings.iter().enumerate() {
+         for (at_entry, entry) in entries.iter().enumerate() {
++            if !eligible(finding, entry) {
++                continue;
++            }
+             let shared = metrics
+                 .iter()
+                 .filter(|metric| {
+@@ -388,13 +436,23 @@ fn entry_site(entry: &Values) -> (String, u64) {
+ /// (16.5), but only a site the `after` tree no longer holds can be a move target: an entry that
+ /// an accepted one outranked is still in place, so a body-identical function elsewhere is a copy
+ /// and not a move. Spec 4.4. An accepted entry carries forward for its NOTE.
+-fn untaken(entries: Vec<Values>, mut lost: usize) -> Vec<Values> {
++fn untaken(
++    entries: Vec<Values>,
++    lost: &mut BTreeMap<String, usize>,
++) -> Vec<Values> {
+     let mut out = Vec::new();
+     for entry in entries {
++        if !is_accepted(&entry) && identified(&entry).is_some() {
++            if !persists(&entry) {
++                out.push(entry);
++            }
++            continue;
++        }
++        let left = lost.entry(text(&entry, "text")).or_default();
+         if is_accepted(&entry) {
+             out.push(entry);
+-        } else if lost > 0 {
+-            lost -= 1;
++        } else if *left > 0 {
++            *left -= 1;
+             out.push(entry);
+         }
+     }
+@@ -411,6 +469,66 @@ fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&
+ }
+ 
+ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
++    if !findings.iter().any(|finding| finding.values.contains_key(IDENTITY))
++        && !entries.iter().any(|entry| entry.contains_key(IDENTITY))
++    {
++        return judge_by_text(findings, entries, metrics);
++    }
++    let mut comparison = Comparison::default();
++    let mut groups: BTreeMap<String, (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
++    for entry in entries {
++        groups.entry(text(&entry, "file")).or_default().1.push(entry);
++    }
++    for finding in findings {
++        groups.entry(finding.file.clone()).or_default().0.push(finding);
++    }
++    let mut findings_left = Vec::new();
++    let mut entries_left = Vec::new();
++    for (group_findings, group_entries) in groups.into_values() {
++        let mut lost: BTreeMap<String, usize> = BTreeMap::new();
++        for entry in group_entries.iter().filter(|entry| !is_accepted(entry)) {
++            *lost.entry(text(entry, "text")).or_default() += 1;
++        }
++        let mut found: BTreeMap<String, usize> = BTreeMap::new();
++        for finding in &group_findings {
++            *found.entry(finding.text.clone()).or_default() += 1;
++        }
++        for (at, count) in lost.iter_mut() {
++            *count = count.saturating_sub(found.get(at).copied().unwrap_or(0));
++        }
++        let (pairs, findings_over, entries_over) =
++            match_eligible(group_findings, group_entries, metrics, true, same_site);
++        take(&mut comparison, pairs, metrics);
++        findings_left.extend(findings_over);
++        entries_left.extend(untaken(entries_over, &mut lost));
++    }
++    let (pairs, findings_left, entries_left) = moved(findings_left, entries_left, metrics);
++    take(&mut comparison, pairs, metrics);
++    comparison.unmatched_findings = findings_left;
++    comparison.unmatched_accepted = entries_left.into_iter().filter(is_accepted).collect();
++    comparison
++        .unmatched_findings
++        .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
++    comparison
++        .rose
++        .sort_by(|(a, _), (b, _)| (&a.file, a.line).cmp(&(&b.file, b.line)));
++    comparison
++}
++
++fn untaken_by_text(entries: Vec<Values>, mut lost: usize) -> Vec<Values> {
++    let mut out = Vec::new();
++    for entry in entries {
++        if is_accepted(&entry) {
++            out.push(entry);
++        } else if lost > 0 {
++            lost -= 1;
++            out.push(entry);
++        }
++    }
++    out
++}
++
++fn judge_by_text(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
+     let mut comparison = Comparison::default();
+     let mut groups: BTreeMap<(String, String), (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
+     for entry in entries {
+@@ -433,7 +551,7 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
+             match_group(group_findings, group_entries, metrics, true);
+         take(&mut comparison, pairs, metrics);
+         findings_left.extend(findings_over);
+-        entries_left.extend(untaken(entries_over, lost));
++        entries_left.extend(untaken_by_text(entries_over, lost));
+     }
+     let (pairs, findings_left, entries_left) = moved(findings_left, entries_left, metrics);
+     take(&mut comparison, pairs, metrics);

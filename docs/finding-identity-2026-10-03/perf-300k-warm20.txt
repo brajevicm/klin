@@ -1,0 +1,13 @@
+# structural_300k warm20, KLIN_BIN per binary, run from ac861ec2's tests/performance.rs on the branch
+row300k-base.txt median_ms=850 complexity_ms=16 dead-symbols_ms=268 reachability_ms=144 stop_total_ms=823 
+row300k-base-2.txt median_ms=847 complexity_ms=16 dead-symbols_ms=270 reachability_ms=141 stop_total_ms=818 
+row300k-base-3.txt median_ms=842 complexity_ms=16 dead-symbols_ms=271 reachability_ms=144 stop_total_ms=814 
+row300k-proto.txt median_ms=856 complexity_ms=17 dead-symbols_ms=270 reachability_ms=152 stop_total_ms=827 
+row300k-proto3-2.txt median_ms=867 complexity_ms=16 dead-symbols_ms=275 reachability_ms=151 stop_total_ms=838 
+row300k-proto3-3.txt median_ms=857 complexity_ms=17 dead-symbols_ms=272 reachability_ms=153 stop_total_ms=828 
+row300k-fast-base-1.txt median_ms=859 complexity_ms=16 dead-symbols_ms=272 reachability_ms=146 stop_total_ms=831 
+row300k-fast-proto4-1.txt median_ms=843 complexity_ms=16 dead-symbols_ms=270 reachability_ms=145 stop_total_ms=814 
+row300k-fast-base-2.txt median_ms=845 complexity_ms=16 dead-symbols_ms=269 reachability_ms=142 stop_total_ms=816 
+row300k-fast-proto4-2.txt median_ms=846 complexity_ms=17 dead-symbols_ms=274 reachability_ms=144 stop_total_ms=820 
+row300k-fast-base-3.txt median_ms=846 complexity_ms=16 dead-symbols_ms=272 reachability_ms=143 stop_total_ms=819 
+row300k-fast-proto4-3.txt median_ms=840 complexity_ms=16 dead-symbols_ms=266 reachability_ms=145 stop_total_ms=813 

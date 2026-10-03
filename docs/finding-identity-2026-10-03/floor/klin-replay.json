@@ -1,0 +1,10 @@
+{
+  "label": "klin",
+  "commits": 200,
+  "base_findings": 296,
+  "proto_findings": 291,
+  "base_held": 1621,
+  "proto_held": 1626,
+  "new->worsened": 5,
+  "new->held": 5
+}

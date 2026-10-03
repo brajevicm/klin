@@ -1,0 +1,14 @@
+{
+  "label": "klin",
+  "functions": 390,
+  "states": {
+    "identified": 382,
+    "anonymous": 8
+  },
+  "states_over_cc_10": {
+    "identified": 107,
+    "anonymous": 3
+  },
+  "sites_sharing_file_and_text": 5,
+  "of_those_identified": 3
+}
