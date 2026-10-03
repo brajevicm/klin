@@ -525,6 +525,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         };
         self.exports.push(Export {
             line: self.row(node),
+            start_byte: node.start_byte() as u64,
             text: self.text(node),
             nesting: (self.adapter.nesting)(node, self.source),
             source: found.source,
@@ -554,6 +555,7 @@ impl<'a, 'b> Reading<'a, 'b> {
         self.claimed.push((node.start_byte(), node.end_byte()));
         self.imports.push(Import {
             line: self.row(node),
+            start_byte: node.start_byte() as u64,
             text: self.text(node),
             nesting: (self.adapter.nesting)(node, self.source),
             in_function: inside_a_function(node, self.language),

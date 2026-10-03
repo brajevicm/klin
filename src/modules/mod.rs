@@ -198,7 +198,7 @@ fn finished(
         dispatches,
         time: Duration::ZERO,
     };
-    let site = |held: &Dependency| (held.from, held.to, held.source, held.line);
+    let site = |held: &Dependency| (held.from, held.to, held.source, held.line, held.start_byte);
     graph.dependencies.sort_unstable_by_key(site);
     graph.dependencies.dedup_by_key(|held| site(held));
     graph.holes.sort_by(|a, b| {
@@ -387,11 +387,11 @@ impl ModuleGraph {
         Resolved::Module { module: at, rest }
     }
 
-    /// Every module the dependencies one line of one file of a module writes resolve to.
-    pub fn reached_at(&self, from: usize, file: &str, line: u64) -> Vec<usize> {
+    /// Every module a dependency at one byte position in one source of a module resolves to.
+    pub fn reached_at(&self, from: usize, file: &str, start_byte: u64) -> Vec<usize> {
         self.dependencies
             .iter()
-            .filter(|dependency| dependency.from == from && dependency.line == line)
+            .filter(|dependency| dependency.from == from && dependency.start_byte == start_byte)
             .filter(|dependency| self.source(dependency) == file)
             .map(|dependency| dependency.to)
             .collect()
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(attached, ["a.rs", "b.rs", "c.rs"]);
         assert_eq!(graph.unattached, ["d.rs"]);
         assert_eq!(graph.source(&graph.dependencies[0]), "a.rs");
-        assert_eq!(graph.reached_at(from, "b.rs", 3), [to]);
+        assert_eq!(graph.reached_at(from, "b.rs", 0), [to]);
         assert_eq!(graph.cost().sources, 3);
     }
 }

@@ -93,6 +93,8 @@ impl Declaration {
 /// does.
 pub struct Export {
     pub line: u64,
+    /// Byte offset of this statement in its source, unique within the file.
+    pub start_byte: u64,
     pub text: String,
     /// The inline modules that hold the statement, outermost first.
     pub nesting: Vec<String>,
@@ -132,6 +134,8 @@ pub struct ExternCrate {
 /// One import, holding the specifier as it was written. The module graph resolves it to a file.
 pub struct Import {
     pub line: u64,
+    /// Byte offset of this statement in its source, unique within the file.
+    pub start_byte: u64,
     pub text: String,
     /// The inline modules that hold the import, outermost first, and none at the top of a file.
     pub nesting: Vec<String>,

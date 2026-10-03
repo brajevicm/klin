@@ -346,14 +346,24 @@ impl Config {
 #[derive(Clone)]
 struct Roots {
     files: BTreeSet<String>,
-    include: Option<Vec<RootPattern>>,
-    exclude: Option<Vec<RootPattern>>,
+    include: Option<RootPatterns>,
+    exclude: Option<RootPatterns>,
 }
 
 #[derive(Clone)]
-struct RootPattern {
-    path: String,
-    subtree: bool,
+struct RootPatterns {
+    matching: Vec<RootPattern>,
+    unknown: bool,
+}
+
+#[derive(Clone)]
+enum RootPattern {
+    Exact(String),
+    Subtree(String),
+    RecursiveSuffix {
+        prefix: String,
+        suffix: &'static str,
+    },
 }
 
 impl Roots {
@@ -369,27 +379,31 @@ impl Roots {
                 (!absolute(path)).then(|| joined(directory, path)).flatten()
             })
             .collect();
-        let default_include = if value.get("files").is_some() {
-            Vec::new()
-        } else {
-            vec![RootPattern {
-                path: directory.to_string(),
-                subtree: true,
-            }]
+        let default_include = RootPatterns {
+            matching: if value.get("files").is_some() {
+                Vec::new()
+            } else {
+                vec![RootPattern::Subtree(directory.to_string())]
+            },
+            unknown: false,
         };
         let include = value.get("include").map_or(Some(default_include), |value| {
             root_patterns(directory, value)
         });
-        let mut exclude = value
-            .get("exclude")
-            .map_or(Some(Vec::new()), |value| root_patterns(directory, value));
+        let mut exclude = value.get("exclude").map_or(
+            Some(RootPatterns {
+                matching: Vec::new(),
+                unknown: false,
+            }),
+            |value| root_patterns(directory, value),
+        );
         for option in ["outDir", "declarationDir"] {
             if let Some(value) = value.pointer(&format!("/compilerOptions/{option}")) {
                 exclude = exclude.and_then(|mut patterns| {
-                    patterns.push(RootPattern {
-                        path: joined(directory, value.as_str().filter(|path| !absolute(path))?)?,
-                        subtree: true,
-                    });
+                    patterns.matching.push(RootPattern::Subtree(joined(
+                        directory,
+                        value.as_str().filter(|path| !absolute(path))?,
+                    )?));
                     Some(patterns)
                 });
             }
@@ -411,36 +425,75 @@ impl Roots {
         !file.split('/').any(|part| {
             part.starts_with('.')
                 || matches!(part, "node_modules" | "bower_components" | "jspm_packages")
-        }) && include.iter().any(|pattern| pattern.matches(file))
-            && !exclude.iter().any(|pattern| pattern.matches(file))
+        }) && include.matching.iter().any(|pattern| pattern.matches(file))
+            && !exclude.unknown
+            && !exclude.matching.iter().any(|pattern| pattern.matches(file))
     }
 }
 
-fn root_patterns(directory: &str, value: &Value) -> Option<Vec<RootPattern>> {
-    value
-        .as_array()?
-        .iter()
-        .map(|value| {
-            let written = value.as_str()?;
-            let path = if written == "**/*" {
-                ""
-            } else {
-                written.strip_suffix("/**/*").unwrap_or(written)
-            };
-            if absolute(path) || path.contains(['*', '?']) {
-                return None;
-            }
-            let subtree = path != written || std::path::Path::new(path).extension().is_none();
-            Some(RootPattern {
-                path: joined(directory, path)?,
-                subtree,
-            })
-        })
-        .collect()
+fn root_patterns(directory: &str, value: &Value) -> Option<RootPatterns> {
+    let mut patterns = RootPatterns {
+        matching: Vec::new(),
+        unknown: false,
+    };
+    for value in value.as_array()? {
+        let Some(written) = value.as_str() else {
+            patterns.unknown = true;
+            continue;
+        };
+        match root_pattern(directory, written) {
+            Some(pattern) => patterns.matching.push(pattern),
+            None => patterns.unknown = true,
+        }
+    }
+    Some(patterns)
+}
+
+fn root_pattern(directory: &str, written: &str) -> Option<RootPattern> {
+    for (pattern, suffix) in [("*.ts", ".ts"), ("*.tsx", ".tsx")] {
+        if written == format!("**/{pattern}") {
+            return recursive_suffix(directory, "", suffix);
+        }
+        if let Some(prefix) = written.strip_suffix(&format!("/**/{pattern}")) {
+            return recursive_suffix(directory, prefix, suffix);
+        }
+    }
+    let path = if written == "**/*" {
+        ""
+    } else {
+        written.strip_suffix("/**/*").unwrap_or(written)
+    };
+    if absolute(path) || path.contains(['*', '?']) {
+        return None;
+    }
+    let path = joined(directory, path)?;
+    Some(
+        if written.ends_with("/**/*") || std::path::Path::new(written).extension().is_none() {
+            RootPattern::Subtree(path)
+        } else {
+            RootPattern::Exact(path)
+        },
+    )
+}
+
+fn recursive_suffix(directory: &str, prefix: &str, suffix: &'static str) -> Option<RootPattern> {
+    if absolute(prefix) {
+        return None;
+    }
+    Some(RootPattern::RecursiveSuffix {
+        prefix: joined(directory, prefix)?,
+        suffix,
+    })
 }
 
 impl RootPattern {
     fn matches(&self, file: &str) -> bool {
-        self.path == file || self.subtree && contains(&self.path, file)
+        match self {
+            RootPattern::Exact(path) => path == file,
+            RootPattern::Subtree(path) => path == file || contains(path, file),
+            RootPattern::RecursiveSuffix { prefix, suffix } => {
+                file.ends_with(suffix) && (prefix.is_empty() || contains(prefix, file))
+            }
+        }
     }
 }

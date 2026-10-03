@@ -1230,9 +1230,19 @@ fn files_and_include_roots_do_not_turn_exclude_into_a_program_ban() {
         (r#""files":["web/view/x.ts"]"#, 2),
         (r#""files":[],"include":["web/model"]"#, 1),
         (r#""include":["."]"#, 1),
+        (r#""include":["**/*"]"#, 1),
         (r#""include":["web/**/*"],"exclude":["web/model"]"#, 2),
         (r#""include":["web/model/*.ts"]"#, 2),
+        (r#""include":["web/**/*.ts","unhandled/*/*.ts"]"#, 1),
+        (
+            r#""include":["web/**/*.ts"],"exclude":["web/model/*.ts"]"#,
+            2,
+        ),
         (r#""include":["web"],"exclude":["web/model/*.ts"]"#, 2),
+        (
+            r#""files":["web/model/index.ts"],"exclude":["web/model/*.ts"]"#,
+            1,
+        ),
     ] {
         let tree = Tree::new();
         tree.write("klin.json", WEB);
@@ -1377,4 +1387,22 @@ fn local_extends_recognition_uses_the_nearest_paths_object() {
     let recognized = tree.run(&["layering"]);
     assert_eq!(recognized.code, 2, "{}", recognized.out);
     assert!(recognized.says("local paths alias"), "{}", recognized.out);
+}
+
+#[test]
+fn openstock_style_recursive_roots_prove_typescript_sources() {
+    let roots = r#""include":["next-env.d.ts","**/*.ts","**/*.tsx",".next/types/**/*.ts"]"#;
+    for file in ["web/model/tool.ts", "web/model/tool.tsx"] {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write(
+            "tsconfig.json",
+            &format!(r#"{{{roots},"compilerOptions":{{"paths":{{"dep":["./web/view/x"]}}}}}}"#),
+        );
+        tree.write(file, "import { x } from \"dep\";\n");
+        tree.write("web/view/x.ts", "export const x = 1;\n");
+        let run = tree.run(&["layering"]);
+        assert_eq!(run.code, 1, "{file}: {}", run.out);
+        assert!(run.says("model → view"), "{}", run.out);
+    }
 }

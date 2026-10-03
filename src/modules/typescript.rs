@@ -40,6 +40,7 @@ pub(super) fn resolve(builder: &mut Builder) {
                     file,
                     from: *from,
                     line: import.line,
+                    start_byte: import.start_byte,
                     text: &import.text,
                 };
                 resolved(builder, &modules, scope, &site, specifier);
@@ -52,6 +53,7 @@ struct Site<'a> {
     file: &'a str,
     from: usize,
     line: u64,
+    start_byte: u64,
     text: &'a str,
 }
 
@@ -70,7 +72,7 @@ fn resolved(
     };
     match base {
         Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
-        Some(Err(why)) => builder.hole(site.file, site.line, site.text, why),
+        Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
         None => builder.external += 1,
     }
     if !relative(specifier) {
@@ -94,20 +96,28 @@ fn dependency(
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
     match held.as_slice() {
-        [target] => builder.depend(site.from, modules[target.as_str()], site.file, site.line),
-        [] if another_kind(topology, base, &candidates) => builder.external += 1,
-        [] => builder.hole(
+        [target] => builder.depend_at(
+            site.from,
+            modules[target.as_str()],
             site.file,
             site.line,
+            site.start_byte,
+        ),
+        [] if another_kind(topology, base, &candidates) => builder.external += 1,
+        [] => builder.hole_at(
+            site.file,
+            site.line,
+            site.start_byte,
             site.text,
             format!(
                 "{specifier} names no TypeScript file the tree holds: {}",
                 candidates.join(", ")
             ),
         ),
-        _ => builder.hole(
+        _ => builder.hole_at(
             site.file,
             site.line,
+            site.start_byte,
             site.text,
             format!(
                 "{specifier} names more than one TypeScript file: {}",

@@ -2343,10 +2343,13 @@ config directory without one. The tree still holds every source module, but
 ancestry alone does not prove that a source belongs to the alias config.
 Root proof accepts an explicit `files` entry, regardless of `exclude`, or a
 supported `include` match not filtered by `exclude`. Supported patterns are
-literal file paths, directory paths and a directory followed by `/**/*`
-(including `**/*` at the config root). Paths are relative to the config.
-Other wildcard shapes and malformed include/exclude lists decline include
-proof. With neither files nor include, the config directory is the default
+literal file paths, directory paths, a directory followed by `/**/*`
+(including `**/*` at the config root), and `**/*.ts` or `**/*.tsx`, alone or
+after a directory. Paths are relative to the config. An unsupported include
+entry adds no roots and leaves other include entries in force. An unsupported
+exclude entry might remove any file, so it declines all include proof for
+that config. Explicit files still prove roots. A malformed include/exclude
+list declines include proof. With neither files nor include, the config directory is the default
 include; with files but no include, include is empty. Dot paths, dependency
 directories and outDir/declarationDir are conservatively outside include
 proof, even when an explicit exclude list would admit them. Explicit files
@@ -2377,7 +2380,9 @@ of another kind or ignored source retain the existing outside-V1 behavior.
 Layering consumes every relevant local hole under the held/new semantics
 below. Public-api consumes alias holes at re-export source sites only:
 implementation imports alone do not prove a public contract incomplete.
-Proven aliased re-exports traverse the shared graph via `reached_at`.
+Proven aliased re-exports traverse the shared graph via `reached_at`, which
+names one import or re-export by its byte offset in the source, so two
+statements on one line never share a target or a hole.
 Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `a_paths_mapping_retargets_an_unchanged_import_in_each_tree`,
 `unsupported_local_paths_are_located_and_inherited_holes_stay_notes`,
@@ -2390,6 +2395,9 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `equally_specific_typescript_wildcards_remain_unproved`,
 `a_paths_config_does_not_prove_aliases_for_a_file_outside_its_project_roots`,
 `files_and_include_roots_do_not_turn_exclude_into_a_program_ban`,
+`openstock_style_recursive_roots_prove_typescript_sources`,
+`same_line_implementation_alias_hole_does_not_poison_external_re_export`,
+`same_line_re_exports_follow_the_dependency_at_each_site`,
 `imported_files_outside_project_roots_stay_unproved`,
 `child_paths_replace_inherited_alias_names_instead_of_merging` and
 `multiple_extends_do_not_supply_inherited_alias_names` and

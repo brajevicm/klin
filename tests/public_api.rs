@@ -2846,3 +2846,45 @@ fn a_proven_alias_re_export_measures_the_contract_behind_it() {
     assert_eq!(change.code, 1, "{}", change.out);
     assert!(change.says("Foo"), "{}", change.out);
 }
+
+#[test]
+fn same_line_implementation_alias_hole_does_not_poison_external_re_export() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", r#"{"name":"web","types":"index.ts"}"#);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./missing/*"]}}}"#,
+    );
+    tree.write(
+        "index.ts",
+        "import { hidden } from \"@/missing\"; export { Foo } from \"external-package\";\n",
+    );
+    let run = by_hand(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("1 opaque"), "{}", run.out);
+}
+
+#[test]
+fn same_line_re_exports_follow_the_dependency_at_each_site() {
+    for (alias, from_a, from_b) in [(false, "./a", "./b"), (true, "@/a", "@/b")] {
+        let tree = Tree::new();
+        tree.write("klin.json", "{}");
+        tree.write("package.json", r#"{"name":"web","types":"index.ts"}"#);
+        if alias {
+            tree.write(
+                "tsconfig.json",
+                r#"{"compilerOptions":{"paths":{"@/*":["./*"]}}}"#,
+            );
+        }
+        tree.write(
+            "index.ts",
+            &format!("export {{ A }} from \"{from_a}\"; export {{ B }} from \"{from_b}\";\n"),
+        );
+        tree.write("a.ts", "export interface A { a: string }\n");
+        tree.write("b.ts", "export interface B { b: number }\n");
+        let run = by_hand(&tree);
+        assert_eq!(run.code, 0, "alias={alias}: {}", run.out);
+        assert!(run.says("2 measured, 0 opaque"), "{}", run.out);
+    }
+}

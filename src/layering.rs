@@ -642,6 +642,7 @@ fn edges(
                 local_alias: false,
                 file: side.current(file),
                 line: dependency.line,
+                start_byte: dependency.start_byte,
                 text: target.clone(),
                 why: format!("reaches a module whose files lie across {what}"),
             });
@@ -1007,6 +1008,7 @@ mod tests {
             to,
             source,
             line,
+            start_byte: 0,
         }
     }
 

@@ -159,7 +159,7 @@ impl<'a> Derivation<'a> {
         };
         for export in &facts.exports {
             if export.source.is_some() {
-                for to in self.graph.reached_at(at, self.file(at), export.line) {
+                for to in self.graph.reached_at(at, self.file(at), export.start_byte) {
                     self.reached(to, out);
                 }
             }
@@ -367,7 +367,7 @@ impl<'a> Derivation<'a> {
     fn re_export(&mut self, at: usize, export: &Export, specifier: &str, into: &mut Exposing) {
         let Some(target) = self
             .graph
-            .reached_at(at, self.file(at), export.line)
+            .reached_at(at, self.file(at), export.start_byte)
             .first()
             .copied()
         else {
@@ -407,7 +407,9 @@ impl<'a> Derivation<'a> {
     fn unresolved(&self, at: usize, export: &Export, specifier: &str) -> bool {
         relative(specifier)
             || self.graph.holes.iter().any(|hole| {
-                hole.file == self.file(at) && hole.line == export.line && hole.text == export.text
+                hole.file == self.file(at)
+                    && hole.start_byte == export.start_byte
+                    && hole.text == export.text
             })
     }
 
