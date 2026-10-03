@@ -33,7 +33,7 @@ pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Found) 
             continue;
         }
         let mut derivation = Derivation::new(topology, graph, at);
-        derivation.walk(target.module, "");
+        derivation.walk(target.module, "", None);
         out.surfaces.push(derivation.surface);
     }
     for (what, _) in packages.into_iter().filter(|(_, library)| !library) {
@@ -56,7 +56,7 @@ struct Derivation<'a> {
     indexed: HashSet<usize>,
     walked: HashSet<(usize, String)>,
     walking: HashSet<usize>,
-    naming: HashSet<(usize, String)>,
+    naming: HashSet<(usize, &'a str)>,
     sought: HashSet<(usize, String)>,
     globbed: HashSet<(usize, String, String)>,
     glob_names: HashMap<String, (String, u64)>,
@@ -230,15 +230,18 @@ impl<'a> Derivation<'a> {
     }
 
     /// Every item reachable under `prefix` from one module: what it declares public, the public
-    /// modules below it, and what its `pub use` trees expose.
-    fn walk(&mut self, at: usize, prefix: &str) {
+    /// modules below it, and what its `pub use` trees expose. `via` stays with public children
+    /// until another re-export replaces it; containment alone cannot close a cycle.
+    fn walk(&mut self, at: usize, prefix: &str, via: Option<(&str, &Export)>) {
         if !self.walking.insert(at) {
-            self.surface.holes.push(Hole {
-                file: self.file(at).to_string(),
-                line: 1,
-                text: prefix.to_string(),
-                why: "cyclic module re-export gives unbounded public paths".to_string(),
-            });
+            if let Some((file, export)) = via {
+                self.surface.holes.push(Hole {
+                    file: file.to_string(),
+                    line: export.line,
+                    text: export.text.clone(),
+                    why: "cyclic module re-export gives unbounded public paths".to_string(),
+                });
+            }
             return;
         }
         if !self.walked.insert((at, prefix.to_string())) {
@@ -251,7 +254,7 @@ impl<'a> Derivation<'a> {
         }
         for (name, child) in self.public_children(at) {
             let path = join(prefix, &name);
-            self.module_item(child, &path);
+            self.module_item(child, &path, via);
         }
         let own = self.shadowing(at);
         for export in self.exports(at) {
@@ -285,14 +288,14 @@ impl<'a> Derivation<'a> {
     }
 
     /// One public module as an item, and everything under it.
-    fn module_item(&mut self, at: usize, path: &str) {
+    fn module_item(&mut self, at: usize, path: &str, via: Option<(&str, &Export)>) {
         self.surface.items.push(Item {
             path: path.to_string(),
             kind: MODULE,
             origin: Some((self.file(at).to_string(), 1)),
             contract: super::item::Contract::Opaque(None),
         });
-        self.walk(at, path);
+        self.walk(at, path, via);
     }
 
     /// One declaration as an item under `path`, with the public inherent methods of a type
@@ -340,8 +343,8 @@ impl<'a> Derivation<'a> {
     /// no more. A crate root is opaque, because its items are judged under its own surface.
     fn named(&mut self, from: usize, export: &'a Export, leaf: &'a ExportLeaf, path: String) {
         let file = self.file(from);
-        let key = (from, leaf.path.clone());
-        if !self.naming.insert(key.clone()) {
+        let key = (from, leaf.path.as_str());
+        if !self.naming.insert(key) {
             self.surface.holes.push(Hole {
                 file: file.to_string(),
                 line: export.line,
@@ -354,7 +357,7 @@ impl<'a> Derivation<'a> {
             Resolved::Module { module, rest }
                 if rest.is_empty() && self.module(module).parent.is_some() =>
             {
-                self.module_item(module, &path)
+                self.module_item(module, &path, Some((file, export)))
             }
             Resolved::Module { module, rest } if rest.len() == 1 => {
                 if !self.named_in(module, &rest[0], path.clone()) {
@@ -514,7 +517,7 @@ impl<'a> Derivation<'a> {
         self.glob_names.insert(path.clone(), site.clone());
         match exposure {
             Exposure::Declaration(declaration) => self.expose(reached, declaration, path),
-            Exposure::Module(child) => self.module_item(child, &path),
+            Exposure::Module(child) => self.module_item(child, &path, Some((&site.0, export))),
             Exposure::Leaf(held, inner) => self.named(reached, held, inner, path),
         }
     }

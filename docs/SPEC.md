@@ -2453,10 +2453,12 @@ it.
 A Rust module already on the active surface traversal is a coverage hole:
 its cyclic module re-export gives unbounded public paths. A named re-export
 already being resolved is also a hole, because its cyclic name cannot be
-resolved. Both name the source and end in a report rather than an abort;
+resolved. A module-cycle hole names the file, line and source text of the
+re-export that closes the cycle. Both end in a report rather than an abort;
 separate finite aliases of one module are still followed independently.
 Pinned by `a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths`
-and `a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever`.
+and `a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever`;
+`a_module_cycle_names_the_export_that_closes_it` pins the closing source site.
 A re-export whose path starts, with or without a leading `::`, at a name of
 the crate's extern prelude that reaches a library target the tree holds is
 followed into that library's source, globs included, and each item it
