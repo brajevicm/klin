@@ -625,16 +625,25 @@ Each check documents its rule. The rules for the shipped checks:
   `tests/escapes.rs`.
 - `doc_size`: the agent instruction files `AGENTS.md` and `CLAUDE.md` at the
   tree root and `AGENTS.md` in any directory the survey reads, in the
-  derivation commit and in `after`. Each file is judged on its own, and no
+  derivation commit and in `after`. The survey reads no hidden directory and
+  nothing in the default skip set, such as `node_modules`, `target`, `dist`
+  or `fixtures`, so an `AGENTS.md` there is not judged. Each file is judged on its own, and no
   budget sums them. The ceiling of a file the derivation commit holds is its
   word count there, rounded up to the next 50 and never below 50, so an empty
   document gets 50 rather than a ceiling its first word breaks. A file the
   derivation commit lacks takes a ceiling of 50 words, and its `derived:` line
   names that new-file default. The 50 is a fixed product value and reads
-  nothing from `after`, so 4.3 holds. A nested `CLAUDE.md`, a `CLAUDE.md`
+  nothing from `after`, so 4.3 holds. `init --pin` writes no such default:
+  it pins only the ceilings derived from files the derivation commit holds.
+  Whether a file is new comes from the derivation commit's survey. A held
+  file whose ceiling git cannot read is exit 2, never the new-file default,
+  and a cached ceiling set that misses a held file is derived again. A nested `CLAUDE.md`, a `CLAUDE.md`
   import and a host's own rule directory are not instruction files. The
   survey finds nested files in the one tree listing, and the derivation
-  commit's copies are read in one batch (#435). Every other document, such as a
+  commit's copies are read in one batch (#435). A changed run reads only the
+  documents the change set touched: an unchanged document has the base's
+  word count, so it is under its ceiling or held at the base. The base
+  copies of the documents over their ceilings are read in one batch too. Every other document, such as a
   README or a changelog, grows by design and is judged only when the section
   pins it, because the gate exists for the instruction file that grows every
   turn (8.2, #343). A document the section pins takes its pinned ceiling
@@ -651,7 +660,9 @@ Each check documents its rule. The rules for the shipped checks:
   `file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files`,
   `each_instruction_file_takes_its_derived_ceiling_or_the_new_file_default`,
   `a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged`
-  and `a_hundred_nested_instruction_files_are_each_judged`
+  `a_hundred_nested_instruction_files_are_each_judged`,
+  `a_cache_that_misses_a_held_instruction_file_is_derived_again` and
+  `a_changed_run_judges_only_the_instruction_files_that_changed`
   in `tests/doc_size.rs`, by
   `a_document_the_derivation_commit_lacks_is_judged_under_the_new_file_default`
   in `tests/survey.rs`, and by

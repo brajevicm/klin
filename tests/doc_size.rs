@@ -509,3 +509,54 @@ fn a_hundred_nested_instruction_files_are_each_judged() {
         run.out
     );
 }
+
+/// A cached ceiling set that misses an instruction file the derivation commit holds is derived
+/// again, so the held file never takes the new-file default. #435.
+#[test]
+fn a_cache_that_misses_a_held_instruction_file_is_derived_again() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.words("src/AGENTS.md", 173);
+    tree.base();
+    let cache = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
+    let partial = format!(
+        "{{\"version\":\"{}\",\"doc_size_instructions\":{{\"AGENTS.md\":50}}}}\n",
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        cache
+            .parent()
+            .is_some_and(|under| std::fs::create_dir_all(under).is_ok())
+    );
+    assert!(std::fs::write(&cache, partial).is_ok());
+    tree.words("src/AGENTS.md", 191);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: src/AGENTS.md is 191 words, ceiling 200"),
+        "{}",
+        run.out
+    );
+}
+
+/// A changed run reads only the instruction files the change set touched. #435.
+#[test]
+fn a_changed_run_judges_only_the_instruction_files_that_changed() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.words("pkg/AGENTS.md", 10);
+    tree.base();
+    tree.words("AGENTS.md", 60);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("FAIL: AGENTS.md is 60 words, over its ceiling of 50."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("pkg/AGENTS.md is"), "{}", run.out);
+}

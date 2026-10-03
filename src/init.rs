@@ -132,6 +132,7 @@ fn complexity_pins(project: &Project) -> Vec<Pin> {
 fn document_pins(project: &Project) -> Vec<Pin> {
     let documents = &project.facts().found.instructions;
     doc_size::derived_ceilings(project)
+        .unwrap_or_default()
         .into_iter()
         .filter(|(name, _)| documents.contains(name))
         .map(|(name, value)| Pin {

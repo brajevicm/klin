@@ -427,7 +427,7 @@ fn the_survey_is_cached_under_the_derivation_commit_and_read_back() {
 
     let held = std::fs::read_to_string(&file).unwrap_or_default();
     assert!(held.contains("\"survey\""), "{held}");
-    assert!(held.contains("\"doc_size\""), "{held}");
+    assert!(held.contains("\"doc_size_instructions\""), "{held}");
     assert!(held.contains(env!("CARGO_PKG_VERSION")), "{held}");
 
     written(
