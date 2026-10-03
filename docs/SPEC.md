@@ -2398,6 +2398,7 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `openstock_style_recursive_roots_prove_typescript_sources`,
 `same_line_implementation_alias_hole_does_not_poison_external_re_export`,
 `same_line_re_exports_follow_the_dependency_at_each_site`,
+`same_line_alias_holes_stay_distinct_sites`,
 `imported_files_outside_project_roots_stay_unproved`,
 `child_paths_replace_inherited_alias_names_instead_of_merging` and
 `multiple_extends_do_not_supply_inherited_alias_names` and

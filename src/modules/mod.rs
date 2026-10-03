@@ -202,11 +202,17 @@ fn finished(
     graph.dependencies.sort_unstable_by_key(site);
     graph.dependencies.dedup_by_key(|held| site(held));
     graph.holes.sort_by(|a, b| {
-        (&a.file, a.line, &a.text, &a.why).cmp(&(&b.file, b.line, &b.text, &b.why))
+        (&a.file, a.line, a.start_byte, &a.text, &a.why).cmp(&(
+            &b.file,
+            b.line,
+            b.start_byte,
+            &b.text,
+            &b.why,
+        ))
     });
-    graph
-        .holes
-        .dedup_by(|a, b| (&a.file, a.line, &a.why) == (&b.file, b.line, &b.why));
+    graph.holes.dedup_by(|a, b| {
+        (&a.file, a.line, a.start_byte, &a.why) == (&b.file, b.line, b.start_byte, &b.why)
+    });
     let mut unattached: Vec<String> = topology
         .facts
         .keys()

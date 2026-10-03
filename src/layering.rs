@@ -1008,7 +1008,7 @@ mod tests {
             to,
             source,
             line,
-            start_byte: 0,
+            start_byte: line,
         }
     }
 
@@ -1147,7 +1147,7 @@ mod tests {
 
     /// Two files of one module that write a dependency on the same line are two sites.
     #[test]
-    fn a_site_is_its_file_and_line() {
+    fn a_site_is_its_file_and_offset() {
         let modules = vec![
             module("x", &["a/x1.go", "a/x2.go"]),
             module("y", &["a/y.go"]),

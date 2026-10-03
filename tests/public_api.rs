@@ -2888,3 +2888,21 @@ fn same_line_re_exports_follow_the_dependency_at_each_site() {
         assert!(run.says("2 measured, 0 opaque"), "{}", run.out);
     }
 }
+
+#[test]
+fn same_line_alias_holes_stay_distinct_sites() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", r#"{"name":"web","types":"index.ts"}"#);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./missing/*"]}}}"#,
+    );
+    tree.write(
+        "index.ts",
+        "import { hidden } from \"@/missing\"; export { Foo } from \"@/missing\";\n",
+    );
+    let run = by_hand(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not be resolved"), "{}", run.out);
+}
