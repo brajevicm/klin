@@ -343,9 +343,14 @@ match under the recorded runtime/fixture basis. Different runtimes require a new
 basis rather than silently pooling results. The baseline governs lifecycle/trust
 interpretation; fixture source is self-contained and no baseline binary is needed.
 
-The GitHub `quality` workflow now runs the CLI probes and a full deterministic
-reproduction using the checked-in retained history. `check-results.py` pins the
-headline counts, corpus/evidence identities and per-row distinct-tree accounting,
+The required GitHub `quality` job remains unconditional. Its research step runs
+CLI probes and full deterministic reproduction only when this dated note, its
+artifact directory or `.github/workflows/quality.yml` changes, using the PR's
+base/head diff. Unrelated changes skip this disposable experiment while all normal
+quality checks still run. This avoids charging its approximately 84 s observed
+Actions runtime to every future PR. `check-results.py` pins the
+headline counts, corpus/evidence identities, per-row distinct-tree accounting and
+byte-for-byte regeneration of the checked-in `summary.tsv`,
 then compares all 288 reproduced candidate outcomes, costs, retention sets and
 execution counts against the archive. Timing and runtime-dependent ids are not
 pooled across environments. A changed script/corpus/result must reconcile those

@@ -39,7 +39,13 @@ for row in rows:
                  repeats=3 if case['name'] == 'flaky' else 1,
                  timeout=env['timeout'], output=env['output_bound'])
     assert row['oracle_id'] == hashlib.sha256(json.dumps(basis, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-print('frozen headline counts, evidence basis, corpus and storage assertions pass')
+with tempfile.TemporaryDirectory() as out:
+    root = Path(out)
+    (root / 'results.json').write_bytes((here / 'raw/results.json').read_bytes())
+    subprocess.run([sys.executable, str(here / 'summarize.py'), str(root)],
+                   check=True, stdout=subprocess.DEVNULL)
+    assert (root / 'summary.tsv').read_bytes() == (here / 'raw/summary.tsv').read_bytes(), 'summary.tsv differs from summarize.py output'
+print('frozen headline counts, evidence basis, corpus, storage and summary.tsv assertions pass')
 if args.reproduce:
     with tempfile.TemporaryDirectory() as out:
         subprocess.run([sys.executable, str(here / 'run.py'), '--trajectory',

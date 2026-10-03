@@ -71,3 +71,13 @@ with tempfile.TemporaryDirectory() as out:
     rows = json.loads((Path(out) / 'results.json').read_text())
     assert all(r['removed_cost'] == 0 for r in rows)
 print('valid retained grouping changes B search outcome without changing corpus turns')
+# The rendered summary is part of the verified archive, not just raw results.
+with tempfile.TemporaryDirectory() as out:
+    import shutil
+    copied = Path(out) / 'research'
+    shutil.copytree(HERE, copied)
+    (copied / 'raw/summary.tsv').write_text('stale summary\n')
+    rejected = subprocess.run([sys.executable, str(copied / 'check-results.py')],
+                              capture_output=True, text=True)
+    assert rejected.returncode != 0 and 'summary.tsv' in rejected.stderr
+print('archive verification rejects a stale rendered summary')

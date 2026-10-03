@@ -27,7 +27,16 @@ jobs:
       - name: Verify counterfactual research evidence
         env:
           PYTHONDONTWRITEBYTECODE: "1"
+          RESEARCH_BASE: ${{ github.event.pull_request.base.sha }}
+          RESEARCH_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          changed=$(git diff --name-only "$RESEARCH_BASE...$RESEARCH_HEAD" -- \
+            docs/counterfactual-2026-10-03/ docs/counterfactual-2026-10-03.md \
+            .github/workflows/quality.yml)
+          if [[ -z "$changed" ]]; then
+            echo "Counterfactual research unchanged; skipping its probes and replay."
+            exit 0
+          fi
           python3 docs/counterfactual-2026-10-03/probe-test.py
           python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
       - run: cargo fmt --check
