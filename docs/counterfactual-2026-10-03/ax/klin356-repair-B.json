@@ -1,0 +1,9 @@
+{
+  "arm": "B",
+  "task": "paired-history",
+  "feedback": "REVIEW paired-history: a candidate removed 4 edit lines under frozen oracle 3614a1121431. Preserve requested intent: Add normalization. Exploratory rename may be reverted as a coordinated pair. Independent holdout: pass. Inspect one candidate; do not edit merely to clear this observation.",
+  "final_files": {
+    "router.mjs": "const send = s => s;\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\nexport const route = s => send(s);\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\nexport const normalize = s => s.toLowerCase();\n"
+  },
+  "oracle_id": "3bf4c68b5ad03d114220be0611b717d2e5c802ef9c33ee47c579b21b5da88a30"
+}

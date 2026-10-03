@@ -1,0 +1,101 @@
+[
+  {
+    "arm": "A",
+    "task": "boundary",
+    "action": "restore",
+    "packet_bytes": 641,
+    "research_agent_response_turns": 1,
+    "host_turns": null,
+    "requested_intent_preserved": true,
+    "oracle": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.03510883302078582,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    },
+    "independent": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.03352925000945106,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    }
+  },
+  {
+    "arm": "B",
+    "task": "paired-history",
+    "action": "accept",
+    "packet_bytes": 845,
+    "research_agent_response_turns": 1,
+    "host_turns": null,
+    "requested_intent_preserved": true,
+    "oracle": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.03309445799095556,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    },
+    "independent": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.03558333299588412,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    }
+  },
+  {
+    "arm": "C",
+    "task": "boundary",
+    "action": "restore",
+    "packet_bytes": 641,
+    "research_agent_response_turns": 1,
+    "host_turns": null,
+    "requested_intent_preserved": true,
+    "oracle": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.03351350000593811,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    },
+    "independent": {
+      "state": "pass",
+      "attempts": [
+        {
+          "code": 0,
+          "reason": null,
+          "seconds": 0.033379957982106134,
+          "output": ""
+        }
+      ],
+      "scratch_cleaned": true
+    }
+  }
+]

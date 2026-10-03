@@ -1,0 +1,26 @@
+{
+  "understanding": "The surfaced candidate inlines identity into route and deletes adapt. Identity results still pass the reported holdout, but the requested named adaptation seam for future maintainers is absent. Restore route delegation and the named identity adapter because that preserves explicit design intent, irrespective of edit-line reduction.",
+  "action": "restore",
+  "repaired_files": {
+    "router.mjs": "export const route = s => adapt(s);\n\n// separator 0\n// separator 1\n// separator 2\n// separator 3\n// separator 4\n// separator 5\n// separator 6\n// separator 7\n\nconst adapt = s => s;\n"
+  },
+  "oracle_command": "node /private/tmp/klin356-ax-A-fixture/intent-test.mjs",
+  "test": {
+    "command": "node /private/tmp/klin356-ax-A-fixture/intent-test.mjs",
+    "exit_code": 0,
+    "output": "PASS: identity behavior and named adaptation boundary",
+    "checks": [
+      "route preserves identity for undefined, null, false, zero, empty string, string, object and array",
+      "route delegates to named adapt and adapt remains identity"
+    ],
+    "scope": "Local fixture intent test; the frozen oracle was not supplied or executed."
+  },
+  "context_bytes": 1689,
+  "context_bytes_breakdown": {
+    "packet_file": 641,
+    "assignment_message_utf8": 1048,
+    "scope": "Packet plus assignment message only; excludes surrounding system and developer instructions."
+  },
+  "repeated_repair_loop": false,
+  "research_sub_agent_turn_count": 1
+}
