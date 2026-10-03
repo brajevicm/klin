@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Edit matrix for #425. Each case is a base tree and an edited tree. The probe commits the
 base on `main`, writes the edit on `work`, and runs `klin gate --gate <gate> --json` from each
-binary named on the command line, once whole and once with `--changed`.
+binary named on the command line, once whole and once with `--changed`. The last binary must
+be the prototype: the identity columns are its keys for every site of the base and the edited
+tree.
 
 usage: probe.py NAME=BINARY [NAME=BINARY ...] > results.md
 """
@@ -104,6 +106,12 @@ case(
     "parameter-rename-ts",
     {"src/a.ts": "export function a(x: number): number {\n  if (x > 0) return 1;\n  return x;\n}\n"},
     {"src/a.ts": "export function a(y: number): number {\n  if (y > 0) return 1;\n  return y;\n}\n"},
+    "held",
+)
+case(
+    "parameter-rename-tsx",
+    {"src/a.tsx": "export const Row = ({ x }: { x: number }) => {\n  if (x) return <b>{x}</b>;\n  return <i>{x}</i>;\n};\n"},
+    {"src/a.tsx": "export const Row = ({ y }: { y: number }) => {\n  if (y) return <b>{y}</b>;\n  return <i>{y}</i>;\n};\n"},
     "held",
 )
 # 6 declaration rename
@@ -393,16 +401,50 @@ def outcome(binary, root, gate, changed):
     return head + ("; " + "; ".join(parts) if parts else "")
 
 
+def keys(binary, spec, files, named):
+    """Every site's identity in one tree, as the prototype derives it: the tree is measured
+    against an empty base, so every site is a finding and the JSON lists it."""
+    if spec["gate"] != "complexity":
+        return "n/a"
+    root = Path(tempfile.mkdtemp(prefix="identity-keys-"))
+    git(root, "init", "-q", "-b", "main")
+    git(root, "commit", "-q", "--allow-empty", "-m", "empty")
+    git(root, "checkout", "-q", "-b", "work")
+    (root / "klin.json").write_text(COMPLEXITY)
+    write(root, {path: text for path, text in files.items() if text is not None})
+    git(root, "add", "-A")
+    run = subprocess.run([binary, "gate", "--gate", "complexity", "--json"],
+                         cwd=root, capture_output=True, text=True)
+    subprocess.run(["rm", "-rf", str(root)], check=True)
+    sites = []
+    for finding in json.loads(run.stdout)["findings"]:
+        identity = finding.get("values", {}).get("identity")
+        if identity is None:
+            continue
+        shown = identity.split(":", 1)[1] if ":" in identity else "?" + identity.split("?", 1)[1]
+        sites.append((finding["file"], finding["line"], shown.replace("|", "\\|")))
+    if not sites:
+        return "none"
+    many = named or len({file for file, _, _ in sites}) > 1
+    return "; ".join(f"{file + ':' if many else ''}{line} `{shown}`" for file, line, shown in sorted(sites))
+
+
 def main():
     binaries = [arg.split("=", 1) for arg in sys.argv[1:]]
+    identities = binaries[-1][1]
     columns = [f"{name} {mode}" for name, _ in binaries for mode in ("whole", "changed")]
-    print("| case | gate | desired | " + " | ".join(columns) + " |")
-    print("|" + "---|" * (3 + len(columns)))
+    print("| case | gate | desired | identity before | identity after | " + " | ".join(columns) + " |")
+    print("|" + "---|" * (5 + len(columns)))
     for spec in CASES:
         root = tree(spec)
         cells = [outcome(binary, root, spec["gate"], changed)
                  for _, binary in binaries for changed in (False, True)]
-        print(f"| {spec['name']} | {spec['gate']} | {spec['desired']} | " + " | ".join(cells) + " |")
+        edited = {**spec["base"], **spec["after"]}
+        named = set(spec["base"]) != {path for path, text in edited.items() if text is not None}
+        before = keys(identities, spec, spec["base"], named)
+        after = keys(identities, spec, edited, named)
+        print(f"| {spec['name']} | {spec['gate']} | {spec['desired']} | {before} | {after} | "
+              + " | ".join(cells) + " |")
         subprocess.run(["rm", "-rf", str(root)], check=True)
 
 

@@ -38,10 +38,12 @@ These words belong to this note. They are not terms of `CONTEXT.md`.
 ## Method
 
 1. The edit matrix,
-   [`probe.py`](finding-identity-2026-10-03/probe.py), builds 42 throwaway
+   [`probe.py`](finding-identity-2026-10-03/probe.py), builds 43 throwaway
    trees, a base on `main` and an edit on `work`. It runs
    `klin gate --gate <gate> --json` from each binary, once whole with
-   `--strict` and once with `--changed`. The result is
+   `--strict` and once with `--changed`. It also records the prototype's key
+   for every site of both trees, which it reads by measuring each tree
+   against an empty base. The result is
    [`matrix.md`](finding-identity-2026-10-03/matrix.md).
 2. The census and replay,
    [`replay.py`](finding-identity-2026-10-03/replay.py), clones a repository.
@@ -75,9 +77,9 @@ fails. The body-hash pass saves the site only when the body did not change.
 A parameter rename changes the body too, because the body uses the parameter.
 
 Fixtures: `signature-and-body`, `visibility-added`, `parameter-rename`,
-`parameter-rename-ts`, `nested-signature`, `bound-arrow-ts`,
-`static-and-instance-ts` and `getter-setter-ts`. Today each one reports a
-function that existed at the base as `new`.
+`parameter-rename-ts`, `parameter-rename-tsx`, `nested-signature`,
+`bound-arrow-ts`, `static-and-instance-ts` and `getter-setter-ts`. Today each
+one reports a function that existed at the base as `new`.
 
 Real code, at the floor ceilings: 10 such sites in klin, 2 in TS-A and 33 in
 TS-B, over 200 commits each. In TS-B one commit failed only on such a site,
@@ -139,7 +141,7 @@ for the body-hash pass, and today it is `new`. One exposure row.
 `delete-add-replacement` and both `added-duplicate-occurrence` cases give the
 desired outcome today. The identity must not change them, and it does not.
 
-The whole run and the `--changed` run gave the same outcome on all 42 cases.
+The whole run and the `--changed` run gave the same outcome on all 43 cases.
 The one cell that differs is `accepted-and-base-param-rename`, where only the
 whole run passes `--strict`.
 
@@ -193,6 +195,16 @@ already gives.
 
 Example keys: `impl Derivation > walk`, `impl Pattern > record`,
 `fetchBatchSingleFlight > keyFor`, `A > static make`.
+
+The rule reads grammar fields, so what it derives depends on the grammar.
+`complexity/1` therefore covers only the languages whose key rule the matrix
+exercises: Rust, TypeScript, TSX and Python. Rust, TypeScript and TSX also
+have real history in the replays, and Python has fixtures only. A function in
+JavaScript, Go, Java, Ruby, Swift or Kotlin gets no identity, so it keeps
+today's matcher exactly (rule 3 of section 4). Each of those languages joins
+the version only with identity fixtures of its own, because each names its
+owners differently: a Go method names its receiver, a Java or Kotlin class
+nests its methods, and a Ruby method may sit in a `class << self` block.
 
 The census shows how much this covers.
 
@@ -385,53 +397,56 @@ That needs evidence of an entry that a declaration edit keeps breaking.
 ## 7. Edit-matrix results
 
 The full table, for both binaries in both modes, is
-[`matrix.md`](finding-identity-2026-10-03/matrix.md). The prototype column is
+[`matrix.md`](finding-identity-2026-10-03/matrix.md). The key column is the
+prototype's key for each site, by line, before and after the edit. A
+`?` key is an ambiguous site and names its reason. The prototype column is
 `proto4`. "Today" and "proto" are the whole run.
 
-| Case | Today | Proto | Ambiguity | Fallback still valid |
-|---|---|---|---|---|
-| comment-above | held | held | none | text |
-| sibling-insert | a held, b new | same | none | text |
-| sibling-reorder | held | held | none | text |
-| body-edit | held | held | none | text |
-| signature-only | held | held | none | body hash |
-| signature-and-body | **new** | held | none | none matches |
-| visibility-added | **new** | held | none | none matches |
-| parameter-rename | **new** | held | none | none matches |
-| parameter-rename-ts | **new** | held | none | none matches |
-| rename-same-body | held | held | none | body hash |
-| rename-and-body | new | new | none | none, correctly |
-| file-move | held | held | none | body hash |
-| file-move-and-signature | new | new | none | none, by rule |
-| nested-signature | **inner new** | held | none | none matches |
-| nested-same-name-two-parents | **q > inner held** | worsened 2 to 4 | none | text pairs wrongly |
-| two-owners-swap-rust | **pass** | B::run worsened | none | text pairs wrongly |
-| two-owners-misnamed-rust | **names A::run** | names B::run | none | text pairs wrongly |
-| two-traits-swap-rust | **pass** | A as Q worsened | none | text pairs wrongly |
-| two-owners-swap-python | **pass** | B worsened | none | text pairs wrongly |
-| two-owners-swap-ts | **pass** | B worsened | none | text pairs wrongly |
-| owner-rename-same-body | held | held | none | body hash |
-| owner-rename-and-body | held | held | none | text, rule 2 |
-| method-moved-to-other-owner-and-edited | held | held | none | text, rule 2 |
-| twin-crosses-ceiling | **pass** | B::run new | none | text pairs wrongly |
-| static-and-instance-ts | **both new** | both held | none | none matches |
-| getter-setter-ts | **setter new** | both held | none | none matches |
-| property-setter-python | setter new | same | duplicate | text (today's) |
-| duplicate-key-signature | one new | same | duplicate | text (today's) |
-| anonymous-callback-ts | new | same | anonymous | text (today's) |
-| computed-member-ts | new | same | computed | text (today's) |
-| bound-arrow-ts | **new** | held | none | none matches |
-| nested-under-callback-ts | new | same | ancestry | text (today's) |
-| delete-add-replacement | b new | same | none | none, correctly |
-| same-name-new-body | held | held | none | text |
-| added-duplicate-occurrence | one held, one new | same | duplicate (after) | text multiset |
-| added-duplicate-occurrence-python | one held, one new | same | duplicate (after) | text multiset |
-| accepted-param-rename | new, entry stale | same | none | accepted: text only |
-| accepted-and-base-param-rename | **new**, entry stale | held, entry stale | none | accepted: text only |
-| accepted-and-base-unchanged | held by the entry | same | none | text |
-| dead-param-rename | **new** | same (no prototype) | none | none matches |
-| dead-signature-only | **new** | same (no prototype) | none | none matches |
-| dead-comment-above | held | held | none | text |
+| Case | Key before → after | Today | Proto | Ambiguity | Fallback still valid |
+|---|---|---|---|---|---|
+| comment-above | 1 `a` → 3 `a` | held | held | none | text |
+| sibling-insert | 1 `a` → 1 `b`; 5 `a` | a held, b new | same | none | text |
+| sibling-reorder | 1 `a`; 5 `b` → 1 `b`; 6 `a` | held | held | none | text |
+| body-edit | 1 `a` | held | held | none | text |
+| signature-only | 1 `a` | held | held | none | body hash |
+| signature-and-body | 1 `a` | **new** | held | none | none matches |
+| visibility-added | 1 `a` | **new** | held | none | none matches |
+| parameter-rename | 1 `a` | **new** | held | none | none matches |
+| parameter-rename-ts | 1 `a` | **new** | held | none | none matches |
+| parameter-rename-tsx | 1 `Row` | **new** | held | none | none matches |
+| rename-same-body | 1 `a` → 1 `b` | held | held | none | body hash |
+| rename-and-body | 1 `a` → 1 `b` | new | new | none | none, correctly |
+| file-move | src/a.rs:1 `a` → src/b.rs:1 `a` | held | held | none | body hash |
+| file-move-and-signature | src/a.rs:1 `a` → src/b.rs:1 `a` | new | new | none | none, by rule |
+| nested-signature | 1 `outer`; 2 `outer > inner` | **inner new** | held | none | none matches |
+| nested-same-name-two-parents | 1 `p`; 2 `p > inner`; 10 `q`; 11 `q > inner` → 1 `p`; 2 `p > inner`; 8 `q`; 9 `q > inner` | **q > inner held** | worsened 2 to 4 | none | text pairs wrongly |
+| two-owners-swap-rust | 4 `impl A > run`; 13 `impl B > run` → 4 `impl A > run`; 11 `impl B > run` | **pass** | B::run worsened | none | text pairs wrongly |
+| two-owners-misnamed-rust | 4 `impl A > run`; 13 `impl B > run` → 4 `impl A > run`; 12 `impl B > run` | **names A::run** | names B::run | none | text pairs wrongly |
+| two-traits-swap-rust | 3 `impl A as P > run`; 12 `impl A as Q > run` → 3 `impl A as P > run`; 10 `impl A as Q > run` | **pass** | A as Q worsened | none | text pairs wrongly |
+| two-owners-swap-python | 2 `A > __init__`; 13 `B > __init__` → 2 `A > __init__`; 9 `B > __init__` | **pass** | B worsened | none | text pairs wrongly |
+| two-owners-swap-ts | 3 `A > run`; 13 `B > run` → 3 `A > run`; 11 `B > run` | **pass** | B worsened | none | text pairs wrongly |
+| owner-rename-same-body | 3 `impl A > run` → 3 `impl B > run` | held | held | none | body hash |
+| owner-rename-and-body | 3 `impl A > run` → 3 `impl B > run` | held | held | none | text, rule 2 |
+| method-moved-to-other-owner-and-edited | 4 `impl A > run` → 5 `impl B > run` | held | held | none | text, rule 2 |
+| twin-crosses-ceiling | 4 `impl A > run`; 13 `impl B > run` → 4 `impl A > run`; 9 `impl B > run` | **pass** | B::run new | none | text pairs wrongly |
+| static-and-instance-ts | 2 `A > static make`; 6 `A > make` | **both new** | both held | none | none matches |
+| getter-setter-ts | 3 `A > get value`; 7 `A > set value` | **setter new** | both held | none | none matches |
+| property-setter-python | 3 `?duplicate`; 9 `?duplicate` | setter new | same | duplicate | text (today's) |
+| duplicate-key-signature | 3 `?duplicate`; 8 `?duplicate` | one new | same | duplicate | text (today's) |
+| anonymous-callback-ts | 1 `?anonymous` | new | same | anonymous | text (today's) |
+| computed-member-ts | 3 `?computed` | new | same | computed | text (today's) |
+| bound-arrow-ts | 1 `f` | **new** | held | none | none matches |
+| nested-under-callback-ts | 1 `?anonymous`; 2 `?ancestry` | new | same | ancestry | text (today's) |
+| delete-add-replacement | 1 `a` → 1 `b` | b new | same | none | none, correctly |
+| same-name-new-body | 1 `a` | held | held | none | text |
+| added-duplicate-occurrence | 3 `impl F > new` → 3 `?duplicate`; 8 `?duplicate` | one held, one new | same | duplicate (after) | text multiset |
+| added-duplicate-occurrence-python | 1 `h` → 1 `?duplicate`; 7 `?duplicate` | one held, one new | same | duplicate (after) | text multiset |
+| accepted-param-rename | none → src/a.rs:1 `a` | new, entry stale | same | none | accepted: text only |
+| accepted-and-base-param-rename | 1 `a` | **new**, entry stale | held, entry stale | none | accepted: text only |
+| accepted-and-base-unchanged | 1 `a` → 2 `a` | held by the entry | same | none | text |
+| dead-param-rename | n/a | **new** | same (no prototype) | none | none matches |
+| dead-signature-only | n/a | **new** | same (no prototype) | none | none matches |
+| dead-comment-above | n/a | held | held | none | text |
 
 Bold marks a desired outcome that today's matcher misses. The prototype
 gives the desired outcome on every `complexity` row. On the rows where the
@@ -511,12 +526,16 @@ If a person admits this, the first ticket is `complexity` alone:
    with `persists`, or the ambiguity reason.
 2. The ratchet's judge keeps today's path, unchanged, for a gate whose
    family declares no identity. The gate states this once, so the judge does
-   not scan its findings to find out, and the 1M/20 row shows no change for
-   such a gate (section 8). For a gate with identities, it
-   groups by file and applies the pairing rule and the move-target rule of
-   section 4. The body-hash pass does not change.
-3. `complexity` computes the key in its existing walk, marks duplicates per
-   file, and sets `persists` from the function lists of both sweeps.
+   not scan its findings to find out. This design is not prototyped or
+   measured. At 1M/20 the whole hook under `proto4` was 8 to 13 ms slower,
+   and the cause is not proven (section 8). So the implementation must show
+   at 1M/20 that a gate with no identity costs what it costs today, before
+   it ships. For a gate with identities, the judge groups by file and
+   applies the pairing rule and the move-target rule of section 4. The
+   body-hash pass does not change.
+3. `complexity` computes the key in its existing walk, for Rust,
+   TypeScript, TSX and Python only, marks duplicates per file, and sets
+   `persists` from the function lists of both sweeps.
 4. The JSON finding and its `matched` record print the identity. The `id`
    does not change.
 5. The CLI tests are the `complexity` rows of the matrix, written as cases
@@ -536,7 +555,8 @@ with its replay.
 - **4.5 Finding**: the optional `identity` field.
 - **4.8 Accepted entry**: an entry carries no identity, and the text rule
   always applies to it.
-- **8.2.1 complexity**: the key rule of section 3 and the reasons.
+- **8.2.1 complexity**: the key rule of section 3, the reasons, and the
+  languages `complexity/1` covers.
 - **11.2 JSON**: the `identity` object on a finding and on `matched`. The
   `id` stays as it is.
 - **16.5**: the eligibility step before the rank, and the inserted-twin and
@@ -551,9 +571,9 @@ with its replay.
 ## Limits
 
 - Two of the three repositories belong to one owner, and the replays cover
-  Rust and TypeScript only. Python appears in the matrix only. The key rule
-  reads the grammar's `name` field for Go, Java, Kotlin, Swift and the other
-  languages, and no census measured them.
+  Rust and TypeScript only. Python appears in the matrix only. No fixture or
+  census covers JavaScript, Go, Java, Ruby, Swift or Kotlin, so
+  `complexity/1` leaves them out (section 3).
 - The agent that wrote the prototype also classified the differences. The
   machine check is narrow: is the finding's text absent from the parent's
   file? The 11 rows where the prototype is stricter were read by hand.
@@ -569,15 +589,16 @@ with its replay.
 
 **Adopt versioned optional finding identity.**
 
-The proving family is `complexity`. Its key is the named path of section 3,
-compared only within one file. The matching rules are the three pairing rules
-and the move-target rule of section 4. A site is ambiguous when it is
-anonymous, computed, under an anonymous or computed ancestor, or one of two
-sites with the same key in its file. An ambiguous site, a site with no
-identity, and a pair under different versions keep today's text and
-body-hash rules exactly. The version is per family, a pair under two versions
-is never compared, and the finding `id` does not change. Accepted entries
-stay keyed by text.
+The proving family is `complexity`, in Rust, TypeScript, TSX and Python. Its
+key is the named path of section 3, compared only within one file. Its other
+languages keep today's matcher until each has identity fixtures. The matching
+rules are the three pairing rules and the move-target rule of section 4. A
+site is ambiguous when it is anonymous, computed, under an anonymous or
+computed ancestor, or one of two sites with the same key in its file. An
+ambiguous site, a site with no identity, and a pair under different versions
+keep today's text and body-hash rules exactly. The version is per family, a
+pair under two versions is never compared, and the finding `id` does not
+change. Accepted entries stay keyed by text.
 
 The shared envelope is useful because three families need the same version,
 ambiguity and `persists` semantics with different keys: `complexity` now,
