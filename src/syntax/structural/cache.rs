@@ -422,10 +422,7 @@ impl Reader<'_, '_> {
     }
 
     fn export(&mut self) -> Option<Export> {
-        let line = self.number()?;
-        let start_byte = self.number()?;
-        let text = self.text()?;
-        let nesting = self.list(Reader::text)?;
+        let (line, start_byte, text, nesting) = self.statement()?;
         let source = self.optional()?;
         let flags = self.number().filter(|flags| *flags <= 3)?;
         Some(Export {
@@ -456,12 +453,23 @@ impl Reader<'_, '_> {
         })
     }
 
+    /// The line, byte offset, text and nesting an import or export starts with.
+    fn statement(&mut self) -> Option<(u64, u64, String, Vec<String>)> {
+        Some((
+            self.number()?,
+            self.number()?,
+            self.text()?,
+            self.list(Reader::text)?,
+        ))
+    }
+
     fn import(&mut self) -> Option<Import> {
+        let (line, start_byte, text, nesting) = self.statement()?;
         Some(Import {
-            line: self.number()?,
-            start_byte: self.number()?,
-            text: self.text()?,
-            nesting: self.list(Reader::text)?,
+            line,
+            start_byte,
+            text,
+            nesting,
             in_function: self.number().filter(|flag| *flag <= 1)? == 1,
             module: self.optional()?,
             names: self.list(Reader::text)?,

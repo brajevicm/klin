@@ -450,13 +450,8 @@ fn root_patterns(directory: &str, value: &Value) -> Option<RootPatterns> {
 }
 
 fn root_pattern(directory: &str, written: &str) -> Option<RootPattern> {
-    for (pattern, suffix) in [("*.ts", ".ts"), ("*.tsx", ".tsx")] {
-        if written == format!("**/{pattern}") {
-            return recursive_suffix(directory, "", suffix);
-        }
-        if let Some(prefix) = written.strip_suffix(&format!("/**/{pattern}")) {
-            return recursive_suffix(directory, prefix, suffix);
-        }
+    if let Some((prefix, suffix)) = recursive_extension(written) {
+        return recursive_suffix(directory, &prefix, suffix);
     }
     let path = if written == "**/*" {
         ""
@@ -474,6 +469,14 @@ fn root_pattern(directory: &str, written: &str) -> Option<RootPattern> {
             RootPattern::Exact(path)
         },
     )
+}
+
+fn recursive_extension(written: &str) -> Option<(String, &'static str)> {
+    let rooted = format!("/{written}");
+    [".ts", ".tsx"].into_iter().find_map(|suffix| {
+        let prefix = rooted.strip_suffix(&format!("/**/*{suffix}"))?;
+        Some((prefix.trim_start_matches('/').to_string(), suffix))
+    })
 }
 
 fn recursive_suffix(directory: &str, prefix: &str, suffix: &'static str) -> Option<RootPattern> {
