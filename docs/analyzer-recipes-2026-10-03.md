@@ -500,7 +500,7 @@ The phase rules, applied per review pair and tool:
 | Ruff | Python injection, secrets, swallowed, dead | 0.03 s, no project dependency | 0.14 s | **Stop** |
 | Semgrep | injection and secrets, both languages | 1.29 s > 1 s | 7.0 s | **Finalize** |
 | Gitleaks | secrets, both languages | no file scope | 22.2 s | **Finalize** |
-| ESLint | TypeScript injection (`no-eval`, `no-implied-eval`, `no-new-func`) | 1.20 s > 1 s, reads `node_modules` | 70.8 s > 60 s | **CI only** |
+| ESLint | TypeScript injection (`no-eval`, `@typescript-eslint/no-implied-eval`, `no-new-func`) | 1.20 s > 1 s, reads `node_modules` | 70.8 s > 60 s | **CI only** |
 
 A review entry never fails a gate, so a Stop entry adds lines to the report
 and never a block. The ESLint figure is for the type-aware recipe. The core
@@ -907,7 +907,7 @@ strength only:
 | --- | --- | --- | --- | --- | --- |
 | Ruff 0.16.10 | Python injection (`S102`, `S307`, `S602`, `S604`, `S605`, `S608`), secrets (`S105`-`S107`), swallowed (`BLE001`, `S110`, `S112`), dead (`F401`, `F841`, `ERA001`) | Stop, Finalize, CI | the live tree; the changed files by name; `--isolated --no-cache` | `complete` for the named files; a file that does not parse is an `invalid-syntax` finding | exact version; the rules ship in the binary |
 | Semgrep 1.179.0 | TypeScript and Python injection and secrets, from klin's own rule file | Finalize, CI | the live tree, or a staged copy; `.semgrepignore` off or in the basis | `complete` from the JSON report's `paths.scanned` and `errors` | exact version and the rule file's digest |
-| ESLint 10.12.0 | TypeScript injection: `no-eval`, `no-implied-eval`, `no-new-func` | CI only | the live tree and the project's `tsconfig.json` and installed types; the lockfile digest in the basis | `complete` from `artifacts`; any error notification makes it `partial` | exact versions of ESLint, its plugins, TypeScript and Node |
+| ESLint 10.12.0 | TypeScript injection: `no-eval`, `@typescript-eslint/no-implied-eval`, `no-new-func` | CI only | the live tree and the project's `tsconfig.json` and installed types; the lockfile digest in the basis | `complete` from `artifacts`; any error notification makes it `partial` | exact versions of ESLint, its plugins, TypeScript and Node |
 
 Every recipe runs under the invocation contract of section 9, reports the
 states of section 7, and never fails a gate. Gitleaks stays a documented,
