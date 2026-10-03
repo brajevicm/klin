@@ -3,7 +3,8 @@
 # `klin gate --strict --json`, the way CI judges a pull request, and write
 # failures.tsv, gates.tsv and changes.tsv into OUT. With `whole`, ESLint, Ruff
 # and Semgrep run over the whole tree instead of the changed files. PICK names
-# the recipes to run, ONLY one head commit.
+# the recipes to run, ONLY one head commit, SELECTION one selection file in
+# place of the two sample selections.
 set -euo pipefail
 export LC_ALL=C
 
@@ -24,8 +25,10 @@ mkdir -p "$out/json"
 quoted() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
 changes() {
+  local selections=("$repo/benchmark/evidence/false-alarms-2026-09-29/selection.json" "$repo/docs/unfinished-code-2026-10-02/sample/selection-python.json")
+  [ -z "${SELECTION:-}" ] || selections=("$SELECTION")
   jq -r '.repositories[] | select(.language != "Rust") | .language as $lang | .fullName as $name | .changes[] | "\($lang) \($name) \(.base) \(.head)"' \
-    "$repo/benchmark/evidence/false-alarms-2026-09-29/selection.json" "$repo/docs/unfinished-code-2026-10-02/sample/selection-python.json"
+    "${selections[@]}"
 }
 
 config() {

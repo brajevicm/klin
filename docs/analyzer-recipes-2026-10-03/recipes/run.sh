@@ -11,6 +11,10 @@ case $tool in
     exec "$tools/js/node_modules/.bin/eslint" --no-config-lookup -c "$tools/js/klin-recipe.config.mjs" \
       -f "$tools/js/node_modules/@microsoft/eslint-formatter-sarif/sarif.js" -o .klin-recipes/eslint.sarif \
       --no-warn-ignored "$@" ;;
+  eslint-injection)
+    exec "$tools/js/node_modules/.bin/eslint" --no-config-lookup -c "$tools/js/klin-recipe-injection.config.mjs" \
+      -f "$tools/js/node_modules/@microsoft/eslint-formatter-sarif/sarif.js" -o .klin-recipes/eslint-injection.sarif \
+      --no-warn-ignored "$@" ;;
   ruff)
     exec "$tools/py/.venv/bin/ruff" check --isolated --no-cache --exit-zero \
       --select "$(awk -F'\t' '$1 == "ruff" { printf "%s%s", sep, $2; sep = "," }' "$recipes/families.tsv")" \

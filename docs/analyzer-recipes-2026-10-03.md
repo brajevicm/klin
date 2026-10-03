@@ -241,6 +241,48 @@ Each change below came after commit `b03ce673`, which registered the rules.
 3. **`contract.sh`, `cost.sh` and `drift.sh`**, for the contract
    measurements that the rules name.
 
+### Rules for the reruns after the PR review
+
+The owner's adversarial review of PR #454
+([comment](https://github.com/brajevicm/klin/pull/454#issuecomment-5971137435))
+found five issues in the admission and placement result. This section was
+committed before any of the reruns below.
+
+1. **A Semgrep holdout.** The fixed Semgrep rules were corrected after they
+   saw the ordinary-commit sample, so that sample cannot show their noise.
+   The holdout is new changes from the same ten repositories: from the oldest
+   `base` of each repository's ten sample changes, the ten earlier commits on
+   the first-parent walk. Each holdout change is one commit against its first
+   parent. `sample/holdout.sh` writes them to `sample/selection-holdout.json`.
+   The replay runs the three Semgrep rules of `recipes/semgrep.yml` on them,
+   unchanged since the fix, with `PICK=semgrep`. Every failure gets a label by
+   the rules of the section "Labels". The admission of the Semgrep entries
+   uses the holdout N, and the original sample N for Semgrep is exploratory.
+   Until the holdout runs, the pairs that rest on Semgrep entries are
+   exploratory.
+2. **Cost runs that fail.** `cost.sh` records each run's exit status and
+   whether it wrote a SARIF report with a `runs` array. A run without such a
+   report is not a measurement, and the median uses only the runs with one.
+   `cost.tsv` keeps the raw rows. A tool with fewer than three good runs of
+   five has no median.
+3. **Stop placement.** The phase rule of this note (1 second for 20 files)
+   is looser than the Stop guidance of #358: "25–75 ms needs clear product
+   value", a new external process on Stop is "exceptional", and the
+   incremental time is measured on the controlled 1M / 20-changed workload.
+   #358 governs. No admitted pair showed value on real changes, so no recipe
+   is a Stop entry. A recipe that passes the other phase rules goes to
+   Finalize at most. This note does not run the 1M workload.
+4. **Semgrep is not a named recipe.** The rules of `recipes/semgrep.yml` are
+   klin's text, so a named Semgrep recipe would make klin own detector
+   semantics, against #363's boundary for a named recipe. The Semgrep entries
+   stay a documented, user-owned example. If a person wants them in klin,
+   they are a klin-owned detector with its own admission.
+5. **The exact ESLint recipe.** `cost.sh` times a recipe of only `no-eval`,
+   `@typescript-eslint/no-implied-eval` and `no-new-func`
+   (`recipes/eslint-injection.config.mjs`), over the whole tree and over 20
+   files, on every TypeScript repository of the sample. The phase rules
+   apply to those times.
+
 ### How to reproduce
 
 ```bash
