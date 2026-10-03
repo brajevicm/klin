@@ -199,7 +199,7 @@ fn a_build_key_is_not_read_outside_the_hook() {
 /// The hook's words for who builds a tree outside it, because `klin gate` outside the hook runs
 /// no build. ADR 0012, spec 9.3.
 const OWN_CI: &str =
-    "klin gate outside the hook runs no build, so the project's own CI must run it";
+    "`klin gate` outside the hook runs no build, so the project's own CI must run it";
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 

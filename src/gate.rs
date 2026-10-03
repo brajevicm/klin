@@ -505,19 +505,19 @@ fn does_not_build_said(block: Option<u64>) -> String {
 
 /// Who builds a tree outside the hook: `klin gate` outside it runs no build. ADR 0012, spec 9.3.
 const OWN_CI: &str =
-    "klin gate outside the hook runs no build, so the project's own CI must run it";
+    "`klin gate` outside the hook runs no build, so the project's own CI must run it";
 
 fn stopped_blocking() -> String {
     format!(
         "the build has blocked {BLOCKS} stops under this prompt, so klin stops blocking; the \
-         failure stands. {OWN_CI}"
+         failure stands. {OWN_CI}."
     )
 }
 
 fn unchanged() -> String {
     format!(
         "the tree did not change since the stop klin last blocked, so klin does not block again; \
-         the failure stands. {OWN_CI}"
+         the failure stands. {OWN_CI}."
     )
 }
 

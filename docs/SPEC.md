@@ -3260,10 +3260,10 @@ nothing, per 5.1.
 ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
 the tree builds. Only the hook runs the build: `klin gate` outside the hook,
 `--strict` and CI included, runs no build entry, so the project's own CI must
-run the build, and the hook's build messages say so. A gate failure blocks at
-most two stops under one prompt, the second only over a changed tree (ADR
-0052). The build stamp in the state
-directory carries the facts between the processes.
+run the build. Each hook message that lets a stop end over a tree that does not
+build, or that the hook could not build, says so. A gate failure blocks at most
+two stops under one prompt, the second only over a changed tree (ADR 0052). The
+build stamp in the state directory carries the facts between the processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
 the current Claude Code documentation. klin MUST bound its own blocks (ADR
@@ -3362,8 +3362,8 @@ counted. When a command reaches its limit or the deadline, klin stops it and
 the build fails with a message that names the command and the limit or deadline
 it reached. `klin.json` cannot change either: a person whose build takes longer
 sets `build` to `false` and has the project's own CI build. A run MAY take
-`KLIN_COMMAND_LIMIT` in seconds for tests. It sets the limit of each command, from 1 to 300 seconds,
-and the deadline is twice it. Any other value is an error, so the override can
+`KLIN_COMMAND_LIMIT` in seconds for tests. It sets the limit of each command,
+from 1 to 300 seconds, and the deadline is twice it. Any other value is an error, so the override can
 shorten the limit and the deadline and never raise them.
 
 Each command runs in a process group of its own. When the command's shell

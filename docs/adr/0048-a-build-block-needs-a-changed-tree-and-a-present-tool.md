@@ -1,5 +1,9 @@
 # A build block needs a changed tree and a present tool
 
+> The decision on #434 amends this: only the hook runs the build. `klin gate`
+> outside the hook, `--strict` and CI included, runs no build entry, so the
+> project's own CI must run the build and refuse a tree that does not build.
+>
 > Amends ADR 0012, ADR 0022 and ADR 0040. The build-first policy stands. What
 > changes is which stops a build failure blocks, what an exit of 127 means,
 > and what a failing derived build says about itself.
@@ -27,8 +31,7 @@ tree the last block was taken over, hashed the way the turn stamp hashes it.
 A stop whose tree is the same one spends no block: the hook reports the
 failure, says the tree did not change, and lets the turn end with the RED
 verdict already written. A block over a tree the agent did not touch teaches
-it nothing. `klin gate` outside the hook runs no build (ADR 0012), so the
-project's own CI must refuse the tree. Each block that is spent names
+it nothing, and CI refuses the tree either way. Each block that is spent names
 its number in the turn, so the agent reads the budget it is spending.
 
 **An exit of 127 is an unmeasured build, not a failed one.** The shell returns
