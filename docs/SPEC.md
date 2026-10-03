@@ -1403,7 +1403,15 @@ percent margin that adds a WARN line. Pinned by
 and `a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error` in
 `tests/doc_size.rs`. Known limit: the count rewards terse markup and
 punishes fenced examples equally. That is a design choice for a separate
-ticket, not a defect of the rule.
+ticket, not a defect of the rule. Known limit: by default `doc-size` does
+not judge a root `AGENTS.md` or `CLAUDE.md` that the derivation commit does
+not hold, and does not judge a nested `AGENTS.md` such as `src/AGENTS.md`. A
+host may load both into the agent's context, so overflow moved into either
+file passes the gate. The new root file gets a NOTE line that names it,
+and the nested file gets none. A `file` entry with a `ceiling` pin judges such a file.
+Pinned by
+`a_new_root_claude_md_and_a_nested_agents_md_are_not_judged_by_default` in
+`tests/doc_size.rs` (#435).
 
 **`escapes` and `stubs` aggregate matches into sites.** A site is one file
 plus the text of one line with leading and trailing whitespace trimmed, except

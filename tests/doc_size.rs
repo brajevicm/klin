@@ -325,6 +325,27 @@ fn an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin() {
     }
 }
 
+/// A root instruction file the base lacks, and a nested `AGENTS.md`, are known limits. #435.
+#[test]
+fn a_new_root_claude_md_and_a_nested_agents_md_are_not_judged_by_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 120);
+    tree.base();
+    tree.words("CLAUDE.md", 4000);
+    tree.words("src/AGENTS.md", 4000);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("FAIL"), "{}", run.out);
+    assert!(
+        run.says("NOTE: doc_size CLAUDE.md is 4000 words and is not judged"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("src/AGENTS.md"), "{}", run.out);
+}
+
 /// A README the section pins is judged under its pin, as before #382.
 #[test]
 fn a_pinned_readme_is_judged_under_its_pin() {
