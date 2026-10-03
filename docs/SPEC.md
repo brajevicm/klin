@@ -2339,7 +2339,9 @@ wildcards; the longest matching wildcard prefix wins. Equal-priority rules
 are unresolved. Absolute specifiers stay outside V1 and are never remapped.
 Targets are relative to a directly known `baseUrl`, or to the
 config directory without one. Compiler root include/exclude lists do not
-replace the tree's held source set. Configs and rules are read once per tree;
+replace the tree's held source set. Configs and rules are read once per tree; exact rules use a direct map and
+wildcards are ordered once. Config ownership is selected once per source
+file, never recomputed per import;
 a config-only edit can retarget an unchanged dependency in a changed run.
 
 A matching paths rule whose target cannot be proved produces located local
@@ -2359,9 +2361,11 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `unsupported_local_paths_are_located_and_inherited_holes_stay_notes`,
 `alias_targets_of_other_kinds_and_packages_stay_outside_the_graph`,
 `nested_configs_and_ambiguous_alias_candidates_are_not_guessed`,
-`jsonc_paths_use_exact_then_longest_wildcard_prefix` and
-`local_extends_aliases_are_recognized_without_guessing_inheritance` and
-`absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard` in
+`jsonc_paths_use_exact_then_longest_wildcard_prefix`,
+`local_extends_aliases_are_recognized_without_guessing_inheritance`,
+`absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard`,
+`sibling_typescript_configs_keep_each_files_aliases_and_rule_priority` and
+`equally_specific_typescript_wildcards_remain_unproved` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in

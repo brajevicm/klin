@@ -1137,3 +1137,41 @@ fn absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("1 external or unsupported"), "{}", run.out);
 }
+
+#[test]
+fn sibling_typescript_configs_keep_each_files_aliases_and_rule_priority() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write("web/model/tsconfig.json", r#"{"compilerOptions":{"paths":{"pick":["./local"],"@/*":["../view/*"],"@/safe/*":["./*"]}}}"#);
+    tree.write(
+        "web/view/tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"pick":["./local"]}}}"#,
+    );
+    tree.write("web/model/local.ts", "export const x = 1;\n");
+    tree.write("web/view/local.ts", "export const x = 1;\n");
+    tree.write("web/model/index.ts", "import { x } from \"pick\";\nimport { x as safe } from \"@/safe/local\";\nimport { x as remote } from \"@/local\";\n");
+    tree.write("web/view/index.ts", "import { x } from \"pick\";\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("web/model/index.ts:3") && run.says("model → view"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("could not be resolved"), "{}", run.out);
+}
+
+#[test]
+fn equally_specific_typescript_wildcards_remain_unproved() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "web/tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./model/*"],"@/*tail":["./view/*"]}}}"#,
+    );
+    tree.write("web/model/tail.ts", "export const x = 1;\n");
+    tree.write("web/view/index.ts", "import { x } from \"@/tail\";\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("configuration klin cannot prove"), "{}", run.out);
+}

@@ -131,10 +131,49 @@ The ordinary row has no measurable graph regression. The alias variant adds
 4 ms and 2 ms to the equivalent, fully resolved relative graph, below the
 10 ms added-resolution target. Compared with the old incomplete alias graph,
 it adds 22 ms and 12 ms: investigation shows 9,888 previously invisible sites
-now become actual dependencies. That truthful graph work explains the larger
-comparison and is in the 10–25 ms normal added-work range. Both consumers
+now become actual dependencies. That comparison is **34 ms aggregate**, above the comment’s 25 ms
+threshold; the previous wording incorrectly treated each consumer separately.
+The product evidence is the 9,888 restored dependency sites and the forbidden
+edges recovered in the replays above. The equivalent resolved relative graph
+is the control for isolating alias matching cost. Both consumers
 still report zero extra source reads/parses. Total Stop differences include
 other gates and process/cache variation; they are not attributed to aliases.
 
 [TypeScript's paths reference](https://www.typescriptlang.org/docs/handbook/modules/reference.html#paths)
 was checked through Context7 for anchoring and wildcard precedence.
+
+## Follow-up: compile alias lookup and ownership
+
+The performance comment on #445 requires a direct exact-alias map and wildcard
+ordering once per tree. The original implementation collected owners and
+sorted matching rules per import. The follow-up compiles shared directory
+scopes, with exact rules in a hash map and wildcards ordered by prefix length.
+Each source file selects its scope before its import loop. Overlapping configs
+remain unproved; selecting the deepest scope does not infer TypeScript project
+ownership, because that scope already includes every ancestor config.
+
+[indexed-cost.json](typescript-aliases-2026-10-03/indexed-cost.json) records
+sequential five-sample runs before at `30193ad0` and after the follow-up, on
+the same machine and fixture as above. Run the ordinary and alias variants
+with `KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm20`, adding
+`KLIN_PERF_PATHS=1` for aliases, through the ignored release performance test.
+
+| Build / source form | Warm stop ms | Layering graph ms | Public-api graph ms | Aggregate graph ms |
+|---|---:|---:|---:|---:|
+| Before indexing / relative | 1,319 | 29 | 19 | 48 |
+| Before indexing / paths | 1,322 | 32 | 21 | 53 |
+| Indexed / relative | 1,301 | 29 | 19 | 48 |
+| Indexed / paths | 1,306 | 30 | 20 | 50 |
+
+All rows retain 9,906 dependency sites per graph and zero source reads/parses
+in both consumers. The ordinary row adds 0 ms; alias matching adds 2 ms over
+the equivalent complete relative graph, within the comment's preferred
+5 ms budget. Aggregate values sum the two rounded gate medians. The old
+pre-feature alias graph still cannot serve as an equivalent graph-cost
+control: it omitted almost every aliased edge. The restored forbidden-edge
+replays above provide the explicit product evidence for that larger delta.
+
+Follow-up validation: 1,496 ordinary tests passed, with the performance test
+ignored in the full suite and run separately for the four rows above.
+Formatting, Clippy and repository gates passed. Independent Standards and
+Spec reviews reported zero material findings.

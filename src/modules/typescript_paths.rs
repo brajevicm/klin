@@ -1,11 +1,11 @@
 //! Direct TypeScript paths rules, compiled once from this tree's held configuration files.
 use serde_json::Value;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use super::resolver::{Topology, directory, joined};
 
 pub(super) struct Paths {
-    configs: Vec<Config>,
+    scopes: Vec<Scope>,
 }
 
 struct Config {
@@ -23,68 +23,154 @@ impl Paths {
             .filter(|file| config_name(file))
             .collect();
         let parsed = configurations(topology, &named);
-        let configs = named
+        let configs: Vec<Config> = named
             .into_iter()
             .map(|file| Config::read(file, &parsed))
             .collect();
-        Self { configs }
+        let directories: BTreeSet<&str> = configs
+            .iter()
+            .map(|config| config.directory.as_str())
+            .collect();
+        let scopes = directories
+            .into_iter()
+            .map(|directory| Scope::compile(directory, &configs))
+            .collect();
+        Self { scopes }
+    }
+
+    /// Select ownership once per source file, before resolving its imports.
+    pub(super) fn for_file(&self, file: &str) -> Option<&Scope> {
+        self.scopes
+            .iter()
+            .filter(|scope| contains(&scope.directory, file))
+            .max_by_key(|scope| scope.directory.len())
+    }
+}
+
+fn contains(directory: &str, file: &str) -> bool {
+    directory.is_empty()
+        || file
+            .strip_prefix(directory)
+            .is_some_and(|rest| rest.starts_with('/'))
+}
+
+pub(super) struct Scope {
+    directory: String,
+    anchor: Option<String>,
+    exact: HashMap<String, Option<String>>,
+    wildcards: Vec<Wildcard>,
+    uncertain: bool,
+}
+
+struct Wildcard {
+    prefix: String,
+    suffix: String,
+    target: Option<String>,
+}
+
+impl Scope {
+    fn compile(directory: &str, configs: &[Config]) -> Self {
+        let owners: Vec<&Config> = configs
+            .iter()
+            .filter(|config| {
+                config.directory == directory || contains(&config.directory, directory)
+            })
+            .collect();
+        let mut scope = Self {
+            directory: directory.to_string(),
+            anchor: owners.first().and_then(|config| config.anchor.clone()),
+            exact: HashMap::new(),
+            wildcards: Vec::new(),
+            uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
+        };
+        for config in owners {
+            for (pattern, targets) in &config.rules {
+                scope.insert(pattern, targets);
+            }
+        }
+        scope
+            .wildcards
+            .sort_by_key(|rule| std::cmp::Reverse(rule.prefix.len()));
+        scope
+    }
+
+    fn insert(&mut self, pattern: &str, targets: &Value) {
+        match pattern.split_once('*') {
+            None => {
+                self.exact
+                    .insert(pattern.to_string(), target(targets, false));
+            }
+            Some((prefix, suffix)) if !suffix.contains('*') => self.wildcards.push(Wildcard {
+                prefix: prefix.to_string(),
+                suffix: suffix.to_string(),
+                target: target(targets, true),
+            }),
+            Some(_) => {}
+        }
     }
 
     /// None means no explicit rule recognizes this specifier; Err means known local but unproved.
-    pub(super) fn resolve(&self, file: &str, specifier: &str) -> Option<Result<String, String>> {
+    pub(super) fn resolve(&self, specifier: &str) -> Option<Result<String, String>> {
         if absolute(specifier) {
             return None;
         }
-        let owners: Vec<&Config> = self
-            .configs
-            .iter()
-            .filter(|config| {
-                config.directory.is_empty()
-                    || file
-                        .strip_prefix(&config.directory)
-                        .is_some_and(|rest| rest.starts_with('/'))
-            })
-            .collect();
-        let mut matches: Vec<(&Config, &str, &Value, &str)> = owners
-            .iter()
-            .flat_map(|config| {
-                config.rules.iter().filter_map(move |(pattern, targets)| {
-                    capture(pattern, specifier)
-                        .map(|wild| (*config, pattern.as_str(), targets, wild))
-                })
-            })
-            .collect();
-        matches.sort_by_key(|(_, pattern, _, _)| priority(pattern));
-        let (config, pattern, targets, wild) = *matches.first()?;
-        let unproved = || {
-            Err(format!(
-                "{specifier} is a local paths alias whose configuration klin cannot prove"
-            ))
-        };
-        if owners.len() != 1
-            || config.uncertain
-            || matches
-                .get(1)
-                .is_some_and(|(_, next, _, _)| priority(next) == priority(pattern))
-        {
-            return Some(unproved());
+        if let Some(target) = self.exact.get(specifier) {
+            return Some(self.expand(target, "", specifier, false));
         }
-        Some(config.expand(pattern, targets, wild, specifier))
+        let (index, rule, wild) = self
+            .wildcards
+            .iter()
+            .enumerate()
+            .find_map(|(index, rule)| Some((index, rule, rule.capture(specifier)?)))?;
+        let ambiguous = self.wildcards[index + 1..]
+            .iter()
+            .take_while(|next| next.prefix.len() == rule.prefix.len())
+            .any(|next| next.capture(specifier).is_some());
+        Some(self.expand(&rule.target, wild, specifier, ambiguous))
     }
+
+    fn expand(
+        &self,
+        target: &Option<String>,
+        wild: &str,
+        specifier: &str,
+        ambiguous: bool,
+    ) -> Result<String, String> {
+        if self.uncertain || ambiguous {
+            return Err(format!(
+                "{specifier} is a local paths alias whose configuration klin cannot prove"
+            ));
+        }
+        let (Some(anchor), Some(target)) = (&self.anchor, target) else {
+            return Err(format!(
+                "{specifier} is a local paths alias whose target klin cannot prove"
+            ));
+        };
+        joined(anchor, &target.replace('*', wild))
+            .ok_or_else(|| format!("{specifier} is a local paths alias that leaves the tree"))
+    }
+}
+
+impl Wildcard {
+    fn capture<'a>(&self, specifier: &'a str) -> Option<&'a str> {
+        specifier
+            .strip_prefix(&self.prefix)?
+            .strip_suffix(&self.suffix)
+    }
+}
+
+fn target(targets: &Value, wildcard: bool) -> Option<String> {
+    let [target] = targets.as_array()?.as_slice() else {
+        return None;
+    };
+    target
+        .as_str()
+        .filter(|target| target.matches('*').count() <= usize::from(wildcard) && !absolute(target))
+        .map(str::to_string)
 }
 
 fn absolute(path: &str) -> bool {
     path.starts_with('/') || path.contains('\\') || path.contains(':')
-}
-
-fn capture<'a>(pattern: &str, specifier: &'a str) -> Option<&'a str> {
-    match pattern.split_once('*') {
-        None => (pattern == specifier).then_some(""),
-        Some((prefix, suffix)) if !suffix.contains('*') => {
-            specifier.strip_prefix(prefix)?.strip_suffix(suffix)
-        }
-        Some(_) => None,
-    }
 }
 
 /// JSONC tokenization keeps quoted strings intact while removing comments and trailing commas.
@@ -218,41 +304,4 @@ impl Config {
                 || value.get("references").is_some(),
         }
     }
-
-    fn expand(
-        &self,
-        pattern: &str,
-        targets: &Value,
-        wild: &str,
-        specifier: &str,
-    ) -> Result<String, String> {
-        let unproved = || {
-            Err(format!(
-                "{specifier} is a local paths alias whose target klin cannot prove"
-            ))
-        };
-        let Some(anchor) = &self.anchor else {
-            return unproved();
-        };
-        let Some(targets) = targets.as_array() else {
-            return unproved();
-        };
-        let [target] = targets.as_slice() else {
-            return unproved();
-        };
-        let Some(target) = target.as_str().filter(|target| {
-            target.matches('*').count() <= usize::from(pattern.contains('*')) && !absolute(target)
-        }) else {
-            return unproved();
-        };
-        joined(anchor, &target.replace('*', wild))
-            .ok_or_else(|| format!("{specifier} is a local paths alias that leaves the tree"))
-    }
-}
-
-fn priority(pattern: &str) -> (bool, std::cmp::Reverse<usize>) {
-    (
-        pattern.contains('*'),
-        std::cmp::Reverse(pattern.split('*').next().unwrap_or("").len()),
-    )
 }

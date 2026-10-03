@@ -33,6 +33,7 @@ pub(super) fn resolve(builder: &mut Builder) {
         let Some(facts) = topology.facts(file) else {
             continue;
         };
+        let scope = paths.for_file(file);
         for import in &facts.imports {
             if let Some(specifier) = import.module.as_deref() {
                 let site = Site {
@@ -41,7 +42,7 @@ pub(super) fn resolve(builder: &mut Builder) {
                     line: import.line,
                     text: &import.text,
                 };
-                resolved(builder, &modules, &paths, &site, specifier);
+                resolved(builder, &modules, scope, &site, specifier);
             }
         }
     }
@@ -57,7 +58,7 @@ struct Site<'a> {
 fn resolved(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
-    paths: &super::typescript_paths::Paths,
+    paths: Option<&super::typescript_paths::Scope>,
     site: &Site,
     specifier: &str,
 ) {
@@ -65,7 +66,7 @@ fn resolved(
     let base = if relative(specifier) {
         joined(directory(site.file), specifier).map(Ok)
     } else {
-        paths.resolve(site.file, specifier)
+        paths.and_then(|scope| scope.resolve(specifier))
     };
     match base {
         Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
