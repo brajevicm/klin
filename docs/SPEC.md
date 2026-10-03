@@ -3258,12 +3258,15 @@ nothing, per 5.1.
 ### 9.3 The block policy
 
 ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
-the tree builds. Only the hook runs the build: `klin gate` outside the hook,
-`--strict` and CI included, runs no build entry, so the project's own CI must
-run the build. Each hook message that lets a stop end over a tree that does not
-build, or that the hook could not build, says so. A gate failure blocks at most
-two stops under one prompt, the second only over a changed tree (ADR 0052). The
-build stamp in the state directory carries the facts between the processes.
+the tree builds. In the current product, the Stop hook is the only klin path
+that runs the build: `klin gate` outside the hook, `--strict` and CI included,
+runs no build entry, so the project's own CI must run the build. This describes
+the current CLI and does not constrain a future agent-readiness path from using
+local build feedback; project CI remains the authoritative build, type-check
+and test boundary. Each hook message that lets a stop end over a tree that does
+not build, or that the hook could not build, says so. A gate failure blocks at
+most two stops under one prompt, the second only over a changed tree (ADR 0052).
+The build stamp in the state directory carries the facts between the processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
 the current Claude Code documentation. klin MUST bound its own blocks (ADR
