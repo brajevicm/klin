@@ -45,6 +45,7 @@ pub fn applies(project: &Project) -> bool {
     !project.facts().found.instructions.is_empty()
 }
 const CEILING_STEP: u64 = 50;
+const CACHE_KEY: &str = "doc_size_instructions";
 pub const RULE: &str = "the word count at the derivation commit, rounded up to the next 50";
 const NEW_CEILING: u64 = 50;
 const NEW_RULE: &str = "the 50-word default for an instruction file the derivation commit lacks";
@@ -411,7 +412,7 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
         return BTreeMap::new();
     };
     if let Some(cached) = at
-        .and_then(|at| cache::read(at, commit, SECTION))
+        .and_then(|at| cache::read(at, commit, CACHE_KEY))
         .and_then(|cached| read_ceilings(&cached))
     {
         return cached;
@@ -430,7 +431,7 @@ pub fn derived_ceilings(project: &Project) -> BTreeMap<String, u64> {
             .iter()
             .map(|(name, ceiling)| (name.clone(), Value::from(*ceiling)))
             .collect();
-        cache::write(at, commit, SECTION, Value::Object(kept));
+        cache::write(at, commit, CACHE_KEY, Value::Object(kept));
     }
     out
 }

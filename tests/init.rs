@@ -230,7 +230,7 @@ fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
     tree.base();
     let cache = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
     let stale = format!(
-        "{{\"version\":\"{}\",\"doc_size\":{{\"AGENTS.md\":999,\"README.md\":450}}}}\n",
+        "{{\"version\":\"{}\",\"doc_size_instructions\":{{\"AGENTS.md\":999,\"README.md\":450}}}}\n",
         env!("CARGO_PKG_VERSION")
     );
     assert!(
@@ -251,7 +251,7 @@ fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
     let held: Value = serde_json::from_str(&std::fs::read_to_string(&cache).unwrap_or_default())
         .unwrap_or_default();
     assert_eq!(
-        held["doc_size"],
+        held["doc_size_instructions"],
         serde_json::json!({"AGENTS.md": 150}),
         "{held}"
     );
