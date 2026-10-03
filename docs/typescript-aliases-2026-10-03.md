@@ -47,22 +47,25 @@ are needed by real configurations. The implementation recognizes paths in
 held local extends files, bounded by a visited set, but does not use inheritance
 to prove edges. Package extends are never loaded through node_modules.
 Supporting arbitrary project selection or Node resolution would add substantial
-semantics without being necessary to repair OpenStock and both planted routes.
+semantics beyond the initial repair. The root-proof correction below narrows
+which of these recognized sites can become proven edges.
 
 ## Proof boundary
 
-A single conventional `tsconfig.json` above a source file can prove an exact
-or single-star mapping with one target. Exact names precede wildcard names;
+A single conventional `tsconfig.json` above a proven project root can prove
+an exact or single-star mapping with one target. Root proof uses the
+conservative subset described in the correction below. Exact names precede wildcard names;
 the longest wildcard prefix wins. Equal-priority patterns are conservatively
 unresolved. Targets are anchored at a directly written baseUrl, or otherwise
-at the defining config's directory. Include/exclude lists do not change the
-held source set: an import can reach a file omitted from a compiler root list.
+at the defining config's directory. Include/exclude lists participate in root
+proof for the importing source, while the target need only be held: an import
+can reach a file omitted from a compiler root list.
 
 Multiple ancestor configs, alternate tsconfig filenames, extends, project
 references, multiple targets, invalid anchors, missing or ambiguous TypeScript
 candidates and paths leaving the tree cannot prove an edge. A matching rule
-still makes these sites local incompleteness. Local extends chains only add
-recognized names; they never select a target. Unreadable configs and unknown
+still makes these sites local incompleteness. Single local extends chains
+supply the nearest paths object's recognized names; they never select a target. Unreadable configs and unknown
 package extends cannot supply names that klin has not observed. Absolute specifiers are not remapped. Standalone
 baseUrl lookup, package imports/exports, bundler aliases and dynamic dependencies
 remain outside the proof boundary. A target the tree holds as another kind,
@@ -177,3 +180,45 @@ Follow-up validation: 1,496 ordinary tests passed, with the performance test
 ignored in the full suite and run separately for the four rows above.
 Formatting, Clippy and repository gates passed. Independent Standards and
 Spec reviews reported zero material findings.
+
+## Follow-up: configured roots and inherited paths replacement
+
+PR #461's adversarial review found that ancestry alone could apply a config
+to a source outside its configured roots. Alias edges now require root proof
+through explicit files or the conservative include/exclude subset in SPEC
+8.2.1. Sources remain held modules even when root proof is unavailable;
+recognized aliases become local incompleteness. Exclude filters include roots,
+not explicit files or target modules. Import reachability is not used to infer
+membership. Root proof is computed once per source file.
+
+Inherited alias recognition also stops at the nearest defined paths option
+in a single held local extends chain. Child paths replace the whole parent
+object, including an empty child object. Array-form extends supplies no
+inherited names; direct child paths remain recognized. Extends still never
+proves an edge.
+
+Scope selection now looks up ancestor directories in a map once per source
+file instead of scanning every config scope. This addresses the review's
+config-heavy selection concern without a full TypeScript project resolver.
+Config scopes and matching rules are still compiled once per tree.
+
+[root-proof-cost.json](typescript-aliases-2026-10-03/root-proof-cost.json)
+records fresh sequential five-sample release runs using the same 1M / warm20
+fixture. Ordinary graph time is 30 + 19 = 49 ms; aliases are 30 + 20 = 50 ms.
+The earlier indexed measurements were 48 and 50 ms respectively. The ordinary
+increase is 1 ms and alias overhead is 1 ms over the equivalent complete
+relative graph. Both retain 9,906 dependencies per consumer and zero source
+reads/parses. Warm Stop medians are 1,285 ms and 1,299 ms; differences include
+unrelated gate and process variation. These runs exercise one alias config;
+the config-heavy improvement is structural indexing, not a measured claim.
+
+
+The OpenStock graph counts above predate this root-proof correction and are
+historical evidence, not fresh validation of the narrower root subset. The
+#361 and #355 planted routes were replayed again after the correction: CI
+still reports `domain → ui: src/ui/format.ts` and `db → ui: src/ui/labels.ts`
+respectively with exit 1, and both Stop replays refuse with exit 2.
+
+Correction validation: 1,504 ordinary tests passed (one performance test
+ignored and exercised separately above), formatting, Clippy and repository
+gates passed, and Standards and Spec reviews reported zero material findings.

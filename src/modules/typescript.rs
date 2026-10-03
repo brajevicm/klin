@@ -58,7 +58,7 @@ struct Site<'a> {
 fn resolved(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
-    paths: Option<&super::typescript_paths::Scope>,
+    paths: Option<super::typescript_paths::FilePaths<'_>>,
     site: &Site,
     specifier: &str,
 ) {

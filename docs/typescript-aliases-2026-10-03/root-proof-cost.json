@@ -1,0 +1,41 @@
+{
+  "machine": "macOS arm64",
+  "previous_commit": "9b7294d234ece68929913cfbe1b5890667da3aa6",
+  "previous_evidence": "indexed-cost.json",
+  "workload": "structural_1m warm20",
+  "generator_digest": "4606c5ecf1f80e3b",
+  "relative_loc": 1033827,
+  "alias_transform_sites": 4952,
+  "rows": [
+    {
+      "build": "root-proof-relative",
+      "samples": 5,
+      "measurements": {
+        "median_ms": 1285,
+        "layering_graph_ms": 30,
+        "public-api_graph_ms": 19,
+        "layering_graph_dependencies": 9906,
+        "public-api_graph_dependencies": 9906,
+        "layering_facts_reads": 0,
+        "layering_facts_parses": 0,
+        "public-api_facts_reads": 0,
+        "public-api_facts_parses": 0
+      }
+    },
+    {
+      "build": "root-proof-paths",
+      "samples": 5,
+      "measurements": {
+        "median_ms": 1299,
+        "layering_graph_ms": 30,
+        "public-api_graph_ms": 20,
+        "layering_graph_dependencies": 9906,
+        "public-api_graph_dependencies": 9906,
+        "layering_facts_reads": 0,
+        "layering_facts_parses": 0,
+        "public-api_facts_reads": 0,
+        "public-api_facts_parses": 0
+      }
+    }
+  ]
+}

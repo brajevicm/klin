@@ -166,3 +166,20 @@ unrelated implementation import does not itself make a public contract
 incomplete. Proven aliased re-exports follow `reached_at` like relative ones.
 See SPEC 8.2.1 and the bounded survey in
 `docs/typescript-aliases-2026-10-03.md`.
+
+
+### Proof-boundary correction after PR #461 review
+
+An ancestor config is insufficient proof of TypeScript project ownership.
+Aliases now require proven root membership through explicit files or the
+conservative include/exclude subset in SPEC 8.2.1. Sources outside that root
+set remain held modules, but their recognized aliases stay locally unresolved;
+V1 does not infer program membership through imports. Exclude filters include
+roots and does not ban a file explicitly named by files.
+
+Inherited paths recognition follows replacement, not additive merge: the
+nearest paths object in a single held local extends chain supplies names.
+An empty child object removes all inherited names. Array-form extends
+supplies no inherited names; direct child rules remain recognized. Inheritance
+still never proves an edge. Scope selection uses indexed ancestor directories
+once per source file, and aliases retain their once-tree compiled lookup.

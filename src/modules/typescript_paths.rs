@@ -5,13 +5,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use super::resolver::{Topology, directory, joined};
 
 pub(super) struct Paths {
-    scopes: Vec<Scope>,
+    scopes: HashMap<String, Scope>,
 }
 
 struct Config {
     directory: String,
     anchor: Option<String>,
     rules: Vec<(String, Value)>,
+    roots: Roots,
     uncertain: bool,
 }
 
@@ -33,17 +34,33 @@ impl Paths {
             .collect();
         let scopes = directories
             .into_iter()
-            .map(|directory| Scope::compile(directory, &configs))
+            .map(|directory| (directory.to_string(), Scope::compile(directory, &configs)))
             .collect();
         Self { scopes }
     }
 
-    /// Select ownership once per source file, before resolving its imports.
-    pub(super) fn for_file(&self, file: &str) -> Option<&Scope> {
-        self.scopes
-            .iter()
-            .filter(|scope| contains(&scope.directory, file))
-            .max_by_key(|scope| scope.directory.len())
+    /// Select ownership and root membership once per source file, before its imports.
+    pub(super) fn for_file(&self, file: &str) -> Option<FilePaths<'_>> {
+        if self.scopes.is_empty() {
+            return None;
+        }
+        let mut ancestor = directory(file);
+        loop {
+            if let Some(scope) = self.scopes.get(ancestor) {
+                if scope.exact.is_empty() && scope.wildcards.is_empty() {
+                    return None;
+                }
+                let root = scope
+                    .roots
+                    .as_ref()
+                    .is_some_and(|roots| roots.contains(file));
+                return Some(FilePaths { scope, root });
+            }
+            if ancestor.is_empty() {
+                return None;
+            }
+            ancestor = directory(ancestor);
+        }
     }
 }
 
@@ -54,12 +71,24 @@ fn contains(directory: &str, file: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('/'))
 }
 
-pub(super) struct Scope {
-    directory: String,
+struct Scope {
+    roots: Option<Roots>,
     anchor: Option<String>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct FilePaths<'a> {
+    scope: &'a Scope,
+    root: bool,
+}
+
+impl FilePaths<'_> {
+    pub(super) fn resolve(self, specifier: &str) -> Option<Result<String, String>> {
+        self.scope.resolve(specifier, self.root)
+    }
 }
 
 struct Wildcard {
@@ -77,7 +106,7 @@ impl Scope {
             })
             .collect();
         let mut scope = Self {
-            directory: directory.to_string(),
+            roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
             exact: HashMap::new(),
             wildcards: Vec::new(),
@@ -110,12 +139,12 @@ impl Scope {
     }
 
     /// None means no explicit rule recognizes this specifier; Err means known local but unproved.
-    pub(super) fn resolve(&self, specifier: &str) -> Option<Result<String, String>> {
+    fn resolve(&self, specifier: &str, root: bool) -> Option<Result<String, String>> {
         if absolute(specifier) {
             return None;
         }
         if let Some(target) = self.exact.get(specifier) {
-            return Some(self.expand(target, "", specifier, false));
+            return Some(self.expand(target, "", specifier, !root));
         }
         let (index, rule, wild) = self
             .wildcards
@@ -126,7 +155,7 @@ impl Scope {
             .iter()
             .take_while(|next| next.prefix.len() == rule.prefix.len())
             .any(|next| next.capture(specifier).is_some());
-        Some(self.expand(&rule.target, wild, specifier, ambiguous))
+        Some(self.expand(&rule.target, wild, specifier, ambiguous || !root))
     }
 
     fn expand(
@@ -254,34 +283,40 @@ fn parents(file: &str, value: &Value) -> Vec<String> {
         .collect()
 }
 
+/// Only the nearest paths object in a single held local extends chain supplies names.
+/// Multiple/package parents supply no inherited names; the visited set bounds cycles.
 fn rules(file: &str, parsed: &BTreeMap<String, Value>) -> Vec<(String, Value)> {
-    let mut rules = BTreeMap::new();
     let mut seen = BTreeSet::new();
-    let mut pending = vec![file.to_string()];
-    while let Some(file) = pending.pop() {
-        if !seen.insert(file.clone()) {
-            continue;
-        }
+    let mut file = file.to_string();
+    while seen.insert(file.clone()) {
         let Some(value) = parsed.get(&file) else {
-            continue;
+            break;
         };
-        if let Some(paths) = value
-            .pointer("/compilerOptions/paths")
-            .and_then(Value::as_object)
-        {
-            for (name, target) in paths {
-                rules.entry(name.clone()).or_insert_with(|| target.clone());
-            }
+        if let Some(paths) = value.pointer("/compilerOptions/paths") {
+            return paths
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(name, target)| (name.clone(), target.clone()))
+                .collect();
         }
-        for parent in parents(&file, value) {
-            pending.push(if parsed.contains_key(&parent) {
-                parent
-            } else {
-                format!("{parent}.json")
-            });
-        }
+        let Some(extends) = value.get("extends").and_then(Value::as_str) else {
+            break;
+        };
+        let Some(parent) = extends
+            .starts_with('.')
+            .then(|| joined(directory(&file), extends))
+            .flatten()
+        else {
+            break;
+        };
+        file = if parsed.contains_key(&parent) {
+            parent
+        } else {
+            format!("{parent}.json")
+        };
     }
-    rules.into_iter().collect()
+    Vec::new()
 }
 
 impl Config {
@@ -298,10 +333,114 @@ impl Config {
             directory: directory(file).to_string(),
             anchor,
             rules: rules(file, parsed),
+            roots: Roots::read(file, value),
             uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
                 || value.is_null()
                 || value.get("extends").is_some()
                 || value.get("references").is_some(),
         }
+    }
+}
+
+/// A conservative root subset; import reachability never upgrades a non-root to proof.
+#[derive(Clone)]
+struct Roots {
+    files: BTreeSet<String>,
+    include: Option<Vec<RootPattern>>,
+    exclude: Option<Vec<RootPattern>>,
+}
+
+#[derive(Clone)]
+struct RootPattern {
+    path: String,
+    subtree: bool,
+}
+
+impl Roots {
+    fn read(file: &str, value: &Value) -> Self {
+        let directory = directory(file);
+        let files = value
+            .get("files")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|value| {
+                let path = value.as_str()?;
+                (!absolute(path)).then(|| joined(directory, path)).flatten()
+            })
+            .collect();
+        let default_include = if value.get("files").is_some() {
+            Vec::new()
+        } else {
+            vec![RootPattern {
+                path: directory.to_string(),
+                subtree: true,
+            }]
+        };
+        let include = value.get("include").map_or(Some(default_include), |value| {
+            root_patterns(directory, value)
+        });
+        let mut exclude = value
+            .get("exclude")
+            .map_or(Some(Vec::new()), |value| root_patterns(directory, value));
+        for option in ["outDir", "declarationDir"] {
+            if let Some(value) = value.pointer(&format!("/compilerOptions/{option}")) {
+                exclude = exclude.and_then(|mut patterns| {
+                    patterns.push(RootPattern {
+                        path: joined(directory, value.as_str().filter(|path| !absolute(path))?)?,
+                        subtree: true,
+                    });
+                    Some(patterns)
+                });
+            }
+        }
+        Self {
+            files,
+            include,
+            exclude,
+        }
+    }
+
+    fn contains(&self, file: &str) -> bool {
+        if self.files.contains(file) {
+            return true;
+        }
+        let (Some(include), Some(exclude)) = (&self.include, &self.exclude) else {
+            return false;
+        };
+        !file.split('/').any(|part| {
+            part.starts_with('.')
+                || matches!(part, "node_modules" | "bower_components" | "jspm_packages")
+        }) && include.iter().any(|pattern| pattern.matches(file))
+            && !exclude.iter().any(|pattern| pattern.matches(file))
+    }
+}
+
+fn root_patterns(directory: &str, value: &Value) -> Option<Vec<RootPattern>> {
+    value
+        .as_array()?
+        .iter()
+        .map(|value| {
+            let written = value.as_str()?;
+            let path = if written == "**/*" {
+                ""
+            } else {
+                written.strip_suffix("/**/*").unwrap_or(written)
+            };
+            if absolute(path) || path.contains(['*', '?']) {
+                return None;
+            }
+            let subtree = path != written || std::path::Path::new(path).extension().is_none();
+            Some(RootPattern {
+                path: joined(directory, path)?,
+                subtree,
+            })
+        })
+        .collect()
+}
+
+impl RootPattern {
+    fn matches(&self, file: &str) -> bool {
+        self.path == file || self.subtree && contains(&self.path, file)
     }
 }

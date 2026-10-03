@@ -2332,23 +2332,45 @@ is new debt and a move inside a layer is held.
 
 TypeScript explicit `compilerOptions.paths` aliases are local dependencies.
 One conventional ancestor `tsconfig.json`, with no extends or references,
-proves an exact or single-`*` alias only when its single target reduces to
+proves an exact or single-`*` alias only for a proven project root and when
+its single target reduces to
 exactly one held TypeScript module under the relative candidate rule. JSONC
 comments, trailing commas and a UTF-8 BOM are supported. Exact rules precede
 wildcards; the longest matching wildcard prefix wins. Equal-priority rules
 are unresolved. Absolute specifiers stay outside V1 and are never remapped.
 Targets are relative to a directly known `baseUrl`, or to the
-config directory without one. Compiler root include/exclude lists do not
-replace the tree's held source set. Configs and rules are read once per tree; exact rules use a direct map and
-wildcards are ordered once. Config ownership is selected once per source
-file, never recomputed per import;
-a config-only edit can retarget an unchanged dependency in a changed run.
+config directory without one. The tree still holds every source module, but
+ancestry alone does not prove that a source belongs to the alias config.
+Root proof accepts an explicit `files` entry, regardless of `exclude`, or a
+supported `include` match not filtered by `exclude`. Supported patterns are
+literal file paths, directory paths and a directory followed by `/**/*`
+(including `**/*` at the config root). Paths are relative to the config.
+Other wildcard shapes and malformed include/exclude lists decline include
+proof. With neither files nor include, the config directory is the default
+include; with files but no include, include is empty. Dot paths, dependency
+directories and outDir/declarationDir are conservatively outside include
+proof, even when an explicit exclude list would admit them. Explicit files
+can still prove these roots. An excluded or non-root file might enter a
+TypeScript program through imports; V1 does not infer that reachability and
+keeps its recognized aliases locally unresolved. Targets need only be held,
+not roots themselves. V1 models configured roots, not direct-file compiler
+invocations that ignore tsconfig.
+
+Configs and rules are read once per tree; exact rules use a direct map and
+wildcards are ordered once. Scope selection uses ancestor-directory map
+lookups and root membership is selected once per source file, never per
+import. A config-only edit can retarget an unchanged dependency or change
+its root proof in a changed run.
 
 A matching paths rule whose target cannot be proved produces located local
 resolution incompleteness. Multiple/nested or alternate tsconfigs, extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
-bounded, to recognize local names only. Package extends, unreadable configs
+bounded, to recognize local names only. The nearest defined paths object
+in a single local extends chain replaces the parent's entire object; an
+empty or malformed object supplies no parent keys. Array-form extends
+supplies no inherited names, though direct child paths remain recognized.
+Package extends, unreadable configs
 and bundler-specific configuration supply no unobserved names. Standalone
 baseUrl lookup and Node/package resolution remain outside V1. Aliased targets
 of another kind or ignored source retain the existing outside-V1 behavior.
@@ -2365,7 +2387,15 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `local_extends_aliases_are_recognized_without_guessing_inheritance`,
 `absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard`,
 `sibling_typescript_configs_keep_each_files_aliases_and_rule_priority` and
-`equally_specific_typescript_wildcards_remain_unproved` in
+`equally_specific_typescript_wildcards_remain_unproved`,
+`a_paths_config_does_not_prove_aliases_for_a_file_outside_its_project_roots`,
+`files_and_include_roots_do_not_turn_exclude_into_a_program_ban`,
+`imported_files_outside_project_roots_stay_unproved`,
+`child_paths_replace_inherited_alias_names_instead_of_merging` and
+`multiple_extends_do_not_supply_inherited_alias_names` and
+`a_config_only_edit_changes_root_proof_for_an_unchanged_import`,
+`output_and_dot_sources_need_explicit_files_for_root_proof` and
+`local_extends_recognition_uses_the_nearest_paths_object` in
 `tests/layering.rs`, and
 `unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
 and `a_proven_alias_re_export_measures_the_contract_behind_it` in
