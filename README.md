@@ -208,7 +208,7 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 ## Privacy and trust
 
 - **No telemetry.** klin reads no secrets and sends nothing anywhere.
-- **You control the build commands.** klin may run the configured or derived build command. It prints a derived command before it runs it. Set `"build": false` to disable builds.
+- **You control the Stop build commands.** The agent Stop hook may run the configured or derived build command before the quality gates. It prints a derived command before it runs it. Set `"build": false` to disable this feedback build.
 - **State stays in your repository.** klin keeps its working state under `.git/klin`. By default this includes up to 80 characters of the prompt's first line. Set `"journal": { "prompt": false }` to leave the prompt text out.
 - **Downloaded binaries are verified.** The plugin checks the pinned release's SHA-256 before it caches and runs the binary. The installer also verifies what it downloads.
 
@@ -221,7 +221,9 @@ klin works at two levels:
 - **Feedback:** hooks only. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks the result.
 - **Enforced:** hooks plus a required CI check on a protected branch. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and `CODEOWNERS` itself.
 
-The Quick start gets you to Feedback. Add the CI check to get to Enforced.
+The Quick start gets you to Feedback. Add the required klin CI check to get klin's quality policy to Enforced.
+
+The klin CI check does **not** compile, type-check, or test your project, and it does not run the `build` entry from `klin.json`. Keep your project's normal build, type-check, and test steps in CI as separate required checks.
 
 GitHub Actions:
 
