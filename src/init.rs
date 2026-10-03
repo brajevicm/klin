@@ -128,9 +128,9 @@ fn complexity_pins(project: &Project) -> Vec<Pin> {
         .collect()
 }
 
-/// A ceiling for every instruction file at the tree root the derivation commit holds.
+/// A ceiling for every instruction file the derivation commit holds.
 fn document_pins(project: &Project) -> Vec<Pin> {
-    let documents = &project.facts().found.documents;
+    let documents = &project.facts().found.instructions;
     doc_size::derived_ceilings(project)
         .into_iter()
         .filter(|(name, _)| documents.contains(name))

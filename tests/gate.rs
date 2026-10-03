@@ -1400,7 +1400,7 @@ fn a_named_gate_derives_nothing_another_gate_would_need() {
     let every = tree.run(&["gate"]);
     assert_eq!(every.code, 0, "{}", every.out);
     assert!(
-        every.says("NOTE: doc_size AGENTS.md is 5 words and is not judged"),
+        every.says("derived: doc_size AGENTS.md 50, the 50-word default"),
         "{}",
         every.out
     );
