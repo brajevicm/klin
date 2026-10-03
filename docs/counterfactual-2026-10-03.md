@@ -1,12 +1,16 @@
 # Counterfactual simplification feasibility (#356)
 
 Research dated 2026-10-03 for [#356](https://github.com/brajevicm/klin/issues/356),
-including its UX/DX/AX amendment. Research baseline:
+including its UX/DX/AX amendment. Measurement corrections address the
+[adversarial PR review](https://github.com/brajevicm/klin/pull/455#issuecomment-5972251679).
+Research baseline:
 `76097d415656e76d84fecea3d697892101c6d0b1`. The implementation checkout began at
 `af429485efdb22ade7e231ccebef90a2a3d8c8da`.
 
 **Result:** compact trajectory grouping found one coordinated reversal that this
-final-patch search missed, but required more oracle executions overall. Seven
+final-patch search missed and explored fewer distinct search candidates.
+Gross execution counts include repeated evaluations and do not establish an
+intrinsic trajectory cost. Seven
 constructed tasks produced harmful oracle-green reductions. This supports an
 optional research tool, not automatic simplification or a production gate.
 
@@ -96,8 +100,13 @@ extractor. The `hunk` configuration omits the fine search level; `semantic` incl
 it. Revisit the ordered groups to a fixed point after accepted removals.
 
 B prepends groups of surviving segments introduced in the same scripted turn,
-then runs the identical A levels. Turn ids, before/after tree fingerprints and
-segment ids are the entire retained search history. No prompts, transcripts or
+then runs the identical A levels. B reads back the serialized retained-history
+file, verifies its before/after fingerprints against source replay, and constructs
+its groups from those records. It never reads segment turn metadata during search.
+Turn ids, before/after tree fingerprints and
+segment ids are the entire retained search history. CLI probes reject corrupted
+fingerprints/groups and show that a valid history splitting the coordinated rename
+into separate turns removes B's advantage without changing corpus turn metadata. No prompts, transcripts or
 source text live in that history. Corpus segments supply the independent replay
 source; fingerprints alone cannot reconstruct reverted or superseded source.
 Partially superseded real-agent trajectories remain unmeasured.
@@ -116,7 +125,8 @@ Run both orders within each coarse-to-fine level, both atomizations, and two
 independent repetitions: 12 tasks × 3 arms × 2 orders × 2 atomizations × 2 repeats
 = **288 configurations**. Each ordinary observation invokes the frozen command
 once. The known flaky fixture requires three executions, retains all outcomes,
-and stops search if they disagree. No retry-until-green behavior or pass caching.
+and stops search if they disagree. No retry-until-green behavior or pass caching. Report both distinct candidate
+trees and repeated evaluation attempts; gross calls are not intrinsic search cost.
 
 A/B audit every surviving eligible segment against the final candidate. Only
 conclusive rejection of every single removal permits `one_minimal=true`. This is
@@ -155,13 +165,24 @@ Across configurations A executes **376** required-oracle commands, B **420**,
 and C **120** (most C rows only establish original observations). Search-group
 attempts are 216/276/8; final singleton audits add 48/32/0. Initial commands and
 audits are included in oracle counts; two original/final independent holdout
-observations per configuration are recorded separately. B spends 44 more oracle
-commands than A, about 12%, with one additional task reduced. There is no universal
-cost/benefit threshold justified by these fixtures.
+observations per configuration are recorded separately. The search attempts contain **84 duplicate trees in A** and **156 in B**.
+A explores **132 distinct search candidates**, B **120**, and C 8. Thus B explores
+12 fewer distinct search candidates (about 9%) while reducing one additional task
+under this limited strategy. Including initial observations and singleton audits,
+A/B see 228/216 distinct required-oracle trees. These counts are sums of per-run
+unique trees under one frozen oracle, not deduplication across configurations.
 
-Total external command times, including holdouts, are A **20.275 s**, B **21.938 s**,
-C **10.795 s**. Prototype analysis/materialization/cleanup time is separately
-A **0.907 s**, B **0.946 s**, C **0.504 s**. Native klin analysis time is explicitly
+The former “trajectory costs about 12% more” headline was unsupported: 44 extra
+gross calls reflected overlapping group/audit evaluation, not intrinsic trajectory
+cost. This revision reports unique candidates separately rather than memoizing
+stateful/flaky evidence. Actual durations below still include redundant executions;
+they cannot establish relative speed of a memoized implementation. Distinct trees
+also do not eliminate mandatory repeat observations for unstable evidence. No
+universal cost/benefit threshold is justified by these fixtures.
+
+Total external command times, including holdouts, are A **20.478 s**, B **22.386 s**,
+C **10.846 s**. Prototype analysis/materialization/cleanup time is separately
+A **0.831 s**, B **0.918 s**, C **0.472 s**. Native klin analysis time is explicitly
 **0**: no counterfactual implementation exists in the baseline, and the experiment
 does not invoke klin. These timings measure disposable Python orchestration and
 process startup on macOS, not klin Finalize performance or real project builds.
@@ -200,12 +221,25 @@ Thus neither an oracle-green reduction nor a smaller patch is “better” by
 definition. The boundary counterexample survives stronger functional testing;
 the explicit intent still rejects it. Design intent needs its own authority.
 
-## Agent experience and repair cost
+## Facilitated agent simulations and their limits
 
 Each configuration surfaces at most **one** successful candidate, independently
-of explored count. Feedback is 260–298 UTF-8 bytes for surfaced cases, zero where
+of explored count. Regenerated generic feedback is 174–185 UTF-8 bytes for surfaced cases, zero where
 none is surfaced. Unexplored/unaccepted candidates are never dumped into agent
-context. Full developer records remain available separately.
+context. Full developer records remain available separately. Generated feedback no longer
+injects `case['intent']` or holdout results; it identifies the frozen oracle and
+uses generic guidance to preserve requested intent.
+
+The archived AX packets and responses below were produced by the earlier
+implementation at `4095f71e`, before this correction. Those packets and assignment
+instructions explicitly supplied the relevant requested boundary/rename intent.
+They are **facilitated simulations**, not evidence that the recommended minimal
+history or generic feedback lets an agent recover intent, preserve it unaided,
+or avoid a repair loop in a future Finalize feature. No faithful generic-feedback
+AX trial has been run. Intent must come from the agent's existing task context or
+an independently authorized configured contract; this experiment recommends no
+retained prompt/transcript/intent channel. Its storage measurements do not include
+such a channel. Future AX claims require a new trial with that boundary enforced.
 
 Three fresh research sub-agents each received one frozen candidate packet and a
 short intent instruction, without explored candidates. They share this session's
@@ -250,8 +284,9 @@ explained that a repeated unapplied proposal requires no repair. Total measured
 candidate-packet context was **1,610 bytes each** for A/C, versus 845 for B's
 single-response trial, excluding assignment text/tool output. A/C spent one extra
 response each despite making no second repair. The reducer would repeatedly
-propose the harmful removal; the bounded REVIEW semantics prevented a code repair
-loop across these two observations. Blocking or auto-applying that proposal was
+propose the harmful removal; the explicitly informed agents declined a second edit
+across these two observations. This cannot establish that minimal-history REVIEW
+semantics alone prevent a repair loop. Blocking or auto-applying that proposal was
 not tested and would risk alternation between removal and restoration. Long
 sessions, ignored intent instructions and repeated model proposals remain unknown.
 
@@ -262,7 +297,7 @@ in [trajectory.json](counterfactual-2026-10-03/raw/trajectory.json), **2,979 byt
 including task keys. Growth is linear in events plus group ids; path identities
 can reveal project structure, and stable fingerprints allow correlation. The
 source-bearing corpus and selected AX packets are charged separately. Raw
-measurement results occupy **877,668 bytes**, including bounded command outputs;
+measurement results occupy **903,580 bytes**, including bounded command outputs;
 that diagnostic archive is not required retained trajectory. No full prompts,
 agent transcripts or every-candidate source snapshots are archived. Reproduce
 accepted trees from corpus segments plus `retained`, or the frozen C transform.
@@ -294,6 +329,7 @@ From the repository root, using Python 3 and Node already installed:
 PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/probe-test.py
 PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/run.py --output /tmp/klin356
 python3 docs/counterfactual-2026-10-03/summarize.py /tmp/klin356
+PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
 PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/run.py --security --output /tmp/klin356
 PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/verify-ax.py
 PYTHONDONTWRITEBYTECODE=1 python3 docs/counterfactual-2026-10-03/loop.py
@@ -306,6 +342,14 @@ reproduce host timing exactly; oracle ids, conclusions and retained trees should
 match under the recorded runtime/fixture basis. Different runtimes require a new
 basis rather than silently pooling results. The baseline governs lifecycle/trust
 interpretation; fixture source is self-contained and no baseline binary is needed.
+
+The GitHub `quality` workflow now runs the CLI probes and a full deterministic
+reproduction using the checked-in retained history. `check-results.py` pins the
+headline counts, corpus/evidence identities and per-row distinct-tree accounting,
+then compares all 288 reproduced candidate outcomes, costs, retention sets and
+execution counts against the archive. Timing and runtime-dependent ids are not
+pooled across environments. A changed script/corpus/result must reconcile those
+assertions instead of silently drifting from the research claims.
 
 No SPEC amendment is admitted. A separately authorized future experiment would
 need SPEC contracts for: an explicit opt-in Finalize budget; candidate/original
@@ -322,7 +366,13 @@ win. Normal users should see only “REVIEW: candidate preserves listed evidence
 inspect intent,” while developers can inspect candidate digest/patch, oracle
 command and version, attempts and split times. Acceptance never auto-applies code.
 
-Missing adoption evidence: authentic multi-repository agent tasks, retained real
+Issue completion boundary: the two constructed project families satisfy the
+calibration selection only. The issue's request for more than one actual repository
+remains **outstanding**, not implicitly waived by the conservative recommendation.
+This PR can land calibration findings but does not establish full completion of
+#356 without separately accepting that scope or running the missing corpus.
+
+Missing adoption evidence: faithful minimal-feedback AX trials, authentic multi-repository agent tasks, retained real
 supersession history, broader final-patch searches, independently authored external
 acceptance, longer repair-loop trials, multiple model families and real build/test
 cost. The constructed dependency case does not measure package installation or

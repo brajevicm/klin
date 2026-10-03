@@ -23,7 +23,7 @@ for arm in 'AC':
     retained = {i for i, a in enumerate(case['segments']) if a['before'] != a['after']}
     assert run.tree(case, retained) == restored
     with tempfile.TemporaryDirectory() as out:
-        row = run.experiment(case, arm, 'forward', 'semantic', 0, Path(out), 1)
+        row = run.experiment(case, arm, 'forward', 'semantic', 0, Path(out), 1, json.loads(json.dumps(run.trajectory(case))))
     packet = json.loads((here / 'ax' / f'klin356-repair-{arm}.json').read_text())
     assert row['final_tree'] == run.digest(packet['final_files'])
     assert row['removed_cost'] > 0

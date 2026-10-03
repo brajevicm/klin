@@ -7,7 +7,7 @@ import sys
 root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / 'raw'
 rows = json.loads((root / 'results.json').read_text())
 columns = ['task', 'arm', 'runs', 'cost_before', 'removed_range', 'oracle_calls_median',
-           'oracle_seconds_median', 'holdout_seconds_median', 'analysis_seconds_median',
+           'unique_search_median', 'duplicate_search_median', 'unique_oracle_median', 'oracle_seconds_median', 'holdout_seconds_median', 'analysis_seconds_median',
            'harmful_runs', 'inconclusive_observations', 'one_minimal_runs',
            'final_trees', 'repeatable', 'trajectory_bytes', 'feedback_bytes_range']
 lines = ['\t'.join(columns)]
@@ -30,6 +30,9 @@ for task in sorted({r['task'] for r in rows}):
                                          for a in observation['attempts']) for r in selected)
         values = [task, arm, len(selected), selected[0]['before_cost'], span('removed_cost'),
                   statistics.median(r['oracle_executions'] for r in selected),
+                  statistics.median(r['unique_search_candidates'] for r in selected),
+                  statistics.median(r['duplicate_search_candidates'] for r in selected),
+                  statistics.median(r['unique_oracle_candidates'] for r in selected),
                   round(seconds('oracle'), 6), round(seconds('independent'), 6),
                   round(statistics.median(r['analysis_seconds'] for r in selected), 6),
                   sum(r['harmful'] for r in selected), sum(r['inconclusive'] for r in selected),

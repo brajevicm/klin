@@ -24,6 +24,12 @@ jobs:
         with:
           shared-key: gates
           save-if: false
+      - name: Verify counterfactual research evidence
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 docs/counterfactual-2026-10-03/probe-test.py
+          python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22

@@ -114,11 +114,9 @@ def groups(case, atomization):
     eligible = [i for i, a in enumerate(case['segments']) if a['before'] != a['after']
                 and not any(a['path'].startswith(p) for p in case.get('excluded', []))]
     by_file = defaultdict(list)
-    by_turn = defaultdict(list)
     for i in eligible:
         a = case['segments'][i]
         by_file[a['path']].append(i)
-        by_turn[a['turn']].append(i)
     # Hunk spans from the final diff, then project onto immutable source segments.
     hunks = []
     for path, ids in by_file.items():
@@ -143,7 +141,7 @@ def groups(case, atomization):
             if selected:
                 hunks.append(sorted(selected))
     fine = [[i] for i in eligible] if atomization == 'semantic' else []
-    return eligible, [list(by_file.values()), hunks, fine], list(by_turn.values())
+    return eligible, [list(by_file.values()), hunks, fine]
 
 
 def trajectory(case):
@@ -157,9 +155,36 @@ def trajectory(case):
     return history
 
 
-def experiment(case, arm, ordering, atomization, repetition, output, repeats):
+def trajectory_groups(case, history, eligible):
+    """Replay only retained ids/fingerprints against the independent source basis."""
+    retained = set()
+    groups = []
+    previous_turn = 0
+    for event in history:
+        ids = event['groups']
+        if (not isinstance(event['turn'], int) or event['turn'] <= previous_turn
+                or not ids or len(ids) != len(set(ids))
+                or any(type(i) is not int or i < 0 or i >= len(case['segments']) for i in ids)
+                or retained.intersection(ids)
+                or event['before'] != digest(tree(case, retained))):
+            raise ValueError('invalid trajectory event or before fingerprint')
+        retained.update(ids)
+        if event['after'] != digest(tree(case, retained)):
+            raise ValueError('invalid trajectory after fingerprint')
+        selected = [i for i in ids if i in eligible]
+        if selected:
+            groups.append(selected)
+        previous_turn = event['turn']
+    if tree(case, retained) != tree(case, {i for i, a in enumerate(case['segments'])
+                                         if a['before'] != a['after']}):
+        raise ValueError('trajectory does not replay the final source tree')
+    return groups
+
+
+def experiment(case, arm, ordering, atomization, repetition, output, repeats, history):
     start = time.monotonic()
-    eligible, patch_groups, turn_groups = groups(case, atomization)
+    eligible, patch_groups = groups(case, atomization)
+    turn_groups = trajectory_groups(case, history, eligible) if arm == 'B' else []
     retained = {i for i, a in enumerate(case['segments']) if a['before'] != a['after']}
     base = tree(case, set())
     final = tree(case, retained)
@@ -219,18 +244,24 @@ def experiment(case, arm, ordering, atomization, repetition, output, repeats):
     harmful = initial == 'pass' and final != original and ((independent_before == 'pass' and independent == 'fail') or design_lost)
     before_cost = cost(base, tree(case, {i for i, a in enumerate(case['segments']) if a['before'] != a['after']}))
     after_cost = cost(base, final)
-    history = trajectory(case)
     history_bytes = len(json.dumps(history, separators=(',', ':')).encode())
+    oracle_id = digest(dict(text=case['oracle'], runtime=RUNTIMES[case['repo']],
+                            repeats=repeats, timeout=LIMIT, output=OUTPUT_LIMIT))
+    search = [a for a in attempts if a['evidence'] == 'oracle'
+              and (isinstance(a['candidate'], list) and a['candidate'][0] != 'audit'
+                   or a['candidate'] == 'collapse-identity-boundary')]
+    unique_search = len({a['tree'] for a in search})
     feedback = ''
     if before_cost > after_cost:
         feedback = (f"REVIEW {case['name']}: a candidate removed {before_cost - after_cost} edit lines "
-                    f"under frozen oracle {digest(case['oracle'])[:12]}. Preserve requested intent: "
-                    f"{case['intent']} Independent holdout: {independent}. "
+                    f"under frozen oracle {oracle_id[:12]}. Preserve requested intent. "
                     'Inspect one candidate; do not edit merely to clear this observation.')
     row = dict(task=case['name'], repository=case['repo'], shape=case['shape'], arm=arm,
                order=ordering, atomization=atomization, repetition=repetition,
-               oracle_id=digest(dict(text=case['oracle'], runtime=RUNTIMES[case['repo']],
-                                    repeats=repeats, timeout=LIMIT, output=OUTPUT_LIMIT)),
+               oracle_id=oracle_id,
+               unique_search_candidates=unique_search,
+               duplicate_search_candidates=len(search) - unique_search,
+               unique_oracle_candidates=len({a['tree'] for a in attempts if a['evidence'] == 'oracle'}),
                initial=initial, groups_considered=considered, audit_groups=len(audit),
                declared_search_groups=len(search_groups) if arm != 'C' else int(bool(case.get('transform'))),
                oracle_executions=sum(len(a['attempts']) for a in attempts if a['evidence'] == 'oracle'),
@@ -283,6 +314,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--task', default='all')
     parser.add_argument('--security', action='store_true')
+    parser.add_argument('--trajectory', type=Path, help='retained history to replay instead of capturing fixture turns')
     parser.add_argument('--repeat', type=int, default=2)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
@@ -298,6 +330,11 @@ if __name__ == '__main__':
     selected = [c for c in cases() if args.task in ('all', c['name'])]
     if not selected:
         parser.error('unknown task')
+    history_file = args.trajectory or args.output / 'trajectory.json'
+    if args.trajectory is None:
+        history_file.write_text(json.dumps({c['name']: trajectory(c) for c in selected}, separators=(',', ':')) + '\n')
+    # B consumes the serialized representation, never segment turn metadata.
+    histories = json.loads(history_file.read_text())
     rows = []
     for case in selected:
         for arm in ('A', 'B', 'C'):
@@ -305,11 +342,10 @@ if __name__ == '__main__':
                 for atomization in ('hunk', 'semantic'):
                     for repetition in range(args.repeat):
                         row = experiment(case, arm, order, atomization, repetition,
-                                         args.output, 3 if case['name'] == 'flaky' else 1)
+                                         args.output, 3 if case['name'] == 'flaky' else 1, histories[case['name']])
                         rows.append(row)
         print(case['name'], 'completed', flush=True)
     (args.output / 'results.json').write_text('[\n' + ',\n'.join(json.dumps(row, separators=(',', ':')) for row in rows) + '\n]\n')
-    (args.output / 'trajectory.json').write_text(json.dumps({c['name']: trajectory(c) for c in selected}, separators=(',', ':')) + '\n')
     (args.output / 'environment.json').write_text(json.dumps(dict(
         runtimes=RUNTIMES, platform=sys.platform, python=sys.executable,
         node=shutil.which('node'), corpus_id=digest(cases()),
