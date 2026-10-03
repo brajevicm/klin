@@ -218,6 +218,19 @@ unrelated gate and process variation. These runs exercise one alias config;
 the config-heavy improvement is structural indexing, not a measured claim.
 
 
+[root-proof-survey.json](typescript-aliases-2026-10-03/root-proof-survey.json)
+measures root proof over the nine survey repositories with direct-config
+alias sites, at their pinned commits, with `root_proof.py` and the head
+binary. The run uses an empty base and one source layer. Of 994 recognized
+direct sites, 31 report the hole "configuration klin cannot prove", and all
+31 are in Seelen-UI. That hole also covers uncertain and ambiguous configs.
+Seelen-UI's tsconfig excludes `libs/core/**`, a shape klin does not
+support, so it declines include proof for that config. No other repository
+reports an alias hole. The unsupported shapes are `src/**/*.vue` and
+`src/**/*.js` in include, and `libs/core/**` and `**/*.spec.ts` in exclude.
+The nested, extends and references repositories stay outside V1 and were
+not measured again.
+
 The OpenStock graph counts above were measured again after the
 recursive-include correction (2026-10-04). The
 #361 and #355 planted routes were replayed again after the correction: CI
