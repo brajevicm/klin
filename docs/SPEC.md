@@ -4535,7 +4535,10 @@ stronger claim for it.
 Feedback level plus: a CI run with `--strict`, on a checkout the agent never
 touched, against a protected branch, with `klin.json`, the workflow, the hook
 settings and CODEOWNERS under CODEOWNERS. At this level a gate holds against
-an agent, and loosening it takes a reviewed commit by a person.
+an agent, and loosening it takes a reviewed commit by a person. This level
+enforces klin's measurements, not the project's build: per 9.3, `klin gate`
+outside the hook runs no build entry, so the project's own CI MUST run the
+build, type-check or tests it requires.
 
 One finding is the exception. A deleted test is a NOTE in CI (8.2), so at
 this level it holds only through the hook's one question, the guard in front
