@@ -1532,7 +1532,11 @@ such as `return null` or `{}` on a function no test convention marks, is not
 judged, and adding one is a spec change with its own legitimate-use fixture.
 Second known limit: a text the grammar rejects keeps its line patterns and
 loses its shapes, and the run says nothing about the loss, so a file that
-does not parse can only under-report.
+does not parse can only under-report. A parser resource error is not a
+grammar rejection: `stubs` MUST propagate the named error of section 13,
+including in a direct `stubs` command or a run selecting only that gate.
+Pinned by `an_oversized_source_preserves_the_named_resource_error_in_stubs`
+in `tests/stubs.rs`.
 
 **`dead-symbols` judges private declarations.** The structural index supplies
 module-level functions, methods, types, constants and variables from Rust and
@@ -4281,7 +4285,8 @@ supported function in both trees and the survey. The CLI pins are
 `the_source_line_resource_ceiling_is_inclusive_and_counts_utf8_bytes`,
 `dense_sub_ceiling_lines_keep_every_function_in_both_trees_and_the_survey`,
 `a_minified_bundle_reports_a_resource_error_in_json` and
-`an_oversized_test_source_preserves_the_named_resource_error`.
+`an_oversized_test_source_preserves_the_named_resource_error` and
+`an_oversized_source_preserves_the_named_resource_error_in_stubs`.
 
 The Stop hook, excluding the project's own build, SHOULD finish within 5
 seconds on a tree of 2,000 source files when scoped with `--changed` to 20

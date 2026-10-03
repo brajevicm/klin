@@ -97,3 +97,23 @@ combined parser scan and representation changes show no latency increase
 in this fixture. Median RSS increases by 442,368 bytes, consistent with the
 small per-file sharing table and shared-string metadata on short-line
 source. This comparison does not isolate the parser scan's individual cost.
+
+## Stubs resource-error propagation
+
+The final adversarial review found a second convention reader that swallowed
+parser errors: `convention::stubs` returned an empty shape set for either a
+grammar rejection or a resource refusal. The new CLI regression first
+reproduced an exit-0 JSON report over an 84,000-byte JavaScript source line.
+
+`convention::stubs` now returns `Result`, and resource errors propagate
+through `markers::shapes` and `Walk::read`. Normal grammar rejections still
+retain the check's existing behavior of reading line patterns without body
+shapes. The regression checks both `gate --gate stubs --json` and direct
+`stubs`, requiring exit 2 and the complete file, line, measured byte count
+and ceiling. The remaining parser-call audit found only the survey and
+explicit tolerant readers intentionally omitting errors.
+
+The review also identified dense declaration-line text retention in
+inventory's `Test` representation. That is outside the complexity-specific
+sharing contract; it remains a separate follow-up, not a total-memory claim
+made by this change.

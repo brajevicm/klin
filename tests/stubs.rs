@@ -630,3 +630,32 @@ fn a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds() {
         run.out
     );
 }
+
+#[test]
+fn an_oversized_source_preserves_the_named_resource_error_in_stubs() {
+    let tree = tree();
+    tree.write("src/bundle.js", &"function bundled(){};".repeat(4_000));
+    let message =
+        "src/bundle.js:1: source-line resource ceiling exceeded (84000 bytes; ceiling 65536 bytes)";
+    let run = tree.run(&["gate", "--gate", "stubs", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = run.json();
+    assert!(
+        report["findings"]
+            .as_array()
+            .expect("findings")
+            .iter()
+            .any(|finding| {
+                finding["gate"] == "stubs"
+                    && finding["outcome"] == "error"
+                    && finding["text"]
+                        .as_str()
+                        .is_some_and(|text| text.contains(message))
+            }),
+        "{}",
+        run.out
+    );
+    let direct = tree.run(&["stubs"]);
+    assert_eq!(direct.code, 2, "{}", direct.out);
+    assert!(direct.says(message), "{}", direct.out);
+}
