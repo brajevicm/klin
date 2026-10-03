@@ -37,17 +37,19 @@ def at(root, commit, base):
     subprocess.run(["rm", "-rf", str(root / ".git" / "klin")], check=True)
 
 
-def findings(binary, root, changed):
+def findings(binary, root, changed, every=False):
     args = [binary, "gate", "--gate", "complexity", "--json"]
     if changed:
         args.append("--changed")
     run = subprocess.run(args, cwd=root, capture_output=True, text=True)
     data = json.loads(run.stdout)
     sites = {}
-    for finding in data["findings"]:
+    for at, finding in enumerate(data["findings"]):
         if finding.get("outcome") not in ("new", "worsened") or "file" not in finding:
             continue
         key = (finding["file"], finding.get("line", 0), finding["text"])
+        if every:
+            key += (at,)
         sites[key] = (finding["outcome"], finding["values"])
     return sites, data["gates"][0].get("held", 0), data["exit"]
 
@@ -56,13 +58,13 @@ def census(label, root, proto, out):
     empty = git(root, "commit-tree", git(root, "hash-object", "-t", "tree", "/dev/null"), "-m", "empty")
     head = git(root, "commit-tree", "HEAD^{tree}", "-p", empty, "-m", "head")
     at(root, head, empty)
-    sites, _, _ = findings(proto, root, False)
+    sites, _, _ = findings(proto, root, False, every=True)
     states = collections.Counter()
     over_floor = collections.Counter()
-    by_text = collections.Counter((file, text) for file, _, text in sites)
+    by_text = collections.Counter((file, text) for file, _, text, _ in sites)
     shared_text = sum(count for count in by_text.values() if count > 1)
     shared_identified = 0
-    for (file, _, text), (_, values) in sites.items():
+    for (file, _, text, _), (_, values) in sites.items():
         identity = values.get("identity", "")
         state = "identified" if ":" in identity else identity.split("?", 1)[-1]
         states[state] += 1

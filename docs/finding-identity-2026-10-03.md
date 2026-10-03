@@ -198,9 +198,9 @@ The census shows how much this covers.
 
 | Repository | Functions | Identified | Over cc 10 identified | Over the floors identified |
 |---|---|---|---|---|
-| klin | 6,025 | 4,733 (79%) | 107 of 110 | 382 of 390 |
-| TS-A | 2,137 | 712 (33%) | 23 of 30 | 213 of 232 |
-| TS-B | 6,782 | 2,456 (36%) | 137 of 159 | 463 of 567 |
+| klin | 6,067 | 4,735 (78%) | 107 of 110 | 382 of 390 |
+| TS-A | 2,153 | 716 (33%) | 23 of 30 | 213 of 232 |
+| TS-B | 6,924 | 2,462 (36%) | 137 of 159 | 463 of 567 |
 
 Most unidentified TypeScript functions are anonymous callbacks: `it(...)`,
 `.map(...)`, `useEffect(...)`. Few of them reach a ceiling. Over the floors,

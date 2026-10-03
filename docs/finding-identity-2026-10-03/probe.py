@@ -381,7 +381,7 @@ def outcome(binary, root, gate, changed):
         values = finding["values"]
         metric = values.get("cc", values.get("dead"))
         matched = finding.get("matched") or {}
-        was = matched.get("cc") if isinstance(matched, dict) else None
+        was = (matched.get("values") or {}).get("cc") if isinstance(matched, dict) else None
         at = f"{finding['file']}:{finding['line']}"
         parts.append(f"{finding['outcome']} {at} {metric}" + (f" (was {was})" if was is not None else ""))
     stale = sum(1 for note in data["notes"] if "match" in note.get("text", "") or note.get("outcome") == "unmatched")
