@@ -541,15 +541,10 @@ The 1M row does not repeat the 300k result:
 - The hook is 8 ms slower on the mean of the three medians, and 13 ms slower
   on their median. The median is above the preferred 10 ms.
 - Most of that is in `dead-symbols` (3 to 11 ms) and `reachability` (5 to
-  7 ms), which carry no identity and take today's matcher unchanged. One
-  candidate cause is the `proto4` check that scans every finding and entry
-  for an identity before it picks the matcher. Another is a different code
-  layout in the binary. This note did not prove either.
-
-So the identity is a candidate for the ordinary Stop at about 1 ms, and the
-rest of the 1M cost belongs to how the judge picks its path. An
-implementation must show at 1M/20 that a gate with no identity costs what it
-costs today (section 9).
+  7 ms), which carry no identity and take today's matcher unchanged. The
+  first candidate cause was the `proto4` check that scans every finding and
+  entry for an identity before it picks the matcher. The `proto5` rows below
+  make that unlikely.
 
 `proto5` removes the scan: every gate but `complexity` calls today's judge
 directly, and `complexity` splits its files by language before it judges.
@@ -564,7 +559,33 @@ Measured after that change, alternating, 5 iterations a row:
   whole run, about 100,000 findings, takes 4.883 ± 0.028 s against
   4.911 ± 0.033 s, a difference of about one σ.
 
-The 1M row did not run again for `proto5`.
+- `structural_1m` `warm20`, three rows a binary, also at the owner's
+  request:
+
+  | Binary | Hook medians (ms) | `complexity_ms` | `dead-symbols_ms` | `reachability_ms` |
+  |---|---|---|---|---|
+  | baseline | 1367, 1334, 1328 | 27, 27, 27 | 561, 542, 559 | 310, 301, 303 |
+  | `proto5` | 1369, 1345, 1339 | 28, 28, 28 | 562, 556, 560 | 310, 309, 306 |
+
+At 1M, `proto5` repeats the `proto4` result:
+
+- The identity's own cost is 1 ms again: `complexity_ms` is 1 ms higher in
+  each pair.
+- The hook is slower by 2, 11 and 11 ms in the three pairs: 8 ms on the mean
+  and 11 ms on the median, against 8 and 13 ms under `proto4`.
+- Under `proto5`, `dead-symbols` and `reachability` run today's matcher code
+  with no scan, and they are still 0 to 14 ms slower in some pairs. So the
+  scan was probably not the cause. A different code layout in the binary is
+  one remaining explanation. These rows do not prove it.
+- The baseline's own hook median ranges from 1328 to 1367 ms over these
+  rows, a spread of 39 ms, which is larger than the gap. But the prototype
+  was slower in all six pairs of `proto4` and `proto5`, so the gap is not
+  shown to be noise either.
+
+So the identity is a candidate for the ordinary Stop at about 1 ms. A gap of
+about 10 ms in the whole hook remains at 1M/20, and its cause is not proven.
+An implementation must show at 1M/20 that it costs what today costs
+(section 9).
 
 ## 9. Smallest implementation boundary
 
@@ -584,11 +605,12 @@ If a person admits this, the first ticket is `complexity` alone:
      rule and the move-target rule of section 4. One body-hash pass then
      runs over what both passes leave, as today's second pass does.
 
-   At 1M/20 the whole hook under `proto4` was 8 to 13 ms slower, and the
-   cause is not proven (section 8). `proto5` was measured at 300k/20 and on
-   a JavaScript-only tree only. So the implementation must show at 1M/20
-   that a gate with no identity, and a `complexity` run over unsupported
-   languages only, cost what they cost today, before it ships.
+   At 1M/20 the whole hook under `proto4` and `proto5` was 8 to 13 ms
+   slower, the identity's own share was 1 ms, and the cause of the rest is
+   not proven (section 8). `proto5` removed the scan and kept the gap. So
+   the implementation must show at 1M/20 that a gate with no identity, and a
+   `complexity` run over unsupported languages only, cost what they cost
+   today, before it ships.
 3. `complexity` computes the key in its existing walk, for Rust,
    TypeScript, TSX and Python only, marks duplicates per file, and sets
    `persists` from the function lists of both sweeps.
@@ -641,9 +663,9 @@ with its replay.
   stop.
 - F2 appeared only in the exposure replay.
 - No `dead-symbols` replay ran.
-- The 1M rows show 8 to 13 ms more for the whole hook under `proto4`,
-  mostly in gates with no identity, and this note did not find the cause.
-  `proto5` did not run at 1M.
+- The 1M rows show 8 to 13 ms more for the whole hook under `proto4` and
+  `proto5`, mostly in gates with no identity, and this note did not find the
+  cause.
 
 ## Decision
 
