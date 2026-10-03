@@ -342,6 +342,13 @@ section is committed before the reruns below.
    complete-measurement predicate registered by the second review enter the
    medians.
 
+The third-review rerun passed on a GitHub-hosted macOS 14 ARM64 runner.
+The full Python fixture output matched `expected-ruff-review.tsv` exactly;
+the representative secrets and dead-code controls produced no
+`ruff-review` finding under the shell, `env -i`, or network-denied runs.
+The exact final recipe then measured all five Python repositories with the
+complete-measurement predicate. Section 6 records those raw medians.
+
 ### How to reproduce
 
 ```bash
@@ -372,10 +379,12 @@ because pnpm 11 refuses its lockfile.
   Semgrep rules that were fixed on the sample ran on 100 new changes. They
   failed three TypeScript lines, none appropriate: N is 6, so TypeScript
   `injection` is rejected (section 3).
-- **The review pairs found nothing appropriate on real changes.** Their
-  failures were 0 to 2 per language, every one `not-appropriate`. So the
-  sample shows their noise is low. It does not show that they catch real
-  slop. Only the planted corpus shows that.
+- **The original sample found no appropriate site for the families that
+  survive in the final named recipe.** The third-review exact Ruff replay
+  still has no appropriate injection or swallowed-error site. Its holdout
+  did find five appropriate dead-code sites, but dead code left the named
+  recipe because `--ignore-noqa` raised its N to 6. #357 therefore remains
+  the value/prevalence gate for the final injection and swallowed families.
 - **The rejected pairs are noise on real code.** TypeScript `dead` has about
   110 `not-appropriate` failures per 100 changes, `condition` 54, `swallowed`
   28 and `debug` 26. Python `debug` fails two hard negatives: a CLI's `print`
@@ -565,6 +574,16 @@ be 3 and the family would stay in the recipe as review. So the suppression
 decision and the dead-code family trade against each other. That choice is a
 person's (section "Decision").
 
+The third review then narrowed the **actual**
+`ruff-review` runner to the two surviving families only: injection
+(`S102,S307,S602,S604,S605,S608`) and swallowed errors
+(`BLE001,S110,S112`). The full Python fixture probe matched
+`expected-ruff-review.tsv` exactly after that change. Representative
+`sec-plant-password` and `dead-plant-variable` controls returned no
+recipe finding under all three controlled-invocation modes
+(`ruff-review.txt`). Removing those families does not change the injection
+or swallowed admission rows above.
+
 `ruff-review.sh` ran the recipe on one plant per family and on every Python
 suppression route, under the shell seam, under `env -i` with an empty
 `HOME`, and with the network denied. The findings were the same in all
@@ -669,6 +688,23 @@ as times, and the first draft of this note reported "70.8 s". Those were the
 five `Abort trap: 6` lines. Gitleaks `dir` takes one path, so it has no
 20-file row.
 
+The final exact `ruff-review` recipe was rerun after the
+third review on **all five** Python repositories, on a GitHub-hosted macOS 14
+ARM64 runner. These rows use the complete-measurement predicate; every one of
+the 50 raw runs was valid (`cost-runs-ruff-review.tsv`):
+
+| Repository | Whole tree | 20 files |
+| --- | ---: | ---: |
+| mikf/gallery-dl | 71 ms | 32 ms |
+| astral-sh/ty | 25 ms | 24 ms |
+| teng-lin/notebooklm-py | 210 ms | 25 ms |
+| kvcache-ai/ktransformers | 117 ms | 37 ms |
+| huggingface/trl | 69 ms | 28 ms |
+
+This third-review run is a separate machine from the original cost table, so
+it is used only for the final recipe's registered phase decision rather than
+mixed into the earlier tool-to-tool timing comparison.
+
 In the replay, the per-change medians through klin were ESLint 2.7 s
 (largest 12.3 s), Semgrep 1.3 s, Ruff 71 ms, and Gitleaks 0.4 s (TypeScript)
 and 1.8 s (Python, largest 29.3 s).
@@ -677,7 +713,7 @@ The phase rules, with the #358 Stop guidance of the rerun rules:
 
 | Tool | Pairs | Stop | Finalize | Phase |
 | --- | --- | --- | --- | --- |
-| Ruff, `ruff-review` | Python injection, swallowed | 25 to 26 ms on two repositories (`cost-ruff-review.tsv`), a new external process, no value shown on real changes: not a Stop entry under #358 | 0.08 to 0.11 s | **Finalize** |
+| Ruff, `ruff-review` | Python injection, swallowed | 24 to 37 ms on all five repositories (`cost-ruff-review.tsv`), a new external process, no value shown on real changes: not a Stop entry under #358 | 0.025 to 0.210 s on all five | **Finalize** |
 | Semgrep | secrets (TypeScript), injection and secrets (Python) | 1.29 s | 6.8 s | **Finalize** |
 | Gitleaks | secrets, both languages | no file scope | 22.3 s | **Finalize** |
 | ESLint, injection | none: TypeScript `injection` is rejected | 1.06 to 3.09 s, reads `node_modules` | out of memory on tolaria | — |
@@ -1060,9 +1096,11 @@ which the CI cost decisions of #368 must allow.
 
 - **One labeler, an agent.** No person labeled a row. The planted corpus,
   the recipes and the labels come from the same agent.
-- **No positive on real code.** The five review pairs have no `appropriate`
-  failure in the sample or the holdout. Their recall comes from the planted corpus alone.
-  P is not computed for any of them, because the rules need 5 labeled rows.
+- **No positive for the final recipe on real code.** Injection and swallowed
+  errors have no `appropriate` failure in the sample or holdout. The exact
+  Ruff holdout did find five appropriate dead-code rows, but dead code was
+  rejected from the final named recipe at N 6. The final recipe's positive
+  evidence therefore still comes from the planted corpus alone.
 - **A small sample.** 54 changes touch a file of their language. A family
   with one appropriate failure per 100 changes could show none here.
 - **Klin's own Semgrep rules.** This note wrote them, found a bug in two of
@@ -1074,10 +1112,12 @@ which the CI cost decisions of #368 must allow.
 - **Dependencies at the start commit.** The TypeScript dependencies were
   installed once per repository, at the start commit, with install scripts
   off. A change that updated a dependency ran against the older one.
-- **Timing.** One machine, and no controlled workload: #358 asks for the
-  1M / 20-changed Stop workload, which this note did not run. The rerun of
-  `cost.sh` keeps every run with its exit status, and the medians use only
-  runs that wrote a report.
+- **Timing.** The original measurements use one macOS/aarch64 machine, and
+  there is no controlled 1M workload: #358 asks for that workload before any
+  Stop placement. The third-review final-recipe phase rerun used a separate
+  GitHub-hosted macOS 14 ARM64 runner across all five Python repositories.
+  Its raw rows use the complete-measurement predicate and are kept separately
+  in `cost-runs-ruff-review.tsv`.
 - **Drift scope.** ESLint 9.30.0 ran for more than 15 minutes over tolaria's
   whole tree before this note stopped it. The ESLint drift rows cover 200
   files per repository, and each drift run stops at 300 seconds.
@@ -1129,9 +1169,10 @@ What the evidence does and does not carry:
   absence as code work (section 7). Ruff avoids both under a named recipe:
   it runs offline under `env -i`, writes nothing into the tree with
   `--no-cache`, and proves its scope for the files it is given by name.
-- It does not carry value. No admitted pair caught one appropriate site in
-  the 100 sample changes, nor its Semgrep entries in the 100 holdout changes, and nothing here measured how often agents write these
-  shapes. #357 measures prevalence.
+- It does not carry value. The final injection and swallowed recipe caught no
+  appropriate site in the ordinary sample or the holdout, and nothing here
+  measured how often agents write these shapes. #357 measures prevalence
+  and closed-loop value before product admission.
 
 So three choices remain a person's:
 

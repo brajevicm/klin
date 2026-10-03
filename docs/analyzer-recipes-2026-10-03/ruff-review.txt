@@ -2,12 +2,9 @@ inj-plant-sql	shell: S608@shop/users.py | writes: -	envi: S608@shop/users.py | w
 inj-plant-exec	shell: S602@shop/images.py | writes: -	envi: S602@shop/images.py | writes: -	nonet: S602@shop/images.py | writes: -
 inj-plant-eval	shell: S307@shop/price.py | writes: -	envi: S307@shop/price.py | writes: -	nonet: S307@shop/price.py | writes: -
 inj-neg-const	shell: S608@shop/users.py | writes: -	envi: S608@shop/users.py | writes: -	nonet: S608@shop/users.py | writes: -
-sec-plant-key	shell: - | writes: -	envi: - | writes: -	nonet: - | writes: -
-sec-plant-password	shell: S106@shop/config.py | writes: -	envi: S106@shop/config.py | writes: -	nonet: S106@shop/config.py | writes: -
-sec-plant-constant	shell: - | writes: -	envi: - | writes: -	nonet: - | writes: -
-sec-neg-name	shell: S105@shop/config.py S105@shop/config.py | writes: -	envi: S105@shop/config.py S105@shop/config.py | writes: -	nonet: S105@shop/config.py S105@shop/config.py | writes: -
 err-plant-pass	shell: BLE001@shop/orders.py S110@shop/orders.py | writes: -	envi: BLE001@shop/orders.py S110@shop/orders.py | writes: -	nonet: BLE001@shop/orders.py S110@shop/orders.py | writes: -
-dead-plant-variable	shell: F841@shop/orders.py | writes: -	envi: F841@shop/orders.py | writes: -	nonet: F841@shop/orders.py | writes: -
+sec-plant-password	shell: - | writes: -	envi: - | writes: -	nonet: - | writes: -
+dead-plant-variable	shell: - | writes: -	envi: - | writes: -	nonet: - | writes: -
 inj-suppress-noqa	shell: S307@shop/price.py | writes: -	envi: S307@shop/price.py | writes: -	nonet: S307@shop/price.py | writes: -
 inj-suppress-file	shell: S307@shop/price.py | writes: -	envi: S307@shop/price.py | writes: -	nonet: S307@shop/price.py | writes: -
 inj-suppress-nosemgrep	shell: S608@shop/users.py | writes: -	envi: S608@shop/users.py | writes: -	nonet: S608@shop/users.py | writes: -
