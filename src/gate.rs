@@ -521,6 +521,13 @@ fn unchanged() -> String {
     )
 }
 
+fn unbounded_note() -> String {
+    format!(
+        "klin could not safely spend a build block, so this build failure blocks nothing. \
+         {OWN_CI}."
+    )
+}
+
 /// The note for a build whose command the shell could not find. It names the command, quotes
 /// the shell, and says the one action left, because the failing output alone told the agent
 /// nothing it could act on. ADR 0048.
@@ -672,7 +679,7 @@ impl Blocks {
             Blocks::Spent(builds) if *builds <= BLOCKS => (2, Some(*builds), None),
             Blocks::Spent(_) => (0, None, Some(stopped_blocking())),
             Blocks::Unchanged => (0, None, Some(unchanged())),
-            Blocks::Unbounded => (0, None, None),
+            Blocks::Unbounded => (0, None, Some(unbounded_note())),
         }
     }
 }
