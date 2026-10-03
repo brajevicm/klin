@@ -1,0 +1,11 @@
+commit	file	line	text	base	proto	identity
+2dede8ce39	src/surface/rust.rs	235	fn walk(&mut self, at: usize, prefix: &str, via: Option<(&str, &Export)>) {	new	worsened	complexity/1:impl Derivation > walk
+54838fa758	src/config.rs	1057	fn every_key_is_one_klin_reads(	new	worsened	complexity/1:every_key_is_one_klin_reads
+54838fa758	src/turn.rs	70	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+909fd42495	src/markers.rs	309	fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {	new	held	
+565e8b61cd	src/syntax/structural/typescript.rs	730	fn clause_names(statements: &[Node], source: &[u8]) -> BTreeMap<String, BTreeSet<String>> {	new	held	
+f7ca5abce0	src/syntax/structural/typescript.rs	529	fn exported(node: Node, source: &[u8], path: &str) -> Option<Exported> {	new	held	
+c74f2a935c	src/syntax/structural/footprint.rs	50	pub fn rows(&self) -> [(&'static str, usize); 32] {	new	worsened	complexity/1:impl Footprint > rows
+24e7fcd0b1	src/modules/rust.rs	193	fn products(	new	worsened	complexity/1:products
+7e552bdbc5	src/surface/rust.rs	90	fn index(&mut self, target: usize) {	new	worsened	complexity/1:impl Derivation > index
+33a4f12f9b	src/public_api.rs	375	fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {	new	held	

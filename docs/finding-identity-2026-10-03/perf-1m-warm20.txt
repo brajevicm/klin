@@ -1,0 +1,14 @@
+# structural_1m warm20, KLIN_BIN per binary, run from tests/performance.rs on the branch at cfeb7906
+row1m-base-1.txt loc=1033827 median_ms=1342 complexity_ms=27 dead-symbols_ms=554 reachability_ms=298 stop_total_ms=1299 
+row1m-proto4-1.txt loc=1033827 median_ms=1349 complexity_ms=28 dead-symbols_ms=565 reachability_ms=303 stop_total_ms=1305 
+row1m-base-2.txt loc=1033827 median_ms=1321 complexity_ms=27 dead-symbols_ms=552 reachability_ms=297 stop_total_ms=1277 
+row1m-proto4-2.txt loc=1033827 median_ms=1339 complexity_ms=28 dead-symbols_ms=561 reachability_ms=304 stop_total_ms=1294 
+row1m-base-3.txt loc=1033827 median_ms=1326 complexity_ms=27 dead-symbols_ms=553 reachability_ms=299 stop_total_ms=1281 
+row1m-proto4-3.txt loc=1033827 median_ms=1326 complexity_ms=28 dead-symbols_ms=556 reachability_ms=304 stop_total_ms=1282 
+# proto5 runs, alternating with the baseline, at 54679efc's tests/performance.rs
+row1m-p5-base-1.txt loc=1033827 median_ms=1367 complexity_ms=27 dead-symbols_ms=561 reachability_ms=310 stop_total_ms=1322 
+row1m-p5-proto5-1.txt loc=1033827 median_ms=1369 complexity_ms=28 dead-symbols_ms=562 reachability_ms=310 stop_total_ms=1324 
+row1m-p5-base-2.txt loc=1033827 median_ms=1334 complexity_ms=27 dead-symbols_ms=542 reachability_ms=301 stop_total_ms=1288 
+row1m-p5-proto5-2.txt loc=1033827 median_ms=1345 complexity_ms=28 dead-symbols_ms=556 reachability_ms=309 stop_total_ms=1299 
+row1m-p5-base-3.txt loc=1033827 median_ms=1328 complexity_ms=27 dead-symbols_ms=559 reachability_ms=303 stop_total_ms=1284 
+row1m-p5-proto5-3.txt loc=1033827 median_ms=1339 complexity_ms=28 dead-symbols_ms=560 reachability_ms=306 stop_total_ms=1294 

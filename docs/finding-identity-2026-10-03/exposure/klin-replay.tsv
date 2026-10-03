@@ -1,0 +1,97 @@
+commit	file	line	text	base	proto	identity
+33c2844685	src/markers.rs	623	fn shapes(	new	worsened	complexity/1:shapes
+33c2844685	src/syntax/convention.rs	197	pub fn stubs(path: &str, source: &str) -> Result<Vec<Stub>, Error> {	new	worsened	complexity/1:stubs
+7300096dd4	src/syntax/convention.rs	40	pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Result<Vec<Test>, Error> {	new	worsened	complexity/1:tests
+2dede8ce39	src/surface/rust.rs	235	fn walk(&mut self, at: usize, prefix: &str, via: Option<(&str, &Export)>) {	new	worsened	complexity/1:impl Derivation > walk
+2dede8ce39	src/surface/rust.rs	291	fn module_item(&mut self, at: usize, path: &str, via: Option<(&str, &Export)>) {	new	held	
+af5548b174	src/modules/mod.rs	183	fn finished(	new	worsened	complexity/1:finished
+c5d9002721	src/base.rs	186	pub fn materialize(run: &impl Run, before: &str, scope: Option<&[Change]>) -> Result<Prior, Error> {	new	held	
+c5d9002721	src/base.rs	198	pub fn laid_out(run: &impl Run, before: &str, light: Option<&[Change]>) -> Result<Prior, Error> {	new	held	
+c5d9002721	src/base.rs	366	fn held(run: &impl Run, laid: Laid, dir: tempfile::TempDir, changes: &[Change]) -> Prior {	new	held	
+c5d9002721	src/syntax/structural/mod.rs	406	pub fn keep(	new	worsened	complexity/1:impl Extracted > keep
+c5d9002721	src/tree.rs	43	pub fn root(&self) -> &Path {	new	held	
+fb0bc592e4	src/files.rs	178	fn covers(tree_root: &Path, directory: &Path) -> Option<String> {	new	held	
+fb0bc592e4	src/files.rs	194	fn linked(tree_root: &Path, inside: &Path) -> bool {	new	held	
+fb0bc592e4	src/files.rs	206	fn select(tree_root: &Path, files: &[String], directory: &str, wanted: &Wanted, into: &mut Found) {	new	held	
+bac6a3f2ef	src/files.rs	140	pub fn under<'a>(	new	worsened	complexity/1:under
+bac6a3f2ef	src/files.rs	154	pub fn found<'a>(	new	worsened	complexity/1:found
+bac6a3f2ef	src/files.rs	206	fn select(tree: &Path, files: &[String], directory: &str, wanted: &Wanted, into: &mut Found) {	new	held	
+5bfcb9b0fe	src/gate.rs	1383	fn add(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) -> Result<(), Error> {	new	held	
+489a041d43	src/base.rs	578	pub fn whole<'a>(	new	worsened	complexity/1:whole
+489a041d43	src/syntax/mod.rs	348	pub fn rejected<'a>(	new	worsened	complexity/1:rejected
+e852f6342c	src/config.rs	256	fn document_map_shape(	new	worsened	complexity/1:document_map_shape
+e852f6342c	src/config.rs	285	fn document_shape(	new	worsened	complexity/1:document_shape
+e852f6342c	src/reference.rs	92	fn document_map(document: &Key) -> Value {	new	held	
+54838fa758	src/ceiling.rs	152	fn step_error(file: &Path, section: &str, key: &str, date: &str, must_be: &str) -> Error {	new	held	
+54838fa758	src/check.rs	597	pub fn sections() -> Vec<Section> {	new	worsened	complexity/1:sections
+54838fa758	src/complexity.rs	375	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/config.rs	91	pub fn load(	new	worsened	complexity/1:impl Config > load
+54838fa758	src/config.rs	201	fn well_formed(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	211	fn structure(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	228	fn section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	238	fn object_section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	245	fn false_only_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	259	fn document_map_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {	new	worsened	complexity/1:document_map_shape
+54838fa758	src/config.rs	284	fn document_shape(file: &Path, check: &Section, name: &str, value: &Value) -> Result<(), Error> {	new	worsened	complexity/1:document_shape
+54838fa758	src/config.rs	307	fn retired_list(file: &Path, check: &Section) -> Result<(), Error> {	new	worsened	complexity/1:retired_list
+54838fa758	src/config.rs	608	fn dynamic_conventions(	new	worsened	complexity/1:dynamic_conventions
+54838fa758	src/config.rs	846	fn named_entries_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {	new	held	
+54838fa758	src/config.rs	1057	fn every_key_is_one_klin_reads(	new	worsened	complexity/1:every_key_is_one_klin_reads
+54838fa758	src/conventions.rs	285	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/dead_symbols.rs	85	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/doc_citations.rs	92	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/doc_size.rs	95	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/escapes.rs	166	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/layering.rs	178	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/markers.rs	257	pub fn run(	new	worsened	complexity/1:run
+54838fa758	src/project.rs	226	pub fn load(	new	worsened	complexity/1:impl Project > load
+54838fa758	src/public_api.rs	86	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/radius.rs	103	pub fn asked(root: &Path, sections: &[Section], out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/reachability.rs	139	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/sarif.rs	91	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/stubs.rs	110	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+54838fa758	src/turn.rs	70	pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {	new	held	
+2aab50aa41	src/config.rs	153	pub fn policy(&self, section: &str, keys: &[Key]) -> Result<Map<String, Value>, Error> {	new	held	
+44bbf4b7df	src/modules/rust.rs	646	fn target_of(&self, from: usize, path: &str, import: bool) -> Reached {	new	worsened	complexity/1:impl Crate > target_of
+44bbf4b7df	src/syntax/structural/mod.rs	1264	fn resolvable(	new	worsened	complexity/1:impl Reading > resolvable
+6127de99ae	src/syntax/structural/mod.rs	1251	fn resolvable(&self, node: Node, segments: &[String]) -> Option<QualifiedPath> {	new	worsened	complexity/1:impl Reading > resolvable
+6127de99ae	src/syntax/structural/rust.rs	699	fn qualified(node: Node, source: &[u8]) -> Option<Vec<String>> {	new	held	
+ef451b2cf3	src/markers.rs	148	fn record(	worsened	new	complexity/1:impl Pattern > record
+ef451b2cf3	src/markers.rs	672	fn collected(kind: &Kind, seen: BTreeMap<(String, String), Tally>) -> (Vec<Finding>, Marks) {	new	worsened	complexity/1:collected
+ef451b2cf3	src/markers.rs	699	fn record<'a>(	new	worsened	complexity/1:record
+909fd42495	src/markers.rs	309	fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {	new	held	
+89a0fab8a3	src/complexity.rs	493	fn said(&self, prior: &base::Prior) -> String {	new	held	
+f8e367fa71	src/complexity.rs	308	fn finding(&self, ceilings: &Ceilings) -> Finding {	new	worsened	complexity/1:impl Function > finding
+576d48de1e	src/reachability.rs	550	fn aliased(index: &SourceIndex) -> HashMap<(LanguageId, &str), Vec<Declared<'_>>> {	new	worsened	complexity/1:aliased
+6d6d939b35	src/markers.rs	61	fn ranges(self, rel: &str, text: &str) -> Option<Vec<(u64, u64)>> {	new	worsened	complexity/1:impl TestCode > ranges
+6d6d939b35	src/scope.rs	212	pub fn new(directories: &[String]) -> Roots {	new	held	
+ba1e85b1c0	src/markers.rs	478	fn over(tests: Option<Tests>) -> Walk {	new	held	
+2af5116313	tests/harness/mod.rs	232	fn small_commits(many: usize) -> impl Iterator<Item = Commit> {	new	held	
+2af5116313	tests/harness/mod.rs	241	fn big_commits(many: usize) -> impl Iterator<Item = Commit> {	new	held	
+4b02dec49e	src/markers.rs	438	fn over(test_roots: &'a [String]) -> Walk<'a> {	new	held	
+17f9ef5983	src/survey.rs	183	fn outermost(directories: &[String]) -> Vec<String> {	new	held	
+bb74fb08b6	src/survey.rs	268	pub fn ancestors(path: &str) -> impl Iterator<Item = &str> {	new	held	
+af019f8733	src/survey.rs	189	fn outermost(found: &[String]) -> Vec<String> {	new	worsened	complexity/1:outermost
+af019f8733	src/survey.rs	221	fn test_roots(merged: &[String], manifests: &[String], paths: &[String]) -> Vec<String> {	new	worsened	complexity/1:test_roots
+47adc0de34	src/syntax/structural/typescript.rs	183	fn destructured(name: Node) -> Vec<Node> {	new	held	
+47adc0de34	src/syntax/structural/typescript.rs	819	fn binds<'tree>(pattern: Option<Node<'tree>>, out: &mut Vec<Node<'tree>>) {	new	held	
+565e8b61cd	src/syntax/structural/typescript.rs	730	fn clause_names(statements: &[Node], source: &[u8]) -> BTreeMap<String, BTreeSet<String>> {	new	held	
+f7ca5abce0	src/syntax/structural/typescript.rs	529	fn exported(node: Node, source: &[u8], path: &str) -> Option<Exported> {	new	held	
+f7ca5abce0	src/syntax/structural/typescript.rs	561	fn namespace_export(	new	worsened	complexity/1:namespace_export
+ec5bfc03e5	src/syntax/structural/typescript.rs	561	fn namespace_export(declaration: Node, held: Node, source: &[u8]) -> Option<Exported> {	new	worsened	complexity/1:namespace_export
+9d9b227b6c	src/surface/rust.rs	192	fn shadowing(&self, at: usize) -> Shadow {	new	worsened	complexity/1:impl Derivation > shadowing
+c74f2a935c	src/syntax/structural/footprint.rs	50	pub fn rows(&self) -> [(&'static str, usize); 32] {	new	worsened	complexity/1:impl Footprint > rows
+c74f2a935c	src/syntax/structural/footprint.rs	133	pub fn sizes() -> [(&'static str, usize); 9] {	new	worsened	complexity/1:sizes
+24e7fcd0b1	src/modules/rust.rs	193	fn products(	new	worsened	complexity/1:products
+24e7fcd0b1	src/syntax/structural/cache.rs	361	fn facts(&mut self, file: &str, language: LanguageId) -> Option<FileFacts> {	new	worsened	complexity/1:impl Reader > facts
+e494add909	src/markers.rs	118	fn stands(&self, past: &Skipped, found: &regex::Match) -> bool {	new	held	
+887ca5f51b	src/syntax/convention.rs	60	fn declared(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Test> {	new	worsened	complexity/1:declared
+887ca5f51b	src/syntax/convention.rs	96	fn marks_a_test(node: Node, source: &[u8], lines: &[&str], row: usize) -> bool {	new	worsened	complexity/1:marks_a_test
+7e552bdbc5	src/surface/rust.rs	90	fn index(&mut self, target: usize) {	new	worsened	complexity/1:impl Derivation > index
+cdcdb3d7b3	src/survey.rs	219	fn test_roots(merged: &[String], paths: &[String]) -> Vec<String> {	new	held	
+7a3b201b44	src/inventory.rs	173	fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result<Found, Error> {	new	held	
+33a4f12f9b	src/public_api.rs	360	fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink) -> u8 {	new	held	
+33a4f12f9b	src/public_api.rs	375	fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {	new	held	
+33a4f12f9b	src/syntax/mod.rs	346	pub fn unread(	new	held	
+35bc02fc63	src/shell.rs	100	fn waited(mut child: Child, time: Duration, named: &str) -> Result<ExitStatus> {	new	worsened	complexity/1:waited
+9efa467623	src/shell.rs	89	fn waited(mut child: Child, time: Duration, limit: &str) -> Result<ExitStatus> {	new	worsened	complexity/1:waited
