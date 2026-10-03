@@ -187,12 +187,18 @@ fn a_failing_build_under_json_prints_one_json_object() {
 }
 
 #[test]
-fn a_build_key_is_not_read_outside_the_hook() {
-    let tree = tree(r#""build": "exit 1","#);
+fn a_build_is_not_run_outside_the_hook() {
+    let tree = tree(r#""build": "touch build-ran","#);
+    let marker = tree.path("build-ran");
 
     for args in [&["gate"][..], &["gate", "--strict"]] {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+        assert!(
+            !marker.exists(),
+            "{args:?} ran the configured build outside the hook: {}",
+            run.out
+        );
     }
 }
 
@@ -472,6 +478,7 @@ fn a_build_count_klin_cannot_write_reports_the_failure_and_blocks_nothing() {
         assert_eq!(run.code, 0, "stop {at}: {}", run.out);
         assert!(run.says("the-compiler-spoke"), "stop {at}: {}", run.out);
         assert!(run.says("blocks nothing"), "stop {at}: {}", run.out);
+        assert!(run.says(OWN_CI), "stop {at}: {}", run.out);
     }
 }
 
