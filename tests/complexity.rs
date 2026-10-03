@@ -1962,3 +1962,67 @@ fn an_accepted_entry_that_names_test_lines_holds_a_test_function() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("all on the accepted list"), "{}", run.out);
 }
+
+#[test]
+fn an_oversized_source_line_reports_a_named_resource_error() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"in": ["."]}}"#);
+    tree.write("bundle.js", &(" ".repeat(65_536) + "function bundled() {}"));
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("bundle.js:1: source-line resource ceiling exceeded"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("source-line resource ceiling exceeded (65557 bytes; ceiling 65536 bytes)"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn the_source_line_resource_ceiling_is_inclusive_and_counts_utf8_bytes() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"in": ["."]}}"#);
+    let line = "//".to_owned() + &"é".repeat(32_767);
+    tree.write("bundle.js", &(line.clone() + "\r\nfunction bundled() {}\n"));
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    tree.write(
+        "bundle.js",
+        &("function bundled() {}\n".to_owned() + &line + "é"),
+    );
+    let run = tree.run(&["complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("bundle.js:2: source-line resource ceiling exceeded (65538 bytes"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn dense_sub_ceiling_lines_keep_every_function_in_both_trees_and_the_survey() {
+    for (lines, surveyed) in [(1, "10,000"), (3, "30,000")] {
+        let tree = Tree::new();
+        tree.write("klin.json", "{}");
+        let source = format!("{}\n", "()=>0;".repeat(10_000)).repeat(lines);
+        tree.write("bundle.js", &source);
+        tree.base();
+        let run = tree.run(&["complexity", "--strict"]);
+        assert_eq!(run.code, 0, "{}", run.out);
+        let count = lines * 10_000;
+        assert!(
+            run.says(&format!("{count} function(s) judged")),
+            "{}",
+            run.out
+        );
+        assert!(
+            run.says(&format!("over {surveyed} function(s)")),
+            "{}",
+            run.out
+        );
+    }
+}

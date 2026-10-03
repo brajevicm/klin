@@ -745,3 +745,22 @@ fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
     assert!(after.printed.is_empty(), "printed: {}", after.printed);
     assert!(after.says("went in this window"), "{}", after.out);
 }
+
+#[test]
+fn an_oversized_test_source_preserves_the_named_resource_error() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "tests/test_bundle.js",
+        &"test('works',()=>{});".repeat(4_000),
+    );
+    let run = tree.run(&["gate", "--gate", "inventory", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = run.json();
+    assert!(report["findings"].as_array().expect("findings").iter().any(|finding| {
+        finding["gate"] == "inventory" && finding["outcome"] == "error"
+            && finding["text"].as_str().is_some_and(|text| text.contains(
+                "tests/test_bundle.js:1: source-line resource ceiling exceeded (84000 bytes; ceiling 65536 bytes)"
+            ))
+    }), "{}", run.out);
+}

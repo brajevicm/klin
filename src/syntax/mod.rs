@@ -261,6 +261,7 @@ pub fn read<'a>(
     source: &'a str,
     language: &'static Language,
 ) -> Result<Parsed<'a>, Error> {
+    source_lines(path, source)?;
     let read = tree_of(source, language)?.filter(|tree| !tree.root_node().has_error());
     Ok(match read {
         Some(tree) => Parsed::Read(ParsedFile {
@@ -281,12 +282,32 @@ pub fn read<'a>(
 /// belongs to `read`, and a reader that comes this way says so in its own words.
 pub(crate) fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<'a>> {
     let language = language_of(path)?;
+    source_lines(path, source).ok()?;
     Some(ParsedFile {
         path,
         source,
         language,
         tree: tree_of(source, language).ok().flatten()?,
     })
+}
+
+/// Defense in depth against oversized site text, with the same deterministic ceiling
+/// before parsing in both trees, including survey and tolerant readers.
+fn source_lines(path: &str, source: &str) -> Result<(), Error> {
+    const CEILING: usize = 65_536;
+    if let Some((row, line)) = source
+        .lines()
+        .enumerate()
+        .find(|(_, line)| line.len() > CEILING)
+    {
+        return Err(Error(format!(
+            "{path}:{}: source-line resource ceiling exceeded ({} bytes; ceiling {CEILING} bytes); \
+             split the source into shorter lines or exclude the file from the check's scope",
+            row + 1,
+            line.len()
+        )));
+    }
+    Ok(())
 }
 
 fn tree_of(source: &str, language: &Language) -> Result<Option<Tree>, Error> {

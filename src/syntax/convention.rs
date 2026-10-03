@@ -5,6 +5,7 @@
 
 use tree_sitter::Node;
 
+use crate::error::Error;
 use crate::record;
 use crate::syntax::{
     Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant, walk,
@@ -36,18 +37,17 @@ pub struct Test {
 /// Every function in one source text that the language's own test convention marks as a test.
 /// The walk is the one every parsing gate does, and only the marker table is new. Nothing for a
 /// path no grammar here reads, and nothing for a text the grammar rejects. Spec 8.2.
-pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Vec<Test> {
+pub fn tests(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Result<Vec<Test>, Error> {
     let Some(language) = language_of(path) else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    let Ok(Parsed::Read(file)) = read(path, source, language) else {
-        unparsed.push(Unparsed {
-            file: path.to_string(),
-            language: language.name,
-        });
-        return Vec::new();
-    };
-    tests_in(&file)
+    match read(path, source, language)? {
+        Parsed::Read(file) => Ok(tests_in(&file)),
+        Parsed::Rejected(refused) => {
+            unparsed.push(refused);
+            Ok(Vec::new())
+        }
+    }
 }
 
 /// The same, for a caller that already holds the parse, so no check reads one file twice.
@@ -194,12 +194,12 @@ const ABSTRACT_BASES: &[&str] = &["Protocol", "ABC"];
 /// Every placeholder body shape one source text holds, at the declaration line of the function
 /// that holds it. Nothing for a path no grammar here reads, and nothing for a text the grammar
 /// rejects. Spec 8.2.
-pub fn stubs(path: &str, source: &str) -> Vec<Stub> {
+pub fn stubs(path: &str, source: &str) -> Result<Vec<Stub>, Error> {
     let Some(language) = language_of(path) else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
-    let Ok(Parsed::Read(file)) = read(path, source, language) else {
-        return Vec::new();
+    let Parsed::Read(file) = read(path, source, language)? else {
+        return Ok(Vec::new());
     };
     let lines = file.lines();
     let mut out: Vec<Stub> = file
@@ -208,7 +208,7 @@ pub fn stubs(path: &str, source: &str) -> Vec<Stub> {
         .filter_map(|node| placeholder(&file, node, &lines))
         .collect();
     out.sort_by_key(|stub| stub.line);
-    out
+    Ok(out)
 }
 
 fn placeholder(file: &ParsedFile, node: Node, lines: &[&str]) -> Option<Stub> {

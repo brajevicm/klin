@@ -602,7 +602,7 @@ impl Walk {
             self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
-                shapes(rel, &text, &mut self.seen);
+                shapes(rel, &text, &mut self.seen)?;
             }
         }
         Ok(())
@@ -620,10 +620,15 @@ fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
 }
 
 /// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.
-fn shapes(rel: &str, text: &str, seen: &mut BTreeMap<(String, String), Tally>) {
-    for stub in syntax::convention::stubs(rel, text) {
+fn shapes(
+    rel: &str,
+    text: &str,
+    seen: &mut BTreeMap<(String, String), Tally>,
+) -> Result<(), Error> {
+    for stub in syntax::convention::stubs(rel, text)? {
         record(seen, rel, stub.line, &stub.text, stub.name, stub.remedy);
     }
+    Ok(())
 }
 
 fn skipped(kind: &Kind, tests: Option<(TestCode, &Tests)>, rel: &str, text: &str) -> Skipped {

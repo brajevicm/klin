@@ -1,6 +1,7 @@
 use std::cell::OnceCell;
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 use serde_json::{Map, Value};
 use tree_sitter::Node;
@@ -284,7 +285,7 @@ struct Function {
     line: u64,
     end: u64,
     cc: u64,
-    text: String,
+    text: Rc<str>,
     body: u64,
     test: bool,
 }
@@ -321,7 +322,7 @@ impl Function {
         Finding {
             file: self.file.clone(),
             line: self.line,
-            text: self.text.clone(),
+            text: self.text.to_string(),
             values,
             body: Some(self.body),
         }
@@ -1048,16 +1049,26 @@ fn functions(
 
 /// Every function one parse holds, with the two numbers this check ratchets.
 fn parsed(file: &ParsedFile) -> Vec<Function> {
-    let at = Walked {
-        language: file.language,
-        metrics: metrics(file.language.id),
-        test_file: survey::marked(file.path),
-        file: file.path,
-        source: file.source,
-        lines: file.lines(),
-    };
+    let lines = file.lines();
+    let mut sites = HashMap::new();
     let mut out = Vec::new();
-    collect(file.root(), &at, &mut out);
+    walk_functions(file, &mut |node, cc| {
+        let row = node.start_position().row;
+        let key = (holder_row(node).filter(|holder| *holder < row), row);
+        let text = sites
+            .entry(key)
+            .or_insert_with(|| Rc::<str>::from(site(node, &lines)))
+            .clone();
+        out.push(Function {
+            file: file.path.to_string(),
+            line: row as u64 + 1,
+            end: node.end_position().row as u64 + 1,
+            cc,
+            text,
+            body: record::body_hash(node.utf8_text(file.bytes()).unwrap_or_default()),
+            test: false,
+        });
+    });
     out
 }
 
@@ -1090,13 +1101,14 @@ pub fn measured(path: &str, source: &str) -> Vec<Measured> {
     let Ok(Some(Parsed::Read(file))) = syntax::parse(path, source) else {
         return Vec::new();
     };
-    parsed(&file)
-        .iter()
-        .map(|function| Measured {
-            cc: function.cc,
-            lines: function.length(),
-        })
-        .collect()
+    let mut out = Vec::new();
+    walk_functions(&file, &mut |node, cc| {
+        out.push(Measured {
+            cc,
+            lines: (node.end_position().row - node.start_position().row + 1) as u64,
+        });
+    });
+    out
 }
 
 /// One tree being walked, with everything the walk reads off the language and this check.
@@ -1104,30 +1116,26 @@ struct Walked<'a> {
     language: &'static Language,
     metrics: &'static Metrics,
     test_file: bool,
-    file: &'a str,
     source: &'a str,
-    lines: Vec<&'a str>,
 }
 
-fn collect(node: Node, at: &Walked, out: &mut Vec<Function>) {
-    if at.language.functions.contains(&node.kind())
-        && !holds_a_body(node, at.language)
-        && !suite_callback(node, at)
-    {
-        out.push(Function {
-            file: at.file.to_string(),
-            line: node.start_position().row as u64 + 1,
-            end: node.end_position().row as u64 + 1,
-            cc: 1 + decisions(node, at),
-            text: site(node, &at.lines),
-            body: record::body_hash(node.utf8_text(at.source.as_bytes()).unwrap_or_default()),
-            test: false,
-        });
-    }
-    let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        collect(child, at, out);
-    }
+/// The same function selection and metrics for survey samples and retained gate sites.
+/// A sample never builds a Function or materializes its site text or body hash.
+fn walk_functions(file: &ParsedFile, keep: &mut impl FnMut(Node, u64)) {
+    let at = Walked {
+        language: file.language,
+        metrics: metrics(file.language.id),
+        test_file: survey::marked(file.path),
+        source: file.source,
+    };
+    syntax::walk(file.root(), &mut |node| {
+        if at.language.functions.contains(&node.kind())
+            && !holds_a_body(node, at.language)
+            && !suite_callback(node, &at)
+        {
+            keep(node, 1 + decisions(node, &at));
+        }
+    });
 }
 
 fn suite_callback(node: Node, at: &Walked) -> bool {
