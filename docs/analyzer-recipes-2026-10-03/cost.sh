@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # cost.sh CLONES: five runs of each recipe over the whole tree and over 20
 # files, at a sample repository's start commit. cost-runs.tsv keeps every run
-# with its exit status and whether it wrote a SARIF report with a `runs`
-# array. cost.tsv holds the median of the runs that did, or "-" when fewer
-# than three did.
+# with its exit status and whether its SARIF report is a complete measurement:
+# at least one run, no run with executionSuccessful false, and no error-level
+# notification. cost.tsv holds the median of the complete runs, or "-" when
+# fewer than three are. With RECIPE_ONLY=ruff-review it times only that recipe.
 set -euo pipefail
 export LC_ALL=C
 here=$(cd "$(dirname "$0")" && pwd)
@@ -21,7 +22,10 @@ timed() {
   start=$(now)
   sh "$here/recipes/run.sh" "$tool" "$tools" "$here/recipes" "$@" > /dev/null 2>&1 || code=$?
   end=$(now)
-  jq -e '.runs | type == "array"' ".klin-recipes/$tool.sarif" > /dev/null 2>&1 && report=yes
+  jq -e '(.runs | type == "array" and length > 0)
+    and ([.runs[].invocations[]? | select(.executionSuccessful == false)] | length == 0)
+    and ([.runs[].invocations[]? | (.toolExecutionNotifications[]?, .toolConfigurationNotifications[]?) | select(.level == "error")] | length == 0)' \
+    ".klin-recipes/$tool.sarif" > /dev/null 2>&1 && report=yes
   printf '%s\t%s\t%s\n' "$code" "$report" "$((end - start))"
 }
 
@@ -58,6 +62,12 @@ measure() {
 
 printf 'repository\ttool\tscope\trun\texit\treport\tms\n' > "$runs"
 printf 'repository\ttool\twhole ms\t20 files ms\n'
+if [ "${RECIPE_ONLY:-}" = ruff-review ]; then
+  for name in teng-lin/notebooklm-py kvcache-ai/ktransformers; do
+    measure "$name" '\.pyi?$' ruff-review
+  done
+  exit 0
+fi
 measure refactoringhq/tolaria '\.(ts|tsx|mts|cts)$' eslint eslint-injection semgrep gitleaks
 for name in whyour/qinglong apollographql/apollo-client Open-Dev-Society/OpenStock mountain-loop/yaak; do
   measure "$name" '\.(ts|tsx|mts|cts)$' eslint-injection

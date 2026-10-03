@@ -283,6 +283,38 @@ committed before any of the reruns below.
    files, on every TypeScript repository of the sample. The phase rules
    apply to those times.
 
+### Rules for the second review
+
+The owner's second review
+([comment](https://github.com/brajevicm/klin/pull/454#issuecomment-5971548068))
+found that the recommended Ruff recipe was never run as recommended. This
+section was committed before any of the runs below.
+
+1. **The exact recipe.** `run.sh ruff-review` runs only the entries of the
+   families still admitted for Ruff: `S102`, `S307`, `S602`, `S604`, `S605`,
+   `S608`, `S105`, `S106`, `S107`, `BLE001`, `S110`, `S112`, `F401`, `F841`
+   and `ERA001`, with `--isolated --no-cache --ignore-noqa`. `E722` stays
+   native. The flag `--ignore-noqa` is the decision on the suppression
+   bypass: the recipe reports a site whatever `# noqa` or `# ruff: noqa`
+   says, so neither comment can make review evidence disappear. A review
+   finding never blocks, so a project's deliberate `# noqa` costs a review
+   line on a line the window changed, and no block.
+2. **Admission per family of the exact recipe.** Rules 1 to 3 of the
+   section "Decision rules" apply again to each family, counting only the
+   entries of `ruff-review`. A family that fails them leaves the recipe.
+3. **The recipe-level probes.** `probe.sh` runs the Python routes with
+   `ruff-review` as the only `sarif` entry. The probes of section 9 (`env -i`,
+   network denied, writes to the tree), `suppress.sh` and `cost.sh` run with
+   `ruff-review`. The replay runs `ruff-review` on the Python changes of the
+   sample and of the holdout (`PICK=ruff-review`). Every new failure gets a
+   label by the rules of the section "Labels".
+4. **A valid measurement in `cost.sh`.** A run counts only when its report
+   has at least one run, no run says `executionSuccessful: false`, and no
+   notification has level `error`. That is the `complete` row of section 7.
+5. **The acceptance harness** of section 17 pins, per route, the exact set of
+   findings the recipe gives, including any known miss and any tolerated hard
+   negative, so a change in either is a failed test.
+
 ### How to reproduce
 
 ```bash

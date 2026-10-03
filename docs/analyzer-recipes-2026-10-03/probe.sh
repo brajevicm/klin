@@ -43,7 +43,7 @@ config() {
   case $1:$2 in
     *:none) echo '{}' ;;
     recipes-ts:recipe) recipes eslint semgrep gitleaks ;;
-    recipes-py:recipe) recipes ruff semgrep gitleaks ;;
+    recipes-py:recipe) recipes ${PY_RECIPES:-ruff semgrep gitleaks} ;;
   esac
 }
 
