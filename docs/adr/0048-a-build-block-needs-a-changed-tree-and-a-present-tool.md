@@ -1,8 +1,10 @@
 # A build block needs a changed tree and a present tool
 
-> The decision on #434 amends this: only the hook runs the build. `klin gate`
-> outside the hook, `--strict` and CI included, runs no build entry, so the
-> project's own CI must run the build and refuse a tree that does not build.
+> The decision on #434 amends this for the current product: the Stop hook is
+> the only klin path that runs the build. `klin gate` outside the hook,
+> `--strict` and CI included, runs no build entry, so the project's own CI
+> must run the build and refuse a tree that does not build. This does not
+> constrain a future agent-readiness path from using local build feedback.
 >
 > Amends ADR 0012, ADR 0022 and ADR 0040. The build-first policy stands. What
 > changes is which stops a build failure blocks, what an exit of 127 means,
