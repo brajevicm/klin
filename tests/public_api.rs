@@ -2659,3 +2659,142 @@ fn export_equals_and_an_ambient_module_are_still_holes() {
     }
     assert!(!run.says("namespace"), "{}", run.out);
 }
+
+#[test]
+fn a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write("src/lib.rs", "pub mod nested { pub use super::nested; }\n");
+
+    let run = tree.run(&["gate", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("cyclic module re-export"), "{}", run.out);
+    assert!(run.says("src/lib.rs"), "{}", run.out);
+    run.json();
+}
+
+#[test]
+fn a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write(
+        "src/lib.rs",
+        "pub use a::Item;\nmod a { pub use crate::b::Item; }\nmod b { pub use crate::a::Item; }\n",
+    );
+
+    let run = tree.run(&["gate", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("cyclic named re-export"), "{}", run.out);
+    assert!(run.says("src/lib.rs"), "{}", run.out);
+    run.json();
+}
+
+#[test]
+fn finite_aliases_of_one_module_are_each_measured() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write(
+        "src/lib.rs",
+        "mod inner { pub fn item() {} }\npub use inner as first;\npub use inner as second;\n",
+    );
+    tree.base();
+
+    let run = report(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("first::item  function  measured"), "{}", run.out);
+    assert!(run.says("second::item  function  measured"), "{}", run.out);
+}
+
+#[test]
+fn a_module_cycle_names_the_export_that_closes_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write("src/lib.rs", "pub mod nested;\n");
+    tree.write("src/nested.rs", "pub mod deeper;\n");
+    tree.write(
+        "src/nested/deeper.rs",
+        "// The closing export is in this file.\n\npub use crate::nested;\n",
+    );
+
+    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    let json = run.json();
+    let hole = &json["findings"][0];
+    assert_eq!(hole["file"], "src/nested/deeper.rs", "{}", run.out);
+    assert_eq!(hole["line"], 3, "{}", run.out);
+    assert_eq!(
+        hole["text"],
+        "pub use crate::nested; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
+        "{}",
+        run.out
+    );
+
+    tree.base();
+    tree.write("src/lib.rs", "pub mod nested;\npub use nested as alias;\n");
+    let held = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert_eq!(
+        held.json()["findings"],
+        serde_json::json!([]),
+        "{}",
+        held.out
+    );
+    assert!(held.says("pub use crate::nested;"), "{}", held.out);
+}
+
+#[test]
+fn many_named_re_exports_are_measured_without_losing_aliases() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    let mut source = "mod inner { pub struct Item; }\n".to_string();
+    for at in 0..2000 {
+        source.push_str(&format!("pub use inner::Item as Item{at};\n"));
+    }
+    tree.write("src/lib.rs", &source);
+    tree.base();
+
+    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        run.json()["gates"][0]["surface"]["measured"],
+        4000,
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_cycle_through_a_private_parent_names_the_module_export() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("Cargo.toml", PACKAGE);
+    tree.write("src/lib.rs", "mod outer;\npub use outer::inner;\n");
+    tree.write(
+        "src/outer.rs",
+        "pub mod inner {\n    pub use crate::outer as again;\n}\n",
+    );
+
+    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    let json = run.json();
+    let hole = &json["findings"][0];
+    assert_eq!(hole["file"], "src/outer.rs", "{}", run.out);
+    assert_eq!(hole["line"], 2, "{}", run.out);
+    assert_eq!(
+        hole["text"],
+        "pub use crate::outer as again; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
+        "{}",
+        run.out
+    );
+}
