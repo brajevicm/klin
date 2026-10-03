@@ -965,3 +965,175 @@ fn an_accepted_edge_does_not_follow_its_dependency_to_another_file() {
     assert!(run.says("1 new"), "{}", run.out);
     assert!(run.says("matched nothing"), "{}", run.out);
 }
+
+#[test]
+fn direct_typescript_aliases_close_cycles_and_forbidden_edges() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+    );
+    tree.write(
+        "web/model/index.ts",
+        "import { render } from \"@/view/render\";\nexport const model = 1;\n",
+    );
+    tree.write(
+        "web/view/render.tsx",
+        "import { model } from \"@/model\";\nexport const render = model;\n",
+    );
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("model → view") && run.says("cycle:"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_paths_mapping_retargets_an_unchanged_import_in_each_tree() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write("web/model/index.ts", "import { x } from \"target\";\n");
+    tree.write("web/model/local.ts", "export const x = 1;\n");
+    tree.write("web/view/remote.ts", "export const x = 1;\n");
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"baseUrl":"web","paths":{"target":["model/local"]}}}"#,
+    );
+    tree.base();
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"baseUrl":"web","paths":{"target":["view/remote"]}}}"#,
+    );
+    let run = tree.run(&["gate", "--changed", "--gate", "layering"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("model → view") && run.says("1 new"), "{}", run.out);
+}
+
+#[test]
+fn unsupported_local_paths_are_located_and_inherited_holes_stay_notes() {
+    for config in [
+        r#"{"compilerOptions":{"paths":{"@/*":["./web/*","./fallback/*"]}}}"#,
+        r#"{"extends":"package/config","compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+        r#"{"references":[{"path":"./other"}],"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write("tsconfig.json", config);
+        tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+        tree.write("web/view/x.ts", "export const x = 1;\n");
+        let new = tree.run(&["layering"]);
+        assert_eq!(new.code, 2, "{}", new.out);
+        assert!(
+            new.says("web/model/index.ts:1") && new.says("local paths alias"),
+            "{}",
+            new.out
+        );
+        tree.base();
+        let held = tree.run(&["layering", "--strict"]);
+        assert_eq!(held.code, 0, "{}", held.out);
+        assert!(held.says("NOTE:"), "{}", held.out);
+    }
+}
+
+#[test]
+fn alias_targets_of_other_kinds_and_packages_stay_outside_the_graph() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+    );
+    tree.write(".gitignore", "web/generated.ts\n");
+    tree.write("web/generated.ts", "export const x = 1;\n");
+    tree.write("web/data.json", "{}");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    tree.write("web/script.js", "export const x = 1;\n");
+    tree.write("web/model/index.ts", "import React from \"react\";\nimport X from \"@scope/package\";\nimport data from \"@/data.json\";\nimport { x } from \"@/script.js\";\nimport { y } from \"@/generated\";\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("5 external or unsupported"), "{}", run.out);
+}
+
+#[test]
+fn nested_configs_and_ambiguous_alias_candidates_are_not_guessed() {
+    for nested in [false, true] {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write(
+            "tsconfig.json",
+            r#"{"compilerOptions":{"paths":{"@/*":["./web/*"]}}}"#,
+        );
+        tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+        tree.write("web/view/x.ts", "export const x = 1;\n");
+        if nested {
+            tree.write("web/tsconfig.json", "{}");
+        } else {
+            tree.write("web/view/x/index.ts", "export const x = 2;\n");
+        }
+        let run = tree.run(&["layering"]);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert!(run.says("web/model/index.ts:1"), "{}", run.out);
+    }
+}
+
+#[test]
+fn jsonc_paths_use_exact_then_longest_wildcard_prefix() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "tsconfig.json",
+        r#"{ // comments are standard tsconfig syntax
+        "compilerOptions": { /* anchored at this config */
+            "paths": { "*": ["./missing/*"], "@/*": ["./missing/*"],
+                "@/view/*": ["./web/view/*"], "@/view/x": ["./web/model/x"], },
+        }, "include": ["web/**/*"],
+    }"#,
+    );
+    tree.write(
+        "web/model/index.ts",
+        "import { x } from \"@/view/x\";\nimport { y } from \"@/view/y\";\n",
+    );
+    tree.write("web/model/x.ts", "export const x = 1;\n");
+    tree.write("web/view/y.ts", "export const y = 1;\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("web/model/index.ts:2") && run.says("web/view/y.ts"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn local_extends_aliases_are_recognized_without_guessing_inheritance() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write("tsconfig.json", r#"{"extends":"./config/base"}"#);
+    tree.write(
+        "config/base.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["../web/*"]}}}"#,
+    );
+    tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("local paths alias"), "{}", run.out);
+}
+
+#[test]
+fn absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard() {
+    let tree = Tree::new();
+    tree.write("klin.json", WEB);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"*":["web/*"]}}}"#,
+    );
+    tree.write("web/model/index.ts", "import { x } from \"/view/x\";\n");
+    tree.write("web/view/x.ts", "export const x = 1;\n");
+    let run = tree.run(&["layering"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("1 external or unsupported"), "{}", run.out);
+}

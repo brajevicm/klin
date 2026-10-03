@@ -151,6 +151,8 @@ pub struct Dependency {
 
 /// One form a resolver supports and could not prove a target for.
 pub struct Hole {
+    /// Whether an explicit TypeScript paths rule recognized this dependency as local.
+    pub local_alias: bool,
     pub file: String,
     pub line: u64,
     pub text: String,
@@ -227,6 +229,7 @@ impl<'a> Builder<'a> {
 
     pub(super) fn hole(&mut self, file: &str, line: u64, text: &str, why: String) {
         self.holes.push(Hole {
+            local_alias: false,
             file: file.to_string(),
             line,
             text: text.to_string(),

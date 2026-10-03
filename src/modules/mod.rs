@@ -21,6 +21,7 @@ use crate::syntax::structural::{self, LanguageId};
 pub mod resolver;
 mod rust;
 mod typescript;
+mod typescript_paths;
 
 use resolver::{Attachment, Builder, Dependency, Hole, Module, Target, Topology};
 
@@ -155,7 +156,7 @@ pub struct ModuleGraph {
     pub targets: Vec<Target>,
     pub dependencies: Vec<Dependency>,
     pub holes: Vec<Hole>,
-    /// The dependencies written on something outside V1: another crate, a package, an alias.
+    /// The dependencies written on something outside V1: another crate, a package, or an unsupported form.
     pub external: usize,
     pub attached: BTreeMap<String, Attachment>,
     /// The structural files no resolver made a module of, such as a Rust file no target reaches.

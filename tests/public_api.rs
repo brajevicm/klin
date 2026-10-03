@@ -2798,3 +2798,51 @@ fn a_cycle_through_a_private_parent_names_the_module_export() {
         run.out
     );
 }
+
+#[test]
+fn unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", r#"{"name":"web","types":"index.ts"}"#);
+    tree.write("index.ts", "export interface Foo { value: string }\n");
+    tree.base();
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./missing/*","./other/*"]}}}"#,
+    );
+    tree.write(
+        "index.ts",
+        "import { hidden } from \"@/hidden\";\nexport interface Foo { value: string }\n",
+    );
+    let implementation = by_hand(&tree);
+    assert_eq!(implementation.code, 0, "{}", implementation.out);
+    tree.write("index.ts", "export { Foo } from \"@/foo\";\n");
+    let contract = by_hand(&tree);
+    assert_eq!(contract.code, 2, "{}", contract.out);
+    assert!(
+        contract.says("resolves to no TypeScript module"),
+        "{}",
+        contract.out
+    );
+}
+
+#[test]
+fn a_proven_alias_re_export_measures_the_contract_behind_it() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("package.json", r#"{"name":"web","types":"index.ts"}"#);
+    tree.write(
+        "tsconfig.json",
+        r#"{"compilerOptions":{"paths":{"@/*":["./src/*"]}}}"#,
+    );
+    tree.write("index.ts", "export { Foo } from \"@/foo\";\n");
+    tree.write("src/foo.ts", "export interface Foo { value: string }\n");
+    tree.base();
+    let base = by_hand(&tree);
+    assert_eq!(base.code, 0, "{}", base.out);
+    assert!(base.says("1 measured, 0 opaque"), "{}", base.out);
+    tree.write("src/foo.ts", "export interface Foo { value: number }\n");
+    let change = changed(&tree);
+    assert_eq!(change.code, 1, "{}", change.out);
+    assert!(change.says("Foo"), "{}", change.out);
+}

@@ -1,0 +1,3981 @@
+[
+  {
+    "repository": "Open-Dev-Society/OpenStock",
+    "commit": "e109f188480b7e5f4a8349dde582aeea45875071",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 244
+    },
+    "examples": [
+      {
+        "file": "__tests__/ai-provider.integration.test.ts",
+        "line": 2,
+        "specifier": "@/lib/ai-provider",
+        "config": "tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "apollographql/apollo-client",
+    "commit": "9659425dd0f1395d0fd7897ef882ab1082391dc2",
+    "configs": [
+      {
+        "file": "codegen/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "config/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "docs/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "eslint-local-rules/fixtures/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "eslint-local-rules/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/cra5/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/next/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/peerdeps-tsc/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/type-tests/cacheOverride/classicSignature/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/cacheOverride/defaults/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/cacheOverride/invalid/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/cacheOverride/modernSignature/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/cacheOverride/shared/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-any/differentTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-any/empty/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-any/matchingTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-any/mixed/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-structured/differentTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-structured/empty/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-structured/matchingTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-structured/mixed/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-unknown/differentTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-unknown/empty/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-unknown/matchingTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/all-unknown/mixed/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/differentTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/empty/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/matchingTypes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/customScalars/mixed/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/defaults/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/mutate/errorPolicyAll/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/mutate/errorPolicyIgnore/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/mutate/errorPolicyNone/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/query/errorPolicyAll/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/query/errorPolicyIgnore/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/query/errorPolicyNone/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/shared/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/unions/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/unionsWithOptional/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/watchQuery/errorPolicyAll/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/watchQuery/errorPolicyIgnore/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/watchQuery/errorPolicyNone/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/defaultOptions/watchQuery/returnPartialDataTrue/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/fromOptionValue/defaults/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/fromOptionValue/override/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/signatures/classic/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/signatures/modern/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/tsconfig.base.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/type-tests/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "integration-tests/type-tests/tsconfig.src.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/vite-swc/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "integration-tests/vite-swc/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/vite/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "integration-tests/vite/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "integration-tests/wrapping-library/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "scripts/codemods/ac3-to-ac4/tsconfig.build.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "scripts/codemods/ac3-to-ac4/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "scripts/codemods/ac3-to-ac4/tsconfig.tests.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "scripts/codemods/data-masking/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "scripts/memory/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.build.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@apollo/client/testing/internal": [
+            "./src/testing/internal/index.ts"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "tsconfig.tests.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 72
+    },
+    "examples": [
+      {
+        "file": "integration-tests/next/src/app/cc/ApolloWrapper.tsx",
+        "line": 12,
+        "specifier": "@/libs/schemaLink.ts",
+        "config": "integration-tests/next/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "eythaann/Seelen-UI",
+    "commit": "28bc91ac7b312854998f6086c922fc62b8157759",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@icons": [
+            "libs/ui/react/components/Icon/icons.ts"
+          ],
+          "@shared": [
+            "libs/ui/react/utils/index.ts"
+          ],
+          "react": [
+            "./node_modules/preact/compat/"
+          ],
+          "react/jsx-runtime": [
+            "./node_modules/preact/jsx-runtime"
+          ],
+          "react-dom": [
+            "./node_modules/preact/compat/"
+          ],
+          "react-dom/*": [
+            "./node_modules/preact/compat/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 32
+    },
+    "examples": [
+      {
+        "file": "libs/ui/react/components/InlineSvg/index.tsx",
+        "line": 2,
+        "specifier": "react",
+        "config": "tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "kvcache-ai/ktransformers",
+    "commit": "a5d7ad90479c9e8bdee491c16bfd563fa9d70262",
+    "configs": [
+      {
+        "file": "archive/kt-sft/ktransformers/website/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "archive/ktransformers/website/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 10
+    },
+    "examples": [
+      {
+        "file": "archive/kt-sft/ktransformers/website/src/api/api-client.ts",
+        "line": 2,
+        "specifier": "@/conf/config",
+        "config": "archive/kt-sft/ktransformers/website/tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "mountain-loop/yaak",
+    "commit": "7f302536168585be4603aea09491a78b75c57070",
+    "configs": [
+      {
+        "file": "apps/yaak-client/tsconfig.json",
+        "paths": {
+          "@yaakapp-internal/theme": [
+            "../../packages/theme/src/index.ts"
+          ],
+          "@yaakapp-internal/theme/*": [
+            "../../packages/theme/src/*"
+          ],
+          "@yaakapp-internal/ui": [
+            "../../packages/ui/src/index.ts"
+          ],
+          "@yaakapp-internal/ui/*": [
+            "../../packages/ui/src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "apps/yaak-client/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "apps/yaak-proxy/tsconfig.json",
+        "paths": {
+          "@yaakapp-internal/theme": [
+            "../../packages/theme/src/index.ts"
+          ],
+          "@yaakapp-internal/theme/*": [
+            "../../packages/theme/src/*"
+          ],
+          "@yaakapp-internal/ui": [
+            "../../packages/ui/src/index.ts"
+          ],
+          "@yaakapp-internal/ui/*": [
+            "../../packages/ui/src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "apps/yaak-proxy/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/platform/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/plugin-runtime-types/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/plugin-runtime/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/theme/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/ui/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "plugins-external/faker/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins-external/mcp-server/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/action-copy-curl/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/action-copy-grpcurl/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/action-send-folder/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-apikey/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-aws/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-basic/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-bearer/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-digest/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-jwt/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-ntlm/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-oauth1/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/auth-oauth2/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/filter-jsonpath/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/filter-xpath/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-bruno/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-curl/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-insomnia/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-openapi/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-postman-environment/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-postman/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/importer-yaak/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-1password/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-cookie/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-ctx/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-encode/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-fs/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-hash/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-json/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-prompt/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-random/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-regex/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-request/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-response/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-timestamp/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-uuid/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/template-function-xml/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "plugins/themes-yaak/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 146
+    },
+    "examples": [
+      {
+        "file": "apps/yaak-client/components/BinaryFileEditor.tsx",
+        "line": 2,
+        "specifier": "@yaakapp-internal/ui",
+        "config": "apps/yaak-client/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "refactoringhq/tolaria",
+    "commit": "04030c3e0a23ce93f39a83d821b1b87ec03aec4e",
+    "configs": [
+      {
+        "file": "tsconfig.app.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 221
+    },
+    "examples": [
+      {
+        "file": "src/components/AccentColorPicker.tsx",
+        "line": 4,
+        "specifier": "@/lib/utils",
+        "config": "tsconfig.app.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "whyour/qinglong",
+    "commit": "2ab9c702e64358c471e027430c894c4281d50a2f",
+    "configs": [
+      {
+        "file": "back/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "cli/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@/*": [
+            "src/*"
+          ],
+          "@@/*": [
+            "src/.umi/*"
+          ]
+        },
+        "baseUrl": "./",
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 134
+    },
+    "examples": [
+      {
+        "file": "src/hooks/useTableScrollHeight.ts",
+        "line": 3,
+        "specifier": "@/utils",
+        "config": "tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "Lyellr88/marm-memory",
+    "commit": "c5a44217f214eefff304ba5abc43e82eb9ff150f",
+    "configs": [
+      {
+        "file": "marm-console/artifacts/marm-console/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "marm-console/tsconfig.base.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "marm-console/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.base.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 206
+    },
+    "examples": [
+      {
+        "file": "marm-console/artifacts/marm-console/src/App.tsx",
+        "line": 4,
+        "specifier": "@/lib/marm-connection",
+        "config": "marm-console/artifacts/marm-console/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "Mail-0/Zero",
+    "commit": "fe63ac7df88f6cc91e080174c304e13fd72b608a",
+    "configs": [
+      {
+        "file": "apps/mail/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": "@zero/tsconfig/base",
+        "references": false
+      },
+      {
+        "file": "apps/server/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@zero/tsconfig/base",
+        "references": false
+      },
+      {
+        "file": "packages/cli/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@zero/tsconfig/base",
+        "references": false
+      },
+      {
+        "file": "packages/eslint-config/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@zero/tsconfig/base",
+        "references": false
+      },
+      {
+        "file": "packages/testing/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "../../apps/mail/*"
+          ],
+          "@zero/server/*": [
+            "../../apps/server/src/*"
+          ],
+          "@zero/mail/*": [
+            "../../apps/mail/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "scripts/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@zero/tsconfig/base",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 613
+    },
+    "examples": [
+      {
+        "file": "apps/mail/app/(auth)/login/error-message.tsx",
+        "line": 5,
+        "specifier": "@/paraglide/messages",
+        "config": "apps/mail/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "MontrealAI/AGI-Alpha-Agent-v0",
+    "commit": "35bffe634035d44f92e764643ebaa33c19403605",
+    "configs": [
+      {
+        "file": "alpha_factory_v1/core/interface/web_client/staking/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "alpha_factory_v1/core/interface/web_client/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "alpha_factory_v1/core/interface/web_client/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "alpha_factory_v1/demos/alpha_agi_insight_v1/insight_browser_v1/tsconfig.json",
+        "paths": {
+          "@insight-src/*": [
+            "../../../core/*"
+          ]
+        },
+        "baseUrl": "./",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "alpha_factory_v1/demos/alpha_agi_insight_v1/src/interface/web_client/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "alpha_factory_v1/demos/alpha_agi_insight_v1/src/interface/web_client/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 5
+    },
+    "examples": [
+      {
+        "file": "alpha_factory_v1/demos/alpha_agi_insight_v1/insight_browser_v1/src/ui/EvolutionPanel.ts",
+        "line": 2,
+        "specifier": "@insight-src/taxonomy.ts",
+        "config": "alpha_factory_v1/demos/alpha_agi_insight_v1/insight_browser_v1/tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "PV-Bhat/vibe-check-mcp-server",
+    "commit": "6642037772f1c6a429aa9a65d1e0f814cb6c0542",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "cablehead/xs",
+    "commit": "a06353b8551bfe5efd530a85536bb330419829a2",
+    "configs": [
+      {
+        "file": "docs/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "astro/tsconfigs/strict",
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "coleam00/Archon",
+    "commit": "036a39696339294c44cdfdcdb7a38c85ae7f2eda",
+    "configs": [
+      {
+        "file": "archon-ui-main/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "archon-ui-main/tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "giselles-ai/giselle",
+    "commit": "498e1ec4932c26daf416e6d32e49adc2e1bdc2af",
+    "configs": [
+      {
+        "file": "apps/playground/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "apps/studio.giselles.ai/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ],
+          "@giselles-ai/*": [
+            "./packages/*"
+          ],
+          "@giselles-ai/icons/*": [
+            "../../internal-packages/workflow-designer-ui/src/icons/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "internal-packages/workflow-designer-ui/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/data-mod/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/data-type/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/flow/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/ts-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/giselle-engine/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/giselle-sdk/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/github-tool/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/integration/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/language-model/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/rag/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tools/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/supabase-driver/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tools/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/telemetry/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/test-utils/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/text-editor/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/usage-limits/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/utils/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/web-search/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tools/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/workflow-designer/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/workflow-utils/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/workspace/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@giselle/giselle-sdk-tsconfig/react-library.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 338
+    },
+    "examples": [
+      {
+        "file": "apps/playground/app/api/giselle/[...next-giselle]/route.ts",
+        "line": 1,
+        "specifier": "@/giselle-engine",
+        "config": "apps/playground/tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "jdx/mise",
+    "commit": "25e224d22781b3de7a339657b970a5f4bec0ad43",
+    "configs": [
+      {
+        "file": "docs/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@tsconfig/node18/tsconfig.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "jeremyckahn/chitchatter",
+    "commit": "b64f5ff132bbb5d43918469e92a4f970b8224343",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "trystero/torrent": [
+            "../node_modules/trystero/src/torrent.d.ts"
+          ]
+        },
+        "baseUrl": "src",
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 1
+    },
+    "examples": [
+      {
+        "file": "src/lib/ConnectionTest/ConnectionTest.ts",
+        "line": 1,
+        "specifier": "trystero/torrent",
+        "config": "tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "karakeep-app/karakeep",
+    "commit": "8e16e27dd1b98ea8f66d39f6b386181be32c46aa",
+    "configs": [
+      {
+        "file": "apps/browser-extension/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "apps/cli/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "apps/landing/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/base.json",
+        "references": false
+      },
+      {
+        "file": "apps/mcp/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "apps/mobile/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "expo/tsconfig.base",
+        "references": false
+      },
+      {
+        "file": "apps/web/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/base.json",
+        "references": false
+      },
+      {
+        "file": "apps/workers/tsconfig.json",
+        "paths": {},
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "docs/tsconfig.json",
+        "paths": {},
+        "baseUrl": ".",
+        "extends": "@docusaurus/tsconfig",
+        "references": false
+      },
+      {
+        "file": "packages/api/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/db/tsconfig.json",
+        "paths": {},
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/e2e_tests/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/open-api/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/sdk/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/shared-react/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@karakeep/tsconfig/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/shared/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "packages/trpc/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/node.json",
+        "references": false
+      },
+      {
+        "file": "tooling/prettier/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/base.json",
+        "references": false
+      },
+      {
+        "file": "tooling/tailwind/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@karakeep/tsconfig/base.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "package extends": 731
+    },
+    "examples": [
+      {
+        "file": "apps/cli/src/commands/bookmarks.ts",
+        "line": 2,
+        "specifier": "@/commands/lists",
+        "config": "apps/cli/tsconfig.json",
+        "shape": "package extends"
+      }
+    ]
+  },
+  {
+    "repository": "langgenius/webapp-conversation",
+    "commit": "20f7412d5db9bbd18e575b67023139b726036492",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 208
+    },
+    "examples": [
+      {
+        "file": "app/api/chat-messages/route.ts",
+        "line": 2,
+        "specifier": "@/app/api/utils/common",
+        "config": "tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "lumen-notes/lumen",
+    "commit": "eb9ff3cc652966eae9800ad5b31edfd100071a83",
+    "configs": [
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "tsconfig.node.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "material-components/material-web",
+    "commit": "a6b2d2640b336e5d9fc73133a317e9173827ba95",
+    "configs": [
+      {
+        "file": "catalog/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "labs/gb/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "scripts/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "tsconfig.base.json",
+        "paths": {
+          "@material/web/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.base.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 90
+    },
+    "examples": [
+      {
+        "file": "catalog/src/components/copy-code-button.ts",
+        "line": 10,
+        "specifier": "@material/web/iconbutton/icon-button.js",
+        "config": "tsconfig.base.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "mediar-ai/terminator",
+    "commit": "95822cb74b5398eae0b81792b9e347a2c6d8ba62",
+    "configs": [
+      {
+        "file": "examples/hello-world/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "examples/pdf-to-form/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "single direct paths mapping": 22
+    },
+    "examples": [
+      {
+        "file": "examples/hello-world/src/app/layout.tsx",
+        "line": 4,
+        "specifier": "@/components/ui/sonner",
+        "config": "examples/hello-world/tsconfig.json",
+        "shape": "single direct paths mapping"
+      }
+    ]
+  },
+  {
+    "repository": "microsoft/vscode-cpptools",
+    "commit": "5fcf27752fce13df2b535a7faf505f18b1ca4c27",
+    "configs": [
+      {
+        "file": ".github/actions/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "Extension/.scripts/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "Extension/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "mitsuhiko/insta",
+    "commit": "77407c341f35d74ca06cfca9618ff3f580e4dc67",
+    "configs": [
+      {
+        "file": "vscode-insta/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  },
+  {
+    "repository": "recallnet/js-recall",
+    "commit": "f322c44df3b6d6c5b2c0dd17423c507cb4d6e616",
+    "configs": [
+      {
+        "file": "apps/api/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./src/*"
+          ],
+          "@/scripts/*": [
+            "./scripts/*"
+          ],
+          "@/e2e/*": [
+            "./e2e/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "apps/comps/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ],
+          "@/types": [
+            "types/index.ts"
+          ],
+          "@/utils/*": [
+            "utils/*"
+          ],
+          "@/data-mock/*": [
+            "data-mock/*"
+          ],
+          "@recallnet/ui2/*": [
+            "../../packages/ui2/src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/nextjs.json",
+        "references": false
+      },
+      {
+        "file": "apps/faucet/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ],
+          "@recallnet/ui/*": [
+            "../../packages/ui/src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/nextjs.json",
+        "references": false
+      },
+      {
+        "file": "apps/portal/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ],
+          "@recallnet/ui/*": [
+            "../../packages/ui/src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/nextjs.json",
+        "references": false
+      },
+      {
+        "file": "apps/registration/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/nextjs.json",
+        "references": false
+      },
+      {
+        "file": "packages/address-utils/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/agent-toolkit/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/api-mcp/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/api-sdk/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "packages/chains/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/contracts/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/conversions/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/fonts/tsconfig.json",
+        "paths": {},
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/nextjs.json",
+        "references": false
+      },
+      {
+        "file": "packages/fvm/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/mcp/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/network-constants/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/react/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/sdk/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/staking-contracts/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      },
+      {
+        "file": "packages/ui/tsconfig.json",
+        "paths": {
+          "@recallnet/ui/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/react-library.json",
+        "references": false
+      },
+      {
+        "file": "packages/ui2/tsconfig.json",
+        "paths": {
+          "@recallnet/ui2/*": [
+            "./src/*"
+          ]
+        },
+        "baseUrl": ".",
+        "extends": "@recallnet/typescript-config/react-library.json",
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "@recallnet/typescript-config/base.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 1142
+    },
+    "examples": [
+      {
+        "file": "apps/api/e2e/setup.ts",
+        "line": 11,
+        "specifier": "@/lib/logger.js",
+        "config": "apps/api/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "tokens-studio/figma-plugin",
+    "commit": "b53ab740eccdf2f92215d961eebd51295c36f1b1",
+    "configs": [
+      {
+        "file": "packages/tokens-studio-for-figma/tsconfig.build.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      },
+      {
+        "file": "packages/tokens-studio-for-figma/tsconfig.json",
+        "paths": {
+          "@emotion/core": [
+            "./emotion.d.ts"
+          ],
+          "@/*": [
+            "src/*"
+          ]
+        },
+        "baseUrl": "./",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": "./",
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.test.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.json",
+        "references": false
+      }
+    ],
+    "site_shapes": {
+      "multiple/nested configs": 2411
+    },
+    "examples": [
+      {
+        "file": "packages/tokens-studio-for-figma/.storybook/decorations/TokensDecorator.tsx",
+        "line": 3,
+        "specifier": "@/constants/TokenTypes",
+        "config": "packages/tokens-studio-for-figma/tsconfig.json",
+        "shape": "multiple/nested configs"
+      }
+    ]
+  },
+  {
+    "repository": "vuejs/language-tools",
+    "commit": "78fd1b38989f6a1691fa3d96fce40cd15fb1492e",
+    "configs": [
+      {
+        "file": "extensions/vscode/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/component-meta/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/component-type-helpers/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "packages/language-core/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "packages/language-plugin-pug/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/language-server/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/language-service/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/tsc/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "packages/typescript-plugin/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": true
+      },
+      {
+        "file": "test-workspace/component-meta/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/dts/jsx-slots/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#1855/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#1886/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2048/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2157/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2166/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2206/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2225/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2250/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2308/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2370/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2399/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2431/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2468/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2472/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2514/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2554/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2586/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2588/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2590/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2617/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2629/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2638/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2639/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2640/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2646/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2647/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2678/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2683/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2691/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2700/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2709/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2712/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2720/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2725/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2726/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2730/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2744/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2754/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#2758/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3100/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3102/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3109/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3117/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3121/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3122/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3123/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3129/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3138/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3140/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3152/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3164/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3171/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3204/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3255/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3257/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3258/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3289/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#329/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3295/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3311/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3318/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3327/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3340/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3353/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3371/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3373/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3374/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3379/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3405/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3414/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3433/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3440/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3476/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3488/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3518/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3539/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3561/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3574/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3592/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3612/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3615/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3629/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3637/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3643/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3656/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3671/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3672/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3688/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3718/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3732/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3748/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3756/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3779/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3782/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3819/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3820/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3845/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#3997/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4050/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4209/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4263/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4326/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4327/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4333/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4353/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4361/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4369/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4386/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4387/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4391/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4433/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4503/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4512/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4537/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4539/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4540/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4600/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4604/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4646/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4649/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4668/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4682/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4699/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4785/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4799/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4812/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4820/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4822/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4826/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4827/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4828/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4862/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4878/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4890/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4899/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4972/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4978/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#4979/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5027/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5067/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5097/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5106/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5111/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5120/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5136/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5157/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5159/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5207/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5228/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5262/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5267/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5338/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5428/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5474/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5492/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5592/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5604/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5617/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5680/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5729/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5751/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5776/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5780/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5810/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5819/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5840/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5843/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5895/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5899/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5927/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5934/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#5986/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#6040/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#6084/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#6094/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#6180/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#6228/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/#625/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_#3632/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_#4569/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_#5071/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_#5823/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_cssModuleDuplicate/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_directive_arity/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_directives/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/_failed_fragment_props/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/attrs/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/components/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/core#9923/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/cssModule/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/dataAttributes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/defineEmits/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/defineExpose/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/defineModel/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/defineModelModifiers/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/defineOptions/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/directiveComments/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/directives/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/dynamic-component/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/events/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes_checkRequired/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes_duplicateNameEvent/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes_duplicateNameProp/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes_generic/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/fallthroughAttributes_unknownTag/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/input-radio/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/intrinsicProps/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/macros-alias/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/namespace-component/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/no-script-block/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/noPropertyAccessFromIndexSignature/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/pug/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/reference-type-in-template/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/rfcs#836/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/rootEl/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/script-setup-scope/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/script_src/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/slots/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/templateRef/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "test-workspace/tsc/type-helpers/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/unknownComponent/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/unknownProp/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/unknownTag/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/unwrapBindingAccess/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/useTemplateRef-dynamic-arg/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/useTemplateRef-nullable/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/v-bind-require-object/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/v-bind-shorthand/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/v-for/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/v-generic/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/v-if/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/withDefaults/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsc/withDotValue/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tscBuild/petiteVue/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tscBuild/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": true
+      },
+      {
+        "file": "test-workspace/tscBuild/vitepress/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tscBuild/vue/tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "../../tsconfig.base.json",
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsconfig.base.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsconfigProject/tsconfig.json",
+        "paths": {
+          "@/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "test-workspace/tsconfigProject2/tsconfig.json",
+        "paths": {
+          "@2/*": [
+            "./*"
+          ]
+        },
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.base.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": null,
+        "references": false
+      },
+      {
+        "file": "tsconfig.json",
+        "paths": {},
+        "baseUrl": null,
+        "extends": "./tsconfig.base.json",
+        "references": true
+      }
+    ],
+    "site_shapes": {},
+    "examples": []
+  }
+]

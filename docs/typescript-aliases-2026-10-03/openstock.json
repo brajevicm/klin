@@ -1,0 +1,150 @@
+[
+  {
+    "build": "before",
+    "exit": 2,
+    "result": {
+      "derived": [],
+      "exit": 2,
+      "findings": [
+        {
+          "file": "lib/constants.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        },
+        {
+          "file": "lib/markets.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 112,
+            "measured": 110,
+            "not_measured": 0,
+            "unreadable": 2
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 112,
+            "ms": 75,
+            "parses": 112,
+            "reads": 112,
+            "shared": 0
+          },
+          "findings": 2,
+          "footprint": null,
+          "graph": {
+            "dependencies": 4,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 1
+            },
+            "edges": 4,
+            "modules": 112,
+            "ms": 0,
+            "sources": 112
+          },
+          "held": 0,
+          "ms": 126,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "ERR",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "ERROR",
+      "summary": "klin: 1 gate(s), 1 tool error.",
+      "window": {
+        "after": "the working tree",
+        "before": "1d34c22f93e872c31aa346805fbceafcaf39b8b2",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    }
+  },
+  {
+    "build": "after",
+    "exit": 2,
+    "result": {
+      "derived": [],
+      "exit": 2,
+      "findings": [
+        {
+          "file": "lib/constants.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        },
+        {
+          "file": "lib/markets.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 112,
+            "measured": 110,
+            "not_measured": 0,
+            "unreadable": 2
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 112,
+            "ms": 318,
+            "parses": 112,
+            "reads": 112,
+            "shared": 0
+          },
+          "findings": 2,
+          "footprint": null,
+          "graph": {
+            "dependencies": 258,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 1
+            },
+            "edges": 257,
+            "modules": 112,
+            "ms": 3,
+            "sources": 112
+          },
+          "held": 0,
+          "ms": 400,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "ERR",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "ERROR",
+      "summary": "klin: 1 gate(s), 1 tool error.",
+      "window": {
+        "after": "the working tree",
+        "before": "1d34c22f93e872c31aa346805fbceafcaf39b8b2",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    }
+  }
+]

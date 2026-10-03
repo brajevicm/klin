@@ -639,6 +639,7 @@ fn edges(
         let target = names.of(dependency.to).0.clone();
         if let Some(what) = verdict.straddled {
             ambiguous.push(Hole {
+                local_alias: false,
                 file: side.current(file),
                 line: dependency.line,
                 text: target.clone(),
