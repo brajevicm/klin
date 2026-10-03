@@ -17,7 +17,7 @@ use crate::syntax::{LANGUAGES, Language, LanguageId, Unparsed};
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
-const EPOCH: u64 = 5;
+const EPOCH: u64 = 6;
 
 const MAGIC: &[u8] = b"klin structural cache\n";
 const KEPT: usize = 4;
@@ -28,6 +28,7 @@ const PRIME: u64 = 0x100_0000_01b3;
 /// build whose copy of these differs reads another build's cache as nothing.
 const SOURCES: &[&[u8]] = &[
     include_bytes!("mod.rs"),
+    include_bytes!("facts.rs"),
     include_bytes!("rust.rs"),
     include_bytes!("typescript.rs"),
     include_bytes!("cache.rs"),
@@ -216,6 +217,7 @@ impl Writer {
         self.number(facts.imports.len() as u64);
         for import in &facts.imports {
             self.number(import.line);
+            self.number(import.start_byte);
             self.text(&import.text);
             self.texts(&import.nesting);
             self.number(u64::from(import.in_function));
@@ -278,6 +280,7 @@ impl Writer {
 
     fn export(&mut self, export: &Export) {
         self.number(export.line);
+        self.number(export.start_byte);
         self.text(&export.text);
         self.texts(&export.nesting);
         self.optional(export.source.as_deref());
@@ -419,13 +422,12 @@ impl Reader<'_, '_> {
     }
 
     fn export(&mut self) -> Option<Export> {
-        let line = self.number()?;
-        let text = self.text()?;
-        let nesting = self.list(Reader::text)?;
+        let (line, start_byte, text, nesting) = self.statement()?;
         let source = self.optional()?;
         let flags = self.number().filter(|flags| *flags <= 3)?;
         Some(Export {
             line,
+            start_byte,
             text,
             nesting,
             source,
@@ -451,11 +453,23 @@ impl Reader<'_, '_> {
         })
     }
 
+    /// The line, byte offset, text and nesting an import or export starts with.
+    fn statement(&mut self) -> Option<(u64, u64, String, Vec<String>)> {
+        Some((
+            self.number()?,
+            self.number()?,
+            self.text()?,
+            self.list(Reader::text)?,
+        ))
+    }
+
     fn import(&mut self) -> Option<Import> {
+        let (line, start_byte, text, nesting) = self.statement()?;
         Some(Import {
-            line: self.number()?,
-            text: self.text()?,
-            nesting: self.list(Reader::text)?,
+            line,
+            start_byte,
+            text,
+            nesting,
             in_function: self.number().filter(|flag| *flag <= 1)? == 1,
             module: self.optional()?,
             names: self.list(Reader::text)?,

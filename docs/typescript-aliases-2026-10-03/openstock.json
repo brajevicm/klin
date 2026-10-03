@@ -1,0 +1,2005 @@
+[
+  {
+    "build": "before",
+    "commit": "7104995b",
+    "exit": 2,
+    "result": {
+      "derived": [],
+      "exit": 2,
+      "findings": [
+        {
+          "file": "lib/constants.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        },
+        {
+          "file": "lib/markets.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 112,
+            "measured": 110,
+            "not_measured": 0,
+            "unreadable": 2
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 112,
+            "ms": 75,
+            "parses": 112,
+            "reads": 112,
+            "shared": 0
+          },
+          "findings": 2,
+          "footprint": null,
+          "graph": {
+            "dependencies": 4,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 1
+            },
+            "edges": 4,
+            "modules": 112,
+            "ms": 0,
+            "sources": 112
+          },
+          "held": 0,
+          "ms": 143,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "ERR",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "ERROR",
+      "summary": "klin: 1 gate(s), 1 tool error.",
+      "window": {
+        "after": "the working tree",
+        "before": "58036bf4aec79414f6be3d2914ba823b861c1b93",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    }
+  },
+  {
+    "build": "root-proof",
+    "commit": "618bb06f",
+    "exit": 2,
+    "result": {
+      "derived": [],
+      "exit": 2,
+      "findings": [
+        {
+          "file": "__tests__/adanos.actions.test.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/actions/adanos.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/adanos.actions.test.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/actions/adanos.helpers is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/ai-provider.integration.test.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { callAIProvider } from \"@/lib/ai-provider\"; \u2014 @/lib/ai-provider is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/ai-provider.test.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/ai-provider is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/alert-actions.test.ts",
+          "gate": "layering",
+          "line": 23,
+          "outcome": "unresolved",
+          "text": "import { createAlert, deleteAlert } from '@/lib/actions/alert.actions'; \u2014 @/lib/actions/alert.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/market-clock.test.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { formatSpan, sessionOf } from '@/lib/market-session'; \u2014 @/lib/market-session is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/market-clock.test.ts",
+          "gate": "layering",
+          "line": 30,
+          "outcome": "unresolved",
+          "text": "import { getMarket, hasFinnhubQuotes, isMarketOpen } from '@/lib/markets'; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/reset-password-email.test.ts",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { transporter } from '@/lib/nodemailer'; \u2014 @/lib/nodemailer is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/reset-password-email.test.ts",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { sendPasswordResetEmail } from '@/lib/nodemailer/reset-password'; \u2014 @/lib/nodemailer/reset-password is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "__tests__/utils.test.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/forgot-password/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { Button } from '@/components/ui/button'; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/forgot-password/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import InputField from '@/components/forms/InputField'; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/forgot-password/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import FooterLink from '@/components/forms/FooterLink'; \u2014 @/components/forms/FooterLink is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/forgot-password/page.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import OpenDevSocietyBranding from '@/components/OpenDevSocietyBranding'; \u2014 @/components/OpenDevSocietyBranding is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/forgot-password/page.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { requestPasswordResetEmail } from '@/lib/actions/auth.actions'; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/layout.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import {getSession} from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/layout.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import ProductPreview from \"@/components/landing/ProductPreview\"; \u2014 @/components/landing/ProductPreview is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/layout.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { SocialProvidersProvider } from \"@/components/forms/SocialAuthButtons\"; \u2014 @/components/forms/SocialAuthButtons is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import FooterLink from '@/components/forms/FooterLink'; \u2014 @/components/forms/FooterLink is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import InputField from '@/components/forms/InputField'; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import PasswordRequirements from '@/components/forms/PasswordRequirements'; \u2014 @/components/forms/PasswordRequirements is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import OpenDevSocietyBranding from '@/components/OpenDevSocietyBranding'; \u2014 @/components/OpenDevSocietyBranding is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 12,
+          "outcome": "unresolved",
+          "text": "import { Button } from '@/components/ui/button'; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 13,
+          "outcome": "unresolved",
+          "text": "import { resetPasswordWithToken } from '@/lib/actions/auth.actions'; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/reset-password/ResetPasswordForm.tsx",
+          "gate": "layering",
+          "line": 14,
+          "outcome": "unresolved",
+          "text": "import { PASSWORD_VALIDATION } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { Button } from '@/components/ui/button'; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import InputField from '@/components/forms/InputField'; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import FooterLink from '@/components/forms/FooterLink'; \u2014 @/components/forms/FooterLink is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { signInWithEmail } from \"@/lib/actions/auth.actions\"; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import OpenDevSocietyBranding from \"@/components/OpenDevSocietyBranding\"; \u2014 @/components/OpenDevSocietyBranding is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-in/page.tsx",
+          "gate": "layering",
+          "line": 12,
+          "outcome": "unresolved",
+          "text": "import SocialAuthButtons from \"@/components/forms/SocialAuthButtons\"; \u2014 @/components/forms/SocialAuthButtons is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { Button } from \"@/components/ui/button\"; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import InputField from \"@/components/forms/InputField\"; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import ChoiceChips from \"@/components/forms/ChoiceChips\"; \u2014 @/components/forms/ChoiceChips is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import PasswordRequirements from \"@/components/forms/PasswordRequirements\"; \u2014 @/components/forms/PasswordRequirements is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { INVESTMENT_GOALS, PASSWORD_VALIDATION, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { CountrySelectField } from \"@/components/forms/CountrySelectField\"; \u2014 @/components/forms/CountrySelectField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import FooterLink from \"@/components/forms/FooterLink\"; \u2014 @/components/forms/FooterLink is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import { signUpWithEmail } from \"@/lib/actions/auth.actions\"; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 14,
+          "outcome": "unresolved",
+          "text": "import OpenDevSocietyBranding from \"@/components/OpenDevSocietyBranding\"; \u2014 @/components/OpenDevSocietyBranding is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(auth)/sign-up/page.tsx",
+          "gate": "layering",
+          "line": 15,
+          "outcome": "unresolved",
+          "text": "import SocialAuthButtons from \"@/components/forms/SocialAuthButtons\"; \u2014 @/components/forms/SocialAuthButtons is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/about/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import PageHero from '@/components/marketing/PageHero'; \u2014 @/components/marketing/PageHero is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/about/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import SectionHead from '@/components/marketing/SectionHead'; \u2014 @/components/marketing/SectionHead is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/about/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import IconCard from '@/components/marketing/IconCard'; \u2014 @/components/marketing/IconCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/about/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { GOOD_FIRST_ISSUES_URL, REPO_URL } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/api-docs/page.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import PageHero from '@/components/marketing/PageHero'; \u2014 @/components/marketing/PageHero is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/api-docs/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import SectionHead from '@/components/marketing/SectionHead'; \u2014 @/components/marketing/SectionHead is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/api-docs/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import IconCard from '@/components/marketing/IconCard'; \u2014 @/components/marketing/IconCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/api-docs/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { REPO_URL } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/help/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import PageHero from '@/components/marketing/PageHero'; \u2014 @/components/marketing/PageHero is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/help/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import SectionHead from '@/components/marketing/SectionHead'; \u2014 @/components/marketing/SectionHead is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/help/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import IconCard from '@/components/marketing/IconCard'; \u2014 @/components/marketing/IconCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/help/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { DISCORD_URL, REPO_URL } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/layout.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/layout.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { formatCount, getRepoStats } from \"@/lib/github\"; \u2014 @/lib/github is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/layout.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import OpenDevSocietyBranding from \"@/components/OpenDevSocietyBranding\"; \u2014 @/components/OpenDevSocietyBranding is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/layout.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import SponsorsBand from \"@/components/sponsors/SponsorsBand\"; \u2014 @/components/sponsors/SponsorsBand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/layout.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { DISCORD_URL, REPO_URL } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { MarketDial, MarketStatus } from \"@/components/landing/MarketClock\"; \u2014 @/components/landing/MarketClock is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import ProductPreview from \"@/components/landing/ProductPreview\"; \u2014 @/components/landing/ProductPreview is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import SectionHead from \"@/components/marketing/SectionHead\"; \u2014 @/components/marketing/SectionHead is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import IconCard from \"@/components/marketing/IconCard\"; \u2014 @/components/marketing/IconCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { formatCount, getRepoStats } from \"@/lib/github\"; \u2014 @/lib/github is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/page.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { DISCORD_URL, GOOD_FIRST_ISSUES_URL, REPO_URL } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/sponsor/page.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import IconCard from \"@/components/marketing/IconCard\"; \u2014 @/components/marketing/IconCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/sponsor/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { getRepoStats, formatCount } from \"@/lib/github\"; \u2014 @/lib/github is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/sponsor/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { DISCORD_URL, sponsorCheckoutUrl } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/sponsor/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { ACTIVE_SPONSORS, FUNDING_USES, REGISTERED_USERS, SPONSOR_CONTACT_EMAIL, SPONSOR_GOAL, SPONSOR_RECIPIENT, SPONSOR_TIERS, type SponsorTierId } from \"@/lib/sponsors\"; \u2014 @/lib/sponsors is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/sponsor/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/terms/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import PageHero from '@/components/marketing/PageHero'; \u2014 @/components/marketing/PageHero is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(marketing)/terms/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import SectionHead from '@/components/marketing/SectionHead'; \u2014 @/components/marketing/SectionHead is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import TradingViewWidget from \"@/components/TradingViewWidget\"; \u2014 @/components/TradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import Panel from \"@/components/Panel\"; \u2014 @/components/Panel is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import IndexPulse, { PulseSkeleton } from \"@/components/IndexPulse\"; \u2014 @/components/IndexPulse is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import DataFreshness from \"@/components/DataFreshness\"; \u2014 @/components/DataFreshness is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import MarketSwitcher from \"@/components/MarketSwitcher\"; \u2014 @/components/MarketSwitcher is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 15,
+          "outcome": "unresolved",
+          "text": "import { MARKETS, MARKET_COOKIE, getMarket, isMarketOpen, marketForCountry } from \"@/lib/markets\"; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/dashboard/page.tsx",
+          "gate": "layering",
+          "line": 16,
+          "outcome": "unresolved",
+          "text": "import { getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/layout.tsx",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import { getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/layout.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import AppShell from \"@/components/shell/AppShell\"; \u2014 @/components/shell/AppShell is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/layout.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import DonatePopup from \"@/components/DonatePopup\"; \u2014 @/components/DonatePopup is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/layout.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { searchStocks } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/layout.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { getUserWatchlist } from \"@/lib/actions/watchlist.actions\"; \u2014 @/lib/actions/watchlist.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import Panel from \"@/components/Panel\"; \u2014 @/components/Panel is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import ProfileForm from \"@/components/profile/ProfileForm\"; \u2014 @/components/profile/ProfileForm is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import PasswordForm from \"@/components/profile/PasswordForm\"; \u2014 @/components/profile/PasswordForm is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { auth, getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { getUserWatchlist } from \"@/lib/actions/watchlist.actions\"; \u2014 @/lib/actions/watchlist.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { getUserAlerts } from \"@/lib/actions/alert.actions\"; \u2014 @/lib/actions/alert.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/profile/page.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import TradingViewWidget from \"@/components/TradingViewWidget\"; \u2014 @/components/TradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import StockHeader, { StockHeaderSkeleton } from \"@/components/stocks/StockHeader\"; \u2014 @/components/stocks/StockHeader is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import StockSentimentCard from \"@/components/stocks/StockSentimentCard\"; \u2014 @/components/stocks/StockSentimentCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import Panel from \"@/components/Panel\"; \u2014 @/components/Panel is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 13,
+          "outcome": "unresolved",
+          "text": "import { getStockSentimentInsights } from '@/lib/actions/adanos.actions'; \u2014 @/lib/actions/adanos.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/stocks/[symbol]/page.tsx",
+          "gate": "layering",
+          "line": 14,
+          "outcome": "unresolved",
+          "text": "import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils'; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { getUserWatchlist } from '@/lib/actions/watchlist.actions'; \u2014 @/lib/actions/watchlist.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { getUserAlerts } from '@/lib/actions/alert.actions'; \u2014 @/lib/actions/alert.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from '@/lib/market-data'; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { getNews, getWatchlistData } from '@/lib/actions/finnhub.actions'; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import WatchlistTable from '@/components/watchlist/WatchlistTable'; \u2014 @/components/watchlist/WatchlistTable is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import AlertsPanel from '@/components/watchlist/AlertsPanel'; \u2014 @/components/watchlist/AlertsPanel is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import NewsList from '@/components/watchlist/NewsList'; \u2014 @/components/watchlist/NewsList is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import Panel from '@/components/Panel'; \u2014 @/components/Panel is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import DataFreshness from '@/components/DataFreshness'; \u2014 @/components/DataFreshness is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/(root)/watchlist/page.tsx",
+          "gate": "layering",
+          "line": 12,
+          "outcome": "unresolved",
+          "text": "import { SearchButton } from '@/components/SearchCommand'; \u2014 @/components/SearchCommand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/auth/[...all]/route.ts",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import { auth } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/inngest/route.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { inngest } from \"@/lib/inngest/client\"; \u2014 @/lib/inngest/client is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/inngest/route.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/inngest/route.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { sendWeeklyNewsSummary, sendSignUpEmail, checkStockAlerts, checkInactiveUsers } from \"@/lib/inngest/functions\"; \u2014 @/lib/inngest/functions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/quotes/route.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { getSession } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/api/quotes/route.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { getLiveQuotes } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/layout.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import {Toaster} from \"@/components/ui/sonner\"; \u2014 @/components/ui/sonner is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "app/layout.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import OntoLaunchCard from \"@/components/OntoLaunchCard\"; \u2014 @/components/OntoLaunchCard is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/DataFreshness.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { isRealtime } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/DonatePopup.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/components/ui/dialog is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/IndexPulse.tsx",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import PulseTile from \"@/components/PulseTile\"; \u2014 @/components/PulseTile is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/IndexPulse.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import TradingViewWidget from \"@/components/TradingViewWidget\"; \u2014 @/components/TradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/IndexPulse.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { getLiveQuotes } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/IndexPulse.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { singleQuoteConfig } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/IndexPulse.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { getMarket, type Market } from \"@/lib/markets\"; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/MarketSwitcher.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { MARKETS, MARKET_COOKIE, type MarketId } from \"@/lib/markets\"; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/MarketSwitcher.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/Panel.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/PriceFlash.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/PulseTile.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import ChangePill from \"@/components/ChangePill\"; \u2014 @/components/ChangePill is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/PulseTile.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import PriceFlash from \"@/components/PriceFlash\"; \u2014 @/components/PriceFlash is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/PulseTile.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { useLiveQuotes, type LiveQuote } from \"@/hooks/useLiveQuotes\"; \u2014 @/hooks/useLiveQuotes is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/SearchCommand.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { CommandDialog, CommandEmpty, CommandInput, CommandList } from \"@/components/ui/command\" \u2014 @/components/ui/command is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/SearchCommand.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { searchStocks } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/SearchCommand.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { useDebounce } from \"@/hooks/useDebounce\"; \u2014 @/hooks/useDebounce is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/TradingViewWidget.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import useTradingViewWidget from \"@/hooks/useTradingViewWidget\"; \u2014 @/hooks/useTradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/TradingViewWidget.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/WatchlistButton.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { addToWatchlist, removeFromWatchlist } from \"@/lib/actions/watchlist.actions\"; \u2014 @/lib/actions/watchlist.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/WatchlistButton.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/ChoiceChips.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/CountrySelectField.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/components/ui/popover is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/CountrySelectField.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/components/ui/command is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/CountrySelectField.tsx",
+          "gate": "layering",
+          "line": 19,
+          "outcome": "unresolved",
+          "text": "import { Button } from '@/components/ui/button'; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/CountrySelectField.tsx",
+          "gate": "layering",
+          "line": 20,
+          "outcome": "unresolved",
+          "text": "import { Label } from '@/components/ui/label'; \u2014 @/components/ui/label is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/CountrySelectField.tsx",
+          "gate": "layering",
+          "line": 22,
+          "outcome": "unresolved",
+          "text": "import { cn } from '@/lib/utils'; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/InputField.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import {Label} from \"@/components/ui/label\"; \u2014 @/components/ui/label is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/InputField.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import {Input} from \"@/components/ui/input\"; \u2014 @/components/ui/input is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/InputField.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import {cn} from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/PasswordRequirements.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { PASSWORD_RULES } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/PasswordRequirements.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { cn } from '@/lib/utils'; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/SocialAuthButtons.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { Button } from \"@/components/ui/button\"; \u2014 @/components/ui/button is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/forms/SocialAuthButtons.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { signInWithSocial } from \"@/lib/actions/auth.actions\"; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/MarketClock.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/MarketClock.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { AFTER_END, CLOSE, DAY, OPEN, PRE, isWeekday, newYorkNow, sessionOf, type Phase } from \"@/lib/market-session\"; \u2014 @/lib/market-session is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/ProductPreview.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import IndexPulse, { PulseSkeleton } from \"@/components/IndexPulse\"; \u2014 @/components/IndexPulse is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/ProductPreview.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import DataFreshness from \"@/components/DataFreshness\"; \u2014 @/components/DataFreshness is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/ProductPreview.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import TradingViewWidget from \"@/components/TradingViewWidget\"; \u2014 @/components/TradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/landing/ProductPreview.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/PasswordForm.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import InputField from \"@/components/forms/InputField\"; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/PasswordForm.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import PasswordRequirements from \"@/components/forms/PasswordRequirements\"; \u2014 @/components/forms/PasswordRequirements is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/PasswordForm.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { PASSWORD_VALIDATION } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/PasswordForm.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { changePassword } from \"@/lib/actions/profile.actions\"; \u2014 @/lib/actions/profile.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/ProfileForm.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import InputField from \"@/components/forms/InputField\"; \u2014 @/components/forms/InputField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/ProfileForm.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import ChoiceChips from \"@/components/forms/ChoiceChips\"; \u2014 @/components/forms/ChoiceChips is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/ProfileForm.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { CountrySelectField } from \"@/components/forms/CountrySelectField\"; \u2014 @/components/forms/CountrySelectField is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/ProfileForm.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { INVESTMENT_GOALS, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/profile/ProfileForm.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { updateProfile, type ProfileInput } from \"@/lib/actions/profile.actions\"; \u2014 @/lib/actions/profile.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/AppShell.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import Sidebar from \"@/components/shell/Sidebar\"; \u2014 @/components/shell/Sidebar is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/AppShell.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import TabBar from \"@/components/shell/TabBar\"; \u2014 @/components/shell/TabBar is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/AppShell.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import SearchCommand from \"@/components/SearchCommand\"; \u2014 @/components/SearchCommand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/AppShell.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/Sidebar.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { openSearch } from \"@/components/SearchCommand\"; \u2014 @/components/SearchCommand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/Sidebar.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { signOut } from \"@/lib/actions/auth.actions\"; \u2014 @/lib/actions/auth.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/Sidebar.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/Sidebar.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { SIDEBAR_SPONSOR_SLOTS, sidebarSponsors } from \"@/lib/sponsors\"; \u2014 @/lib/sponsors is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/TabBar.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { openSearch } from \"@/components/SearchCommand\"; \u2014 @/components/SearchCommand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/shell/TabBar.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/sponsors/SponsorsBand.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { ACTIVE_SPONSORS, PREVIOUS_SPONSORS, SPONSOR_CONTACT_EMAIL, SPONSOR_TIERS, type Sponsor } from \"@/lib/sponsors\"; \u2014 @/lib/sponsors is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/sponsors/SponsorsBand.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import WatchlistButton from \"@/components/WatchlistButton\"; \u2014 @/components/WatchlistButton is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import CreateAlertModal from \"@/components/watchlist/CreateAlertModal\"; \u2014 @/components/watchlist/CreateAlertModal is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import StockLivePrice from \"@/components/stocks/StockLivePrice\"; \u2014 @/components/stocks/StockLivePrice is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { isStockInWatchlist } from \"@/lib/actions/watchlist.actions\"; \u2014 @/lib/actions/watchlist.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { getCompanyProfile, getLiveQuotes } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { formatNumber, formatPrice, formatSymbolForTradingView } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { hasFinnhubQuotes } from \"@/lib/markets\"; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { symbolInfoConfig } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockHeader.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import TradingViewWidget from \"@/components/TradingViewWidget\"; \u2014 @/components/TradingViewWidget is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockLivePrice.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import ChangePill from \"@/components/ChangePill\"; \u2014 @/components/ChangePill is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockLivePrice.tsx",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import DataFreshness from \"@/components/DataFreshness\"; \u2014 @/components/DataFreshness is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockLivePrice.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import PriceFlash from \"@/components/PriceFlash\"; \u2014 @/components/PriceFlash is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockLivePrice.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { useLiveQuotes, type LiveQuote } from \"@/hooks/useLiveQuotes\"; \u2014 @/hooks/useLiveQuotes is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockLivePrice.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { formatPrice } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockSentimentCard.tsx",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import type { StockSentimentInsights } from '@/lib/actions/adanos.helpers'; \u2014 @/lib/actions/adanos.helpers is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/stocks/StockSentimentCard.tsx",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { cn } from '@/lib/utils'; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/avatar.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/button.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/command.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/command.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/components/ui/dialog is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/dialog.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/dropdown-menu.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/input.tsx",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/label.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/popover.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/ui/select.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\" \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/AlertsPanel.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { deleteAlert } from \"@/lib/actions/alert.actions\"; \u2014 @/lib/actions/alert.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/AlertsPanel.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/AlertsPanel.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { formatPrice } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/CreateAlertModal.tsx",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from \"@/components/ui/dialog\"; \u2014 @/components/ui/dialog is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/CreateAlertModal.tsx",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { createAlert } from \"@/lib/actions/alert.actions\"; \u2014 @/lib/actions/alert.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/CreateAlertModal.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/CreateAlertModal.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { formatPrice } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/CreateAlertModal.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import { cn } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import WatchlistButton from \"@/components/WatchlistButton\"; \u2014 @/components/WatchlistButton is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import ChangePill from \"@/components/ChangePill\"; \u2014 @/components/ChangePill is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 9,
+          "outcome": "unresolved",
+          "text": "import PriceFlash from \"@/components/PriceFlash\"; \u2014 @/components/PriceFlash is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 10,
+          "outcome": "unresolved",
+          "text": "import { useLiveQuotes } from \"@/hooks/useLiveQuotes\"; \u2014 @/hooks/useLiveQuotes is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 11,
+          "outcome": "unresolved",
+          "text": "import { SearchButton } from \"@/components/SearchCommand\"; \u2014 @/components/SearchCommand is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 12,
+          "outcome": "unresolved",
+          "text": "import { formatNumber, formatPrice } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 13,
+          "outcome": "unresolved",
+          "text": "import { hasFinnhubQuotes } from \"@/lib/markets\"; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "components/watchlist/WatchlistTable.tsx",
+          "gate": "layering",
+          "line": 14,
+          "outcome": "unresolved",
+          "text": "import type { getWatchlistData } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "hooks/useLiveQuotes.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { isRealtime } from \"@/lib/market-data\"; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/alert.actions.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { connectToDatabase } from '@/database/mongoose'; \u2014 @/database/mongoose is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/alert.actions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { Alert } from '@/database/models/alert.model'; \u2014 @/database/models/alert.model is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/alert.actions.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { requireUserId } from '@/lib/better-auth/auth'; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/alert.actions.ts",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { hasFinnhubQuotes } from '@/lib/markets'; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/alert.actions.ts",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { alertsEnabled } from '@/lib/market-data'; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/auth.actions.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { auth } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/auth.actions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { inngest } from \"@/lib/inngest/client\"; \u2014 @/lib/inngest/client is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/finnhub.actions.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { getDateRange, validateArticle, formatArticle } from '@/lib/utils'; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/finnhub.actions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { POPULAR_STOCKS } from '@/lib/constants'; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/finnhub.actions.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { QUOTE_TTL_SECONDS } from '@/lib/market-data'; \u2014 @/lib/market-data is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/finnhub.actions.ts",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { hasFinnhubQuotes } from '@/lib/markets'; \u2014 @/lib/markets is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/finnhub.actions.ts",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { getSession } from '@/lib/better-auth/auth'; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/profile.actions.ts",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { auth } from \"@/lib/better-auth/auth\"; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/profile.actions.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { INVESTMENT_GOALS, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS } from \"@/lib/constants\"; \u2014 @/lib/constants is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/user.actions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import {connectToDatabase} from \"@/database/mongoose\"; \u2014 @/database/mongoose is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/user.actions.ts",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { Watchlist } from \"@/database/models/watchlist.model\"; \u2014 @/database/models/watchlist.model is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/watchlist.actions.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { connectToDatabase } from '@/database/mongoose'; \u2014 @/database/mongoose is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/watchlist.actions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { Watchlist } from '@/database/models/watchlist.model'; \u2014 @/database/models/watchlist.model is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/actions/watchlist.actions.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { requireUserId } from '@/lib/better-auth/auth'; \u2014 @/lib/better-auth/auth is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/better-auth/auth.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import {connectToDatabase} from \"@/database/mongoose\"; \u2014 @/database/mongoose is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/better-auth/auth.ts",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { sendPasswordResetEmail } from \"@/lib/nodemailer/reset-password\"; \u2014 @/lib/nodemailer/reset-password is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import { inngest } from \"@/lib/inngest/client\"; \u2014 @/lib/inngest/client is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { NEWS_SUMMARY_EMAIL_PROMPT, PERSONALIZED_WELCOME_EMAIL_PROMPT } from \"@/lib/inngest/prompts\"; \u2014 @/lib/inngest/prompts is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 3,
+          "outcome": "unresolved",
+          "text": "import { sendNewsSummaryEmail, sendStockAlertEmail, sendWelcomeEmail } from \"@/lib/nodemailer\"; \u2014 @/lib/nodemailer is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 4,
+          "outcome": "unresolved",
+          "text": "import { getAllUsersForNewsEmail, getWatchlistSymbolsByEmail } from \"@/lib/actions/user.actions\"; \u2014 @/lib/actions/user.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 5,
+          "outcome": "unresolved",
+          "text": "import { getNews } from \"@/lib/actions/finnhub.actions\"; \u2014 @/lib/actions/finnhub.actions is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 6,
+          "outcome": "unresolved",
+          "text": "import { getFormattedTodayDate } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/inngest/functions.ts",
+          "gate": "layering",
+          "line": 7,
+          "outcome": "unresolved",
+          "text": "import { callAIProviderWithFallback } from \"@/lib/ai-provider\"; \u2014 @/lib/ai-provider is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/nodemailer/index.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { \u2014 @/lib/nodemailer/templates is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/nodemailer/index.ts",
+          "gate": "layering",
+          "line": 8,
+          "outcome": "unresolved",
+          "text": "import { escapeHtml, formatPrice } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/nodemailer/reset-password.ts",
+          "gate": "layering",
+          "line": 1,
+          "outcome": "unresolved",
+          "text": "import { transporter } from \"@/lib/nodemailer\"; \u2014 @/lib/nodemailer is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/nodemailer/reset-password.ts",
+          "gate": "layering",
+          "line": 2,
+          "outcome": "unresolved",
+          "text": "import { escapeHtml } from \"@/lib/utils\"; \u2014 @/lib/utils is a local paths alias whose configuration klin cannot prove"
+        },
+        {
+          "file": "lib/constants.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        },
+        {
+          "file": "lib/markets.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 112,
+            "measured": 110,
+            "not_measured": 0,
+            "unreadable": 2
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 112,
+            "ms": 74,
+            "parses": 112,
+            "reads": 112,
+            "shared": 0
+          },
+          "findings": 256,
+          "footprint": null,
+          "graph": {
+            "dependencies": 4,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 1
+            },
+            "edges": 4,
+            "modules": 112,
+            "ms": 1,
+            "sources": 112
+          },
+          "held": 0,
+          "ms": 147,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "ERR",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "ERROR",
+      "summary": "klin: 1 gate(s), 1 tool error.",
+      "window": {
+        "after": "the working tree",
+        "before": "58036bf4aec79414f6be3d2914ba823b861c1b93",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    }
+  },
+  {
+    "build": "after",
+    "commit": "e1507890",
+    "exit": 2,
+    "result": {
+      "derived": [],
+      "exit": 2,
+      "findings": [
+        {
+          "file": "lib/constants.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        },
+        {
+          "file": "lib/markets.ts",
+          "gate": "layering",
+          "outcome": "unparsed",
+          "text": "the TypeScript grammar rejected it"
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 112,
+            "measured": 110,
+            "not_measured": 0,
+            "unreadable": 2
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 112,
+            "ms": 74,
+            "parses": 112,
+            "reads": 112,
+            "shared": 0
+          },
+          "findings": 2,
+          "footprint": null,
+          "graph": {
+            "dependencies": 258,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 1
+            },
+            "edges": 257,
+            "modules": 112,
+            "ms": 1,
+            "sources": 112
+          },
+          "held": 0,
+          "ms": 145,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "ERR",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "ERROR",
+      "summary": "klin: 1 gate(s), 1 tool error.",
+      "window": {
+        "after": "the working tree",
+        "before": "58036bf4aec79414f6be3d2914ba823b861c1b93",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    }
+  }
+]

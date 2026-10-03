@@ -275,6 +275,9 @@ impl Fixture {
                 profile.name
             );
         }
+        if std::env::var_os("KLIN_PERF_PATHS").is_some() {
+            alias_sources(&tree);
+        }
         tree.base();
         if config == "legacy" {
             pin_legacy(&tree);
@@ -611,6 +614,27 @@ fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool) {
     tree.write(
         "web/tsconfig.json",
         "{\"compilerOptions\":{\"strict\":true},\"include\":[\"src\"]}\n",
+    );
+}
+
+/// An explicit alias variant of the verified dense generator; the ordinary rows stay identical.
+fn alias_sources(tree: &Tree) {
+    tree.write(
+        "web/tsconfig.json",
+        r#"{"compilerOptions":{"strict":true,"paths":{"@/*":["./src/*"]}},"include":["src"]}"#,
+    );
+    let mut sites = 0;
+    for entry in std::fs::read_dir(tree.root().join("web/src")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|extension| extension != "ts") {
+            continue;
+        }
+        let before = std::fs::read_to_string(&path).unwrap();
+        sites += before.matches("\"./module_").count();
+        std::fs::write(path, before.replace("\"./module_", "\"@/module_")).unwrap();
+    }
+    println!(
+        "paths variant: {sites} relative sites rewritten after verifying the generator digest"
     );
 }
 

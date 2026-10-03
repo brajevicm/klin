@@ -2270,8 +2270,9 @@ outside an import that writes it is not read. Every TypeScript file is a
 module. A relative specifier resolves when exactly one of these files exists:
 the specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a
 `.js` specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after
-it. A bare specifier, an alias and a relative specifier that names a file of
-another kind are counted as external. A `mod` declaration is containment and
+it. A bare specifier with no recognized paths rule and a specifier that
+names a file of another kind are counted as external. Explicit paths aliases
+resolve or produce local incompleteness under the rule below. A `mod` declaration is containment and
 never a dependency.
 
 A module is its resolver's identity and holds one or more physical files, each
@@ -2328,6 +2329,91 @@ which explains the finding and is no part of its key. Today's policy judges
 both trees. The base places a file the window renamed under the path it had at
 the base, and its finding names the current path, so a move into another layer
 is new debt and a move inside a layer is held.
+
+TypeScript explicit `compilerOptions.paths` aliases are local dependencies.
+One conventional ancestor `tsconfig.json`, with no extends or references,
+proves an exact or single-`*` alias only for a proven project root and when
+its single target reduces to
+exactly one held TypeScript module under the relative candidate rule. JSONC
+comments, trailing commas and a UTF-8 BOM are supported. Exact rules precede
+wildcards; the longest matching wildcard prefix wins. Equal-priority rules
+are unresolved. Absolute specifiers stay outside V1 and are never remapped.
+Targets are relative to a directly known `baseUrl`, or to the
+config directory without one. The tree still holds every source module, but
+ancestry alone does not prove that a source belongs to the alias config.
+Root proof accepts an explicit `files` entry, regardless of `exclude`, or a
+supported `include` match not filtered by `exclude`. Supported patterns are
+literal file paths, directory paths, a directory followed by `/**/*`
+(including `**/*` at the config root), and `**/*.ts` or `**/*.tsx`, alone or
+after a directory. Paths are relative to the config. An unsupported include
+entry adds no roots and leaves other include entries in force. An unsupported
+exclude entry might remove any file, so it declines all include proof for
+that config. Explicit files still prove roots. A malformed include/exclude
+list declines include proof. With neither files nor include, the config directory is the default
+include; with files but no include, include is empty. Dot paths, dependency
+directories and outDir/declarationDir are conservatively outside include
+proof, even when an explicit exclude list would admit them. Explicit files
+can still prove these roots. An excluded or non-root file might enter a
+TypeScript program through imports; V1 does not infer that reachability and
+keeps its recognized aliases locally unresolved. Targets need only be held,
+not roots themselves. V1 models configured roots, not direct-file compiler
+invocations that ignore tsconfig.
+
+Configs and rules are read once per tree; exact rules use a direct map and
+wildcards are ordered once. Scope selection uses ancestor-directory map
+lookups and root membership is selected once per source file, never per
+import. A config-only edit can retarget an unchanged dependency or change
+its root proof in a changed run.
+
+A matching paths rule whose target cannot be proved produces located local
+resolution incompleteness. One exception follows TypeScript, which tries
+normal package lookup after the paths targets: when a rule's target names
+no file the tree holds and the specifier is a valid package name, such as
+`react` or `@scope/pkg`, the import is external. A specifier that cannot name
+a package, such as `@/missing`, stays a hole. Multiple/nested or alternate tsconfigs, extends,
+project references, multiple fallback targets and invalid anchors are not
+used to guess edges. Held relative extends files are read once, with cycles
+bounded, to recognize local names only. The nearest defined paths object
+in a single local extends chain replaces the parent's entire object; an
+empty or malformed object supplies no parent keys. Array-form extends
+supplies no inherited names, though direct child paths remain recognized.
+Package extends, unreadable configs
+and bundler-specific configuration supply no unobserved names. Standalone
+baseUrl lookup and Node/package resolution remain outside V1. Aliased targets
+of another kind or ignored source retain the existing outside-V1 behavior.
+Layering consumes every relevant local hole under the held/new semantics
+below. Public-api consumes alias holes at re-export source sites only:
+implementation imports alone do not prove a public contract incomplete.
+Proven aliased re-exports traverse the shared graph via `reached_at`, which
+names one import or re-export by its byte offset in the source, so two
+statements on one line never share a target or a hole.
+Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
+`a_paths_mapping_retargets_an_unchanged_import_in_each_tree`,
+`unsupported_local_paths_are_located_and_inherited_holes_stay_notes`,
+`alias_targets_of_other_kinds_and_packages_stay_outside_the_graph`,
+`nested_configs_and_ambiguous_alias_candidates_are_not_guessed`,
+`jsonc_paths_use_exact_then_longest_wildcard_prefix`,
+`local_extends_aliases_are_recognized_without_guessing_inheritance`,
+`absolute_specifiers_are_not_reinterpreted_through_a_paths_wildcard`,
+`sibling_typescript_configs_keep_each_files_aliases_and_rule_priority` and
+`equally_specific_typescript_wildcards_remain_unproved`,
+`a_paths_config_does_not_prove_aliases_for_a_file_outside_its_project_roots`,
+`files_and_include_roots_do_not_turn_exclude_into_a_program_ban`,
+`openstock_style_recursive_roots_prove_typescript_sources`,
+`same_line_implementation_alias_hole_does_not_poison_external_re_export`,
+`same_line_re_exports_follow_the_dependency_at_each_site`,
+`same_line_alias_holes_stay_distinct_sites`,
+`a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external`,
+`imported_files_outside_project_roots_stay_unproved`,
+`child_paths_replace_inherited_alias_names_instead_of_merging` and
+`multiple_extends_do_not_supply_inherited_alias_names` and
+`a_config_only_edit_changes_root_proof_for_an_unchanged_import`,
+`output_and_dot_sources_need_explicit_files_for_root_proof` and
+`local_extends_recognition_uses_the_nearest_paths_object` in
+`tests/layering.rs`, and
+`unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do`
+and `a_proven_alias_re_export_measures_the_contract_behind_it` in
+`tests/public_api.rs`. ADR 0043 and ADR 0044 amend the former paths exclusion.
 
 A module that two files answer, a module no file answers, a path above the
 crate root, and a TypeScript specifier with no candidate or with two are
@@ -2396,7 +2482,7 @@ unit tests
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
-declares, a TypeScript `import()` or `require()`, `tsconfig` paths and package
+declares, a TypeScript `import()` or `require()`, standalone `baseUrl` lookup and package
 exports are not dependencies in V1. A name a block or a function binds in the
 type namespace, such as a local `use`, a local type alias or a generic type
 parameter, shadows a declared child module of the same name in Rust, and klin

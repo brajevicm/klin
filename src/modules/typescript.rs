@@ -2,8 +2,8 @@
 //! import or re-export resolves to the one file V1's candidate rule finds: the specifier as
 //! written where it names a TypeScript extension, the TypeScript file a `.js`, `.jsx`, `.mjs` or
 //! `.cjs` specifier stands for, and otherwise `.ts`, `.tsx`, `index.ts` and `index.tsx`. Two
-//! candidates are a hole, never a choice. A bare, package, alias or absolute specifier is
-//! counted and never resolved, and so is a relative one that names a file of another kind.
+//! candidates are a hole, never a choice. Explicit tsconfig paths aliases use that same rule.
+//! Unproved local aliases are holes; packages and targets of another kind stay outside V1.
 
 use std::collections::BTreeMap;
 
@@ -23,6 +23,7 @@ const WITHOUT: &[&str] = &[".ts", ".tsx", "/index.ts", "/index.tsx"];
 
 pub(super) fn resolve(builder: &mut Builder) {
     let topology = builder.topology;
+    let paths = super::typescript_paths::Paths::read(topology);
     let mut modules: BTreeMap<&str, usize> = BTreeMap::new();
     for file in topology.files.iter().filter(|file| source(file)) {
         let index = builder.module(file.clone(), &[file], Attachment::File);
@@ -32,15 +33,17 @@ pub(super) fn resolve(builder: &mut Builder) {
         let Some(facts) = topology.facts(file) else {
             continue;
         };
+        let scope = paths.for_file(file);
         for import in &facts.imports {
             if let Some(specifier) = import.module.as_deref() {
                 let site = Site {
                     file,
                     from: *from,
                     line: import.line,
+                    start_byte: import.start_byte,
                     text: &import.text,
                 };
-                resolved(builder, &modules, &site, specifier);
+                resolved(builder, &modules, scope, &site, specifier);
             }
         }
     }
@@ -50,38 +53,72 @@ struct Site<'a> {
     file: &'a str,
     from: usize,
     line: u64,
+    start_byte: u64,
     text: &'a str,
 }
 
-fn resolved(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site, specifier: &str) {
-    let topology = builder.topology;
-    let Some(base) = relative(specifier)
-        .then(|| joined(directory(site.file), specifier))
-        .flatten()
-    else {
-        builder.external += 1;
-        return;
+fn resolved(
+    builder: &mut Builder,
+    modules: &BTreeMap<&str, usize>,
+    paths: Option<super::typescript_paths::FilePaths<'_>>,
+    site: &Site,
+    specifier: &str,
+) {
+    let before = builder.holes.len();
+    let base = if relative(specifier) {
+        joined(directory(site.file), specifier).map(Ok)
+    } else {
+        paths.and_then(|scope| scope.resolve(specifier))
     };
-    let candidates = candidates(&base);
+    match base {
+        Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
+        Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
+        None => builder.external += 1,
+    }
+    if !relative(specifier) {
+        for hole in &mut builder.holes[before..] {
+            hole.local_alias = true;
+        }
+    }
+}
+
+fn dependency(
+    builder: &mut Builder,
+    modules: &BTreeMap<&str, usize>,
+    site: &Site,
+    specifier: &str,
+    base: &str,
+) {
+    let topology = builder.topology;
+    let candidates = candidates(base);
     let held: Vec<&String> = candidates
         .iter()
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
     match held.as_slice() {
-        [target] => builder.depend(site.from, modules[target.as_str()], site.file, site.line),
-        [] if another_kind(topology, &base, &candidates) => builder.external += 1,
-        [] => builder.hole(
+        [target] => builder.depend_at(
+            site.from,
+            modules[target.as_str()],
             site.file,
             site.line,
+            site.start_byte,
+        ),
+        [] if another_kind(topology, base, &candidates) => builder.external += 1,
+        [] if !relative(specifier) && package_name(specifier) => builder.external += 1,
+        [] => builder.hole_at(
+            site.file,
+            site.line,
+            site.start_byte,
             site.text,
             format!(
                 "{specifier} names no TypeScript file the tree holds: {}",
                 candidates.join(", ")
             ),
         ),
-        _ => builder.hole(
+        _ => builder.hole_at(
             site.file,
             site.line,
+            site.start_byte,
             site.text,
             format!(
                 "{specifier} names more than one TypeScript file: {}",
@@ -96,6 +133,23 @@ fn resolved(builder: &mut Builder, modules: &BTreeMap<&str, usize>, site: &Site,
 
 fn source(file: &str) -> bool {
     SOURCE.iter().any(|end| file.ends_with(end))
+}
+
+fn package_name(specifier: &str) -> bool {
+    let named = |part: &str| {
+        part.starts_with(|c: char| c.is_ascii_alphanumeric())
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'))
+    };
+    let mut parts = specifier.split('/');
+    match parts.next() {
+        Some(scope) if scope.starts_with('@') => {
+            named(&scope[1..]) && parts.next().is_some_and(named)
+        }
+        Some(name) => named(name),
+        None => false,
+    }
 }
 
 fn relative(specifier: &str) -> bool {

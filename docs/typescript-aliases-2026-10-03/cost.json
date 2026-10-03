@@ -1,0 +1,61 @@
+{
+  "machine": "macOS arm64",
+  "before_commit": "7104995b8bd949e2ada0dd7b46cd2e6369b37793",
+  "workload": "structural_1m warm20",
+  "relative_loc": 1033827,
+  "alias_transform_sites": 4952,
+  "rows": [
+    {
+      "build": "before-relative",
+      "measurements": {
+        "median_ms": 1324,
+        "layering_graph_ms": 31,
+        "layering_graph_dependencies": 9906,
+        "layering_facts_parses": 0,
+        "public-api_graph_ms": 19,
+        "public-api_graph_dependencies": 9906,
+        "public-api_facts_parses": 0
+      },
+      "samples": 5
+    },
+    {
+      "build": "after-relative",
+      "measurements": {
+        "median_ms": 1275,
+        "layering_graph_ms": 29,
+        "layering_graph_dependencies": 9906,
+        "layering_facts_parses": 0,
+        "public-api_graph_ms": 19,
+        "public-api_graph_dependencies": 9906,
+        "public-api_facts_parses": 0
+      },
+      "samples": 5
+    },
+    {
+      "build": "before-paths",
+      "measurements": {
+        "median_ms": 1293,
+        "layering_graph_ms": 11,
+        "layering_graph_dependencies": 18,
+        "layering_facts_parses": 0,
+        "public-api_graph_ms": 9,
+        "public-api_graph_dependencies": 18,
+        "public-api_facts_parses": 0
+      },
+      "samples": 5
+    },
+    {
+      "build": "after-paths",
+      "measurements": {
+        "median_ms": 1340,
+        "layering_graph_ms": 33,
+        "layering_graph_dependencies": 9906,
+        "layering_facts_parses": 0,
+        "public-api_graph_ms": 21,
+        "public-api_graph_dependencies": 9906,
+        "public-api_facts_parses": 0
+      },
+      "samples": 5
+    }
+  ]
+}

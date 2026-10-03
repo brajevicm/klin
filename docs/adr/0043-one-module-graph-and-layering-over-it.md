@@ -145,3 +145,41 @@ edition 2015 target the first segment starts at the target root, as rustc
 reads it. Any other first segment stays external. A bare path through a name
 no module of its file declares, and a name a block binds over a declared
 child, remain known limits. SPEC.md 8.2.1 states the rule.
+
+## Amendment: recognized TypeScript local paths (#445)
+
+Direct exact and single-star `compilerOptions.paths` aliases in one conventional
+ancestor `tsconfig.json`, with one target and a directly known baseUrl when
+needed, now resolve using the existing conservative TypeScript candidate rule.
+JSONC comments and trailing commas are supported. Exact matches precede the
+longest wildcard prefix; equal-priority patterns are unresolved. A recognized
+local alias that cannot be proved is a located graph hole, never an ordinary
+package dependency. Held local extends files supply recognized names only.
+Multiple/nested or alternate configs, extends, references and fallback targets
+are not used to prove edges. Standalone baseUrl lookup, package resolution and
+bundler aliases remain outside V1. Other-kind and ignored targets retain their
+outside-V1 classification. Each tree reads its own held configs once.
+
+Layering consumes relevant holes under the existing held/new semantics.
+Public surface derivation consumes local alias holes at re-export sites; an
+unrelated implementation import does not itself make a public contract
+incomplete. Proven aliased re-exports follow `reached_at` like relative ones.
+See SPEC 8.2.1 and the bounded survey in
+`docs/typescript-aliases-2026-10-03.md`.
+
+
+### Proof-boundary correction after PR #461 review
+
+An ancestor config is insufficient proof of TypeScript project ownership.
+Aliases now require proven root membership through explicit files or the
+conservative include/exclude subset in SPEC 8.2.1. Sources outside that root
+set remain held modules, but their recognized aliases stay locally unresolved;
+V1 does not infer program membership through imports. Exclude filters include
+roots and does not ban a file explicitly named by files.
+
+Inherited paths recognition follows replacement, not additive merge: the
+nearest paths object in a single held local extends chain supplies names.
+An empty child object removes all inherited names. Array-form extends
+supplies no inherited names; direct child rules remain recognized. Inheritance
+still never proves an edge. Scope selection uses indexed ancestor directories
+once per source file, and aliases retain their once-tree compiled lookup.

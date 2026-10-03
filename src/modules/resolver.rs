@@ -147,12 +147,18 @@ pub struct Dependency {
     pub to: usize,
     pub source: u32,
     pub line: u64,
+    /// Byte offset of the import or re-export in its source.
+    pub start_byte: u64,
 }
 
 /// One form a resolver supports and could not prove a target for.
 pub struct Hole {
+    /// Whether an explicit TypeScript paths rule recognized this dependency as local.
+    pub local_alias: bool,
     pub file: String,
     pub line: u64,
+    /// Byte offset of the import in its source.
+    pub start_byte: u64,
     pub text: String,
     pub why: String,
 }
@@ -206,6 +212,17 @@ impl<'a> Builder<'a> {
 
     /// A dependency written in `file`, which is one of the writing module's own sources.
     pub(super) fn depend(&mut self, from: usize, to: usize, file: &str, line: u64) {
+        self.depend_at(from, to, file, line, 0);
+    }
+
+    pub(super) fn depend_at(
+        &mut self,
+        from: usize,
+        to: usize,
+        file: &str,
+        line: u64,
+        start_byte: u64,
+    ) {
         let written = self.modules[from]
             .sources
             .binary_search_by(|held| held.as_str().cmp(file));
@@ -215,6 +232,7 @@ impl<'a> Builder<'a> {
                 to,
                 source: source as u32,
                 line,
+                start_byte,
             }),
             Err(_) => self.hole(
                 file,
@@ -226,9 +244,22 @@ impl<'a> Builder<'a> {
     }
 
     pub(super) fn hole(&mut self, file: &str, line: u64, text: &str, why: String) {
+        self.hole_at(file, line, 0, text, why);
+    }
+
+    pub(super) fn hole_at(
+        &mut self,
+        file: &str,
+        line: u64,
+        start_byte: u64,
+        text: &str,
+        why: String,
+    ) {
         self.holes.push(Hole {
+            local_alias: false,
             file: file.to_string(),
             line,
+            start_byte,
             text: text.to_string(),
             why,
         });

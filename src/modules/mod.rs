@@ -21,6 +21,7 @@ use crate::syntax::structural::{self, LanguageId};
 pub mod resolver;
 mod rust;
 mod typescript;
+mod typescript_paths;
 
 use resolver::{Attachment, Builder, Dependency, Hole, Module, Target, Topology};
 
@@ -155,7 +156,7 @@ pub struct ModuleGraph {
     pub targets: Vec<Target>,
     pub dependencies: Vec<Dependency>,
     pub holes: Vec<Hole>,
-    /// The dependencies written on something outside V1: another crate, a package, an alias.
+    /// The dependencies written on something outside V1: another crate, a package, or an unsupported form.
     pub external: usize,
     pub attached: BTreeMap<String, Attachment>,
     /// The structural files no resolver made a module of, such as a Rust file no target reaches.
@@ -197,15 +198,21 @@ fn finished(
         dispatches,
         time: Duration::ZERO,
     };
-    let site = |held: &Dependency| (held.from, held.to, held.source, held.line);
+    let site = |held: &Dependency| (held.from, held.to, held.source, held.line, held.start_byte);
     graph.dependencies.sort_unstable_by_key(site);
     graph.dependencies.dedup_by_key(|held| site(held));
     graph.holes.sort_by(|a, b| {
-        (&a.file, a.line, &a.text, &a.why).cmp(&(&b.file, b.line, &b.text, &b.why))
+        (&a.file, a.line, a.start_byte, &a.text, &a.why).cmp(&(
+            &b.file,
+            b.line,
+            b.start_byte,
+            &b.text,
+            &b.why,
+        ))
     });
-    graph
-        .holes
-        .dedup_by(|a, b| (&a.file, a.line, &a.why) == (&b.file, b.line, &b.why));
+    graph.holes.dedup_by(|a, b| {
+        (&a.file, a.line, a.start_byte, &a.why) == (&b.file, b.line, b.start_byte, &b.why)
+    });
     let mut unattached: Vec<String> = topology
         .facts
         .keys()
@@ -386,11 +393,11 @@ impl ModuleGraph {
         Resolved::Module { module: at, rest }
     }
 
-    /// Every module the dependencies one line of one file of a module writes resolve to.
-    pub fn reached_at(&self, from: usize, file: &str, line: u64) -> Vec<usize> {
+    /// Every module a dependency at one byte position in one source of a module resolves to.
+    pub fn reached_at(&self, from: usize, file: &str, start_byte: u64) -> Vec<usize> {
         self.dependencies
             .iter()
-            .filter(|dependency| dependency.from == from && dependency.line == line)
+            .filter(|dependency| dependency.from == from && dependency.start_byte == start_byte)
             .filter(|dependency| self.source(dependency) == file)
             .map(|dependency| dependency.to)
             .collect()
@@ -507,7 +514,7 @@ mod tests {
         assert_eq!(attached, ["a.rs", "b.rs", "c.rs"]);
         assert_eq!(graph.unattached, ["d.rs"]);
         assert_eq!(graph.source(&graph.dependencies[0]), "a.rs");
-        assert_eq!(graph.reached_at(from, "b.rs", 3), [to]);
+        assert_eq!(graph.reached_at(from, "b.rs", 0), [to]);
         assert_eq!(graph.cost().sources, 3);
     }
 }

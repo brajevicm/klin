@@ -2,7 +2,7 @@
 //! a `types` or `typings` entry, or a `main` or `module` that itself names a TypeScript source
 //! file the tree holds. Generated JavaScript is never reverse-mapped and no `src/index.ts` is
 //! guessed. From an entry file the derivation follows exported declarations, local export
-//! clauses, default exports and relative re-exports through the module graph's own edges. A
+//! clauses, default exports and local re-exports through the module graph's own edges. A
 //! re-export of another package and an exported namespace are opaque items whose clause is their
 //! contract, and a star that klin cannot list is a hole.
 
@@ -159,7 +159,7 @@ impl<'a> Derivation<'a> {
         };
         for export in &facts.exports {
             if export.source.is_some() {
-                for to in self.graph.reached_at(at, self.file(at), export.line) {
+                for to in self.graph.reached_at(at, self.file(at), export.start_byte) {
                     self.reached(to, out);
                 }
             }
@@ -363,15 +363,15 @@ impl<'a> Derivation<'a> {
     }
 
     /// A clause with a source: through the module graph's edge for its line, or as an external
-    /// package where the graph has none and the specifier is not relative.
+    /// package where the graph has no local-resolution hole at that site.
     fn re_export(&mut self, at: usize, export: &Export, specifier: &str, into: &mut Exposing) {
         let Some(target) = self
             .graph
-            .reached_at(at, self.file(at), export.line)
+            .reached_at(at, self.file(at), export.start_byte)
             .first()
             .copied()
         else {
-            match relative(specifier) {
+            match self.unresolved(at, export, specifier) {
                 true => into.holes.push(Hole {
                     file: into.file.clone(),
                     line: export.line,
@@ -401,6 +401,16 @@ impl<'a> Derivation<'a> {
                 (Some(name), path) => into.named(export, specifier, &reached, path, name),
             }
         }
+    }
+
+    /// Only a graph hole at this re-export's own site affects its contract.
+    fn unresolved(&self, at: usize, export: &Export, specifier: &str) -> bool {
+        relative(specifier)
+            || self.graph.holes.iter().any(|hole| {
+                hole.file == self.file(at)
+                    && hole.start_byte == export.start_byte
+                    && hole.text == export.text
+            })
     }
 
     /// A re-export from another package: each named clause is an opaque item whose clause is

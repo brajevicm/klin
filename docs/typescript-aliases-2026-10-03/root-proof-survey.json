@@ -1,0 +1,109 @@
+[
+  {
+    "repository": "Open-Dev-Society/OpenStock",
+    "commit": "e109f188480b7e5f4a8349dde582aeea45875071",
+    "exit": 2,
+    "recognized_direct_sites": 244,
+    "graph_dependencies": 258,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "eythaann/Seelen-UI",
+    "commit": "28bc91ac7b312854998f6086c922fc62b8157759",
+    "exit": 2,
+    "recognized_direct_sites": 32,
+    "graph_dependencies": 1526,
+    "unproved_root_or_config_holes": 31,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": [
+      "libs/core/**"
+    ]
+  },
+  {
+    "repository": "kvcache-ai/ktransformers",
+    "commit": "a5d7ad90479c9e8bdee491c16bfd563fa9d70262",
+    "exit": 2,
+    "recognized_direct_sites": 10,
+    "graph_dependencies": 24,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [
+      "src/**/*.vue"
+    ],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "whyour/qinglong",
+    "commit": "2ab9c702e64358c471e027430c894c4281d50a2f",
+    "exit": 2,
+    "recognized_direct_sites": 134,
+    "graph_dependencies": 777,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "MontrealAI/AGI-Alpha-Agent-v0",
+    "commit": "35bffe634035d44f92e764643ebaa33c19403605",
+    "exit": 2,
+    "recognized_direct_sites": 5,
+    "graph_dependencies": 72,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [
+      "src/**/*.js"
+    ],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "giselles-ai/giselle",
+    "commit": "498e1ec4932c26daf416e6d32e49adc2e1bdc2af",
+    "exit": 2,
+    "recognized_direct_sites": 338,
+    "graph_dependencies": 1461,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "jeremyckahn/chitchatter",
+    "commit": "b64f5ff132bbb5d43918469e92a4f970b8224343",
+    "exit": 0,
+    "recognized_direct_sites": 1,
+    "graph_dependencies": 107,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "langgenius/webapp-conversation",
+    "commit": "20f7412d5db9bbd18e575b67023139b726036492",
+    "exit": 0,
+    "recognized_direct_sites": 208,
+    "graph_dependencies": 313,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": []
+  },
+  {
+    "repository": "mediar-ai/terminator",
+    "commit": "95822cb74b5398eae0b81792b9e347a2c6d8ba62",
+    "exit": 0,
+    "recognized_direct_sites": 22,
+    "graph_dependencies": 278,
+    "unproved_root_or_config_holes": 0,
+    "other_alias_holes": 0,
+    "unsupported_include": [],
+    "unsupported_exclude": [
+      "**/*.spec.ts"
+    ]
+  }
+]

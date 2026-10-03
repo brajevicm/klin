@@ -388,7 +388,7 @@ fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink
 /// holes and the module graph's holes in the files the surface reaches.
 fn holes_of(side: &Side) -> Vec<coverage::Unresolved> {
     let mut by_file: HashMap<&str, Vec<&Hole>> = HashMap::new();
-    for hole in &side.graph.holes {
+    for hole in side.graph.holes.iter().filter(|hole| !hole.local_alias) {
         by_file.entry(hole.file.as_str()).or_default().push(hole);
     }
     let mut named: Vec<coverage::Unresolved> = Vec::new();

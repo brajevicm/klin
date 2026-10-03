@@ -1,0 +1,178 @@
+[
+  {
+    "issue": "361",
+    "caller": "CI",
+    "exit": 1,
+    "stdout": {
+      "derived": [],
+      "exit": 1,
+      "findings": [
+        {
+          "ceiling": null,
+          "condition": "where a dependency crosses a layer the policy forbids or closes a cycle",
+          "file": "src/domain/order.ts",
+          "fix_advice": "Depend on a layer this layer's `can_use` names, through that layer's interface, or move the code to the layer it belongs to. Break a new cycle by moving what both modules need into a module neither depends back on.",
+          "gate": "layering",
+          "id": "d8c88d27eeddba6f",
+          "line": 1,
+          "matched": null,
+          "outcome": "new",
+          "text": "domain \u2192 ui: src/ui/format.ts",
+          "values": {
+            "edge": 1,
+            "kind": "forbidden",
+            "sites": 1
+          }
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 2,
+            "measured": 2,
+            "not_measured": 0,
+            "unreadable": 0
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 3,
+            "ms": 11,
+            "parses": 3,
+            "reads": 3,
+            "shared": 1
+          },
+          "findings": 1,
+          "footprint": null,
+          "graph": {
+            "dependencies": 3,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 2
+            },
+            "edges": 3,
+            "modules": 4,
+            "ms": 1,
+            "sources": 4
+          },
+          "held": 0,
+          "ms": 83,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "FAIL",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "FAIL",
+      "summary": "klin: 1 gate(s), 1 failed.",
+      "window": {
+        "after": "the working tree",
+        "before": "9440cf39ab167a68191990d28f9d972231cff84e",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    },
+    "stderr": ""
+  },
+  {
+    "issue": "361",
+    "caller": "Stop",
+    "exit": 2,
+    "stdout": "",
+    "stderr": "klin: a quality gate failed \u2014 fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn \u2014 base 3941923, the turn stamp, taken just now\n  changed: 2 file(s) against the base \u2014 the scoped gates judge those; CI judges everything\n  FAIL  layering\n        FAIL: 1 new dependency edge(s) where a dependency crosses a layer the policy forbids or closes a cycle, beyond the 0 the base holds:\n          src/domain/order.ts:1  forbidden, 1 site(s)  domain \u2192 ui: src/ui/format.ts  \u2014 nothing matched\n        Depend on a layer this layer's `can_use` names, through that layer's interface, or move the code to the layer it belongs to. Break a new cycle by moving what both modules need into a module neither depends back on.\nklin: 1 gate(s), 1 failed.\n"
+  },
+  {
+    "issue": "355",
+    "caller": "CI",
+    "exit": 1,
+    "stdout": {
+      "derived": [],
+      "exit": 1,
+      "findings": [
+        {
+          "ceiling": null,
+          "condition": "where a dependency crosses a layer the policy forbids or closes a cycle",
+          "file": "src/db/orders.ts",
+          "fix_advice": "Depend on a layer this layer's `can_use` names, through that layer's interface, or move the code to the layer it belongs to. Break a new cycle by moving what both modules need into a module neither depends back on.",
+          "gate": "layering",
+          "id": "8744d6b58730cc3c",
+          "line": 1,
+          "matched": null,
+          "outcome": "new",
+          "text": "db \u2192 ui: src/ui/labels.ts",
+          "values": {
+            "edge": 1,
+            "kind": "forbidden",
+            "sites": 1
+          }
+        }
+      ],
+      "gates": [
+        {
+          "accepted": 0,
+          "coverage": {
+            "excluded": 0,
+            "found": 18,
+            "measured": 18,
+            "not_measured": 0,
+            "unreadable": 0
+          },
+          "facts": {
+            "cache_read_ms": 0,
+            "cache_write_ms": 0,
+            "cached": 0,
+            "extracted": 19,
+            "ms": 17,
+            "parses": 19,
+            "reads": 19,
+            "shared": 17
+          },
+          "findings": 1,
+          "footprint": null,
+          "graph": {
+            "dependencies": 39,
+            "dispatches": {
+              "rust": 0,
+              "typescript": 2
+            },
+            "edges": 39,
+            "modules": 36,
+            "ms": 2,
+            "sources": 36
+          },
+          "held": 0,
+          "ms": 94,
+          "name": "layering",
+          "names": null,
+          "notes": 0,
+          "status": "FAIL",
+          "surface": null,
+          "work": null
+        }
+      ],
+      "notes": [],
+      "status": "FAIL",
+      "summary": "klin: 1 gate(s), 1 failed.",
+      "window": {
+        "after": "the working tree",
+        "before": "628a20571697a9725ec3ca6f4ac3a3978beb8059",
+        "how": "the merge-base with main",
+        "kind": "branch"
+      }
+    },
+    "stderr": ""
+  },
+  {
+    "issue": "355",
+    "caller": "Stop",
+    "exit": 2,
+    "stdout": "",
+    "stderr": "klin: a quality gate failed \u2014 fix what each names, then stop again (gate block 1 of 2 in this turn):\n  window: turn \u2014 base 1db53e9, the turn stamp, taken just now\n  changed: 2 file(s) against the base \u2014 the scoped gates judge those; CI judges everything\n  FAIL  layering\n        FAIL: 1 new dependency edge(s) where a dependency crosses a layer the policy forbids or closes a cycle, beyond the 0 the base holds:\n          src/db/orders.ts:1  forbidden, 1 site(s)  db \u2192 ui: src/ui/labels.ts  \u2014 nothing matched\n        Depend on a layer this layer's `can_use` names, through that layer's interface, or move the code to the layer it belongs to. Break a new cycle by moving what both modules need into a module neither depends back on.\nklin: 1 gate(s), 1 failed.\n"
+  }
+]

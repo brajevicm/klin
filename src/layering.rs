@@ -639,8 +639,10 @@ fn edges(
         let target = names.of(dependency.to).0.clone();
         if let Some(what) = verdict.straddled {
             ambiguous.push(Hole {
+                local_alias: false,
                 file: side.current(file),
                 line: dependency.line,
+                start_byte: dependency.start_byte,
                 text: target.clone(),
                 why: format!("reaches a module whose files lie across {what}"),
             });
@@ -1006,6 +1008,7 @@ mod tests {
             to,
             source,
             line,
+            start_byte: line,
         }
     }
 
@@ -1144,7 +1147,7 @@ mod tests {
 
     /// Two files of one module that write a dependency on the same line are two sites.
     #[test]
-    fn a_site_is_its_file_and_line() {
+    fn a_site_is_its_file_and_offset() {
         let modules = vec![
             module("x", &["a/x1.go", "a/x2.go"]),
             module("y", &["a/y.go"]),
