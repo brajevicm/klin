@@ -10,7 +10,7 @@ export LC_ALL=C
 here=$(cd "$(dirname "$0")" && pwd)
 tools=${TOOLS:?TOOLS names the directory of the pinned tools}
 clones=${1:?usage: cost.sh CLONES}
-runs=$here/cost-runs.tsv
+runs=$here/cost-runs${RECIPE_ONLY:+-$RECIPE_ONLY}.tsv
 
 now() { perl -MTime::HiRes=time -e 'printf "%.0f", time * 1000'; }
 
