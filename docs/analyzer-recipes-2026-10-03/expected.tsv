@@ -1,0 +1,109 @@
+route	stop {}	ci {}	stop recipes	ci recipes	ci findings with recipes
+recipes-ts/base	0	0	0	0	-
+recipes-ts/inj-plant-sql	0	0	2	1	semgrep:sql-template-ts
+recipes-ts/inj-plant-exec	0	0	2	1	semgrep:exec-template-ts semgrep:sql-template-ts
+recipes-ts/inj-plant-eval	0	0	2	1	eslint:no-eval
+recipes-ts/inj-neg-param	0	0	0	0	-
+recipes-ts/inj-neg-const	0	0	2	1	semgrep:sql-template-ts
+recipes-ts/inj-reword-concat	0	0	2	1	semgrep:sql-template-ts
+recipes-ts/inj-reword-variable	0	0	0	0	-
+recipes-ts/inj-reword-join	0	0	0	0	-
+recipes-ts/inj-reword-function	0	0	2	1	eslint:@typescript-eslint/no-implied-eval eslint:no-new-func
+recipes-ts/inj-suppress-eslint	2	1	2	1	escapes:// eslint-disable-next-line no-eval eslint:no-eval
+recipes-ts/inj-suppress-nosemgrep	0	0	2	1	semgrep:sql-template-ts
+recipes-ts/inj-legit	0	0	0	0	-
+recipes-ts/sec-plant-key	0	0	2	1	gitleaks:generic-api-key
+recipes-ts/sec-plant-password	0	0	0	0	-
+recipes-ts/sec-plant-constant	0	0	2	1	gitleaks:generic-api-key semgrep:hardcoded-secret
+recipes-ts/sec-neg-name	0	0	0	0	-
+recipes-ts/sec-neg-test	0	0	0	0	-
+recipes-ts/sec-reword-split	0	0	0	0	-
+recipes-ts/sec-reword-base64	0	0	0	0	-
+recipes-ts/sec-reword-rename	0	0	0	0	-
+recipes-ts/sec-suppress-gitleaks	0	0	0	0	-
+recipes-ts/sec-legit	0	0	0	0	-
+recipes-ts/err-plant-empty	0	0	2	1	eslint:@typescript-eslint/no-unused-vars eslint:no-empty
+recipes-ts/err-plant-promise	0	0	2	1	eslint:@typescript-eslint/no-empty-function
+recipes-ts/err-plant-default	0	0	0	0	-
+recipes-ts/err-neg-rethrow	0	0	0	0	-
+recipes-ts/err-reword-comment	0	0	0	0	-
+recipes-ts/err-reword-void	0	0	0	0	-
+recipes-ts/err-suppress-eslint	2	1	2	1	escapes:// eslint-disable-next-line no-empty eslint:@typescript-eslint/no-unused-vars eslint:no-empty
+recipes-ts/err-legit	0	0	0	0	-
+recipes-ts/dead-plant-import	0	0	2	1	eslint:@typescript-eslint/no-unused-vars
+recipes-ts/dead-plant-variable	0	0	2	1	eslint:@typescript-eslint/no-unused-vars
+recipes-ts/dead-plant-unreachable	0	0	2	1	eslint:no-unreachable
+recipes-ts/dead-plant-commented	0	0	2	1	eslint:sonarjs/no-commented-code
+recipes-ts/dead-neg-callback	0	0	0	0	-
+recipes-ts/dead-reword-export	0	0	0	0	-
+recipes-ts/dead-reword-void	0	0	0	0	-
+recipes-ts/dead-legit	0	0	0	0	-
+recipes-ts/debug-plant-log	0	0	2	1	eslint:no-console
+recipes-ts/debug-plant-debugger	0	0	2	1	eslint:no-debugger
+recipes-ts/debug-neg-script	0	0	2	1	eslint:no-console
+recipes-ts/debug-neg-test	0	0	2	1	eslint:no-console
+recipes-ts/debug-reword-alias	0	0	0	0	-
+recipes-ts/debug-reword-stdout	0	0	0	0	-
+recipes-ts/debug-suppress-eslint	2	1	2	1	escapes:// eslint-disable-next-line no-console eslint:no-console
+recipes-ts/debug-suppress-inline-config	0	0	0	0	-
+recipes-ts/debug-legit	0	0	0	0	-
+recipes-ts/cond-plant-guard	0	0	2	1	eslint:@typescript-eslint/no-unnecessary-condition
+recipes-ts/cond-plant-optional	0	0	2	1	eslint:@typescript-eslint/no-unnecessary-condition
+recipes-ts/cond-plant-undefined	0	0	2	1	eslint:@typescript-eslint/no-unnecessary-condition
+recipes-ts/cond-neg-index	0	0	2	1	eslint:@typescript-eslint/no-unnecessary-condition
+recipes-ts/cond-neg-env	0	0	0	0	-
+recipes-ts/cond-reword-widen	0	0	0	0	-
+recipes-ts/cond-reword-cast	0	0	0	0	-
+recipes-ts/cond-reword-any	2	1	2	1	escapes:if (!(order as any).items) {
+recipes-ts/cond-legit	0	0	0	0	-
+recipes-py/base	0	0	0	0	-
+recipes-py/inj-plant-sql	0	0	2	1	ruff:S608 semgrep:sql-format-py
+recipes-py/inj-plant-exec	0	0	2	1	ruff:S602
+recipes-py/inj-plant-eval	0	0	2	1	ruff:S307
+recipes-py/inj-neg-param	0	0	0	0	-
+recipes-py/inj-neg-const	0	0	2	1	ruff:S608 semgrep:sql-format-py
+recipes-py/inj-reword-concat	0	0	2	1	ruff:S608
+recipes-py/inj-reword-variable	0	0	2	1	ruff:S608
+recipes-py/inj-reword-join	0	0	0	0	-
+recipes-py/inj-reword-function	0	0	0	0	-
+recipes-py/inj-suppress-noqa	2	1	2	1	escapes:return round(float(eval(text)) * 100)  # noqa
+recipes-py/inj-suppress-file	0	0	0	0	-
+recipes-py/inj-suppress-nosemgrep	2	1	2	1	escapes:rows = db.execute(f"SELECT id, name, email FROM users WHERE name = '{name}'").fetchall()  # nosemgrep  # noqa semgrep:sql-format-py
+recipes-py/inj-legit	0	0	0	0	-
+recipes-py/sec-plant-key	0	0	2	1	gitleaks:generic-api-key
+recipes-py/sec-plant-password	0	0	2	1	ruff:S106
+recipes-py/sec-plant-constant	0	0	2	1	gitleaks:generic-api-key semgrep:hardcoded-secret
+recipes-py/sec-neg-name	0	0	2	1	ruff:S105
+recipes-py/sec-neg-test	0	0	0	0	-
+recipes-py/sec-reword-split	0	0	0	0	-
+recipes-py/sec-reword-base64	0	0	0	0	-
+recipes-py/sec-reword-rename	0	0	0	0	-
+recipes-py/sec-suppress-gitleaks	0	0	0	0	-
+recipes-py/sec-legit	0	0	0	0	-
+recipes-py/err-plant-pass	0	0	2	1	ruff:BLE001 ruff:S110
+recipes-py/err-plant-default	0	0	2	1	ruff:BLE001
+recipes-py/err-plant-continue	0	0	2	1	ruff:BLE001 ruff:S112
+recipes-py/err-neg-rethrow	0	0	0	0	-
+recipes-py/err-neg-specific	0	0	0	0	-
+recipes-py/err-reword-narrow	0	0	0	0	-
+recipes-py/err-reword-suppress	0	0	0	0	-
+recipes-py/err-reword-name	0	0	2	1	ruff:BLE001
+recipes-py/err-suppress-noqa	2	1	2	1	escapes:except Exception
+recipes-py/err-legit	0	0	0	0	-
+recipes-py/dead-plant-import	0	0	2	1	ruff:F401
+recipes-py/dead-plant-variable	0	0	2	1	ruff:F841
+recipes-py/dead-plant-unreachable	0	0	0	0	-
+recipes-py/dead-plant-commented	0	0	2	1	ruff:ERA001
+recipes-py/dead-neg-reexport	0	0	0	0	-
+recipes-py/dead-reword-underscore	0	0	0	0	-
+recipes-py/dead-reword-import-as	0	0	0	0	-
+recipes-py/dead-legit	0	0	0	0	-
+recipes-py/debug-plant-print	0	0	2	1	ruff:T201
+recipes-py/debug-plant-pprint	0	0	2	1	ruff:T203
+recipes-py/debug-plant-breakpoint	0	0	2	1	ruff:T100
+recipes-py/debug-neg-cli	0	0	2	1	ruff:T201
+recipes-py/debug-neg-test	0	0	2	1	ruff:T201
+recipes-py/debug-reword-stdout	0	0	0	0	-
+recipes-py/debug-reword-alias	0	0	0	0	-
+recipes-py/debug-suppress-noqa	2	1	2	1	escapes:print("total", order)  # noqa
+recipes-py/debug-legit	0	0	0	0	-

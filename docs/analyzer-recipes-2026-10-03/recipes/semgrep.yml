@@ -3,13 +3,14 @@ rules:
     languages: [typescript]
     severity: ERROR
     message: SQL text built from a value; pass the value as a query parameter
-    pattern-either:
-      - pattern: $DB.$QUERY(`...${$X}...`, ...)
-      - pattern: $DB.$QUERY("..." + $X, ...)
-      - pattern: $DB.$QUERY($X + "...", ...)
-    metavariable-regex:
-      metavariable: $QUERY
-      regex: ^(query|execute|raw|exec|run|all|get|prepare)$
+    patterns:
+      - pattern-either:
+          - pattern: $DB.$QUERY(`...${$X}...`, ...)
+          - pattern: $DB.$QUERY("..." + $X, ...)
+          - pattern: $DB.$QUERY($X + "...", ...)
+      - metavariable-regex:
+          metavariable: $QUERY
+          regex: ^(query|execute|raw|exec|run|all|get|prepare)$
   - id: exec-template-ts
     languages: [typescript]
     severity: ERROR
@@ -23,14 +24,15 @@ rules:
     languages: [python]
     severity: ERROR
     message: SQL text built from a value; pass the value as a query parameter
-    pattern-either:
-      - pattern: $C.$QUERY(f"...", ...)
-      - pattern: $C.$QUERY("..." % $X, ...)
-      - pattern: $C.$QUERY("...".format(...), ...)
-      - pattern: $C.$QUERY("..." + $X, ...)
-    metavariable-regex:
-      metavariable: $QUERY
-      regex: ^(execute|executemany|executescript|raw)$
+    patterns:
+      - pattern-either:
+          - pattern: $C.$QUERY(f"...", ...)
+          - pattern: $C.$QUERY("..." % $X, ...)
+          - pattern: $C.$QUERY("...".format(...), ...)
+          - pattern: $C.$QUERY("..." + $X, ...)
+      - metavariable-regex:
+          metavariable: $QUERY
+          regex: ^(execute|executemany|executescript|raw)$
   - id: hardcoded-secret
     languages: [typescript, python]
     severity: ERROR

@@ -114,7 +114,16 @@ family() {
   while IFS=$'\t' read -r name _ _; do route "$family" "$name"; done < "$here/fixtures/$family/routes.tsv"
 }
 
-if [ $# -gt 0 ]; then
+if [ "${1:-}" = stage ]; then
+  stage "$2" "$3" "$4" recipe
+  echo "stop: $(stop "$4" "$4.stop1")"
+  jq -r '.message // empty' < <(tail -n 1 "$4.stop1") > "$4.message" 2> /dev/null || true
+elif [ "${1:-}" = finish ]; then
+  code=0
+  hook "$2" stop ',"blocked_before":true' gate --hook --changed > "$2.stop2" 2>&1 || code=$?
+  echo "stop: $code"
+  echo "ci: $(ci "$2" "$2.ci.json") $(failed "$2.ci.json")"
+elif [ $# -gt 0 ]; then
   family "$@"
 else
   family recipes-ts

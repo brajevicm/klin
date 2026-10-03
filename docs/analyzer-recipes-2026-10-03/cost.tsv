@@ -1,0 +1,7 @@
+repository	tool	whole ms	20 files ms
+refactoringhq/tolaria	eslint	70779	1204
+refactoringhq/tolaria	semgrep	6959	1288
+refactoringhq/tolaria	gitleaks	3845	-
+teng-lin/notebooklm-py	ruff	142	30
+teng-lin/notebooklm-py	semgrep	2292	1224
+teng-lin/notebooklm-py	gitleaks	22175	-

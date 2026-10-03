@@ -2,7 +2,8 @@
 # replay.sh CLONES OUT [whole]: run the recipes of each sample change through
 # `klin gate --strict --json`, the way CI judges a pull request, and write
 # failures.tsv, gates.tsv and changes.tsv into OUT. With `whole`, ESLint, Ruff
-# and Semgrep run over the whole tree instead of the changed files.
+# and Semgrep run over the whole tree instead of the changed files. PICK names
+# the recipes to run, ONLY one head commit.
 set -euo pipefail
 export LC_ALL=C
 
@@ -15,6 +16,7 @@ clones=${1:?usage: replay.sh CLONES OUT [whole]}
 out=${2:?usage: replay.sh CLONES OUT [whole]}
 scope=${3:-changed}
 only=${ONLY:-}
+pick=${PICK:-}
 home=$(mktemp -d)
 trap 'rm -rf "$home"' EXIT
 mkdir -p "$out/json"
@@ -48,6 +50,7 @@ while read -r lang name base head; do
     TypeScript) pattern='\.(ts|tsx|mts|cts)$' tools_of="eslint semgrep gitleaks" ;;
     Python) pattern='\.(py|pyi)$' tools_of="ruff semgrep gitleaks" ;;
   esac
+  [ -z "$pick" ] || tools_of=$pick
   git -C "$dir" checkout -q --force --detach "$head"
   git -C "$dir" clean -fdq
   git -C "$dir" branch -q -f klin-base "$base"
