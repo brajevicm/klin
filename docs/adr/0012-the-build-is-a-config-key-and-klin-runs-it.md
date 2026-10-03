@@ -1,5 +1,9 @@
 # The build is a config key, and klin runs it
 
+> #434 amends this: only the hook runs the build. `klin gate` outside the
+> hook, `--strict` and CI included, runs no build entry, so the project's own
+> CI must run the build.
+>
 > ADR 0048 amends this: a build block needs a tree that changed since the
 > last one, and a shell exit of 127 is an unmeasured build whose gates run.
 >
@@ -37,7 +41,8 @@ blocks on the first failure with that command's output. No gate runs, because a
 gate measuring a tree that does not compile measures nothing worth reading.
 Under `--changed` klin runs only the entries whose root holds a changed file. A
 changed file under no root runs every entry, because klin cannot know what that
-file affects. Without `--changed`, and in CI, every entry runs.
+file affects. Without `--changed`, every entry runs. Outside the hook no
+entry runs, so the project's own CI must run the build.
 
 ## The key belongs to the hook, not to a gate
 

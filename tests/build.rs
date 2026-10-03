@@ -190,9 +190,16 @@ fn a_failing_build_under_json_prints_one_json_object() {
 fn a_build_key_is_not_read_outside_the_hook() {
     let tree = tree(r#""build": "exit 1","#);
 
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    for args in [&["gate"][..], &["gate", "--strict"]] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+    }
 }
+
+/// The hook's words for who builds a tree outside it, because `klin gate` outside the hook runs
+/// no build. ADR 0012, spec 9.3.
+const OWN_CI: &str =
+    "klin gate outside the hook runs no build, so the project's own CI must run it";
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 
@@ -217,6 +224,8 @@ fn a_stop_over_an_unchanged_tree_is_reported_and_not_blocked_again() {
     assert_eq!(again.code, 0, "{}", again.out);
     assert!(again.says("the-compiler-spoke"), "{}", again.out);
     assert!(again.says("did not change"), "{}", again.out);
+    assert!(again.says(OWN_CI), "{}", again.out);
+    assert!(!again.says("CI will refuse"), "{}", again.out);
 
     tree.write(
         "src/lib.rs",
@@ -240,6 +249,7 @@ fn a_build_whose_command_is_missing_is_a_note_and_the_gates_run() {
         "{}",
         run.out
     );
+    assert!(run.says(OWN_CI), "{}", run.out);
     assert!(
         run.says("Install the project's dependencies"),
         "{}",
@@ -285,6 +295,8 @@ fn a_failing_build_blocks_eight_stops_under_one_prompt_and_the_ninth_reports() {
     assert_eq!(ninth.code, 0, "{}", ninth.out);
     assert!(ninth.says("the-compiler-spoke"), "{}", ninth.out);
     assert!(ninth.says("stops blocking"), "{}", ninth.out);
+    assert!(ninth.says(OWN_CI), "{}", ninth.out);
+    assert!(!ninth.says("CI will refuse"), "{}", ninth.out);
 }
 
 #[test]

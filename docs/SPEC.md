@@ -3258,8 +3258,11 @@ nothing, per 5.1.
 ### 9.3 The block policy
 
 ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
-the tree builds. A gate failure blocks at most two stops under one prompt,
-the second only over a changed tree (ADR 0052). The build stamp in the state
+the tree builds. Only the hook runs the build: `klin gate` outside the hook,
+`--strict` and CI included, runs no build entry, so the project's own CI must
+run the build, and the hook's build messages say so. A gate failure blocks at
+most two stops under one prompt, the second only over a changed tree (ADR
+0052). The build stamp in the state
 directory carries the facts between the processes.
 
 ADR 0004 relies on the host's cap on consecutive blocks. That cap is not in
@@ -3358,8 +3361,8 @@ before klin starts, such as a `cargo run` that compiles klin first, is not
 counted. When a command reaches its limit or the deadline, klin stops it and
 the build fails with a message that names the command and the limit or deadline
 it reached. `klin.json` cannot change either: a person whose build takes longer
-sets `build` to `false` and lets CI build. A run MAY take `KLIN_COMMAND_LIMIT`
-in seconds for tests. It sets the limit of each command, from 1 to 300 seconds,
+sets `build` to `false` and has the project's own CI build. A run MAY take
+`KLIN_COMMAND_LIMIT` in seconds for tests. It sets the limit of each command, from 1 to 300 seconds,
 and the deadline is twice it. Any other value is an error, so the override can
 shorten the limit and the deadline and never raise them.
 
@@ -3375,9 +3378,10 @@ catch.
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
 records the build as unmeasured: one NOTE names the command, quotes the
-shell, and says that klin judged the source as it stands, that CI runs the
-build, and that the action left is to install the project's dependencies or
-for a person to set `build` to `false`. The gates then run over the tree,
+shell, and says that klin judged the source as it stands, that `klin gate`
+outside the hook runs no build, so the project's own CI must run it, and
+that the action left is to install the project's dependencies or for a
+person to set `build` to `false`. The gates then run over the tree,
 so a `lockfile` finding for the dependency that was declared and never
 installed reaches the agent, and the NOTE is told at a stop nothing blocks.
 The exit code is the whole test: klin reads no shell message and guesses no

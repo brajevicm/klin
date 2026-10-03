@@ -27,7 +27,8 @@ tree the last block was taken over, hashed the way the turn stamp hashes it.
 A stop whose tree is the same one spends no block: the hook reports the
 failure, says the tree did not change, and lets the turn end with the RED
 verdict already written. A block over a tree the agent did not touch teaches
-it nothing, and CI refuses the tree either way. Each block that is spent names
+it nothing. `klin gate` outside the hook runs no build (ADR 0012), so the
+project's own CI must refuse the tree. Each block that is spent names
 its number in the turn, so the agent reads the budget it is spending.
 
 **An exit of 127 is an unmeasured build, not a failed one.** The shell returns
