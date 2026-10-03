@@ -1,0 +1,51 @@
+rules:
+  - id: sql-template-ts
+    languages: [typescript]
+    severity: ERROR
+    message: SQL text built from a value; pass the value as a query parameter
+    patterns:
+      - pattern-either:
+          - pattern: $DB.$QUERY(`...${$X}...`, ...)
+          - pattern: $DB.$QUERY("..." + $X, ...)
+          - pattern: $DB.$QUERY($X + "...", ...)
+      - metavariable-regex:
+          metavariable: $QUERY
+          regex: ^(query|execute|raw|exec|run|all|get|prepare)$
+  - id: exec-template-ts
+    languages: [typescript]
+    severity: ERROR
+    message: shell command built from a value; pass arguments to execFile as an array
+    pattern-either:
+      - pattern: exec(`...${$X}...`, ...)
+      - pattern: exec("..." + $X, ...)
+      - pattern: execSync(`...${$X}...`, ...)
+      - pattern: execSync("..." + $X, ...)
+  - id: sql-format-py
+    languages: [python]
+    severity: ERROR
+    message: SQL text built from a value; pass the value as a query parameter
+    patterns:
+      - pattern-either:
+          - pattern: $C.$QUERY(f"...", ...)
+          - pattern: $C.$QUERY("..." % $X, ...)
+          - pattern: $C.$QUERY("...".format(...), ...)
+          - pattern: $C.$QUERY("..." + $X, ...)
+      - metavariable-regex:
+          metavariable: $QUERY
+          regex: ^(execute|executemany|executescript|raw)$
+  - id: hardcoded-secret
+    languages: [typescript, python]
+    severity: ERROR
+    message: a secret written into source; read it from the environment or a secret store
+    patterns:
+      - pattern-either:
+          - pattern: $NAME = "$VALUE"
+          - pattern: const $NAME = "$VALUE"
+          - pattern: '{..., $NAME: "$VALUE", ...}'
+          - pattern: $F(..., $NAME="$VALUE", ...)
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i)^.*(secret|token|api_?key|passw(or)?d|pwd)$
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: ^[^\s]{12,}$

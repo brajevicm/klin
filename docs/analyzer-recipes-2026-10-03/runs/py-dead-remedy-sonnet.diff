@@ -1,0 +1,16 @@
+diff --git a/shop/orders.py b/shop/orders.py
+index 448823e..cfae7c5 100644
+--- a/shop/orders.py
++++ b/shop/orders.py
+@@ -24,10 +24,7 @@ class Order:
+ 
+ 
+ def total(order: Order) -> int:
+-    result = 0
+-    for item in order.items:
+-        result += item.cents * item.quantity
+-    return result
++    return sum(item.cents * item.quantity for item in order.items)
+ 
+ 
+ def load(db: sqlite3.Connection, order_id: int) -> Order:

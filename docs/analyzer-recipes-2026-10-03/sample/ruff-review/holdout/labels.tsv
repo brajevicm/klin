@@ -1,0 +1,10 @@
+language	repository	head	gate	file	line	rule	family	label	reason
+Python	teng-lin/notebooklm-py	9834e07c6a	ruff-review	tests/server/test_profiles.py	604	S106	secrets	not-appropriate	a test value, not a credential
+Python	kvcache-ai/ktransformers	7c35863f62	ruff-review	.github/model-e2e/installed.py	51	F401	dead	not-appropriate	an import that checks an installed package, suppressed with # noqa: F401
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/convert_mxfp4_gguf.py	109	F841	dead	appropriate	an unused local
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/convert_mxfp4_gguf.py	271	BLE001	swallowed	not-appropriate	a deliberate broad handler that records the failure, suppressed with # noqa: BLE001
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	58	F841	dead	appropriate	an unused local
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	99	F401	dead	appropriate	an unused import
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	100	F401	dead	appropriate	an unused import
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	246	F841	dead	appropriate	an unused local
+Python	huggingface/trl	04bbf1f3c4	ruff-review	trl/trainer/__init__.py	80	F401	dead	not-appropriate	a re-export in a package __init__ that the project exempts

@@ -1,0 +1,52 @@
+route	stop {}	ci {}	stop recipe	ci recipe	ci findings with the recipe
+recipes-py/base	0	0	0	0	-
+recipes-py/inj-plant-sql	0	0	2	1	ruff-review:S608
+recipes-py/inj-plant-exec	0	0	2	1	ruff-review:S602
+recipes-py/inj-plant-eval	0	0	2	1	ruff-review:S307
+recipes-py/inj-neg-param	0	0	0	0	-
+recipes-py/inj-neg-const	0	0	2	1	ruff-review:S608
+recipes-py/inj-reword-concat	0	0	2	1	ruff-review:S608
+recipes-py/inj-reword-variable	0	0	2	1	ruff-review:S608
+recipes-py/inj-reword-join	0	0	0	0	-
+recipes-py/inj-reword-function	0	0	0	0	-
+recipes-py/inj-suppress-noqa	2	1	2	1	escapes:return round(float(eval(text)) * 100)  # noqa ruff-review:S307
+recipes-py/inj-suppress-file	0	0	2	1	ruff-review:S307
+recipes-py/inj-suppress-nosemgrep	2	1	2	1	escapes:rows = db.execute(f"SELECT id, name, email FROM users WHERE name = '{name}'").fetchall()  # nosemgrep  # noqa ruff-review:S608
+recipes-py/inj-legit	0	0	0	0	-
+recipes-py/sec-plant-key	0	0	0	0	-
+recipes-py/sec-plant-password	0	0	0	0	-
+recipes-py/sec-plant-constant	0	0	0	0	-
+recipes-py/sec-neg-name	0	0	0	0	-
+recipes-py/sec-neg-test	0	0	0	0	-
+recipes-py/sec-reword-split	0	0	0	0	-
+recipes-py/sec-reword-base64	0	0	0	0	-
+recipes-py/sec-reword-rename	0	0	0	0	-
+recipes-py/sec-suppress-gitleaks	0	0	0	0	-
+recipes-py/sec-legit	0	0	0	0	-
+recipes-py/err-plant-pass	0	0	2	1	ruff-review:BLE001 ruff-review:S110
+recipes-py/err-plant-default	0	0	2	1	ruff-review:BLE001
+recipes-py/err-plant-continue	0	0	2	1	ruff-review:BLE001 ruff-review:S112
+recipes-py/err-neg-rethrow	0	0	0	0	-
+recipes-py/err-neg-specific	0	0	0	0	-
+recipes-py/err-reword-narrow	0	0	0	0	-
+recipes-py/err-reword-suppress	0	0	0	0	-
+recipes-py/err-reword-name	0	0	2	1	ruff-review:BLE001
+recipes-py/err-suppress-noqa	2	1	2	1	escapes:except Exception ruff-review:BLE001 ruff-review:S110
+recipes-py/err-legit	0	0	0	0	-
+recipes-py/dead-plant-import	0	0	0	0	-
+recipes-py/dead-plant-variable	0	0	0	0	-
+recipes-py/dead-plant-unreachable	0	0	0	0	-
+recipes-py/dead-plant-commented	0	0	0	0	-
+recipes-py/dead-neg-reexport	0	0	0	0	-
+recipes-py/dead-reword-underscore	0	0	0	0	-
+recipes-py/dead-reword-import-as	0	0	0	0	-
+recipes-py/dead-legit	0	0	0	0	-
+recipes-py/debug-plant-print	0	0	0	0	-
+recipes-py/debug-plant-pprint	0	0	0	0	-
+recipes-py/debug-plant-breakpoint	0	0	0	0	-
+recipes-py/debug-neg-cli	0	0	0	0	-
+recipes-py/debug-neg-test	0	0	0	0	-
+recipes-py/debug-reword-stdout	0	0	0	0	-
+recipes-py/debug-reword-alias	0	0	0	0	-
+recipes-py/debug-suppress-noqa	2	1	2	1	escapes:print("total", order)  # noqa
+recipes-py/debug-legit	0	0	0	0	-

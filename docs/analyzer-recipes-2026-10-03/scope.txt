@@ -1,0 +1,5 @@
+eslint: {"artifacts":["hidden.ts","outside.ts","broken.ts","clean.ts"],"results":[],"invocations":[{"ok":false,"notes":["Parsing error: /private/var/folders/wh/znf020wn4nd5vq4b4x4dj","Parsing error: /private/var/folders/wh/znf020wn4nd5vq4b4x4dj","Parsing error: Expression expected."]}]}
+ruff: {"artifacts":[],"results":["invalid-syntax broken.py","invalid-syntax broken.py"],"invocations":[]}
+semgrep: {"artifacts":[],"results":[],"invocations":[{"ok":true,"notes":["Syntax error at line src/broken.ts:1:\n `= (` was unexpected"]}]}
+gitleaks: {"artifacts":[],"results":[],"invocations":[]}
+semgrep json: {"scanned":["outside.ts","src/broken.py","src/broken.ts","src/clean.py","src/clean.ts"],"errors":["src/broken.ts"]}

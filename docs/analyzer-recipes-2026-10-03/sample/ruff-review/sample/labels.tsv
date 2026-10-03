@@ -1,0 +1,8 @@
+language	repository	head	gate	file	line	rule	family	label	reason
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fallback.py	63	BLE001	swallowed	not-appropriate	a documented best-effort fallback that logs
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fetch.py	49	F401	dead	not-appropriate	an import that checks an optional dependency, suppressed with # noqa: F401
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fetch.py	50	F401	dead	not-appropriate	an import that checks an optional dependency, suppressed with # noqa: F401
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	tests/unit/app/test_source_fallback.py	166	S105	secrets	not-appropriate	a test value, not a credential
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	tests/unit/cli/test_source.py	113	S106	secrets	not-appropriate	a test value, not a credential
+Python	huggingface/trl	9fa0abbd29	ruff-review	trl/trainer/__init__.py	76	F401	dead	not-appropriate	a re-export in a package __init__ that the project exempts
+Python	huggingface/trl	d947c4f509	ruff-review	tests/test_grpo_trainer.py	3141	ERA001	dead	not-appropriate	a comment that explains data, not code

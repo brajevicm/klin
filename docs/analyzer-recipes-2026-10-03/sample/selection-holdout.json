@@ -1,0 +1,475 @@
+{
+  "rule": "ten first-parent commits before the oldest sample base",
+  "repositories": [
+    {
+      "language": "TypeScript",
+      "fullName": "refactoringhq/tolaria",
+      "start": "7da2f991ec8bd53b42ef4038bb3da9ad01ee07cb",
+      "changes": [
+        {
+          "head": "f7d86c99121adf7005b656b4acd9b3b5a40262da",
+          "base": "a9dc8110364cc945be45d3c8222af5ff985e632a"
+        },
+        {
+          "head": "a9dc8110364cc945be45d3c8222af5ff985e632a",
+          "base": "5a566049811b761dbc618a879b5fed100075a714"
+        },
+        {
+          "head": "5a566049811b761dbc618a879b5fed100075a714",
+          "base": "5b08e1f24743bafcb8aedc877b1c571d420a5e59"
+        },
+        {
+          "head": "5b08e1f24743bafcb8aedc877b1c571d420a5e59",
+          "base": "625c3f845b1b1f6595b1c26ed6e3e500b35b3201"
+        },
+        {
+          "head": "625c3f845b1b1f6595b1c26ed6e3e500b35b3201",
+          "base": "24710809562f3b75e7eb97b194e705fad8ecf22b"
+        },
+        {
+          "head": "24710809562f3b75e7eb97b194e705fad8ecf22b",
+          "base": "c323a3cd2ba7888c0f90cb5863c3cbe27e026703"
+        },
+        {
+          "head": "c323a3cd2ba7888c0f90cb5863c3cbe27e026703",
+          "base": "1bfde90bd4db84215702288b3ccc40aadb28bd71"
+        },
+        {
+          "head": "1bfde90bd4db84215702288b3ccc40aadb28bd71",
+          "base": "1ae4aef35313dd7f4b0c8a3cf631d9193aae47ff"
+        },
+        {
+          "head": "1ae4aef35313dd7f4b0c8a3cf631d9193aae47ff",
+          "base": "7cf80d6327b5a8d96bc0dfe5a6bd3016bda07bba"
+        },
+        {
+          "head": "7cf80d6327b5a8d96bc0dfe5a6bd3016bda07bba",
+          "base": "c392f38e41d1423ee6ea9e4996c2aabffdf44508"
+        }
+      ]
+    },
+    {
+      "language": "TypeScript",
+      "fullName": "whyour/qinglong",
+      "start": "2d6c2206b35d2a6bacec946826cd6e4d79ee9a7c",
+      "changes": [
+        {
+          "head": "6acb6653697bee18939e12d992839efb1bcd0a0d",
+          "base": "d9833c17d5df1224c8a9634ff354323bdf7d767b"
+        },
+        {
+          "head": "d9833c17d5df1224c8a9634ff354323bdf7d767b",
+          "base": "a60ec5587a35bb3eb05237e7d56a39ddea4c0cde"
+        },
+        {
+          "head": "a60ec5587a35bb3eb05237e7d56a39ddea4c0cde",
+          "base": "4eb27427f809b565202f0b1bfa8129073f3fe5bd"
+        },
+        {
+          "head": "4eb27427f809b565202f0b1bfa8129073f3fe5bd",
+          "base": "041a4374531cef296a68a9715adf78ecc80d6321"
+        },
+        {
+          "head": "041a4374531cef296a68a9715adf78ecc80d6321",
+          "base": "841740f19a3e304dd70466f9abff8f1f13ee89fa"
+        },
+        {
+          "head": "841740f19a3e304dd70466f9abff8f1f13ee89fa",
+          "base": "a94e66505495c7a36a6e17e2fe85d9283990af85"
+        },
+        {
+          "head": "a94e66505495c7a36a6e17e2fe85d9283990af85",
+          "base": "d62d8f3025fa90a143f303a9e2580c3cee80199a"
+        },
+        {
+          "head": "d62d8f3025fa90a143f303a9e2580c3cee80199a",
+          "base": "4df52094f2f7b960d857a6b2e627c79427071dc8"
+        },
+        {
+          "head": "4df52094f2f7b960d857a6b2e627c79427071dc8",
+          "base": "be2580d0e8c080a762f809199e425a92a9371c06"
+        },
+        {
+          "head": "be2580d0e8c080a762f809199e425a92a9371c06",
+          "base": "5f6049d80aa4d6adfe4fb1fd6823d4c75d388cf0"
+        }
+      ]
+    },
+    {
+      "language": "TypeScript",
+      "fullName": "apollographql/apollo-client",
+      "start": "e1556acbeac0644bb986fe041c7f6fdea65ef477",
+      "changes": [
+        {
+          "head": "a4a170f1d8c0eee277f467013ec2b9ce7721e8c5",
+          "base": "56ca81b40962d1aeef3d753e562672dfed042ea2"
+        },
+        {
+          "head": "56ca81b40962d1aeef3d753e562672dfed042ea2",
+          "base": "b1243494bfffa9d088d0e1a4fb8e956140130454"
+        },
+        {
+          "head": "b1243494bfffa9d088d0e1a4fb8e956140130454",
+          "base": "ba511be48b63cdc0c8d191e77fcd2815a196f04d"
+        },
+        {
+          "head": "ba511be48b63cdc0c8d191e77fcd2815a196f04d",
+          "base": "d4f0771976766b54e0a95a3d51b708b64eb3cfe0"
+        },
+        {
+          "head": "d4f0771976766b54e0a95a3d51b708b64eb3cfe0",
+          "base": "3dd3e9a6f195ea5dd27a973f153a0538ccdffd20"
+        },
+        {
+          "head": "3dd3e9a6f195ea5dd27a973f153a0538ccdffd20",
+          "base": "494744727fb54c9e41f13b0aa730b37e06fcbc20"
+        },
+        {
+          "head": "494744727fb54c9e41f13b0aa730b37e06fcbc20",
+          "base": "bfb674ec0ac9cd296b7ea2992d9deebf68edaea9"
+        },
+        {
+          "head": "bfb674ec0ac9cd296b7ea2992d9deebf68edaea9",
+          "base": "5840f5014d0a6bb9b963801657cd68b0a1aba6c8"
+        },
+        {
+          "head": "5840f5014d0a6bb9b963801657cd68b0a1aba6c8",
+          "base": "365373e0a0b647e89183245c3904d58499aa63e1"
+        },
+        {
+          "head": "365373e0a0b647e89183245c3904d58499aa63e1",
+          "base": "359f3e6357534d7933906d3c4bcb2a3bf5735b4f"
+        }
+      ]
+    },
+    {
+      "language": "TypeScript",
+      "fullName": "Open-Dev-Society/OpenStock",
+      "start": "7570db299aa9846094c90d8ca72db77f56e6a0e0",
+      "changes": [
+        {
+          "head": "9677edd2097b80023a0a6883e2d05f2814a181fc",
+          "base": "c83129d6cc5da32a7e81016cd3b361ec9924145a"
+        },
+        {
+          "head": "c83129d6cc5da32a7e81016cd3b361ec9924145a",
+          "base": "53553ec7189da1e1904815ee17cd56669aaf6ee5"
+        },
+        {
+          "head": "53553ec7189da1e1904815ee17cd56669aaf6ee5",
+          "base": "4a485f0f837fb00d2867ef37cb3aeda12ea54601"
+        },
+        {
+          "head": "4a485f0f837fb00d2867ef37cb3aeda12ea54601",
+          "base": "05cf71bc8a97131f5718bd6b810bd68d5293de32"
+        },
+        {
+          "head": "05cf71bc8a97131f5718bd6b810bd68d5293de32",
+          "base": "4597c9a668118844b588f95eddb9342eed31c41d"
+        },
+        {
+          "head": "4597c9a668118844b588f95eddb9342eed31c41d",
+          "base": "fdb195a54d8f45e7db83a378946a7b5ff85d67e9"
+        },
+        {
+          "head": "fdb195a54d8f45e7db83a378946a7b5ff85d67e9",
+          "base": "12dfc67bdb094c2a5d7bf1dab701687c0f49f909"
+        },
+        {
+          "head": "12dfc67bdb094c2a5d7bf1dab701687c0f49f909",
+          "base": "7e2c28381700d509bf17fa230cb9ab58b74749b4"
+        },
+        {
+          "head": "7e2c28381700d509bf17fa230cb9ab58b74749b4",
+          "base": "7852d2d2639cfad85da465f3d5f37247fd44610d"
+        },
+        {
+          "head": "7852d2d2639cfad85da465f3d5f37247fd44610d",
+          "base": "8373c54d280c1de1856c3b70b23fcc65bc439500"
+        }
+      ]
+    },
+    {
+      "language": "TypeScript",
+      "fullName": "mountain-loop/yaak",
+      "start": "38c562f7755ed95a308f20f73b95254d399311e7",
+      "changes": [
+        {
+          "head": "1249d15f2c4789dfc3a2ef94e5db1fa745552438",
+          "base": "1707c387ea04cd2cb080c7177a007b65f4773c4f"
+        },
+        {
+          "head": "1707c387ea04cd2cb080c7177a007b65f4773c4f",
+          "base": "a497d9f018829490a70641a0ae90a46e27ebd659"
+        },
+        {
+          "head": "a497d9f018829490a70641a0ae90a46e27ebd659",
+          "base": "c13e26656b73285b4d4b59df3b3e88cf0e19b006"
+        },
+        {
+          "head": "c13e26656b73285b4d4b59df3b3e88cf0e19b006",
+          "base": "dfc974db957b06732f615b0996f9204203f29038"
+        },
+        {
+          "head": "dfc974db957b06732f615b0996f9204203f29038",
+          "base": "0b86d3ca3f7af4e7ea837bc4503fc7d802e9c156"
+        },
+        {
+          "head": "0b86d3ca3f7af4e7ea837bc4503fc7d802e9c156",
+          "base": "9e51e95f9ec32b168f25dc69ee90f069a490c727"
+        },
+        {
+          "head": "9e51e95f9ec32b168f25dc69ee90f069a490c727",
+          "base": "aa10c44a456b49494e2de53132a5b5e51fa07ab3"
+        },
+        {
+          "head": "aa10c44a456b49494e2de53132a5b5e51fa07ab3",
+          "base": "46464cfacfe486d4d75bc5e252b7791abe9d80b0"
+        },
+        {
+          "head": "46464cfacfe486d4d75bc5e252b7791abe9d80b0",
+          "base": "263a215f7ac09e83eda108dd28c87ea440cddd37"
+        },
+        {
+          "head": "263a215f7ac09e83eda108dd28c87ea440cddd37",
+          "base": "646d9696494d33feaf4d72d3799c8ff668ed6cbe"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "mikf/gallery-dl",
+      "start": "840876248d73b885c5eb58edce5af05b73fb339c",
+      "changes": [
+        {
+          "head": "f1b5deaf05f9421a30afe79465941973037e5b49",
+          "base": "3efc66accb120203848a62378407060e9819ba19"
+        },
+        {
+          "head": "3efc66accb120203848a62378407060e9819ba19",
+          "base": "2e88d6ae29780dbed02e4a5172a1aa0a1b1c91b5"
+        },
+        {
+          "head": "2e88d6ae29780dbed02e4a5172a1aa0a1b1c91b5",
+          "base": "77c6a70f9f9d7ca066f7be5ee011f5059f494c86"
+        },
+        {
+          "head": "77c6a70f9f9d7ca066f7be5ee011f5059f494c86",
+          "base": "459f7f3c2efc51326c5175a1655c64362e10bd4f"
+        },
+        {
+          "head": "459f7f3c2efc51326c5175a1655c64362e10bd4f",
+          "base": "3f8cf54f1a86320fc10a43d8bc595e272e14c96e"
+        },
+        {
+          "head": "3f8cf54f1a86320fc10a43d8bc595e272e14c96e",
+          "base": "609345db079bb23c4bd7991edd7e266b1e6a3809"
+        },
+        {
+          "head": "609345db079bb23c4bd7991edd7e266b1e6a3809",
+          "base": "594825e3bda5b37825de5c7278677c073570b23a"
+        },
+        {
+          "head": "594825e3bda5b37825de5c7278677c073570b23a",
+          "base": "8352b06045699499a1c5a3559796f2cef87eeb28"
+        },
+        {
+          "head": "8352b06045699499a1c5a3559796f2cef87eeb28",
+          "base": "d10c4a72ff451425676c3bc7f2d047393b08dfbc"
+        },
+        {
+          "head": "d10c4a72ff451425676c3bc7f2d047393b08dfbc",
+          "base": "6d19e81a36928db375892cea6d84518d8a801769"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "astral-sh/ty",
+      "start": "9c214798cfcc59069e986876564638fadf32d774",
+      "changes": [
+        {
+          "head": "04c69110b391e96310e6892cbed9936c4f31d7aa",
+          "base": "3fa57a25767c619dbeba697c2acfbb8eb291519a"
+        },
+        {
+          "head": "3fa57a25767c619dbeba697c2acfbb8eb291519a",
+          "base": "a15b35389b44db57f718fd4e19e093481747c53e"
+        },
+        {
+          "head": "a15b35389b44db57f718fd4e19e093481747c53e",
+          "base": "0ee116193843c75d7efed599c88de45c81eced36"
+        },
+        {
+          "head": "0ee116193843c75d7efed599c88de45c81eced36",
+          "base": "6999edb88105f500fef5cca50de8224a3488121f"
+        },
+        {
+          "head": "6999edb88105f500fef5cca50de8224a3488121f",
+          "base": "69ee79c6dba8dd67f211dcd564973a5c0572030c"
+        },
+        {
+          "head": "69ee79c6dba8dd67f211dcd564973a5c0572030c",
+          "base": "9bbaccc71bfb094371e9b20b600fba4587e8798c"
+        },
+        {
+          "head": "9bbaccc71bfb094371e9b20b600fba4587e8798c",
+          "base": "edb7fab6b1e1fd105edda3f9338ea4f32c3d0e95"
+        },
+        {
+          "head": "edb7fab6b1e1fd105edda3f9338ea4f32c3d0e95",
+          "base": "bc531b138f167047632fbc80c75313f5ab7ec87a"
+        },
+        {
+          "head": "bc531b138f167047632fbc80c75313f5ab7ec87a",
+          "base": "66d7e3f23f28ac2449481dc7197cdaa71d779fbc"
+        },
+        {
+          "head": "66d7e3f23f28ac2449481dc7197cdaa71d779fbc",
+          "base": "4edd7724afd129fff0a09241d3fc9b4e7607c038"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "teng-lin/notebooklm-py",
+      "start": "8a0eaae6a37dd99e6ad84ef687a93b96f3dac4cf",
+      "changes": [
+        {
+          "head": "9834e07c6ae2ccb5ff9501b040ddf078cb06d4f6",
+          "base": "53fc7c50acc22f94729e5b067075640d8ddf7496"
+        },
+        {
+          "head": "53fc7c50acc22f94729e5b067075640d8ddf7496",
+          "base": "5cb86c21e8c2d00d98ccfe91135be57240feb7ba"
+        },
+        {
+          "head": "5cb86c21e8c2d00d98ccfe91135be57240feb7ba",
+          "base": "e11c91b486405f760cdb814860cf67a68e23b5a4"
+        },
+        {
+          "head": "e11c91b486405f760cdb814860cf67a68e23b5a4",
+          "base": "300cbc5a22f712ac14802e818799315d3a9ede6e"
+        },
+        {
+          "head": "300cbc5a22f712ac14802e818799315d3a9ede6e",
+          "base": "69b397583215358631128b82fad6b4c93b2b7184"
+        },
+        {
+          "head": "69b397583215358631128b82fad6b4c93b2b7184",
+          "base": "7e6f3f103a7a975518515b74c65f6726da3f6401"
+        },
+        {
+          "head": "7e6f3f103a7a975518515b74c65f6726da3f6401",
+          "base": "65cb52d607b4d0fab3922821feb5aff16d57792d"
+        },
+        {
+          "head": "65cb52d607b4d0fab3922821feb5aff16d57792d",
+          "base": "112c6a1b11d0a4c0c3aa657d5d2673de6c456a3f"
+        },
+        {
+          "head": "112c6a1b11d0a4c0c3aa657d5d2673de6c456a3f",
+          "base": "978467ecdf810be85e4d4cbc37e57945d46fd194"
+        },
+        {
+          "head": "978467ecdf810be85e4d4cbc37e57945d46fd194",
+          "base": "21231e3d692a170347a43391bdf36f247b6f10ec"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "kvcache-ai/ktransformers",
+      "start": "27b04cef5c89b7226ffcd902b96f273eb3e52501",
+      "changes": [
+        {
+          "head": "0eb060c583ad341eedecce8cf600b6cb35527dbb",
+          "base": "5632f7197e7a9898f0723755c2fc187a946a85a6"
+        },
+        {
+          "head": "5632f7197e7a9898f0723755c2fc187a946a85a6",
+          "base": "a3695f1a8367d58d741de91825daaee1007167c9"
+        },
+        {
+          "head": "a3695f1a8367d58d741de91825daaee1007167c9",
+          "base": "7c35863f62bc655cc0ce0e6ddc3d1ca9f2ab4843"
+        },
+        {
+          "head": "7c35863f62bc655cc0ce0e6ddc3d1ca9f2ab4843",
+          "base": "61cb5cded5d5d3a7bd59e0115988b433da4bc2fa"
+        },
+        {
+          "head": "61cb5cded5d5d3a7bd59e0115988b433da4bc2fa",
+          "base": "aa2cd3072fca7f88ab2275e581c57f87922fe08c"
+        },
+        {
+          "head": "aa2cd3072fca7f88ab2275e581c57f87922fe08c",
+          "base": "9b0da97c917cc33345096777ad25e1fd5d8dddc7"
+        },
+        {
+          "head": "9b0da97c917cc33345096777ad25e1fd5d8dddc7",
+          "base": "6d460cc10780f2e0ad541b5d58ad28086dd32ef0"
+        },
+        {
+          "head": "6d460cc10780f2e0ad541b5d58ad28086dd32ef0",
+          "base": "308200c94055f4813434bcb06215065e3af0929a"
+        },
+        {
+          "head": "308200c94055f4813434bcb06215065e3af0929a",
+          "base": "31985f40bcc40da08107efdb1f81bf88cb38c6b2"
+        },
+        {
+          "head": "31985f40bcc40da08107efdb1f81bf88cb38c6b2",
+          "base": "040a4980ec867fd8a6fb753f9844b1b4b4056c3c"
+        }
+      ]
+    },
+    {
+      "language": "Python",
+      "fullName": "huggingface/trl",
+      "start": "85de470dc548e5d1bc5c9f38107c922c394f45d0",
+      "changes": [
+        {
+          "head": "a7c34f363a8716473a0f15378621a3358b994417",
+          "base": "525143803f7fd987a4a6ddf73500b55e1a401396"
+        },
+        {
+          "head": "525143803f7fd987a4a6ddf73500b55e1a401396",
+          "base": "e17d712b37ba49b214da1d4e2c71a3509f8ea59b"
+        },
+        {
+          "head": "e17d712b37ba49b214da1d4e2c71a3509f8ea59b",
+          "base": "04bbf1f3c401114b101b6398951db1f56b59c539"
+        },
+        {
+          "head": "04bbf1f3c401114b101b6398951db1f56b59c539",
+          "base": "918144cd6e427cff1605174b0fdac4b4d0858d59"
+        },
+        {
+          "head": "918144cd6e427cff1605174b0fdac4b4d0858d59",
+          "base": "44b82916681faa4f8d903689e869bb59f1ae1e75"
+        },
+        {
+          "head": "44b82916681faa4f8d903689e869bb59f1ae1e75",
+          "base": "0312c254c8a65b2a1f69253aaecdc7c4b4032baf"
+        },
+        {
+          "head": "0312c254c8a65b2a1f69253aaecdc7c4b4032baf",
+          "base": "5f38b56b42473adfc17ef8ef1e5e3f85ca66a7a4"
+        },
+        {
+          "head": "5f38b56b42473adfc17ef8ef1e5e3f85ca66a7a4",
+          "base": "164ba765afe0f13a05e9dac037a1c0e90cdd16c8"
+        },
+        {
+          "head": "164ba765afe0f13a05e9dac037a1c0e90cdd16c8",
+          "base": "feb288288046f7bd22560bbdd33ba22173462d3f"
+        },
+        {
+          "head": "feb288288046f7bd22560bbdd33ba22173462d3f",
+          "base": "c6a6a1688f1e269a1794e13ea59cfff23a659648"
+        }
+      ]
+    }
+  ]
+}

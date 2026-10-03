@@ -1,0 +1,4 @@
+language	repository	head	gate	file	line	rule	family	label	reason
+TypeScript	whyour/qinglong	a60ec5587a	semgrep	src/pages/dashboard/taskResultModal.tsx	35	sql-template-ts	injection	not-appropriate	an HTTP request.get with a templated URL, not SQL
+TypeScript	whyour/qinglong	a94e665054	semgrep	back/shared/schemaMigrations.ts	54	sql-template-ts	injection	not-appropriate	ALTER TABLE identifiers from a static migration manifest; identifiers cannot be bound parameters
+TypeScript	whyour/qinglong	be2580d0e8	semgrep	src/pages/dashboard/failureModal.tsx	27	sql-template-ts	injection	not-appropriate	an HTTP request.get with a templated URL, not SQL

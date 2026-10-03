@@ -1,0 +1,13 @@
+case	stop exit	ci exit	ci gate status
+present-ruff	2	1	FAIL
+missing-tool	2	2	ERR
+crash-no-report	2	2	ERR
+truncated-report	2	2	ERR
+empty-runs	0	0	ok
+failed-invocation	0	0	ok
+past-limit	2	2	ERR
+eslint-present	2	1	FAIL
+eslint-parse-error	0	2	ok
+eslint-outside-project	0	0	ok
+ruff-parse-error	2	2	FAIL
+semgrep-parse-error	2	2	FAIL

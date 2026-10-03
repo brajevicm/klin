@@ -1,0 +1,12 @@
+repository	tool	whole ms	20 files ms
+refactoringhq/tolaria	eslint	-	1229
+refactoringhq/tolaria	eslint-injection	-	1055
+refactoringhq/tolaria	semgrep	6804	1311
+refactoringhq/tolaria	gitleaks	3857	-
+whyour/qinglong	eslint-injection	4834	3088
+apollographql/apollo-client	eslint-injection	26770	1659
+Open-Dev-Society/OpenStock	eslint-injection	2544	2194
+mountain-loop/yaak	eslint-injection	12519	2162
+teng-lin/notebooklm-py	ruff	113	29
+teng-lin/notebooklm-py	semgrep	2485	1290
+teng-lin/notebooklm-py	gitleaks	22286	-
