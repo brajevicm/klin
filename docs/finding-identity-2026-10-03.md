@@ -27,8 +27,14 @@ These words belong to this note. They are not terms of `CONTEXT.md`.
   [`prototype.patch`](finding-identity-2026-10-03/prototype.patch). It is not
   klin code. It carries the identity as a string in a finding's `values`,
   which a real implementation must not do (section 9). The note calls its
-  builds `proto3` and `proto4`. `proto4` adds one fast path to `proto3`
-  (section 8). The two give the same result on every case of the matrix.
+  builds `proto3`, `proto4` and `proto5`. `proto4` adds one fast path to
+  `proto3` (section 8). `proto5` is the checked-in patch: it compares only
+  known versions, derives keys only for Rust, TypeScript, TSX and Python, and
+  sends files of other languages through today's first pass (section 9). For
+  its version cases, two prototype-only variables,
+  `KLIN_PROBE_BEFORE_VERSION` and `KLIN_PROBE_AFTER_VERSION`, set the
+  version of each tree's identities, or `none`. All three builds give the
+  same result on the 43 cases that existed before `proto5`.
 - An **exposure replay** runs `complexity` with the ceiling `cc 0`, so every
   function is a site and every edit reaches the matcher. A **floor replay**
   runs the floors of the derived ceilings, `cc 10` and `lines 25` (SPEC 5.4).
@@ -38,7 +44,7 @@ These words belong to this note. They are not terms of `CONTEXT.md`.
 ## Method
 
 1. The edit matrix,
-   [`probe.py`](finding-identity-2026-10-03/probe.py), builds 43 throwaway
+   [`probe.py`](finding-identity-2026-10-03/probe.py), builds 61 throwaway
    trees, a base on `main` and an edit on `work`. It runs
    `klin gate --gate <gate> --json` from each binary, once whole with
    `--strict` and once with `--changed`. It also records the prototype's key
@@ -82,8 +88,10 @@ Fixtures: `signature-and-body`, `visibility-added`, `parameter-rename`,
 one reports a function that existed at the base as `new`.
 
 Real code, at the floor ceilings: 10 such sites in klin, 2 in TS-A and 33 in
-TS-B, over 200 commits each. In TS-B one commit failed only on such a site,
-so today it blocks a stop that the prototype lets through. In the exposure
+TS-B, over 200 commits each. In one TS-B commit, the `complexity` gate failed
+only on such a site, so the prototype changes that gate's verdict to a pass.
+The replay ran only that gate, so it does not show whether another gate also
+failed that commit. In the exposure
 replay the count is 94 in klin, 13 in TS-A and 97 in TS-B.
 
 A false `new` is a wrong claim about the agent's work. It also hides a real
@@ -134,6 +142,11 @@ the commit, `project.rs` held two `pub fn root(&self) -> &Path {`, one for
 that stays can take either entry, so the moved method may find no lost entry
 for the body-hash pass, and today it is `new`. One exposure row.
 
+The fixture `twin-moved-to-other-file` shows it: `A::run` and `B::run` share
+their text, `B`'s impl moves to `b.rs`, and `A::run` lands on `B::run`'s old
+line. Today `A::run` takes `B::run`'s entry, and the moved `B::run` is `new`.
+With identity both are held.
+
 ### What works today
 
 `comment-above`, `sibling-insert`, `sibling-reorder`, `body-edit`,
@@ -141,7 +154,7 @@ for the body-hash pass, and today it is `new`. One exposure row.
 `delete-add-replacement` and both `added-duplicate-occurrence` cases give the
 desired outcome today. The identity must not change them, and it does not.
 
-The whole run and the `--changed` run gave the same outcome on all 43 cases.
+The whole run and the `--changed` run gave the same outcome on all 61 cases.
 The one cell that differs is `accepted-and-base-param-rename`, where only the
 whole run passes `--strict`.
 
@@ -208,15 +221,19 @@ nests its methods, and a Ruby method may sit in a `class << self` block.
 
 The census shows how much this covers.
 
-| Repository | Functions | Identified | Over cc 10 identified | Over the floors identified |
-|---|---|---|---|---|
-| klin | 6,067 | 4,735 (78%) | 107 of 110 | 382 of 390 |
-| TS-A | 2,153 | 716 (33%) | 23 of 30 | 213 of 232 |
-| TS-B | 6,924 | 2,462 (36%) | 137 of 159 | 463 of 567 |
+| Repository | Functions | Outside the scope | Identified | Over cc 10 identified | Over the floors identified |
+|---|---|---|---|---|---|
+| klin | 6,067 | 0 | 4,735 (78%) | 107 of 110 | 382 of 390 |
+| TS-A | 2,153 | 95 | 672 (31%) | 23 of 30 | 207 of 232 |
+| TS-B | 6,924 | 5 | 2,458 (35%) | 137 of 159 | 461 of 567 |
+
+The census ran `proto5` on klin at `ac861ec2` and on the other two at their
+current `HEAD`. "Outside the scope" counts functions in a language
+`complexity/1` leaves out, here JavaScript.
 
 Most unidentified TypeScript functions are anonymous callbacks: `it(...)`,
 `.map(...)`, `useEffect(...)`. Few of them reach a ceiling. Over the floors,
-82% to 98% of the sites are identified. An anonymous site keeps today's
+81% to 98% of the sites are identified. An anonymous site keeps today's
 outcome, so the gap costs nothing against today.
 
 ### dead-symbols: evaluated, a second user of the envelope
@@ -362,6 +379,15 @@ The rules:
 - **Identity on one side only**: today's rules for that pair.
 - **Different versions, or a version this build does not know**: today's
   rules for that pair. Two keys of different versions are never compared.
+  Equal strings are not enough: a build compares a key only when its version
+  is on the build's own list of known versions, so `complexity/999` on both
+  sides still falls back to the text.
+
+The matrix tests each rule. The cases `version-none-both-*`,
+`version-before-only-*`, `version-after-only-*`, `version-v1-vs-v2-*` and
+`version-unknown-both-*` run a parameter rename (where a key would widen the
+match), an owner swap (where a key would narrow it) and the F3 move (where a
+key changes the move target). All 15 give today's outcome.
 - **Changed semantics for one family**: raise that family's version. Other
   families keep theirs.
 - **The finding `id` does not change.** It stays the hash of gate, file and
@@ -400,7 +426,8 @@ The full table, for both binaries in both modes, is
 [`matrix.md`](finding-identity-2026-10-03/matrix.md). The key column is the
 prototype's key for each site, by line, before and after the edit. A
 `?` key is an ambiguous site and names its reason. The prototype column is
-`proto4`. "Today" and "proto" are the whole run.
+`proto5`. "Today" and "proto" are the whole run. The 15 version cases are in
+`matrix.md` only, and section 5 summarizes them.
 
 | Case | Key before → after | Today | Proto | Ambiguity | Fallback still valid |
 |---|---|---|---|---|---|
@@ -444,6 +471,9 @@ prototype's key for each site, by line, before and after the edit. A
 | accepted-param-rename | none → src/a.rs:1 `a` | new, entry stale | same | none | accepted: text only |
 | accepted-and-base-param-rename | 1 `a` | **new**, entry stale | held, entry stale | none | accepted: text only |
 | accepted-and-base-unchanged | 1 `a` → 2 `a` | held by the entry | same | none | text |
+| twin-moved-to-other-file | src/a.rs:4 `impl A > run`; src/a.rs:10 `impl B > run` → src/a.rs:10 `impl A > run`; src/b.rs:3 `impl B > run` | **B::run new** | both held | none | body hash, by key |
+| parameter-rename-js | none | new | same | no identity | text (today's) |
+| two-owners-swap-java | none | pass | same | no identity | text (today's) |
 | dead-param-rename | n/a | **new** | same (no prototype) | none | none matches |
 | dead-signature-only | n/a | **new** | same (no prototype) | none | none matches |
 | dead-comment-above | n/a | held | held | none | text |
@@ -452,6 +482,10 @@ Bold marks a desired outcome that today's matcher misses. The prototype
 gives the desired outcome on every `complexity` row. On the rows where the
 desired outcome needs a key that the syntax does not give
 (`property-setter-python`), it keeps today's outcome.
+
+`parameter-rename-js` and `two-owners-swap-java` are the negative cases for
+the language scope: no site gets a key, and the outcome is today's, the
+false pass of the Java owner swap included.
 
 ## 8. Performance evidence
 
@@ -517,6 +551,21 @@ rest of the 1M cost belongs to how the judge picks its path. An
 implementation must show at 1M/20 that a gate with no identity costs what it
 costs today (section 9).
 
+`proto5` removes the scan: every gate but `complexity` calls today's judge
+directly, and `complexity` splits its files by language before it judges.
+Measured after that change, alternating, 5 iterations a row:
+
+- `structural_300k` `warm20`, three rows a binary: baseline hook medians 848,
+  859 and 851 ms, `proto5` 852, 851 and 858 ms. `complexity_ms` 16 against 16
+  or 17.
+- A generated JavaScript-only tree, 5,000 files and 560,000 lines, `cc 0` so
+  every function is a finding, 20 changed files, `hyperfine`: the changed run
+  takes 190.6 ± 3.7 ms on the baseline and 190.7 ± 5.3 ms on `proto5`. The
+  whole run, about 100,000 findings, takes 4.883 ± 0.028 s against
+  4.911 ± 0.033 s, a difference of about one σ.
+
+The 1M row did not run again for `proto5`.
+
 ## 9. Smallest implementation boundary
 
 If a person admits this, the first ticket is `complexity` alone:
@@ -524,15 +573,22 @@ If a person admits this, the first ticket is `complexity` alone:
 1. `ratchet::Finding` gains `identity: Option<Identity>`, a typed field and
    not a member of `values`. `Identity` holds the version and either the key
    with `persists`, or the ambiguity reason.
-2. The ratchet's judge keeps today's path, unchanged, for a gate whose
-   family declares no identity. The gate states this once, so the judge does
-   not scan its findings to find out. This design is not prototyped or
-   measured. At 1M/20 the whole hook under `proto4` was 8 to 13 ms slower,
-   and the cause is not proven (section 8). So the implementation must show
-   at 1M/20 that a gate with no identity costs what it costs today, before
-   it ships. For a gate with identities, the judge groups by file and
-   applies the pairing rule and the move-target rule of section 4. The
-   body-hash pass does not change.
+2. A family bit alone cannot keep an unsupported language on today's
+   matcher, because `complexity` is one family over many languages. The
+   dispatch is two-level, as in `proto5`:
+   - a gate whose family carries no identity calls today's judge, with no
+     scan of its findings;
+   - `complexity` splits its findings and entries by the language of the
+     file. A file in a language outside `complexity/1` takes today's first
+     pass, by file and text, exactly. A file inside it takes the pairing
+     rule and the move-target rule of section 4. One body-hash pass then
+     runs over what both passes leave, as today's second pass does.
+
+   At 1M/20 the whole hook under `proto4` was 8 to 13 ms slower, and the
+   cause is not proven (section 8). `proto5` was measured at 300k/20 and on
+   a JavaScript-only tree only. So the implementation must show at 1M/20
+   that a gate with no identity, and a `complexity` run over unsupported
+   languages only, cost what they cost today, before it ships.
 3. `complexity` computes the key in its existing walk, for Rust,
    TypeScript, TSX and Python only, marks duplicates per file, and sets
    `persists` from the function lists of both sweeps.
@@ -550,8 +606,9 @@ with its replay.
 - **4.4 Site**: a check MAY attach a versioned identity to each site. Add the
   envelope, the ambiguity reasons, the duplicate rule over every site of the
   file, the three pairing rules, and the move-target rule for an identified
-  entry. State that an ambiguous site, a site with no identity, and a pair
-  under different versions keep the text rules.
+  entry. State that an ambiguous site, a site with no identity, a pair under
+  different versions, and a key of a version the build does not know keep
+  the text rules.
 - **4.5 Finding**: the optional `identity` field.
 - **4.8 Accepted entry**: an entry carries no identity, and the text rule
   always applies to it.
@@ -579,11 +636,14 @@ with its replay.
   file? The 11 rows where the prototype is stricter were read by hand.
 - The replays ran `--changed` only. The matrix shows the whole run agrees.
 - The exposure replay inflates counts by design. The floor replay is the one
-  that shows real verdicts, and only one verdict changed in 600 commits.
+  that shows real `complexity` verdicts, and only one changed in 600
+  commits. The replays ran no other gate, so they show nothing about a whole
+  stop.
 - F2 appeared only in the exposure replay.
 - No `dead-symbols` replay ran.
-- The 1M rows show 8 to 13 ms more for the whole hook, mostly in gates with
-  no identity, and this note did not find the cause.
+- The 1M rows show 8 to 13 ms more for the whole hook under `proto4`,
+  mostly in gates with no identity, and this note did not find the cause.
+  `proto5` did not run at 1M.
 
 ## Decision
 
@@ -597,7 +657,8 @@ site is ambiguous when it is anonymous, computed, under an anonymous or
 computed ancestor, or one of two sites with the same key in its file. An
 ambiguous site, a site with no identity, and a pair under different versions
 keep today's text and body-hash rules exactly. The version is per family, a
-pair under two versions is never compared, and the finding `id` does not
+key is compared only under a version the build knows, a pair under two
+versions is never compared, and the finding `id` does not
 change. Accepted entries stay keyed by text.
 
 The shared envelope is useful because three families need the same version,

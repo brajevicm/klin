@@ -9,6 +9,7 @@ usage: probe.py NAME=BINARY [NAME=BINARY ...] > results.md
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -45,8 +46,9 @@ def ts_method(owner, cc, name="run"):
 CASES = []
 
 
-def case(name, base, after, desired, gate="complexity", config=COMPLEXITY):
-    CASES.append(dict(name=name, base=base, after=after, desired=desired, gate=gate, config=config))
+def case(name, base, after, desired, gate="complexity", config=COMPLEXITY, env=None):
+    CASES.append(dict(name=name, base=base, after=after, desired=desired, gate=gate, config=config,
+                      env=env or {}))
 
 
 # 1 comment and blank lines above
@@ -291,6 +293,63 @@ case(
     {"src/a.py": "def h(a):\n    if a:\n        return 1\n    return 0\n\n\ndef h(a):\n    if a:\n        return 1\n    return 0\n"},
     "one held, one new",
 )
+# F3: one of two same-text twins moves to another file while the other takes its old line
+TWINS = "struct A(u32);\nstruct B(u32);\n"
+case(
+    "twin-moved-to-other-file",
+    {"src/a.rs": TWINS + rs_run("A", 2) + rs_run("B", 2).replace("7", "8")},
+    {"src/a.rs": TWINS + "// a\n" * 6 + rs_run("A", 2),
+     "src/b.rs": "use crate::B;\n" + rs_run("B", 2).replace("7", "8")},
+    "both held: A in place, B by body hash",
+)
+# languages outside complexity/1 keep today's matcher exactly
+case(
+    "parameter-rename-js",
+    {"src/a.js": "export function a(x) {\n  if (x > 0) return 1;\n  return x;\n}\n"},
+    {"src/a.js": "export function a(y) {\n  if (y > 0) return 1;\n  return y;\n}\n"},
+    "today's outcome: no identity outside complexity/1",
+)
+JAVA = "class {o} {{\n  int v;\n  int run() {{\n{b}    return 7;\n  }}\n}}\n"
+def java(owner, cc):
+    return JAVA.format(o=owner, b="".join(f"    if (v > {k}) return {k};\n" for k in range(cc - 1)))
+case(
+    "two-owners-swap-java",
+    {"src/A.java": java("A", 5) + java("B", 3)},
+    {"src/A.java": java("A", 3) + java("B", 5)},
+    "today's outcome: no identity outside complexity/1",
+)
+# version compatibility: the prototype's KLIN_PROBE_*_VERSION set each tree's identity version
+VERSIONS = [
+    ("none-both", {"KLIN_PROBE_BEFORE_VERSION": "none", "KLIN_PROBE_AFTER_VERSION": "none"}),
+    ("before-only", {"KLIN_PROBE_AFTER_VERSION": "none"}),
+    ("after-only", {"KLIN_PROBE_BEFORE_VERSION": "none"}),
+    ("v1-vs-v2", {"KLIN_PROBE_BEFORE_VERSION": "complexity/2"}),
+    ("unknown-both", {"KLIN_PROBE_BEFORE_VERSION": "complexity/999",
+                      "KLIN_PROBE_AFTER_VERSION": "complexity/999"}),
+]
+for label, env in VERSIONS:
+    case(
+        f"version-{label}-parameter-rename",
+        {"src/a.rs": rs_fn("a")},
+        {"src/a.rs": rs_fn("a", arg="y")},
+        "today's outcome: new",
+        env=env,
+    )
+    case(
+        f"version-{label}-two-owners-swap",
+        {"src/a.rs": "struct A(u32);\nstruct B(u32);\n" + rs_run("A", 5) + rs_run("B", 3)},
+        {"src/a.rs": "struct A(u32);\nstruct B(u32);\n" + rs_run("A", 3) + rs_run("B", 5)},
+        "today's outcome: pass",
+        env=env,
+    )
+    case(
+        f"version-{label}-twin-moved",
+        {"src/a.rs": TWINS + rs_run("A", 2) + rs_run("B", 2).replace("7", "8")},
+        {"src/a.rs": TWINS + "// a\n" * 6 + rs_run("A", 2),
+         "src/b.rs": "use crate::B;\n" + rs_run("B", 2).replace("7", "8")},
+        "today's outcome",
+        env=env,
+    )
 # accepted entries
 ACCEPTED_A = ('{ "accepted": [{"gate": "complexity", "file": "src/a.rs", "text": "fn a(x: i32) -> i32 {", '
               '"cc": 2, "lines": 4}], "complexity": { "in": "src", "cc": 0, "lines": 1000 } }')
@@ -375,13 +434,14 @@ def tree(spec):
     return root
 
 
-def outcome(binary, root, gate, changed):
+def outcome(binary, root, gate, changed, env):
     subprocess.run(["rm", "-rf", str(root / ".git" / "klin")], check=True)
     args = [binary, "gate", "--gate", gate, "--json", "--strict"]
     if changed:
         args.remove("--strict")
         args.append("--changed")
-    run = subprocess.run(args, cwd=root, capture_output=True, text=True)
+    run = subprocess.run(args, cwd=root, capture_output=True, text=True,
+                         env={**os.environ, **env})
     data = json.loads(run.stdout)
     report = data["gates"][0]
     parts = []
@@ -437,7 +497,7 @@ def main():
     print("|" + "---|" * (5 + len(columns)))
     for spec in CASES:
         root = tree(spec)
-        cells = [outcome(binary, root, spec["gate"], changed)
+        cells = [outcome(binary, root, spec["gate"], changed, spec["env"])
                  for _, binary in binaries for changed in (False, True)]
         edited = {**spec["base"], **spec["after"]}
         named = set(spec["base"]) != {path for path, text in edited.items() if text is not None}

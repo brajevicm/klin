@@ -1,5 +1,5 @@
 diff --git a/src/complexity.rs b/src/complexity.rs
-index 1a3337c4..e4c52d99 100644
+index 1a3337c4..836433f4 100644
 --- a/src/complexity.rs
 +++ b/src/complexity.rs
 @@ -1,5 +1,5 @@
@@ -17,21 +17,44 @@ index 1a3337c4..e4c52d99 100644
  }
  
  impl Function {
-@@ -319,6 +320,13 @@ impl Function {
+@@ -309,7 +310,7 @@ impl Function {
+                 .is_some_and(|ceiling| self.length() > ceiling.value)
+     }
+ 
+-    fn finding(&self, ceilings: &Ceilings) -> Finding {
++    fn finding(&self, ceilings: &Ceilings, version: Option<&str>) -> Finding {
+         let mut values = Values::new();
+         values.insert(CC.name.into(), self.cc.into());
+         if self.length_ceiling(ceilings).is_some() {
+@@ -319,6 +320,15 @@ impl Function {
              };
              values.insert(key.name.into(), self.length().into());
          }
-+        if std::env::var_os("KLIN_NO_IDENTITY").is_none() {
++        if let Some(version) = version
++            && self.identity != Err("off")
++        {
 +            let identity = match &self.identity {
-+                Ok(key) => format!("{IDENTITY_VERSION}:{key}"),
-+                Err(reason) => format!("{IDENTITY_VERSION}?{reason}"),
++                Ok(key) => format!("{version}:{key}"),
++                Err(reason) => format!("{version}?{reason}"),
 +            };
 +            values.insert("identity".into(), identity.into());
 +        }
          Finding {
              file: self.file.clone(),
              line: self.line,
-@@ -401,7 +409,10 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+@@ -394,18 +404,25 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+         at.changes.filter(|_| !at.strict),
+         None,
+     )?;
+-    let now = over(&sweep.functions, &spec);
++    let now = over(
++        &sweep.functions,
++        &spec,
++        version("KLIN_PROBE_AFTER_VERSION").as_deref(),
++    );
+     let tests = unjudged_tests(&sweep.functions, &spec.ceilings, at);
+     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
+     let count = scoped(now.iter().map(|finding| &finding.file), at);
      let said = out.covered(&sweep.files.coverage(at.only));
      let mut owned = None;
      let laid = base::laid(at.prior, &mut owned, || contract::own_base(at, out))?;
@@ -43,7 +66,20 @@ index 1a3337c4..e4c52d99 100644
      out.record(|records| records.work = Some(sweep.work + before_work));
      let lost = sweep.files.lost(&before, project, at.only);
      let unjudged = tests.said(laid);
-@@ -438,7 +449,7 @@ fn at_the_base(
+-    let code = evaluator(&spec).evaluate(
++    let code = evaluator(&spec).evaluate_scoped(
+         now,
+         prior,
+         ratchet::accepted_leaving_out(
+@@ -423,6 +440,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+             tail: &format!("{unjudged}{said}"),
+         },
+         out,
++        identity_language,
+     );
+     let code = holes::lost_said(&lost, at, code, out);
+     Ok(holes::unread_said(
+@@ -438,7 +456,7 @@ fn at_the_base(
      spec: &Spec,
      at: &Context,
      prior: &base::Prior,
@@ -52,12 +88,17 @@ index 1a3337c4..e4c52d99 100644
      let project = at.project;
      let selection = Selection {
          scope: Scope::at_base(
-@@ -456,9 +467,40 @@ fn at_the_base(
+@@ -456,19 +474,73 @@ fn at_the_base(
          None,
          Some(prior.renamed()),
      )?;
+-    let mut found = over(&before.functions, spec);
 +    let keys = keys(&before.functions);
-     let mut found = over(&before.functions, spec);
++    let mut found = over(
++        &before.functions,
++        spec,
++        version("KLIN_PROBE_BEFORE_VERSION").as_deref(),
++    );
      found.retain(|finding| project.was_held(&finding.file));
 -    Ok((found, before.files, before.work))
 +    Ok((found, before.files, before.work, keys))
@@ -93,16 +134,48 @@ index 1a3337c4..e4c52d99 100644
 +    }
  }
  
- fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
-@@ -1052,6 +1094,7 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
+-fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
++fn over(functions: &[Function], spec: &Spec, version: Option<&str>) -> Vec<Finding> {
+     functions
+         .iter()
+         .filter(|function| function.over(&spec.ceilings))
+-        .map(|function| function.finding(&spec.ceilings))
++        .map(|function| function.finding(&spec.ceilings, version))
+         .collect()
+ }
+ 
++/// The identity version one tree's findings carry: `complexity/1`, or for the prototype's
++/// version fixtures another version, or none.
++fn version(variable: &str) -> Option<String> {
++    match std::env::var(variable) {
++        Err(_) => Some(IDENTITY_VERSION.to_string()),
++        Ok(none) if none == "none" => None,
++        Ok(other) => Some(other),
++    }
++}
++
++const SCOPED: &[LanguageId] = &[LanguageId::Rust, LanguageId::TypeScript, LanguageId::Python];
++
++/// Whether a file's language carries a `complexity/1` identity.
++fn identity_language(path: &str) -> bool {
++    [".rs", ".ts", ".mts", ".cts", ".tsx", ".py"]
++        .iter()
++        .any(|extension| path.ends_with(extension))
++}
++
+ struct Unjudged<'a> {
+     functions: usize,
+     files: BTreeSet<&'a str>,
+@@ -1052,6 +1124,8 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
      let lines = file.lines();
      let mut sites = HashMap::new();
      let mut out = Vec::new();
-+    let wanted = std::env::var_os("KLIN_NO_IDENTITY").is_none();
++    let wanted = std::env::var_os("KLIN_NO_IDENTITY").is_none()
++        && SCOPED.contains(&file.language.id);
      walk_functions(file, &mut |node, cc| {
          let row = node.start_position().row;
          let key = (holder_row(node).filter(|holder| *holder < row), row);
-@@ -1067,11 +1110,100 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
+@@ -1067,11 +1141,100 @@ fn parsed(file: &ParsedFile) -> Vec<Function> {
              text,
              body: record::body_hash(node.utf8_text(file.bytes()).unwrap_or_default()),
              test: false,
@@ -204,10 +277,10 @@ index 1a3337c4..e4c52d99 100644
      let modules = match (test_file, file.language.id) {
          (false, LanguageId::Rust) if file.source.contains("test") => {
 diff --git a/src/ratchet.rs b/src/ratchet.rs
-index f3626660..dd0d18cf 100644
+index f3626660..5aea9963 100644
 --- a/src/ratchet.rs
 +++ b/src/ratchet.rs
-@@ -299,10 +299,58 @@ fn match_group(
+@@ -299,10 +299,63 @@ fn match_group(
      entries: Vec<Values>,
      metrics: &[&str],
      by_line: bool,
@@ -217,11 +290,16 @@ index f3626660..dd0d18cf 100644
 +
 +const IDENTITY: &str = "identity";
 +
++/// The identity versions this build compares. A key of any other version, or of none, falls
++/// back to the declaration text.
++const KNOWN: &[&str] = &["complexity/1"];
++
 +fn identified(values: &Values) -> Option<(&str, &str)> {
 +    values
 +        .get(IDENTITY)
 +        .and_then(Value::as_str)
 +        .and_then(|identity| identity.split_once(':'))
++        .filter(|(version, _)| KNOWN.contains(version))
 +}
 +
 +fn persists(values: &Values) -> bool {
@@ -266,7 +344,7 @@ index f3626660..dd0d18cf 100644
              let shared = metrics
                  .iter()
                  .filter(|metric| {
-@@ -388,13 +436,23 @@ fn entry_site(entry: &Values) -> (String, u64) {
+@@ -388,13 +441,23 @@ fn entry_site(entry: &Values) -> (String, u64) {
  /// (16.5), but only a site the `after` tree no longer holds can be a move target: an entry that
  /// an accepted one outranked is still in place, so a body-identical function elsewhere is a copy
  /// and not a move. Spec 4.4. An accepted entry carries forward for its NOTE.
@@ -293,16 +371,33 @@ index f3626660..dd0d18cf 100644
              out.push(entry);
          }
      }
-@@ -411,6 +469,66 @@ fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&
+@@ -410,8 +473,64 @@ fn take(comparison: &mut Comparison, pairs: Vec<(Finding, Values)>, metrics: &[&
+     }
  }
  
- fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
-+    if !findings.iter().any(|finding| finding.values.contains_key(IDENTITY))
-+        && !entries.iter().any(|entry| entry.contains_key(IDENTITY))
-+    {
-+        return judge_by_text(findings, entries, metrics);
+-fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
+-    let mut comparison = Comparison::default();
++fn untaken_by_text(entries: Vec<Values>, mut lost: usize) -> Vec<Values> {
++    let mut out = Vec::new();
++    for entry in entries {
++        if is_accepted(&entry) {
++            out.push(entry);
++        } else if lost > 0 {
++            lost -= 1;
++            out.push(entry);
++        }
 +    }
-+    let mut comparison = Comparison::default();
++    out
++}
++
++/// The first pass for the files whose language carries an identity: pairs by key where both
++/// sides are identified under a known version, by text otherwise.
++fn identity_pass(
++    comparison: &mut Comparison,
++    findings: Vec<Finding>,
++    entries: Vec<Values>,
++    metrics: &[&str],
++) -> (Vec<Finding>, Vec<Values>) {
 +    let mut groups: BTreeMap<String, (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
 +    for entry in entries {
 +        groups.entry(text(&entry, "file")).or_default().1.push(entry);
@@ -326,46 +421,106 @@ index f3626660..dd0d18cf 100644
 +        }
 +        let (pairs, findings_over, entries_over) =
 +            match_eligible(group_findings, group_entries, metrics, true, same_site);
-+        take(&mut comparison, pairs, metrics);
++        take(comparison, pairs, metrics);
 +        findings_left.extend(findings_over);
 +        entries_left.extend(untaken(entries_over, &mut lost));
 +    }
-+    let (pairs, findings_left, entries_left) = moved(findings_left, entries_left, metrics);
-+    take(&mut comparison, pairs, metrics);
-+    comparison.unmatched_findings = findings_left;
-+    comparison.unmatched_accepted = entries_left.into_iter().filter(is_accepted).collect();
-+    comparison
-+        .unmatched_findings
-+        .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));
-+    comparison
-+        .rose
-+        .sort_by(|(a, _), (b, _)| (&a.file, a.line).cmp(&(&b.file, b.line)));
-+    comparison
++    (findings_left, entries_left)
 +}
 +
-+fn untaken_by_text(entries: Vec<Values>, mut lost: usize) -> Vec<Values> {
-+    let mut out = Vec::new();
-+    for entry in entries {
-+        if is_accepted(&entry) {
-+            out.push(entry);
-+        } else if lost > 0 {
-+            lost -= 1;
-+            out.push(entry);
-+        }
-+    }
-+    out
-+}
-+
-+fn judge_by_text(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
-     let mut comparison = Comparison::default();
++/// Today's first pass: pairs within one file and declaration text.
++fn text_pass(
++    comparison: &mut Comparison,
++    findings: Vec<Finding>,
++    entries: Vec<Values>,
++    metrics: &[&str],
++) -> (Vec<Finding>, Vec<Values>) {
      let mut groups: BTreeMap<(String, String), (Vec<Finding>, Vec<Values>)> = BTreeMap::new();
      for entry in entries {
-@@ -433,7 +551,7 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
+         let key = (text(&entry, "file"), text(&entry, "text"));
+@@ -431,10 +550,19 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
+             .saturating_sub(group_findings.len());
+         let (pairs, findings_over, entries_over) =
              match_group(group_findings, group_entries, metrics, true);
-         take(&mut comparison, pairs, metrics);
+-        take(&mut comparison, pairs, metrics);
++        take(comparison, pairs, metrics);
          findings_left.extend(findings_over);
 -        entries_left.extend(untaken(entries_over, lost));
 +        entries_left.extend(untaken_by_text(entries_over, lost));
      }
++    (findings_left, entries_left)
++}
++
++fn finish(
++    mut comparison: Comparison,
++    findings_left: Vec<Finding>,
++    entries_left: Vec<Values>,
++    metrics: &[&str],
++) -> Comparison {
      let (pairs, findings_left, entries_left) = moved(findings_left, entries_left, metrics);
      take(&mut comparison, pairs, metrics);
+     comparison.unmatched_findings = findings_left;
+@@ -448,6 +576,34 @@ fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comp
+     comparison
+ }
+ 
++fn judge(findings: Vec<Finding>, entries: Vec<Values>, metrics: &[&str]) -> Comparison {
++    let mut comparison = Comparison::default();
++    let (findings_left, entries_left) = text_pass(&mut comparison, findings, entries, metrics);
++    finish(comparison, findings_left, entries_left, metrics)
++}
++
++/// The judge for a gate whose files in some languages carry an identity. A file outside them
++/// takes today's first pass exactly; the body-hash pass runs once over what both leave.
++fn judge_scoped(
++    findings: Vec<Finding>,
++    entries: Vec<Values>,
++    metrics: &[&str],
++    scoped: fn(&str) -> bool,
++) -> Comparison {
++    let mut comparison = Comparison::default();
++    let (scoped_findings, plain_findings): (Vec<Finding>, Vec<Finding>) =
++        findings.into_iter().partition(|finding| scoped(&finding.file));
++    let (scoped_entries, plain_entries): (Vec<Values>, Vec<Values>) =
++        entries.into_iter().partition(|entry| scoped(&text(entry, "file")));
++    let (mut findings_left, mut entries_left) =
++        text_pass(&mut comparison, plain_findings, plain_entries, metrics);
++    let (more_findings, more_entries) =
++        identity_pass(&mut comparison, scoped_findings, scoped_entries, metrics);
++    findings_left.extend(more_findings);
++    entries_left.extend(more_entries);
++    finish(comparison, findings_left, entries_left, metrics)
++}
++
+ /// For each new finding, the one whose group it prints inside, or `None` where it leads.
+ pub type Nesting = fn(&[Finding]) -> Vec<Option<usize>>;
+ 
+@@ -502,6 +658,28 @@ impl Evaluator<'_> {
+         let comparison = judge(findings, entries, self.metrics);
+         report(&comparison, self, held, line, at, out)
+     }
++
++    /// As `evaluate`, for a gate whose files in the languages `scoped` names carry an identity.
++    #[allow(clippy::too_many_arguments)]
++    pub fn evaluate_scoped(
++        &self,
++        findings: Vec<Finding>,
++        prior: Vec<Finding>,
++        accepted: Vec<Values>,
++        at: &Context,
++        line: Line,
++        out: &mut Sink,
++        scoped: fn(&str) -> bool,
++    ) -> u8 {
++        let entries: Vec<Values> = accepted
++            .into_iter()
++            .chain(prior.iter().map(Finding::entry))
++            .collect();
++        let (findings, entries) = restrict(findings, entries, at.only);
++        let held = entries.len();
++        let comparison = judge_scoped(findings, entries, self.metrics, scoped);
++        report(&comparison, self, held, line, at, out)
++    }
+ }
+ 
+ /// What the ratchet makes of each finding, without printing or recording anything: `new`,

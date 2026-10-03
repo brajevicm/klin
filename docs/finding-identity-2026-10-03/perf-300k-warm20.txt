@@ -11,3 +11,10 @@ row300k-fast-base-2.txt median_ms=845 complexity_ms=16 dead-symbols_ms=269 reach
 row300k-fast-proto4-2.txt median_ms=846 complexity_ms=17 dead-symbols_ms=274 reachability_ms=144 stop_total_ms=820 
 row300k-fast-base-3.txt median_ms=846 complexity_ms=16 dead-symbols_ms=272 reachability_ms=143 stop_total_ms=819 
 row300k-fast-proto4-3.txt median_ms=840 complexity_ms=16 dead-symbols_ms=266 reachability_ms=145 stop_total_ms=813 
+# proto5 runs, alternating with the baseline, at 2f523932's tests/performance.rs
+row300k-p5-base-1.txt median_ms=848 complexity_ms=16 dead-symbols_ms=272 reachability_ms=144 stop_total_ms=820 
+row300k-p5-proto5-1.txt median_ms=852 complexity_ms=16 dead-symbols_ms=273 reachability_ms=147 stop_total_ms=824 
+row300k-p5-base-2.txt median_ms=859 complexity_ms=16 dead-symbols_ms=275 reachability_ms=147 stop_total_ms=830 
+row300k-p5-proto5-2.txt median_ms=851 complexity_ms=17 dead-symbols_ms=274 reachability_ms=147 stop_total_ms=823 
+row300k-p5-base-3.txt median_ms=851 complexity_ms=16 dead-symbols_ms=276 reachability_ms=144 stop_total_ms=821 
+row300k-p5-proto5-3.txt median_ms=858 complexity_ms=16 dead-symbols_ms=274 reachability_ms=147 stop_total_ms=830 
