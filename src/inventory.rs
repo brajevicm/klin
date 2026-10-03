@@ -335,7 +335,7 @@ fn walked(tests: &Tests, tree: &Tree) -> Result<Walk, Error> {
         let bytes = std::fs::read(&path).map_err(|why| Error::unreadable(&path, why))?;
         let source = String::from_utf8_lossy(&bytes);
         walk.tests
-            .extend(convention::tests(file, &source, &mut walk.unparsed));
+            .extend(convention::tests(file, &source, &mut walk.unparsed)?);
     }
     walk.tests
         .sort_by(|a, b| (&a.file, a.line).cmp(&(&b.file, b.line)));

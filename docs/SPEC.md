@@ -2042,7 +2042,9 @@ both identities the same way, and both trees are read under the scope the
 base commit records, and under today's when the base records none (8.6), so a
 narrowing lets a deletion through only once it is committed. A file the working tree's grammar refuses holds no function site,
 so the functions in it are not judged and the file is the unparsed refusal
-of ADR 0003. Pinned by
+of ADR 0003. A parser resource error MUST propagate as the named error of
+section 13, including its file, line, measured byte count and ceiling; it is
+not a grammar rejection. Pinned by
 `deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why`,
 `a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook`,
 `the_stop_after_the_question_passes_and_leaves_a_green_verdict`,
@@ -4268,10 +4270,18 @@ shared parser. The error MUST name the file, one-based line, measured byte
 count and ceiling as a `source-line resource ceiling exceeded` error (exit 2),
 rather than silently exclude the file or truncate its site identity. Survey
 and tolerant readers that already omit refused parses omit this source too.
-This bounds the amplification of source-line site text on minified bundles;
-it is not a total process memory budget. The CLI pin is
-`an_oversized_source_line_reports_a_named_resource_error`.
-
+The source-line ceiling is defense in depth, not a bound on total retained
+site text or process memory. Complexity's survey MUST collect numerical
+metrics without materializing function site text or body hashes. Its retained
+function sites MUST share one text per source-row and holder-row pair within
+a file; an owned finding text is materialized only for a function over its
+ceilings. Dense lines below the source-line ceiling MUST retain every
+supported function in both trees and the survey. The CLI pins are
+`an_oversized_source_line_reports_a_named_resource_error`,
+`the_source_line_resource_ceiling_is_inclusive_and_counts_utf8_bytes`,
+`dense_sub_ceiling_lines_keep_every_function_in_both_trees_and_the_survey`,
+`a_minified_bundle_reports_a_resource_error_in_json` and
+`an_oversized_test_source_preserves_the_named_resource_error`.
 
 The Stop hook, excluding the project's own build, SHOULD finish within 5
 seconds on a tree of 2,000 source files when scoped with `--changed` to 20

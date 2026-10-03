@@ -291,8 +291,8 @@ pub(crate) fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<
     })
 }
 
-/// Site text holds a source line per finding. Bound that amplification before parsing,
-/// including survey and tolerant readers, with the same deterministic ceiling in both trees.
+/// Defense in depth against oversized site text, with the same deterministic ceiling
+/// before parsing in both trees, including survey and tolerant readers.
 fn source_lines(path: &str, source: &str) -> Result<(), Error> {
     const CEILING: usize = 65_536;
     if let Some((row, line)) = source
