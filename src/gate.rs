@@ -503,15 +503,30 @@ fn does_not_build_said(block: Option<u64>) -> String {
     }
 }
 
+/// Who builds a tree outside the hook: `klin gate` outside it runs no build. ADR 0012, spec 9.3.
+const OWN_CI: &str =
+    "`klin gate` outside the hook runs no build, so the project's own CI must run it";
+
 fn stopped_blocking() -> String {
     format!(
         "the build has blocked {BLOCKS} stops under this prompt, so klin stops blocking; the \
-         failure stands and CI will refuse it."
+         failure stands. {OWN_CI}."
     )
 }
 
-const UNCHANGED: &str = "the tree did not change since the stop klin last blocked, so klin does \
-    not block again; the failure stands and CI will refuse it.";
+fn unchanged() -> String {
+    format!(
+        "the tree did not change since the stop klin last blocked, so klin does not block again; \
+         the failure stands. {OWN_CI}."
+    )
+}
+
+fn unbounded_note() -> String {
+    format!(
+        "klin could not safely spend a build block, so this build failure blocks nothing. \
+         {OWN_CI}."
+    )
+}
 
 /// The note for a build whose command the shell could not find. It names the command, quotes
 /// the shell, and says the one action left, because the failing output alone told the agent
@@ -519,8 +534,8 @@ const UNCHANGED: &str = "the tree did not change since the stop klin last blocke
 fn unbuilt_said(run: &str, output: &str) -> String {
     format!(
         "NOTE: the build `{run}` could not run ({output}), so klin judged the source as it \
-         stands and CI runs the build. Install the project's dependencies, or a person sets \
-         `build` to `false` in klin.json."
+         stands; {OWN_CI}. Install the project's dependencies, or a person sets `build` to \
+         `false` in klin.json."
     )
 }
 
@@ -663,8 +678,8 @@ impl Blocks {
         match self {
             Blocks::Spent(builds) if *builds <= BLOCKS => (2, Some(*builds), None),
             Blocks::Spent(_) => (0, None, Some(stopped_blocking())),
-            Blocks::Unchanged => (0, None, Some(UNCHANGED.to_string())),
-            Blocks::Unbounded => (0, None, None),
+            Blocks::Unchanged => (0, None, Some(unchanged())),
+            Blocks::Unbounded => (0, None, Some(unbounded_note())),
         }
     }
 }

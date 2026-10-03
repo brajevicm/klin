@@ -38,9 +38,10 @@ names its manifest, such as `tsc --noEmit from package.json beside
 tsconfig.json`.
 
 A build whose command the shell cannot find is not a build failure. klin
-leaves a NOTE, judges the source as it stands, and CI runs the build. The
-fix is to install the project's dependencies, not to remove the manifest or
-the script that derived the command.
+leaves a NOTE and judges the source as it stands. `klin gate` outside the
+hook runs no build, so the project's own CI must run it. The fix is to install
+the project's dependencies, not to remove the manifest or the script that
+derived the command.
 
 ## The routes to green that klin refuses
 
