@@ -1406,3 +1406,22 @@ fn openstock_style_recursive_roots_prove_typescript_sources() {
         assert!(run.says("model → view"), "{}", run.out);
     }
 }
+
+#[test]
+fn a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external() {
+    for (import, code) in [("react", 0), ("@scope/pkg/sub", 0), ("@/missing", 2)] {
+        let tree = Tree::new();
+        tree.write("klin.json", WEB);
+        tree.write(
+            "tsconfig.json",
+            r#"{"compilerOptions":{"paths":{"*":["./vendor/*"]}}}"#,
+        );
+        tree.write(
+            "web/model/tool.ts",
+            &format!("import x from \"{import}\";\n"),
+        );
+        tree.write("web/view/x.ts", "export const x = 1;\n");
+        let run = tree.run(&["layering"]);
+        assert_eq!(run.code, code, "{import}: {}", run.out);
+    }
+}

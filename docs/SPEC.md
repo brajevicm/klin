@@ -2366,7 +2366,11 @@ import. A config-only edit can retarget an unchanged dependency or change
 its root proof in a changed run.
 
 A matching paths rule whose target cannot be proved produces located local
-resolution incompleteness. Multiple/nested or alternate tsconfigs, extends,
+resolution incompleteness. One exception follows TypeScript, which tries
+normal package lookup after the paths targets: when a rule's target names
+no file the tree holds and the specifier is a valid package name, such as
+`react` or `@scope/pkg`, the import is external. A specifier that cannot name
+a package, such as `@/missing`, stays a hole. Multiple/nested or alternate tsconfigs, extends,
 project references, multiple fallback targets and invalid anchors are not
 used to guess edges. Held relative extends files are read once, with cycles
 bounded, to recognize local names only. The nearest defined paths object
@@ -2399,6 +2403,7 @@ Pinned by `direct_typescript_aliases_close_cycles_and_forbidden_edges`,
 `same_line_implementation_alias_hole_does_not_poison_external_re_export`,
 `same_line_re_exports_follow_the_dependency_at_each_site`,
 `same_line_alias_holes_stay_distinct_sites`,
+`a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external`,
 `imported_files_outside_project_roots_stay_unproved`,
 `child_paths_replace_inherited_alias_names_instead_of_merging` and
 `multiple_extends_do_not_supply_inherited_alias_names` and

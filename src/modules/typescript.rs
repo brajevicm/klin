@@ -104,6 +104,7 @@ fn dependency(
             site.start_byte,
         ),
         [] if another_kind(topology, base, &candidates) => builder.external += 1,
+        [] if !relative(specifier) && package_name(specifier) => builder.external += 1,
         [] => builder.hole_at(
             site.file,
             site.line,
@@ -132,6 +133,23 @@ fn dependency(
 
 fn source(file: &str) -> bool {
     SOURCE.iter().any(|end| file.ends_with(end))
+}
+
+fn package_name(specifier: &str) -> bool {
+    let named = |part: &str| {
+        part.starts_with(|c: char| c.is_ascii_alphanumeric())
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'))
+    };
+    let mut parts = specifier.split('/');
+    match parts.next() {
+        Some(scope) if scope.starts_with('@') => {
+            named(&scope[1..]) && parts.next().is_some_and(named)
+        }
+        Some(name) => named(name),
+        None => false,
+    }
 }
 
 fn relative(specifier: &str) -> bool {
