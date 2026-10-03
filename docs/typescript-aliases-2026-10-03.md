@@ -85,12 +85,17 @@ refuses with exit 2. The #355 fixture's component cycle is not a module
 cycle: its replay pins a db-to-ui prohibition to inspect the restored edge,
 without adding a component-cycle check.
 
-[openstock.json](typescript-aliases-2026-10-03/openstock.json) compares both
+[openstock.json](typescript-aliases-2026-10-03/openstock.json) compares three
 binaries over the survey's exact OpenStock commit, with an empty base and
-one source layer. Dependency sites rise from 4 to 258 (257 distinct edges),
-with 112 modules in both builds. Both runs still exit 2 because the structural
-grammar rejects `lib/constants.ts` and `lib/markets.ts`; the graph repair does
-not claim that every other measurement limitation disappeared.
+one source layer: `7104995b` before alias support, `618bb06f` with the first
+root-proof correction, and `e1507890` with recursive include patterns.
+Dependency sites go from 4 to 4 to 258 (257 distinct edges), with 112 modules
+in every build. At `618bb06f` the config's `**/*.ts` and `**/*.tsx` include
+entries were not supported, so no source had root proof. That run reports
+254 `unresolved` alias sites. At `e1507890` it reports none. Every run still
+exits 2 because the structural grammar rejects `lib/constants.ts` and
+`lib/markets.ts`. The graph repair does not claim that every other
+measurement limitation disappeared.
 
 The controlled workload is `tests/performance.rs`'s `structural_1m`, `warm20`:
 5,000 files per language, 1,033,827 source lines, five timed warm stops. Commands:
@@ -213,8 +218,8 @@ unrelated gate and process variation. These runs exercise one alias config;
 the config-heavy improvement is structural indexing, not a measured claim.
 
 
-The OpenStock graph counts above predate this root-proof correction and are
-historical evidence, not fresh validation of the narrower root subset. The
+The OpenStock graph counts above were measured again after the
+recursive-include correction (2026-10-04). The
 #361 and #355 planted routes were replayed again after the correction: CI
 still reports `domain → ui: src/ui/format.ts` and `db → ui: src/ui/labels.ts`
 respectively with exit 1, and both Stop replays refuse with exit 2.
