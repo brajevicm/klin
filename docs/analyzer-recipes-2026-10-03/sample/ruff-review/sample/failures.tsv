@@ -1,0 +1,7 @@
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fallback.py	63	BLE001	Do not catch blind exception: `Exception`
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fetch.py	49	F401	`curl_cffi.requests` imported but unused; consider using `importlib.util.find_spec` to test for availability
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	src/notebooklm/_app/source_fetch.py	50	F401	`markdownify` imported but unused; consider using `importlib.util.find_spec` to test for availability
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	tests/unit/app/test_source_fallback.py	166	S105	Possible hardcoded password assigned to: "secret"
+Python	teng-lin/notebooklm-py	af19e326e6	ruff-review	tests/unit/cli/test_source.py	113	S106	Possible hardcoded password assigned to argument: "csrf_token"
+Python	huggingface/trl	9fa0abbd29	ruff-review	trl/trainer/__init__.py	76	F401	`.utils.add_fused_lm_head` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+Python	huggingface/trl	d947c4f509	ruff-review	tests/test_grpo_trainer.py	3141	ERA001	Found commented-out code

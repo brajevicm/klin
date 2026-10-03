@@ -363,15 +363,19 @@ because pnpm 11 refuses its lockfile.
 - **Every tool runs offline, under `env -i`, and writes nothing into the tree
   with the recipe flags.** ESLint needs `node` on `PATH`. Semgrep writes
   `~/.semgrep/`. Ruff writes `.ruff_cache/` without `--no-cache`.
-- **A minor tool release changes the results.** The same Ruff rule list gave
-  other results in four of five Python repositories, and ESLint in each
-  TypeScript repository where both versions finished (section 11).
+- **A tool upgrade changes the results.** The same Ruff rule list gave other
+  results under 0.12.0 and 0.16.10 in four of five Python repositories, and
+  ESLint 9.30.0 and 10.12.0 differed in each TypeScript repository where
+  both versions finished (section 11).
 - **Type-aware ESLint ran out of memory on the largest repository.** Each
   whole-tree run on tolaria ended in "JavaScript heap out of memory" with no
   report. The first cost script counted those crashes as 70.8 s runs.
-- **The decision is "Adopt named recipes" for Ruff alone,** at review
-  strength, at Finalize and in CI, not at Stop (#358). Semgrep's rules are
-  klin's own text, so Semgrep stays a documented recipe with Gitleaks.
+- **The decision is "Adopt named recipes" for Ruff alone,** for Python
+  injection and swallowed errors, at review strength, at Finalize and in CI,
+  not at Stop (#358). Run as recommended, Ruff alone misses two of three
+  secrets plants, and the dead-code family fails on noise (section 3).
+  Semgrep's rules are klin's own text, so Semgrep stays a documented recipe
+  with Gitleaks.
 
 ## 1. Candidate families and the planted corpus
 
@@ -510,6 +514,37 @@ without Semgrep. The other Semgrep entries had no failure on the holdout.
 On the original sample, the fixed `sql-template-ts` had no failure, so that
 sample alone would have admitted the pair.
 
+### The exact Ruff recipe
+
+The second review's rules ran `ruff-review`, the recipe as recommended, with
+`--ignore-noqa` (`recipes/run.sh`). Rules 1 to 3 again, per family, with its
+entries only. N counts the 100 Python changes of the sample and the holdout
+together: 50 of them touch a Python file. `sample/ruff-review/` holds the
+rows and labels, and `expected-ruff-review.tsv` the fixture rows.
+
+| Family | Rule 1 (plants, Ruff alone) | Rule 2 (hard negatives) | Not appropriate | Appropriate | N | Disposition |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| injection | 3/3 | 1 fails (`inj-neg-const`, `S608`) | 0 | 0 | 0 | **review** |
+| swallowed | 3/3 | 0 | 2 | 0 | 2 | **review** |
+| secrets | 1/3 (Gitleaks found the other two) | 1 fails (`sec-neg-name`, `S105`) | 3 | 0 | 3 | leaves the recipe: rule 1 |
+| dead | 3/4 | 0 | 6 | 5 | 6 | leaves the recipe: N over 5 |
+
+The five appropriate rows are the first for any admitted family: unused
+locals and imports in two ktransformers tools of the holdout. Three of the
+six `not-appropriate` dead rows are imports a project suppressed on purpose
+with `# noqa: F401`, to check that an optional package is installed. They
+show only because the recipe sets `--ignore-noqa`. Without the flag, N would
+be 3 and the family would stay in the recipe as review. So the suppression
+decision and the dead-code family trade against each other. That choice is a
+person's (section "Decision").
+
+`ruff-review.sh` ran the recipe on one plant per family and on every Python
+suppression route, under the shell seam, under `env -i` with an empty
+`HOME`, and with the network denied. The findings were the same in all
+three, and no run wrote a file in the tree or in `HOME`
+(`ruff-review.txt`). With `--ignore-noqa`, `# noqa: S307`, the file header
+`# ruff: noqa: S307` and `# noqa: BLE001, S110` no longer hide the result.
+
 Where the rules leave a choice, it is a person's:
 
 - **Python `debug` with a test and CLI exclusion.** trl's own configuration
@@ -612,7 +647,7 @@ The phase rules, with the #358 Stop guidance of the rerun rules:
 
 | Tool | Pairs | Stop | Finalize | Phase |
 | --- | --- | --- | --- | --- |
-| Ruff | Python injection, secrets, swallowed, dead | 30 ms on one repository, a new external process, no value shown on real changes: not a Stop entry under #358 | 0.11 s | **Finalize** |
+| Ruff, `ruff-review` | Python injection, swallowed | 25 to 26 ms on two repositories (`cost-ruff-review.tsv`), a new external process, no value shown on real changes: not a Stop entry under #358 | 0.08 to 0.11 s | **Finalize** |
 | Semgrep | secrets (TypeScript), injection and secrets (Python) | 1.29 s | 6.8 s | **Finalize** |
 | Gitleaks | secrets, both languages | no file scope | 22.3 s | **Finalize** |
 | ESLint, injection | none: TypeScript `injection` is rejected | 1.06 to 3.09 s, reads `node_modules` | out of memory on tolaria | — |
@@ -813,9 +848,10 @@ Gitleaks 8.24.0. A result is its rule, file, line and message.
 Semgrep gave the same results under both versions in all ten repositories.
 Gitleaks did in the other eight. `drift.tsv` holds every row.
 
-So a minor release changed the results of the same rule list in four of
-five Python repositories and in each TypeScript repository where both
-versions finished. Under the ratchet, each "only new" result on a line a
+So the upgrade from Ruff 0.12.0 to 0.16.10, four minor versions, changed the
+results of the same rule list in four of five Python repositories. The
+upgrade from ESLint 9.30.0 to 10.12.0, one major version, changed them in
+each TypeScript repository where both versions finished. Under the ratchet, each "only new" result on a line a
 change touches would read as new debt, and each "only old" result as debt
 paid, with no change to the code.
 
@@ -884,10 +920,10 @@ The split agreed with #362 section 7, per family:
 | Python broad or empty handler | #362: a REVIEW candidate | Ruff `BLE001`, `S110`, `S112` (review here) | either; #362's native rows read the handler body, which `BLE001` does not, and Haiku's narrowed tuple passes both |
 | TypeScript empty handler | #362: neither | ESLint `no-empty` rejected here (N 28) | neither |
 | Rust `let _ =` on a `Result` | — | Clippy, not measured | recipe, as #362 said |
-| Python unused import and local | `dead-symbols` reads private declarations across files | Ruff `F401`, `F841` (review here) | recipe for the per-file case; native keeps the cross-file case |
+| Python unused import and local | `dead-symbols` reads private declarations across files | Ruff `F401`, `F841`: N 6 with `--ignore-noqa`, 3 without | a person's choice (section "Decision"); native keeps the cross-file case |
 | TypeScript unused names | `dead-symbols` | ESLint `no-unused-vars` rejected here | native only |
-| Commented-out code | none | Ruff `ERA001` (review here), sonarjs `no-commented-code` | recipe, review |
-| Secrets | none | Gitleaks, Ruff `S105`-`S107`, local Semgrep | recipe, review |
+| Commented-out code | none | Ruff `ERA001`, sonarjs `no-commented-code` | with Python dead code |
+| Secrets | none | Gitleaks, Ruff `S105`-`S107`, local Semgrep | documented recipe: Ruff alone misses two of three plants |
 | SQL and shell text built from a value | none | Ruff `S608`, `S602` (review here); local Semgrep for TypeScript (rejected on the holdout) | Python: recipe, review; TypeScript: neither |
 | Debug output | none | `T201`, `no-console` rejected here | neither |
 | Unnecessary conditions | none, needs types | `no-unnecessary-condition` rejected here | neither |
@@ -942,12 +978,11 @@ None of this is written into `docs/SPEC.md` by this ticket.
 > `{}` runs klin's own checks and no analyzer. It does not look for injected
 > SQL or shell text, secrets in source, swallowed errors, unused imports and
 > locals, debug output, or conditions the types make unnecessary. For the
-> first four in Python, a Ruff recipe reports findings for review, before
-> the agent declares the work ready and in CI. For secrets in TypeScript,
-> REFERENCE.md shows a Gitleaks entry you can add yourself. klin does not
-> block on any of them. Injection in TypeScript, debug output, unused names
-> in TypeScript and unnecessary conditions have no recipe, because the
-> analyzers that state them failed too much ordinary code.
+> first and third in Python, a Ruff recipe reports findings for review,
+> when the agent declares the work ready and in CI. For secrets, REFERENCE.md
+> shows a Gitleaks entry you can add yourself. klin does not block on any of
+> them. The other families have no recipe: their analyzers failed too much
+> ordinary code, or missed too many planted cases.
 
 **SPEC 8.3**, for the shipped seam, whatever happens to named recipes:
 
@@ -972,9 +1007,13 @@ contract of section 9, the state table of section 7, the basis of section
 
 A named recipe ships with:
 
-- a CLI test per recipe that runs the real tool on fixtures of this corpus:
-  each plant is a review finding, each hard negative is not, each legitimate
-  route passes;
+- a CLI test per recipe that runs the real tool on fixtures of this corpus
+  and pins, per route, the exact findings of `expected-ruff-review.tsv` for
+  the recipe's families. That includes the tolerated hard negative
+  (`inj-neg-const` gives `S608`) and the known misses (`inj-reword-join`,
+  `inj-reword-function`, `err-reword-narrow`, `err-reword-suppress`), so a new
+  miss, a lost miss or a new hard-negative finding each fails the test. Each
+  legitimate route passes;
 - the same test under a network-denied sandbox, with the same result;
 - failure tests: the executable missing, another version, exit with no
   report, a truncated report, a timeout, a file that does not parse, and a
@@ -1030,10 +1069,15 @@ added:
 
 | Tool | Families and entries | Phase | Input and scope | Completeness | Pinning |
 | --- | --- | --- | --- | --- | --- |
-| Ruff 0.16.10 | Python injection (`S102`, `S307`, `S602`, `S604`, `S605`, `S608`), secrets (`S105`-`S107`), swallowed (`BLE001`, `S110`, `S112`), dead (`F401`, `F841`, `ERA001`) | Finalize and CI; not Stop (#358) | the live tree with the #352 identity check; the window's changed files by name; `--isolated --no-cache` | `complete` for the named files; a file that does not parse is an `invalid-syntax` finding | exact version; the rules ship in the binary; a new version is "measurement basis changed" |
+| Ruff 0.16.10 | Python injection (`S102`, `S307`, `S602`, `S604`, `S605`, `S608`), swallowed (`BLE001`, `S110`, `S112`) | Finalize and CI; not Stop (#358) | the live tree with the #352 identity check; the window's changed files by name; `--isolated --no-cache --ignore-noqa` | `complete` for the named files; a file that does not parse is an `invalid-syntax` finding | exact version; the rules ship in the binary; a new version is "measurement basis changed" |
 
 The recipe runs under the invocation contract of section 9, reports the
 states of section 7, and never fails a gate. Its results are review findings.
+`--ignore-noqa` makes the recipe report a site whatever `# noqa` or
+`# ruff: noqa` says, so a suppression comment cannot hide review evidence,
+and `escapes` need not learn the file-level form for this recipe. Python
+secrets and dead code leave the recipe (section 3, "The exact Ruff
+recipe").
 
 The rest:
 
@@ -1059,12 +1103,17 @@ What the evidence does and does not carry:
   the 100 sample changes, nor its Semgrep entries in the 100 holdout changes, and nothing here measured how often agents write these
   shapes. #357 measures prevalence.
 
-So two choices remain a person's:
+So three choices remain a person's:
 
-1. **Document recipes only.** Ship no named recipe until a #357 prevalence
+1. **Dead code without `--ignore-noqa`.** Keep `F401`, `F841` and `ERA001`
+   in the recipe, honor `# noqa` for them, and teach `escapes` the file-level
+   `# ruff: noqa` form, since it already counts the line form. N would be 3.
+   The price is a suppression route for dead code that only `escapes`
+   reports.
+2. **Document recipes only.** Ship no named recipe until a #357 prevalence
    result shows these shapes in agent work. Keep the four SPEC 8.3 changes
    of section 16 for the user-owned seam either way.
-2. **Python `debug` with exclusions** (section 3).
+3. **Python `debug` with exclusions** (section 3).
 
 The SPEC 8.3 changes of section 16, items 1 to 4, fix defects of the shipped
 seam that this note measured. They stand whatever happens to named recipes.

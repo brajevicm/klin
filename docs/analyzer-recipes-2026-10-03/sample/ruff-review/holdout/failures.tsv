@@ -1,0 +1,9 @@
+Python	teng-lin/notebooklm-py	9834e07c6a	ruff-review	tests/server/test_profiles.py	604	S106	Possible hardcoded password assigned to argument: "secret"
+Python	kvcache-ai/ktransformers	7c35863f62	ruff-review	.github/model-e2e/installed.py	51	F401	`accelerate.utils.dataclasses.KTransformersPlugin` imported but unused
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/convert_mxfp4_gguf.py	109	F841	Local variable `nblocks` is assigned to but never used
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/convert_mxfp4_gguf.py	271	BLE001	Do not catch blind exception: `Exception`
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	58	F841	Local variable `nb` is assigned to but never used
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	99	F401	`safetensors.safe_open` imported but unused
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	100	F401	`torch` imported but unused
+Python	kvcache-ai/ktransformers	31985f40bc	ruff-review	kt-kernel/tools/mxfp4_gguf/verify_mxfp4_gguf.py	246	F841	Local variable `here` is assigned to but never used
+Python	huggingface/trl	04bbf1f3c4	ruff-review	trl/trainer/__init__.py	80	F401	`.utils.patch_fused_lm_head` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
