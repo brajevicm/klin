@@ -214,8 +214,14 @@ fn a_merged_release_pr_is_validated_before_publication() {
             .any(|line| line.trim() == "create-release = true"),
         "cargo-dist does not own GitHub Release creation"
     );
-    assert!(!dist.contains("pull_request:"), "dist becomes a second PR CI path");
-    assert!(dist.contains("gh release create"), "dist no longer creates releases");
+    assert!(
+        !dist.contains("pull_request:"),
+        "dist becomes a second PR CI path"
+    );
+    assert!(
+        dist.contains("gh release create"),
+        "dist no longer creates releases"
+    );
     assert!(
         !published.contains("gh release create") && !published.contains("dist plan"),
         "publish-release still owns cargo-dist's GitHub Release lifecycle"
