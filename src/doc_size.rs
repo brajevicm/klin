@@ -78,6 +78,8 @@ struct Document {
     /// Where the base's copy of this document sits, and `None` for a document outside the tree
     /// klin compares, which has no base copy to hold it.
     relative: Option<PathBuf>,
+    /// Whether the ceiling is automatic, which is the only kind a changed run may leave unread.
+    automatic: bool,
 }
 
 /// The documents a run judges, and what it says about where each ceiling came from.
@@ -133,21 +135,24 @@ fn evaluate(
     Ok(if over > 0 { 1 } else { 0 })
 }
 
-/// On a changed run, the documents the change set touched. A document unchanged against the
-/// base has the base's word count, so it is under its ceiling or held at the base, and reading
-/// it again could only say so. Spec 8.2.1.
+/// On a changed run, every pinned document and the automatic ones the change set touched. An
+/// automatic document unchanged against the base has the base's word count, so it is under its
+/// ceiling or held at the base, and reading it again could only say so. A pin is always read, so
+/// a pin that names no file stays an error. Spec 8.2.1.
 fn changed_only(at: &Context, documents: Vec<Document>) -> Vec<Document> {
     let Some(changes) = at.changes else {
         return documents;
     };
     documents
         .into_iter()
-        .filter(|document| match &document.relative {
-            Some(relative) => changes
-                .iter()
-                .any(|change| Path::new(&change.path) == relative),
-            None => true,
-        })
+        .filter(
+            |document| match document.relative.as_ref().filter(|_| document.automatic) {
+                Some(relative) => changes
+                    .iter()
+                    .any(|change| Path::new(&change.path) == relative),
+                None => true,
+            },
+        )
         .collect()
 }
 
@@ -170,7 +175,7 @@ fn judged(
             }
         }
     }
-    let before = based(&counted, against);
+    let before = based(&counted, against)?;
     let mut over = 0;
     for (document, words) in counted {
         let held = before
@@ -223,14 +228,15 @@ fn commit(config: &Config, at: &Context, out: &mut Sink) -> Option<String> {
 /// The base word count of every document over its ceiling, by name. A ceiling a person lowers
 /// must fail no document the base holds, so a document over the ceiling in both trees that did
 /// not grow is held, whatever the ceiling is. A document the base holds under another path
-/// reads as new debt.
+/// reads as new debt. A read git could not finish is an error, because base evidence klin
+/// could not read is no proof of new debt.
 fn based<'a>(
     counted: &[(&'a Document, u64)],
     against: &Option<(String, PathBuf)>,
-) -> BTreeMap<&'a str, u64> {
+) -> Result<BTreeMap<&'a str, u64>, Error> {
     let mut before = BTreeMap::new();
     let Some((commit, root)) = against else {
-        return before;
+        return Ok(before);
     };
     let over: Vec<(&str, String)> = counted
         .iter()
@@ -244,16 +250,24 @@ fn based<'a>(
         })
         .collect();
     if over.is_empty() {
-        return before;
+        return Ok(before);
     }
     let paths: Vec<&str> = over.iter().map(|(_, path)| path.as_str()).collect();
     let mut names = over.iter().map(|(name, _)| *name);
-    changed::blobs(root, commit, &paths, |_, bytes| {
+    let mut answered = 0;
+    let read = changed::blobs(root, commit, &paths, |_, bytes| {
+        answered += 1;
         if let (Some(name), Some(bytes)) = (names.next(), bytes) {
             before.insert(name, words_in(bytes));
         }
     });
-    before
+    if read.is_none() || answered != paths.len() {
+        return Err(Error(format!(
+            "{SECTION}: git could not read the base copies of the documents over their ceilings \
+             at {commit}"
+        )));
+    }
+    Ok(before)
 }
 
 fn judge(document: &Document, words: u64, held: Option<u64>, at: &Context, out: &mut Sink) -> bool {
@@ -331,6 +345,7 @@ fn documents(
             },
             name: named.display().to_string(),
             relative: None,
+            automatic: false,
         }]);
     }
     let listing = listing(at.project)?;
@@ -401,7 +416,9 @@ fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> 
         listing
             .said
             .push((format!("pinned: {SECTION} {name} {ceiling}"), None));
-        listing.documents.push(document(config, name, ceiling));
+        listing
+            .documents
+            .push(document(config, name, ceiling, false));
     }
     Ok(listing)
 }
@@ -444,18 +461,21 @@ fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) -> Re
             )),
         ));
         let ceiling = Ceiling { value, step: None };
-        listing.documents.push(document(config, name, ceiling));
+        listing
+            .documents
+            .push(document(config, name, ceiling, true));
     }
     Ok(())
 }
 
-fn document(config: &Config, name: &str, ceiling: Ceiling) -> Document {
+fn document(config: &Config, name: &str, ceiling: Ceiling, automatic: bool) -> Document {
     let path = config.path(name);
     Document {
         relative: path.strip_prefix(config.root()).ok().map(Path::to_path_buf),
         path,
         ceiling,
         name: name.to_string(),
+        automatic,
     }
 }
 

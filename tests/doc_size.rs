@@ -560,3 +560,34 @@ fn a_changed_run_judges_only_the_instruction_files_that_changed() {
     );
     assert!(!run.says("pkg/AGENTS.md is"), "{}", run.out);
 }
+
+/// A changed run still reads every pinned document, so a pinned README the change set renamed
+/// is the config error a whole run reports. #435.
+#[test]
+fn a_changed_run_still_reports_a_pinned_document_that_was_renamed() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "doc_size": {"README.md": 100} }"#);
+    tree.words("README.md", 10);
+    tree.base();
+    tree.write("docs/.keep", "");
+    tree.git(&["mv", "README.md", "docs/README.md"]);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no such file"), "{}", run.out);
+}
+
+/// A new pin that names a missing file is a config error on a changed run where only the
+/// configuration changed. #435.
+#[test]
+fn a_changed_run_reports_a_new_pin_that_names_a_missing_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.base();
+    tree.write("klin.json", r#"{ "doc_size": {"MISSING.md": 100} }"#);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no such file"), "{}", run.out);
+}

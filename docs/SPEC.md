@@ -641,8 +641,11 @@ Each check documents its rule. The rules for the shipped checks:
   import and a host's own rule directory are not instruction files. The
   survey finds nested files in the one tree listing, and the derivation
   commit's copies are read in one batch (#435). A changed run reads only the
-  documents the change set touched: an unchanged document has the base's
-  word count, so it is under its ceiling or held at the base. The base
+  automatic instruction files the change set touched: an unchanged one has
+  the base's word count, so it is under its ceiling or held at the base. A
+  changed run still reads every pinned document, so a pin that names a
+  missing file stays exit 2. A base read git cannot finish is exit 2, never
+  new debt. The base
   copies of the documents over their ceilings are read in one batch too. Every other document, such as a
   README or a changelog, grows by design and is judged only when the section
   pins it, because the gate exists for the instruction file that grows every
@@ -659,10 +662,12 @@ Each check documents its rule. The rules for the shipped checks:
   `a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section`,
   `file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files`,
   `each_instruction_file_takes_its_derived_ceiling_or_the_new_file_default`,
-  `a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged`
+  `a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged`,
   `a_hundred_nested_instruction_files_are_each_judged`,
-  `a_cache_that_misses_a_held_instruction_file_is_derived_again` and
-  `a_changed_run_judges_only_the_instruction_files_that_changed`
+  `a_cache_that_misses_a_held_instruction_file_is_derived_again`,
+  `a_changed_run_judges_only_the_instruction_files_that_changed`,
+  `a_changed_run_still_reports_a_pinned_document_that_was_renamed` and
+  `a_changed_run_reports_a_new_pin_that_names_a_missing_file`
   in `tests/doc_size.rs`, by
   `a_document_the_derivation_commit_lacks_is_judged_under_the_new_file_default`
   in `tests/survey.rs`, and by
