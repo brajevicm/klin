@@ -2217,7 +2217,6 @@ reject a manifest, because the Cargo and Go readers are line scans. The check
 judges every manifest under `--changed` as well, because a lockfile change
 judges a manifest whose own text did not change and the whole set is a
 handful of files. Pinned by
-`a_new_rust_dependency_with_no_lockfile_entry_fails_as_new`,
 `a_rust_lockfile_entry_that_went_fails_as_worsened`,
 `a_rust_pin_that_became_a_range_fails_as_worsened`,
 `a_new_dependency_with_a_range_and_a_lockfile_entry_does_not_fail`,
@@ -2246,7 +2245,6 @@ handful of files. Pinned by
 `two_manifests_that_share_one_lockfile_are_each_judged_against_it`,
 `under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged`,
 `a_manifest_pin_the_lockfile_records_at_another_version_fails_as_worsened`,
-`a_new_pin_the_lockfile_records_at_another_version_fails_as_new`,
 `npm_judges_the_version_under_a_package_root_and_not_a_nested_one`,
 `every_lockfile_reader_fails_a_pin_it_records_at_another_version`,
 `a_range_with_a_lockfile_entry_at_any_version_passes`,

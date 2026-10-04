@@ -77,6 +77,18 @@ fn every_configured_gate_runs_in_ladder_order() {
         run.out
     );
     assert!(at(&run, "escapes") < at(&run, "complexity"), "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(
+        run.says("OK: 0 escape site(s) in the tree ("),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("FAIL"), "{}", run.out);
+    assert!(!run.says("NOTE"), "{}", run.out);
+    assert!(run.says("ok    doc-size"), "{}", run.out);
+    assert!(run.says("ok    doc-citations"), "{}", run.out);
+    assert!(run.says("ok    complexity"), "{}", run.out);
+    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
 }
 
 #[test]
@@ -103,35 +115,6 @@ fn a_gate_the_survey_cannot_supply_does_not_run() {
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(!run.says("complexity"), "{}", run.out);
     assert!(run.says("2 gate(s), all passed."), "{}", run.out);
-}
-
-#[test]
-fn a_status_row_per_gate_and_a_summary_line() {
-    let tree = tree(EVERY_GATE);
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("ok    doc-size"), "{}", run.out);
-    assert!(run.says("ok    doc-citations"), "{}", run.out);
-    assert!(run.says("ok    escapes"), "{}", run.out);
-    assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
-}
-
-#[test]
-fn a_passing_gate_prints_a_row_and_the_one_ok_line_under_it() {
-    let tree = tree(EVERY_GATE);
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("ok    escapes"), "{}", run.out);
-    assert!(
-        run.says("OK: 0 escape site(s) in the tree ("),
-        "{}",
-        run.out
-    );
-    assert!(!run.says("FAIL"), "{}", run.out);
-    assert!(!run.says("NOTE"), "{}", run.out);
 }
 
 #[test]
@@ -264,6 +247,11 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n",
         "{:?}",
+        run.out
+    );
+    assert!(
+        run.says("escapes — needs a section a person writes"),
+        "{}",
         run.out
     );
 }
@@ -500,6 +488,22 @@ fn hook_blocks_the_first_stop_and_hands_the_failures_back() {
         "{}",
         run.out
     );
+    assert!(run.says("pinned: doc_size README.md 10"), "{}", run.out);
+    assert!(run.says("gate(s)"), "{}", run.out);
+    assert!(run.says("1 failed."), "{}", run.out);
+    for passed in [
+        "ok    escapes",
+        "ok    complexity",
+        "pinned: complexity cc 8",
+        "OK:",
+    ] {
+        assert!(!run.says(passed), "{passed}: {}", run.out);
+    }
+
+    let by_hand = tree.run(&["gate"]);
+    assert_eq!(by_hand.code, 1, "{}", by_hand.out);
+    assert!(by_hand.says("ok    escapes"), "{}", by_hand.out);
+    assert!(by_hand.says("pinned: complexity cc 8"), "{}", by_hand.out);
 }
 
 #[test]
@@ -519,32 +523,6 @@ fn a_host_flag_alone_does_not_spend_a_gate_block() {
     );
     assert!(!run.says("then stop again"), "{}", run.out);
     assert!(!run.says("CI will refuse"), "{}", run.out);
-}
-
-#[test]
-fn hook_prints_only_the_gates_that_did_not_pass() {
-    let tree = tree(EVERY_GATE);
-    tree.words("README.md", 30);
-
-    let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("pinned: doc_size README.md 10"), "{}", run.out);
-    assert!(run.says("FAIL  doc-size"), "{}", run.out);
-    assert!(run.says("gate(s)"), "{}", run.out);
-    assert!(run.says("1 failed."), "{}", run.out);
-    for passed in [
-        "ok    escapes",
-        "ok    complexity",
-        "pinned: complexity cc 8",
-        "OK:",
-    ] {
-        assert!(!run.says(passed), "{passed}: {}", run.out);
-    }
-
-    let by_hand = tree.run(&["gate"]);
-    assert_eq!(by_hand.code, 1, "{}", by_hand.out);
-    assert!(by_hand.says("ok    escapes"), "{}", by_hand.out);
-    assert!(by_hand.says("pinned: complexity cc 8"), "{}", by_hand.out);
 }
 
 #[test]
@@ -1276,19 +1254,6 @@ fn list_names_the_excluded_gates() {
 }
 
 #[test]
-fn list_names_an_available_gate_the_survey_cannot_supply_either() {
-    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
-
-    let run = tree.run(&["gate", "--list"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("escapes — needs a section a person writes"),
-        "{}",
-        run.out
-    );
-}
-
-#[test]
 fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
@@ -1311,20 +1276,11 @@ fn naming_an_excluded_gate_is_a_tool_error() {
     assert!(run.says("named escapes is excluded"), "{}", run.out);
 }
 
-#[test]
-fn strict_accounts_for_a_gate_the_survey_supplies() {
-    let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
-
-    let strict = tree.run(&["gate", "--strict"]);
-    assert_eq!(strict.code, 0, "{}", strict.out);
-    assert!(strict.says("ok    escapes"), "{}", strict.out);
-}
-
 /// The retired `--strict` failure of ADR 0010: a config that leaves a derivable gate out is a
 /// config klin derives that section for, so there is nothing left to account for. The hole it
 /// closed is closed by the source root failure below instead. ADR 0016.
 #[test]
-fn strict_accepts_a_config_that_omits_a_derivable_gate() {
+fn strict_accounts_for_a_gate_the_survey_supplies() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
     let strict = tree.run(&["gate", "--strict"]);

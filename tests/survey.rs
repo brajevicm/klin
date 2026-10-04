@@ -31,24 +31,6 @@ fn stop(tree: &Tree) -> Run {
 }
 
 #[test]
-fn a_tree_with_no_configuration_runs_every_derivable_gate() {
-    let tree = project();
-
-    let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("ok    doc-size"), "{}", run.out);
-    assert!(run.says("ok    doc-citations"), "{}", run.out);
-    assert!(run.says("ok    escapes"), "{}", run.out);
-    assert!(run.says("ok    stubs"), "{}", run.out);
-    assert!(run.says("ok    inventory"), "{}", run.out);
-    assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("ok    dead-symbols"), "{}", run.out);
-    assert!(run.says("ok    lockfile"), "{}", run.out);
-    assert!(run.says("ok    public-api"), "{}", run.out);
-    assert!(run.says("10 gate(s), all passed."), "{}", run.out);
-}
-
-#[test]
 fn every_derived_value_prints_with_the_rule_that_produced_it() {
     let tree = project();
 
@@ -69,6 +51,16 @@ fn every_derived_value_prints_with_the_rule_that_produced_it() {
         "{}",
         run.out
     );
+    assert!(run.says("ok    doc-size"), "{}", run.out);
+    assert!(run.says("ok    doc-citations"), "{}", run.out);
+    assert!(run.says("ok    escapes"), "{}", run.out);
+    assert!(run.says("ok    stubs"), "{}", run.out);
+    assert!(run.says("ok    inventory"), "{}", run.out);
+    assert!(run.says("ok    complexity"), "{}", run.out);
+    assert!(run.says("ok    dead-symbols"), "{}", run.out);
+    assert!(run.says("ok    lockfile"), "{}", run.out);
+    assert!(run.says("ok    public-api"), "{}", run.out);
+    assert!(run.says("10 gate(s), all passed."), "{}", run.out);
 }
 
 fn find(entries: &[Value], matches: impl Fn(&Value) -> bool) -> &Value {

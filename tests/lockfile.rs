@@ -27,7 +27,7 @@ fn a_dependency_in_the_base_state_is_held() {
 }
 
 #[test]
-fn a_new_rust_dependency_with_no_lockfile_entry_fails_as_new() {
+fn a_new_dependency_missing_from_the_lockfile_gets_a_remedy_that_names_the_install() {
     let tree = rust_tree();
     tree.write(
         "Cargo.toml",
@@ -41,6 +41,23 @@ fn a_new_rust_dependency_with_no_lockfile_entry_fails_as_new() {
         "{}",
         run.out
     );
+    assert!(
+        run.says("Run the project's own install, so the lockfile records the dependency."),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("If you cannot run the install, report why"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Do not write lockfile entries by hand"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("Restore the exact version"), "{}", run.out);
+    assert!(!run.says("Install again"), "{}", run.out);
 }
 
 #[test]
@@ -817,7 +834,7 @@ fn a_manifest_pin_the_lockfile_records_at_another_version_fails_as_worsened() {
 }
 
 #[test]
-fn a_new_pin_the_lockfile_records_at_another_version_fails_as_new() {
+fn a_stale_pin_fails_under_a_condition_that_names_it() {
     let tree = Tree::new();
     tree.write("package.json", r#"{"dependencies": {}}"#);
     tree.write("package-lock.json", &npm_lock("5.4.0"));
@@ -830,6 +847,13 @@ fn a_new_pin_the_lockfile_records_at_another_version_fails_as_new() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says(
+            "1 new dependenc(ies) that the lockfile beside the manifest does not lock at an exact pin"
+        ),
         "{}",
         run.out
     );
@@ -977,34 +1001,6 @@ fn a_lockfile_with_several_versions_of_one_name_is_stale_only_when_none_equals_t
         "{}",
         run.out
     );
-}
-
-#[test]
-fn a_new_dependency_missing_from_the_lockfile_gets_a_remedy_that_names_the_install() {
-    let tree = rust_tree();
-    tree.write(
-        "Cargo.toml",
-        &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
-    );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        run.says("Run the project's own install, so the lockfile records the dependency."),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("If you cannot run the install, report why"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("Do not write lockfile entries by hand"),
-        "{}",
-        run.out
-    );
-    assert!(!run.says("Restore the exact version"), "{}", run.out);
-    assert!(!run.says("Install again"), "{}", run.out);
 }
 
 #[test]
@@ -1295,26 +1291,6 @@ fn a_worsened_finding_prints_only_the_remedy_of_the_value_that_rose() {
     );
     assert!(run.says("Run the project's own install"), "{}", run.out);
     assert!(!run.says("Restore the exact version"), "{}", run.out);
-}
-
-#[test]
-fn a_stale_pin_fails_under_a_condition_that_names_it() {
-    let tree = Tree::new();
-    tree.write("package.json", r#"{"dependencies": {}}"#);
-    tree.write("package-lock.json", &npm_lock("5.4.0"));
-    tree.base();
-    tree.write(
-        "package.json",
-        r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
-    );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
-    assert!(
-        run.says(
-            "1 new dependenc(ies) that the lockfile beside the manifest does not lock at an exact pin"
-        ),
-        "{}",
-        run.out
-    );
 }
 
 #[test]

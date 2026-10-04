@@ -51,6 +51,8 @@ fn init_on_a_tree_in_debt_writes_a_config_that_gates_green() {
     assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
+/// Plain `init` writes the repository's opt-in marker and nothing it can derive. ADR 0028,
+/// ADR 0040.
 #[test]
 fn init_writes_no_file_but_the_config() {
     let tree = in_debt();
@@ -58,18 +60,10 @@ fn init_writes_no_file_but_the_config() {
     let run = tree.run(&["init"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
-}
-
-/// Plain `init` writes the repository's opt-in marker and nothing it can derive. ADR 0028,
-/// ADR 0040.
-#[test]
-fn init_writes_the_empty_opt_in_marker() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree), serde_json::json!({}), "{}", run.out);
     assert!(run.says("--pin"), "{}", run.out);
+    let config = config(&tree);
+    assert_eq!(config.get("stubs"), None, "{config}");
 }
 
 #[test]
@@ -100,6 +94,8 @@ fn pin_fills_in_the_guardrails_the_config_does_not_state() {
     assert!(run.says("derived: complexity cc"), "{}", run.out);
 }
 
+/// A pin is a guardrail a person owns, and nothing that describes the repository: no build
+/// command, document topology, manifest, test root or source section. ADR 0040.
 #[test]
 fn pin_writes_no_test_lines_because_klin_never_derives_it() {
     let tree = in_debt();
@@ -109,6 +105,23 @@ fn pin_writes_no_test_lines_because_klin_never_derives_it() {
     let config = config(&tree);
     assert!(config["complexity"]["lines"].is_u64(), "{config}");
     assert!(config["complexity"].get("test_lines").is_none(), "{config}");
+    let written: Vec<&String> = config
+        .as_object()
+        .map(|held| held.keys().collect())
+        .unwrap_or_default();
+    assert_eq!(written, ["complexity", "doc_size"], "{config}");
+    assert_eq!(
+        config["complexity"].as_object().map(|held| held.len()),
+        Some(2),
+        "{config}"
+    );
+    assert!(
+        config["doc_size"]["AGENTS.md"].as_u64().unwrap_or_default() >= 400,
+        "{config}"
+    );
+
+    let gated = tree.run(&["gate", "--strict"]);
+    assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
 #[test]
@@ -165,34 +178,6 @@ fn pin_edits_no_gitignore() {
     let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
-}
-
-/// A pin is a guardrail a person owns, and nothing that describes the repository: no build
-/// command, document topology, manifest, test root or source section. ADR 0040.
-#[test]
-fn pin_writes_only_stable_guardrails() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init", "--pin"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    let written: Vec<&String> = config
-        .as_object()
-        .map(|held| held.keys().collect())
-        .unwrap_or_default();
-    assert_eq!(written, ["complexity", "doc_size"], "{config}");
-    assert_eq!(
-        config["complexity"].as_object().map(|held| held.len()),
-        Some(2),
-        "{config}"
-    );
-    assert!(
-        config["doc_size"]["AGENTS.md"].as_u64().unwrap_or_default() >= 400,
-        "{config}"
-    );
-
-    let gated = tree.run(&["gate", "--strict"]);
-    assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
 /// `--pin` pins what a run derives, so a README gets no ceiling beside the instruction files.
@@ -309,16 +294,6 @@ fn pin_refuses_retired_source_topology() {
     let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads"), "{}", run.out);
-}
-
-#[test]
-fn init_omits_automatic_source_sections() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let config = config(&tree);
-    assert_eq!(config.get("stubs"), None, "{config}");
 }
 
 #[test]

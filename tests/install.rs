@@ -835,6 +835,7 @@ fn install_follows_a_settings_file_that_is_a_link() {
 }
 
 /// One user-scope install covers every repository, and no repository file carries klin. #137.
+/// User scope is one machine, and the words for it never promise a cloud or remote agent.
 #[test]
 fn install_user_writes_the_persons_own_file_and_leaves_the_repository_alone() {
     let tree = a_repository();
@@ -860,17 +861,6 @@ fn install_user_writes_the_persons_own_file_and_leaves_the_repository_alone() {
         "{}",
         run.out
     );
-}
-
-/// User scope is one machine, and the words for it never promise a cloud or remote agent.
-#[test]
-fn install_user_writes_no_configuration_beside_the_home_directory() {
-    let tree = a_repository();
-    let home = Tree::bare();
-    home.write(".claude/settings.json", "{}\n");
-
-    let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!home.path("klin.json").exists(), "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);

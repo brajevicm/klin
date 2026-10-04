@@ -63,6 +63,17 @@ fn a_family_the_base_proves_judges_a_new_unreached_member() {
     );
     assert!(run.says("1 new unreached file(s)"), "{}", run.out);
     assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
+
+    assert!(
+        run.says("a reached sibling is src/commands/"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Wire this file into the application"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -189,27 +200,6 @@ fn one_ambiguous_reference_reaches_every_matching_declaration() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("5 file(s) judged, 0 unreached"), "{}", run.out);
-}
-
-#[test]
-fn the_remedy_names_a_proven_reached_sibling() {
-    let tree = three_reached_commands();
-    tree.base();
-    tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
-
-    let run = tree.run(&["reachability"]);
-
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(
-        run.says("a reached sibling is src/commands/"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("Wire this file into the application"),
-        "{}",
-        run.out
-    );
 }
 
 #[test]
