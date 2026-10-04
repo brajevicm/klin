@@ -320,7 +320,7 @@ fn the_readme_leads_with_the_cli_and_offers_the_plugins_after_it() {
          the hook lines look in"
     );
     for said in [
-        "Claude Code · Codex · Cursor",
+        "Claude Code, Codex, and Cursor",
         "`--host claude`",
         "echo '{}' > klin.json",
         "`{}` is a complete configuration.",
