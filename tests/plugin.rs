@@ -193,12 +193,11 @@ fn a_merged_release_pr_is_validated_before_publication() {
         "startsWith(github.event.pull_request.head.ref, 'release/v')",
         "<!-- klin-release-pr -->",
         "github.event.pull_request.merge_commit_sha",
-        "pull-requests: read",
         "checks: read",
-        "/pulls/$PR_NUMBER/files",
-        "Cargo.lock",
+        "PR_BASE_SHA:",
+        ".github/validate-release-pr.py",
         "check-runs?per_page=100",
-        "for required in gates plan",
+        "select(.name == \"gates\")",
         "git merge-base --is-ancestor",
         "git push origin \"refs/tags/$tag\"",
     ] {
@@ -1011,15 +1010,15 @@ fn the_host_canary_stays_out_of_pull_request_gating() {
     );
 }
 
-/// The quality check runs on every pull request, so a change to a doc, the config or a workflow
-/// cannot skip it. `dist plan` runs only on the pull requests that touch a release input, in its
-/// own workflow, because dist's `release.yml` skips pull requests. #368.
+/// The one required quality job owns every pre-merge release check. cargo-dist's generated
+/// release workflow still skips pull requests, so there is no second CI authority. #368, #470.
 #[test]
-fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan() {
-    let plan = text(".github/workflows/release-plan.yml");
+fn every_pull_request_runs_one_authoritative_quality_gate() {
+    let quality = text(".github/workflows/quality.yml");
 
+    assert!(!at(".github/workflows/release-plan.yml").exists());
     assert!(
-        !text(".github/workflows/quality.yml")
+        !quality
             .lines()
             .any(|line| line.trim_start().starts_with("paths")),
         "a path filter can skip the quality check"
@@ -1030,25 +1029,38 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
             .any(|line| line.trim() == "pull_request:"),
         "dist's release workflow runs on every pull request"
     );
-    for input in [
-        "Cargo.toml",
-        "Cargo.lock",
-        DIST_WORKSPACE,
-        ".github/workflows/release.yml",
-        ".github/workflows/prepare-release.yml",
-        ".github/workflows/publish-release.yml",
-        "action.yml",
+    for held in [
+        "actionlint@v1.7.12",
+        "Validate exact release diff",
+        ".github/validate-release-pr.py",
+        "Validate cargo-dist plan",
+        "dist plan --output-format=json",
+        "Cargo.toml Cargo.lock rust-toolchain.toml dist-workspace.toml",
+        ".github/workflows/prepare-release.yml .github/workflows/publish-release.yml",
     ] {
-        assert!(
-            plan.contains(&format!("\"{input}\"")),
-            "{input} skips dist plan"
-        );
+        assert!(quality.contains(held), "quality omits {held}");
     }
-    assert!(plan.contains("dist plan"), "release-plan runs no dist plan");
-    assert!(
-        text(".github/workflows/quality.yml").contains("actionlint@v1.7.12"),
-        "workflow changes are not statically linted"
-    );
+}
+
+/// Exact release validation compares the seven generated files to the PR base after reverting
+/// only the version substitutions. Whole-file ownership is intentionally not trusted.
+#[test]
+fn release_validation_rejects_non_version_content_changes() {
+    let validator = text(".github/validate-release-pr.py");
+
+    for held in [
+        ".agents/plugins/marketplace.json",
+        ".claude-plugin/marketplace.json",
+        "Cargo.lock",
+        "Cargo.toml",
+        "README.md",
+        "plugins/klin/.claude-plugin/plugin.json",
+        "plugins/klin/.cursor-plugin/plugin.json",
+        "normalized != before",
+        "changes content beyond the expected",
+    ] {
+        assert!(validator.contains(held), "release validator omits {held}");
+    }
 }
 
 fn json(relative: &str) -> serde_json::Value {
