@@ -5360,15 +5360,19 @@ the user scope, and no flag is called `--global`.
 
 ### 19.1 The binary
 
-A pushed tag `vX.Y.Z` builds the binary for macOS and Linux, on x86_64 and
-arm64, and attaches the four archives, a `.sha256` beside each one, a
-`sha256.sum` over all of them, and the install script to a GitHub release.
-The release stays a prerelease until the promotion of 19.2 marks it Latest,
-so `releases/latest` names the last promoted release. `dist` runs that
-pipeline, so its artifact names and its install script are what a route
-consumes. ADR 0026 records that choice. `klin --version` prints the version
-the binary was built from, which is the tag without its `v`. Every route below
-downloads from that release and MUST verify the checksum.
+A protected release pull request prepares version `X.Y.Z`. It MUST pass the
+required `quality / gates` check and merge to `main` before `vX.Y.Z` is
+created on that exact merged commit. The tag builds the binary for macOS and
+Linux, on x86_64 and arm64, and attaches the four archives, a `.sha256`
+beside each one, a `sha256.sum` over all of them, and the install script to a
+GitHub release. cargo-dist creates that release and makes it Latest after the
+tag build succeeds; there is no separate prerelease/promotion phase.
+`releases/latest` therefore names the last successfully published release.
+`dist` runs that pipeline, so its artifact names and its install script are
+what a route consumes. ADR 0026 and ADR 0029 record that choice.
+`klin --version` prints the version the binary was built from, which is the
+tag without its `v`. Every route below downloads from that release and MUST
+verify the checksum.
 
 Two routes ship:
 
@@ -5476,14 +5480,26 @@ host documents it: `plugins/klin` for Claude Code, `./plugins/klin` for Codex.
 A plugin installed from either marketplace then holds the files of the release
 its manifest names, as long as the tag does not move, and a commit to `main`
 that changes `plugins/klin` reaches a plugin user only with the next release.
-The release commit rewrites the `ref` with the manifests. A release MUST push
-its tag alone and MUST stay a prerelease until the promotion. `main` MUST take
-the tag, and the release MUST become Latest, only after the release smoke of
-`docs/HOST_COMPATIBILITY.md` passed. CLI tests fail when a `ref` is not `v`
-followed by the crate version, when the release would rewrite a marketplace
-file anywhere but its `ref`, and when the release configuration lets
-`cargo-release` push or lets a release become Latest before the promotion. ADR
-0029 records the decision.
+The generated release pull request rewrites the `ref` with the manifests.
+It MUST differ from its `main` base only by the configured release-version
+substitutions, including the crate/lock versions, the two manifest versions,
+the two marketplace refs and the two README pins; file modes and all other
+bytes MUST remain unchanged. The required `quality / gates` check MUST prove
+that exact transformation and MUST run `dist plan` before the release PR may
+merge. After merge, `publish-release` MUST revalidate the transformation,
+MUST create `vX.Y.Z` only on that exact merged commit, and MUST NOT move an
+existing tag. cargo-dist then creates the GitHub Release and makes it Latest
+after the tag build succeeds.
+
+The host compatibility evidence in `docs/HOST_COMPATIBILITY.md` is
+independent of this ordinary release ceremony. Manual Claude Code, Codex or
+Cursor verification is required only for host-sensitive changes or when that
+evidence is stale, red or inconclusive; a version-only generated release PR
+does not require a manual host smoke. CLI/static release tests fail when a
+marketplace `ref` disagrees with the crate version, when the configured
+release rewrites anything outside the intended version fields, when exact
+release validation can ignore non-version bytes or file modes, or when
+`cargo-release` can push or tag. ADR 0029 records the decision.
 
 The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
