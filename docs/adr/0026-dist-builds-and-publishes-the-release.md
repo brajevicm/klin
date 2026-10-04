@@ -1,14 +1,14 @@
 # dist builds and publishes the release
 
-> ADR 0029 amends this (#338): with `create-release = false`, `dist` fills
-> and publishes a draft prerelease that `cut-release` makes, and the release
-> becomes Latest at its promotion.
+> ADR 0029 amends this (#338), and #470 changes the release topology again:
+> cargo-dist owns GitHub Release creation (`create-release = true`) after the
+> protected release PR merges and `publish-release` pushes the immutable tag.
 >
-> #368 amends the paragraph on `dist plan`. The generated workflow skips pull
-> requests (`pr-run-mode = "skip"`), and `release-plan.yml` runs `dist plan`
-> on the pull requests that touch a release input. The jobs in `release.yml`
-> keep the GitHub default timeout of 360 minutes. dist 0.32 has no setting for
-> a job timeout, and a hand edit would end the drift check of `dist plan`.
+> #368 moved `dist plan` out of the generated workflow because
+> `pr-run-mode = "skip"`. #470 folds that validation into the required
+> `quality / gates` job whenever release-sensitive inputs change, so a bad
+> plan cannot merge and there is no second release-plan CI authority. The jobs
+> in `release.yml` keep GitHub's default timeout of 360 minutes.
 >
 > #369 adds a check of the exact tag before a publish. `github-build-setup`
 > puts the steps of `.github/verify-tag.yml` into the x86_64 Linux build job:
@@ -32,7 +32,10 @@ reads `KLIN_INSTALL_DIR`. The `dist` shapes win, because a route that
 consumes them stays on the tool's supported path, and the tool also generates
 the Homebrew tap and the npm package that routes 2 and 3 of 19.1 need.
 
-`dist plan` runs on every pull request through the generated workflow, so a
-release configuration that no longer resolves fails before a tag exists. The
-version inside the binary comes from the `version` key in `Cargo.toml`, which
-the tag must match, so a release is a version bump and a tag.
+`dist plan` runs conditionally inside the required `quality / gates` job
+when a pull request changes release-sensitive inputs. A release PR also proves
+that its seven generated files differ from the base only by the configured
+version substitutions. A release configuration or generated release diff that
+does not satisfy those checks cannot merge. The version inside the binary
+comes from the `version` key in `Cargo.toml`, which the tag must match, so a
+release is a version bump and a tag.
