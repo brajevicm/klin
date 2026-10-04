@@ -1042,11 +1042,12 @@ fn every_pull_request_runs_one_authoritative_quality_gate() {
     }
 }
 
-/// Exact release validation compares the seven generated files to the PR base after reverting
-/// only the version substitutions. Whole-file ownership is intentionally not trusted.
+/// Exact release validation compares raw Git content and modes after reverting only the
+/// version substitutions. Whole-file ownership and text normalization are not trusted.
 #[test]
 fn release_validation_rejects_non_version_content_changes() {
     let validator = text(".github/validate-release-pr.py");
+    let quality = text(".github/workflows/quality.yml");
 
     for held in [
         ".agents/plugins/marketplace.json",
@@ -1056,11 +1057,18 @@ fn release_validation_rejects_non_version_content_changes() {
         "README.md",
         "plugins/klin/.claude-plugin/plugin.json",
         "plugins/klin/.cursor-plugin/plugin.json",
+        "git_bytes",
+        "ls-tree",
+        "file mode changed",
         "normalized != before",
-        "changes content beyond the expected",
+        "changes bytes beyond the expected",
     ] {
         assert!(validator.contains(held), "release validator omits {held}");
     }
+    assert!(
+        quality.contains("python3 .github/test-release-validator.py"),
+        "gates do not exercise release byte/mode validation"
+    );
 }
 
 fn json(relative: &str) -> serde_json::Value {
