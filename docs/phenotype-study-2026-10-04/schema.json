@@ -163,6 +163,7 @@
         "finding_row_id",
         "study_version",
         "measurement_row_id",
+        "source_finding_id",
         "finding_id",
         "finding_site",
         "evidence_packet_id"
@@ -191,6 +192,10 @@
             "string",
             "null"
           ]
+        },
+        "source_finding_id": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false
@@ -199,6 +204,7 @@
       "type": "object",
       "required": [
         "packet_id",
+        "source_finding_id",
         "study_version",
         "language",
         "task_context",
@@ -311,6 +317,10 @@
             },
             "additionalProperties": false
           }
+        },
+        "source_finding_id": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false
@@ -525,6 +535,8 @@
           "items": {
             "type": "object",
             "required": [
+              "source_finding_id",
+              "finding_event_id",
               "phenotype_id",
               "finding_id",
               "placement",
@@ -582,11 +594,65 @@
                 "pattern": "^[0-9a-f]{64}$"
               },
               "evidence_packet_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              },
+              "finding_event_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_finding_id": {
                 "type": "string",
                 "minLength": 1
               }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "shown": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "shown"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "feedback_text": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "feedback_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "evidence_packet_id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "feedback_text": {
+                      "type": "null"
+                    },
+                    "feedback_sha256": {
+                      "type": "null"
+                    },
+                    "evidence_packet_id": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
           }
         },
         "project_checks": {
