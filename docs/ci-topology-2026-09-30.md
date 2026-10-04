@@ -15,7 +15,7 @@ design, the release verification and the measurements. It follows
 | `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
 | `prepare-release`, `host compatibility` | manual dispatch | release PR preparation, host canaries |
-| `publish-release` | a generated release PR merges to `main` | immutable release tag plus the draft cargo-dist consumes |
+| `publish-release` | a generated release PR merges to `main` | validate the release-only diff/checks and push the immutable tag |
 
 ## The policy for `main`
 
