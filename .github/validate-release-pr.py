@@ -54,14 +54,31 @@ def package_version(cargo_toml: str) -> str:
     return held
 
 
+def replace_package_version(text: str, current: str, previous: str) -> str:
+    lines = text.splitlines(keepends=True)
+    in_package = False
+    changed = 0
+
+    for index, line in enumerate(lines):
+        held = line.rstrip("\r\n")
+        if held == "[package]":
+            in_package = True
+            continue
+        if in_package and held.startswith("[") and held.endswith("]"):
+            break
+        if in_package and held == f'version = "{current}"':
+            ending = line[len(held) :]
+            lines[index] = f'version = "{previous}"{ending}'
+            changed += 1
+
+    if changed != 1:
+        fail(f"Cargo.toml: expected one [package] version {current}, found {changed}")
+    return "".join(lines)
+
+
 def normalize(path: str, text: str, current: str, previous: str) -> str:
     if path == "Cargo.toml":
-        return replace_once(
-            text,
-            f'version = "{current}"',
-            f'version = "{previous}"',
-            path,
-        )
+        return replace_package_version(text, current, previous)
     if path == "Cargo.lock":
         old = f'name = "klin"\nversion = "{current}"'
         new = f'name = "klin"\nversion = "{previous}"'
