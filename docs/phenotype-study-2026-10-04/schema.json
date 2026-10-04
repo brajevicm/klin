@@ -819,6 +819,66 @@
         "max_ms"
       ],
       "additionalProperties": false
+    },
+    "hard_negative_result": {
+      "type": "object",
+      "required": [
+        "study_version",
+        "case_set_id",
+        "case_id",
+        "phenotype_id",
+        "measurement_state",
+        "finding_ids",
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "study_version": {
+          "const": 1
+        },
+        "case_set_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phenotype_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "measurement_state": {
+          "enum": [
+            "complete",
+            "partial",
+            "unsupported",
+            "unavailable",
+            "tool-error",
+            "invalid-syntax",
+            "local-resolution-incomplete"
+          ]
+        },
+        "finding_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "result": {
+          "enum": [
+            "no-finding",
+            "non-compulsory-review",
+            "compulsory-repair",
+            "measurement-incomplete"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
