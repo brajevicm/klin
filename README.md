@@ -52,7 +52,7 @@ klin install
 
 Then commit `klin.json` and the generated integration files.
 
-Prefer your host's native plugin flow? See [Native plugins](#native-plugins) below.
+Prefer installing through your host? See [Native integrations](#native-integrations) below.
 
 klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
 
@@ -82,8 +82,6 @@ klin caught 1 regression this session. It was fixed after klin flagged it.
 Add `--all` for individual findings or `--json` for machine-readable output.
 
 ## Why klin
-
-A coding agent can finish the task you asked for and make something else worse.
 
 Most deterministic tools tell you what is wrong **now**. klin asks:
 
@@ -122,9 +120,9 @@ A scanner that writes SARIF can report through a `sarif` section in `klin.json`.
 
 Language support varies by check. See [full current coverage and configuration →](docs/REFERENCE.md).
 
-## Native plugins
+## Native integrations
 
-Instead of the CLI setup above, you can run klin through the native plugin system of Claude Code, Codex, or Cursor.
+Claude Code, Codex, and Cursor can also install klin through their native plugin systems.
 
 A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin stats`. If the plugin and the repository hooks are both present, only one of them handles each event.
 
