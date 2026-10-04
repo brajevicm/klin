@@ -43,28 +43,20 @@ jobs:
           set -euo pipefail
 
           current=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
-          expected=$(python3 - "$current" "$LEVEL" "$VERSION" <<'PY'
-          import re
-          import sys
-
-          current, level, exact = sys.argv[1:]
-          if exact:
-              if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", exact):
-                  raise SystemExit(f"exact version must be X.Y.Z, got {exact!r}")
-              print(exact)
-              raise SystemExit
-
-          major, minor, patch = map(int, current.split("."))
-          if level == "major":
-              print(f"{major + 1}.0.0")
-          elif level == "minor":
-              print(f"{major}.{minor + 1}.0")
-          elif level == "patch":
-              print(f"{major}.{minor}.{patch + 1}")
-          else:
-              raise SystemExit(f"unknown release level: {level}")
-          PY
-          )
+          if [[ -n "$VERSION" ]]; then
+            [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+              echo "::error title=Invalid version::Expected X.Y.Z, got '$VERSION'."
+              exit 1
+            }
+            expected="$VERSION"
+          else
+            IFS=. read -r major minor patch <<<"$current"
+            case "$LEVEL" in
+              major) expected="$((major + 1)).0.0" ;;
+              minor) expected="$major.$((minor + 1)).0" ;;
+              patch) expected="$major.$minor.$((patch + 1))" ;;
+            esac
+          fi
 
           branch="release/v$expected"
           marker="<!-- klin-release-pr -->"
