@@ -184,7 +184,7 @@ fn a_release_becomes_latest_only_at_the_promotion() {
     }
     for invariant in [
         "group: promote-release",
-        "isDraft,isPrerelease,targetCommitish",
+        "isDraft,isImmutable,isPrerelease,targetCommitish",
         "git fetch origin main --tags",
     ] {
         assert!(
