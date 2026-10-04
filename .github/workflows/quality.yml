@@ -36,6 +36,35 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           mapfile -t workflows < <(find .github/workflows -maxdepth 1 -type f -name '*.yml' ! -name 'release.yml' | sort)
           "$(go env GOPATH)/bin/actionlint" "${workflows[@]}"
+      - name: Validate exact release diff
+        if: startsWith(github.event.pull_request.head.ref, 'release/v')
+        env:
+          RELEASE_BASE: ${{ github.event.pull_request.base.sha }}
+          RELEASE_HEAD: ${{ github.event.pull_request.head.sha }}
+          RELEASE_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          version="${RELEASE_REF#release/v}"
+          python3 .github/validate-release-pr.py "$RELEASE_BASE" "$RELEASE_HEAD" "$version"
+      - name: Validate cargo-dist plan
+        env:
+          DIST_BASE: ${{ github.event.pull_request.base.sha }}
+          DIST_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          release_inputs=(
+            Cargo.toml Cargo.lock rust-toolchain.toml dist-workspace.toml
+            .github/workflows/release.yml .github/verify-tag.yml
+            .github/workflows/prepare-release.yml .github/workflows/publish-release.yml
+            action.yml .claude-plugin .cursor-plugin .agents/plugins
+            plugins/klin/.claude-plugin plugins/klin/.cursor-plugin
+          )
+          if git diff --quiet "$DIST_BASE...$DIST_HEAD" -- "${release_inputs[@]}"; then
+            echo "Release inputs unchanged; skipping dist plan."
+            exit 0
+          fi
+          version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
+          dist plan --output-format=json
       - name: Verify counterfactual research evidence
         env:
           PYTHONDONTWRITEBYTECODE: "1"
