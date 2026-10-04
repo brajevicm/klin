@@ -13,7 +13,7 @@ rates state both the resolved denominator and the unresolved share.
 A user-facing capability, whether blocker or REVIEW, needs all of:
 
 1. **Natural support:** at least 3 affected agent changes in at least 3
-   repositories, and at least 2% of eligible agent changes are affected by a
+   repositories, and at least 5% of eligible agent changes are affected by a
    useful finding (`valid-regression` for a blocker;
    `valid-regression|valid-review` for review evidence).
 2. **No single-change concentration:** no single change may contribute more
@@ -32,6 +32,24 @@ A user-facing capability, whether blocker or REVIEW, needs all of:
 
 If a phenotype has fewer than 3 eligible agent changes, it cannot satisfy the
 natural-support bar in this study.
+
+### Why these floors
+
+The natural sample targets 40 agent changes per language. Three independent
+changes prevent one spectacular PR from establishing value; the 5% rate keeps
+three observations from becoming sufficient merely because a phenotype has a
+large combined-language denominator. With n=40, zero observations have a
+rule-of-three upper bound of about 7.5%, so this study is intentionally an
+admission test for recurring product value, not a proof that rarer phenomena do
+not exist.
+
+The 95%/2% blocker safety bars reflect the cost of an automatic Stop
+interruption. REVIEW admits more contextual evidence (80% useful, <=15%
+undesired) because it does not compel a repair. The 8/6 controlled-delivery
+floors force evidence across multiple tasks and both agent families before a
+closed-loop claim. The <=15 ms median / <=25 ms max Stop increment reuses the
+same near-free incremental budget already demanded of other evidence-gated
+Stop candidates such as #48; readiness gets a separate, looser budget.
 
 ## 2. Fast blocking admission
 
