@@ -129,8 +129,20 @@ The exact selection and matching rules are in `populations.tsv`. In summary:
   eligible and do not relax any rule after measurement begins.
 
 The matched-human arm uses the same repository and a +/-60-day creation window.
-It excludes known/attributed agent PRs, requires the same language, and requires
-changed-file count within [ceil(agent_files/2), min(100, 2*agent_files)].
+It excludes a candidate when any of these holds:
+
+- its PR id appears in the frozen AIDev pull-request table;
+- its author's GitHub type is `Bot`, its login ends in `[bot]`, or its login is
+  `Copilot`;
+- its head branch begins with `codex/`, `cursor/`, `copilot/`, `devin/`,
+  `claude/`, `jules/` or `jules-`;
+- its body or any commit message contains, case-insensitively, `claude code`,
+  `co-authored-by: claude`, `codex`, `cursor agent`, `cursoragent`,
+  `devin`, `jules`, `copilot`, `generated with` or `🤖`.
+
+This is “not attributed to an agent,” not proof of human-only authorship. A
+candidate also requires the same study language and changed-file count within
+[ceil(agent_files/2), min(100, 2*agent_files)].
 Choose deterministically by:
 
 ```text
@@ -164,14 +176,31 @@ fresh sessions from the same base:
 
 That is 6 x 2 x 2 x 2 = **48 planned runs**. Pair order is deterministic from
 SHA-256 of `357-arm-v1:<task-id>:<agent-family>:<repetition>`: low bit 0 means
-Active first, 1 means Shadow first. Both sessions start from a clean copy of the
-frozen base; neither sees the other result.
+Active first, 1 means Shadow first. Both sessions start from a clean copy of the frozen base; neither sees the
+other result.
+
+Active behaves as the intended product bundle: every registered finding that
+would be surfaced at that lifecycle placement may be shown. Event-level repair
+outcomes are recorded for every finding. If more than one phenotype is surfaced
+in an Active run, the pair may contribute to overall closed-loop quality but
+**not** to phenotype-specific Active-vs-Shadow task-benefit counts for any of
+those phenotypes. A phenotype-specific pairwise benefit is countable only when
+that phenotype is the sole surfaced intervention in the pair.
 
 Task correctness is independent of the candidate detector. Evidence consists of:
 
 1. the frozen task statement and acceptance facts in `populations.tsv`;
-2. the base repository's project checks, discovered and recorded before either
-   arm for that task executes;
+2. the base repository's project checks. Commands written explicitly in
+   `populations.tsv` are used as written. For a row that says
+   `base project checks`, the coordinator freezes the command list before any
+   arm runs by reading `.github/workflows/*` at the frozen base and taking, in
+   workflow-path/job/step order, shell `run:` steps from `pull_request` jobs
+   whose job or step name contains `test`, `check`, `type`, `lint` or
+   `build` (case-insensitive). Setup/install/cache/upload/deploy steps are not
+   project checks. If that produces no command, use the language fallback:
+   `cargo test --workspace` for Rust; `pnpm test` when `packageManager`
+   names pnpm, otherwise `npm test`, for TypeScript; `python -m pytest` for
+   Python. The frozen commands are stored before Active/Shadow execution;
 3. where the historical reference change contains test-only edits, a hidden
    acceptance patch made only from those test edits and applied in a separate
    verifier copy after the run;
