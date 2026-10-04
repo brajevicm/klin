@@ -119,10 +119,10 @@ A release has one protected-code path:
    pushes that tag. The push uses `RELEASE_TOKEN` because a tag pushed by the
    workflow's `GITHUB_TOKEN` would not start the tag-triggered Release
    workflow.
-4. `publish-release` creates the draft GitHub Release that cargo-dist expects
-   because `create-release = false`. The generated `release.yml` remains
-   cargo-dist-owned; it builds the exact tag, uploads the artifacts, undrafts
-   the release and makes the stable release available through GitHub Latest.
+4. The tag-triggered, cargo-dist-generated `release.yml` builds the exact
+   tag, creates the GitHub Release with the generated install/download notes,
+   uploads the artifacts and makes it available through GitHub Latest.
+   `publish-release` does not own GitHub Release state.
 
 The release branch is generated state. Re-running `prepare-release` for an
 open version refreshes the same branch and PR from current `main`.
@@ -158,7 +158,8 @@ hard error.
 - `main` contains every release before a release tag is created.
 - Branch protection stays authoritative; release automation needs no bypass of
   `main`.
-- The generated cargo-dist workflow is unchanged.
+- The release workflow remains generated and owned by cargo-dist; klin uses
+  cargo-dist's normal GitHub Release creation path.
 - The exact tag build still runs fmt, clippy, nextest, build and
   `klin gate --strict`. Because the tagged commit is already on `main`, the
   release PR's required `quality / gates` run is the authoritative diff gate.
