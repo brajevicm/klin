@@ -190,6 +190,11 @@ complete
 incomplete
 ```
 
+A measurement is **required** when an active native check selected for the
+current placement needs it, or when a configured integration is selected for
+that placement. Product-defined advisory evidence may remain optional; a
+repository does not get to relabel a blocking native requirement as advisory.
+
 A required measurement is incomplete when the requested claim could not be
 established completely: unsupported scope, partial coverage, ambiguity that the
 claim requires resolved, resource exhaustion, missing required tool/report, or
@@ -409,6 +414,8 @@ For a named recipe, klin would own:
 The external tool still owns its detector semantics.
 
 No Ruff, Semgrep, Gitleaks or other new named recipe ships from #475.
+A future klin-owned recipe must remain offline at measurement time; network
+resolution/install is not part of a klin-owned check.
 
 ### 10.3 User-owned SARIF/integration evidence
 
@@ -424,7 +431,10 @@ klin owns:
 - result rendering.
 
 User-owned arbitrary commands do not inherit the reproducibility claim of a
-named klin-owned recipe.
+named klin-owned recipe. They may use network or ambient project state only as
+an explicit project-owned trust choice; that dependency becomes part of the
+reported limitations and prevents klin from claiming deterministic recipe
+semantics.
 
 In vNext, user-owned external execution never runs on automatic Stop. Existing
 pre-1.0 configurations that relied on that behavior receive a targeted
@@ -536,6 +546,11 @@ Read-only integration/readiness state. It never silently checks the repository.
 Read-only history/outcome view: findings, repairs/resolutions, REVIEW items,
 set-aside/person decisions and measurement gaps.
 
+Default scope is the current/newest agent session. If no session is known,
+report that explicitly and suggest `--since 7d`; do not silently widen scope.
+Keep `--since Nd`, `--details` and `--json`. Retire public `--turn` and
+ambiguous `--all`.
+
 ### policy
 
 Read-only effective policy + provenance. It replaces policy inspection spread
@@ -548,8 +563,13 @@ Retained.
 ### Old command migration
 
 Before 1.0, removed public names hard-break with targeted migration errors
-rather than long-lived aliases unless external adoption evidence later proves
-an alias necessary.
+rather than long-lived human aliases unless external adoption evidence later
+proves an alias necessary.
+
+Generated hook/plugin commands are the exception: an updated binary must not
+silently strand an already-installed integration. Time-bounded hidden legacy
+dispatch compatibility may survive long enough for `klin setup` to reconcile
+the installation, but it is absent from normal help and is not a public API.
 
 The migration is:
 
@@ -562,7 +582,7 @@ The migration is:
 | `stats` | `report` |
 | `reference` / `gate --list` | `policy` |
 | `radius`, `guard`, hook-specific gate modes | hidden `__agent event` |
-| public finalization concept | hidden `__agent ready` |
+| research/finalization concept | hidden `__agent ready` |
 | `turn` | no public replacement |
 | `cache` | no stable public replacement unless support evidence later proves a need |
 
