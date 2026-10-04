@@ -67,7 +67,11 @@ jobs:
             state=$(jq -r '.state' <<<"$existing")
             url=$(jq -r '.url' <<<"$existing")
             if [[ -n "$merged" ]]; then
-              echo "Release PR already merged: $url" >> "$GITHUB_STEP_SUMMARY"
+              {
+                echo "Release PR already merged: $url"
+                echo
+                echo "If publication failed, rerun the corresponding **publish-release** workflow run. Do not prepare the version again."
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
             if [[ "$state" == "CLOSED" ]]; then
