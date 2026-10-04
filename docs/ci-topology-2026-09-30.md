@@ -44,8 +44,9 @@ That makes a duplicate push-to-`main` quality workflow unnecessary and makes
 
 `quality` uses `Swatinem/rust-cache` only when a pull request changes a
 Rust-affecting input: `src/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
-`rust-toolchain.toml`, `build.rs`, `benches/` or `examples/`. README/docs-only
-pull requests still emit the required `gates` check but skip the Rust cache,
+`rust-toolchain.toml`, `build.rs`, `benches/`, `examples/`, or the plugin skill
+that `src/hooks.rs` embeds with `include_str!`. README/docs-only pull requests
+still emit the required `gates` check but skip the Rust cache,
 compiler, test runner and `klin gate --strict`. This avoids a workflow-level
 path filter, because a skipped required workflow would never report its check.
 
