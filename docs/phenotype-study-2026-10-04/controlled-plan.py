@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 POPULATIONS = ROOT / "populations.tsv"
 TASKS = ROOT / "tasks.tsv"
 RUNTIME = ROOT / "controlled-runtime.tsv"
+PROJECT_CHECKS = ROOT / "project-checks.tsv"
 RUN_PLAN = ROOT / "run-plan.tsv"
 FAMILIES = ("OpenAI Codex", "Claude Code")
 LANGUAGES = ("Rust", "TypeScript", "Python")
@@ -66,6 +67,27 @@ def runtime(allow_pending: bool) -> dict[str, str]:
     else:
         raise SystemExit(f"unknown controlled runtime state: {state!r}")
     return row
+
+
+
+def validate_project_checks(population: list[dict[str, str]]) -> None:
+    rows = read_tsv(PROJECT_CHECKS)
+    expected_tasks = {row["population_id"] for row in population}
+    by_task: dict[str, list[dict[str, str]]] = {}
+    for row in rows:
+        task_id = row["task_id"]
+        if task_id not in expected_tasks:
+            raise SystemExit(f"project-check row references unknown task: {task_id}")
+        if not row["command"]:
+            raise SystemExit(f"{task_id}: project-check row has empty command")
+        by_task.setdefault(task_id, []).append(row)
+    if set(by_task) != expected_tasks:
+        missing = sorted(expected_tasks - set(by_task))
+        raise SystemExit(f"controlled tasks lack frozen project checks: {missing}")
+    for task_id, task_rows in by_task.items():
+        ordinals = [int(row["ordinal"]) for row in task_rows]
+        if ordinals != list(range(1, len(task_rows) + 1)):
+            raise SystemExit(f"{task_id}: project-check ordinals are not contiguous")
 
 
 def bindings(allow_pending: bool) -> dict[tuple[str, str], dict[str, str]]:
@@ -129,12 +151,14 @@ def bindings(allow_pending: bool) -> dict[tuple[str, str], dict[str, str]]:
         }
         if len(check_signatures) != 1:
             raise SystemExit(f"{task_id}: project-check rows disagree across families")
-        check_state, _ = next(iter(check_signatures))
+        check_state, check_ref = next(iter(check_signatures))
         if check_state.startswith("pending") and not allow_pending:
             raise SystemExit(
                 f"{task_id}: base project checks are not frozen; "
                 "freeze them before Active/Shadow execution"
             )
+        if not check_state.startswith("pending") and check_ref != f"project-checks.tsv:{task_id}":
+            raise SystemExit(f"{task_id}: frozen project-check reference is not canonical")
 
     return result
 
@@ -161,6 +185,7 @@ def main() -> None:
 
     population = controlled_population()
     frozen_runtime = runtime(args.allow_pending)
+    validate_project_checks(population)
     bound = bindings(args.allow_pending)
     output: list[dict[str, str | int]] = []
     sequence = 0
