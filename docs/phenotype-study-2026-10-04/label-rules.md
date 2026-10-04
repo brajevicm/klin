@@ -190,9 +190,13 @@ Re-review, without deleting the primary value:
 - every primary `unresolved`;
 - every packet that required unblinding;
 - every hard-negative packet;
-- every phenotype that later has >10% primary `undesired`;
+- every packet of a phenotype that later has >10% primary `undesired`;
 - a deterministic 20% sample of the remaining packets, selected by the lowest
   SHA-256 of `357-secondary-v1:<packet_id>`.
+
+The coordinator merges the selected packets into one list ordered by SHA-256 of
+`357-secondary-v1:<packet_id>`. The secondary reviewer does not see why a
+packet was selected.
 
 The secondary reviewer must not see aggregate per-phenotype rates before
 finishing the selected packets.

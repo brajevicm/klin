@@ -139,7 +139,14 @@
           ]
         },
         "finding_site": {
-          "$ref": "#/$defs/site"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/site"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "evidence_packet_id": {
           "type": [
@@ -370,6 +377,58 @@
         "labeler": {
           "type": "string",
           "minLength": 1
+        },
+        "primary_label": {
+          "oneOf": [
+            {
+              "enum": [
+                "valid-regression",
+                "valid-review",
+                "undesired",
+                "unresolved"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "secondary_label": {
+          "oneOf": [
+            {
+              "enum": [
+                "valid-regression",
+                "valid-review",
+                "undesired",
+                "unresolved"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_label": {
+          "oneOf": [
+            {
+              "enum": [
+                "valid-regression",
+                "valid-review",
+                "undesired",
+                "unresolved"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "adjudicator": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
         }
       },
       "additionalProperties": false
@@ -465,7 +524,8 @@
               "additional_turns",
               "feedback_bytes",
               "feedback_text",
-              "feedback_sha256"
+              "feedback_sha256",
+              "evidence_packet_id"
             ],
             "properties": {
               "phenotype_id": {
@@ -511,6 +571,10 @@
                   "null"
                 ],
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "evidence_packet_id": {
+                "type": "string",
+                "minLength": 1
               }
             },
             "additionalProperties": false

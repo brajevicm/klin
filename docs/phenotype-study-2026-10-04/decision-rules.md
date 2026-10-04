@@ -142,7 +142,9 @@ of these hold:
 ### Closed loop
 
 At least 6 valid Active deliveries occur across at least 3 controlled tasks and
-both agent families.
+both agent families. A row that no frozen controlled task can exercise, such as a
+dependency row when no task edits dependencies, has zero deliveries and is
+benchmark-only at most in this study.
 
 For cases where the correct outcome is repair:
 
@@ -216,7 +218,7 @@ is deferred in favor of the simpler one.
 Use **benchmark/product metric only** when the phenotype itself is supported but
 a user-facing intervention fails an admission axis. This includes any of:
 
-- at least 2 useful natural or independently judged controlled occurrences, but
+- at least 1 useful natural or independently judged controlled occurrence, but
   the 3-change natural-support bar is not met;
 - useful detection but insufficient controlled intervention opportunities;
 - acceptable classification with excessive human attention;
@@ -259,8 +261,8 @@ For each registry row, #357 chooses exactly one of its four requested outcomes:
    user-facing bar fails;
 4. **reject/defer for low value or unsafe precision** — insufficient or unsafe.
 
-Do not select a stronger disposition when a weaker placement is the first one
-whose complete bar passes.
+Walk the list from 1 to 4 and choose the first disposition whose complete bar
+passes.
 
 For a capability already shipped at `study_commit`, “admit” means **retain at
 its current strength**. If a shipped capability fails the safety/repair bar, the

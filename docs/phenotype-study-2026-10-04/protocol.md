@@ -149,7 +149,9 @@ It excludes a candidate when any of these holds:
 
 This is “not attributed to an agent,” not proof of human-only authorship. A
 candidate also requires the same study language and changed-file count within
-[ceil(agent_files/2), min(100, 2*agent_files)].
+[ceil(agent_files/2), min(100, 2*agent_files)], and must pass every
+agent-arm eligibility rule except one change per repository. A candidate that
+fails one is skipped and the next candidate in the order below is taken.
 Choose deterministically by:
 
 ```text
@@ -234,9 +236,11 @@ Task correctness is independent of the candidate detector. Evidence consists of:
    Python. The frozen commands are stored before Active/Shadow execution;
 3. where the historical reference change contains test-only edits, a hidden
    acceptance patch made only from those test edits and applied in a separate
-   verifier copy after the run;
+   verifier copy after the run. Test-only edits are test files and test-only
+   hunks in other files, such as a Rust `#[cfg(test)]` module;
 4. human design-intent review where executable evidence cannot prove an
-   acceptance fact.
+   acceptance fact. The reviewer sees both final patches of a pair without
+   arm, agent family or repair events.
 
 Candidate-authored tests in the new run are recorded as dependent evidence and
 cannot alone establish task correctness.
@@ -301,11 +305,11 @@ measurement basis and compatible identity semantics.
 
 ## 8. Blind evidence packets
 
-#457 generates packet IDs independently of phenotype and population, using a
-random permutation seeded from SHA-256 of
-`357-label-v1:<study_commit>:<sorted measurement-row ids>`. The seed and
-permutation are stored only in the unblinded manifest until primary labeling is
-complete.
+#457 generates packet IDs independently of phenotype and population. Before
+any packet exists, the coordinator draws a 32-byte random `salt`. Packets are
+numbered in ascending order of SHA-256 of
+`357-label-v1:<salt>:<measurement-row id>`. The salt and the row-to-packet map
+are stored only in the unblinded manifest until primary labeling is complete.
 
 Where judging remains possible, a label packet hides:
 
@@ -325,8 +329,11 @@ The packet schema is in `schema.json`.
 
 ## 9. Label contract
 
-`label-rules.md` is normative. Each natural finding gets exactly one primary
-label:
+`label-rules.md` is normative. Each natural finding, and each finding surfaced
+in an Active run, gets exactly one primary label. #459 packs a surfaced finding
+under section 8 before its repair outcome is joined; the labeler sees the base
+and the change the finding was raised on, never the later repair. A delivery
+is valid when its final label is `valid-regression` or `valid-review`:
 
 - `valid-regression`
 - `valid-review`
