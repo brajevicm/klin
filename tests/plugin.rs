@@ -185,8 +185,10 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
         "pull_request:",
         "types: [closed]",
         "github.event.pull_request.merged == true",
+        "startsWith(github.event.pull_request.head.ref, 'release/v')",
         "<!-- klin-release-pr -->",
         "github.event.pull_request.merge_commit_sha",
+        "git merge-base --is-ancestor",
         "git push origin \"refs/tags/$tag\"",
         "gh release create \"$tag\" --draft --verify-tag",
     ] {
