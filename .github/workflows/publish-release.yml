@@ -14,8 +14,7 @@ jobs:
     if: >-
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.event.pull_request.head.ref, 'release/v') &&
-      contains(github.event.pull_request.body, '<!-- klin-release-pr -->')
+      startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,8 +31,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
+
+          if [[ "$PR_BODY" != *"<!-- klin-release-pr -->"* ]]; then
+            echo "::error title=Untrusted release PR::The merged release branch is missing the prepare-release marker."
+            exit 1
+          fi
 
           version="${HEAD_REF#release/v}"
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -71,7 +76,12 @@ jobs:
           grep -Fq "brajevicm/klin@$tag" README.md
           grep -Fq -- "--branch $tag" README.md
 
-          git fetch origin --tags
+          git fetch origin main --tags
+          if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
+            echo "::error title=Merge commit missing::$MERGE_SHA is not contained in origin/main."
+            exit 1
+          fi
+
           if existing=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}"); then
             if [[ "$existing" != "$MERGE_SHA" ]]; then
               echo "::error title=Release tag already exists::$tag points to $existing, not merged commit $MERGE_SHA. Tags are never moved."
