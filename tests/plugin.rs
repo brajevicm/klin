@@ -155,8 +155,8 @@ fn cargo_release_only_prepares_release_files() {
     );
 }
 
-/// A release is prepared through a normal PR. Only a merged, workflow-authored release PR
-/// may create the immutable tag that starts cargo-dist. ADR 0029, #470.
+/// A release is prepared through a normal PR. Only a merged release-only PR with green
+/// release checks may create the immutable tag that starts cargo-dist. ADR 0029, #470.
 #[test]
 fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
     let prepared = text(".github/workflows/prepare-release.yml");
@@ -188,11 +188,14 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
         "startsWith(github.event.pull_request.head.ref, 'release/v')",
         "<!-- klin-release-pr -->",
         "github.event.pull_request.merge_commit_sha",
+        "pull-requests: read",
+        "checks: read",
+        "/pulls/$PR_NUMBER/files",
+        "Cargo.lock",
+        "check-runs?per_page=100",
+        "for required in gates plan",
         "git merge-base --is-ancestor",
-        "dist plan --tag=\"$tag\"",
         "git push origin \"refs/tags/$tag\"",
-        "gh release create \"$tag\" --draft --verify-tag",
-        "--notes-file",
     ] {
         assert!(published.contains(held), "publish-release omits {held}");
     }
@@ -204,12 +207,20 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
     assert!(
         text(DIST_WORKSPACE)
             .lines()
-            .any(|line| line.trim() == "create-release = false"),
-        "dist no longer consumes the draft created by publish-release"
+            .any(|line| line.trim() == "create-release = true"),
+        "cargo-dist does not own GitHub Release creation"
     );
     assert!(
         !dist.contains("pull_request:"),
         "the generated Release workflow becomes a second PR CI path"
+    );
+    assert!(
+        dist.contains("gh release create"),
+        "cargo-dist no longer creates the GitHub Release"
+    );
+    assert!(
+        !published.contains("gh release create") && !published.contains("dist plan"),
+        "publish-release still owns cargo-dist's GitHub Release lifecycle"
     );
 }
 
@@ -1030,6 +1041,10 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
         );
     }
     assert!(plan.contains("dist plan"), "release-plan runs no dist plan");
+    assert!(
+        text(".github/workflows/quality.yml").contains("actionlint@v1.7.12"),
+        "workflow changes are not statically linted"
+    );
 }
 
 fn json(relative: &str) -> serde_json::Value {
