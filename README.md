@@ -31,10 +31,12 @@ FAIL  complexity
 
 ## How klin works
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-how-it-works-dark.svg">
-  <img src="assets/klin-how-it-works-light.svg" width="880" alt="One agent turn: you prompt and klin marks the start. The agent edits and tries to finish, and klin compares the start of the turn with now. A new or worsened finding is returned while the agent still has context. A local pass can be checked again by klin in CI from its own checkout.">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/klin-how-it-works-dark.svg">
+    <img src="assets/klin-how-it-works-light.svg" width="880" alt="One agent turn: you prompt and klin marks the start. The agent edits and tries to finish, and klin compares the start of the turn with now. A new or worsened finding is returned while the agent still has context. A local pass can be checked again by klin in CI from its own checkout.">
+  </picture>
+</p>
 
 ## Quick start
 
