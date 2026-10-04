@@ -120,7 +120,15 @@ The exact selection and matching rules are in `populations.tsv`. In summary:
 - source: the frozen AIDev revision above;
 - date universe: AIDev v4's curated 2024-12-24 through 2025-10-24 population;
 - closed PRs are eligible whether merged or not; merge state is preserved;
-- one agent change per repository;
+- one agent change per repository, across all three language strata. Strata
+  are filled in the order Rust, TypeScript, Python; a repository taken by an
+  earlier stratum is not eligible in a later one. A change belongs only to the
+  stratum that took it and counts once in combined-language rates. It is
+  measured for every registered phenotype whose language and eligibility rule
+  it meets;
+- a candidate whose head SHA equals the head of a change already taken is a
+  duplicate and is skipped. A superseded or superseding PR in the same
+  repository needs no other rule, because the repository cap takes at most one;
 - repositories used by the 2026-10-02 pilot agent arm are excluded entirely;
 - repository size must be <=150,000 KB and the PR must touch <=100 files;
 - the PR must touch at least one file of the study language;
@@ -250,7 +258,7 @@ cannot alone establish task correctness.
 `phenotypes.tsv` is normative. A detector not present there is exploratory and
 cannot influence #357 admission.
 
-Each phenotype has one explicit **semantic** eligibility denominator. Eligibility is decided from the frozen registry and diff/tree facts before measurement success is known. Every selected natural change gets a phenotype measurement row. `semantic_eligible` records whether the change belongs to that phenotype's population; `eligibility_count` records its semantic units; `measured_count` records only units for which the frozen detector/prototype produced claim-complete evidence.
+Each phenotype has one explicit **semantic** eligibility denominator. Eligibility is decided from the frozen registry and diff/tree facts before measurement success is known. Every selected natural change gets one phenotype measurement row per phenotype in `measurements.tsv`, keyed by `(change_id, phenotype_id)`. Each finding is one row in `findings.tsv`, keyed back to that measurement row. Finding multiplicity therefore never repeats a denominator. `semantic_eligible` records whether the change belongs to that phenotype's population; `eligibility_count` records its semantic units; `measured_count` records only units for which the frozen detector/prototype produced claim-complete evidence.
 
 The core prevalence and coverage outputs are always:
 
@@ -377,6 +385,7 @@ preregistration:
 ```text
 natural-sample.tsv
 measurements.tsv
+findings.tsv
 evidence-packets/
 packet-manifest.tsv
 labels-primary.tsv

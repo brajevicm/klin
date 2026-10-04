@@ -71,9 +71,6 @@
         "eligibility_count",
         "measurement_state",
         "measured_count",
-        "finding_id",
-        "finding_site",
-        "evidence_packet_id",
         "runtime_ms",
         "measurement_basis",
         "holes"
@@ -132,28 +129,6 @@
             "local-resolution-incomplete"
           ]
         },
-        "finding_id": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "finding_site": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/site"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "evidence_packet_id": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "runtime_ms": {
           "type": "number",
           "minimum": 0
@@ -178,6 +153,44 @@
         "measured_count": {
           "type": "integer",
           "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_row_id",
+        "study_version",
+        "measurement_row_id",
+        "finding_id",
+        "finding_site",
+        "evidence_packet_id"
+      ],
+      "properties": {
+        "finding_row_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "study_version": {
+          "const": 1
+        },
+        "measurement_row_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "finding_site": {
+          "$ref": "#/$defs/site"
+        },
+        "evidence_packet_id": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false
@@ -323,8 +336,7 @@
         "pass": {
           "enum": [
             "primary",
-            "secondary",
-            "adjudication"
+            "secondary"
           ]
         },
         "label": {
@@ -377,57 +389,54 @@
         "labeler": {
           "type": "string",
           "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "adjudication": {
+      "type": "object",
+      "required": [
+        "packet_id",
+        "primary_label",
+        "secondary_label",
+        "final_label",
+        "reason",
+        "adjudicator"
+      ],
+      "properties": {
+        "packet_id": {
+          "type": "string"
         },
         "primary_label": {
-          "oneOf": [
-            {
-              "enum": [
-                "valid-regression",
-                "valid-review",
-                "undesired",
-                "unresolved"
-              ]
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "valid-regression",
+            "valid-review",
+            "undesired",
+            "unresolved"
           ]
         },
         "secondary_label": {
-          "oneOf": [
-            {
-              "enum": [
-                "valid-regression",
-                "valid-review",
-                "undesired",
-                "unresolved"
-              ]
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "valid-regression",
+            "valid-review",
+            "undesired",
+            "unresolved"
           ]
         },
         "final_label": {
-          "oneOf": [
-            {
-              "enum": [
-                "valid-regression",
-                "valid-review",
-                "undesired",
-                "unresolved"
-              ]
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "valid-regression",
+            "valid-review",
+            "undesired",
+            "unresolved"
           ]
         },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
         "adjudicator": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "minLength": 1
         }
       },
