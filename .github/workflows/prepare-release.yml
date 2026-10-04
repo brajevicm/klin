@@ -70,7 +70,7 @@ jobs:
               {
                 echo "Release PR already merged: $url"
                 echo
-                echo "If publication failed, rerun the corresponding **publish-release** workflow run. Do not prepare the version again."
+                echo "If **publish-release** failed before the tag push, rerun that workflow. If the tag exists and the cargo-dist **Release** workflow failed, rerun Release instead. Do not prepare the version again."
               } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
