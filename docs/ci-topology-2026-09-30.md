@@ -9,7 +9,7 @@ design, the release verification and the measurements. It follows
 
 | Workflow | Trigger | Work |
 | --- | --- | --- |
-| `quality` | each pull request push | actionlint when workflows change; exact release diff + `dist plan` when release inputs change; fmt, clippy, nextest, debug build, `klin gate --strict` |
+| `quality` | each pull request push | always reports required `gates`; actionlint/release checks are conditional; Rust cache + fmt/clippy/nextest/build/`klin gate --strict` run only for Rust-affecting inputs |
 | `rust cache` | a push to `main` that changes a cache key input, weekly, manual dispatch | clippy and the test build, to save the dependency cache |
 | `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
@@ -42,10 +42,17 @@ That makes a duplicate push-to-`main` quality workflow unnecessary and makes
 
 ## Rust cache
 
-`quality` uses `Swatinem/rust-cache`. It caches `~/.cargo` and the
-dependency artifacts under `target`, and it drops the artifacts of the klin
-crate itself before it saves. Both workflows set `shared-key: gates`, so they
-compute the same key.
+`quality` uses `Swatinem/rust-cache` only when a pull request changes a
+Rust-affecting input: `src/`, `tests/`, `Cargo.toml`, `Cargo.lock`,
+`rust-toolchain.toml`, `build.rs`, `benches/` or `examples/`. README/docs-only
+pull requests still emit the required `gates` check but skip the Rust cache,
+compiler, test runner and `klin gate --strict`. This avoids a workflow-level
+path filter, because a skipped required workflow would never report its check.
+
+When it runs, `Swatinem/rust-cache` caches `~/.cargo` and the dependency
+artifacts under `target`, and it drops the artifacts of the klin crate itself
+before it saves. Both workflows set `shared-key: gates`, so they compute the
+same key.
 
 - `quality` restores the cache and saves nothing (`save-if: false`). GitHub
   scopes a cache that a pull request saves to that pull request's merge ref,
