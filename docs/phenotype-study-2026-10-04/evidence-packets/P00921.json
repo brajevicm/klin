@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00921",
+  "source_finding_id": "P00921",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "\n        # Pack dropdown and add to row\n        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)\n        box.append(self.key_dropdown)\n        self.keyfile_row.add_suffix(box)\n        self.keyfile_row.set_activatable(False)\n        auth_group.add(self.keyfile_row)\n\n        self.key_only_row = Adw.SwitchRow()\n        self.key_only_row.set_title(_(\"Only use the specified key\"))\n        self.key_only_row.set_subtitle(_(\"This will append \\\"IdentitiesOnly yes\\\" to the configuration.\"))\n        self.key_only_row.set_active(True)\n        self.key_only_row.set_visible(False)\n        auth_group.add(self.key_only_row)\n\n        # Certificate dropdown for key-based auth with specific key\n        self.certificate_row = Adw.ActionRow(title=_(\"SSH Certificate\"), subtitle=_(\"Select certificate file (optional)\"))\n        # Build dropdown items from detected certificates\n        self.cert_dropdown = Gtk.DropDown()\n        self.cert_dropdown.set_hexpand(True)\n        # Populate via helper\n        self._cert_paths = []\n        self._populate_detected_certificates()\n\n        def _on_cert_selected(drop, _param):\n            try:\n                idx = drop.get_selected()\n                if idx < 0 or idx >= len(getattr(self, '_cert_paths', [])):\n                    return\n                path = self._cert_paths[idx]\n                if path == \"__BROWSE__\":",
+      "after": "        except Exception:\n                pass\n\n        # Pack dropdown and add to row\n        cert_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)\n        cert_box.append(self.cert_dropdown)\n        self.certificate_row.add_suffix(cert_box)\n        self.certificate_row.set_activatable(False)\n        auth_group.add(self.certificate_row)\n\n        # Initialize key UI sensitivity for new connections\n        try:\n            # Ensure visibility/sensitivity matches defaults\n            self.on_auth_method_changed(self.auth_method_row, None)\n            self.on_key_select_changed(self.key_select_row, None)\n        except Exception:\n            pass\n        \n        # Key Passphrase\n        self.key_passphrase_row = Adw.PasswordEntryRow(title=_(\"Key Passphrase\"))\n        self.key_passphrase_row.set_show_apply_button(False)\n        auth_group.add(self.key_passphrase_row)\n        \n        # Password\n        self.password_row = Adw.PasswordEntryRow(title=_(\"Password (optional)\"))\n        self.password_row.set_show_apply_button(False)\n        # Always visible; optional for key-based auth\n        self.password_row.set_visible(True)\n        auth_group.add(self.password_row)\n\n        # Disable pubkey authentication toggle for password auth",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

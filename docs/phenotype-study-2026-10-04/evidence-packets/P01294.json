@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01294",
+  "source_finding_id": "P01294",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "重构日志配置，移除调试模式，添加日志级别和输出文件选项；更新配置文件模式至v4.0\n\nresolve #411,#326,#143",
+  "diff_context": [
+    {
+      "path": "run.py",
+      "before": "        else:\n            value = getattr(ip, index + \"_v\" + ip_type)()\n    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):\n    for proxy in proxy_list:\n        if not proxy or (proxy.upper() in ['DIRECT', 'NONE']):\n            dns.Config.PROXY = None\n        else:\n            dns.Config.PROXY = proxy\n        record_type, domain = kw['record_type'], kw['domain']\n        print('\\n%s %s(%s) ==> %s [via %s]' %\n              (asctime(), domain, record_type, kw['ip'], proxy))\n        try:\n            return dns.update_record(domain, kw['ip'], record_type=record_type)\n        except Exception as e:\n            error(e)\n    return False\n\n\ndef update_ip(ip_type, cache, dns, proxy_list):\n    \"\"\"\n    更新IP\n    \"\"\"\n    ipname = 'ipv' + ip_type\n    domains = get_config(ipname)\n    if not domains:\n        return None",
+      "after": "    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):\n    for proxy in proxy_list:\n        if not proxy or (proxy.upper() in ['DIRECT', 'NONE']):\n            dns.Config.PROXY = None\n        else:\n            dns.Config.PROXY = proxy\n        record_type, domain = kw['record_type'], kw['domain']\n        info(\"%s(%s) ==> %s [via %s]\", domain, record_type, kw['ip'], proxy)\n        try:\n            return dns.update_record(domain, kw['ip'], record_type=record_type)\n        except Exception as e:\n            error(e)\n    return False\n\n\ndef update_ip(ip_type, cache, dns, proxy_list):\n    \"\"\"\n    更新IP\n    \"\"\"\n    ipname = 'ipv' + ip_type\n    domains = get_config(ipname)\n    if not domains:\n        return None\n    if not isinstance(domains, list):\n        domains = domains.strip('; ').replace(\n            ',', ';').replace(' ', ';').split(';')",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

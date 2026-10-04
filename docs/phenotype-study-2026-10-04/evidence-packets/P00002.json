@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00002",
+  "source_finding_id": "P00002",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "    if not value:\n        return None\n\n    rgba = Gdk.RGBA()\n    try:\n        if rgba.parse(str(value)):\n            return rgba\n    except Exception:\n        logger.debug(\"Failed to parse color value '%s'\", value, exc_info=True)\n    return None\n\n\ndef _get_color_display_mode(config) -> str:\n    try:\n        mode = str(config.get_setting('ui.group_color_display', 'fill')).lower()\n    except Exception:\n        return 'fill'\n\n    if mode not in {'fill', 'badge'}:\n        return 'fill'\n    return mode\n\n\ndef _fill_rgba(rgba: Optional[Gdk.RGBA]) -> Optional[Gdk.RGBA]:\n    if rgba is None:\n        return None\n\n    fill = Gdk.RGBA()\n    fill.red = rgba.red\n    fill.green = rgba.green\n    fill.blue = rgba.blue",
+      "after": "    if not value:\n        return None\n\n    rgba = Gdk.RGBA()\n    try:\n        if rgba.parse(str(value)):\n            return rgba\n    except Exception:\n        logger.debug(\"Failed to parse color value '%s'\", value, exc_info=True)\n    return None\n\n\ndef _get_color_display_mode(config) -> str:\n    try:\n        mode = str(config.get_setting('ui.group_color_display', 'fill')).lower()\n    except Exception:\n        return 'fill'\n\n    if mode not in {'fill', 'badge'}:\n        return 'fill'\n    return mode\n\n\ndef _fill_rgba(rgba: Optional[Gdk.RGBA]) -> Optional[Gdk.RGBA]:\n    if rgba is None:\n        return None\n\n    fill = Gdk.RGBA()\n    fill.red = rgba.red\n    fill.green = rgba.green\n    fill.blue = rgba.blue",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

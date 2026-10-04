@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01315",
+  "source_finding_id": "P01315",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "                ctx = Context.from_dict(workflow=workflow, data=persistent.ctx)\n                handler = workflow.run(ctx=ctx)\n            except Exception as e:\n                logger.error(\n                    f\"Failed to resume handler {persistent.handler_id} for workflow {persistent.workflow_name}: {e}\"\n                )\n                try:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=persistent.handler_id,\n                            workflow_name=persistent.workflow_name,\n                            status=\"failed\",\n                            ctx=persistent.ctx,\n                        )\n                    )\n                except Exception:\n                    pass\n                continue\n\n            self._run_workflow_handler(\n                persistent.handler_id, persistent.workflow_name, handler\n            )\n        return self\n\n    @asynccontextmanager\n    async def contextmanager(self) -> AsyncGenerator[\"WorkflowServer\", None]:\n        \"\"\"Use this server as a context manager to start and stop it\"\"\"\n        await self.start()\n        try:\n            yield self\n        finally:",
+      "after": "                ctx = Context.from_dict(workflow=workflow, data=persistent.ctx)\n                handler = workflow.run(ctx=ctx)\n            except Exception as e:\n                logger.error(\n                    f\"Failed to resume handler {persistent.handler_id} for workflow {persistent.workflow_name}: {e}\"\n                )\n                try:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=persistent.handler_id,\n                            workflow_name=persistent.workflow_name,\n                            status=\"failed\",\n                            ctx=persistent.ctx,\n                        )\n                    )\n                except Exception:\n                    pass\n                continue\n\n            self._run_workflow_handler(\n                persistent.handler_id, persistent.workflow_name, handler\n            )\n        return self\n\n    @asynccontextmanager\n    async def contextmanager(self) -> AsyncGenerator[\"WorkflowServer\", None]:\n        \"\"\"Use this server as a context manager to start and stop it\"\"\"\n        await self.start()\n        try:\n            yield self\n        finally:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01678",
+  "source_finding_id": "P01678",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    self.forward_agent_row.set_active(False)\n            \n            # Set authentication method and related fields\n            auth_method = getattr(self.connection, 'auth_method', 0)\n            self.auth_method_row.set_selected(auth_method)\n            self.on_auth_method_changed(self.auth_method_row, None)  # Update UI state\n            try:\n                self.pubkey_auth_row.set_active(bool(getattr(self.connection, 'pubkey_auth_no', False)))\n            except Exception:\n                self.pubkey_auth_row.set_active(False)\n            \n            # Get keyfile path from either keyfile or private_key attribute\n            has_specific_key = False\n            keyfile = getattr(self.connection, 'keyfile', None) or getattr(self.connection, 'private_key', None)\n            if keyfile:\n                # Normalize the keyfile path and ensure it's a string\n                keyfile_path = str(keyfile).strip()\n\n                # Update the connection's keyfile attribute if it comes from private_key\n                if not getattr(self.connection, 'keyfile', None) and hasattr(self.connection, 'private_key'):\n                    self.connection.keyfile = keyfile_path\n\n                # Only update the UI if we have a valid path\n                if keyfile_path and keyfile_path.lower() not in ['select key file or leave empty for auto-detection', '']:\n                    logger.debug(f\"Setting keyfile path in UI: {keyfile_path}\")\n                    has_specific_key = True\n                    self.keyfile_row.set_subtitle(keyfile_path)\n                    # Sync the dropdown to match the loaded keyfile\n                    self._sync_key_dropdown_with_current_keyfile()\n                else:\n                    logger.debug(f\"Skipping invalid keyfile path: {keyfile_path}\")",
+      "after": "                # Fallback: fetch from keyring so the dialog shows stored password (masked)\n                try:\n                    mgr = getattr(self.parent_window, 'connection_manager', None)\n                    if mgr and hasattr(self.connection, 'username'):\n                        lookup_host = (\n                            getattr(self.connection, 'hostname', '')\n                            or getattr(self.connection, 'host', '')\n                            or getattr(self.connection, 'nickname', '')\n                        )\n                        if lookup_host:\n                            pw = mgr.get_password(lookup_host, self.connection.username)\n                        else:\n                            pw = None\n                        if pw:\n                            self.password_row.set_text(pw)\n                except Exception:\n                    pass\n            # Capture original password value to detect user changes later\n            try:\n                self._orig_password = [redacted]\n            except Exception:\n                self._orig_password = [redacted]\n                \n            # Load key passphrase from connection object or from secure storage\n            if hasattr(self.connection, 'key_passphrase') and self.connection.key_passphrase:\n                self.key_passphrase_row.set_text(self.connection.key_passphrase)\n            else:\n                # Try to load from secure storage if we have a keyfile\n                try:\n                    if hasattr(self, 'connection_manager') and self.connection_manager and keyfile:\n                        stored_passphrase = self.connection_manager.get_key_passphrase(keyfile)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

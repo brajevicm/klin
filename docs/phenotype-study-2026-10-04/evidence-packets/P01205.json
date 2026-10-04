@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01205",
+  "source_finding_id": "P01205",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "✨ Feat: Add waitlist invite tagging\n\n## Summary\nThis PR adds an `invite` command to the CLI, which helps me invite people off the waitlist. It involves adding a Kit tag to a user, which automatically sends an email inviting them to try the app.\n\n\n- support EMAILER_WAITLIST_INVITE_TAG_ID env var\n- expose helper to fetch a single waitlist record\n- tag subscribers when inviting from the waitlist\n- log the tagging response in the CLI\n- test invite tagging logic\n\nTo use, run `yarn cli:prod invite` or `yarn cli invite`\n\nCloses #452",
+  "diff_context": [
+    {
+      "path": "packages/backend/src/waitlist/service/waitlist.service-invite.test.ts",
+      "before": "});",
+      "after": "  });\n\n  it(\"should add tag to subscriber when inviting\", async () => {\n    await WaitlistService.addToWaitlist(answer.email, answer);\n    const EmailService = require(\"../../email/email.service\").default;\n    const spy = jest.spyOn(EmailService, \"addTagToSubscriber\");\n    const result = await WaitlistService.invite(answer.email);\n    expect(spy).toHaveBeenCalled();\n    expect(result.tagResponse).toBeDefined();\n  });\n\n  it(\"should skip tagging if EMAILER env vars missing\", async () => {\n    const oldSecret = [redacted];\n    const oldInviteTag = ENV.EMAILER_WAITLIST_INVITE_TAG_ID;\n    const oldWaitlistTag = ENV.EMAILER_WAITLIST_TAG_ID;\n    ENV.EMAILER_SECRET = [redacted] as any;\n    ENV.EMAILER_WAITLIST_INVITE_TAG_ID = undefined as any;\n    ENV.EMAILER_WAITLIST_TAG_ID = undefined as any;\n\n    const EmailService = require(\"../../email/email.service\").default;\n    const spy = jest.spyOn(EmailService, \"addTagToSubscriber\");\n    spy.mockClear();\n\n    await WaitlistService.addToWaitlist(answer.email, answer);\n    const result = await WaitlistService.invite(answer.email);\n\n    expect(spy).not.toHaveBeenCalled();\n    expect(result.tagResponse).toBeUndefined();\n\n    ENV.EMAILER_SECRET = [redacted];\n    ENV.EMAILER_WAITLIST_INVITE_TAG_ID = oldInviteTag;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "ENV.EMAILER_SECRET = [redacted] as any;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

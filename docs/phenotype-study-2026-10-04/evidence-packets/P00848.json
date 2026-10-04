@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00848",
+  "source_finding_id": "P00848",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Implement dynamicModel decorator for C# emitter with TypeSpec.HttpClient.CSharp namespace\n\nThis PR implements a new `[user omitted]` decorator for the TypeSpec C# HTTP client emitter that can be applied to models and namespaces to indicate they should generate dynamic model code.\n\n## Implementation Details\n\n### Decorator Functionality\n- **Target Types**: Can be applied to `Model` and `Namespace` types\n- **Metadata Storage**: Uses TypeSpec's program state management to store decorator metadata\n- **Helper Function**: Includes `isDynamicModel(program, target)` to check if a model/namespace is marked as dynamic\n- **Namespace**: Uses `TypeSpec.HttpClient.CSharp` following established TypeSpec naming patterns\n\n### Usage Example\n```typespec\nimport \"[user omitted]/http-client-csharp\";\nusing TypeSpec.HttpClient.CSharp;\n\n// Mark a model as dynamic\n[user omitted]\nmodel Pet {\n  name: string;\n  age: int32;\n}\n\n// Mark a namespace as dynamic  \n[user omitted]\nnamespace PetStore {\n  model Dog extends Pet {\n    breed: string;\n  }\n}\n```\n\n### Code Generation Integration\n```typescript\nimport { isDynamicModel } from \"[user omitted]/http-client-csharp\";\n\n// During C# code generation\nif (isDynamicModel(program, model)) {\n  // Generate dynamic model code\n} else {\n  // Generate regular model code\n}\n```\n\n## Technical Implementation\n\n- **Decorator Implementation**: Added `$dynamicModel` function in `decorators.ts` with proper TypeScript typing\n- **TypeSpec Library**: Created `lib/main.tsp` and `lib/decorators.tsp` with decorator definition in `TypeSpec.HttpClient.CSharp` namespace\n- **Type Definitions**: Generated TypeScript definitions in `generated-defs/` directory\n- **Export Structure**: Uses standard `$decorators` pattern for proper TypeSpec integration\n- **Testing**: Comprehensive unit tests covering both Model and Namespace usage scenarios\n\n## Namespace Design\n\nThe decorator uses the `TypeSpec.HttpClient.CSharp` namespace, which provides clear scope indicating HTTP client-specific functionality for C# while maintaining the established TypeSpec naming conventions.\n\nFixes #8292.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n…",
+  "diff_context": [
+    {
+      "path": "packages/http-client-csharp/emitter/test/Unit/dynamic-model.test.ts",
+      "before": null,
+      "after": "  });\n\n  it(\"should return false for models/namespaces not marked as dynamic\", () => {\n    // Create a mock program with stateSet\n    const mockStateSet = new Set();\n    const mockProgram = {\n      stateSet: () => mockStateSet,\n    };\n\n    const mockModel = {\n      kind: \"Model\",\n      name: \"NotDynamicModel\",\n    };\n\n    // Check that the model is not marked as dynamic\n    expect(isDynamicModel(mockProgram as any, mockModel as any)).toBe(false);\n  });\n});",
+      "context": null
+    }
+  ],
+  "observations": [
+    "expect(isDynamicModel(mockProgram as any, mockModel as any)).toBe(false);"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

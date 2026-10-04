@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02002",
+  "source_finding_id": "P02002",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/src/core/stream.ts",
+      "before": null,
+      "after": "      message.old_value = oldValue\n    }\n\n    return this.encodeMessage(message)\n  }\n\n  /**\n   * Encode a delete operation\n   * @param pk Primary key\n   * @param value Full row data (for full replica mode)\n   * @param lsn Logical sequence number\n   * @param opPosition Operation position\n   * @returns JSON string with newline\n   */\n  encodeDelete(pk: string, value?: Record<string, any>, lsn?: string, opPosition?: string): string {\n    const headers: any = { operation: 'delete' }\n    if (lsn) headers.lsn = lsn\n    if (opPosition) headers.op_position = opPosition\n\n    const message: ElectricMessage = {\n      headers,\n      key: pk\n    }\n\n    if (value) {\n      message.value = value\n    }\n\n    return this.encodeMessage(message)\n  }",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const headers: any = { operation: 'delete' }"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01803",
+  "source_finding_id": "P01803",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/cli/tb/runs.py",
+      "before": "        )\n\n        if existing_run:\n            rich_print(\n                f\"[bold yellow]Run with UUID {metadata.uuid} already exists in \"\n                \"database[/]\"\n            )\n            raise typer.Exit(1)\n\n        db_metadata = DBRunMetadata.from_pydantic(metadata)\n\n        session.add(db_metadata)\n\n        for task_result in results.results:\n            db_task = DBTrialResult.from_pydantic(task_result, metadata.uuid)\n            session.add(db_task)\n\n        session.commit()\n\n        rich_print(\n            f\"[bold green]Successfully uploaded run {run_id} (UUID: {metadata.uuid})\"\n            \" to database[/]\"\n        )\n\n    except Exception as e:\n        session.rollback()\n        rich_print(f\"[bold red]Error uploading run to database: {e}[/]\")\n        raise typer.Exit(1)\n\n    finally:\n        session.close()",
+      "after": "        db_metadata = DBRunMetadata.from_pydantic(metadata)\n\n        session.add(db_metadata)\n\n        for task_result in results.results:\n            db_task = DBTrialResult.from_pydantic(task_result, metadata.uuid)\n            session.add(db_task)\n\n        session.commit()\n\n        rich_print(\n            f\"[bold green]Successfully uploaded run {run_id} (UUID: {metadata.uuid})\"\n            \" to database[/]\"\n        )\n\n    except Exception as e:\n        session.rollback()\n        rich_print(f\"[bold red]Error uploading run to database: {e}[/]\")\n        raise typer.Exit(1)\n\n    finally:\n        session.close()\n\n\nruns_app.command()(create)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

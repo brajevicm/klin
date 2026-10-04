@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00824",
+  "source_finding_id": "P00824",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: added `hk test`",
+  "diff_context": [
+    {
+      "path": "Cargo.toml",
+      "before": "[workspace]\nmembers = [\".\", \"xx\", \"clx\", \"ensembler\"]\nresolver = \"2\"\n\n[package]\nname = \"hk\"\nversion = \"1.8.0\"\nedition = \"2024\"\ndescription = \"A tool for managing git hooks\"\nlicense = \"MIT\"\nrepository = \"https://github.com/jdx/hk\"\ndocumentation = \"https://hk.jdx.dev\"\nhomepage = \"https://hk.jdx.dev\"\ninclude = [\"/src/**/*\", \"/Cargo.toml\", \"/Cargo.lock\", \"/README.md\", \"/LICENSE\", \"/CHANGELOG.md\", \"/pkl\", \"/build.rs\"]\nbuild = \"build.rs\"\nrust-version = \"1.85\"",
+      "after": "[workspace]\nmembers = [\".\", \"xx\", \"clx\", \"ensembler\"]\nresolver = \"2\"\n\n[package]\nname = \"hk\"\nversion = \"1.8.0\"\nedition = \"2024\"\ndescription = \"A tool for managing git hooks\"\nlicense = \"MIT\"\nrepository = \"https://github.com/jdx/hk\"\ndocumentation = \"https://hk.jdx.dev\"\nhomepage = \"https://hk.jdx.dev\"\ninclude = [\"/src/**/*\", \"/Cargo.toml\", \"/Cargo.lock\", \"/README.md\", \"/LICENSE\", \"/CHANGELOG.md\", \"/pkl\", \"/build.rs\"]\nbuild = \"build.rs\"\nrust-version = \"1.85\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:similar"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

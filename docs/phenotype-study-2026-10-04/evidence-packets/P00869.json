@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00869",
+  "source_finding_id": "P00869",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/view/batch_process_interface.py",
+      "before": "        # 文件名\n        file_name = QTableWidgetItem(os.path.basename(file_path))\n        file_name.setToolTip(file_path)\n        self.task_table.setItem(row, 0, file_name)\n\n        # 进度条\n        progress_bar = ProgressBar()\n        progress_bar.setRange(0, 100)\n        progress_bar.setValue(0)\n        progress_bar.setFixedHeight(18)\n        self.task_table.setCellWidget(row, 1, progress_bar)\n\n        # 状态\n        status = QTableWidgetItem(str(BatchTaskStatus.WAITING))\n        status.setTextAlignment(Qt.AlignCenter)\n        status.setForeground(Qt.gray)  # 设置字体颜色为灰色\n        font = QFont()\n        font.setBold(True)\n        status.setFont(font)\n        self.task_table.setItem(row, 2, status)\n\n    def show_context_menu(self, pos):\n        row = self.task_table.rowAt(pos.y())\n        if row < 0:\n            return\n\n        menu = RoundMenu(parent=self)\n        file_path = self.task_table.item(row, 0).toolTip()\n        status = self.task_table.item(row, 2).text()\n\n        start_action = Action(FIF.PLAY, \"开始\")",
+      "after": "        # 文件名\n        file_name = QTableWidgetItem(os.path.basename(file_path))\n        file_name.setToolTip(file_path)\n        self.task_table.setItem(row, 0, file_name)\n\n        # 进度条\n        progress_bar = ProgressBar()\n        progress_bar.setRange(0, 100)\n        progress_bar.setValue(0)\n        progress_bar.setFixedHeight(18)\n        self.task_table.setCellWidget(row, 1, progress_bar)\n\n        # 状态\n        status = QTableWidgetItem(str(BatchTaskStatus.WAITING))\n        status.setTextAlignment(Qt.AlignCenter)  # type: ignore\n        status.setForeground(Qt.gray)  # type: ignore  # 设置字体颜色为灰色\n        font = QFont()\n        font.setBold(True)\n        status.setFont(font)\n        self.task_table.setItem(row, 2, status)\n\n    def show_context_menu(self, pos):\n        row = self.task_table.rowAt(pos.y())\n        if row < 0:\n            return\n\n        menu = RoundMenu(parent=self)\n        file_path = self.task_table.item(row, 0).toolTip()\n        status = self.task_table.item(row, 2).text()\n\n        start_action = Action(FIF.PLAY, \"开始\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "status.setForeground(Qt.gray)  # type: ignore  # 设置字体颜色为灰色"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

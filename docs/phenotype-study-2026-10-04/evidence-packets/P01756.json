@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01756",
+  "source_finding_id": "P01756",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/src/firestore.ts",
+      "before": null,
+      "after": "function convert<\n  InputType extends ShapeOf<OutputType> & Record<string, unknown>,\n  OutputType extends ShapeOf<InputType>,\n>(\n  conversions: FirebaseConversions<InputType, OutputType>,\n  input: InputType\n): OutputType {\n  const c = conversions as Record<\n    string,\n    FirebaseConversion<InputType, OutputType>\n  >\n\n  return Object.fromEntries(\n    Object.keys(input).map((k: string) => {\n      const value = input[k]\n      return [k, c[k]?.(value as any) ?? value]\n    })\n  ) as OutputType\n}\n\nfunction convertPartial<\n  InputType extends ShapeOf<OutputType> & Record<string, unknown>,\n  OutputType extends ShapeOf<InputType>,\n>(\n  conversions: FirebaseConversions<InputType, OutputType>,\n  input: Partial<InputType>\n): Partial<OutputType> {\n  const c = conversions as Record<\n    string,\n    FirebaseConversion<InputType, OutputType>\n  >",
+      "context": null
+    }
+  ],
+  "observations": [
+    "return [k, c[k]?.(value as any) ?? value]"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

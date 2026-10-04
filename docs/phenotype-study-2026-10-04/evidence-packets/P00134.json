@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00134",
+  "source_finding_id": "P00134",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        remote_port_row = Adw.EntryRow()\n        remote_port_row.set_title(_(\"Port\"))\n        try:\n            rpe2 = remote_port_row.get_child()\n            if rpe2 and hasattr(rpe2, 'set_input_purpose'):\n                rpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if rpe2 and hasattr(rpe2, 'set_max_length'):\n                rpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        # Pack rows\n        group = Adw.PreferencesGroup()\n        group.add(type_row)\n        group.add(listen_addr_row)\n        group.add(listen_port_row)\n        group.add(remote_host_row)\n        group.add(remote_port_row)\n        box.append(group)\n        \n        # Create header bar with buttons\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        \n        # Add buttons to header bar\n        cancel_button = Gtk.Button(label=_(\"Cancel\"))\n        cancel_button.add_css_class(\"flat\")\n        header_bar.pack_start(cancel_button)\n        \n        save_button = Gtk.Button(label=_(\"Save\"))\n        save_button.add_css_class(\"suggested-action\")",
+      "after": "            try:\n                listen_port_row.set_text(str(int(existing_rule.get('listen_port', 0) or 0)))\n            except Exception:\n                listen_port_row.set_text(str(existing_rule.get('listen_port', '')))\n            if t == 'remote':\n                # For remote rules, the destination is local_host/local_port\n                remote_host_row.set_text(str(existing_rule.get('local_host', 'localhost')))\n                try:\n                    remote_port_row.set_text(str(int(existing_rule.get('local_port', 0) or 0)))\n                except Exception:\n                    remote_port_row.set_text(str(existing_rule.get('local_port', '')))\n            else:\n                remote_host_row.set_text(str(existing_rule.get('remote_host', 'localhost')))\n                try:\n                    remote_port_row.set_text(str(int(existing_rule.get('remote_port', 0) or 0)))\n                except Exception:\n                    remote_port_row.set_text(str(existing_rule.get('remote_port', '')))\n        else:\n            type_row.set_selected(0)\n            # Sane defaults for a new rule\n            listen_addr_row.set_text('127.0.0.1')\n            listen_port_row.set_text('8080')\n            remote_host_row.set_text('localhost')\n            remote_port_row.set_text('22')\n\n        # Avoid shadowing translation function '_' by using a local alias\n        t = _\n        def _sync_visibility(*args):\n            idx = type_row.get_selected()\n            # Apply label set per type\n            if idx == 0:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

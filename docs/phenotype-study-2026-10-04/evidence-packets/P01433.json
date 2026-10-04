@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01433",
+  "source_finding_id": "P01433",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Create minimal pytest setup for tests\n\nAdd comprehensive test coverage for `Rubric` and `RubricGroup` classes, and rename the mock LLM client to `MockAsyncOpenAI` for clarity and improved input-output mapping.\n\nThis PR significantly expands the test suite, covering core evaluation logic in `Rubric` and `RubricGroup`. During development, a bug was identified in `RubricGroup.score_rollouts` where it incorrectly handles asynchronous calls to `rubric.score_rollouts()`; affected tests are currently skipped and documented. The `MockAsyncOpenAI` client was also refactored to support order-independent, multi-turn input-output mapping, making LLM testing more robust and intuitive. All comments and naming conventions have been updated to be timeless.",
+  "diff_context": [
+    {
+      "path": "tests/test_rubric_group.py",
+      "before": null,
+      "after": "        assert rubric1.reward_funcs[1] == new_func\n        assert rubric1.reward_weights[1] == 0.6\n\n    def test_rubric_group_add_reward_func_empty_group_fails(self):\n        \"\"\"Test that adding reward function fails if no rubrics exist.\"\"\"\n        # This shouldn't happen due to initialization check, but test edge case\n        group = RubricGroup.__new__(RubricGroup)  # Bypass __init__\n        group.rubrics = []\n        \n        def test_func(completion, **kwargs):\n            return 1.0\n        \n        with pytest.raises(AssertionError, match=\"RubricGroup must have at least one rubric\"):\n            group.add_reward_func(test_func)\n\n    @pytest.mark.skip(reason=\"RubricGroup.score_rollouts has a bug - it doesn't await async rubric.score_rollouts calls\")\n    def test_rubric_group_score_rollouts_basic(self):\n        \"\"\"Test basic scoring of rollouts with multiple rubrics.\"\"\"\n        # Note: This test is skipped because RubricGroup.score_rollouts() has a bug\n        # It calls rubric.score_rollouts() which is async but doesn't await it\n        pass\n\n    @pytest.mark.skip(reason=\"RubricGroup.score_rollouts has a bug - it doesn't await async rubric.score_rollouts calls\")\n    def test_rubric_group_score_rollouts_duplicate_names(self):\n        \"\"\"Test that duplicate reward function names are summed up.\"\"\"\n        # Note: This test is skipped because RubricGroup.score_rollouts() has a bug\n        pass\n\n    @pytest.mark.skip(reason=\"RubricGroup.score_rollouts has a bug - it doesn't await async rubric.score_rollouts calls\")\n    def test_rubric_group_score_rollouts_with_kwargs(self):\n        \"\"\"Test scoring rollouts with additional kwargs.\"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "@pytest.mark.skip(reason=\"RubricGroup.score_rollouts has a bug - it doesn't await async rubric.score_rollouts calls\")"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

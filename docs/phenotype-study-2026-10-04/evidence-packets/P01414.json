@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01414",
+  "source_finding_id": "P01414",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Refactor: Unify `SerIter` and `SerIterOwned`\n\nThe `SerIter` and `SerIterOwned` structs were nearly identical, with the only difference being that `SerIter` handled iterators yielding borrowed references (`&'a T`) and `SerIterOwned` handled iterators yielding owned values (`T`).\n\nThis commit unifies these two structs into a single, more flexible `SerIter` that is generic over iterators whose items implement `Borrow<T>`. This allows the new `SerIter` to handle both owned and borrowed values, eliminating redundant code and simplifying the public API.\n\nThe documentation and examples have been updated to reflect these changes.\n\n---\n*PR created automatically by [authoring attribution omitted] for task [16837819993224102504]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "epserde/src/impls/iter.rs",
+      "before": "}\n\nimpl<'a, T: CopyType + SerInner, I: ExactSizeIterator<Item = &'a T>> SerInner for SerIter<'a, T, I>\nwhere\n    SerIter<'a, T, I>: SerHelper<<T as CopyType>::Copy>,\n{\n    type SerType = Box<[T::SerType]>;\n    const IS_ZERO_COPY: bool = false;\n    unsafe fn _ser_inner(&self, backend: &mut impl WriteWithNames) -> ser::Result<()> {\n        unsafe { SerHelper::_ser_inner(self, backend) }\n    }\n}\n\nimpl<'a, T: ZeroCopy, I: ExactSizeIterator<Item = &'a T>> SerHelper<Zero> for SerIter<'a, T, I> {\n    unsafe fn _ser_inner(&self, backend: &mut impl WriteWithNames) -> ser::Result<()> {\n        check_zero_copy::<T>();\n        // This code must be kept aligned with that of Box<[T]> for zero-copy\n        // types\n        let mut iter = self.0.borrow_mut();\n        let len = iter.len();\n        backend.write(\"len\", &len)?;\n        backend.align::<T>()?;\n\n        let mut c = 0;\n        for item in iter.deref_mut() {\n            ser_zero_unchecked(backend, item)?;\n            c += 1;\n        }\n\n        if c != len {\n            Err(ser::Error::IteratorLengthMismatch {",
+      "after": "    fn from(iter: I) -> Self {\n        SerIter::new(iter)\n    }\n}\n\nimpl<T, I> SerInner for SerIter<T, I>\nwhere\n    I: ExactSizeIterator,\n    I::Item: Borrow<T>,\n    T: CopyType + SerInner,\n    Self: SerHelper<<T as CopyType>::Copy>,\n{\n    type SerType = Box<[T::SerType]>;\n    const IS_ZERO_COPY: bool = false;\n    unsafe fn _ser_inner(&self, backend: &mut impl WriteWithNames) -> ser::Result<()> {\n        unsafe { <Self as SerHelper<<T as CopyType>::Copy>>::_ser_inner(self, backend) }\n    }\n}\n\nimpl<T, I> SerHelper<Zero> for SerIter<T, I>\nwhere\n    I: ExactSizeIterator,\n    I::Item: Borrow<T>,\n    T: ZeroCopy,\n{\n    unsafe fn _ser_inner(&self, backend: &mut impl WriteWithNames) -> ser::Result<()> {\n        check_zero_copy::<T>();\n        let mut iter = self.0.borrow_mut();\n        let len = iter.len();\n        backend.write(\"len\", &len)?;\n        backend.align::<T>()?;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "unsafe { <Self as SerHelper<<T as CopyType>::Copy>>::_ser_inner(self, backend) }"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

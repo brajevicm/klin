@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00778",
+  "source_finding_id": "P00778",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        except Exception:\n            return None\n\n    async def iter_events(self) -> AsyncGenerator[Event, None]:\n        \"\"\"\n        Converts the queue to an async generator while the workflow is still running, and there are still events.\n        For better or worse, multiple consumers will compete for events\n        \"\"\"\n        while not self.queue.empty() or not self.task.done():\n            available_events = []\n            while not self.queue.empty():\n                available_events.append(self.queue.get_nowait())\n            for event in available_events:\n                yield event\n            queue_get_task: asyncio.Task[Event] = asyncio.create_task(self.queue.get())\n            task_waitable = self.task\n            done, pending = await asyncio.wait(\n                {queue_get_task, task_waitable}, return_when=asyncio.FIRST_COMPLETED\n            )\n            if queue_get_task in done:\n                yield await queue_get_task\n            else:  # otherwise task completed, so nothing else will be published to the queue\n                queue_get_task.cancel()\n                break\n\n\n@dataclass\nclass _NamedWorkflow:\n    name: str\n    workflow: Workflow",
+      "after": "        return \"completed\"\n\n    @property\n    def error(self) -> str | None:\n        if not self.run_handler.done():\n            return None\n        exc = self.run_handler.exception()\n        return str(exc) if exc is not None else None\n\n    @property\n    def result(self) -> RunResultT | None:\n        if not self.run_handler.done():\n            return None\n        try:\n            return self.run_handler.result()\n        except Exception:\n            return None\n\n    async def iter_events(self) -> AsyncGenerator[Event, None]:\n        \"\"\"\n        Converts the queue to an async generator while the workflow is still running, and there are still events.\n        For better or worse, multiple consumers will compete for events\n        \"\"\"\n        while not self.queue.empty() or not self.task.done():\n            available_events = []\n            while not self.queue.empty():\n                available_events.append(self.queue.get_nowait())\n            for event in available_events:\n                yield event\n            queue_get_task: asyncio.Task[Event] = asyncio.create_task(self.queue.get())\n            task_waitable = self.task",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

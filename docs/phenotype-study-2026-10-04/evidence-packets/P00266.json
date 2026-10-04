@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00266",
+  "source_finding_id": "P00266",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "refactor: centralize token tracking and clean up console output\n\n# Token Tracking and Console Output Refactor\n\nThis PR refactors the token tracking system and cleans up console output across the codebase.\n\n## Changes\n- Centralized token tracking through `tokenTracker.trackUsage()`\n- Removed manual token tracking in `agent.ts`\n- Cleaned up verbose console output, ensuring one log per tool\n- Added ESLint configuration for code quality\n- Fixed TypeScript linting issues\n\n## Testing\n- All ESLint checks pass\n- Token tracking functionality preserved through `tokenTracker`\n- Console output is now cleaner and more consistent\n\nLink to [authoring attribution omitted] run: [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"agentic-search\",\n  \"version\": \"1.0.0\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"dev\": \"npx ts-node src/agent.ts\",\n    \"search\": \"npx ts-node src/test-duck.ts\",\n    \"rewrite\": \"npx ts-node src/tools/query-rewriter.ts\"\n  },\n  \"keywords\": [],\n  \"author\": \"\",\n  \"license\": \"ISC\",\n  \"description\": \"\",\n  \"dependencies\": {\n    \"@google/generative-ai\": \"^0.21.0\",",
+      "after": "{\n  \"name\": \"agentic-search\",\n  \"version\": \"1.0.0\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"dev\": \"npx ts-node src/agent.ts\",\n    \"search\": \"npx ts-node src/test-duck.ts\",\n    \"rewrite\": \"npx ts-node src/tools/query-rewriter.ts\",\n    \"lint\": \"eslint . --ext .ts\",\n    \"lint:fix\": \"eslint . --ext .ts --fix\"\n  },\n  \"keywords\": [],\n  \"author\": \"\",\n  \"license\": \"ISC\",\n  \"description\": \"\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "@typescript-eslint/eslint-plugin"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

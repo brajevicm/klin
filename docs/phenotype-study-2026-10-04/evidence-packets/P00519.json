@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00519",
+  "source_finding_id": "P00519",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/dataset/dataset.py",
+      "before": "",
+      "after": "        # Log the task execution order\n        table_data = []\n        for i, (task_path, duration) in enumerate(task_durations, 1):\n            task_name = task_path.name\n            minutes = int(duration // 60)\n            seconds = int(duration % 60)\n            duration_str = f\"{minutes}m {seconds}s\"\n\n            try:\n                task_paths_obj = TaskPaths(task_path)\n                task = Task.from_yaml(task_paths_obj.task_config_path)\n                if task.estimated_duration_sec is not None:\n                    source = \"historical\"\n                else:\n                    source = \"calculated\"\n            except Exception:\n                source = \"fallback\"\n\n            table_data.append([i, task_name, duration_str, source])\n\n        headers = [\"#\", \"Task Name\", \"Duration\", \"Source\"]\n        table = tabulate(table_data, headers=headers, tablefmt=\"grid\")\n\n        self._logger.info(\"Processing tasks in duration order (longest first):\")\n        self._logger.info(f\"\\n{table}\")\n        self._logger.info(f\"Total tasks: {len(task_durations)}\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

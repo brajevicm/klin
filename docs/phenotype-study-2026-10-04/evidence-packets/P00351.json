@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00351",
+  "source_finding_id": "P00351",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "\n    def _write_results(self, results: BenchmarkResults) -> None:\n        self._results_output_path.write_text(results.model_dump_json(indent=4))\n\n    def _get_git_commit_hash(self) -> str:\n        \"\"\"Get the current git commit hash.\"\"\"\n        try:\n            return (\n                subprocess.check_output(\n                    [\"git\", \"rev-parse\", \"HEAD\"], stderr=subprocess.DEVNULL\n                )\n                .decode(\"utf-8\")\n                .strip()\n            )\n        except (subprocess.SubprocessError, FileNotFoundError):\n            return \"unknown\"\n\n    def _get_user(self) -> str:\n        \"\"\"Get the user who ran the experiment.\n\n        First tries to get the git user.name, falls back to system username.\n        \"\"\"\n        try:\n            git_user = (\n                subprocess.check_output(\n                    [\"git\", \"config\", \"user.name\"], stderr=subprocess.DEVNULL\n                )\n                .decode(\"utf-8\")\n                .strip()\n            )\n            if git_user:",
+      "after": "                TimeElapsedColumn(),\n            ) as progress:\n                task = progress.add_task(\n                    \"Uploading files to S3\", total=len(files_to_upload)\n                )\n\n                for file_path in files_to_upload:\n                    relative_path = file_path.relative_to(self._run_path)\n                    s3_key = f\"{self._run_id}/{relative_path}\"\n\n                    try:\n                        self._logger.debug(\n                            f\"Uploading {relative_path} to s3://{self._s3_bucket}/{s3_key}\"\n                        )\n                        s3_client.upload_file(str(file_path), self._s3_bucket, s3_key)\n                    except Exception as file_error:\n                        self._logger.warning(\n                            f\"Failed to upload {relative_path}: {file_error}\"\n                        )\n                        failed_uploads.append(str(relative_path))\n\n                    progress.advance(task)\n\n            if not failed_uploads:\n                self._logger.info(\n                    f\"Successfully uploaded all {len(files_to_upload)} files to \"\n                    f\"s3://{self._s3_bucket}/{self._run_id}/\"\n                )\n            else:\n                self._logger.warning(\n                    f\"Uploaded {len(files_to_upload) - len(failed_uploads)} of \"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

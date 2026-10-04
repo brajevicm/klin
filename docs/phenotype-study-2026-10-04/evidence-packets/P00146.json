@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00146",
+  "source_finding_id": "P00146",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Pull request for issue #4\n\nFixes #4",
+  "diff_context": [
+    {
+      "path": "whatsapp_rust (Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "appstate_sync::fetch_app_state_patches (function)"
+  ],
+  "measurement_holes": [
+    "public-api public surface has 0 holes and 178 opaque items"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

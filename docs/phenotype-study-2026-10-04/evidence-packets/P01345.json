@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01345",
+  "source_finding_id": "P01345",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "        # Try cache first for O(1) lookup\n        if session_id in self._session_lookup_cache:\n            return self._session_lookup_cache[session_id]\n\n        # Fallback to linear search if not in cache (for existing sessions)\n        # This maintains backward compatibility\n        try:\n            for uid, keys in self._session_manager._user_sessions.items():\n                for key in keys:\n                    if key.endswith(f\":{session_id}\"):\n                        app_name = key.split(':', 1)[0]\n                        metadata = {\"app_name\": app_name, \"user_id\": uid}\n                        # Cache for future lookups\n                        self._session_lookup_cache[session_id] = metadata\n                        return metadata\n        except Exception as e:\n            logger.error(f\"Error during session metadata lookup for {session_id}: {e}\")\n\n        return None\n    \n    def _get_app_name(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve app name with clear precedence.\"\"\"\n        if self._static_app_name:\n            return self._static_app_name\n        elif self._app_name_extractor:\n            return self._app_name_extractor(input)\n        else:\n            return self._default_app_extractor(input)\n    \n    def _default_app_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default app extraction logic - use agent name directly.\"\"\"",
+      "after": "        # Try cache first for O(1) lookup\n        if session_id in self._session_lookup_cache:\n            return self._session_lookup_cache[session_id]\n\n        # Fallback to linear search if not in cache (for existing sessions)\n        # This maintains backward compatibility\n        try:\n            for uid, keys in self._session_manager._user_sessions.items():\n                for key in keys:\n                    if key.endswith(f\":{session_id}\"):\n                        app_name = key.split(':', 1)[0]\n                        metadata = {\"app_name\": app_name, \"user_id\": uid}\n                        # Cache for future lookups\n                        self._session_lookup_cache[session_id] = metadata\n                        return metadata\n        except Exception as e:\n            logger.error(f\"Error during session metadata lookup for {session_id}: {e}\")\n\n        return None\n    \n    def _get_app_name(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve app name with clear precedence.\"\"\"\n        if self._static_app_name:\n            return self._static_app_name\n        elif self._app_name_extractor:\n            return self._app_name_extractor(input)\n        else:\n            return self._default_app_extractor(input)\n    \n    def _default_app_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default app extraction logic - use agent name directly.\"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

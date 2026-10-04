@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00204",
+  "source_finding_id": "P00204",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat: add TipTap content validation utilities for AI-generated content\n\n- Add validateAndFixTipTapContent utility to fix common AI schema issues\n- Add comprehensive test suite with 184 test cases\n- Add detailed documentation and usage examples\n- Add vitest configuration for testing\n- Fix missing 'type: text' properties in text nodes\n- Handle malformed content arrays and doc structures\n- Export validation utilities from editor component\n\n## What does this PR do?\n\n<!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change. -->\n\n- Fixes #XXXX (GitHub issue number)\n- Fixes COMP-XXXX (Linear issue number - should be visible at the bottom of the GitHub issue description)\n\n## Visual Demo (For contributors especially)\n\nA visual demonstration is strongly recommended, for both the original and new change **(video / image - any one)**.\n\n#### Video Demo (if applicable):\n\n- Show screen recordings of the issue or feature.\n- Demonstrate how to reproduce the issue, the behavior before and after the change.\n\n#### Image Demo (if applicable):\n\n- Add side-by-side screenshots of the original and updated change.\n- Highlight any significant change(s).\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [ ] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [ ] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change]([external reference omitted] If N/A, write N/A here and check the checkbox.\n- [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n<!-- Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration. Write details that help to start the tests -->\n\n- Are there environment variables that should be set?\n- What are the minimal test data to have?\n- What is expected (happy path) to have (input and output)?\n- Any other important info that could help to test that PR\n\n## Checklist\n\n<!-- Remove bullet points below that don't apply to you -->\n\n- I haven't read the [contributing guide]([external reference omitted]\n- My code doesn't follow the style guidelines of this project\n- I haven't commented my code, particularly in hard-to-understand areas\n- I haven't checked if my changes generate no new warnings",
+  "diff_context": [
+    {
+      "path": "packages/ui/src/components/editor/utils/validate-content.test.ts",
+      "before": null,
+      "after": "\n      // Check that the text node now has the correct type\n      const textNode = lastParagraph.content[0];\n      expect(textNode.type).toBe('text');\n      expect(textNode.text).toContain('Executive Summary');\n    });\n\n    it('should preserve all existing valid content', () => {\n      const fixedContent = validateAndFixTipTapContent(problematicSchema);\n\n      expect(fixedContent.type).toBe('doc');\n      expect(fixedContent.content).toBeDefined();\n      expect((fixedContent.content as any[]).length).toBe(2);\n\n      // Check that bold marks are preserved in the first paragraph\n      const firstParagraph = (fixedContent.content as any[])[0];\n      expect(firstParagraph.type).toBe('paragraph');\n      const firstTextNode = firstParagraph.content[0];\n      expect(firstTextNode.marks).toBeDefined();\n      expect(firstTextNode.marks[0].type).toBe('bold');\n    });\n\n    it('should result in valid TipTap content', () => {\n      const fixedContent = validateAndFixTipTapContent(problematicSchema);\n      expect(isValidTipTapContent(fixedContent)).toBe(true);\n    });\n  });\n\n  describe('common AI generation issues', () => {\n    it('should fix missing text type properties', () => {\n      const contentWithMissingTypes = {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const firstParagraph = (fixedContent.content as any[])[0];"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

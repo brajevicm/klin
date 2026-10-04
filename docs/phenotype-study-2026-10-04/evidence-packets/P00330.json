@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00330",
+  "source_finding_id": "P00330",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        # Reload the rules UI\n        self.load_port_forwarding_rules()\n        \n        logger.info(f\"Deleted port forwarding rule: {rule}\")\n    \n    def on_edit_forwarding_rule_clicked(self, button, rule):\n        \"\"\"Handle edit port forwarding rule button click\"\"\"\n        logger.info(f\"Edit port forwarding rule clicked: {rule}\")\n        self._open_rule_editor(existing_rule=rule)\n    \n    def on_add_forwarding_rule_clicked(self, button):\n        \"\"\"Handle add port forwarding rule button click\"\"\"\n        logger.info(\"Add port forwarding rule clicked\")\n        self._open_rule_editor(existing_rule=None)\n    \n    def on_view_port_info_clicked(self, button):\n        \"\"\"Handle view port info button click\"\"\"\n        self._show_port_info_dialog()\n\n    def _open_rule_editor(self, existing_rule=None):\n        \"\"\"Open an Adw.Window to add/edit a forwarding rule.\"\"\"\n        # Create Adw.Window\n        dialog = Adw.Window()\n        dialog.set_title(_(\"Port Forwarding Rule Editor\"))\n        dialog.set_default_size(500, -1)  # 500px width, auto height\n        dialog.set_modal(True)\n        dialog.set_transient_for(self)\n\n        # Create content box\n        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12)",
+      "after": "                lpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if lpe2 and hasattr(lpe2, 'set_max_length'):\n                lpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        remote_host_row = Adw.EntryRow(title=_(\"Host\"))\n        remote_port_row = Adw.EntryRow()\n        remote_port_row.set_title(_(\"Port\"))\n        try:\n            rpe2 = remote_port_row.get_child()\n            if rpe2 and hasattr(rpe2, 'set_input_purpose'):\n                rpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if rpe2 and hasattr(rpe2, 'set_max_length'):\n                rpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        # Pack rows\n        group = Adw.PreferencesGroup()\n        group.add(type_row)\n        group.add(listen_addr_row)\n        group.add(listen_port_row)\n        group.add(remote_host_row)\n        group.add(remote_port_row)\n        box.append(group)\n        \n        # Create header bar with buttons\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00454",
+  "source_finding_id": "P00454",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "fix: memory leak in createPattern\n\n- Partial fix #1055\n\nThe loadImage seems like still leak, let's fix it in another pr",
+  "diff_context": [
+    {
+      "path": "src/sk.rs",
+      "before": "\n#[derive(Debug, Clone)]\npub struct Shader(*mut ffi::skiac_shader);\n\nimpl Shader {\n  pub fn new_linear_gradient(grad: &LinearGradient) -> Option<Shader> {\n    let points = [\n      ffi::skiac_point {\n        x: grad.start_point.0,\n        y: grad.start_point.1,\n      },\n      ffi::skiac_point {\n        x: grad.end_point.0,\n        y: grad.end_point.1,\n      },\n    ];\n\n    unsafe {\n      Self::from_ptr(ffi::skiac_shader_make_linear_gradient(\n        points.as_ptr(),\n        grad.base.colors.as_ptr(),\n        grad.base.positions.as_ptr(),\n        grad.base.colors.len() as i32,\n        grad.base.tile_mode as i32,\n        0_u32,\n        grad.base.transform.into(),\n      ))\n    }\n  }\n\n  pub fn new_radial_gradient(grad: &RadialGradient) -> Option<Shader> {",
+      "after": "  pub base: Gradient,\n}\n\n#[derive(Debug, Clone)]\npub struct ConicGradient {\n  pub center: (f32, f32),\n  pub radius: f32,\n  pub base: Gradient,\n}\n\n#[derive(Debug)]\npub struct Shader(*mut ffi::skiac_shader);\n\nimpl Clone for Shader {\n  fn clone(&self) -> Self {\n    unsafe { ffi::skiac_shader_ref(self.0) };\n    Shader(self.0)\n  }\n}\n\nimpl Shader {\n  pub fn new_linear_gradient(grad: &LinearGradient) -> Option<Shader> {\n    let points = [\n      ffi::skiac_point {\n        x: grad.start_point.0,\n        y: grad.start_point.1,\n      },\n      ffi::skiac_point {\n        x: grad.end_point.0,\n        y: grad.end_point.1,\n      },",
+      "context": null
+    }
+  ],
+  "observations": [
+    "unsafe { ffi::skiac_shader_ref(self.0) };"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

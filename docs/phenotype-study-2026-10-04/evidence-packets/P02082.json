@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02082",
+  "source_finding_id": "P02082",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                        subtitle = f\"PID: {port_info.pid}\"\n                    else:\n                        subtitle = _(\"Unknown process\")\n                    \n                    row.set_subtitle(subtitle)\n                    \n                    # Add icon based on port type\n                    if port_info.port < 1024:\n                        icon = Gtk.Image.new_from_icon_name(\"security-high-symbolic\")\n                        icon.set_tooltip_text(_(\"System port (requires root)\"))\n                    else:\n                        icon = Gtk.Image.new_from_icon_name(\"network-transmit-receive-symbolic\")\n                    \n                    row.add_prefix(icon)\n                    port_list.append(row)\n                    \n            except Exception as e:\n                logger.error(f\"Error refreshing port info: {e}\")\n                error_row = Adw.ActionRow()\n                error_row.set_title(_(\"Error loading port information\"))\n                error_row.set_subtitle(str(e))\n                port_list.append(error_row)\n        \n        # Connect refresh button\n        refresh_button.connect(\"clicked\", lambda *_: refresh_port_info())\n        \n        # Create header bar with window controls\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        \n        # Create main container",
+      "after": "\n    def _autosave_forwarding_changes(self):\n        \"\"\"Disabled autosave to avoid log floods; saving occurs on dialog Save.\"\"\"\n        return\n    \n    def on_cancel_clicked(self, button):\n        \"\"\"Handle cancel button click\"\"\"\n        self.close()\n    \n    def on_save_clicked(self, *_args):\n        \"\"\"Handle save button click or dialog save response\"\"\"\n        # Block save and focus the first invalid field if any inline validation fails\n        invalid_row = None\n        try:\n            invalid_row = self._validate_all_required_for_save()\n        except Exception:\n            invalid_row = None\n        if invalid_row is not None:\n            try:\n                self._focus_row(invalid_row)\n            except Exception:\n                pass\n            return\n        # Validate required fields\n        if not self.nickname_row.get_text().strip():\n            self.show_error(_(\"Please enter a nickname for this connection\"))\n            return\n            \n        # Initialize forwarding_rules list if needed\n        if not hasattr(self, 'forwarding_rules') or self.forwarding_rules is None:\n            self.forwarding_rules = []",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

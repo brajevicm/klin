@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00262",
+  "source_finding_id": "P00262",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add type annotations to examples/planning files\n\nThis change adds type annotations to the Python files under the `examples/misc/` directory to improve code readability and maintainability. For any classes from the Google Ads library, types from the `v20` API version were used as requested.",
+  "diff_context": [
+    {
+      "path": "examples/account_management/link_manager_to_client.py",
+      "before": "        customer_client_link_service.mutate_customer_client_link(\n            customer_id=manager_customer_id, operation=client_link_operation\n        )\n    )\n    resource_name: str = response.results[0].resource_name\n\n    print(\n        f'Extended an invitation from customer \"{manager_customer_id}\" to '\n        f'customer \"{customer_id}\" with client link resource_name '\n        f'\"{resource_name}\"'\n    )\n\n    # Find the manager_link_id of the link we just created, so we can construct\n    # the resource name for the link from the client side. Note that since we\n    # are filtering by resource_name, a unique identifier, only one\n    # customer_client_link resource will be returned in the response\n    query = f'''\n        SELECT\n            customer_client_link.manager_link_id\n        FROM\n            customer_client_link\n        WHERE\n            customer_client_link.resource_name = \"{resource_name}\"'''\n\n    ga_service: GoogleAdsServiceClient = client.get_service(\"GoogleAdsService\")\n    manager_link_id: int = -1  # Initialize with a default value\n\n    try:\n        search_response: SearchPagedResponse = ga_service.search(\n            customer_id=manager_customer_id, query=query\n        )",
+      "after": "            customer_id=manager_customer_id, operation=client_link_operation\n        )\n    )\n    resource_name: str = response.results[0].resource_name\n\n    print(\n        f'Extended an invitation from customer \"{manager_customer_id}\" to '\n        f'customer \"{customer_id}\" with client link resource_name '\n        f'\"{resource_name}\"'\n    )\n\n    # Find the manager_link_id of the link we just created, so we can construct\n    # the resource name for the link from the client side. Note that since we\n    # are filtering by resource_name, a unique identifier, only one\n    # customer_client_link resource will be returned in the response\n    query = f'''\n        SELECT\n            customer_client_link.manager_link_id\n        FROM\n            customer_client_link\n        WHERE\n            customer_client_link.resource_name = \"{resource_name}\"'''\n\n    ga_service: GoogleAdsServiceClient = client.get_service(\"GoogleAdsService\")\n    manager_link_id: int = -1  # Initialize with a default value\n\n    try:\n        search_response: SearchPagedResponse = ga_service.search(\n            customer_id=manager_customer_id, query=query\n        )\n        # Since the googleads_service.search method returns an iterator we need",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

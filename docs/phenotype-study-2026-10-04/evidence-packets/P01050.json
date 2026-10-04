@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01050",
+  "source_finding_id": "P01050",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        return Gdk.ContentProvider.new_for_value(\n            GObject.Value(GObject.TYPE_PYOBJECT, data)\n        )\n\n    def _on_drag_begin(self, source, drag):\n        try:\n            window = self.get_root()\n            if window:\n                # Ensure dragged connections are set (should be set by _on_drag_prepare)\n                if not hasattr(window, \"_dragged_connections\"):\n                    window._dragged_connections = [self.connection.nickname]\n                \n                # Mark drag as in progress\n                window._drag_in_progress = True\n                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear dragged connections tracking\n                if hasattr(window, \"_dragged_connections\"):\n                    delattr(window, \"_dragged_connections\")\n                \n                # Clear drag state\n                window._drag_in_progress = False\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag end: {e}\")",
+      "after": "        return Gdk.ContentProvider.new_for_value(\n            GObject.Value(GObject.TYPE_PYOBJECT, data)\n        )\n\n    def _on_drag_begin(self, source, drag):\n        try:\n            window = self.get_root()\n            if window:\n                # Ensure dragged connections are set (should be set by _on_drag_prepare)\n                if not hasattr(window, \"_dragged_connections\"):\n                    window._dragged_connections = [self.connection.nickname]\n                \n                # Mark drag as in progress\n                window._drag_in_progress = True\n                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear dragged connections tracking\n                if hasattr(window, \"_dragged_connections\"):\n                    delattr(window, \"_dragged_connections\")\n                \n                # Clear drag state\n                window._drag_in_progress = False\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag end: {e}\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

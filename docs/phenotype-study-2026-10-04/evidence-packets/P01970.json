@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01970",
+  "source_finding_id": "P01970",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix peppi parsing for new peppi-py API\n\n# Fix peppi parsing for new peppi-py API\n\nThis PR updates the peppi parsing code to handle the new peppi-py API, which now exposes frames as native Python dictionaries rather than arrow `StructArray`s.\n\nKey changes:\n1. Updated `parse_peppi.py` to handle the new data structures in peppi-py\n2. Modified `preprocessing.py` to ignore action value comparisons in the test\n\nThe PR achieves 30/32 passing files in the replay_parser_test.py test, with only 2 failures due to \"64 is not a valid EventType\" errors, which are unrelated to our changes.\n\nLink to [authoring attribution omitted] run: [external reference omitted]\nRequested by: Vlad Firoiu (vladfi2[user omitted].com)",
+  "diff_context": [
+    {
+      "path": "slippi_db/preprocessing.py",
+      "before": "  except BaseException as e:\n    return dict(\n        invalid=True,\n        reason=str(e),\n    )\n  except:  # should be a catch-all\n    return dict(invalid=True, reason='uncaught exception')\n\n# def get_metadata(game: data.Game) -> Metadata:\n#   return Metadata(\n#       characters={port: xs['character'][0] for port, xs in game['players'].items()},\n#       stage=game['stage'][0],\n#       num_frames=len(game['stage']),\n#   )\n\n\nBANNED_CHARACTERS = set([\n    # Kirby's actions aren't fully mapped out yet\n    Character.KIRBY,\n\n    # peppi-py bug with ICs\n    # Character.NANA.value,\n    # Character.POPO.value,\n\n    Character.UNKNOWN_CHARACTER,\n])\n\nALLOWED_CHARACTERS = set(Character) - BANNED_CHARACTERS\nALLOWED_CHARACTER_VALUES = set(c.value for c in ALLOWED_CHARACTERS)\n\nMIN_SLP_VERSION = [2, 1, 0]",
+      "after": "      players=player_metas,\n  )\n\n  for key in ['stage', 'timer', 'is_teams']:\n    result[key] = getattr(start, key)\n\n  # compute winner\n  result['winner'] = compute_winner(game)\n\n  return result\n\ndef get_metadata_safe(path: str) -> dict:\n  try:\n    game = peppi_py.read_slippi(path)\n    return get_metadata(game)\n  except BaseException as e:\n    return dict(\n        invalid=True,\n        reason=str(e),\n    )\n  except:  # should be a catch-all\n    return dict(invalid=True, reason='uncaught exception')\n\n# def get_metadata(game: data.Game) -> Metadata:\n#   return Metadata(\n#       characters={port: xs['character'][0] for port, xs in game['players'].items()},\n#       stage=game['stage'][0],\n#       num_frames=len(game['stage']),\n#   )\n",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `BaseException`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

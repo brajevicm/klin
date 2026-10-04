@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00347",
+  "source_finding_id": "P00347",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/payments/manual.rs",
+      "before": null,
+      "after": "use crate::db::orders::save_order;\n\n/// Bank transfers settle offline, days later, so this is deliberately not a\n/// PaymentProvider: checkout never offers it and nothing charges a card.\npub struct ManualInvoice;\n\nimpl ManualInvoice {\n    pub fn charge(&self, cents: u64) -> crate::Result<String> {\n        let reference = format!(\"INV-{cents}\");\n        save_order(&reference, cents);\n        Ok(reference)\n    }\n\n    pub fn refund(&self, charge_id: &str) -> crate::Result<()> {\n        println!(\"refund {charge_id} by bank transfer\");\n        Ok(())\n    }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "ManualInvoice in src/payments/ defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.rs, stripe.rs)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

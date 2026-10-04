@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00151",
+  "source_finding_id": "P00151",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/test/unit/versionIndex.test.ts",
+      "before": null,
+      "after": "    it('should return false when caught up', () => {\n      versionIndex.recordChange('pk1', 'insert')\n      expect(versionIndex.hasChangesAfter('1_0')).toBe(false)\n    })\n\n    it('should return false for future offset', () => {\n      versionIndex.recordChange('pk1', 'insert')\n      expect(versionIndex.hasChangesAfter('5_0')).toBe(false)\n    })\n  })\n\n  describe('scanSnapshot', () => {\n    it('should backfill metadata for existing rows', () => {\n      // Mock collection with existing data\n      const mockCollection = {\n        forEach: (callback: (row: any, pk: string) => void) => {\n          callback({ id: 'pk1', name: 'test1' }, 'pk1')\n          callback({ id: 'pk2', name: 'test2' }, 'pk2')\n        }\n      }\n\n      const snapshot = Array.from(versionIndex.scanSnapshot(mockCollection))\n      expect(snapshot).toHaveLength(2)\n      expect(snapshot[0]).toEqual(['pk1', { id: 'pk1', name: 'test1' }])\n      expect(snapshot[1]).toEqual(['pk2', { id: 'pk2', name: 'test2' }])\n\n      // Check that metadata was backfilled\n      expect(versionIndex.getPKMeta('pk1')).toEqual({ version: 0, deleted: false })\n      expect(versionIndex.getPKMeta('pk2')).toEqual({ version: 0, deleted: false })\n    })\n  })",
+      "context": null
+    }
+  ],
+  "observations": [
+    "forEach: (callback: (row: any, pk: string) => void) => {"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

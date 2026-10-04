@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01059",
+  "source_finding_id": "P01059",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/WhisperAPISettingWidget.py",
+      "before": "        )\n\n        # API Key\n        self.api_key_card = LineEditSettingCard(\n            cfg.whisper_api_key,\n            FIF.FINGERPRINT,\n            self.tr(\"API Key\"),\n            self.tr(\"输入 Whisper API Key\"),\n            \"sk-\",\n            self.setting_group,\n        )\n\n        # Model\n        self.model_card = EditComboBoxSettingCard(\n            cfg.whisper_api_model,\n            FIF.ROBOT,\n            self.tr(\"Whisper 模型\"),\n            self.tr(\"选择 Whisper 模型\"),\n            [\"whisper-large-v3\", \"whisper-large-v3-turbo\", \"whisper-1\"],\n            self.setting_group,\n        )\n\n        # 添加 Language 选择\n        self.language_card = ComboBoxSettingCard(\n            cfg.transcribe_language,\n            FIF.LANGUAGE,\n            self.tr(\"原语言\"),\n            self.tr(\"音频的原语言\"),\n            [lang.value for lang in TranscribeLanguageEnum],\n            self.setting_group,\n        )",
+      "after": "        )\n\n        # API Key\n        self.api_key_card = LineEditSettingCard(\n            cfg.whisper_api_key,\n            FIF.FINGERPRINT,\n            self.tr(\"API Key\"),\n            self.tr(\"输入 Whisper API Key\"),\n            \"sk-\",\n            self.setting_group,\n        )\n\n        # Model\n        self.model_card = EditComboBoxSettingCard(\n            cfg.whisper_api_model,\n            FIF.ROBOT,  # type: ignore\n            self.tr(\"Whisper 模型\"),\n            self.tr(\"选择 Whisper 模型\"),\n            [\"whisper-large-v3\", \"whisper-large-v3-turbo\", \"whisper-1\"],\n            self.setting_group,\n        )\n\n        # 添加 Language 选择\n        self.language_card = ComboBoxSettingCard(\n            cfg.transcribe_language,\n            FIF.LANGUAGE,\n            self.tr(\"原语言\"),\n            self.tr(\"音频的原语言\"),\n            [lang.value for lang in TranscribeLanguageEnum],\n            self.setting_group,\n        )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "FIF.ROBOT,  # type: ignore"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

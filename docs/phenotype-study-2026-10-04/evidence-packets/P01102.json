@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01102",
+  "source_finding_id": "P01102",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add docstring review list and tasks\n\n## Summary\n- scan repo for missing spaCy style docstrings\n- list all problematic files in `docs/missing_docstrings.md`\n- generate task list in `docs/docstring_tasks.md`\n\n## Testing\n- `python - <<'EOF'\nimport os, ast\nmissing=[]\nfor dirpath,_,files in os.walk('.'):\n    for f in files:\n        if f.endswith('.py'):\n            path=os.path.join(dirpath,f)\n            try:\n                tree=ast.parse(open(path,'r',encoding='utf-8').read())\n            except Exception:\n                continue\n            if (ast.get_docstring(tree) is None or\n                any(isinstance(n,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef)) and ast.get_docstring(n) is None for n in ast.walk(tree))):\n                missing.append(path)\nprint('missing count',len(missing))\nEOF",
+  "diff_context": [
+    {
+      "path": ".config/component_generator/scripts/dag.py",
+      "before": "    Renders a file template (for process type COPY) using the provided Jinja2 environment.\n    \"\"\"\n    template_path = entry[\"FILE_NAME\"]  # e.g., \"subfolder/my_file.py.j2\"\n    context = {**global_attrs, **entry}\n\n    try:\n        template = copy_env.get_template(template_path)\n        return template.render(**context)\n    except Exception as e:\n        print(f\"[ERROR] Failed to render COPY template '{template_path}': {e}\")\n        return None\n\n\ndef render_generate_template(\n    entry, agent_env, copy_env, global_attrs, agent_prompt_template_path\n):\n    \"\"\"\n    Renders an agent prompt template (from agent_prompt_template_path) and\n    calls an external agent to generate file content.\n    \"\"\"\n    try:\n        with open(agent_prompt_template_path, \"r\", encoding=\"utf-8\") as f:\n            agent_prompt_str = f.read()\n\n        context = {**global_attrs, **entry}\n        agent_prompt_template = copy_env.from_string(agent_prompt_str)\n        agent_prompt = agent_prompt_template.render(**context)\n\n        content = call_external_agent(agent_prompt, agent_env)\n        print(f\"[INFO] Generated content length: {len(content)} characters\")\n        return content",
+      "after": "\n    return graph, in_degree\n\n\n# 4. PROCESSING (COPY / GENERATE)\ndef render_copy_template(entry, copy_env, global_attrs):\n    \"\"\"\n    Renders a file template (for process type COPY) using the provided Jinja2 environment.\n    \"\"\"\n    template_path = entry[\"FILE_NAME\"]  # e.g., \"subfolder/my_file.py.j2\"\n    context = {**global_attrs, **entry}\n\n    try:\n        template = copy_env.get_template(template_path)\n        return template.render(**context)\n    except Exception as e:\n        print(f\"[ERROR] Failed to render COPY template '{template_path}': {e}\")\n        return None\n\n\ndef render_generate_template(\n    entry, agent_env, copy_env, global_attrs, agent_prompt_template_path\n):\n    \"\"\"\n    Renders an agent prompt template (from agent_prompt_template_path) and\n    calls an external agent to generate file content.\n    \"\"\"\n    try:\n        with open(agent_prompt_template_path, \"r\", encoding=\"utf-8\") as f:\n            agent_prompt_str = f.read()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

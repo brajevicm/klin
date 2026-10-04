@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00961",
+  "source_finding_id": "P00961",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "refactor: add safe obj generation\n\nshould fix #47 #49 #57 when using deepseek-r1 and a fallback model (gpt4o/qwen-2.5b-instruct) is given",
+  "diff_context": [
+    {
+      "path": "src/tools/evaluator.ts",
+      "before": "    model: any;\n    schema: z.ZodType<any>;\n    prompt: string;\n    maxTokens: number;\n  },\n  tracker?: TokenTracker\n): Promise<GenerateObjectResult<any>> {\n  try {\n    const result = await generateObject({\n      model: params.model,\n      schema: params.schema,\n      prompt: params.prompt,\n      maxTokens: params.maxTokens\n    });\n\n    (tracker || new TokenTracker()).trackUsage('evaluator', result.usage);\n    console.log(`${evaluationType} Evaluation:`, result.object);\n\n    return result;\n  } catch (error) {\n    const errorResult = await handleGenerateObjectError<any>(error);\n    (tracker || new TokenTracker()).trackUsage('evaluator', errorResult.usage);\n    return {\n        object: errorResult.object,\n        usage: errorResult.usage\n    } as GenerateObjectResult<any>;\n  }\n}\n\n\n// Main evaluation function",
+      "after": "    schema: z.ZodType<T>;\n    prompt: string;\n  },\n  tracker?: TokenTracker\n): Promise<GenerateObjectResult<T>> {\n  const generator = new ObjectGeneratorSafe(tracker);\n\n  const result = await generator.generateObject({\n    model: TOOL_NAME,\n    schema: params.schema,\n    prompt: params.prompt,\n  });\n\n  console.log(`${evaluationType} ${TOOL_NAME}`, result.object);\n\n  return result as GenerateObjectResult<any>;\n}\n\n\n// Main evaluation function\nexport async function evaluateAnswer(\n  question: string,\n  action: AnswerAction,\n  evaluationOrder: EvaluationType[] = ['definitive', 'freshness', 'plurality'],\n  tracker?: TokenTracker\n): Promise<{ response: EvaluationResponse }> {\n  let result;\n\n  // Only add attribution if we have valid references\n  if (action.references && action.references.length > 0) {\n    evaluationOrder = ['attribution', ...evaluationOrder];",
+      "context": null
+    }
+  ],
+  "observations": [
+    "return result as GenerateObjectResult<any>;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

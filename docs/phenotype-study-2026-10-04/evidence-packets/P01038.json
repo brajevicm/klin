@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01038",
+  "source_finding_id": "P01038",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Move to net status RPC\n\n## Summary\n- adopt insert_exit_v2 in exit and attach metadata\n- fetch network status via get_net_status in client and GUI\n- derive exits from net status on broker\n- filter auto exits by metadata\n\n## Testing\n- `cargo check`",
+  "diff_context": [
+    {
+      "path": "binaries/geph5-client-gui/src/tabs/settings.rs",
+      "before": "                                .map_err(|e| anyhow::anyhow!(e))?;\n\n                            let mut exits = if is_plus {\n                                all_exits.inner\n                            } else {\n                                all_free_exits.inner\n                            };\n                            exits\n                                .all_exits\n                                .sort_unstable_by_key(|s| (s.1.country, s.1.city.clone()));\n                            anyhow::Ok(exits)\n                        };\n                        match fallible.await {\n                            Ok(v) => return v,\n                            Err(err) => tracing::warn!(\"Failed to get country list: {}\", err),\n                        }\n                    }\n                })\n            });\n\n            columns[1].vertical(|ui| {\n                egui::ComboBox::from_id_source(\"country\")\n                    .selected_text(\n                        SELECTED_COUNTRY\n                            .get()\n                            .map(l10n_country)\n                            .unwrap_or_else(|| l10n(\"auto\")),\n                    )\n                    .show_ui(ui, |ui| {\n                        let former = SELECTED_COUNTRY.get();\n                        SELECTED_COUNTRY.modify(|selected| {",
+      "after": "                                .map_err(|e| anyhow::anyhow!(e))?;\n                            let ns = ns.verify(DOMAIN_NET_STATUS, |_| true)?;\n                            let mut exits: ExitList = ExitList {\n                                all_exits: ns\n                                    .exits\n                                    .into_values()\n                                    .filter(|(_, _, meta)| {\n                                        if is_plus {\n                                            true\n                                        } else {\n                                            meta.allowed_levels.contains(&AccountLevel::Free)\n                                        }\n                                    })\n                                    .map(|(vk, desc, _)| (vk, desc))\n                                    .collect(),\n                                city_names: serde_yaml::from_str(include_str!(\"../../../../binaries/geph5-broker/src/city_names.yaml\")).unwrap(),\n                            };\n                            exits\n                                .all_exits\n                                .sort_unstable_by_key(|s| (s.1.country, s.1.city.clone()));\n                            anyhow::Ok(exits)\n                        };\n                        match fallible.await {\n                            Ok(v) => return v,\n                            Err(err) => tracing::warn!(\"Failed to get country list: {}\", err),\n                        }\n                    }\n                })\n            });\n\n            columns[1].vertical(|ui| {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "city_names: serde_yaml::from_str(include_str!(\"../../../../binaries/geph5-broker/src/city_names.yaml\")).unwrap(),"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

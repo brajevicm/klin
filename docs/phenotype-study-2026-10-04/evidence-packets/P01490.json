@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01490",
+  "source_finding_id": "P01490",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Refactor: Unify `SerIter` and `SerIterOwned`\n\nThe `SerIter` and `SerIterOwned` structs were nearly identical, with the only difference being that `SerIter` handled iterators yielding borrowed references (`&'a T`) and `SerIterOwned` handled iterators yielding owned values (`T`).\n\nThis commit unifies these two structs into a single, more flexible `SerIter` that is generic over iterators whose items implement `Borrow<T>`. This allows the new `SerIter` to handle both owned and borrowed values, eliminating redundant code and simplifying the public API.\n\nThe documentation and examples have been updated to reflect these changes.\n\n---\n*PR created automatically by [authoring attribution omitted] for task [16837819993224102504]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "epserde (epserde/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "impls::iter::SerIter (type)"
+  ],
+  "measurement_holes": [
+    "public-api public surface has 0 holes and 84 opaque items"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

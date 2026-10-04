@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00395",
+  "source_finding_id": "P00395",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Refactor tools for simplicity\n\n- list_* to find_*\n- search_* to find_*\n- organizationSlug is now explicit everywhere\n- improved various tool metadata\n- add `query` param to find_releases",
+  "diff_context": [
+    {
+      "path": "packages/mcp-server/src/tools.ts",
+      "before": "        if (release.lastCommit) {\n          releaseInfo.push(\"\", `### Last Commit`, \"\");\n          releaseInfo.push(`**Commit ID**: ${release.lastCommit.id}`);\n          releaseInfo.push(`**Commit Message**: ${release.lastCommit.message}`);\n          releaseInfo.push(\n            `**Commit Author**: ${release.lastCommit.author.name}`,\n          );\n          releaseInfo.push(\n            `**Commit Date**: ${new Date(release.lastCommit.dateCreated).toISOString()}`,\n          );\n        }\n        if (release.lastDeploy) {\n          releaseInfo.push(\"\", `### Last Deploy`, \"\");\n          releaseInfo.push(`**Deploy ID**: ${release.lastDeploy.id}`);\n          releaseInfo.push(\n            `**Environment**: ${release.lastDeploy.environment}`,\n          );\n          if (release.lastDeploy.dateStarted) {\n            releaseInfo.push(\n              `**Deploy Started**: ${new Date(release.lastDeploy.dateStarted).toISOString()}`,\n            );\n          }\n          if (release.lastDeploy.dateFinished) {\n            releaseInfo.push(\n              `**Deploy Finished**: ${new Date(release.lastDeploy.dateFinished).toISOString()}`,\n            );\n          }\n        }\n        return releaseInfo.join(\"\\n\");\n      })\n      .join(\"\\n\\n\");",
+      "after": "              `**Deploy Started**: ${new Date(release.lastDeploy.dateStarted).toISOString()}`,\n            );\n          }\n          if (release.lastDeploy.dateFinished) {\n            releaseInfo.push(\n              `**Deploy Finished**: ${new Date(release.lastDeploy.dateFinished).toISOString()}`,\n            );\n          }\n        }\n        return releaseInfo.join(\"\\n\");\n      })\n      .join(\"\\n\\n\");\n    output += \"\\n\\n\";\n    output += \"# Using this information\\n\\n\";\n    output += `- You can reference the Release version in commit messages or documentation.\\n`;\n    output += `- You can search for issues in a specific release using the \\`find_errors()\\` tool with the query \\`release:${releases.length ? releases[0]!.version : \"VERSION\"}\\`.\\n`;\n    return output;\n  },\n  find_tags: async (context, params) => {\n    const apiService = apiServiceFromContext(context, {\n      regionUrl: params.regionUrl,\n    });\n    const organizationSlug = params.organizationSlug;\n\n    setTag(\"organization.slug\", organizationSlug);\n\n    const tagList = await apiService.listTags({ organizationSlug }, {});\n    let output = `# Tags in **${organizationSlug}**\\n\\n`;\n    if (tagList.length === 0) {\n      output += \"No tags found.\\n\";\n      return output;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "output += `- You can search for issues in a specific release using the \\`find_errors()\\` tool with the query \\`release:${releases.length ? releases[0]!.version : \"VERSION\"}\\`.\\n`;"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

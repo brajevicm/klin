@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00797",
+  "source_finding_id": "P00797",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "task: thread start safety\n\nEnforce safety rules to ensure that the startup parameter for a new kernel thread can be interpreted safely, and require `unsafe` when the compiler cannot enforce startup parameter safety on its own.",
+  "diff_context": [
+    {
+      "path": "kernel/src/task/tasks.rs",
+      "before": "        movq $0, %rax\n    1:\n        ret\n        \"#,\n        options(att_syntax)\n    );\n\n    global_asm!(\n        r#\"\n    .text\n    alter_fpu:\n        movq $0x400, %rax\n        shl $52, %rax\n        // rax contains 2 in Double Precison FP representation\n        movd %rax, %xmm1\n        movapd %xmm1, %xmm3\n\n        movq $0x3ff, %rax\n        shl $52, %rax\n        // rax contains 1 in Double Precison FP representation\n        movd %rax, %xmm2\n        divsd %xmm3, %xmm2\n        movq $0, %rax\n        ret\n        \"#,\n        options(att_syntax)\n    );\n\n    #[test]\n    #[cfg_attr(not(test_in_svsm), ignore = \"Can only be run inside guest\")]\n    fn test_fpu_context_switch() {",
+      "after": "    start_parameter: usize,\n) {\n    // SAFETY: the save area address is provided by the context switch assembly\n    // code.\n    unsafe {\n        setup_new_task_common(xsa_addr);\n    }\n\n    // SAFETY: the `usize` start parameter was generated from an earlier call\n    // to `KernelThreadStartParameter::to_usize` when the start argument was\n    // prepared for use in the initial stack context, and therefore the safety\n    // requirements of `from_usize` are met.  The exception is if this task\n    // starts via an unsafe start function, in which case safety is the\n    // responsibility of whoever created the thread, and is not required to be\n    // assured here.\n    entry(unsafe { T::from_usize(start_parameter) });\n}\n\nfn task_exit() {\n    current_task_terminated();\n    schedule();\n}\n\n#[cfg(all(test, test_in_svsm))]\nmod tests {\n    extern crate alloc;\n    use crate::task::start_kernel_task;\n    use alloc::string::String;\n    use core::arch::asm;\n    use core::arch::global_asm;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "entry(unsafe { T::from_usize(start_parameter) });"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

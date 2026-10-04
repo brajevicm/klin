@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02049",
+  "source_finding_id": "P02049",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Added cluster status message, changelog and status history\n\nIntroducing cluster status messages that can be added by an administrator to the DB.\n\nAlso showing cluster changelog and cluster status history in a new view\n\n<img width=\"2547\" height=\"494\" alt=\"Screenshot 2025-09-19 at 8 34 26 PM\" src=\"[external reference omitted] />",
+  "diff_context": [
+    {
+      "path": "api/main.py",
+      "before": "",
+      "after": "    return ORJSONResponse({'success': True, 'data': data})\n\n@app.get('/v1/cluster/changelog')\nasync def get_cluster_changelog(\n    machine_id: int | None = None,\n    user: User = Depends(authenticate) # pylint: disable=unused-argument\n    ):\n\n    params = []\n    machine_id_condition = ''\n\n    if machine_id is not None:\n        machine_id_condition = 'AND machine_id = %'\n        params.append(machine_id)\n\n    query = f\"\"\"\n        SELECT id, message, machine_id, created_at\n        FROM cluster_changelog\n        WHERE\n            1=1\n            {machine_id_condition}\n        ORDER BY created_at DESC\n    \"\"\"\n\n    data = DB().fetch_all(query, params=params)\n\n    if data is None or data == []:\n        return Response(status_code=204)  # No-Content\n\n    return ORJSONResponse({'success': True, 'data': data})",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

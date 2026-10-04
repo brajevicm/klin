@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01856",
+  "source_finding_id": "P01856",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/WhisperCppSettingWidget.py",
+      "before": "        name_item.setTextAlignment(Qt.AlignCenter)\n        self.model_table.setItem(row, 0, name_item)\n\n        # 大小\n        size_item = QTableWidgetItem(f\"{model['size']}\")\n        size_item.setTextAlignment(Qt.AlignCenter)\n        self.model_table.setItem(row, 1, size_item)\n\n        # 状态\n        model_bin_path = os.path.join(MODEL_PATH, model[\"value\"])\n        status_item = QTableWidgetItem(\n            self.tr(\"已下载\") if os.path.exists(model_bin_path) else self.tr(\"未下载\")\n        )\n        if os.path.exists(model_bin_path):\n            status_item.setForeground(Qt.green)\n        status_item.setTextAlignment(Qt.AlignCenter)\n        self.model_table.setItem(row, 2, status_item)\n\n        # 下载按钮\n        button_container = QWidget()\n        button_layout = QHBoxLayout(button_container)\n        button_layout.setContentsMargins(4, 4, 4, 4)\n\n        download_btn = HyperlinkButton(\n            \"\",\n            self.tr(\"重新下载\") if os.path.exists(model_bin_path) else self.tr(\"下载\"),\n            parent=self,\n        )\n        download_btn.setIcon(FIF.DOWNLOAD)\n        download_btn.clicked.connect(lambda checked, r=row: self._download_model(r))",
+      "after": "        name_item.setTextAlignment(Qt.AlignCenter)  # type: ignore\n        self.model_table.setItem(row, 0, name_item)\n\n        # 大小\n        size_item = QTableWidgetItem(f\"{model['size']}\")\n        size_item.setTextAlignment(Qt.AlignCenter)  # type: ignore\n        self.model_table.setItem(row, 1, size_item)\n\n        # 状态\n        model_bin_path = os.path.join(MODEL_PATH, model[\"value\"])\n        status_item = QTableWidgetItem(\n            self.tr(\"已下载\") if os.path.exists(model_bin_path) else self.tr(\"未下载\")\n        )\n        if os.path.exists(model_bin_path):\n            status_item.setForeground(Qt.green)  # type: ignore\n        status_item.setTextAlignment(Qt.AlignCenter)  # type: ignore\n        self.model_table.setItem(row, 2, status_item)\n\n        # 下载按钮\n        button_container = QWidget()\n        button_layout = QHBoxLayout(button_container)\n        button_layout.setContentsMargins(4, 4, 4, 4)\n\n        download_btn = HyperlinkButton(\n            \"\",\n            self.tr(\"重新下载\") if os.path.exists(model_bin_path) else self.tr(\"下载\"),\n            parent=self,\n        )\n        download_btn.setIcon(FIF.DOWNLOAD)\n        download_btn.clicked.connect(lambda checked, r=row: self._download_model(r))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "status_item.setTextAlignment(Qt.AlignCenter)  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

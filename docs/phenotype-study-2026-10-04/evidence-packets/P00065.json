@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00065",
+  "source_finding_id": "P00065",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "重构日志配置，移除调试模式，添加日志级别和输出文件选项；更新配置文件模式至v4.0\n\nresolve #411,#326,#143",
+  "diff_context": [
+    {
+      "path": "run.py",
+      "before": "    # CN: 捕获异常\n    # EN: Catch exceptions\n    value = None\n    try:\n        debug(\"get_ip(%s, %s)\", ip_type, index)\n        if index is False:  # disabled\n            return False\n        elif isinstance(index, list):  # 如果获取到的规则是列表，则依次判断列表中每一个规则，直到找到一个可以正确获取到的IP\n            for i in index:\n                value = get_ip(ip_type, i)\n                if value:\n                    break\n        elif str(index).isdigit():  # 数字 local eth\n            value = getattr(ip, \"local_v\" + ip_type)(index)\n        elif index.startswith('cmd:'):  # cmd\n            value = str(check_output(index[4:]).strip().decode('utf-8'))\n        elif index.startswith('shell:'):  # shell\n            value = str(check_output(\n                index[6:], shell=True).strip().decode('utf-8'))\n        elif index.startswith('url:'):  # 自定义 url\n            value = getattr(ip, \"public_v\" + ip_type)(index[4:])\n        elif index.startswith('regex:'):  # 正则 regex\n            value = getattr(ip, \"regex_v\" + ip_type)(index[6:])\n        else:\n            value = getattr(ip, index + \"_v\" + ip_type)()\n    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):",
+      "after": "    value = None\n    try:\n        debug(\"get_ip(%s, %s)\", ip_type, index)\n        if index is False:  # disabled\n            return False\n        elif isinstance(index, list):  # 如果获取到的规则是列表，则依次判断列表中每一个规则，直到找到一个可以正确获取到的IP\n            for i in index:\n                value = get_ip(ip_type, i)\n                if value:\n                    break\n        elif str(index).isdigit():  # 数字 local eth\n            value = getattr(ip, \"local_v\" + ip_type)(index)\n        elif index.startswith('cmd:'):  # cmd\n            value = str(check_output(index[4:]).strip().decode('utf-8'))\n        elif index.startswith('shell:'):  # shell\n            value = str(check_output(\n                index[6:], shell=True).strip().decode('utf-8'))\n        elif index.startswith('url:'):  # 自定义 url\n            value = getattr(ip, \"public_v\" + ip_type)(index[4:])\n        elif index.startswith('regex:'):  # 正则 regex\n            value = getattr(ip, \"regex_v\" + ip_type)(index[6:])\n        else:\n            value = getattr(ip, index + \"_v\" + ip_type)()\n    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):\n    for proxy in proxy_list:\n        if not proxy or (proxy.upper() in ['DIRECT', 'NONE']):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `subprocess` call with `shell=True` identified, security issue"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

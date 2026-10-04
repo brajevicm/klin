@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00814",
+  "source_finding_id": "P00814",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/MyVideoWidget.py",
+      "before": "                return None\n\n            # 获取字幕轨道描述信息\n            spu_description = self._player.video_get_spu_description()\n            if not spu_description:\n                return None\n\n            # 遍历查找当前使用的字幕轨道\n            for spu in spu_description:\n                if spu[0] == current_spu:\n                    # 返回字幕文件路径\n                    return spu[1].decode(\"utf-8\")\n\n            return None\n        except Exception as e:\n            return None\n\n    def pause(self):\n        self._player.pause()\n\n    def play(self):\n        self._player.play()\n\n    def stop(self):\n        self._player.stop()\n\n    def playbackRate(self) -> float:\n        return self._playback_rate\n\n    def setPosition(self, position: int):\n        if self._player:",
+      "after": "            if current_spu <= 0:  # 0 表示禁用字幕，-1 表示错误\n                return None\n\n            # 获取字幕轨道描述信息\n            spu_description = self._player.video_get_spu_description()\n            if not spu_description:\n                return None\n\n            # 遍历查找当前使用的字幕轨道\n            for spu in spu_description:\n                if spu[0] == current_spu:\n                    # 返回字幕文件路径\n                    return spu[1].decode(\"utf-8\")\n\n            return None\n        except Exception as e:\n            return None\n\n    def pause(self):\n        self._player.pause()\n\n    def play(self):\n        self._player.play()\n\n    def stop(self):\n        self._player.stop()\n\n    def playbackRate(self) -> float:\n        return self._playback_rate\n\n    def setPosition(self, position: int):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

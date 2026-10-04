@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00856",
+  "source_finding_id": "P00856",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        \n        def _on_save_clicked(button):\n            self._save_rule_from_editor(existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row)\n            dialog.destroy()\n        \n        cancel_button.connect('clicked', _on_cancel_clicked)\n        save_button.connect('clicked', _on_save_clicked)\n        \n        # Show the window\n        dialog.present()\n\n    def _save_rule_from_editor(self, existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row):\n        idx = type_row.get_selected()\n        rtype = 'local' if idx == 0 else ('remote' if idx == 1 else 'dynamic')\n        listen_addr = listen_addr_row.get_text().strip() or '127.0.0.1'\n        try:\n            listen_port = int((listen_port_row.get_text() or '0').strip() or '0')\n        except Exception:\n            listen_port = 0\n        if listen_port <= 0:\n            self.show_error(_(\"Please enter a valid listen port (> 0)\"))\n            return\n        \n        # Check for port conflicts (for local and dynamic forwarding)\n        if rtype in ['local', 'dynamic']:\n            try:\n                port_checker = get_port_checker()\n                conflicts = port_checker.get_port_conflicts([listen_port], listen_addr)\n                \n                if conflicts:\n                    port, port_info = conflicts[0]",
+      "after": "                    \n            except Exception as e:\n                logger.debug(f\"Could not check port conflict for {listen_port}: {e}\")\n                # Continue without port checking if there's an error\n        rule = {\n            'type': rtype,\n            'enabled': True,\n            'listen_addr': listen_addr,\n            'listen_port': listen_port,\n        }\n        if rtype == 'local':\n            # LocalForward: [listen_addr:]listen_port remote_host:remote_port\n            rule['remote_host'] = remote_host_row.get_text().strip() or 'localhost'\n            try:\n                rule['remote_port'] = int((remote_port_row.get_text() or '0').strip() or '0')\n            except Exception:\n                rule['remote_port'] = 0\n        elif rtype == 'remote':\n            # RemoteForward: [listen_addr:]listen_port local_host:local_port\n            rule['local_host'] = remote_host_row.get_text().strip() or 'localhost'\n            try:\n                rule['local_port'] = int((remote_port_row.get_text() or '0').strip() or '0')\n            except Exception:\n                rule['local_port'] = 0\n\n        if not hasattr(self, 'forwarding_rules') or self.forwarding_rules is None:\n            self.forwarding_rules = []\n\n        if existing_rule and existing_rule in self.forwarding_rules:\n            idx_existing = self.forwarding_rules.index(existing_rule)\n            self.forwarding_rules[idx_existing] = rule",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

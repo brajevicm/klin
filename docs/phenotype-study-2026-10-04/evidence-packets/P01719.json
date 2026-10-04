@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01719",
+  "source_finding_id": "P01719",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        )\n        for handler in self._handlers.values():\n            if not handler.run_handler.done():\n                try:\n                    handler.run_handler.cancel()\n                except Exception:\n                    pass\n                try:\n                    await handler.run_handler.cancel_run()\n                except Exception:\n                    pass\n            if handler.task is not None and not handler.task.done():\n                try:\n                    handler.task.cancel()\n                except Exception:\n                    pass\n        self._handlers.clear()\n\n    async def serve(\n        self,\n        host: str = \"localhost\",\n        port: int = 80,\n        uvicorn_config: dict[str, Any] | None = None,\n    ) -> None:\n        \"\"\"Run the server.\"\"\"\n        uvicorn_config = uvicorn_config or {}\n\n        config = uvicorn.Config(self.app, host=host, port=port, **uvicorn_config)\n        server = uvicorn.Server(config)\n        logger.info(\n            f\"Starting Workflow server at http://{host}:{port}{uvicorn_config.get('root_path', '/')}\"",
+      "after": "            f\"Shutting down Workflow server. Cancelling {len(self._handlers)} handlers.\"\n        )\n        for handler in self._handlers.values():\n            if not handler.run_handler.done():\n                try:\n                    handler.run_handler.cancel()\n                except Exception:\n                    pass\n                try:\n                    await handler.run_handler.cancel_run()\n                except Exception:\n                    pass\n            if handler.task is not None and not handler.task.done():\n                try:\n                    handler.task.cancel()\n                except Exception:\n                    pass\n        self._handlers.clear()\n\n    async def serve(\n        self,\n        host: str = \"localhost\",\n        port: int = 80,\n        uvicorn_config: dict[str, Any] | None = None,\n    ) -> None:\n        \"\"\"Run the server.\"\"\"\n        uvicorn_config = uvicorn_config or {}\n\n        config = uvicorn.Config(self.app, host=host, port=port, **uvicorn_config)\n        server = uvicorn.Server(config)\n        logger.info(",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

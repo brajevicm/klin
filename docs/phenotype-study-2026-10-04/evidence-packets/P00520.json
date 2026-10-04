@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00520",
+  "source_finding_id": "P00520",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "                subprocess.check_output(\n                    [\"git\", \"config\", \"user.name\"], stderr=subprocess.DEVNULL\n                )\n                .decode(\"utf-8\")\n                .strip()\n            )\n            if git_user:\n                return git_user\n        except (subprocess.SubprocessError, FileNotFoundError):\n            pass\n\n        try:\n            return (\n                subprocess.check_output([\"whoami\"], stderr=subprocess.DEVNULL)\n                .decode(\"utf-8\")\n                .strip()\n            )\n        except (subprocess.SubprocessError, FileNotFoundError):\n            return \"unknown\"\n\n    def _upload_results_to_s3(self) -> None:\n        \"\"\"Upload entire run directory to S3 bucket.\"\"\"\n        files_to_upload = [f for f in self._run_path.rglob(\"*\") if f.is_file()]\n\n        if not files_to_upload:\n            self._logger.warning(f\"No files found to upload in {self._run_path}\")\n            return\n\n        try:\n            s3_client = boto3.client(\"s3\")\n            self._logger.info(f\"Uploading run results to S3 bucket: {self._s3_bucket}\")",
+      "after": "                self._logger.info(\n                    f\"Successfully uploaded all {len(files_to_upload)} files to \"\n                    f\"s3://{self._s3_bucket}/{self._run_id}/\"\n                )\n            else:\n                self._logger.warning(\n                    f\"Uploaded {len(files_to_upload) - len(failed_uploads)} of \"\n                    f\"{len(files_to_upload)} files. \"\n                    f\"{len(failed_uploads)} files failed to upload.\"\n                )\n                self._logger.warning(\n                    f\"Failed files: {', '.join(failed_uploads[:5])}\"\n                    + (\"...\" if len(failed_uploads) > 5 else \"\")\n                )\n\n        except Exception as e:\n            self._logger.error(f\"Failed to upload {self._run_path} results to S3: {e}\")\n\n    def _write_run_metadata(self) -> None:\n        metadata = RunMetadata(\n            run_id=self._run_id,\n            dataset_path=(\n                str(self._dataset.config.path.absolute())\n                if self._dataset.config.path\n                else None\n            ),\n            dataset_name=self._dataset.config.name,\n            dataset_version=self._dataset.config.version,\n            output_path=str(self._output_path.absolute()),\n            agent_name=self._agent_class.name(),\n            no_rebuild=self._no_rebuild,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

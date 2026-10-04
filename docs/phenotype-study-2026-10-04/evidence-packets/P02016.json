@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02016",
+  "source_finding_id": "P02016",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "            return btn\n\n        if has_local:\n            self.indicator_box.append(make_badge(\"L\", \"pf-local\"))\n        if has_remote:\n            self.indicator_box.append(make_badge(\"R\", \"pf-remote\"))\n        if has_dynamic:\n            self.indicator_box.append(make_badge(\"D\", \"pf-dynamic\"))\n\n        self.indicator_box.set_visible(has_local or has_remote or has_dynamic)\n\n    def _apply_host_label_text(self, include_port: bool | None = None):\n        try:\n            window = self.get_root()\n            hide = bool(getattr(window, \"_hide_hosts\", False)) if window else False\n        except Exception:\n            hide = False\n\n        if hide:\n            self.set_subtitle(\"••••••••••\")\n            return\n\n        format_kwargs = {}\n        if include_port is not None:\n            format_kwargs[\"include_port\"] = include_port\n\n        display = _format_connection_host_display(self.connection, **format_kwargs)\n        self.set_subtitle(display or '')\n\n    def apply_hide_hosts(self, hide: bool):\n        self._apply_host_label_text()",
+      "after": "            return btn\n\n        if has_local:\n            self.indicator_box.append(make_badge(\"L\", \"pf-local\"))\n        if has_remote:\n            self.indicator_box.append(make_badge(\"R\", \"pf-remote\"))\n        if has_dynamic:\n            self.indicator_box.append(make_badge(\"D\", \"pf-dynamic\"))\n\n        self.indicator_box.set_visible(has_local or has_remote or has_dynamic)\n\n    def _apply_host_label_text(self, include_port: bool | None = None):\n        try:\n            window = self.get_root()\n            hide = bool(getattr(window, \"_hide_hosts\", False)) if window else False\n        except Exception:\n            hide = False\n\n        if hide:\n            self.set_subtitle(\"••••••••••\")\n            return\n\n        format_kwargs = {}\n        if include_port is not None:\n            format_kwargs[\"include_port\"] = include_port\n\n        display = _format_connection_host_display(self.connection, **format_kwargs)\n        self.set_subtitle(display or '')\n\n    def apply_hide_hosts(self, hide: bool):\n        self._apply_host_label_text()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01596",
+  "source_finding_id": "P01596",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: Add LSP stub\n\nAdds a stub implementations of a basic Language Server Protocol (LSP) to `prqlc`. LSP clients can connect to it and disconnect from it.\n\nIt use the `lsp-server` crate used by the official rust-analyzer.\n\nThe LSP specification is at [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "prqlc/prqlc/Cargo.toml",
+      "before": "[package]\ndescription = \"PRQL is a modern language for transforming data — a simple, powerful, pipelined SQL replacement.\"\nname = \"prqlc\"\n\nedition.workspace = true\nlicense.workspace = true\nrepository.workspace = true\nrust-version.workspace = true\nversion.workspace = true\n\n# Required for `cargo-msrv`, which doesn't yet support workspaces\nmetadata.msrv = \"1.73.0\"\n\nbuild = \"build.rs\"\n\n[features]",
+      "after": "[package]\ndescription = \"PRQL is a modern language for transforming data — a simple, powerful, pipelined SQL replacement.\"\nname = \"prqlc\"\n\nedition.workspace = true\nlicense.workspace = true\nrepository.workspace = true\nrust-version.workspace = true\nversion.workspace = true\n\n# Required for `cargo-msrv`, which doesn't yet support workspaces\nmetadata.msrv = \"1.73.0\"\n\nbuild = \"build.rs\"\n\n[features]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:lsp-types"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

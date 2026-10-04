@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01760",
+  "source_finding_id": "P01760",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "refactor: modularize notification system and simplify implementation\n\nRefactored the notification system from a monolithic bash script to a modular Python\nimplementation following the ruthless simplicity philosophy:\n\nBreaking Changes:\n- Makefile now uses NOTIFY=true instead of N=1 for notification flags\n- Notifications default to OFF for all CLI tools (must explicitly enable)\n\nArchitecture:\n- Created modular notification system in amplifier/utils/notifications/\n  - Clean Pydantic models for type safety\n  - Platform-specific handlers (macOS, Linux, Windows/WSL)\n  - Simple CLI interface for direct usage\n- Replaced bash script with Python hook adapter for [authoring attribution omitted] integration\n- Renamed hooks to indicate WHEN they trigger (on_notification_hook.py, etc.)\n\nSimplifications:\n- Removed ALL duration tracking (60% complexity reduction)\n- Eliminated progress notifications (only completion events now)\n- Simplified project name extraction (just directory name, no git parsing)\n- Standardized notification format: \"Amplifier\" title with project context\n\nIntegration:\n- Added --notify flag to knowledge synthesis, synthesis pipeline, and CCSDK tools\n- Toolkit-level integration for CCSDK (all tools inherit capability)\n- Top-level commands handle notifications (no passthrough to sub-tools)\n\nUser Experience:\n- Terminal context (project name) always prominent in subtitle\n- Consistent notification format across all tools\n- Simple NOTIFY=true pattern in Makefile commands\n- Clear session identification for multiple terminals\n\nFollowing the implementation philosophy: removed non-essential complexity,\nmaintained clean module boundaries, and achieved ruthless simplicity.\nThe notification system now does exactly what's needed - informs users\nwhen tasks complete with clear context - nothing more.\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "amplifier/ccsdk_toolkit/logger/logger.py",
+      "before": "",
+      "after": "        # Send notification if enabled\n        if self.enable_notifications:\n            try:\n                # Lazy import to avoid dependency when not needed\n                import os\n\n                from amplifier.utils.notifications import send_notification\n\n                send_notification(\n                    title=\"Amplifier\",\n                    message=message,\n                    cwd=os.getcwd(),\n                )\n            except ImportError:\n                self.debug(\"Notifications not available - amplifier.utils.notifications not found\")\n            except Exception as e:\n                self.debug(f\"Failed to send notification: {e}\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00309",
+  "source_finding_id": "P00309",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/session_manager.py",
+      "before": "    \n    async def _delete_session(self, session):\n        \"\"\"Delete a session using the session object directly.\n        \n        Args:\n            session: The ADK session object to delete\n        \"\"\"\n        if not session:\n            logger.warning(\"Cannot delete None session\")\n            return\n            \n        session_key = f\"{session.app_name}:{session.id}\"\n        \n        # If memory service is available, add session to memory before deletion\n        logger.debug(f\"Deleting session {session_key}, memory_service: {self._memory_service is not None}\")\n        if self._memory_service:\n            try:\n                await self._memory_service.add_session_to_memory(session)\n                logger.debug(f\"Added session {session_key} to memory before deletion\")\n            except Exception as e:\n                logger.error(f\"Failed to add session {session_key} to memory: {e}\")\n        \n        try:\n            await self._session_service.delete_session(\n                session_id=session.id,\n                app_name=session.app_name,\n                user_id=session.user_id\n            )\n            logger.debug(f\"Deleted session: {session_key}\")\n        except Exception as e:\n            logger.error(f\"Failed to delete session {session_key}: {e}\")",
+      "after": "        \n        # Find oldest session by checking ADK's lastUpdateTime\n        for session_key in self._user_sessions[user_id]:\n            app_name, session_id = session_key.split(':', 1)\n            try:\n                session = await self._session_service.get_session(\n                    session_id=session_id,\n                    app_name=app_name,\n                    user_id=user_id\n                )\n                if session and hasattr(session, 'last_update_time'):\n                    update_time = session.last_update_time\n                    if update_time < oldest_time:\n                        oldest_time = update_time\n                        oldest_session = session\n            except Exception as e:\n                logger.error(f\"Error checking session {session_key}: {e}\")\n        \n        if oldest_session:\n            session_key = self._make_session_key(oldest_session.app_name, oldest_session.id)\n            await self._delete_session(oldest_session)\n            logger.info(f\"Removed oldest session for user {user_id}: {session_key}\")\n    \n    async def _delete_session(self, session):\n        \"\"\"Delete a session using the session object directly.\n        \n        Args:\n            session: The ADK session object to delete\n        \"\"\"\n        if not session:\n            logger.warning(\"Cannot delete None session\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

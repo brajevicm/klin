@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01100",
+  "source_finding_id": "P01100",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add backend structure for event retrieval\n\nThis PR introduces the core backend functionality for retrieving events from the datastore.\nKey changes:\n\n- Add `get_entities()` to enable querying datastore entities with support for equality filters, ordering, and limits.\n- Add `NDBEventRepository.get_events()`  to retrieve events from the datastore.\n- Add `get_events()`, a public-facing function for other modules to consistently retrieve events.\n- Add `get_events_from_testcase()`, a public-facing function for other modules to easily retrieve events with common filters.\n\nRelated to [b/435283944]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/clusterfuzz/_internal/datastore/data_handler.py",
+      "before": "    task_status.put()\n    return True\n\n  # It is important that we do not continue until the metadata is updated.\n  # This can lead to task loss, or can cause issues with multiple bots\n  # attempting to run the task at the same time.\n  while True:\n    try:\n      return ndb.transaction(_try_update_status, retries=0)\n    except Exception:\n      # We need to update the status under all circumstances.\n      # Failing to update 'completed' status causes another bot\n      # that picked up this job to bail out.\n      logs.error('Unable to update %s task metadata. Retrying.' % task_name)\n      time.sleep(utils.random_number(1, failure_wait_interval))\n\n\n# ------------------------------------------------------------------------------\n# Heartbeat database related functions\n# ------------------------------------------------------------------------------\n\n\ndef update_heartbeat(force_update=False):\n  \"\"\"Updates heartbeat with current timestamp and log data.\"\"\"\n  if environment.is_uworker():\n    # Uworkers can't update heartbeats.\n    return 0\n\n  # Check if the heartbeat was recently updated. If yes, bail out.\n  last_modified_time = persistent_cache.get_value(\n      HEARTBEAT_LAST_UPDATE_KEY, constructor=datetime.datetime.utcfromtimestamp)",
+      "after": "            task_status.time, seconds=expiry_interval - 1)):\n      return False\n\n    task_status.bot_name = bot_name\n    task_status.status = status\n    task_status.time = utils.utcnow()\n    task_status.put()\n    return True\n\n  # It is important that we do not continue until the metadata is updated.\n  # This can lead to task loss, or can cause issues with multiple bots\n  # attempting to run the task at the same time.\n  while True:\n    try:\n      return ndb.transaction(_try_update_status, retries=0)\n    except Exception:\n      # We need to update the status under all circumstances.\n      # Failing to update 'completed' status causes another bot\n      # that picked up this job to bail out.\n      logs.error('Unable to update %s task metadata. Retrying.' % task_name)\n      time.sleep(utils.random_number(1, failure_wait_interval))\n\n\n# ------------------------------------------------------------------------------\n# Heartbeat database related functions\n# ------------------------------------------------------------------------------\n\n\ndef update_heartbeat(force_update=False):\n  \"\"\"Updates heartbeat with current timestamp and log data.\"\"\"\n  if environment.is_uworker():",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

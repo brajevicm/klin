@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01450",
+  "source_finding_id": "P01450",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Implement warnings table and frontend display\n\n## Summary\n- add `warnings` table\n- expose warnings via new API endpoint\n- record system check warnings in the DB\n- surface run warnings in stats and compare pages\n- adapt tests to use warnings table\n\n## Testing\n- `pip install -r requirements-dev.txt`\n- `pylint $(git ls-files '*.py')` *(fails: Unable to import packages)*\n- `pytest -k warnings` *(fails: ModuleNotFoundError: No module named 'tests')*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "lib/scenario_runner.py",
+      "before": "\n        # Delete the directory /tmp/gmt_docker_images\n        shutil.rmtree(temp_dir)\n\n    def save_image_and_volume_sizes(self):\n\n        print(TerminalColors.HEADER, '\\nSaving image and volume sizes', TerminalColors.ENDC)\n\n        for _, service in self._usage_scenario.get('services', {}).items():\n            tmp_img_name = self.clean_image_name(service['image'])\n\n            # This will report bogus values on macOS sadly that do not align with \"docker images\" size info ...\n            output = subprocess.check_output(\n                f\"docker image inspect {tmp_img_name} \" + '--format={{.Size}}',\n                shell=True,\n                encoding='UTF-8',\n            )\n            self.__image_sizes[service['image']] = int(output.strip())\n\n        # du -s -b does not work on macOS and also the docker image is in a VM and not accessible with du for us\n        if not self._skip_volume_inspect and self._allow_unsafe and platform.system() != 'Darwin':\n            for volume in self._usage_scenario.get('volumes', {}):\n                # This will report bogus values on macOS sadly that do not align with \"docker images\" size info ...\n                try:\n                    output = subprocess.check_output(\n                        ['docker', 'volume', 'inspect', volume, '--format={{.Mountpoint}}'],\n                        encoding='UTF-8',\n                    )\n                    output = subprocess.check_output(\n                        ['du', '-s', '-b', output.strip()],\n                        encoding='UTF-8',",
+      "after": "                # tagging must be done in pull and local case, so we can get the correct container later\n                subprocess.run(['docker', 'tag', service['image'], tmp_img_name], check=True)\n\n\n        # Delete the directory /tmp/gmt_docker_images\n        shutil.rmtree(temp_dir)\n\n    def save_image_and_volume_sizes(self):\n\n        print(TerminalColors.HEADER, '\\nSaving image and volume sizes', TerminalColors.ENDC)\n\n        for _, service in self._usage_scenario.get('services', {}).items():\n            tmp_img_name = self.clean_image_name(service['image'])\n\n            # This will report bogus values on macOS sadly that do not align with \"docker images\" size info ...\n            output = subprocess.check_output(\n                f\"docker image inspect {tmp_img_name} \" + '--format={{.Size}}',\n                shell=True,\n                encoding='UTF-8',\n            )\n            self.__image_sizes[service['image']] = int(output.strip())\n\n        # du -s -b does not work on macOS and also the docker image is in a VM and not accessible with du for us\n        if not self._skip_volume_inspect and self._allow_unsafe and platform.system() != 'Darwin':\n            for volume in self._usage_scenario.get('volumes', {}):\n                # This will report bogus values on macOS sadly that do not align with \"docker images\" size info ...\n                try:\n                    output = subprocess.check_output(\n                        ['docker', 'volume', 'inspect', volume, '--format={{.Mountpoint}}'],\n                        encoding='UTF-8',\n                    )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `subprocess` call with `shell=True` identified, security issue"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

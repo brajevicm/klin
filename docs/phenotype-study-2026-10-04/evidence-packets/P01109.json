@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01109",
+  "source_finding_id": "P01109",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "        for thread_id, execution in self._active_executions.items():\n            if execution.is_stale(self._execution_timeout):\n                stale_threads.append(thread_id)\n        \n        for thread_id in stale_threads:\n            execution = self._active_executions.pop(thread_id)\n            await execution.cancel()\n            logger.info(f\"Cleaned up stale execution for thread {thread_id}\")\n\n    async def close(self):\n        \"\"\"Clean up resources including active executions.\"\"\"\n        # Cancel all active executions\n        async with self._execution_lock:\n            for execution in self._active_executions.values():\n                await execution.cancel()\n            self._active_executions.clear()\n\n        # Clear session lookup cache\n        self._session_lookup_cache.clear()\n\n        # Stop session manager cleanup task\n        await self._session_manager.stop_cleanup_task()",
+      "after": "                    (not getattr(adk_event, 'turn_complete', True)) or  # Live streaming not complete\n                    (not final_response)  # Not marked as final by is_final_response()\n                )\n\n                # Prefer LRO routing when a long-running tool call is present\n                has_lro_function_call = False\n                try:\n                    lro_ids = set(getattr(adk_event, 'long_running_tool_ids', []) or [])\n                    if lro_ids and adk_event.content and getattr(adk_event.content, 'parts', None):\n                        for part in adk_event.content.parts:\n                            func = getattr(part, 'function_call', None)\n                            func_id = getattr(func, 'id', None) if func else None\n                            if func_id and func_id in lro_ids:\n                                has_lro_function_call = True\n                                break\n                except Exception:\n                    # Be conservative: if detection fails, do not block streaming path\n                    has_lro_function_call = False\n\n                # Process as streaming if it's a chunk OR if it has content but no finish_reason,\n                # but only when there is no LRO function call present (LRO takes precedence)\n                if (not has_lro_function_call) and (is_streaming_chunk or (has_content and not getattr(adk_event, 'finish_reason', None))):\n                    # Regular translation path\n                    async for ag_ui_event in event_translator.translate(\n                        adk_event,\n                        input.thread_id,\n                        input.run_id\n                    ):\n\n                        logger.debug(f\"Emitting event to queue: {type(ag_ui_event).__name__} (thread {input.thread_id}, queue size before: {event_queue.qsize()})\")\n                        await event_queue.put(ag_ui_event)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

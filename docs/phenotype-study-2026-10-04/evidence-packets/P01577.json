@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01577",
+  "source_finding_id": "P01577",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                            pw = None\n                        if pw:\n                            self.password_row.set_text(pw)\n                except Exception:\n                    pass\n            # Capture original password value to detect user changes later\n            try:\n                self._orig_password = [redacted]\n            except Exception:\n                self._orig_password = [redacted]\n                \n            # Load key passphrase from connection object or from secure storage\n            if hasattr(self.connection, 'key_passphrase') and self.connection.key_passphrase:\n                self.key_passphrase_row.set_text(self.connection.key_passphrase)\n            else:\n                # Try to load from secure storage if we have a keyfile\n                try:\n                    if hasattr(self, 'connection_manager') and self.connection_manager and keyfile:\n                        stored_passphrase = self.connection_manager.get_key_passphrase(keyfile)\n                        if stored_passphrase:\n                            self.key_passphrase_row.set_text(stored_passphrase)\n                except Exception as e:\n                    logger.debug(f\"Failed to load stored passphrase: {e}\")\n\n            # Load key selection mode (prefer fresh manager copy by nickname)\n            try:\n                if hasattr(self, 'key_select_row'):\n                    mode = None\n                    # Prefer fresh parse from manager if available\n                    try:\n                        mgr = getattr(self.parent_window, 'connection_manager', None)",
+      "after": "                        mode = 2\n                        try:\n                            self.connection.key_select_mode = 2\n                        except Exception:\n                            pass\n                        try:\n                            if hasattr(self.connection, 'data'):\n                                self.connection.data['key_select_mode'] = 2\n                        except Exception:\n                            pass\n                    selection = 1 if mode in (1, 2) else 0\n                    self.key_select_row.set_selected(selection)\n                    if hasattr(self, 'key_only_row'):\n                        try:\n                            self.key_only_row.set_active(mode == 1)\n                        except Exception:\n                            pass\n                    self.on_key_select_changed(self.key_select_row, None)\n            except Exception:\n                pass\n            \n            # Set X11 forwarding\n            self.x11_row.set_active(getattr(self.connection, 'x11_forwarding', False))\n            \n\n            \n                        # SSH config block content is now handled by the SSH config editor window\n            # No need to load it into an inline editor anymore\n            \n            # Load extra SSH config into advanced tab\n            try:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

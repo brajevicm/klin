@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01260",
+  "source_finding_id": "P01260",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat: integrate v1.9 config with localizer and processor\n\n# Integrate v1.9 config with localizer and processor\n\nThis PR implements the integration of the new v1.9 configuration schema with the existing localizer and processor systems.\n\n## Changes\n\n- Updated `createLocalizer` function to accept full config object instead of just provider\n- Added support for resolving models based on source/target locale pairs\n- Implemented model selection priority (specific locale pairs first, \"*:*\" as fallback)\n- Updated `createProcessor` function to handle the new configuration structure\n- Added helper functions for model key resolution and prompt handling\n- Updated call sites in setup.ts and i18n.ts to pass the full configuration\n- Added groq provider support using Vercel's AI SDK\n\n## Implementation Details\n\n- Maintained backward compatibility with existing provider field\n- Added support for function-based prompts (for future JS/TS configs)\n- Implemented locale-specific model selection based on source/target locales\n- Ensured providers and models are optional with no default values\n- Set default prompt to translation-focused text\n\nLink to [authoring attribution omitted] run: [external reference omitted]\nRequested by: Max Prilutskiy",
+  "diff_context": [
+    {
+      "path": "packages/spec/src/config.ts",
+      "before": "      prompt: \"You're a helpful assistant that translates between languages.\",\n    }),\n    createUpgrader: (oldConfig) => {\n      const upgradedConfig = {\n        ...oldConfig,\n        version: 1.9,\n        providers: {} as Record<string, boolean | { baseUrl?: string; prompt?: string }>,\n        models: {} as Record<string, string>,\n        prompt: \"\" as string,\n      };\n\n      if (oldConfig.provider) {\n        upgradedConfig.providers = {\n          [oldConfig.provider.id]: true,\n        };\n\n        upgradedConfig.models = {\n          \"*:*\": `${oldConfig.provider.id}/${oldConfig.provider.model}`,\n        };\n\n        upgradedConfig.prompt = oldConfig.provider.prompt;\n      } else {\n        upgradedConfig.providers = {\n          groq: true,\n          openai: true,\n          anthropic: true,\n        };\n        upgradedConfig.models = {\n          \"*:*\": \"groq/mistral-7b-instruct\",\n        };\n        upgradedConfig.prompt = \"You're a helpful assistant that translates between languages.\";",
+      "after": "\n      if (oldConfig.provider) {\n        const providers: Record<string, boolean | { baseUrl?: string; prompt?: string }> = {};\n        providers[oldConfig.provider.id] = oldConfig.provider.baseUrl || oldConfig.provider.prompt\n          ? { \n              ...(oldConfig.provider.baseUrl && { baseUrl: oldConfig.provider.baseUrl }),\n              ...(oldConfig.provider.prompt && { prompt: oldConfig.provider.prompt })\n            }\n          : true;\n        \n        const models: Record<string, string> = {\n          \"*:*\": `${oldConfig.provider.id}/${oldConfig.provider.model}`\n        };\n        \n        (upgradedConfig as any).providers = providers;\n        (upgradedConfig as any).models = models;\n        \n        if (oldConfig.provider.prompt) {\n          upgradedConfig.prompt = oldConfig.provider.prompt;\n        }\n      }\n      \n      return upgradedConfig;\n    },\n  },\n);\n\n// exports\nexport const LATEST_CONFIG_DEFINITION = configV1_9Definition;\n\nexport type I18nConfig = Z.infer<(typeof LATEST_CONFIG_DEFINITION)[\"schema\"]>;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "(upgradedConfig as any).models = models;"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

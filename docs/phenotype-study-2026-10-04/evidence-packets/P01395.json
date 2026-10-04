@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01395",
+  "source_finding_id": "P01395",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Implement warnings table and frontend display\n\n## Summary\n- add `warnings` table\n- expose warnings via new API endpoint\n- record system check warnings in the DB\n- surface run warnings in stats and compare pages\n- adapt tests to use warnings table\n\n## Testing\n- `pip install -r requirements-dev.txt`\n- `pylint $(git ls-files '*.py')` *(fails: Unable to import packages)*\n- `pytest -k warnings` *(fails: ModuleNotFoundError: No module named 'tests')*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "api/scenario_runner.py",
+      "before": "    job_id_condition = ''\n\n    if machine_id and check_int_field_api(machine_id, 'machine_id', 1024):\n        machine_id_condition = 'AND j.machine_id = %s'\n        params.append(machine_id)\n\n    if state is not None and state != '':\n        state_condition = 'AND j.state = %s'\n        params.append(state)\n\n    if job_id is not None:\n        job_id_condition = 'AND j.id = %s'\n        params.append(job_id)\n\n\n    query = f\"\"\"\n        SELECT j.id, r.id as run_id, j.name, j.url, j.filename, j.usage_scenario_variables, j.branch, m.description, j.state, j.updated_at, j.created_at\n        FROM jobs as j\n        LEFT JOIN machines as m on m.id = j.machine_id\n        LEFT JOIN runs as r on r.job_id = j.id\n        WHERE\n            (TRUE = %s OR j.user_id = ANY(%s::int[]))\n            AND j.type = 'run'\n            {machine_id_condition}\n            {state_condition}\n            {job_id_condition}\n        ORDER BY j.updated_at DESC, j.created_at ASC\n    \"\"\"\n    data = DB().fetch_all(query, params)\n    if data is None or data == []:\n        return Response(status_code=204) # No-Content",
+      "after": "    job_id_condition = ''\n\n    if machine_id and check_int_field_api(machine_id, 'machine_id', 1024):\n        machine_id_condition = 'AND j.machine_id = %s'\n        params.append(machine_id)\n\n    if state is not None and state != '':\n        state_condition = 'AND j.state = %s'\n        params.append(state)\n\n    if job_id is not None:\n        job_id_condition = 'AND j.id = %s'\n        params.append(job_id)\n\n\n    query = f\"\"\"\n        SELECT j.id, r.id as run_id, j.name, j.url, j.filename, j.usage_scenario_variables, j.branch, m.description, j.state, j.updated_at, j.created_at\n        FROM jobs as j\n        LEFT JOIN machines as m on m.id = j.machine_id\n        LEFT JOIN runs as r on r.job_id = j.id\n        WHERE\n            (TRUE = %s OR j.user_id = ANY(%s::int[]))\n            AND j.type = 'run'\n            {machine_id_condition}\n            {state_condition}\n            {job_id_condition}\n        ORDER BY j.updated_at DESC, j.created_at ASC\n    \"\"\"\n    data = DB().fetch_all(query, params)\n    if data is None or data == []:\n        return Response(status_code=204) # No-Content",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

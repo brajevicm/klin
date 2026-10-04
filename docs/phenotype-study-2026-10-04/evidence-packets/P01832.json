@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01832",
+  "source_finding_id": "P01832",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/notify/slack.rs",
+      "before": null,
+      "after": "use super::notifier::Notifier;\n\npub struct SlackNotifier;\n\nimpl Notifier for SlackNotifier {\n    fn deliver(&self, to: &str, text: &str) -> crate::Result<()> {\n        println!(\"slack to {to}: {text}\");\n        Ok(())\n    }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "SlackNotifier in src/notify/ declares `*notifier` like 3 sibling files, 2 of which implement LegacyNotifier; is named `*Notifier` like 2 members; it does not implement LegacyNotifier, which 2 of 4 sibling files implement (e.g. email.rs, sms.rs)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

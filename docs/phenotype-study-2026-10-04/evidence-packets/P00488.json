@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00488",
+  "source_finding_id": "P00488",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        \"\"\"\n        ---\n        summary: Stop and delete handler\n        description: |\n          Stops a running workflow handler by cancelling its tasks. Optionally removes the\n          handler from the persistence store if purge=true.\n        parameters:\n          - in: path\n            name: handler_id\n            required: true\n            schema:\n              type: string\n            description: Workflow handler identifier.\n          - in: query\n            name: purge\n            required: false\n            schema:\n              type: boolean\n              default: false\n            description: If true, also deletes the handler from the store, otherwise updates the status to cancelled.\n        responses:\n          200:\n            description: Handler cancelled and deleted or cancelled only\n            content:\n              application/json:\n                schema:\n                  type: object\n                  properties:\n                    status:\n                      type: string\n                      enum: [deleted, cancelled]",
+      "after": "                    detail=f\"Failed to deserialize event: {e}\", status_code=400\n                )\n\n            # Send the event to the context\n            try:\n                ctx.send_event(event, step=step)\n            except Exception as e:\n                raise HTTPException(\n                    detail=f\"Failed to send event: {e}\", status_code=400\n                )\n\n            return JSONResponse({\"status\": \"sent\"})\n\n        except HTTPException:\n            raise\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error processing request: {e}\", status_code=500\n            )\n\n    async def _cancel_handler(self, request: Request) -> JSONResponse:\n        \"\"\"\n        ---\n        summary: Stop and delete handler\n        description: |\n          Stops a running workflow handler by cancelling its tasks. Optionally removes the\n          handler from the persistence store if purge=true.\n        parameters:\n          - in: path\n            name: handler_id\n            required: true",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

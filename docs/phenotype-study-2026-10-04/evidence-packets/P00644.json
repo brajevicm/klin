@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00644",
+  "source_finding_id": "P00644",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add docstring review list and tasks\n\n## Summary\n- scan repo for missing spaCy style docstrings\n- list all problematic files in `docs/missing_docstrings.md`\n- generate task list in `docs/docstring_tasks.md`\n\n## Testing\n- `python - <<'EOF'\nimport os, ast\nmissing=[]\nfor dirpath,_,files in os.walk('.'):\n    for f in files:\n        if f.endswith('.py'):\n            path=os.path.join(dirpath,f)\n            try:\n                tree=ast.parse(open(path,'r',encoding='utf-8').read())\n            except Exception:\n                continue\n            if (ast.get_docstring(tree) is None or\n                any(isinstance(n,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef)) and ast.get_docstring(n) is None for n in ast.walk(tree))):\n                missing.append(path)\nprint('missing count',len(missing))\nEOF",
+  "diff_context": [
+    {
+      "path": ".config/component_generator/scripts/dag.py",
+      "before": "            return chunks[0][2]\n        except IndexError:\n            return cleaned_text\n    except ImportError:\n        print(\n            \"[WARNING] MdSnippetChunker not found. Returning full content without chunking.\"\n        )\n        return full_content\n    except Exception as e:\n        print(f\"[ERROR] Failed to chunk content: {e}\")\n        return full_content\n\n\n# 5. FILE SAVING / UTILITY\ndef save_file(content, filepath):\n    \"\"\"\n    Creates directories as needed and saves the given content to the specified filepath.\n    \"\"\"\n    try:\n        os.makedirs(os.path.dirname(filepath), exist_ok=True)\n        with open(filepath, \"w\", encoding=\"utf-8\") as f:\n            f.write(content)\n        print(f\"[INFO] Wrote file: {filepath}\")\n    except Exception as e:\n        print(f\"[ERROR] Failed to save file '{filepath}': {e}\")\n\n\ndef save_payload(package_payload_filename, global_attrs):\n    \"\"\"\n    Saves the final global_attrs payload to a local payload.json for reference.\n    \"\"\"",
+      "after": "        from swarmauri.chunkers.MdSnippetChunker import MdSnippetChunker\n\n        chunker = MdSnippetChunker()\n        chunks = chunker.chunk_text(cleaned_text)\n        if len(chunks) > 1:\n            return cleaned_text\n        try:\n            return chunks[0][2]\n        except IndexError:\n            return cleaned_text\n    except ImportError:\n        print(\n            \"[WARNING] MdSnippetChunker not found. Returning full content without chunking.\"\n        )\n        return full_content\n    except Exception as e:\n        print(f\"[ERROR] Failed to chunk content: {e}\")\n        return full_content\n\n\n# 5. FILE SAVING / UTILITY\ndef save_file(content, filepath):\n    \"\"\"\n    Creates directories as needed and saves the given content to the specified filepath.\n    \"\"\"\n    try:\n        os.makedirs(os.path.dirname(filepath), exist_ok=True)\n        with open(filepath, \"w\", encoding=\"utf-8\") as f:\n            f.write(content)\n        print(f\"[INFO] Wrote file: {filepath}\")\n    except Exception as e:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

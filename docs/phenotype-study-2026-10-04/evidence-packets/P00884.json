@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00884",
+  "source_finding_id": "P00884",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "[Feature] Add `then` block for handling command exit codes\n\n# Add `then` block for handling command exit codes\n\nThis PR implements a new `then` block feature that allows developers to handle command and function exit codes directly, providing a unified way to access the exit status regardless of success or failure.\n\n## 🎯 Feature Overview\n\nThe `then` block executes after a command or failable function completes, receiving the exit code as a parameter. This provides an alternative to using separate `failed` and `succeeded` blocks when you need to handle both success and failure cases uniformly.\n\n### Syntax\n\n```amber\n$ command $ then(exit_code) {\n    echo \"Command finished with exit code: {exit_code}\"\n}\n```\n\n## 📋 Implementation Details\n\n### Core Changes\n\n1. **New `then` module** (`src/modules/condition/then.rs`)\n   - Parses `then(param_name)` syntax with mandatory parameter\n   - Validates parameter name is not empty\n   - Creates variable in scope with `Type::Int` for the exit code\n   - Generates bash code that captures `$?` and assigns it to the parameter\n\n2. **Command handling** (`src/modules/command/cmd.rs`)\n   - Integrated `then` block parsing for commands\n   - Added conflict detection to prevent mixing `then` with `failed`/`succeeded`\n   - Unified error handling through `handle_multiple_failure_handlers` method\n\n3. **Function invocation** (`src/modules/function/invocation.rs`)\n   - Added `then` block support for failable functions\n   - Consistent conflict detection with commands\n   - Updated error messages to include `then` as an option\n\n4. **Type consistency** (`src/modules/condition/failed.rs`, `succeeded.rs`)\n   - Changed `__status` variable type from `Type::Num` to `Type::Int`\n   - Ensures consistent integer types for all exit codes\n\n### Key Features\n\n✅ **Mandatory parameter**: `then(code)` requires a parameter name - raises error if empty  \n✅ **No trust modifier needed**: Using `then` block indicates the developer handles the exit code  \n✅ **Mutually exclusive**: Cannot combine `then` with `failed` or `succeeded` blocks  \n✅ **Works everywhere**: Supports both commands and failable functions  \n✅ **Type safe**: Exit codes use `Type::Int` throughout  \n✅ **Empty block optimization**: Returns `__status` variable when block is empty  \n\n## 🧪 Tests\n\nAdded comprehensive test coverage:\n\n### Validity Tests\n- `then_block.ab`: Basic success case with exit code 0\n- `then_block_failure.ab`: Failure case with non-zero exit code\n\n### Error Tests  \n…",
+  "diff_context": [
+    {
+      "path": "src/modules/condition/then.rs",
+      "before": null,
+      "after": "use heraclitus_compiler::prelude::*;\nuse crate::fragments;\nuse crate::modules::prelude::*;\nuse crate::modules::block::Block;\nuse crate::modules::types::Type;\nuse crate::modules::variable::variable_name_extensions;\n\n#[derive(Debug, Clone)]\npub struct Then {\n    pub is_parsed: bool,\n    block: Box<Block>,\n    param_name: String,\n    param_global_id: Option<usize>\n}\n\nimpl SyntaxModule<ParserMetadata> for Then {\n    syntax_name!(\"Then Expression\");\n\n    fn new() -> Self {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "cycle: src/modules/block.rs"
+  ],
+  "measurement_holes": [
+    "layering coverage has 1 unmeasured and 0 unreadable files"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

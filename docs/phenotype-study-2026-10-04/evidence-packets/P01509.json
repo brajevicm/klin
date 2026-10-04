@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01509",
+  "source_finding_id": "P01509",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "        return f\"{task_path.name}.{attempt}-of-{self._n_attempts}.{self._run_id}\"\n\n    def _execute_tasks(self) -> BenchmarkResults:\n        \"\"\"Execute all tasks in parallel and collect their results.\"\"\"\n        results = BenchmarkResults()\n        max_workers = min(len(self._dataset), self._n_concurrent_trials)\n\n        with ThreadPoolExecutor(max_workers=max_workers) as executor:\n            # For each task and attempt, create a future\n            future_to_task = {}\n            for task_path in self._dataset:\n                for attempt in range(1, self._n_attempts + 1):\n                    trial_name = self._get_trial_name(task_path, attempt)\n                    future = executor.submit(\n                        self._execute_single_trial,\n                        trial_name=trial_name,\n                        task_path=task_path,\n                    )\n                    future_to_task[future] = (trial_name, attempt)\n\n            # Create progress bar for all attempts\n            total_tasks = len(self._dataset) * self._n_attempts\n\n            with Progress(\n                SpinnerColumn(),\n                TextColumn(\"{task.description}\"),\n                BarColumn(),\n                TaskProgressColumn(),\n                TimeElapsedColumn(),\n            ) as progress:\n                task = progress.add_task(",
+      "after": "\n        if self._s3_bucket:\n            self._upload_results_to_s3()\n        else:\n            logger.warning(\n                \"Upload results requested but no S3 bucket configured. \"\n                \"Set the S3_BUCKET_NAME environment variable in .env\"\n            )\n\n        try:\n            metadata = RunMetadata.model_validate_json(\n                self._run_metadata_output_path.read_text()\n            )\n            upload_results_to_db(metadata, results.results)\n            logger.info(\"Successfully uploaded metadata and task results to database\")\n        except Exception as e:\n            logger.error(f\"Failed to upload to database: {e}\")\n\n    def run(self) -> BenchmarkResults:\n        \"\"\"Run the harness.\n\n        Returns:\n            BenchmarkResults: The results of the harness run.\n        \"\"\"\n        logger.info(\"Starting harness run\")\n        logger.info(f\"Run ID: {self._run_id}\")\n\n        self._write_run_metadata()\n        self._create_run_lock()\n\n        results = self._execute_tasks()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

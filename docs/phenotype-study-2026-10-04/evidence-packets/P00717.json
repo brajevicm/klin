@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00717",
+  "source_finding_id": "P00717",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    remote_port_row.set_text(str(existing_rule.get('remote_port', '')))\n        else:\n            type_row.set_selected(0)\n            # Sane defaults for a new rule\n            listen_addr_row.set_text('127.0.0.1')\n            listen_port_row.set_text('8080')\n            remote_host_row.set_text('localhost')\n            remote_port_row.set_text('22')\n\n        # Avoid shadowing translation function '_' by using a local alias\n        t = _\n        def _sync_visibility(*args):\n            idx = type_row.get_selected()\n            # Apply label set per type\n            if idx == 0:\n                # Local\n                listen_addr_row.set_visible(False)\n                listen_port_row.set_title(t(\"Local Port\"))\n                remote_host_row.set_visible(True)\n                remote_host_row.set_title(t(\"Target Host\"))\n                remote_port_row.set_visible(True)\n                remote_port_row.set_title(t(\"Target Port\"))\n            elif idx == 1:\n                # Remote\n                listen_addr_row.set_visible(True)\n                listen_addr_row.set_title(t(\"Remote host (optional)\"))\n                listen_port_row.set_title(t(\"Remote port\"))\n                remote_host_row.set_visible(True)\n                remote_host_row.set_title(t(\"Destination host\"))\n                remote_port_row.set_visible(True)\n                remote_port_row.set_title(t(\"Destination port\"))",
+      "after": "                    except Exception:\n                        listen_port_row.set_text('8080')\n                    if not remote_host_row.get_text().strip():\n                        remote_host_row.set_text('localhost')\n                    try:\n                        if int((remote_port_row.get_text() or '0').strip() or '0') == 0:\n                            remote_port_row.set_text('22')\n                    except Exception:\n                        remote_port_row.set_text('22')\n                elif idx == 1:  # Remote\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('localhost')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('8080')\n                    except Exception:\n                        listen_port_row.set_text('8080')\n                    if not remote_host_row.get_text().strip():\n                        remote_host_row.set_text('localhost')\n                    try:\n                        if int((remote_port_row.get_text() or '0').strip() or '0') == 0:\n                            remote_port_row.set_text('22')\n                    except Exception:\n                        remote_port_row.set_text('22')\n                else:  # Dynamic\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('127.0.0.1')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('1080')\n                    except Exception:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

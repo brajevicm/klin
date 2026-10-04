@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01513",
+  "source_finding_id": "P01513",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Eval: Fix agent log mounting path\n\nCurrently, `/logs/` folder on container mounts to `runs/{run_id}/{task_id}/{trial_name}/sessions/` path. This is not ideal; it should not have included `sessions` folder.\n\nThis PR fixes this problem. Now agents (running inside container) could write logs to `/logs/agent-logs` folder - see example in #413 :\n\n```python\nenv[\"SAVE_TRAJECTORY_PATH\"] = \"/logs/agent-logs\"\n```\n\nWith this PR:\n\n```bash\nruns/2025-07-06__09-54-50/broken-python\n└── broken-python.1-of-1.2025-07-06__09-54-50\n    ├── agent-logs\n    │   └── ae7569df-9beb-4118-aa18-8532e3404885-0c8e73fd80775642.json\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 10 files\n```\n\nWithout this PR:\n```bash\nruns/2025-07-06__10-02-25/broken-python\n└── broken-python.1-of-1.2025-07-06__10-02-25\n    ├── agent-logs\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 9 files\n```",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "\n        if self._s3_bucket:\n            self._upload_results_to_s3()\n        else:\n            logger.warning(\n                \"Upload results requested but no S3 bucket configured. \"\n                \"Set the S3_BUCKET_NAME environment variable in .env\"\n            )\n\n        try:\n            metadata = RunMetadata.model_validate_json(\n                self._run_metadata_output_path.read_text()\n            )\n            upload_results_to_db(metadata, results.results)\n            logger.info(\"Successfully uploaded metadata and task results to database\")\n        except Exception as e:\n            logger.error(f\"Failed to upload to database: {e}\")\n\n    def run(self) -> BenchmarkResults:\n        \"\"\"Run the harness.\n\n        Returns:\n            BenchmarkResults: The results of the harness run.\n        \"\"\"\n        logger.info(\"Starting harness run\")\n        logger.info(f\"Run ID: {self._run_id}\")\n\n        self._write_run_metadata()\n        self._create_run_lock()\n\n        results = self._execute_tasks()",
+      "after": "\n        if self._s3_bucket:\n            self._upload_results_to_s3()\n        else:\n            logger.warning(\n                \"Upload results requested but no S3 bucket configured. \"\n                \"Set the S3_BUCKET_NAME environment variable in .env\"\n            )\n\n        try:\n            metadata = RunMetadata.model_validate_json(\n                self._run_metadata_output_path.read_text()\n            )\n            upload_results_to_db(metadata, results.results)\n            logger.info(\"Successfully uploaded metadata and task results to database\")\n        except Exception as e:\n            logger.error(f\"Failed to upload to database: {e}\")\n\n    def run(self) -> BenchmarkResults:\n        \"\"\"Run the harness.\n\n        Returns:\n            BenchmarkResults: The results of the harness run.\n        \"\"\"\n        logger.info(\"Starting harness run\")\n        logger.info(f\"Run ID: {self._run_id}\")\n\n        self._write_run_metadata()\n        self._create_run_lock()\n\n        results = self._execute_tasks()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

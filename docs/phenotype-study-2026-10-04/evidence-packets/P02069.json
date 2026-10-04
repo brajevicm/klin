@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02069",
+  "source_finding_id": "P02069",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "                    f\"{len(failed_uploads)} files failed to upload.\"\n                )\n                self._logger.warning(\n                    f\"Failed files: {', '.join(failed_uploads[:5])}\"\n                    + (\"...\" if len(failed_uploads) > 5 else \"\")\n                )\n\n        except Exception as e:\n            self._logger.error(f\"Failed to upload {self._run_path} results to S3: {e}\")\n\n    def _write_run_metadata(self) -> None:\n        metadata = RunMetadata(\n            run_id=self._run_id,\n            dataset_path=(\n                str(self._dataset.config.path.absolute())\n                if self._dataset.config.path\n                else None\n            ),\n            dataset_name=self._dataset.config.name,\n            dataset_version=self._dataset.config.version,\n            output_path=str(self._output_path.absolute()),\n            agent_name=self._agent_class.name(),\n            no_rebuild=self._no_rebuild,\n            cleanup=self._cleanup,\n            log_level=self._log_level,\n            task_ids=self._dataset.task_ids,\n            exclude_task_ids=self._exclude_task_ids,\n            n_tasks=self._n_tasks,\n            n_concurrent_trials=self._n_concurrent_trials,\n            n_attempts=self._n_attempts,\n            dataset_size=len(self._dataset),",
+      "after": "        trial_handler = TrialHandler(\n            trial_name=trial_name,\n            input_path=task_path,\n            output_path=self._run_path,\n        )\n\n        try:\n            trial_results = self._run_trial(trial_handler)\n\n            trial_handler.trial_paths.results_path.write_text(\n                trial_results.model_dump_json(indent=4)\n            )\n\n            return trial_results\n\n        except Exception as e:\n            logger.error(\n                f\"Harness execution failed for {task_path}: {e}\",\n                exc_info=True,\n            )\n            trial_results = TrialResults(\n                trial_name=trial_name,\n                task_id=trial_handler.task_id,\n                instruction=trial_handler.instruction,\n                failure_mode=FailureMode.UNKNOWN_AGENT_ERROR,\n            )\n            return trial_results\n\n    def _get_trial_name(\n        self,\n        task_path: Path,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

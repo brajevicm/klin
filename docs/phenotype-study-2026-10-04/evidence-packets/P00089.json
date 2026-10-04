@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00089",
+  "source_finding_id": "P00089",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        return\n    \n    def on_cancel_clicked(self, button):\n        \"\"\"Handle cancel button click\"\"\"\n        self.close()\n    \n    def on_save_clicked(self, *_args):\n        \"\"\"Handle save button click or dialog save response\"\"\"\n        # Block save and focus the first invalid field if any inline validation fails\n        invalid_row = None\n        try:\n            invalid_row = self._validate_all_required_for_save()\n        except Exception:\n            invalid_row = None\n        if invalid_row is not None:\n            try:\n                self._focus_row(invalid_row)\n            except Exception:\n                pass\n            return\n        # Validate required fields\n        if not self.nickname_row.get_text().strip():\n            self.show_error(_(\"Please enter a nickname for this connection\"))\n            return\n            \n        # Initialize forwarding_rules list if needed\n        if not hasattr(self, 'forwarding_rules') or self.forwarding_rules is None:\n            self.forwarding_rules = []\n        \n        # Persist exactly what is in the editor list (enabled rules only) - no sanitization\n        forwarding_rules = [dict(r) for r in self.forwarding_rules if r.get('enabled', True)]",
+      "after": "        # Resolve keyfile from dropdown/browse/subtitle/existing\n        try:\n            keyfile_value = ''\n            if hasattr(self, 'key_dropdown') and hasattr(self, '_key_paths'):\n                sel = self.key_dropdown.get_selected()\n                if 0 <= sel < len(self._key_paths):\n                    pth = self._key_paths[sel]\n                    if pth and pth != '__BROWSE__':\n                        keyfile_value = pth\n            if (not keyfile_value) and hasattr(self, '_selected_keyfile_path') and self._selected_keyfile_path:\n                keyfile_value = str(self._selected_keyfile_path)\n            if (not keyfile_value) and hasattr(self.keyfile_row, 'get_subtitle'):\n                keyfile_value = self.keyfile_row.get_subtitle() or ''\n            if (not keyfile_value) and self.is_editing and hasattr(self, 'connection') and self.connection:\n                keyfile_value = str(getattr(self.connection, 'keyfile', '') or '')\n        except Exception:\n            keyfile_value = ''\n\n        # Verify passphrase before proceeding with save\n        key_passphrase = self.key_passphrase_row.get_text()\n        \n        if keyfile_value and keyfile_value != \"Select key file\" and key_passphrase:\n            # Verify the passphrase matches the private key\n            if not self.validator.verify_key_passphrase(keyfile_value, key_passphrase):\n                self.show_error(_(\"The passphrase you entered is invalid for this key. Please try again.\"))\n                return\n\n        # Store key passphrase in secret storage if provided\n        if keyfile_value and keyfile_value != \"Select key file\":\n            try:\n                if hasattr(self, 'connection_manager') and self.connection_manager:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

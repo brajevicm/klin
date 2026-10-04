@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00299",
+  "source_finding_id": "P00299",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Fix SSE parsing for responses pipeline\"\n\nReverts [project metadata omitted]#222",
+  "diff_context": [
+    {
+      "path": "functions/pipes/openai_responses_api_pipeline.py",
+      "before": "    \"\"\"\n    payload = json.loads(data)\n    payload = _to_obj(payload)\n    return ResponsesEvent(type=event_type or \"message\", **payload)\n\n\nasync def execute_responses_tool_calls(\n    calls: list[SimpleNamespace],\n    registry: dict[str, Any],\n    log: logging.Logger | None = None,\n) -> list[Any]:\n    \"\"\"Run tool calls asynchronously and return their results.\"\"\"\n    tasks: list[asyncio.Task] = []\n    for call in calls:\n        entry = registry.get(call.name)\n        if entry is None:\n            tasks.append(asyncio.create_task(asyncio.sleep(0, result=\"Tool not found\")))\n        else:\n            args = json.loads(call.arguments or \"{}\")\n            tasks.append(asyncio.create_task(entry[\"callable\"](**args)))\n    try:\n        return await asyncio.gather(*tasks)\n    except Exception as ex:  # pragma: no cover - log and return error results\n        if log:\n            log.error(\"Tool execution failed: %s\", ex)\n        return [f\"Error: {ex}\"] * len(tasks)\n",
+      "after": "    calls: list[SimpleNamespace],\n    registry: dict[str, Any],\n    log: logging.Logger | None = None,\n) -> list[Any]:\n    \"\"\"Run tool calls asynchronously and return their results.\"\"\"\n    tasks: list[asyncio.Task] = []\n    for call in calls:\n        entry = registry.get(call.name)\n        if entry is None:\n            tasks.append(asyncio.create_task(asyncio.sleep(0, result=\"Tool not found\")))\n        else:\n            args = json.loads(call.arguments or \"{}\")\n            tasks.append(asyncio.create_task(entry[\"callable\"](**args)))\n    try:\n        return await asyncio.gather(*tasks)\n    except Exception as ex:  # pragma: no cover - log and return error results\n        if log:\n            log.error(\"Tool execution failed: %s\", ex)\n        return [f\"Error: {ex}\"] * len(tasks)\n",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

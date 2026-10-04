@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01776",
+  "source_finding_id": "P01776",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "style(dpmodel): enforce type annotations\n\nThis PR fixes critical PyTorch JIT compilation errors that were preventing model serialization and deployment. The main issue was that PyTorch JIT cannot handle certain type annotations, specifically `Union[np.ndarray, Any]` (the `Array` type) and `KeysView[str]` return types.\n\n## Problem\n\nPyTorch JIT compilation was failing with errors like:\n```\nAssertionError: Unsupported annotation typing.Union[numpy.ndarray, typing.Any] could not be resolved because None could not be resolved.\n```\n\nThis prevented users from using `torch.jit.script()` on trained models, blocking deployment scenarios.\n\n## Solution\n\n- **Removed incompatible type annotations** from methods used by PyTorch JIT compilation\n- **Added `# noqa:ANNxxx` comments** to suppress ruff linting warnings for missing type annotations\n- **Fixed `KeysView[str]` return types** that caused JIT compilation failures\n- **Maintained type safety** elsewhere in the codebase where JIT compatibility isn't required\n\n## Files Changed\n\n- `deepmd/dpmodel/utils/network.py`: Removed `Array` type annotations from `call` methods and activation functions\n- `deepmd/dpmodel/output_def.py`: Removed `KeysView[str]` return type annotations from `keys` methods\n\n## Validation\n\nAll PyTorch JIT tests now pass:\n- ✅ TestEnergyModelSeA.test_jit\n- ✅ TestDOSModelSeA.test_jit  \n- ✅ TestEnergyModelDPA1.test_jit\n- ✅ TestEnergyModelDPA2.test_jit\n- ✅ TestEnergyModelHybrid.test_jit\n- ✅ TestEnergyModelHybrid2.test_jit\n- ✅ TestEnergyModelDPA2IntRcut.test_jit\n\nModels can now be successfully JIT compiled for deployment while maintaining full functionality and backward compatibility.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n✨ Let [project metadata omitted] coding agent [set things up for you]([external reference omitted] — coding agent works faster and does higher quality work when set up for your repo.",
+  "diff_context": [
+    {
+      "path": "deepmd/dpmodel/utils/network.py",
+      "before": "        check_version_compatibility(data.pop(\"@version\", 1), 1, 1)\n        data.pop(\"@class\", None)\n        return cls(**data)\n\n\ndef aggregate(\n    data: np.ndarray,\n    owners: np.ndarray,\n    average=True,\n    num_owner=None,\n):\n    \"\"\"\n    Aggregate rows in data by specifying the owners.\n\n    Parameters\n    ----------\n    data : data tensor to aggregate [n_row, feature_dim]\n    owners : specify the owner of each row [n_row, 1]\n    average : if True, average the rows, if False, sum the rows.\n        Default = True\n    num_owner : the number of owners, this is needed if the\n        max idx of owner is not presented in owners tensor\n        Default = None\n\n    Returns\n    -------\n    output: [num_owner, feature_dim]\n    \"\"\"\n    xp = array_api_compat.array_namespace(data, owners)\n    bin_count = xp_bincount(owners)\n    bin_count = xp.where(bin_count == 0, xp.ones_like(bin_count), bin_count)",
+      "after": "    @classmethod\n    def deserialize(cls, data: dict) -> \"NetworkCollection\":\n        \"\"\"Deserialize the networks from a dict.\n\n        Parameters\n        ----------\n        data : dict\n            The dict to deserialize from.\n        \"\"\"\n        data = data.copy()\n        check_version_compatibility(data.pop(\"@version\", 1), 1, 1)\n        data.pop(\"@class\", None)\n        return cls(**data)\n\n\ndef aggregate(  # noqa: ANN201\n    data,  # noqa: ANN001\n    owners,  # noqa: ANN001\n    average: bool = True,\n    num_owner: Optional[int] = None,\n):\n    \"\"\"\n    Aggregate rows in data by specifying the owners.\n\n    Parameters\n    ----------\n    data : data tensor to aggregate [n_row, feature_dim]\n    owners : specify the owner of each row [n_row, 1]\n    average : if True, average the rows, if False, sum the rows.\n        Default = True\n    num_owner : the number of owners, this is needed if the",
+      "context": null
+    }
+  ],
+  "observations": [
+    "def aggregate(  # noqa: ANN201"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

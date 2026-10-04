@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00683",
+  "source_finding_id": "P00683",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "(extension) preload next episode's danmaku when video reaches 50% point [DA-116]",
+  "diff_context": [
+    {
+      "path": "packages/danmaku-anywhere/src/content/player/monitors/VideoEvent.service.ts",
+      "before": null,
+      "after": "    invariant(\n      percentage >= 0 && percentage <= 1,\n      'Percentage must be between 0 and 1'\n    )\n\n    const timeEvent: TimeEventData = {\n      percentage,\n      callback,\n      triggered: false,\n    }\n\n    if (!this.timeEventListeners.has(callback)) {\n      this.timeEventListeners.set(callback, new Set([timeEvent]))\n    } else {\n      // biome-ignore lint/style/noNonNullAssertion: checked with has()\n      this.timeEventListeners.get(callback)!.add(timeEvent)\n    }\n  }\n\n  private handleTimeUpdate(video: HTMLVideoElement) {\n    if (this.timeEventListeners.size === 0) {\n      return\n    }\n\n    const currentTime = video.currentTime\n    const duration = video.duration\n\n    if (duration === 0 || isNaN(duration)) {\n      return\n    }",
+      "context": null
+    }
+  ],
+  "observations": [
+    "this.timeEventListeners.get(callback)!.add(timeEvent)"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

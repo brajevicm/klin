@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01247",
+  "source_finding_id": "P01247",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        if field_name == 'name':\n            self._update_existing_names_in_validator()\n            result = self.validator.validate_connection_name(text)\n        elif field_name == 'hostname':\n            raw = (text or '').strip()\n            if raw.startswith('[') and raw.endswith(']') and len(raw) > 2:\n                raw = raw[1:-1]\n            result = self.validator.validate_hostname(raw, allow_empty=True)\n        elif field_name == 'port':\n            result = self.validator.validate_port(text, context)\n        elif field_name == 'username':\n            result = self.validator.validate_username(text)\n        else:\n            # Default: valid\n            class _Dummy:\n                is_valid = True\n                message = \"\"\n                severity = \"info\"\n            result = _Dummy()\n        # Store and apply to UI\n        self.validation_results[field_name] = result\n        self._apply_validation_to_row(row, result)\n        # Update save buttons after each validation\n        self._update_save_buttons()\n        return result\n\n    def _update_save_buttons(self):\n        try:\n            has_errors = any(\n                (k in self.validation_results and not self.validation_results[k].is_valid)\n                for k in ('name', 'hostname', 'port', 'username')",
+      "after": "        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(message or \"\")\n        except Exception:\n            pass\n        # Also mirror the message into tooltips for visibility/accessibility\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(message or None)\n        except Exception:\n            pass\n        try:\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(message or None)\n        except Exception:\n            pass\n        try:\n            if is_error:\n                row.add_css_class('error')\n            else:\n                row.remove_css_class('error')\n        except Exception:\n            pass\n\n    def _row_clear_message(self, row):\n        self._row_set_message(row, \"\", is_error=False)\n\n    def _connect_row_validation(self, row, validator_callable):\n        # Prefer notify::text on Adw.EntryRow, fallback to child Gtk.Entry changed\n        try:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

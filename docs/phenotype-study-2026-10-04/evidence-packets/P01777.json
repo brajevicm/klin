@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01777",
+  "source_finding_id": "P01777",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "    else:  # Purple/Pink\n        return \"accent-purple\"\n\n\ndef _set_css_background(provider: Gtk.CssProvider, rgba: Optional[Gdk.RGBA]):\n    if rgba is None:\n        try:\n            provider.load_from_data(b\"\")\n            logger.debug(\"Cleared CSS background provider\")\n        except Exception:\n            logger.debug(\"Failed to clear CSS background\", exc_info=True)\n        return\n\n    try:\n        color_value = rgba.to_string()\n    except Exception:\n        try:\n            provider.load_from_data(b\"\")\n            logger.debug(\"Cleared CSS background provider after RGBA conversion failure\")\n        except Exception:\n            logger.debug(\"Failed to clear CSS background after RGBA conversion failure\", exc_info=True)\n        return\n\n    try:\n        css_data = (\n            \"row .sshpilot-group-color-overlay {\\n\"\n            f\"    background-color: {color_value};\\n\"\n            \"}\\n\\n\"\n            \"row:selected .sshpilot-group-color-overlay,\\n\"\n            \"row:active .sshpilot-group-color-overlay {\\n\"\n            \"    background-color: transparent;\\n\"",
+      "after": "    else:  # Purple/Pink\n        return \"accent-purple\"\n\n\ndef _set_css_background(provider: Gtk.CssProvider, rgba: Optional[Gdk.RGBA]):\n    if rgba is None:\n        try:\n            provider.load_from_data(b\"\")\n            logger.debug(\"Cleared CSS background provider\")\n        except Exception:\n            logger.debug(\"Failed to clear CSS background\", exc_info=True)\n        return\n\n    try:\n        color_value = rgba.to_string()\n    except Exception:\n        try:\n            provider.load_from_data(b\"\")\n            logger.debug(\"Cleared CSS background provider after RGBA conversion failure\")\n        except Exception:\n            logger.debug(\"Failed to clear CSS background after RGBA conversion failure\", exc_info=True)\n        return\n\n    try:\n        css_data = (\n            \"row .sshpilot-group-color-overlay {\\n\"\n            f\"    background-color: {color_value};\\n\"\n            \"}\\n\\n\"\n            \"row:selected .sshpilot-group-color-overlay,\\n\"\n            \"row:active .sshpilot-group-color-overlay {\\n\"\n            \"    background-color: transparent;\\n\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

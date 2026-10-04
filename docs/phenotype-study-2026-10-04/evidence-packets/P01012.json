@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01012",
+  "source_finding_id": "P01012",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/compiler/test/server/entrypoint-resolver.test.ts",
+      "before": null,
+      "after": "it(\"falls back to tspMain from package.json when no client entrypoints exist\", async () => {\n  const host = createMockHost();\n  const dir = \"/lib\";\n  const filePath = joinPaths(dir, \"src\", \"index.tsp\");\n  const pkgPath = joinPaths(dir, \"package.json\");\n  const tspMain = \"entry.tsp\";\n  const expected = joinPaths(dir, tspMain);\n\n  vi.mocked(host.stat).mockImplementation(async (path) => {\n    return path === expected ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);\n  });\n\n  vi.mocked(host.readFile).mockImplementation(async (path: string) => {\n    // Provide tspMain only for the starting directory's package.json; others are empty\n    const text = path === pkgPath ? JSON.stringify({ tspMain }) : \"{}\";\n    return { text } as any;\n  });\n\n  const { log } = createLogger();\n  const result = await resolveEntrypointFile(host, undefined, filePath, undefined, log);\n  expect(result).toBe(expected);\n});\n\nit(\"falls back to default main.tsp when no client entrypoints and no tspMain in package.json\", async () => {\n  const host = createMockHost();\n  const dir = \"/lib\";\n  const filePath = joinPaths(dir, \"src\", \"index.tsp\");\n  const expected = joinPaths(dir, \"main.tsp\");\n\n  vi.mocked(host.stat).mockImplementation(async (path) => {\n    return path === expected ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);",
+      "context": null
+    }
+  ],
+  "observations": [
+    "return { text } as any;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

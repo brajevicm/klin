@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01662",
+  "source_finding_id": "P01662",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "tests/slug.rs",
+      "before": "    assert_eq!(slugify(&\"x\".repeat(100)).unwrap().len(), 40);\n}\n\n#[test]\nfn rejects_an_empty_title() {\n    assert_eq!(slugify(\"   \"), Err(SlugError::Empty));\n}\n\n#[test]\n#[should_panic(expected = \"Empty\")]\nfn unwrapping_an_empty_title_panics() {\n    slugify(\"\").unwrap();\n}",
+      "after": "    assert_eq!(slugify(&\"x\".repeat(100)).unwrap().len(), 40);\n}\n\n#[test]\nfn rejects_an_empty_title() {\n    assert_eq!(slugify(\"   \"), Err(SlugError::Empty));\n}\n\n#[test]\n#[should_panic(expected = \"Empty\")]\nfn unwrapping_an_empty_title_panics() {\n    slugify(\"\").unwrap();\n}\n\n#[test]\nfn a_long_title_does_not_panic() {\n    slugify(&\"y\".repeat(10_000)).unwrap();\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "a_long_title_does_not_panic"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

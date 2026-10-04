@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00084",
+  "source_finding_id": "P00084",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "            # Add new tool call if not already present\n            if tool_call_id not in pending_calls:\n                pending_calls.append(tool_call_id)\n                \n                # Update the state using SessionManager\n                success = await self._session_manager.set_state_value(\n                    session_id=session_id,\n                    app_name=app_name,\n                    user_id=user_id,\n                    key=\"pending_tool_calls\",\n                    value=pending_calls\n                )\n                \n                if success:\n                    logger.info(f\"Added tool call {tool_call_id} to session {session_id} pending list\")\n        except Exception as e:\n            logger.error(f\"Failed to add pending tool call {tool_call_id} to session {session_id}: {e}\")\n    \n    async def _remove_pending_tool_call(self, session_id: str, tool_call_id: str):\n        \"\"\"Remove a tool call from the session's pending list.\n\n        Uses efficient session lookup to find the session without needing explicit app_name/user_id.\n\n        Args:\n            session_id: The session ID (thread_id)\n            tool_call_id: The tool call ID to remove\n        \"\"\"\n        try:\n            # Use efficient session metadata lookup\n            metadata = self._get_session_metadata(session_id)",
+      "after": "            # Add new tool call if not already present\n            if tool_call_id not in pending_calls:\n                pending_calls.append(tool_call_id)\n                \n                # Update the state using SessionManager\n                success = await self._session_manager.set_state_value(\n                    session_id=session_id,\n                    app_name=app_name,\n                    user_id=user_id,\n                    key=\"pending_tool_calls\",\n                    value=pending_calls\n                )\n                \n                if success:\n                    logger.info(f\"Added tool call {tool_call_id} to session {session_id} pending list\")\n        except Exception as e:\n            logger.error(f\"Failed to add pending tool call {tool_call_id} to session {session_id}: {e}\")\n    \n    async def _remove_pending_tool_call(self, session_id: str, tool_call_id: str):\n        \"\"\"Remove a tool call from the session's pending list.\n\n        Uses efficient session lookup to find the session without needing explicit app_name/user_id.\n\n        Args:\n            session_id: The session ID (thread_id)\n            tool_call_id: The tool call ID to remove\n        \"\"\"\n        try:\n            # Use efficient session metadata lookup\n            metadata = self._get_session_metadata(session_id)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

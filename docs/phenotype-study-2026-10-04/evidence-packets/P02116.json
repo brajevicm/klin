@@ -1,0 +1,23 @@
+{
+  "packet_id": "P02116",
+  "source_finding_id": "P02116",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Fix CrossFrameLMS responses\n\n## Summary\n- avoid undefined fields in CrossFrameLMS responses\n- add async CrossFrameLMS tests\n\n## Testing\n- `npm run lint --silent`\n- `npm test --silent`",
+  "diff_context": [
+    {
+      "path": "test/facades/CrossFrameFacade.spec.ts",
+      "before": "    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    expect(apiMock.LMSGetValue).toHaveBeenCalledWith(\"cmi.core.lesson_status\");\n    expect(src.postMessage).toHaveBeenCalledWith(\n      { messageId: \"42\", result: \"completed\", error: undefined },\n      \"http://parent\",\n    );\n  });\n\n  it(\"handles missing method with error\", () => {\n    const msg: MessageData = { messageId: \"99\", method: \"foo\", params: [] };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;\n    expect(resp.error).toBeDefined();\n    expect(resp.error!.message).toMatch(/not found/);\n  });\n\n  it(\"handles API method throwing an exception\", () => {\n    // Mock the API method to throw an error\n    const errorMessage = \"Test error message\";\n    apiMock.LMSGetValue = vi.fn().mockImplementation(() => {\n      throw new Error(errorMessage);\n    });\n\n    const msg: MessageData = {\n      messageId: \"42\",\n      method: \"LMSGetValue\",\n      params: [\"cmi.core.lesson_status\"],",
+      "after": "    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    expect(apiMock.LMSGetValue).toHaveBeenCalledWith(\"cmi.core.lesson_status\");\n    expect(src.postMessage).toHaveBeenCalledWith(\n      { messageId: \"42\", result: \"completed\" },\n      \"http://parent\",\n    );\n  });\n\n  it(\"handles missing method with error\", () => {\n    const msg: MessageData = { messageId: \"99\", method: \"foo\", params: [] };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;\n    expect(resp.error).toBeDefined();\n    expect(resp.error!.message).toMatch(/not found/);\n  });\n\n  it(\"handles API method throwing an exception\", () => {\n    // Mock the API method to throw an error\n    const errorMessage = \"Test error message\";\n    apiMock.LMSGetValue = vi.fn().mockImplementation(() => {\n      throw new Error(errorMessage);\n    });\n\n    const msg: MessageData = {\n      messageId: \"42\",\n      method: \"LMSGetValue\",\n      params: [\"cmi.core.lesson_status\"],",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

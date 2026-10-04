@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01458",
+  "source_finding_id": "P01458",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/compiler/test/server/entrypoint-resolver.test.ts",
+      "before": null,
+      "after": "\nafterEach(() => {\n  vi.restoreAllMocks();\n});\n\nfunction createLogger() {\n  const logs: ServerLog[] = [];\n  const log = (l: ServerLog) => logs.push(l);\n  return { log, logs };\n}\n\nfunction createMockHost(): SystemHost {\n  return {\n    readFile: vi.fn(),\n    stat: vi.fn(),\n  } as any;\n}\n\nit(\"returns client-provided entrypoint in current directory\", async () => {\n  const host = createMockHost();\n  const cwd = \"/ws/project\";\n  const filePath = joinPaths(cwd, \"src\", \"doc.tsp\");\n  const expected = joinPaths(cwd, \"custom.tsp\");\n\n  // Mock host.stat to return isFile: true only for the expected path\n  vi.mocked(host.stat).mockImplementation(async (path) => {\n    return path === expected ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);\n  });\n\n  // Mock host.readFile to handle package.json reads\n  vi.mocked(host.readFile).mockImplementation(async (path) => {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "} as any;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

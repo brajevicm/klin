@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01961",
+  "source_finding_id": "P01961",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/package.json",
+      "before": null,
+      "after": "{\n  \"name\": \"@tanstack/firebase-db-collection\",\n  \"version\": \"0.0.1\",\n  \"description\": \"Firebase/Firestore collection integration for TanStack DB\",\n  \"author\": \"Kyle Mathews\",\n  \"license\": \"MIT\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/TanStack/db\",\n    \"directory\": \"packages/firebase-db-collection\"\n  },\n  \"publishConfig\": {\n    \"access\": \"public\"\n  },\n  \"keywords\": [\n    \"tanstack\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:@firebase/rules-unit-testing"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

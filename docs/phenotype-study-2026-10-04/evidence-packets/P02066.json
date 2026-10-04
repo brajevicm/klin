@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02066",
+  "source_finding_id": "P02066",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "\n        return \"\\n\".join(config_lines)\n\n    def _update_parent_connection(self):\n        \"\"\"Update the parent connection object with current advanced tab data\"\"\"\n        try:\n            parent_dialog = self.get_ancestor(Adw.Window)\n            if parent_dialog and hasattr(parent_dialog, 'connection') and parent_dialog.connection:\n                extra_config = self.get_extra_ssh_config()\n                parent_dialog.connection.extra_ssh_config = extra_config\n                if hasattr(parent_dialog.connection, 'data'):\n                    parent_dialog.connection.data['extra_ssh_config'] = extra_config\n                logger.debug(\n                    f\"Updated parent connection with extra SSH config: {extra_config}\"\n                )\n        except Exception as e:\n            logger.error(f\"Error updating parent connection: {e}\")\n\n    def set_extra_ssh_config(self, config_string):\n        \"\"\"Set extra SSH config from a string\"\"\"\n        logger.debug(f\"set_extra_ssh_config called with: '{config_string}'\")\n\n        if not config_string.strip():\n            logger.debug(\"Config string is empty, returning\")\n            return\n\n        entries = []\n        for line in config_string.split('\\n'):\n            line = line.strip()\n            if line and not line.startswith('#'):\n                parts = line.split(' ', 1)",
+      "after": "\n        return \"\\n\".join(config_lines)\n\n    def _update_parent_connection(self):\n        \"\"\"Update the parent connection object with current advanced tab data\"\"\"\n        try:\n            parent_dialog = self.get_ancestor(Adw.Window)\n            if parent_dialog and hasattr(parent_dialog, 'connection') and parent_dialog.connection:\n                extra_config = self.get_extra_ssh_config()\n                parent_dialog.connection.extra_ssh_config = extra_config\n                if hasattr(parent_dialog.connection, 'data'):\n                    parent_dialog.connection.data['extra_ssh_config'] = extra_config\n                logger.debug(\n                    f\"Updated parent connection with extra SSH config: {extra_config}\"\n                )\n        except Exception as e:\n            logger.error(f\"Error updating parent connection: {e}\")\n\n    def set_extra_ssh_config(self, config_string):\n        \"\"\"Set extra SSH config from a string\"\"\"\n        logger.debug(f\"set_extra_ssh_config called with: '{config_string}'\")\n\n        if not config_string.strip():\n            logger.debug(\"Config string is empty, returning\")\n            return\n\n        entries = []\n        for line in config_string.split('\\n'):\n            line = line.strip()\n            if line and not line.startswith('#'):\n                parts = line.split(' ', 1)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

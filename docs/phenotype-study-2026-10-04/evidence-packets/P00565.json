@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00565",
+  "source_finding_id": "P00565",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    logger.debug(f\"Could not find certificate '{current_path}' in dropdown paths\")\n        except Exception as e:\n            logger.debug(f\"Failed to sync certificate dropdown: {e}\")\n    \n    def on_delete_forwarding_rule_clicked(self, button, rule):\n        \"\"\"Handle delete port forwarding rule button click\"\"\"\n        if not hasattr(self, 'forwarding_rules'):\n            return\n            \n        # Remove the rule from the list\n        self.forwarding_rules = [r for r in self.forwarding_rules if r != rule]\n        \n        # Reload the rules UI\n        self.load_port_forwarding_rules()\n        \n        logger.info(f\"Deleted port forwarding rule: {rule}\")\n    \n    def on_edit_forwarding_rule_clicked(self, button, rule):\n        \"\"\"Handle edit port forwarding rule button click\"\"\"\n        logger.info(f\"Edit port forwarding rule clicked: {rule}\")\n        self._open_rule_editor(existing_rule=rule)\n    \n    def on_add_forwarding_rule_clicked(self, button):\n        \"\"\"Handle add port forwarding rule button click\"\"\"\n        logger.info(\"Add port forwarding rule clicked\")\n        self._open_rule_editor(existing_rule=None)\n    \n    def on_view_port_info_clicked(self, button):\n        \"\"\"Handle view port info button click\"\"\"\n        self._show_port_info_dialog()",
+      "after": "        type_model.append(_(\"Remote\"))\n        type_model.append(_(\"Dynamic\"))\n        type_row = Adw.ComboRow()\n        type_row.set_title(_(\"Type\"))\n        type_row.set_model(type_model)\n\n        listen_addr_row = Adw.EntryRow(title=_(\"Bind address (optional)\"))\n        listen_port_row = Adw.EntryRow()\n        listen_port_row.set_title(_(\"Local port\"))\n        try:\n            lpe2 = listen_port_row.get_child()\n            if lpe2 and hasattr(lpe2, 'set_input_purpose'):\n                lpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if lpe2 and hasattr(lpe2, 'set_max_length'):\n                lpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        remote_host_row = Adw.EntryRow(title=_(\"Host\"))\n        remote_port_row = Adw.EntryRow()\n        remote_port_row.set_title(_(\"Port\"))\n        try:\n            rpe2 = remote_port_row.get_child()\n            if rpe2 and hasattr(rpe2, 'set_input_purpose'):\n                rpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if rpe2 and hasattr(rpe2, 'set_max_length'):\n                rpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        # Pack rows",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

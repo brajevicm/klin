@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00693",
+  "source_finding_id": "P00693",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/core/utils/test_opanai.py",
+      "before": "            model=model,\n            messages=[\n                {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n                {\"role\": \"user\", \"content\": \"Hello!\"},\n            ],\n            max_tokens=100,\n            timeout=10,\n        )\n        # 返回AI的回复\n        return True, str(response.choices[0].message.content)\n    except Exception as e:\n        return False, str(e)\n\n\ndef get_openai_models(base_url, api_key):\n    try:\n        # 创建OpenAI客户端并获取模型列表\n        models = openai.OpenAI(\n            base_url=base_url, api_key=[redacted], timeout=5\n        ).models.list()\n\n        # 根据不同模型设置权重进行排序\n        def get_model_weight(model_name):\n            model_name = model_name.lower()\n            if model_name.startswith((\"gpt-4o\", \"claude-3-5\")):\n                return 10\n            elif model_name.startswith(\"gpt-4\"):\n                return 5\n            elif model_name.startswith(\"claude-3\"):\n                return 6\n            elif model_name.startswith((\"deepseek\", \"glm\")):",
+      "after": "    try:\n        # 创建OpenAI客户端并发送请求到OpenAI API\n        response = openai.OpenAI(\n            base_url=base_url, api_key=[redacted], timeout=10\n        ).chat.completions.create(\n            model=model,\n            messages=[\n                {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n                {\"role\": \"user\", \"content\": \"Hello!\"},\n            ],\n            max_completion_tokens=10,\n            timeout=10,\n        )\n        # 返回AI的回复\n        return True, response.choices[0].message.content\n    except Exception as e:\n        return False, str(e)\n\n\ndef get_openai_models(base_url, api_key):\n    try:\n        # 创建OpenAI客户端并获取模型列表\n        models = openai.OpenAI(\n            base_url=base_url, api_key=[redacted], timeout=5\n        ).models.list()\n\n        # 根据不同模型设置权重进行排序\n        def get_model_weight(model_name):\n            model_name = model_name.lower()\n            if model_name.startswith((\"gpt-5\", \"claude-4\")):\n                return 10",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

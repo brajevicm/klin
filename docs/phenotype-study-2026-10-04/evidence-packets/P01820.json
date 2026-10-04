@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01820",
+  "source_finding_id": "P01820",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "API Endpoints used by Sentry CLI\n\nAdd a static inventory of HTTP endpoints used by sentry-cli and instructions to regenerate it.\n\nThis PR delivers the generated documentation as per the plan, which involved identifying and documenting all HTTP endpoints within the `sentry-cli` codebase. It includes a structured list of endpoints and the `ripgrep` commands used for extraction and validation.\n\n---\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "script.py",
+      "before": null,
+      "after": "            r_copy[\"section\"] = section_name\n            all_rows.append(r_copy)\n\n    if not args.no_sort:\n        # sorting is handled inside render_one_big_table\n        pass\n\n    output_text = render_one_big_table(all_rows) + \"\\n\"\n\n    try:\n        if args.output == \"-\":\n            sys.stdout.write(output_text)\n        else:\n            with open(args.output, \"w\", encoding=\"utf-8\") as fh:\n                fh.write(output_text)\n    except Exception as exc:\n        print(f\"Failed to write output {args.output!r}: {exc}\", file=sys.stderr)\n        return 4\n\n    return 0\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main())",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

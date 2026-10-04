@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01266",
+  "source_finding_id": "P01266",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: added `hk test`",
+  "diff_context": [
+    {
+      "path": "src/cli/test.rs",
+      "before": null,
+      "after": "        }\n        // Execute tests in parallel up to configured jobs\n        let jobs = crate::settings::Settings::get().jobs.get();\n        let semaphore = std::sync::Arc::new(Semaphore::new(jobs));\n        let mut handles = vec![];\n        for (step_name, step, test_name, test) in to_run {\n            let sem = semaphore.clone();\n            handles.push(tokio::spawn(async move {\n                let _permit = sem.acquire_owned().await.unwrap();\n                let r = crate::test_runner::run_test_named(&step, &test_name, &test).await;\n                (step_name, test_name, r)\n            }));\n        }\n        let mut failures = 0usize;\n        for h in handles {\n            let (step_name, test_name, res) = h.await.unwrap();\n            match res {\n                Ok(r) if r.ok => println!(\"ok - {step_name} :: {test_name} ({}ms)\", r.duration_ms),\n                Ok(r) => {\n                    failures += 1;\n                    if r.reasons.is_empty() {\n                        println!(\n                            \"not ok - {step_name} :: {test_name} (code={}; {}ms)\",\n                            r.code, r.duration_ms\n                        );\n                    } else {\n                        eprintln!(\n                            \"not ok - {step_name} :: {test_name} (code={}; {}ms)\\n  reasons: {}\",\n                            r.code,\n                            r.duration_ms,\n                            r.reasons.join(\", \")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let (step_name, test_name, res) = h.await.unwrap();"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

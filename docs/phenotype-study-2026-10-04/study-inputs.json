@@ -1,0 +1,51 @@
+{
+  "study_version": 1,
+  "study_commit": "43a139a8a16964a65ceb97b939c3499c9cf90b4d",
+  "aidev_revision": "c63c8a57a2de34fc03fa83722412824af4d8753b",
+  "aidev_sha256": {
+    "pull_request.parquet": "c0b8e81e1d099905ef9ea420bf907d45179771ff5972afce6c219d8cafcef3e8",
+    "repository.parquet": "a08e34be4921c708be88a4ebd9e275b32f37fd442bb2770c0b69c94834dc6aa7"
+  },
+  "selection_rule": "docs/phenotype-study-2026-10-04/populations.tsv",
+  "agent_target_per_language": 40,
+  "agent_counts": {
+    "Rust": 40,
+    "TypeScript": 40,
+    "Python": 40
+  },
+  "matched_human_counts": {
+    "Rust": 27,
+    "TypeScript": 31,
+    "Python": 34
+  },
+  "unmatched_agent_change_ids": [
+    "agent-rust-3465556709",
+    "agent-rust-3219610150",
+    "agent-rust-3187718516",
+    "agent-rust-3214926636",
+    "agent-rust-2987499469",
+    "agent-rust-3285710404",
+    "agent-rust-3285808338",
+    "agent-rust-3322053786",
+    "agent-rust-3538230294",
+    "agent-rust-3291383129",
+    "agent-rust-3086723892",
+    "agent-rust-3305439597",
+    "agent-rust-3287031579",
+    "agent-typescript-3280770728",
+    "agent-typescript-3437109293",
+    "agent-typescript-3138292486",
+    "agent-typescript-3438659354",
+    "agent-typescript-3391967160",
+    "agent-typescript-3519641294",
+    "agent-typescript-2836523710",
+    "agent-typescript-3389924952",
+    "agent-typescript-3387473646",
+    "agent-python-3194442530",
+    "agent-python-3492994182",
+    "agent-python-3435741365",
+    "agent-python-3126265212",
+    "agent-python-3436791686",
+    "agent-python-3332973837"
+  ]
+}

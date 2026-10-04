@@ -1,0 +1,20 @@
+{
+  "study_commit": "43a139a8a16964a65ceb97b939c3499c9cf90b4d",
+  "klin_version": "klin 0.4.1",
+  "klin_sha256": "61f30b3c6c9067cc96eedb9ec92aba36cccaee74cde0ac99c98aa7fb97439eee",
+  "ruff_version": "ruff 0.16.10",
+  "ruff_recipe": {
+    "injection": "S102,S307,S602,S604,S605,S608",
+    "swallowed": "BLE001,S110,S112",
+    "flags": [
+      "--isolated",
+      "--no-cache",
+      "--ignore-noqa"
+    ]
+  },
+  "prototypes": {
+    "asserts": "0680b0fd66efeba71e529237c62d4b08ac56b122408b4da428fc55a17a33cfaf",
+    "relations": "55ddc2bdcadccd5cdffe766a32add8f413cf5867c7fa684cf333ed358795eb2f",
+    "shapes": "b48470cf4681b953e8542ae119e8d35918ab440a56408e51e2f1929eb8bdc598"
+  }
+}

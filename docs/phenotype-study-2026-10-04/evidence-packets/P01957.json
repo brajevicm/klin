@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01957",
+  "source_finding_id": "P01957",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        if hasattr(self, 'dynamic_forwarding_enabled') and self.dynamic_forwarding_enabled.get_active():\n            if hasattr(self, 'dynamic_bind_row') and not self._validate_host_row(self.dynamic_bind_row, allow_empty=True):\n                return self.dynamic_bind_row\n            if hasattr(self, 'dynamic_port_row') and not self._validate_port_row(self.dynamic_port_row, _(\"Local Port\")):\n                return self.dynamic_port_row\n        return None\n    \n    def build_connection_groups(self):\n        \"\"\"Build PreferencesGroups for the General page\"\"\"\n        # Create main container\n        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)\n        page.set_margin_top(12)\n        page.set_margin_bottom(12)\n        page.set_margin_start(12)\n        page.set_margin_end(12)\n        page.set_hexpand(True)\n        page.set_vexpand(True)\n        \n        # Basic Settings Group\n        basic_group = Adw.PreferencesGroup(title=_(\"Basic Settings\"))\n        \n        # Nickname\n        self.nickname_row = Adw.EntryRow(title=_(\"Nickname\"))\n        basic_group.add(self.nickname_row)\n        \n        # Hostname\n        self.hostname_row = Adw.EntryRow(title=_(\"Hostname / IP address\"))\n        basic_group.add(self.hostname_row)\n\n        # Username\n        self.username_row = Adw.EntryRow(title=_(\"Username\"))",
+      "after": "        # Authentication Group\n        auth_group = Adw.PreferencesGroup(title=_(\"Authentication\"))\n        \n        # Authentication Method\n        auth_model = Gtk.StringList()\n        auth_model.append(_(\"Key-based (recommended)\"))\n        auth_model.append(_(\"Password\"))\n        \n        self.auth_method_row = Adw.ComboRow()\n        self.auth_method_row.set_title(_(\"Authentication Method\"))\n        self.auth_method_row.set_model(auth_model)\n        self.auth_method_row.connect(\"notify::selected\", self.on_auth_method_changed)\n        # Default to key-based for new connections\n        try:\n            self.auth_method_row.set_selected(0)\n        except Exception:\n            pass\n        auth_group.add(self.auth_method_row)\n\n        # Key selection mode for key-based auth\n        key_select_model = Gtk.StringList()\n        key_select_model.append(_(\"Automatic\"))\n        key_select_model.append(_(\"Use a specific key\"))\n        self.key_select_row = Adw.ComboRow()\n        self.key_select_row.set_title(_(\"Key selection\"))\n        self.key_select_row.set_model(key_select_model)\n        # default: Auto (try all available keys)\n        self.key_select_row.set_selected(0)\n        self.key_select_row.connect(\"notify::selected\", self.on_key_select_changed)\n        auth_group.add(self.key_select_row)\n        ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

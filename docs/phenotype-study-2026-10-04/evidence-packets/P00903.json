@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00903",
+  "source_finding_id": "P00903",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear dragged connections tracking\n                if hasattr(window, \"_dragged_connections\"):\n                    delattr(window, \"_dragged_connections\")\n                \n                # Clear drag state\n                window._drag_in_progress = False\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag end: {e}\")\n\n\n    # -- display updates --------------------------------------------------\n\n    @staticmethod\n    def _install_pf_css():\n        try:\n            display = Gdk.Display.get_default()\n            if not display:\n                return\n            if getattr(display, \"_pf_css_installed\", False):\n                return\n            provider = Gtk.CssProvider()\n            css = \"\"\"",
+      "after": "                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear dragged connections tracking\n                if hasattr(window, \"_dragged_connections\"):\n                    delattr(window, \"_dragged_connections\")\n                \n                # Clear drag state\n                window._drag_in_progress = False\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in drag end: {e}\")\n\n\n    # -- display updates --------------------------------------------------\n\n    @staticmethod\n    def _install_pf_css():\n        try:\n            display = Gdk.Display.get_default()\n            if not display:\n                return\n            if getattr(display, \"_pf_css_installed\", False):\n                return\n            provider = Gtk.CssProvider()\n            css = \"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

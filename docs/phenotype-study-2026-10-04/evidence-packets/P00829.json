@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00829",
+  "source_finding_id": "P00829",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        # Authentication Method\n        auth_model = Gtk.StringList()\n        auth_model.append(_(\"Key-based (recommended)\"))\n        auth_model.append(_(\"Password\"))\n        \n        self.auth_method_row = Adw.ComboRow()\n        self.auth_method_row.set_title(_(\"Authentication Method\"))\n        self.auth_method_row.set_model(auth_model)\n        self.auth_method_row.connect(\"notify::selected\", self.on_auth_method_changed)\n        # Default to key-based for new connections\n        try:\n            self.auth_method_row.set_selected(0)\n        except Exception:\n            pass\n        auth_group.add(self.auth_method_row)\n\n        # Key selection mode for key-based auth\n        key_select_model = Gtk.StringList()\n        key_select_model.append(_(\"Automatic\"))\n        key_select_model.append(_(\"Use a specific key\"))\n        self.key_select_row = Adw.ComboRow()\n        self.key_select_row.set_title(_(\"Key selection\"))\n        self.key_select_row.set_model(key_select_model)\n        # default: Auto (try all available keys)\n        self.key_select_row.set_selected(0)\n        self.key_select_row.connect(\"notify::selected\", self.on_key_select_changed)\n        auth_group.add(self.key_select_row)\n        \n        # Keyfile dropdown with detected keys and an inline Browse item\n        self.keyfile_row = Adw.ActionRow(title=_(\"SSH Key\"), subtitle=_(\"Select key file or leave empty for auto-detection\"))\n        # Build dropdown items from detected keys",
+      "after": "                        drop.set_selected(0)\n                    except Exception:\n                        pass\n                    self.browse_for_key_file()\n                elif path:\n                    self._selected_keyfile_path = path\n                    if hasattr(self.keyfile_row, 'set_subtitle'):\n                        self.keyfile_row.set_subtitle(path)\n                    \n                    # Update passphrase field for the selected key\n                    self._update_passphrase_for_key(path)\n                    \n                    # Auto-select matching certificate if available\n                    self._auto_select_matching_certificate(path)\n                    \n            except Exception:\n                pass\n        try:\n            self.key_dropdown.connect('notify::selected', _on_key_selected)\n        except Exception:\n            pass\n\n        # Pack dropdown and add to row\n        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)\n        box.append(self.key_dropdown)\n        self.keyfile_row.add_suffix(box)\n        self.keyfile_row.set_activatable(False)\n        auth_group.add(self.keyfile_row)\n\n        self.key_only_row = Adw.SwitchRow()\n        self.key_only_row.set_title(_(\"Only use the specified key\"))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

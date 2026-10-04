@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00696",
+  "source_finding_id": "P00696",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix bugs in health checks\n\nFix bugs:\n\n- Only the last slice was getting health checks\n- Health checks were only checked once at the start of the loop\n- There was no timeout for waiting on the health checks",
+  "diff_context": [
+    {
+      "path": "src/levanter/infra/ray_tpu.py",
+      "before": "    persists across Ray tasks. This doesn't apply to our docker-based workloads, but it does apply to other\n    tasks that use JAX directly.\n    \"\"\"\n    if os.path.exists(\"/tmp/libtpu_lockfile\"):\n        try:\n            os.unlink(\"/tmp/libtpu_lockfile\")\n        except FileNotFoundError:\n            pass\n        except PermissionError:\n            logger.warning(\"Failed to remove lockfile\")\n            try:\n                os.system(\"sudo rm /tmp/libtpu_lockfile\")\n            except Exception:  # noqa\n                pass\n\n\n@dataclass\nclass RunDockerOnPodConfig:\n    image_id: str\n    command: list[str] | str\n    tpu_type: str\n    env: dict = dataclasses.field(default_factory=dict)\n    name: str = \"levanter\"\n    retries: int = 10\n    node_count: int = 1\n\n\ndef submit_tpu_job_on_ray(config: RunDockerOnPodConfig, ray_address: str, run_id: Optional[str] = None):\n    \"\"\"\n    Submit a job to run on a TPU pod on a Ray cluster. This programmatically submits a job to the Ray cluster.\n    This should be run on your local machine, not on the Ray cluster itself.",
+      "after": "    libtpu only allows one process to access the TPU at a time, and it uses a lockfile to enforce this.\n    Ordinarily a lockfile would be removed when the process exits, but in the case of Ray, the process is\n    a long-running daemon that doesn't typically exit until the node is shut down. This means that the lockfile\n    persists across Ray tasks. This doesn't apply to our docker-based workloads, but it does apply to other\n    tasks that use JAX directly.\n    \"\"\"\n    if os.path.exists(\"/tmp/libtpu_lockfile\"):\n        try:\n            os.unlink(\"/tmp/libtpu_lockfile\")\n        except FileNotFoundError:\n            pass\n        except PermissionError:\n            logger.warning(\"Failed to remove lockfile\")\n            try:\n                os.system(\"sudo rm /tmp/libtpu_lockfile\")\n            except Exception:  # noqa\n                pass\n\n\n@dataclass\nclass RunDockerOnPodConfig:\n    image_id: str\n    command: list[str] | str\n    tpu_type: str\n    env: dict = dataclasses.field(default_factory=dict)\n    name: str = \"levanter\"\n    retries: int = 10\n    node_count: int = 1\n\n\ndef submit_tpu_job_on_ray(config: RunDockerOnPodConfig, ray_address: str, run_id: Optional[str] = None):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

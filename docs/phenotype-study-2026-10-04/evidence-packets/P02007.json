@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02007",
+  "source_finding_id": "P02007",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Add optional API key protection for REST server",
+  "diff_context": [
+    {
+      "path": "src/cmd/server.rs",
+      "before": "\n    #[test]\n    fn test_default_crack_chars() {\n        assert_eq!(\n            default_crack_chars(),\n            \"abcdefghijklmnopqrstuvwxyz0123456789\"\n        );\n    }\n\n    #[test]\n    fn test_default_concurrency() {\n        assert_eq!(default_concurrency(), 20);\n    }\n\n    #[test]\n    fn test_default_max_length() {\n        assert_eq!(default_max_length(), 4);\n    }\n\n    #[test]\n    fn test_default_jwk_protocol() {\n        assert_eq!(default_jwk_protocol(), \"https\");\n    }\n\n    #[test]\n    fn test_default_max_crack_attempts() {\n        assert_eq!(default_max_crack_attempts(), 100);\n    }\n\n    #[tokio::test]\n    async fn test_handle_decode_valid_token() {",
+      "after": "    utils::log_info(\"  POST /verify      - Verify JWT token\".to_string());\n    utils::log_info(\"  POST /crack       - Crack JWT secret\".to_string());\n    utils::log_info(\"  POST /payload     - Generate attack payloads\".to_string());\n    utils::log_info(\"  POST /scan        - Scan JWT for vulnerabilities\".to_string());\n\n    let app = build_router(None);\n    let addr = format!(\"{}:{}\", host, port);\n    let listener = tokio::net::TcpListener::bind(&addr)\n        .await\n        .expect(\"Failed to bind to address\");\n\n    utils::log_success(format!(\"Server started successfully on {}\", addr));\n\n    axum::serve(listener, app)\n        .await\n        .expect(\"Server failed to start\");\n}\n\npub async fn execute_with_api_key(host: &str, port: u16, api_key: [redacted] {\n    utils::log_info(\"Starting JWT-HACK REST API server\".to_string());\n    utils::log_info(format!(\"Listening on http://{}:{}\", host, port));\n    utils::log_info(\"Available endpoints:\".to_string());\n    utils::log_info(\"  POST /health      - Health check\".to_string());\n    utils::log_info(\"  POST /decode      - Decode JWT token\".to_string());\n    utils::log_info(\"  POST /encode      - Encode JWT token\".to_string());\n    utils::log_info(\"  POST /verify      - Verify JWT token\".to_string());\n    utils::log_info(\"  POST /crack       - Crack JWT secret\".to_string());\n    utils::log_info(\"  POST /payload     - Generate attack payloads\".to_string());\n    utils::log_info(\"  POST /scan        - Scan JWT for vulnerabilities\".to_string());\n    utils::log_info(\"API key protection enabled (header: X-API-KEY)\".to_string());",
+      "context": null
+    }
+  ],
+  "observations": [
+    ".expect(\"Server failed to start\");"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

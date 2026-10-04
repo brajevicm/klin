@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00282",
+  "source_finding_id": "P00282",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        if not text:\n            self._row_set_message(row, _(f\"{label_text} is required\"), is_error=True)\n            return False\n        self._row_clear_message(row)\n        return True\n\n    def _is_nickname_taken(self, name: str) -> bool:\n        try:\n            mgr = getattr(self.parent_window, 'connection_manager', None)\n            if mgr is None or not hasattr(mgr, 'connections'):\n                return False\n            normalized = (name or '').strip().lower()\n            current_name_norm = ''\n            try:\n                if self.is_editing and self.connection:\n                    current_name_norm = str(getattr(self.connection, 'nickname', '')).strip().lower()\n            except Exception:\n                current_name_norm = ''\n            for conn in getattr(mgr, 'connections', []) or []:\n                other_name = getattr(conn, 'nickname', None)\n                if not other_name:\n                    continue\n                other_norm = str(other_name).strip().lower()\n                # Skip the same connection object and also skip the current connection name when editing\n                if current_name_norm and (conn is self.connection or other_norm == current_name_norm):\n                    continue\n                if other_norm == normalized:\n                    return True\n        except Exception:\n            return False\n        return False",
+      "after": "            if allow_empty:\n                self._row_clear_message(row)\n                return True\n            self._row_set_message(row, _(\"Host is required\"), is_error=True)\n            return False\n        # Support bracketed IPv6 like [::1]\n        text_unbr = text[1:-1] if (text.startswith('[') and text.endswith(']') and len(text) > 2) else text\n        lower = text_unbr.lower()\n        if lower in (\"localhost\",):\n            self._row_clear_message(row)\n            return True\n        try:\n            ipaddress.ip_address(text_unbr)\n            self._row_clear_message(row)\n            return True\n        except Exception:\n            # digits/dots but not valid ip → error\n            if re.fullmatch(r\"[0-9.]+\", text_unbr):\n                self._row_set_message(row, _(\"Invalid IPv4 address\"), is_error=True)\n                return False\n            # RFC1123-ish hostname\n            hostname_regex = re.compile(r\"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*\\.?$\")\n            if not hostname_regex.match(text_unbr):\n                self._row_set_message(row, _(\"Invalid hostname\"), is_error=True)\n                return False\n        self._row_clear_message(row)\n        return True\n\n    def _validate_port_row(self, row, label_text: str = \"Port\"):\n        text = (row.get_text() if hasattr(row, 'get_text') else \"\").strip()\n        if not text:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

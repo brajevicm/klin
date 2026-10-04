@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00011",
+  "source_finding_id": "P00011",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "ci(pypi): Re-enable PyPI releases\n\nRevert the changes from #2668 and #2680 to re-enable PyPI releases, as our [project limit has been increased]([external reference omitted]\n\nFixes #2669 \nFixes CLI-150",
+  "diff_context": [
+    {
+      "path": "pyproject.toml",
+      "before": null,
+      "after": "[build-system]\nrequires = [\"setuptools\", \"wheel\", \"setuptools-rust\"]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency pypi:setuptools-rust"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

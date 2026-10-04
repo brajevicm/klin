@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01922",
+  "source_finding_id": "P01922",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        )\n\n        if start_event is not None:\n            input_ev = workflow.workflow.start_event_class.model_validate(start_event)\n        else:\n            input_ev = None\n\n        try:\n            handler = workflow.workflow.run(\n                ctx=context, start_event=input_ev, **run_kwargs\n            )\n            wrapper = self._run_workflow_handler(handler_id, workflow.name, handler)\n            await handler\n            return JSONResponse(wrapper.to_dict())\n        except Exception as e:\n            raise HTTPException(detail=f\"Error running workflow: {e}\", status_code=500)\n\n    async def _get_events_schema(self, request: Request) -> JSONResponse:\n        \"\"\"\n        ---\n        summary: Get JSON schema for start event\n        description: |\n          Gets the JSON schema of the start and stop events from the specified workflow and returns it under \"start\" (start event) and \"stop\" (stop event)\n        parameters:\n          - in: path\n            name: name\n            required: true\n            schema:\n              type: string\n            description: Registered workflow name.\n        requestBody:",
+      "after": "            request, workflow.workflow, workflow.name\n        )\n\n        if start_event is not None:\n            input_ev = workflow.workflow.start_event_class.model_validate(start_event)\n        else:\n            input_ev = None\n\n        try:\n            handler = workflow.workflow.run(\n                ctx=context, start_event=input_ev, **run_kwargs\n            )\n            wrapper = self._run_workflow_handler(handler_id, workflow.name, handler)\n            await handler\n            return JSONResponse(wrapper.to_dict())\n        except Exception as e:\n            raise HTTPException(detail=f\"Error running workflow: {e}\", status_code=500)\n\n    async def _get_events_schema(self, request: Request) -> JSONResponse:\n        \"\"\"\n        ---\n        summary: Get JSON schema for start event\n        description: |\n          Gets the JSON schema of the start and stop events from the specified workflow and returns it under \"start\" (start event) and \"stop\" (stop event)\n        parameters:\n          - in: path\n            name: name\n            required: true\n            schema:\n              type: string\n            description: Registered workflow name.",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

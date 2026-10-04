@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00105",
+  "source_finding_id": "P00105",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/src/firestore.ts",
+      "before": null,
+      "after": "  cancel: () => void\n\n  /**\n   * Get the Firestore collection reference\n   */\n  getCollectionRef: () => CollectionReference<DocumentData>\n\n  /**\n   * Wait for all pending writes to be acknowledged by the server\n   */\n  waitForSync: () => Promise<void>\n}\n\ninterface BufferedEvent {\n  type: \"added\" | \"modified\" | \"removed\"\n  data: any\n  doc: QueryDocumentSnapshot\n}\n\nasync function executeBatchedWrites(\n  firestore: Firestore,\n  operations: Array<{\n    type: \"set\" | \"update\" | \"delete\"\n    ref: DocumentReference\n    data?: any\n  }>\n): Promise<void> {\n  // Split into chunks of FIRESTORE_BATCH_LIMIT\n  for (let i = 0; i < operations.length; i += FIRESTORE_BATCH_LIMIT) {\n    const chunk = operations.slice(i, i + FIRESTORE_BATCH_LIMIT)\n    const batch = writeBatch(firestore)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "data: any"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

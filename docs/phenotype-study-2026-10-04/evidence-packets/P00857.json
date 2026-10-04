@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00857",
+  "source_finding_id": "P00857",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                listen_port_row.set_title(t(\"Local Port\"))\n                remote_host_row.set_visible(True)\n                remote_host_row.set_title(t(\"Target Host\"))\n                remote_port_row.set_visible(True)\n                remote_port_row.set_title(t(\"Target Port\"))\n            elif idx == 1:\n                # Remote\n                listen_addr_row.set_visible(True)\n                listen_addr_row.set_title(t(\"Remote host (optional)\"))\n                listen_port_row.set_title(t(\"Remote port\"))\n                remote_host_row.set_visible(True)\n                remote_host_row.set_title(t(\"Destination host\"))\n                remote_port_row.set_visible(True)\n                remote_port_row.set_title(t(\"Destination port\"))\n            else:\n                # Dynamic\n                listen_addr_row.set_visible(True)\n                listen_addr_row.set_title(t(\"Bind address (optional)\"))\n                listen_port_row.set_title(t(\"Local port\"))\n                remote_host_row.set_visible(False)\n                remote_port_row.set_visible(False)\n            # Apply smart defaults when switching types and fields are empty\n            try:\n                if idx == 0:  # Local\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('127.0.0.1')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('8080')\n                    except Exception:\n                        listen_port_row.set_text('8080')",
+      "after": "                    if not remote_host_row.get_text().strip():\n                        remote_host_row.set_text('localhost')\n                    try:\n                        if int((remote_port_row.get_text() or '0').strip() or '0') == 0:\n                            remote_port_row.set_text('22')\n                    except Exception:\n                        remote_port_row.set_text('22')\n                else:  # Dynamic\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('127.0.0.1')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('1080')\n                    except Exception:\n                        listen_port_row.set_text('1080')\n            except Exception:\n                pass\n        type_row.connect('notify::selected', _sync_visibility)\n        _sync_visibility()\n\n        # Handle button clicks\n        def _on_cancel_clicked(button):\n            dialog.destroy()\n        \n        def _on_save_clicked(button):\n            self._save_rule_from_editor(existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row)\n            dialog.destroy()\n        \n        cancel_button.connect('clicked', _on_cancel_clicked)\n        save_button.connect('clicked', _on_save_clicked)\n        ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

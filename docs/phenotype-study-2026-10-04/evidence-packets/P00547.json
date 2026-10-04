@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00547",
+  "source_finding_id": "P00547",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Optimize json and binxml streaming paths\n\nImplement buffered JSON writer, optimize EventData aggregation, and use SmallVec for attributes to reduce allocations and tiny write churn in hot streaming paths.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "evtx (Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "JsonStreamOutput::into_writer (method)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 1 unmeasured and 0 unreadable files",
+    "public-api public surface has 0 holes and 24 opaque items"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

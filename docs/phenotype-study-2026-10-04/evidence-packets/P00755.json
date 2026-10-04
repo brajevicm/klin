@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00755",
+  "source_finding_id": "P00755",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "examples/react/todo/src/routeTree.gen.ts",
+      "before": "import { Route as QueryRouteImport } from './routes/query'\nimport { Route as ElectricRouteImport } from './routes/electric'\nimport { Route as IndexRouteImport } from './routes/index'\nimport { ServerRoute as ApiTodosServerRouteImport } from './routes/api/todos'\nimport { ServerRoute as ApiConfigServerRouteImport } from './routes/api/config'\nimport { ServerRoute as ApiTodosIdServerRouteImport } from './routes/api/todos.$id'\nimport { ServerRoute as ApiConfigIdServerRouteImport } from './routes/api/config.$id'\n\nconst rootServerRouteImport = createServerRootRoute()\n\nconst TrailbaseRoute = TrailbaseRouteImport.update({\n  id: '/trailbase',\n  path: '/trailbase',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst QueryRoute = QueryRouteImport.update({\n  id: '/query',\n  path: '/query',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst ElectricRoute = ElectricRouteImport.update({\n  id: '/electric',\n  path: '/electric',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst IndexRoute = IndexRouteImport.update({\n  id: '/',\n  path: '/',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst ApiTodosServerRoute = ApiTodosServerRouteImport.update({",
+      "after": "import { Route as QueryRouteImport } from './routes/query'\nimport { Route as FirebaseRouteImport } from './routes/firebase'\nimport { Route as ElectricRouteImport } from './routes/electric'\nimport { Route as IndexRouteImport } from './routes/index'\nimport { ServerRoute as ApiTodosServerRouteImport } from './routes/api/todos'\nimport { ServerRoute as ApiConfigServerRouteImport } from './routes/api/config'\nimport { ServerRoute as ApiTodosIdServerRouteImport } from './routes/api/todos.$id'\nimport { ServerRoute as ApiConfigIdServerRouteImport } from './routes/api/config.$id'\n\nconst rootServerRouteImport = createServerRootRoute()\n\nconst TrailbaseRoute = TrailbaseRouteImport.update({\n  id: '/trailbase',\n  path: '/trailbase',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst QueryRoute = QueryRouteImport.update({\n  id: '/query',\n  path: '/query',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst FirebaseRoute = FirebaseRouteImport.update({\n  id: '/firebase',\n  path: '/firebase',\n  getParentRoute: () => rootRouteImport,\n} as any)\nconst ElectricRoute = ElectricRouteImport.update({\n  id: '/electric',\n  path: '/electric',\n  getParentRoute: () => rootRouteImport,\n} as any)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "} as any)"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

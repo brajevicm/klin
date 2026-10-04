@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01298",
+  "source_finding_id": "P01298",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "            window._drop_indicator_position != \"on_group\"):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show group highlight indicator instead of line indicators\n            if hasattr(row, 'show_group_highlight'):\n                row.show_group_highlight(True)\n            elif hasattr(row, 'show_drop_indicator'):\n                # Fallback: show bottom indicator if group highlight not available\n                row.show_drop_indicator(False)\n\n            window._drop_indicator_row = row\n            window._drop_indicator_position = \"on_group\"\n    except Exception as e:\n        logger.error(f\"Error showing group drop indicator: {e}\")\n\n\ndef _create_ungrouped_area(window):\n    if window._ungrouped_area_row:\n        return window._ungrouped_area_row\n\n    ungrouped_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)\n\n    icon = Gtk.Image.new_from_icon_name(\"folder-open-symbolic\")\n    icon.set_pixel_size(24)\n    icon.add_css_class(\"dim-label\")\n\n    label = Gtk.Label(label=_(\"Drop connections here to ungroup them\"))\n    label.add_css_class(\"dim-label\")",
+      "after": "            window._drop_indicator_position != \"on_group\"):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show group highlight indicator instead of line indicators\n            if hasattr(row, 'show_group_highlight'):\n                row.show_group_highlight(True)\n            elif hasattr(row, 'show_drop_indicator'):\n                # Fallback: show bottom indicator if group highlight not available\n                row.show_drop_indicator(False)\n\n            window._drop_indicator_row = row\n            window._drop_indicator_position = \"on_group\"\n    except Exception as e:\n        logger.error(f\"Error showing group drop indicator: {e}\")\n\n\ndef _create_ungrouped_area(window):\n    if window._ungrouped_area_row:\n        return window._ungrouped_area_row\n\n    ungrouped_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)\n\n    icon = Gtk.Image.new_from_icon_name(\"folder-open-symbolic\")\n    icon.set_pixel_size(24)\n    icon.add_css_class(\"dim-label\")\n\n    label = Gtk.Label(label=_(\"Drop connections here to ungroup them\"))\n    label.add_css_class(\"dim-label\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01444",
+  "source_finding_id": "P01444",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "examples/react/todo/src/lib/collections.ts",
+      "before": "",
+      "after": "      updated_at: (date) => Math.floor(date.valueOf() / 1000),\n    },\n  })\n)\n\n// Firebase Todo Collection\nexport const firebaseTodoCollection = createCollection(\n  firebaseCollectionOptions({\n    id: `todos`,\n    firestore,\n    collectionName: `todos`,\n    getKey: (item) => item.id,\n    schema: selectTodoSchema,\n    rowUpdateMode: `partial`,\n    parse: {\n      created_at: (timestamp: any) =>\n        timestamp?.toDate?.() || new Date(timestamp),\n      updated_at: (timestamp: any) =>\n        timestamp?.toDate?.() || new Date(timestamp),\n    },\n  })\n)\n\n// Firebase Config Collection\nexport const firebaseConfigCollection = createCollection(\n  firebaseCollectionOptions({\n    id: `config`,\n    firestore,\n    collectionName: `config`,\n    getKey: (item) => item.id,\n    schema: selectConfigSchema,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "created_at: (timestamp: any) =>"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

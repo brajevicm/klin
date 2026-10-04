@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00711",
+  "source_finding_id": "P00711",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix debug logs citation\n\n## Summary\n- capture all log levels for debug log citation\n\n## Testing\n- `nox -s lint tests`",
+  "diff_context": [
+    {
+      "path": "functions/pipes/openai_responses_api_pipeline.py",
+      "before": "            )\n\n    async def _execute_tools(\n        self, calls: list[SimpleNamespace], registry: dict[str, Any]\n    ) -> list[Any]:\n        \"\"\"Run tool calls asynchronously and return their results.\"\"\"\n        tasks = []\n        for call in calls:\n            entry = registry.get(call.name)\n            if entry is None:\n                tasks.append(asyncio.create_task(asyncio.sleep(0, result=\"Tool not found\")))\n            else:\n                args = json.loads(call.arguments or \"{}\")\n                tasks.append(asyncio.create_task(entry[\"callable\"](**args)))\n        try:\n            return await asyncio.gather(*tasks)\n        except Exception as ex:\n            self.log.error(\"Tool execution failed: %s\", ex)\n            return [f\"Error: {ex}\"] * len(tasks)\n\n    def _apply_user_overrides(self, user_valves: BaseModel | None) -> None:\n        \"\"\"Override valve settings with user-provided values.\"\"\"\n        if not user_valves:\n            return\n\n        dump = (\n            user_valves.model_dump(exclude_none=True)\n            if hasattr(user_valves, \"model_dump\")\n            else user_valves.dict(exclude_none=True)\n        )\n        overrides = {",
+      "after": "\n    async def _execute_tools(\n        self, calls: list[SimpleNamespace], registry: dict[str, Any]\n    ) -> list[Any]:\n        \"\"\"Run tool calls asynchronously and return their results.\"\"\"\n        tasks = []\n        for call in calls:\n            entry = registry.get(call.name)\n            if entry is None:\n                tasks.append(asyncio.create_task(asyncio.sleep(0, result=\"Tool not found\")))\n            else:\n                args = json.loads(call.arguments or \"{}\")\n                tasks.append(asyncio.create_task(entry[\"callable\"](**args)))\n        try:\n            return await asyncio.gather(*tasks)\n        except Exception as ex:\n            self.log.error(\"Tool execution failed: %s\", ex)\n            return [f\"Error: {ex}\"] * len(tasks)\n\n    def _apply_user_overrides(self, user_valves: BaseModel | None) -> None:\n        \"\"\"Override valve settings with user-provided values.\"\"\"\n        if not user_valves:\n            return\n\n        dump = (\n            user_valves.model_dump(exclude_none=True)\n            if hasattr(user_valves, \"model_dump\")\n            else user_valves.dict(exclude_none=True)\n        )\n        overrides = {\n            k: v for k, v in dump.items() if not (isinstance(v, str) and v.lower() == \"inherit\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

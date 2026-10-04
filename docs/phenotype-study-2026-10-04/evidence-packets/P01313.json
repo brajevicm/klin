@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01313",
+  "source_finding_id": "P01313",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            # Add basic connection info\n            config_lines.append(f\"    HostName {host_val}\")\n            config_lines.append(f\"    User {username_val}\")\n            \n            # Add port if not default\n            if port_val and port_val != \"22\":\n                config_lines.append(f\"    Port {port_val}\")\n\n            # Add proxy settings\n            proxy_hosts = []\n            if hasattr(self, 'proxy_jump_row'):\n                proxy_hosts = [h.strip() for h in re.split(r'[\\s,]+', self.proxy_jump_row.get_text()) if h.strip()]\n            if proxy_hosts:\n                config_lines.append(f\"    ProxyJump {','.join(proxy_hosts)}\")\n            if hasattr(self, 'forward_agent_row') and self.forward_agent_row.get_active():\n                config_lines.append(\"    ForwardAgent yes\")\n\n            # Add authentication settings\n            password_val = self.password_row.get_text().strip() if hasattr(self, 'password_row') else ''\n\n            if auth_method_val == 0:  # Key-based auth (password optional)\n                if key_select_mode_val in (1, 2) and keyfile_val:  # Specific key\n                    config_lines.append(f\"    IdentityFile {keyfile_val}\")\n                    if key_select_mode_val == 1:\n                        config_lines.append(\"    IdentitiesOnly yes\")\n\n                    # Add certificate if specified (validate to skip placeholder text)\n                    if certificate_val and certificate_val.lower() not in ['select certificate file (optional)', '']:\n                        config_lines.append(f\"    CertificateFile {certificate_val}\")\n                # Add combined authentication if a password is provided\n                if password_val:",
+      "after": "                local_cmd = self.local_command_row.get_text().strip()\n                config_lines.append(\"    PermitLocalCommand yes\")\n                config_lines.append(f\"    LocalCommand {local_cmd}\")\n            \n            # Add remote command if specified\n            if hasattr(self, 'remote_command_row') and self.remote_command_row.get_text().strip():\n                remote_cmd = self.remote_command_row.get_text().strip()\n                # Ensure shell stays active after command\n                if 'exec $SHELL' not in remote_cmd:\n                    remote_cmd = f\"{remote_cmd} ; exec $SHELL -l\"\n                config_lines.append(f\"    RemoteCommand {remote_cmd}\")\n                config_lines.append(\"    RequestTTY yes\")\n            \n            return '\\n'.join(config_lines)\n            \n        except Exception as e:\n            logger.debug(f\"Failed to generate SSH config from settings: {e}\")\n            # Return a basic template if generation fails\n            return f\"\"\"# SSH Config Block for this connection\n# Generated from current settings\nHost {getattr(self, 'nickname_row', None).get_text().strip() if hasattr(self, 'nickname_row') else 'my-server'}\n    HostName {getattr(self, 'hostname_row', None).get_text().strip() if hasattr(self, 'hostname_row') else 'example.com'}\n    User {getattr(self, 'username_row', None).get_text().strip() if hasattr(self, 'username_row') else 'user'}\n    Port {getattr(self, 'port_row', None).get_text().strip() if hasattr(self, 'port_row') else '22'}\"\"\"\n    \n    def load_connection_data(self):\n        \"\"\"Load connection data into the dialog fields\"\"\"\n        if not self.is_editing or not self.connection:\n            return\n        \n        try:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00577",
+  "source_finding_id": "P00577",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "重构日志配置，移除调试模式，添加日志级别和输出文件选项；更新配置文件模式至v4.0\n\nresolve #411,#326,#143",
+  "diff_context": [
+    {
+      "path": "util/config.py",
+      "before": "    1. 命令行参数\n    2. 配置文件\n    3. 环境变量\n    \"\"\"\n    if hasattr(__cli_args, key) and getattr(__cli_args, key) is not None:\n        return getattr(__cli_args, key)\n    if key in __config:\n        return __config.get(key)\n    env_name = 'DDNS_'+key.upper()  # type:str\n    if env_name in environ:  # 大写环境变量\n        return environ.get(env_name)\n    if env_name.lower() in environ:  # 小写环境变量\n        return environ.get(env_name.lower())\n    return default",
+      "after": "                    \"ipv6.ddns.newfuture.cc\"\n                ],\n                \"index4\": \"default\",\n                \"index6\": \"default\",\n                \"ttl\": None,\n                \"proxy\": None,\n                \"log\": {\n                    \"level\": \"INFO\",\n                    \"file\": None\n                }\n            }\n            dumpjson(configure, configfile, indent=2, sort_keys=True)\n            sys.stdout.write(\n                \"New template configure file `%s` is generated.\\n\" % path)\n            sys.exit(1)\n    except Exception as e:\n        sys.exit('fail to load config from file: %s\\n%s' % (path, e))\n\n\ndef get_config(key, default=None):\n    \"\"\"\n    读取配置\n    1. 命令行参数\n    2. 配置文件\n    3. 环境变量\n    \"\"\"\n    if hasattr(__cli_args, key) and getattr(__cli_args, key) is not None:\n        return getattr(__cli_args, key)\n    if key in __config:\n        return __config.get(key)\n    env_name = 'DDNS_' + key.replace('.', '_')  # type:str",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

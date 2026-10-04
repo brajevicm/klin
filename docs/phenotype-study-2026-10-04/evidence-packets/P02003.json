@@ -1,0 +1,16 @@
+{
+  "packet_id": "P02003",
+  "source_finding_id": "P02003",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "def mgt_mlt_plot_HTML(UMAPdf, outhtml, plot_title=\"MLT_UMAP\", analysis_type = None):"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

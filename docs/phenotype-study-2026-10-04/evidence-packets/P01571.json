@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01571",
+  "source_finding_id": "P01571",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/compiler/test/server/entrypoint-resolver.test.ts",
+      "before": null,
+      "after": "    // Return empty package.json\n    return { text: \"{}\" } as any;\n  });\n\n  const { log } = createLogger();\n  const result = await resolveEntrypointFile(host, undefined, filePath, undefined, log);\n  expect(result).toBe(expected);\n});\n\nit(\"uses the given path as main when nothing else is found\", async () => {\n  const host = createMockHost();\n  const filePath = \"/standalone/file.tsp\";\n\n  vi.mocked(host.stat).mockImplementation(async (path) => {\n    // The initial path should be treated as a file, but no other files exist\n    return path === filePath ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);\n  });\n  vi.mocked(host.readFile).mockResolvedValue({ text: \"{}\" } as any);\n\n  const { log } = createLogger();\n  const result = await resolveEntrypointFile(host, undefined, filePath, undefined, log);\n  expect(result).toBe(filePath);\n});",
+      "context": null
+    }
+  ],
+  "observations": [
+    "return path === filePath ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

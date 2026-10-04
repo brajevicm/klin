@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00514",
+  "source_finding_id": "P00514",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat: Add stdin support for reading unified diffs\n\n## Summary\n\nThis PR adds support for reading unified diffs from stdin, enabling powerful pipeline workflows with difit.\n\n## Features\n\n- **Automatic detection**: Detects piped input via `\\!process.stdin.isTTY`\n- **Explicit mode**: Use `-` argument to force reading from stdin\n- **Full compatibility**: Reuses existing diff parsing logic for consistency\n- **Flexible workflows**: Works with any tool that outputs unified diff format\n\n## Usage Examples\n\n```bash\n# Basic usage - pipe git diff output\ngit diff | npx difit\n\n# Explicit stdin mode\ngit diff | npx difit -\n\n# Custom context lines\ngit diff -U10 | npx difit\n\n# Compare against merge base\ngit diff --merge-base main feature | npx difit\n\n# View diffs from other tools\ndiff -u file1.txt file2.txt | npx difit\n\n# Review saved patches\ncat changes.patch | npx difit\n```\n\n## Implementation Details\n\n- Added `readStdin()` function to read from process.stdin\n- Created `parseStdinDiff()` method that leverages existing `parseUnifiedDiff()`\n- Extracted `countLinesFromChunks()` helper to avoid code duplication\n- Added comprehensive test coverage in `git-diff.test.ts`\n- Updated server to handle pre-parsed diff data from stdin\n\n## Test Plan\n\n- [x] Added 9 new test cases for stdin parsing functionality\n- [x] Added unit test for `countLinesFromChunks` helper\n- [x] All existing tests pass (209 passed)\n- [x] Manual testing with various diff sources\n- [x] ESLint and TypeScript checks pass\n\n## Notes\n\n- Syntax highlighting works as expected (language detection from filenames in diff)\n- Comments work but use a generic storage key since there's no git commit hash\n- Image diffs cannot be displayed (no access to actual file content)\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "src/server/git-diff.test.ts",
+      "before": "",
+      "after": "        },\n        {\n          header: '@@ -5,2 +5,3 @@',\n          oldStart: 5,\n          oldLines: 2,\n          newStart: 5,\n          newLines: 3,\n          lines: [\n            { type: 'normal' as const, content: 'line5' },\n            { type: 'add' as const, content: '+new line' },\n            { type: 'normal' as const, content: 'line6' },\n          ],\n        },\n      ];\n\n      const result = (parser as any).countLinesFromChunks(chunks);\n      expect(result).toEqual({ additions: 2, deletions: 1 });\n    });\n  });\n});",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const result = (parser as any).countLinesFromChunks(chunks);"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

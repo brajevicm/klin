@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00143",
+  "source_finding_id": "P00143",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat: implement rolling timeout window and automatic retry for stuck commands\n\n## 🚀 Problem Solved\n\nCommands sometimes get stuck or become unresponsive, leaving users without feedback and requiring manual intervention. The existing 5-minute fixed timeout was too long for stuck processes and didn't distinguish between productive long-running tasks and truly hung commands.\n\n## 💡 Solution Overview\n\nThis PR implements a **rolling 30-second timeout window** with **automatic retry functionality** that intelligently handles stuck commands while allowing productive long-running tasks to complete.\n\n### Key Features\n- **🔄 Rolling Timeout**: 30-second window that resets whenever Gemini produces output\n- **🔁 Automatic Retry**: Single retry attempt on timeout/network errors  \n- **🧠 Smart Detection**: Distinguishes stuck processes from productive long tasks\n- **📢 Clear Messaging**: Real-time status updates for timeout/retry events\n\n## 🔧 Technical Implementation\n\n### Files Modified\n- **`src/constants.ts`**: Added timeout/retry configuration and status messages\n- **`src/utils/commandExecutor.ts`**: Implemented rolling timeout with proper process termination\n- **`src/utils/geminiExecutor.ts`**: Added retry wrapper with intelligent error detection\n\n### How It Works\n1. **Initial Timeout**: Starts 30-second timer when command begins\n2. **Rolling Reset**: Timer resets to 30 seconds every time data is received  \n3. **Timeout Detection**: Only triggers after 30 seconds of complete silence\n4. **Automatic Retry**: Kills process, waits 1 second, retries once\n5. **Final Failure**: Clear error message if retry also times out\n\n## ✅ Testing Verification\n\n**Rolling Timeout Window** ✅\n```bash\n# 45-second task with output every 5 seconds\nTarget duration: 45000ms → ✅ COMPLETED SUCCESSFULLY\n# Proves rolling timeout resets properly on data received\n```\n\n**Automatic Retry** ✅  \n```bash\n# 35-second silent command (sleep 35)\nError: \"Command failed after retry attempt: Command execution timed out\"\n# Proves timeout → retry → proper failure messaging\n```\n\n**Regression Testing** ✅\n- All existing tests pass\n- No breaking changes to existing functionality\n- Backward compatible with current usage patterns\n\n## 🎯 Benefits for Users\n\n### Before\n- 5-minute fixed timeout (too long for stuck processes)\n- No distinction between stuck vs productive commands  \n- No automatic recovery mechanism\n- Poor user experience with hanging commands\n\n### After  \n…",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"gemini-mcp-tool\",\n  \"version\": \"1.1.4\",\n  \"description\": \"MCP server for Gemini CLI integration\",\n  \"type\": \"module\",\n  \"main\": \"dist/index.js\",\n  \"bin\": {\n    \"gemini-mcp\": \"dist/index.js\"\n  },\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/index.js\",\n    \"dev\": \"tsc && node dist/index.js\",\n    \"test\": \"echo \\\"No tests yet\\\" && exit 0\",\n    \"lint\": \"tsc --noEmit\",\n    \"contribute\": \"tsx src/contribute.ts\",",
+      "after": "{\n  \"name\": \"gemini-mcp-tool\",\n  \"version\": \"1.1.5\",\n  \"description\": \"MCP server for Gemini CLI integration\",\n  \"type\": \"module\",\n  \"main\": \"dist/index.js\",\n  \"bin\": {\n    \"gemini-mcp\": \"dist/index.js\"\n  },\n  \"scripts\": {\n    \"build\": \"tsc\",\n    \"start\": \"node dist/index.js\",\n    \"dev\": \"tsc && node dist/index.js\",\n    \"test\": \"vitest run\",\n    \"lint\": \"tsc --noEmit\",\n    \"contribute\": \"tsx src/contribute.ts\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:vitest"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

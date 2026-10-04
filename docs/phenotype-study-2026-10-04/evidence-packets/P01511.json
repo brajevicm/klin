@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01511",
+  "source_finding_id": "P01511",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[project metadata omitted] 修复了模型重复跳回tiny的bug，合并到master。\n\n修复了模型重复跳回tiny的bug",
+  "diff_context": [
+    {
+      "path": "app/core/bk_asr/whisper_cpp.py",
+      "before": "        self.whisper_cpp_path = Path(whisper_cpp_path)\n        self.need_word_time_stamp = need_word_time_stamp\n        self.language = language\n\n        self.process = None\n\n    def _make_segments(self, resp_data: str) -> list[ASRDataSeg]:\n        asr_data = ASRData.from_srt(resp_data)\n        # 过滤掉纯音乐标记\n        filtered_segments = []\n        for seg in asr_data.segments:\n            text = seg.text.strip()\n            # 保留不以【、[、(、（开头的文本\n            if not (\n                text.startswith(\"【\")\n                or text.startswith(\"[\")\n                or text.startswith(\"(\")\n                or text.startswith(\"（\")\n            ):\n                filtered_segments.append(seg)\n        return filtered_segments\n\n    def _build_command(\n        self, wav_path, output_path, is_const_me_version: bool\n    ) -> list[str]:\n        \"\"\"构建 whisper-cpp 命令行参数\n\n        Args:\n            wav_path: 输入的WAV文件路径\n            output_path: 输出文件路径\n            is_const_me_version: 是否为 const_me 版本",
+      "after": "    def _resolve_model_name(self, whisper_model: Optional[str]) -> str:\n        \"\"\"解析模型名称\"\"\"\n        if whisper_model is not None:\n            return whisper_model\n\n        # 使用配置中的模型\n        try:\n            model_value = cfg.whisper_model.value\n            \n            if hasattr(model_value, 'value'):\n                # 如果是枚举类型，获取其值\n                return model_value.value\n            else:\n                # 如果是字符串类型，直接使用\n                return model_value\n        except Exception as e:\n            raise ValueError(f\"无法获取用户选择的模型配置: {e}\")\n\n    def _find_model_file(self, model_name: str) -> str:\n        \"\"\"查找模型文件，支持多种命名格式\"\"\"\n        models_dir = Path(MODEL_PATH)\n        if not models_dir.exists():\n            raise ValueError(f\"模型目录不存在: {models_dir}\")\n\n        # 支持多种可能的文件名格式\n        possible_patterns = [\n            f\"ggml-{model_name}.bin\",      # 标准格式\n            f\"ggml-{model_name}-*.bin\",    # 带版本号\n            f\"{model_name}.bin\",           # 简化格式\n            f\"{model_name}-*.bin\",         # 带版本号的简化格式\n            f\"*{model_name}*.bin\",         # 包含模型名的任意格式",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

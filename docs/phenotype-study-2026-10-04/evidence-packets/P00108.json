@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00108",
+  "source_finding_id": "P00108",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        self._drag_source = drag_source\n\n\n    def _on_drag_prepare(self, source, x, y):\n        window = self.get_root()\n        logger.debug(f\"Drag prepare: Starting drag prepare for {self.connection.nickname}\")\n\n        connections_payload: List[Dict[str, Optional[int | str]]] = []\n        selection_order = 0\n\n        if window and hasattr(window, \"connection_list\"):\n            # Capture current selection at drag time\n            try:\n                selected_rows = list(window.connection_list.get_selected_rows())\n                logger.debug(f\"Drag prepare: Captured {len(selected_rows)} selected rows\")\n            except Exception as e:\n                logger.debug(f\"Drag prepare: Error getting selected rows: {e}\")\n                selected_rows = []\n\n            # If no selection or self not in selection, add self\n            if not selected_rows or self not in selected_rows:\n                logger.debug(f\"Drag prepare: Adding self to selection\")\n                selected_rows.append(self)\n\n            seen_nicknames = set()\n            for row in selected_rows:\n                connection_obj = getattr(row, \"connection\", None)\n                nickname = getattr(connection_obj, \"nickname\", None)\n                if not nickname or nickname in seen_nicknames:\n                    continue",
+      "after": "        self._drag_source = drag_source\n\n\n    def _on_drag_prepare(self, source, x, y):\n        window = self.get_root()\n        logger.debug(f\"Drag prepare: Starting drag prepare for {self.connection.nickname}\")\n\n        connections_payload: List[Dict[str, Optional[int | str]]] = []\n        selection_order = 0\n\n        if window and hasattr(window, \"connection_list\"):\n            # Capture current selection at drag time\n            try:\n                selected_rows = list(window.connection_list.get_selected_rows())\n                logger.debug(f\"Drag prepare: Captured {len(selected_rows)} selected rows\")\n            except Exception as e:\n                logger.debug(f\"Drag prepare: Error getting selected rows: {e}\")\n                selected_rows = []\n\n            # If no selection or self not in selection, add self\n            if not selected_rows or self not in selected_rows:\n                logger.debug(f\"Drag prepare: Adding self to selection\")\n                selected_rows.append(self)\n\n            seen_nicknames = set()\n            for row in selected_rows:\n                connection_obj = getattr(row, \"connection\", None)\n                nickname = getattr(connection_obj, \"nickname\", None)\n                if not nickname or nickname in seen_nicknames:\n                    continue",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

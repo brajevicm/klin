@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01107",
+  "source_finding_id": "P01107",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: Add LSP stub\n\nAdds a stub implementations of a basic Language Server Protocol (LSP) to `prqlc`. LSP clients can connect to it and disconnect from it.\n\nIt use the `lsp-server` crate used by the official rust-analyzer.\n\nThe LSP specification is at [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "prqlc/prqlc/src/cli/test.rs",
+      "before": "    ----- stderr -----\n    \"###);\n\n    // Test formatting a path:\n\n    // Create a temporary directory\n    let temp_dir = TempDir::new().expect(\"Failed to create temp directory\");\n\n    // Copy files from project_path() to temp_dir\n    copy_dir(&project_path(), temp_dir.path());\n\n    // Run fmt command on the temp directory\n    let _result = prqlc_command()\n        .args([\"fmt\", temp_dir.path().to_str().unwrap()])\n        .status()\n        .unwrap();\n\n    // Check if files in temp_dir match the original files\n    compare_directories(&project_path(), temp_dir.path());\n}\n\nfn copy_dir(src: &Path, dst: &Path) {\n    for entry in WalkDir::new(src) {\n        let entry = entry.unwrap();\n        let path = entry.path();\n        if path.is_file() {\n            let relative_path = path.strip_prefix(src).unwrap();\n            let target_path = dst.join(relative_path);\n            fs::create_dir_all(target_path.parent().unwrap()).unwrap();\n            fs::copy(path, target_path).unwrap();\n        }",
+      "after": "    ----- stderr -----\n    \"###);\n\n    // Test formatting a path:\n\n    // Create a temporary directory\n    let temp_dir = TempDir::new().expect(\"Failed to create temp directory\");\n\n    // Copy files from project_path() to temp_dir\n    copy_dir(&project_path(), temp_dir.path());\n\n    // Run fmt command on the temp directory\n    let _result = prqlc_command()\n        .args([\"fmt\", temp_dir.path().to_str().unwrap()])\n        .status()\n        .unwrap();\n\n    // Check if files in temp_dir match the original files\n    compare_directories(&project_path(), temp_dir.path());\n}\n\nfn copy_dir(src: &Path, dst: &Path) {\n    for entry in WalkDir::new(src) {\n        let entry = entry.unwrap();\n        let path = entry.path();\n        if path.is_file() {\n            let relative_path = path.strip_prefix(src).unwrap();\n            let target_path = dst.join(relative_path);\n            fs::create_dir_all(target_path.parent().unwrap()).unwrap();\n            fs::copy(path, target_path).unwrap();\n        }",
+      "context": null
+    }
+  ],
+  "observations": [
+    ".unwrap();"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

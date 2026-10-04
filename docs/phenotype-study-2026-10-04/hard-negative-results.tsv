@@ -1,0 +1,833 @@
+study_version	case_set_id	case_id	phenotype_id	measurement_state	finding_ids	result	reason
+1	test-integrity-corpus	integrity-rs/legit	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/legit	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/legit	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/legit	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/legit	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/legit	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/legit	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-cfg-platform	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-determinism	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-determinism	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-determinism	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-determinism	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-determinism	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-determinism	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-determinism	test-new-unchecked	complete	"[""new-test-unchecked:tautology-only:src/lib.rs:41:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-equivalent	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-equivalent	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-equivalent	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-equivalent	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-equivalent	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-equivalent	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-equivalent	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-error-spec-same-name	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-helper	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-helper	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-helper-file	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-helper-file	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file	test-weakened-rust	complete	"[""assertion-removed:into-unresolved-helper:tests/slug.rs:7:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	test-weakened-rust	complete	"[""assertion-removed:replaced:tests/slug.rs:7:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-helper-file-plain	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-merge	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-merge	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-merge	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-merge	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-merge	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-merge	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-merge	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-move-file	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-move-file	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-move-file	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-move-file	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-move-file	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-move-file	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-move-file	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-helper-file-plain	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-new-smoke	test-new-unchecked	complete	"[""new-test-unchecked:none:tests/slug.rs:20:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-should-panic-to-result	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-snapshot-literal	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-spec-change	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-spec-change	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-spec-change	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-spec-change	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-spec-change	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-spec-change	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-spec-change	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-split	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-split	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-split	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-split	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-split	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-split	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-split	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-stronger	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-stronger	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-stronger	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-stronger	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-stronger	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-stronger	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-stronger	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-table	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-rs/neg-table	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-rs/neg-table	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-table	test-weakened-rust	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-table	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-table	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-rs/neg-table	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/legit	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/legit	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/legit	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/legit	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/legit	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/legit	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-async	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-async	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-async	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-async	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-async	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-async	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-chai-property	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-chai-property	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-chai-property	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-chai-property	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-chai-property	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-chai-property	test-new-unchecked	complete	"[""new-test-unchecked:none:src/slug.test.ts:23:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-describe-step	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-describe-step	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-describe-step	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-describe-step	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-describe-step	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-describe-step	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-determinism	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-determinism	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-determinism	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-determinism	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-determinism	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-determinism	test-new-unchecked	complete	"[""new-test-unchecked:tautology-only:src/slug.test.ts:23:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-each	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-each	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-each	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-each	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-each	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-each	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-equivalent	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-equivalent	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-equivalent	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-equivalent	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-equivalent	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-equivalent	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-error-spec	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-error-spec	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-error-spec-same-name	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-helper	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-helper	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-helper-file	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-helper-file	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-helper-file-plain	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-merge	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-merge	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-merge	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-merge	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-merge	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-merge	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-mock-collaborator	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-move-file	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-move-file	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-move-file	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-move-file	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-move-file	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-move-file	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-helper-file-plain	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-new-smoke	test-new-unchecked	complete	"[""new-test-unchecked:none:src/slug.test.ts:23:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-property	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-property	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-property	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-property	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-property	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-property	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-skip-platform	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-snapshot	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-snapshot	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-snapshot	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-snapshot	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-snapshot	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-snapshot	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spec-change	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-spec-change	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-spec-change	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spec-change	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spec-change	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spec-change	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-split	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-split	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-split	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-split	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-split	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-split	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-spy-collaborator	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-stronger	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-stronger	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-stronger	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-stronger	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-stronger	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-stronger	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-table	shipped-test-deletion	unsupported	[]	measurement-incomplete	frozen klin did not run inventory
+1	test-integrity-corpus	integrity-ts/neg-table	shipped-test-skip	unsupported	[]	measurement-incomplete	frozen klin did not run escapes
+1	test-integrity-corpus	integrity-ts/neg-table	test-all-checks-removed	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-table	test-disabled	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-table	test-expected-mirrors-production	complete	[]	no-finding	frozen hard-negative route replay
+1	test-integrity-corpus	integrity-ts/neg-table	test-new-unchecked	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/legit	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/legit	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/legit	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit-wrapper	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/legit-wrapper	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/legit-wrapper	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/legit-wrapper	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit-wrapper	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/legit-wrapper	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-boundary	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-boundary	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-boundary	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-boundary	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-boundary	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-boundary	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-contract	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-contract	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-contract	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-contract	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-contract	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-contract	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-dynamic	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-dynamic	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-dynamic	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-dynamic	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-dynamic	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-dynamic	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-generated	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-generated	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-generated	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-generated	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-generated	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-generated	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-macro	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-macro	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-macro	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-macro	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-macro	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-macro	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-migration	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-migration	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-migration	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-migration	design-family-bypass	complete	"[""family-bypass:src/notify/slack.rs:3:SlackNotifier in src/notify/ declares `*notifier` like 3 sibling files, 2 of which implement LegacyNotifier; is named `*Notifier` like 2 members; it does not implement LegacyNotifier, which 2 of 4 sibling files implement (e.g. email.rs, sms.rs):00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-migration	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-migration	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-impl	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-one-impl	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-one-impl	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-one-impl	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-impl	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-impl	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-sibling	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-one-sibling	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-one-sibling	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-one-sibling	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-sibling	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-one-sibling	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-policy	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-policy	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-policy	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-policy	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-policy	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-policy	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-shared	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-shared	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-shared	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-shared	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-shared	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-shared	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-similar	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-similar	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-similar	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-similar	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-similar	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-similar	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-special	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-special	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-special	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-special	design-family-bypass	complete	"[""family-bypass:src/payments/manual.rs:5:ManualInvoice in src/payments/ defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.rs, stripe.rs):00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-special	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-special	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-trait-forward	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-rs/neg-trait-forward	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-rs/neg-trait-forward	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-rs/neg-trait-forward	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-trait-forward	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-rs/neg-trait-forward	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/legit	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/legit	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/legit	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit-wrapper	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/legit-wrapper	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/legit-wrapper	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/legit-wrapper	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit-wrapper	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit-wrapper	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/legit-wrapper	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-boundary	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-boundary	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-boundary	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-boundary	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-boundary	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-boundary	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-boundary	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-contract	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-contract	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-contract	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-contract	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-contract	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-contract	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-contract	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-decorated	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-decorated	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-decorated	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-decorated	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-decorated	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-decorated	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-decorated	design-component-cycle	local-resolution-incomplete	[]	measurement-incomplete	the frozen ModuleGraph prototype reports unresolved local dependency evidence
+1	design-conformance-corpus	payments-ts/neg-dynamic	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-dynamic	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-dynamic	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-dynamic	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-dynamic	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-dynamic	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-dynamic	design-component-cycle	local-resolution-incomplete	[]	measurement-incomplete	the frozen ModuleGraph prototype reports unresolved local dependency evidence
+1	design-conformance-corpus	payments-ts/neg-generated	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-generated	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-generated	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-generated	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-generated	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-generated	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-generated	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-migration	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-migration	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-migration	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-migration	design-family-bypass	complete	"[""family-bypass:src/notify/slack.ts:3:SlackNotifier in src/notify/ declares `*notifier` like 3 sibling files, 2 of which implement LegacyNotifier; is named `*Notifier` like 2 members; it does not implement LegacyNotifier, which 2 of 4 sibling files implement (e.g. email.ts, sms.ts):00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-migration	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-migration	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-migration	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-impl	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-one-impl	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-one-impl	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-one-impl	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-impl	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-impl	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-impl	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-sibling	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-one-sibling	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-one-sibling	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-one-sibling	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-sibling	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-sibling	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-one-sibling	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-policy	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-policy	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-policy	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-policy	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-policy	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-policy	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-policy	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-shared	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-shared	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-shared	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-shared	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-shared	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-shared	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-shared	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-similar	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-similar	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-similar	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-similar	design-family-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-similar	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-similar	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-similar	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-special	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-special	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-special	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-special	design-family-bypass	complete	"[""family-bypass:src/payments/manual.ts:5:ManualInvoice in src/payments/ defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.ts, stripe.ts):00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-special	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-special	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-special	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-structural	shipped-dead-symbols	unsupported	[]	measurement-incomplete	frozen klin did not run dead-symbols
+1	design-conformance-corpus	payments-ts/neg-structural	shipped-reachability	unsupported	[]	measurement-incomplete	frozen klin did not run reachability
+1	design-conformance-corpus	payments-ts/neg-structural	shipped-module-cycle	unsupported	[]	measurement-incomplete	frozen klin did not run layering
+1	design-conformance-corpus	payments-ts/neg-structural	design-family-bypass	complete	"[""family-bypass:src/payments/adyen.ts:3:AdyenProvider in src/payments/ declares `*provider` like 2 sibling files, 2 of which implement PaymentProvider; is named `*Provider` like 2 members; defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.ts, stripe.ts):00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-structural	design-registration-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-structural	design-wrapper-bypass	complete	[]	no-finding	frozen hard-negative route replay
+1	design-conformance-corpus	payments-ts/neg-structural	design-component-cycle	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-py/legit	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/legit	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/legit	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/legit	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/legit	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-cleanup	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-py/neg-cleanup	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-cleanup	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-cleanup	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-cleanup	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-cleanup	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-reraise	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-py/neg-reraise	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-reraise	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-reraise	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-reraise	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-reraise	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-test	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-py/neg-test	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-test	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-test	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-test	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-test	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-translate	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-py/neg-translate	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-translate	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-translate	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-translate	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-py/neg-translate	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	handlers-rs/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-rs/neg-cleanup	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-rs/neg-option	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-rs/neg-test	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-rs/neg-translate	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-rs/neg-write-string	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-ts/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-ts/neg-cleanup	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-ts/neg-generated	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-ts/neg-test	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	handlers-ts/neg-translate	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/legit	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/legit	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/legit	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/legit	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/legit	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-declared	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-declared	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-declared	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-declared	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-declared	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-declared	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-domain-word	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-empty-answer	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-flag	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-flag	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-flag	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-flag	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-flag	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-flag	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-generated	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-generated	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-generated	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-generated	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-generated	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-generated	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-noop-hook	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-null-object	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-null-object	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-null-object	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-null-object	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-null-object	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-null-object	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-test-double	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-test-double	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-test-double	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-test-double	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-test-double	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-test-double	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	unfinished-ellipsis-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	unfinished-throw-body	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	error-empty-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	error-default-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-py/neg-throw-helper	error-broad-handler	complete	[]	no-finding	frozen hard-negative route replay
+1	unfinished-code-corpus	unfinished-rs/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-domain-word	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-empty-answer	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-flag	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-generated	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-mock-feature	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-test-double	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-throw-helper	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-rs/neg-trait-default	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/legit	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-declared	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-empty-answer	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-flag	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-generated	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-mock-feature	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-noop-hook	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-null-object	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-test-double	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-throw-helper	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	unfinished-code-corpus	unfinished-ts/neg-ui-placeholder	shipped-stubs	unsupported	[]	measurement-incomplete	frozen klin did not run stubs
+1	dependency-evidence-corpus	lockshape-cargo/legit	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-cargo/legit	cargo-lock-entry-shape	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-cargo/legit	new-direct-dependency	complete	"[""crates:itoa:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-cargo/neg-git	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-cargo/neg-git	cargo-lock-entry-shape	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-cargo/neg-git	new-direct-dependency	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-cargo/neg-path	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-cargo/neg-path	cargo-lock-entry-shape	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-cargo/neg-path	new-direct-dependency	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-go/legit	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	lockshape-go/legit	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	lockshape-go/neg-replace-local	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	lockshape-go/neg-replace-local	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	lockshape-npm/legit	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/legit	new-direct-dependency	complete	"[""npm:is-odd:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-npm/neg-bundled	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/neg-bundled	new-direct-dependency	complete	"[""npm:is-odd:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-npm/neg-file	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/neg-file	new-direct-dependency	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-npm/neg-git	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/neg-git	new-direct-dependency	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-npm/neg-link	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/neg-link	new-direct-dependency	complete	[]	no-finding	frozen hard-negative route replay
+1	dependency-evidence-corpus	lockshape-npm/neg-private-lock	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	lockshape-npm/neg-private-lock	new-direct-dependency	complete	"[""npm:@acme/billing:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-py/legit	python-uv-lock	partial	[]	measurement-incomplete	pyproject.toml: paired uv.lock is absent from the after tree
+1	dependency-evidence-corpus	undeclared-py/legit	new-direct-dependency	complete	"[""pypi:httpx:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-py/neg-availability	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-availability	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-generated	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-generated	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-local	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-local	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-mapped	python-uv-lock	partial	[]	measurement-incomplete	pyproject.toml: paired uv.lock is absent from the after tree
+1	dependency-evidence-corpus	undeclared-py/neg-mapped	new-direct-dependency	complete	"[""pypi:beautifulsoup4:00001"", ""pypi:pillow:00002"", ""pypi:pyjwt:00003"", ""pypi:scikit-learn:00004""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-py/neg-namespace	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-namespace	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-optional	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-optional	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-platform	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-platform	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-private	python-uv-lock	partial	[]	measurement-incomplete	pyproject.toml: paired uv.lock is absent from the after tree
+1	dependency-evidence-corpus	undeclared-py/neg-private	new-direct-dependency	complete	"[""pypi:acme-billing:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-py/neg-requirements	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-requirements	new-direct-dependency	complete	"[""pypi:rich:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-py/neg-stdlib-new	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-stdlib-new	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-stdlib-removed	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-stdlib-removed	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-test	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-test	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-type-checking	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-type-checking	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-vendored	python-uv-lock	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-py/neg-vendored	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/legit	shipped-lockfile	unsupported	[]	measurement-incomplete	frozen klin did not run lockfile
+1	dependency-evidence-corpus	undeclared-ts/legit	new-direct-dependency	complete	"[""npm:yaml:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	dependency-evidence-corpus	undeclared-ts/neg-alias	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-alias	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-builtin	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-builtin	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-string	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-string	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-subpath	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-subpath	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-test	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-test	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-types	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-types	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-virtual	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-virtual	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-workspace	shipped-lockfile	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	dependency-evidence-corpus	undeclared-ts/neg-workspace	new-direct-dependency	unsupported	[]	measurement-incomplete	the selected route has no changed file in this phenotype's registered scope
+1	ruff-injection-corpus	inj-neg-param	ruff-python-injection	complete	[]	no-finding	frozen hard-negative route replay
+1	ruff-injection-corpus	inj-neg-const	ruff-python-injection	complete	"[""S608:shop/users.py:15:23:Possible SQL injection vector through string-based query construction:00001""]"	non-compulsory-review	frozen hard-negative route replay
+1	ruff-swallowed-corpus	err-neg-rethrow	ruff-python-swallowed	complete	[]	no-finding	frozen hard-negative route replay
+1	ruff-swallowed-corpus	err-neg-specific	ruff-python-swallowed	complete	[]	no-finding	frozen hard-negative route replay
+1	pilot-public-api	w001	shipped-public-api	complete	"[""w001""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w002	shipped-public-api	complete	"[""w002""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w003	shipped-complexity	complete	"[""w003""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w013	shipped-complexity	complete	"[""w013""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w067	shipped-public-api	complete	"[""w067""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w069	shipped-escapes	complete	"[""w069""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w070	shipped-public-api	complete	"[""w070""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w101	shipped-complexity	complete	"[""w101""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w105	shipped-escapes	complete	"[""w105""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w120	shipped-public-api	complete	"[""w120""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w131	shipped-complexity	complete	"[""w131""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w144	shipped-public-api	complete	"[""w144""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w151	shipped-complexity	complete	"[""w151""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w190	shipped-public-api	complete	"[""w190""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w199	shipped-public-api	complete	"[""w199""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w206	shipped-escapes	complete	"[""w206""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w247	shipped-public-api	complete	"[""w247""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w248	shipped-complexity	complete	"[""w248""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w280	shipped-public-api	complete	"[""w280""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w296	shipped-complexity	complete	"[""w296""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w318	shipped-public-api	complete	"[""w318""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w350	shipped-public-api	complete	"[""w350""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w373	shipped-public-api	complete	"[""w373""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w408	shipped-escapes	complete	"[""w408""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w426	shipped-complexity	complete	"[""w426""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w430	shipped-public-api	complete	"[""w430""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w433	shipped-public-api	complete	"[""w433""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w486	shipped-public-api	complete	"[""w486""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w500	shipped-public-api	complete	"[""w500""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w555	shipped-complexity	complete	"[""w555""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w556	shipped-public-api	complete	"[""w556""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w558	shipped-complexity	complete	"[""w558""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w560	shipped-public-api	complete	"[""w560""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w572	shipped-escapes	complete	"[""w572""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w608	shipped-complexity	complete	"[""w608""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w621	shipped-public-api	complete	"[""w621""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w657	shipped-complexity	complete	"[""w657""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w662	shipped-public-api	complete	"[""w662""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w675	shipped-public-api	complete	"[""w675""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w692	shipped-escapes	complete	"[""w692""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w704	shipped-complexity	complete	"[""w704""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w732	shipped-public-api	complete	"[""w732""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w745	shipped-complexity	complete	"[""w745""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w754	shipped-public-api	complete	"[""w754""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w759	shipped-complexity	complete	"[""w759""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w770	shipped-complexity	complete	"[""w770""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w792	shipped-complexity	complete	"[""w792""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w798	shipped-public-api	complete	"[""w798""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w826	shipped-public-api	complete	"[""w826""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w834	shipped-escapes	complete	"[""w834""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w839	shipped-escapes	complete	"[""w839""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w843	shipped-escapes	complete	"[""w843""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w868	shipped-public-api	complete	"[""w868""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w878	shipped-complexity	complete	"[""w878""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w886	shipped-public-api	complete	"[""w886""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w908	shipped-complexity	complete	"[""w908""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w945	shipped-public-api	complete	"[""w945""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w947	shipped-complexity	complete	"[""w947""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w954	shipped-public-api	complete	"[""w954""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w963	shipped-escapes	complete	"[""w963""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w994	shipped-escapes	complete	"[""w994""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1002	shipped-public-api	complete	"[""w1002""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1026	shipped-public-api	complete	"[""w1026""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1043	shipped-complexity	complete	"[""w1043""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1072	shipped-public-api	complete	"[""w1072""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1080	shipped-complexity	complete	"[""w1080""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1083	shipped-public-api	complete	"[""w1083""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1108	shipped-complexity	complete	"[""w1108""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1126	shipped-complexity	complete	"[""w1126""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1143	shipped-public-api	complete	"[""w1143""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1157	shipped-public-api	complete	"[""w1157""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1164	shipped-complexity	complete	"[""w1164""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1194	shipped-complexity	complete	"[""w1194""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1196	shipped-complexity	complete	"[""w1196""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1210	shipped-public-api	complete	"[""w1210""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1221	shipped-public-api	complete	"[""w1221""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1258	shipped-complexity	complete	"[""w1258""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1272	shipped-public-api	complete	"[""w1272""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1298	shipped-public-api	complete	"[""w1298""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1311	shipped-complexity	complete	"[""w1311""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1319	shipped-escapes	complete	"[""w1319""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1348	shipped-public-api	complete	"[""w1348""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1349	shipped-public-api	complete	"[""w1349""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1358	shipped-complexity	complete	"[""w1358""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1373	shipped-complexity	complete	"[""w1373""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1400	shipped-escapes	complete	"[""w1400""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1410	shipped-public-api	complete	"[""w1410""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1421	shipped-public-api	complete	"[""w1421""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1424	shipped-complexity	complete	"[""w1424""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1451	shipped-complexity	complete	"[""w1451""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1466	shipped-complexity	complete	"[""w1466""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1479	shipped-public-api	complete	"[""w1479""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1487	shipped-complexity	complete	"[""w1487""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1489	shipped-public-api	complete	"[""w1489""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1525	shipped-escapes	complete	"[""w1525""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1541	shipped-complexity	complete	"[""w1541""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1542	shipped-public-api	complete	"[""w1542""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1552	shipped-public-api	complete	"[""w1552""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1566	shipped-escapes	complete	"[""w1566""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1597	shipped-complexity	complete	"[""w1597""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1613	shipped-public-api	complete	"[""w1613""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1618	shipped-public-api	complete	"[""w1618""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1635	shipped-complexity	complete	"[""w1635""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1654	shipped-escapes	complete	"[""w1654""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1676	shipped-public-api	complete	"[""w1676""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1677	shipped-complexity	complete	"[""w1677""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1694	shipped-public-api	complete	"[""w1694""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1699	shipped-complexity	complete	"[""w1699""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1719	shipped-complexity	complete	"[""w1719""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1748	shipped-public-api	complete	"[""w1748""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1755	shipped-complexity	complete	"[""w1755""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1759	shipped-public-api	complete	"[""w1759""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1791	shipped-complexity	complete	"[""w1791""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1812	shipped-public-api	complete	"[""w1812""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1829	shipped-complexity	complete	"[""w1829""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1837	shipped-public-api	complete	"[""w1837""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1853	shipped-escapes	complete	"[""w1853""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w1856	shipped-escapes	complete	"[""w1856""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1891	shipped-complexity	complete	"[""w1891""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1892	shipped-complexity	complete	"[""w1892""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1894	shipped-public-api	complete	"[""w1894""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1903	shipped-public-api	complete	"[""w1903""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1960	shipped-complexity	complete	"[""w1960""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1962	shipped-public-api	complete	"[""w1962""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w1967	shipped-public-api	complete	"[""w1967""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w1986	shipped-complexity	complete	"[""w1986""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2016	shipped-complexity	complete	"[""w2016""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2017	shipped-public-api	complete	"[""w2017""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2040	shipped-public-api	complete	"[""w2040""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2073	shipped-complexity	complete	"[""w2073""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2076	shipped-complexity	complete	"[""w2076""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2092	shipped-public-api	complete	"[""w2092""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2111	shipped-public-api	complete	"[""w2111""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2153	shipped-public-api	complete	"[""w2153""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2181	shipped-public-api	complete	"[""w2181""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2199	shipped-complexity	complete	"[""w2199""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2219	shipped-public-api	complete	"[""w2219""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2254	shipped-public-api	complete	"[""w2254""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2264	shipped-complexity	complete	"[""w2264""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2285	shipped-public-api	complete	"[""w2285""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2288	shipped-complexity	complete	"[""w2288""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2322	shipped-public-api	complete	"[""w2322""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2324	shipped-complexity	complete	"[""w2324""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2326	shipped-complexity	complete	"[""w2326""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w2364	shipped-escapes	complete	"[""w2364""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2366	shipped-public-api	complete	"[""w2366""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w2390	shipped-escapes	complete	"[""w2390""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2392	shipped-public-api	complete	"[""w2392""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2396	shipped-complexity	complete	"[""w2396""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2400	shipped-complexity	complete	"[""w2400""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w2407	shipped-escapes	complete	"[""w2407""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2437	shipped-complexity	complete	"[""w2437""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2448	shipped-public-api	complete	"[""w2448""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2461	shipped-public-api	complete	"[""w2461""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2465	shipped-complexity	complete	"[""w2465""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2472	shipped-complexity	complete	"[""w2472""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2521	shipped-public-api	complete	"[""w2521""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2525	shipped-public-api	complete	"[""w2525""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2562	shipped-complexity	complete	"[""w2562""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2576	shipped-public-api	complete	"[""w2576""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-complexity	w2585	shipped-complexity	complete	"[""w2585""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-escapes	w2591	shipped-escapes	complete	"[""w2591""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control
+1	pilot-public-api	w2643	shipped-public-api	complete	"[""w2643""]"	compulsory-repair	frozen pilot finding labeled undesired; replayed as a classification control

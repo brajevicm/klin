@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01836",
+  "source_finding_id": "P01836",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat: implement offset-aware chunk retrieval with peer manager refactoring\n\n## Summary\n\nThis PR implements offset-aware chunk retrieval capabilities and includes a major refactoring to extract peer management logic from ArweaveCompositeClient into a dedicated ArweavePeerManager class.\n\n## Key Features\n\n### 🎯 Offset-Aware Chunk Retrieval\n- **Custom ETF parser**: Parse Arweave sync bucket data to understand peer capabilities\n- **Intelligent peer selection**: Choose peers based on which 10GB data ranges they have\n- **Immediate sync bucket fetching**: No more 5-minute delays - fetch sync buckets immediately on peer discovery\n- **Better chunk retrieval efficiency**: Route requests to peers that actually have the data\n\n### 🔄 Peer Management Improvements  \n- **Randomized weighted selection**: Prevents retry loops with failed peers\n- **Fixed URL construction**: Clean URLs without double slashes\n- **Enhanced error logging**: Detailed debugging information for chunk requests\n- **Proper fallback logic**: Falls back to regular selection when no offset-aware peers available\n\n### 🏗️ Architectural Refactoring\n- **Dedicated ArweavePeerManager class**: Extracted from ArweaveCompositeClient\n- **DNS resolution support**: For preferred URLs with configurable refresh intervals\n- **Multi-category peer pools**: Separate management for chain, getChunk, and postChunk operations\n- **Dependency injection**: Clean separation of concerns with proper interfaces\n- **Auto-refresh capabilities**: Configurable intervals for peer list updates\n\n## Technical Implementation\n\n### New Files\n- `src/lib/etf-sync-buckets-parser.ts` - Custom ETF parser for Arweave sync buckets\n- `src/lib/etf-sync-buckets-parser.test.ts` - Comprehensive parser tests\n\n### Major Changes\n- **ArweavePeerManager**: New class with offset-aware peer selection\n- **ArweaveCompositeClient**: Enhanced chunk request logging and URL handling  \n- **System integration**: Proper initialization and dependency injection\n\n### ETF Parser Features\n- Minimal parser specifically for Arweave sync buckets (2-tuple format)\n- Extracts bucket indices without parsing share values (performance optimized)\n- Comprehensive error handling and validation\n- Full test coverage with edge cases\n\n### Offset-Aware Selection Algorithm\n1. Calculate bucket index from absolute offset (offset / 10GB)\n2. Find peers that have the required bucket in their sync data\n3. Apply weighted randomized selection among candidate peers\n4. Fall back to regular weighted selection if no peers have the bucket\n\n## Benefits\n\n### Performance\n- **Faster chunk retrieval**: Direct routing to capable peers\n- **Reduced network overhead**: Fewer failed requests to peers without data\n- **Immediate effectiveness**: No startup delays waiting for sync bucket data\n\n### Reliability  \n- **Prevents retry loops**: Randomized selection avoids repeatedly trying failed peers\n- **Better error visibility**: Enhanced logging helps debug issues\n…",
+  "diff_context": [
+    {
+      "path": "src/data/database-tx-offset-source.ts",
+      "before": null,
+      "after": "/**\n * AR.IO Gateway\n * Copyright (C) 2022-2025 Permanent Data Solutions, Inc. All Rights Reserved.\n *\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\nimport winston from 'winston';\n\nimport { TxOffsetSource, TxOffsetResult } from '../types.js';\nimport { StandaloneSqliteDatabase } from '../database/standalone-sqlite.js';\n\n/**\n * Database-backed transaction offset source.\n * Retrieves transaction information by offset from the local database.\n */\nexport class DatabaseTxOffsetSource implements TxOffsetSource {\n  private log: winston.Logger;\n  private db: StandaloneSqliteDatabase;\n\n  constructor({\n    log,\n    db,\n  }: {\n    log: winston.Logger;\n    db: StandaloneSqliteDatabase;\n  }) {\n    this.log = log.child({ class: this.constructor.name });\n    this.db = db;\n  }\n\n  async getTxByOffset(offset: number): Promise<TxOffsetResult> {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "DatabaseTxOffsetSource in src/data/ is named `*Source` like 10 members; it does not implement ContiguousDataSource, which 10 of 23 sibling files implement (e.g. ar-io-data-source.ts, filtered-contiguous-data-source.ts)"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

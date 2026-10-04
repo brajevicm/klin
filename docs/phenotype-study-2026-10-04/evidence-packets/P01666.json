@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01666",
+  "source_finding_id": "P01666",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Github\n\n- New file: `apps/frontend/app/api/github/branches/route.ts` (not present on main)\n  - Implements a GET endpoint to fetch branches for a given GitHub repo.\n  - Authenticates user, fetches their GitHub access token from DB.\n  - Expects `repo` query param in \"owner/repo\" format.\n  - Calls GitHub API for branches, returns JSON list of branches.\n  - Handles errors: unauthorized, missing/invalid repo param, GitHub not connected, fetch failure.\n\n- Related frontend changes:\n  - `apps/frontend/components/chat/github.tsx` now fetches branches from `/api/github/branches?repo=owner/repo`.\n  - Handles loading, error, and sorting of branches (main/master first, then alphabetical).\n  - UI lets user select repo, then branch, using the new backend endpoint.\n\n- Summary:\n  - Adds backend API for fetching branches from GitHub for a selected repo.\n  - Integrates with frontend repo/branch picker.\n  - Handles auth, error, and edge cases robustly.",
+  "diff_context": [
+    {
+      "path": "apps/frontend/package.json",
+      "before": "{\n  \"name\": \"frontend\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"scripts\": {\n    \"dev\": \"next dev --turbopack --port 3000\",\n    \"build\": \"next build\",\n    \"start\": \"next start\",\n    \"lint\": \"next lint\",\n    \"check-types\": \"tsc --noEmit\",\n    \"format\": \"prettier --write .\"\n  },\n  \"dependencies\": {\n    \"@radix-ui/react-checkbox\": \"^1.3.2\",\n    \"@radix-ui/react-collapsible\": \"^1.1.11\",",
+      "after": "{\n  \"name\": \"frontend\",\n  \"version\": \"0.1.0\",\n  \"type\": \"module\",\n  \"private\": true,\n  \"scripts\": {\n    \"dev\": \"next dev --turbopack --port 3000\",\n    \"build\": \"next build\",\n    \"start\": \"next start\",\n    \"lint\": \"next lint\",\n    \"check-types\": \"tsc --noEmit\",\n    \"format\": \"prettier --write .\"\n  },\n  \"dependencies\": {\n    \"@octokit/types\": \"^14.1.0\",\n    \"@radix-ui/react-checkbox\": \"^1.3.2\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:@octokit/types"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

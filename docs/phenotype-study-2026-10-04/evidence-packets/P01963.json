@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01963",
+  "source_finding_id": "P01963",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "feat: Add AGENTS.md and fix lint/format scripts\n\nThis change adds a new `AGENTS.md` file to guide developers and agents through the complete setup process for this project. It also includes necessary fixes to the dependency installation and linting/formatting scripts to ensure they run correctly on modern systems and in CI/agent environments.",
+  "diff_context": [
+    {
+      "path": "src/local/butler/lint.py",
+      "before": "\n  test_directory = os.path.dirname(file_path)\n  if _PY_INIT_FILENAME not in os.listdir(test_directory):\n    _error(f'Failed: Missing {_PY_INIT_FILENAME} file in test '\n           f'directory {test_directory}.')\n\n\ndef yaml_validate(file_path):\n  \"\"\"Run yaml validation.\"\"\"\n  if os.path.basename(file_path) in _YAML_EXCEPTIONS:\n    return\n\n  try:\n    with open(file_path) as f:\n      yaml.safe_load(f.read())\n  except Exception as e:\n    _error('Failed: Invalid yaml file %s.\\n\\n%s' % (file_path, e))\n\n\ndef is_auto_generated_file(filepath):\n  \"\"\"Check if file is auto-generated so we dont lint it\"\"\"\n  return (filepath.endswith('_pb2.py') or filepath.endswith('pb2_grpc.py') or\n          os.path.dirname(filepath) == os.path.join(\n              'src', 'clusterfuzz', '_internal', 'bot', 'tokenizer',\n              'grammars'))\n\n\ndef execute(args):\n  \"\"\"Lint changed code.\"\"\"\n  pythonpath = os.getenv('PYTHONPATH', '')\n  module_parent_path = os.path.abspath(os.path.join(__file__, '..', '..', '..'))",
+      "after": "\n  test_directory = os.path.dirname(file_path)\n  if _PY_INIT_FILENAME not in os.listdir(test_directory):\n    _error(f'Failed: Missing {_PY_INIT_FILENAME} file in test '\n           f'directory {test_directory}.')\n\n\ndef yaml_validate(file_path):\n  \"\"\"Run yaml validation.\"\"\"\n  if os.path.basename(file_path) in _YAML_EXCEPTIONS:\n    return\n\n  try:\n    with open(file_path) as f:\n      yaml.safe_load(f.read())\n  except Exception as e:\n    _error('Failed: Invalid yaml file %s.\\n\\n%s' % (file_path, e))\n\n\ndef is_auto_generated_file(filepath):\n  \"\"\"Check if file is auto-generated so we dont lint it\"\"\"\n  return (filepath.endswith('_pb2.py') or filepath.endswith('pb2_grpc.py') or\n          os.path.dirname(filepath) == os.path.join(\n              'src', 'clusterfuzz', '_internal', 'bot', 'tokenizer',\n              'grammars'))\n\n\ndef execute(args):\n  \"\"\"Lint changed code.\"\"\"\n  pythonpath = os.getenv('PYTHONPATH', '')\n  module_parent_path = os.path.abspath(os.path.join(__file__, '..', '..', '..'))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

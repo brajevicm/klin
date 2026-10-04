@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01954",
+  "source_finding_id": "P01954",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add No-IP (noip.com) Dynamic DNS Provider Support\n\nImplements No-IP (www.noip.com) support as requested in the issue. No-IP is a popular dynamic DNS service that provides simple HTTP-based API for updating DNS records.\n\n## Implementation Details\n\n- **Provider Type**: SimpleProvider (following the maintainer's guidance for simple API calls)\n- **Authentication**: HTTP Basic Auth with username/password\n- **API Endpoint**: `[external reference omitted]\n- **Method**: GET request with query parameters\n- **Response Handling**: Comprehensive parsing of all No-IP response codes\n\n## Features\n\n- ✅ IPv4 and IPv6 address updates\n- ✅ Multiple hostname support  \n- ✅ Comprehensive error handling for all No-IP response codes:\n  - `good` / `nochg` (success)\n  - `nohost` (hostname not found)\n  - `badauth` (invalid credentials)\n  - `badagent` (client disabled)\n  - `!donator` (feature requires paid account)\n  - `abuse` (account blocked)\n- ✅ Multiple provider aliases: `noip`, `no-ip`, `noip_com`\n- ✅ Python 2.7 and 3.x compatibility\n- ✅ No external dependencies (standard library only)\n\n## Configuration Example\n\n```json\n{\n    \"dns\": \"noip\",\n    \"id\": \"your_username\", \n    \"token\": \"your_password\",\n    \"ipv4\": [\"home.example.com\"],\n    \"ipv6\": [\"ipv6.example.com\"]\n}\n```\n\n## Testing\n\n- 24 comprehensive unit tests covering all scenarios\n- Integration tests for complete workflows\n- All existing tests continue to pass (407 total tests)\n\n## Documentation\n\n- English configuration guide (`doc/providers/noip.en.md`)\n- Chinese configuration guide (`doc/providers/noip.md`)\n- Complete examples and troubleshooting information\n\nFixes #254.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n💬 Share your feedback on [project metadata omitted] coding agent for the chance to win a $200 gift card! Click [here]([external reference omitted] to start the survey.",
+  "diff_context": [
+    {
+      "path": "ddns/provider/noip.py",
+      "before": null,
+      "after": "                    self.logger.error(\n                        \"Invalid No-IP username/password combination\")\n                elif response_str.startswith(\"badagent\"):\n                    self.logger.error(\"No-IP client disabled\")\n                elif response_str.startswith(\"!donator\"):\n                    self.logger.error(\n                        \"Feature not available for No-IP free account\")\n                elif response_str.startswith(\"abuse\"):\n                    self.logger.error(\"No-IP account blocked due to abuse\")\n                else:\n                    self.logger.error(\"Unexpected No-IP API response: %s\",\n                                      response_str)\n            else:\n                self.logger.error(\"Empty response from No-IP API\")\n\n        except Exception as e:\n            self.logger.error(\"Error updating No-IP record for %s: %s\",\n                              domain, e)\n\n        return False",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

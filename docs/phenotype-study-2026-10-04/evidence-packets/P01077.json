@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01077",
+  "source_finding_id": "P01077",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                            try:\n                                mode = int(self.connection.data.get('key_select_mode', 0)) if hasattr(self.connection, 'data') else 0\n                            except Exception:\n                                mode = 0\n                    if has_specific_key and mode not in (1, 2):\n                        mode = 2\n                        try:\n                            self.connection.key_select_mode = 2\n                        except Exception:\n                            pass\n                        try:\n                            if hasattr(self.connection, 'data'):\n                                self.connection.data['key_select_mode'] = 2\n                        except Exception:\n                            pass\n                    selection = 1 if mode in (1, 2) else 0\n                    self.key_select_row.set_selected(selection)\n                    if hasattr(self, 'key_only_row'):\n                        try:\n                            self.key_only_row.set_active(mode == 1)\n                        except Exception:\n                            pass\n                    self.on_key_select_changed(self.key_select_row, None)\n            except Exception:\n                pass\n            \n            # Set X11 forwarding\n            self.x11_row.set_active(getattr(self.connection, 'x11_forwarding', False))\n            \n\n            ",
+      "after": "            \n            # Load commands if present\n            try:\n                def _display_safe(val: str) -> str:\n                    # Show exactly as in config; if user had quoted, keep quotes intact\n                    if not isinstance(val, str):\n                        return ''\n                    return val\n\n                if hasattr(self, 'local_command_row'):\n                    local_cmd_val = ''\n                    try:\n                        local_cmd_val = getattr(self.connection, 'local_command', '') or (\n                            self.connection.data.get('local_command') if hasattr(self.connection, 'data') else ''\n                        ) or ''\n                    except Exception:\n                        local_cmd_val = ''\n                    self.local_command_row.set_text(_display_safe(local_cmd_val))\n                if hasattr(self, 'remote_command_row'):\n                    remote_cmd_val = ''\n                    try:\n                        remote_cmd_val = getattr(self.connection, 'remote_command', '') or (\n                            self.connection.data.get('remote_command') if hasattr(self.connection, 'data') else ''\n                        ) or ''\n                    except Exception:\n                        remote_cmd_val = ''\n                    self.remote_command_row.set_text(_display_safe(remote_cmd_val))\n            except Exception:\n                pass\n            \n            # Initialize forwarding rules list if it doesn't exist",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

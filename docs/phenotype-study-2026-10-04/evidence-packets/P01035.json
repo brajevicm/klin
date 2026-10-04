@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01035",
+  "source_finding_id": "P01035",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/thread/subtitle_thread.py",
+      "before": "",
+      "after": "        self.finished_subtitle_length += len(result)\n        # 简单计算当前进度（0-100%）\n        progress = min(\n            int((self.finished_subtitle_length / self.subtitle_length) * 100), 100\n        )\n        self.progress.emit(progress, self.tr(\"{0}% 处理字幕\").format(progress))\n        self.update.emit(result)\n\n    def stop(self):\n        \"\"\"停止所有处理\"\"\"\n        try:\n            # 先停止优化器\n            if hasattr(self, \"optimizer\") and self.optimizer:\n                try:\n                    self.optimizer.stop()  # type: ignore\n                except Exception as e:\n                    logger.error(f\"停止优化器时出错：{str(e)}\")\n\n            # 终止线程\n            self.terminate()\n            # 等待最多3秒\n            if not self.wait(3000):\n                logger.warning(\"线程未能在3秒内正常停止\")\n\n            # 发送进度信号\n            self.progress.emit(100, self.tr(\"已终止\"))\n\n        except Exception as e:\n            logger.error(f\"停止线程时出错：{str(e)}\")\n            self.progress.emit(100, self.tr(\"终止时发生错误\"))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01885",
+  "source_finding_id": "P01885",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "composefs/install: Copy /etc contents to state\n\nFor bind mounting /etc we copy the contents of the EROFS' /etc to the deployment's state directory\n\nMounting the EORFS requires help from the initramfs crate, so we also turn it into a library crate.",
+  "diff_context": [
+    {
+      "path": "crates/lib/src/bootc_composefs/state.rs",
+      "before": null,
+      "after": "    state_path: &Utf8PathBuf,\n) -> Result<()> {\n    let sysroot_fd = open(\n        sysroot_path.as_std_path(),\n        OFlags::PATH | OFlags::DIRECTORY | OFlags::CLOEXEC,\n        Mode::empty(),\n    )\n    .context(\"Opening sysroot\")?;\n\n    let composefs_fd = bootc_initramfs_setup::mount_composefs_image(&sysroot_fd, &erofs_id, false)?;\n\n    let tempdir = tempfile::tempdir().context(\"Creating tempdir\")?;\n\n    bootc_initramfs_setup::mount_at_wrapper(composefs_fd, CWD, tempdir.path())?;\n\n    // TODO: Replace this with a function to cap_std_ext\n    let cp_ret = Command::new(\"cp\")\n        .args([\n            \"-a\",\n            &format!(\"{}/etc/.\", tempdir.path().as_str()?),\n            &format!(\"{state_path}/etc/.\"),\n        ])\n        .run_capture_stderr();\n\n    // Unmount regardless of copy succeeding\n    unmount(tempdir.path(), UnmountFlags::DETACH).context(\"Unmounting composefs\")?;\n\n    cp_ret\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "comment marker"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01573",
+  "source_finding_id": "P01573",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                row.add_prefix(Gtk.Image.new_from_icon_name(\"network-receive-symbolic\"))\n                description = _(\"Remote {remote_host}:{remote_port} → {dest_host}:{dest_port}\").format(\n                    remote_host=rule.get('listen_addr', 'localhost'),\n                    remote_port=rule.get('listen_port', ''),\n                    dest_host=rule.get('local_host') or rule.get('remote_host', ''),\n                    dest_port=rule.get('local_port') or rule.get('remote_port', '')\n                )\n            elif rule_type == 'dynamic':\n                row.set_title(_(\"Dynamic Port Forwarding (SOCKS)\"))\n                row.add_prefix(Gtk.Image.new_from_icon_name(\"network-workgroup-symbolic\"))\n                description = _(\"SOCKS proxy on port {port}\").format(\n                    port=rule.get('listen_port', '')\n                )\n            else:\n                continue\n                \n            # Add description\n            row.set_subtitle(description)\n            \n            # Add delete button\n            delete_button = Gtk.Button(\n                icon_name=\"user-trash-symbolic\",\n                valign=Gtk.Align.CENTER,\n                css_classes=[\"flat\", \"error\"]\n            )\n            delete_button.connect(\"clicked\", self.on_delete_forwarding_rule_clicked, rule)\n            row.add_suffix(delete_button)\n            \n            # Add edit button\n            edit_button = Gtk.Button(\n                icon_name=\"document-edit-symbolic\",",
+      "after": "            dialog = Gtk.FileDialog(title=_(\"Select SSH Key File\"))\n\n            # Default to SSH directory when available\n            try:\n                ssh_dir = get_ssh_dir()\n                if os.path.isdir(ssh_dir):\n                    dialog.set_initial_folder(Gio.File.new_for_path(ssh_dir))\n            except Exception:\n                pass\n\n            parent = self.get_transient_for()\n            if not isinstance(parent, Gtk.Window):\n                parent = None\n\n            dialog.open(parent, None, self.on_key_file_selected)\n        except Exception as e:\n            logger.error(f\"Failed to open key file chooser: {e}\")\n\n    def browse_for_certificate_file(self):\n        \"\"\"Open file chooser to browse for SSH certificate file using portal-aware API.\"\"\"\n        try:\n            dialog = Gtk.FileDialog(title=_(\"Select SSH Certificate File\"))\n\n            # Default to SSH directory when available\n            try:\n                ssh_dir = get_ssh_dir()\n                if os.path.isdir(ssh_dir):\n                    dialog.set_initial_folder(Gio.File.new_for_path(ssh_dir))\n            except Exception:\n                pass",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

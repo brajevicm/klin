@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01454",
+  "source_finding_id": "P01454",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "(extension) preload next episode's danmaku when video reaches 50% point [DA-116]",
+  "diff_context": [
+    {
+      "path": "packages/danmaku-anywhere/src/content/player/monitors/VideoNodeObserver.ts",
+      "before": "    if (!window.documentPictureInPicture?.window) return false\n    return window.documentPictureInPicture.window.document.contains(node)\n  }\n\n  public cleanup() {\n    this.rootObs.disconnect()\n    this.srcObs.cleanup()\n    this.videoChangeListeners.clear()\n    this.videoRemovedListeners.clear()\n  }\n}",
+      "after": "\n  private isNodeInPip(node: HTMLElement) {\n    if (!window.documentPictureInPicture?.window) return false\n    return window.documentPictureInPicture.window.document.contains(node)\n  }\n\n  public addEventListener(\n    event: VideoNodeObserverEvent,\n    listener: VideoChangeListener\n  ) {\n    if (!this.eventMap.has(event)) {\n      this.eventMap.set(event, new Set())\n    }\n\n    // biome-ignore lint/style/noNonNullAssertion: checked using has\n    this.eventMap.get(event)!.add(listener)\n  }\n\n  public removeEventListener(\n    event: VideoNodeObserverEvent,\n    listener: VideoChangeListener\n  ) {\n    if (this.eventMap.has(event)) {\n      // biome-ignore lint/style/noNonNullAssertion: checked using has\n      this.eventMap.get(event)!.delete(listener)\n    }\n  }\n\n  public start(selector: string) {\n    this.selector = selector",
+      "context": null
+    }
+  ],
+  "observations": [
+    "this.eventMap.get(event)!.add(listener)"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

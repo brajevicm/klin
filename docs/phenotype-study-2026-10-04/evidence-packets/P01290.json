@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01290",
+  "source_finding_id": "P01290",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "                    start_event, workflow.start_event_class\n                ):\n                    raise HTTPException(\n                        detail=f\"Start event must be an instance of {workflow.start_event_class}\",\n                        status_code=400,\n                    )\n\n            # Extract custom Context if present\n            context = None\n            if context_data:\n                context = Context.from_dict(workflow=workflow, data=context_data)\n            elif handler_id:\n                persisted_handlers = await self._workflow_store.query(\n                    HandlerQuery(\n                        handler_id_in=[handler_id],\n                        workflow_name_in=[workflow_name],\n                        status_in=[\"completed\"],\n                    )\n                )\n                if len(persisted_handlers) == 0:\n                    raise HTTPException(detail=\"Handler not found\", status_code=404)\n\n                context = Context.from_dict(workflow, persisted_handlers[0].ctx)\n\n            handler_id = handler_id or nanoid()\n            return (context, start_event, handler_id)\n\n        except HTTPException:\n            # Re-raise HTTPExceptions as-is (like start_event validation errors)\n            raise\n        except Exception as e:",
+      "after": "\n            # Extract custom StartEvent if present\n            start_event = None\n            if start_event_data is not None:\n                serializer = JsonSerializer()\n                try:\n                    start_event = (\n                        serializer.deserialize(start_event_data)\n                        if isinstance(start_event_data, str)\n                        else serializer.deserialize_value(start_event_data)\n                    )\n                    if isinstance(start_event, dict):\n                        start_event = workflow.start_event_class.model_validate(\n                            start_event\n                        )\n                except Exception as e:\n                    raise HTTPException(\n                        detail=f\"Validation error for 'start_event': {e}\",\n                        status_code=400,\n                    )\n                if start_event is not None and not isinstance(\n                    start_event, workflow.start_event_class\n                ):\n                    raise HTTPException(\n                        detail=f\"Start event must be an instance of {workflow.start_event_class}\",\n                        status_code=400,\n                    )\n\n            # Extract custom Context if present\n            context = None\n            if context_data:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01792",
+  "source_finding_id": "P01792",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)\n        main_box.append(header_bar)\n        main_box.append(box)\n        \n        # Set content for Adw.Window\n        dialog.set_content(main_box)\n        \n        # Load initial data\n        refresh_port_info()\n        \n        # Ensure dialog closes when the window controller is activated\n        dialog.connect(\"close-request\", lambda *_: dialog.destroy())\n        \n        # Show the window\n        dialog.present()\n\n    def _autosave_forwarding_changes(self):\n        \"\"\"Disabled autosave to avoid log floods; saving occurs on dialog Save.\"\"\"\n        return\n    \n    def on_cancel_clicked(self, button):\n        \"\"\"Handle cancel button click\"\"\"\n        self.close()\n    \n    def on_save_clicked(self, *_args):\n        \"\"\"Handle save button click or dialog save response\"\"\"\n        # Block save and focus the first invalid field if any inline validation fails\n        invalid_row = None\n        try:\n            invalid_row = self._validate_all_required_for_save()\n        except Exception:",
+      "after": "        \n        # Persist exactly what is in the editor list (enabled rules only) - no sanitization\n        forwarding_rules = [dict(r) for r in self.forwarding_rules if r.get('enabled', True)]\n        try:\n            logger.info(\n                \"ConnectionDialog save: %d forwarding rules collected, keyfile: '%s'\",\n                len(forwarding_rules or []), keyfile_value\n            )\n            logger.debug(\"Forwarding rules: %s\", forwarding_rules)\n        except Exception:\n            pass\n        \n        # Detect if password text was changed by user during this edit session\n        try:\n            password_changed = (self.password_row.get_text() != getattr(self, '_orig_password', None))\n        except Exception:\n            password_changed = False\n\n        # Resolve keyfile from dropdown/browse/subtitle/existing\n        try:\n            keyfile_value = ''\n            if hasattr(self, 'key_dropdown') and hasattr(self, '_key_paths'):\n                sel = self.key_dropdown.get_selected()\n                if 0 <= sel < len(self._key_paths):\n                    pth = self._key_paths[sel]\n                    if pth and pth != '__BROWSE__':\n                        keyfile_value = pth\n            if (not keyfile_value) and hasattr(self, '_selected_keyfile_path') and self._selected_keyfile_path:\n                keyfile_value = str(self._selected_keyfile_path)\n            if (not keyfile_value) and hasattr(self.keyfile_row, 'get_subtitle'):\n                keyfile_value = self.keyfile_row.get_subtitle() or ''",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

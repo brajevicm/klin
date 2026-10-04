@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00893",
+  "source_finding_id": "P00893",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    if hasattr(self, 'dynamic_port_row'):\n                        self._validate_port_row(self.dynamic_port_row, _(\"Local Port\"))\n        except Exception:\n            pass\n        \n        # Initialize forwarding_rules if it doesn't exist\n        if not hasattr(self, 'forwarding_rules'):\n            self.forwarding_rules = []\n            \n        # Determine the rule type based on the switch\n        rule_type = None\n        if switch == self.local_forwarding_enabled:\n            rule_type = 'local'\n        elif switch == self.remote_forwarding_enabled:\n            rule_type = 'remote'\n        elif switch == self.dynamic_forwarding_enabled:\n            rule_type = 'dynamic'\n            \n        if rule_type:\n            # Only update the rule if it doesn't exist or if we're disabling it\n            existing_rule = next((r for r in self.forwarding_rules if r.get('type') == rule_type), None)\n            \n            if not is_active:\n                # If disabling, just remove the rule\n                self.forwarding_rules = [r for r in self.forwarding_rules if r.get('type') != rule_type]\n            elif not existing_rule or not existing_rule.get('enabled', True):\n                # If enabling and no existing rule or rule is disabled, add a new one\n                rule = {'type': rule_type, 'enabled': True}\n                \n                # Set default values based on rule type\n                if rule_type == 'local' and hasattr(self, 'local_port_row') and hasattr(self, 'remote_host_row') and hasattr(self, 'remote_port_row'):",
+      "after": "                        'listen_addr': (self.dynamic_bind_row.get_text().strip() if hasattr(self, 'dynamic_bind_row') else '') or '127.0.0.1',\n                        'listen_port': int((self.dynamic_port_row.get_text() or '0').strip() or '0')\n                    })\n                \n                self.forwarding_rules.append(rule)\n                logger.debug(f\"Updated {rule_type} forwarding rule: {rule}\")\n            \n            # Update the rules list in the UI\n            self.load_port_forwarding_rules()\n    \n    def show_error(self, message):\n        \"\"\"Show error message\"\"\"\n        try:\n            if hasattr(self, 'present'):\n                self.present()\n        except Exception:\n            pass\n        \n        # Use the parent window as the transient parent for the error dialog\n        parent_window = self.parent_window if hasattr(self, 'parent_window') else None\n        dialog = Adw.MessageDialog.new(\n            parent_window,\n            _(\"Error\"),\n            message\n        )\n        dialog.add_response(\"ok\", _(\"OK\"))\n        dialog.set_default_response(\"ok\")\n        dialog.set_close_response(\"ok\")\n        dialog.present()\n\n    def _update_passphrase_for_key(self, key_path):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

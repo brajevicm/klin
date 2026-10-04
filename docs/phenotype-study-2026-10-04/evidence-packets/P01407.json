@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01407",
+  "source_finding_id": "P01407",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/payments/adyen.ts",
+      "before": null,
+      "after": "import { postJson } from \"../http/client\";\n\nexport class AdyenProvider {\n  async charge(cents: number): Promise<string> {\n    const reply = await postJson(\"/adyen/payments\", { amount: { value: cents, currency: \"EUR\" } });\n    return String(reply.pspReference);\n  }\n\n  async refund(chargeId: string): Promise<void> {\n    await postJson(`/adyen/payments/${chargeId}/refunds`, {});\n  }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "AdyenProvider in src/payments/ declares `*provider` like 2 sibling files, 2 of which implement PaymentProvider; is named `*Provider` like 2 members; defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.ts, stripe.ts)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

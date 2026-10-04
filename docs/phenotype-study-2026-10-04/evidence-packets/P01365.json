@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01365",
+  "source_finding_id": "P01365",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "@dataclass\nclass _WorkflowHandler:\n    \"\"\"A wrapper around a handler: WorkflowHandler. Necessary to monitor and dispatch events from the handler's stream_events\"\"\"\n\n    run_handler: WorkflowHandler\n    queue: asyncio.Queue[Event]\n    task: asyncio.Task[None]\n    # only one consumer of the queue at a time allowed\n    consumer_mutex: asyncio.Lock\n\n    # metadata\n    handler_id: str\n    workflow_name: str\n    started_at: datetime\n    updated_at: datetime\n    completed_at: datetime | None\n\n    def to_dict(self) -> HandlerDict:\n        return HandlerDict(\n            handler_id=self.handler_id,\n            workflow_name=self.workflow_name,\n            run_id=self.run_handler.run_id,\n            status=self.status,\n            started_at=self.started_at.isoformat(),\n            updated_at=self.updated_at.isoformat(),\n            completed_at=self.completed_at.isoformat()\n            if self.completed_at is not None\n            else None,\n            error=self.error,\n            result=self.result.model_dump()\n            if self.result is not None and isinstance(self.result, BaseModel)",
+      "after": "                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=handler.handler_id,\n                            workflow_name=handler.workflow_name,\n                            status=persist_status,\n                            ctx=handler.run_handler.ctx.to_dict(),\n                        )\n                    )\n                else:\n                    await self._workflow_store.delete(\n                        HandlerQuery(handler_id_in=[handler.handler_id])\n                    )\n        if handler.task is not None and not handler.task.done():\n            try:\n                handler.task.cancel()\n            except Exception:\n                pass\n        self._handlers.pop(handler.handler_id, None)\n        self._results.pop(handler.handler_id, None)\n\n\n@dataclass\nclass _WorkflowHandler:\n    \"\"\"A wrapper around a handler: WorkflowHandler. Necessary to monitor and dispatch events from the handler's stream_events\"\"\"\n\n    run_handler: WorkflowHandler\n    queue: asyncio.Queue[Event]\n    task: asyncio.Task[None]\n    # only one consumer of the queue at a time allowed\n    consumer_mutex: asyncio.Lock",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

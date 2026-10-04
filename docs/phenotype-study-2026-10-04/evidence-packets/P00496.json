@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00496",
+  "source_finding_id": "P00496",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        try:\n            dpe = dest_port_row.get_child()\n            if dpe and hasattr(dpe, 'set_input_purpose'):\n                dpe.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if dpe and hasattr(dpe, 'set_max_length'):\n                dpe.set_max_length(5)\n        except Exception:\n            pass\n        remote_settings_box.append(dest_port_row)\n        \n        # Add settings box to group\n        remote_forwarding_group.add(remote_settings_box)\n        \n        # Store references to the rows for saving\n        self.remote_bind_host_row = remote_bind_host_row\n        self.remote_bind_port_row = remote_bind_port_row\n        self.dest_host_row = dest_host_row\n        self.dest_port_row = dest_port_row\n        self.remote_settings_box = remote_settings_box  # Store reference to the settings box\n        \n        # Connect toggle to show/hide settings\n        self.remote_forwarding_enabled.connect('notify::active', self.on_forwarding_toggled, remote_settings_box)\n        \n        # Initially hide settings if not enabled\n        remote_settings_box.set_visible(False)\n        \n        remote_forwarding_group.set_visible(False)\n        \n        # Dynamic Port Forwarding (moved)\n        dynamic_forwarding_group = Adw.PreferencesGroup(title=_(\"Dynamic Port Forwarding (SOCKS)\"))\n        ",
+      "after": "            dbe = dynamic_bind_row.get_child()\n            if dbe and hasattr(dbe, 'set_placeholder_text'):\n                dbe.set_placeholder_text(\"127.0.0.1\")\n        except Exception:\n            pass\n        dynamic_settings_box.append(dynamic_bind_row)\n\n        dynamic_port_row = Adw.EntryRow()\n        dynamic_port_row.set_title(_(\"Local Port\"))\n        try:\n            dpe2 = dynamic_port_row.get_child()\n            if dpe2 and hasattr(dpe2, 'set_input_purpose'):\n                dpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if dpe2 and hasattr(dpe2, 'set_max_length'):\n                dpe2.set_max_length(5)\n        except Exception:\n            pass\n        dynamic_port_row.set_text(\"1080\")  # Default SOCKS port\n        dynamic_settings_box.append(dynamic_port_row)\n        \n        # Add settings box to group\n        dynamic_forwarding_group.add(dynamic_settings_box)\n        \n        # Store reference for saving\n        self.dynamic_bind_row = dynamic_bind_row\n        self.dynamic_port_row = dynamic_port_row\n        self.dynamic_settings_box = dynamic_settings_box  # Store reference to the settings box\n        \n        # Connect toggle to show/hide settings\n        self.dynamic_forwarding_enabled.connect('notify::active', self.on_forwarding_toggled, dynamic_settings_box)\n        ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

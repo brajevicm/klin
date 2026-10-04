@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00329",
+  "source_finding_id": "P00329",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/view/subtitle_interface.py",
+      "before": "        return None\n\n    def rowCount(self, parent=None):\n        return len(self._data)\n\n    def columnCount(self, parent=None):\n        return 4\n\n    def flags(self, index):\n        if not index.isValid():\n            return Qt.NoItemFlags\n        if index.column() in [2, 3]:\n            return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable\n        return Qt.ItemIsEnabled | Qt.ItemIsSelectable\n\n    def update_data(self, new_data):\n        \"\"\"更新字幕数据\"\"\"\n        updated_rows = set()\n\n        # 更新内部数据\n        for key, value in new_data.items():\n            if key in self._data:\n                if \"||\" in value:\n                    original_subtitle, translated_subtitle = value.split(\"||\", 1)\n                    self._data[key][\"original_subtitle\"] = original_subtitle\n                    self._data[key][\"translated_subtitle\"] = translated_subtitle\n                else:\n                    self._data[key][\"translated_subtitle\"] = value\n                row = list(self._data.keys()).index(key)\n                updated_rows.add(row)",
+      "after": "                return str(section + 1)  # 显示行号\n        elif role == Qt.TextAlignmentRole:  # type: ignore\n            return Qt.AlignCenter  # type: ignore  # 居中对齐\n        return None\n\n    def rowCount(self, parent: Optional[QModelIndex] = None) -> int:\n        return len(self._data)\n\n    def columnCount(self, parent: Optional[QModelIndex] = None) -> int:\n        return 4\n\n    def flags(self, index: QModelIndex) -> Qt.ItemFlags:\n        if not index.isValid():\n            return Qt.NoItemFlags  # type: ignore\n        if index.column() in [2, 3]:\n            return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable  # type: ignore\n        return Qt.ItemIsEnabled | Qt.ItemIsSelectable  # type: ignore\n\n    def update_data(self, new_data: Dict[str, str]) -> None:\n        \"\"\"更新字幕数据\"\"\"\n        updated_rows = set()\n\n        # 更新内部数据\n        for key, value in new_data.items():\n            if key in self._data:\n                if \"||\" in value:\n                    original_subtitle, translated_subtitle = value.split(\"||\", 1)\n                    self._data[key][\"original_subtitle\"] = original_subtitle\n                    self._data[key][\"translated_subtitle\"] = translated_subtitle\n                else:\n                    self._data[key][\"translated_subtitle\"] = value",
+      "context": null
+    }
+  ],
+  "observations": [
+    "return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

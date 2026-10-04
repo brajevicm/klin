@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00939",
+  "source_finding_id": "P00939",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "aime 2024 / 2025\n\n## Description\n<!-- Provide a brief description of the changes in this PR -->\n\n## Type of Change\n<!-- Mark the relevant option with an \"x\" -->\n- [ ] Bug fix (non-breaking change which fixes an issue)\n- [ ] New feature (non-breaking change which adds functionality)\n- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)\n- [ ] Documentation update\n- [ ] Test improvement\n\n## Testing\n<!-- Describe the tests you ran to verify your changes -->\n- [ ] All existing tests pass\n- [ ] New tests have been added to cover the changes\n- [ ] Tests have been run locally with `python -m pytest tests/`\n\n### Test Coverage\n<!-- If applicable, mention the test coverage for new code -->\n- Current coverage: ___%\n- Coverage after changes: ___%\n\n## Checklist\n- [ ] My code follows the style guidelines of this project\n- [ ] I have performed a self-review of my own code\n- [ ] I have commented my code, particularly in hard-to-understand areas\n- [ ] I have made corresponding changes to the documentation\n- [ ] My changes generate no new warnings\n- [ ] Any dependent changes have been merged and published\n\n## Additional Notes\n<!-- Add any additional notes, screenshots, or context about the PR here -->",
+  "diff_context": [
+    {
+      "path": "verifiers/utils/data_utils.py",
+      "before": "# NOTE: Helper functions for example datasets. Not intended for core functionality.\n\nimport random\nfrom typing import Dict, Callable, Any\n\nfrom datasets import Dataset, load_dataset, concatenate_datasets  # type: ignore\n\n\ndef extract_boxed_answer(text: str) -> str:\n    def find_matching_brace(s: str, start: int) -> int:\n        count = 1\n        i = start\n        while i < len(s) and count > 0:\n            if s[i] == \"{\":\n                count += 1\n            elif s[i] == \"}\":\n                count -= 1\n            i += 1\n        return i - 1 if count == 0 else -1\n\n    # Find \\boxed{",
+      "after": "# NOTE: Helper functions for example datasets. Not intended for core functionality.\n\nimport random\nfrom typing import Any, Callable, Dict\n\nfrom datasets import Dataset, concatenate_datasets, load_dataset  # type: ignore\n\n### PROMPTS ###\n\nBOXED_SYSTEM_PROMPT = \"Think step-by-step inside <think>...</think> tags. \\\n    Then, give your final numerical answer inside \\\\boxed{{...}}.\"\n###############\n\n\ndef extract_boxed_answer(text: str) -> str:\n    def find_matching_brace(s: str, start: int) -> int:\n        count = 1\n        i = start\n        while i < len(s) and count > 0:\n            if s[i] == \"{\":\n                count += 1",
+      "context": null
+    }
+  ],
+  "observations": [
+    "from datasets import Dataset, concatenate_datasets, load_dataset  # type: ignore"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

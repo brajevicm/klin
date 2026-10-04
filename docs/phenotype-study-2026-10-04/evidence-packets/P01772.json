@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01772",
+  "source_finding_id": "P01772",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        self.drop_target_indicator.set_visible(False)\n    \n    def set_indentation(self, level: int):\n        \"\"\"Set indentation level for grouped connections\"\"\"\n        # Simplified indentation using margin start\n        margin = max(0, level) * 20\n        self.set_margin_start(margin)\n\n    def _resolve_group_color(self) -> Optional[Gdk.RGBA]:\n        manager = getattr(self, 'group_manager', None)\n        if not manager:\n            return None\n\n        try:\n            group_id = manager.get_connection_group(self.connection.nickname)\n        except Exception:\n            group_id = None\n\n        visited = set()\n        while group_id:\n            if group_id in visited:\n                break\n            visited.add(group_id)\n\n            group_info = None\n            try:\n                if hasattr(manager, 'groups'):\n                    group_info = manager.groups.get(group_id)\n            except Exception:\n                group_info = None",
+      "after": "        self.drop_target_indicator.set_visible(False)\n    \n    def set_indentation(self, level: int):\n        \"\"\"Set indentation level for grouped connections\"\"\"\n        # Simplified indentation using margin start\n        margin = max(0, level) * 20\n        self.set_margin_start(margin)\n\n    def _resolve_group_color(self) -> Optional[Gdk.RGBA]:\n        manager = getattr(self, 'group_manager', None)\n        if not manager:\n            return None\n\n        try:\n            group_id = manager.get_connection_group(self.connection.nickname)\n        except Exception:\n            group_id = None\n\n        visited = set()\n        while group_id:\n            if group_id in visited:\n                break\n            visited.add(group_id)\n\n            group_info = None\n            try:\n                if hasattr(manager, 'groups'):\n                    group_info = manager.groups.get(group_id)\n            except Exception:\n                group_info = None",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

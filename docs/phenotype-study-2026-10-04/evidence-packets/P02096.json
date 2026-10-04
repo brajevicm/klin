@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02096",
+  "source_finding_id": "P02096",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "feat: add fractional reserve warning banner\n\n## Summary\nAdds a warning banner to alert users when the LNbits instance is operating on fractional reserves (when user balances exceed the underlying node balance). This improves transparency and allows users to make informed decisions about using the instance.\n\nThe banner only displays when:\n- A real funding source is configured (not VoidWallet)\n- The balance delta exceeds the watchdog threshold\n- A user is logged in\n\n## Changes\n- Added FRACTIONAL_RESERVE boolean flag to helpers.py template context\n- Implemented yellow warning banner with bold black text in base.html\n- Added fractional_reserve_warning translation string to en.js\n\n## Screenshots\nBanner displays at the top of the page (inside q-header, before q-toolbar) with:\n- Yellow background (`bg-warning` - Quasar default warning color)\n- Bold black text for maximum readability\n- Black warning icon\n\n## Test Plan\n- [x] Banner code is present in HTML when FRACTIONAL_RESERVE is true\n- [x] Banner is hidden when FRACTIONAL_RESERVE is false\n- [x] Banner is hidden when user is not logged in\n- [x] Text is readable (bold black on yellow background)\n- [x] Banner positioning is correct (no overlap with header)\n- [x] All linter checks pass (Prettier, Black, Ruff)\n- [x] Bundle is up to date\n\n## Screenshot\n\n![Screenshot_18-10-2025_203245_lnbits-dev weeksfamily me]([external reference omitted]\n\nFixes #3429\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "lnbits/helpers.py",
+      "before": "    import json\n    import os\n\n    callee_filepath = inspect.stack()[1].filename\n    callee_dirname, _ = os.path.split(callee_filepath)\n\n    path = os.path.normpath(callee_dirname)\n    extension_director_name = path.split(os.sep)[-1]\n    try:\n        config_path = os.path.join(callee_dirname, \"config.json\")\n        with open(config_path) as json_file:\n            config = json.load(json_file)\n        ext_name = config[\"name\"]\n    except Exception:\n        ext_name = extension_director_name\n    return ext_name\n\n\ndef generate_filter_params_openapi(model: type[FilterModel], keep_optional=False):\n    \"\"\"\n    Generate openapi documentation for Filters. This is intended to be used along\n    parse_filters (see example)\n    :param model: Filter model\n    :param keep_optional: If false, all parameters will be optional,\n    otherwise inferred from model\n    \"\"\"\n    fields = list(model.__fields__.values())\n    params = []\n    for field in fields:\n        schema, _, _ = field_schema(field, model_name_map={})",
+      "after": "    \"\"\"\n    import inspect\n    import json\n    import os\n\n    callee_filepath = inspect.stack()[1].filename\n    callee_dirname, _ = os.path.split(callee_filepath)\n\n    path = os.path.normpath(callee_dirname)\n    extension_director_name = path.split(os.sep)[-1]\n    try:\n        config_path = os.path.join(callee_dirname, \"config.json\")\n        with open(config_path) as json_file:\n            config = json.load(json_file)\n        ext_name = config[\"name\"]\n    except Exception:\n        ext_name = extension_director_name\n    return ext_name\n\n\ndef generate_filter_params_openapi(model: type[FilterModel], keep_optional=False):\n    \"\"\"\n    Generate openapi documentation for Filters. This is intended to be used along\n    parse_filters (see example)\n    :param model: Filter model\n    :param keep_optional: If false, all parameters will be optional,\n    otherwise inferred from model\n    \"\"\"\n    fields = list(model.__fields__.values())\n    params = []\n    for field in fields:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

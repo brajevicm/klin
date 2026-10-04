@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01004",
+  "source_finding_id": "P01004",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix bugs in health checks\n\nFix bugs:\n\n- Only the last slice was getting health checks\n- Health checks were only checked once at the start of the loop\n- There was no timeout for waiting on the health checks",
+  "diff_context": [
+    {
+      "path": "src/levanter/infra/ray_tpu.py",
+      "before": "            pending_futures = list(futures)\n            had_a_failure = False\n\n            # check health of actors in the loop too\n            actor_health_futures = [tpu_slice.actor.healthy.remote() for actor in slice_pool]\n\n            while pending_futures and not had_a_failure:\n                finished, pending_futures = ray.wait(pending_futures, num_returns=1, timeout=10.0)\n\n                for f in finished:\n                    try:\n                        tpu_results[future_to_index[f]] = TpuSuccess(ray.get(f))\n                    except RayError as e:\n                        had_a_failure = True\n                        problems.append(e)\n                        tpu_results[future_to_index[f]] = _handle_ray_error(e)\n                    except Exception as e:\n                        logger.warning(f\"Task {f} failed with unexpected error {e}. Will retry.\")\n                        had_a_failure = True\n                        tpu_results[future_to_index[f]] = TpuRunError(e)\n\n                if had_a_failure:\n                    # skip health checks if we already had a failure\n                    break\n\n                # Check if any actors are unhealthy. We hit this if it's been 10 seconds or we got a result\n                try:\n                    actor_healths = ray.get(actor_health_futures)\n                except RayError as e:\n                    logger.warning(\"Failed to get actor healths\", exc_info=e)\n                    # assume things are bad",
+      "after": "            pending_futures = list(futures)\n            had_a_failure = False\n\n            actor_health_futures = [tpu_slice.actor.healthy.remote() for tpu_slice in slice_pool]\n\n            while pending_futures and not had_a_failure:\n                finished, pending_futures = ray.wait(pending_futures, num_returns=1, timeout=10.0)\n\n                for f in finished:\n                    try:\n                        tpu_results[future_to_index[f]] = TpuSuccess(ray.get(f))\n                    except RayError as e:\n                        had_a_failure = True\n                        problems.append(e)\n                        tpu_results[future_to_index[f]] = _handle_ray_error(e)\n                    except Exception as e:\n                        logger.warning(f\"Task {f} failed with unexpected error {e}. Will retry.\")\n                        had_a_failure = True\n                        tpu_results[future_to_index[f]] = TpuRunError(e)\n\n                if had_a_failure:\n                    break\n\n                # Check if any actors are unhealthy. We hit this if it's been 10 seconds or we got a result\n                try:\n                    actor_healths = ray.get(actor_health_futures, timeout=_HEALTH_CHECK_TIMEOUT)\n                except RayError as e:\n                    logger.warning(\"Failed to get actor healths\", exc_info=e)\n                    # assume things are bad\n                    had_a_failure = True\n                else:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00236",
+  "source_finding_id": "P00236",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Force user to specify number of offchain parameters when building\n\nThis prevents errors during migration from v2 by forgetting to remove datum/redeemer args",
+  "diff_context": [
+    {
+      "path": "opshin/__main__.py",
+      "before": "        with redirect_stdout(open(os.devnull, \"w\")):\n            try:\n                py_ret = sc.validator(*parsed_params)\n            except Exception as e:\n                py_ret = e\n        command = Command.eval_uplc\n\n    source_ast = compiler.parse(source_code, filename=input_file)\n\n    if command == Command.parse:\n        print(\"Parsed successfully.\")\n        return\n\n    try:\n        code = compiler.compile(\n            source_ast,\n            filename=input_file,\n            validator_function_name=\"validator\" if lib is None else lib,\n            # do not remove dead code when compiling a library - none of the code will be used\n            config=compiler_config,\n        )\n    except CompilerError as c:\n        # Generate nice error message from compiler error\n        if not isinstance(c.node, ast.Module):\n            source_seg = ast.get_source_segment(source_code, c.node)\n            start_line = c.node.lineno - 1\n            end_line = start_line + len(source_seg.splitlines())\n            source_lines = \"\\n\".join(source_code.splitlines()[start_line:end_line])\n            pos_in_line = source_lines.find(source_seg)\n        else:\n            start_line = 0",
+      "after": "            annotations,\n            return_annotation,\n            parsed_params,\n            number_parameters,\n        )\n        assert (\n            onchain_params\n        ), \"The validator function must have at least one on-chain parameter. You can also add `_:None`.\"\n\n    py_ret = Command.eval\n    if command == Command.eval:\n        print(\"Python execution started\")\n        with redirect_stdout(open(os.devnull, \"w\")):\n            try:\n                py_ret = sc.validator(*parsed_params)\n            except Exception as e:\n                py_ret = e\n        command = Command.eval_uplc\n\n    source_ast = compiler.parse(source_code, filename=input_file)\n\n    if command == Command.parse:\n        print(\"Parsed successfully.\")\n        return\n\n    try:\n        code = compiler.compile(\n            source_ast,\n            filename=input_file,\n            validator_function_name=\"validator\" if lib is None else lib,\n            # do not remove dead code when compiling a library - none of the code will be used",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

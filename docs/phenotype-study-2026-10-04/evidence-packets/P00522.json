@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00522",
+  "source_finding_id": "P00522",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/src/firestore.ts",
+      "before": null,
+      "after": "/* eslint-disable @typescript-eslint/no-unnecessary-condition */\nimport type {\n  CollectionConfig,\n  DeleteMutationFnParams,\n  InsertMutationFnParams,\n  SyncConfig,\n  UpdateMutationFnParams,\n  UtilsRecord,\n} from \"@tanstack/db\"\nimport type {\n  Firestore,\n  CollectionReference,\n  DocumentReference,\n  DocumentData,\n  QuerySnapshot,\n  Unsubscribe,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "/* eslint-disable @typescript-eslint/no-unnecessary-condition */"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

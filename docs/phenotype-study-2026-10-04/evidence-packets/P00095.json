@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00095",
+  "source_finding_id": "P00095",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix usage of EnvVar class\n\nI noticed while working on #319 that there was a regression due to the release of CrewAI 0.121.1, which affected imports in this repo.\n\nNote that by modifying these files the `pre-commit` hook reformatted them.",
+  "diff_context": [
+    {
+      "path": "generate_tool_specs.py",
+      "before": "                params.append(param)\n\n            return params\n\n        except Exception as e:\n            print(f\"Error extracting params from {args_schema_class}: {e}\")\n            return []\n\n    def _extract_env_vars(self, env_vars_field: Optional[Dict]) -> List[Dict[str, str]]:\n        if not env_vars_field:\n            return []\n\n        env_vars = []\n        for env_var in env_vars_field.get(\"schema\", {}).get(\"default\", []):\n            if isinstance(env_var, EnvVar):\n                env_vars.append({\n                    \"name\": env_var.name,\n                    \"description\": env_var.description,\n                    \"required\": env_var.required,\n                    \"default\": env_var.default,\n                })\n        return env_vars\n    \n    def _extract_field_description_from_metadata(self, field: Dict) -> str:\n        if metadata := field.get(\"metadata\"):\n            return metadata.get(\"pydantic_js_updates\", {}).get(\"description\", \"\")\n        return \"\"\n\n    def _extract_param_type(self, info: Dict) -> Optional[str]:\n        schema = info.get(\"schema\", {})\n        schema = self._unwrap_schema(schema)",
+      "after": "            params = []\n            for name, info in fields.items():\n                _type = self._extract_param_type(info)\n                if _type == \"union\":\n                    breakpoint()\n                param = {\n                    \"name\": name,\n                    \"description\": self._extract_field_default(info)\n                    or self._extract_field_description_from_metadata(info),\n                    \"type\": _type,\n                }\n                params.append(param)\n\n            return params\n\n        except Exception as e:\n            print(f\"Error extracting params from {args_schema_class}: {e}\")\n            return []\n\n    def _extract_env_vars(self, env_vars_field: Optional[Dict]) -> List[Dict[str, str]]:\n        if not env_vars_field:\n            return []\n\n        env_vars = []\n        for env_var in env_vars_field.get(\"schema\", {}).get(\"default\", []):\n            if isinstance(env_var, EnvVar):\n                env_vars.append(\n                    {\n                        \"name\": env_var.name,\n                        \"description\": env_var.description,\n                        \"required\": env_var.required,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

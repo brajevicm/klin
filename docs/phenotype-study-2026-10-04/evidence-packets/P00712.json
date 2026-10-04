@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00712",
+  "source_finding_id": "P00712",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Generate minimal sentry-python reproduction\n\n<!-- Describe your PR here -->\nThis PR provides a minimal reproduction for issue #4657, where the `clickhouse-driver` integration prematurely consumes generators when `send_default_pii` is enabled.\n\nThe reproduction includes:\n- `simple_reproduce.py`: A clear demonstration of the generator consumption.\n- `reproduce_issue.py`: A comprehensive script showing behavior with and without Sentry.\n- `test_generator_issue.py`: A pytest-compatible test case to verify the fix.\n- `README.md`: Instructions and details on the bug's location.\n\n---\n\nThank you for contributing to `sentry-python`! Please add tests to validate your changes, and lint your code using `tox -e linters`.\n\nRunning the test suite on your PR might require maintainer approval.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>\n\n<sub>[Learn more]([external reference omitted] about [authoring attribution omitted]s</sub>",
+  "diff_context": [
+    {
+      "path": "reproduction/reproduce_issue.py",
+      "before": null,
+      "after": "            self.connection = type('Connection', (), {\n                'host': 'localhost',\n                'port': 9000,\n                'database': 'default'\n            })()\n            \n        def send_data(self, *args):\n            \"\"\"This method gets wrapped by Sentry\"\"\"\n            logger.info(f\"send_data called with args: {args}\")\n            if len(args) >= 3:\n                data = args[2]\n                # Try to consume the data\n                try:\n                    consumed = list(data)\n                    logger.info(f\"send_data consumed data: {consumed}\")\n                except Exception as e:\n                    logger.error(f\"Error consuming data in send_data: {e}\")\n    \n    # Replace the import\n    clickhouse_driver.client.Client = PatchedClient\n    \n    try:\n        # Create client (will be our patched version)\n        client = Client()\n        \n        # Create generator\n        data_gen = create_data_generator()\n        \n        # The integration will wrap send_data and consume the generator here\n        # Before the actual clickhouse-driver gets to use it\n        client.execute(\"INSERT INTO test_table (id, name) VALUES\", data_gen)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

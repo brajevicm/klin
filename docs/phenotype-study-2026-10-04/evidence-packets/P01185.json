@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01185",
+  "source_finding_id": "P01185",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/session_manager.py",
+      "before": "        try:\n            loop = asyncio.get_running_loop()\n            self._cleanup_task = loop.create_task(self._cleanup_loop())\n            logger.debug(f\"Started session cleanup task {id(self._cleanup_task)} for SessionManager {id(self)}\")\n        except RuntimeError:\n            logger.debug(\"No event loop, cleanup will start later\")\n    \n    async def _cleanup_loop(self):\n        \"\"\"Periodically clean up expired sessions.\"\"\"\n        logger.debug(f\"Cleanup loop started for SessionManager {id(self)}\")\n        while True:\n            try:\n                await asyncio.sleep(self._cleanup_interval)\n                logger.debug(f\"Running cleanup on SessionManager {id(self)}\")\n                await self._cleanup_expired_sessions()\n            except asyncio.CancelledError:\n                logger.info(\"Cleanup task cancelled\")\n                break\n            except Exception as e:\n                logger.error(f\"Cleanup error: {e}\", exc_info=True)\n    \n    async def _cleanup_expired_sessions(self):\n        \"\"\"Find and remove expired sessions based on lastUpdateTime.\"\"\"\n        current_time = time.time()\n        expired_count = 0\n        \n        # Check all tracked sessions\n        for session_key in list(self._session_keys):  # Copy to avoid modification during iteration\n            app_name, session_id = session_key.split(':', 1)\n            \n            # Find user_id for this session",
+      "after": "        logger.debug(f\"Deleting session {session_key}, memory_service: {self._memory_service is not None}\")\n        if self._memory_service:\n            try:\n                await self._memory_service.add_session_to_memory(session)\n                logger.debug(f\"Added session {session_key} to memory before deletion\")\n            except Exception as e:\n                logger.error(f\"Failed to add session {session_key} to memory: {e}\")\n        \n        try:\n            await self._session_service.delete_session(\n                session_id=session.id,\n                app_name=session.app_name,\n                user_id=session.user_id\n            )\n            logger.debug(f\"Deleted session: {session_key}\")\n        except Exception as e:\n            logger.error(f\"Failed to delete session {session_key}: {e}\")\n        \n        self._untrack_session(session_key, session.user_id)\n    \n    def _start_cleanup_task(self):\n        \"\"\"Start the cleanup task if not already running.\"\"\"\n        try:\n            loop = asyncio.get_running_loop()\n            self._cleanup_task = loop.create_task(self._cleanup_loop())\n            logger.debug(f\"Started session cleanup task {id(self._cleanup_task)} for SessionManager {id(self)}\")\n        except RuntimeError:\n            logger.debug(\"No event loop, cleanup will start later\")\n    \n    async def _cleanup_loop(self):\n        \"\"\"Periodically clean up expired sessions.\"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

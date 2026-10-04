@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01927",
+  "source_finding_id": "P01927",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/view/setting_interface.py",
+      "before": "        # 保存配置组\n        self.saveGroup = SettingCardGroup(self.tr(\"保存配置\"), self.scrollWidget)\n        # 个性化组\n        self.personalGroup = SettingCardGroup(self.tr(\"个性化\"), self.scrollWidget)\n        # 关于组\n        self.aboutGroup = SettingCardGroup(self.tr(\"关于\"), self.scrollWidget)\n\n    def __initCards(self):\n        \"\"\"初始化所有配置卡片\"\"\"\n        # 转录配置卡片\n        self.transcribeModelCard = ComboBoxSettingCard(\n            cfg.transcribe_model,\n            FIF.MICROPHONE,\n            self.tr(\"转录模型\"),\n            self.tr(\"语音转换文字要使用的语音识别模型\"),\n            texts=[model.value for model in cfg.transcribe_model.validator.options],\n            parent=self.transcribeGroup,\n        )\n\n        # LLM配置卡片\n        self.__createLLMServiceCards()\n\n        # 翻译配置卡片\n        self.__createTranslateServiceCards()\n\n        # 翻译与优化配置卡片\n        self.subtitleCorrectCard = SwitchSettingCard(\n            FIF.EDIT,\n            self.tr(\"字幕校正\"),\n            self.tr(\"字幕处理过程是否对生成的字幕进行校正\"),\n            cfg.need_optimize,",
+      "after": "        # 保存配置组\n        self.saveGroup = SettingCardGroup(self.tr(\"保存配置\"), self.scrollWidget)\n        # 个性化组\n        self.personalGroup = SettingCardGroup(self.tr(\"个性化\"), self.scrollWidget)\n        # 关于组\n        self.aboutGroup = SettingCardGroup(self.tr(\"关于\"), self.scrollWidget)\n\n    def __initCards(self):\n        \"\"\"初始化所有配置卡片\"\"\"\n        # 转录配置卡片\n        self.transcribeModelCard = ComboBoxSettingCard(\n            cfg.transcribe_model,\n            FIF.MICROPHONE,\n            self.tr(\"转录模型\"),\n            self.tr(\"语音转换文字要使用的语音识别模型\"),\n            texts=[model.value for model in cfg.transcribe_model.validator.options],  # type: ignore\n            parent=self.transcribeGroup,\n        )\n\n        # LLM配置卡片\n        self.__createLLMServiceCards()\n\n        # 翻译配置卡片\n        self.__createTranslateServiceCards()\n\n        # 翻译与优化配置卡片\n        self.subtitleCorrectCard = SwitchSettingCard(\n            FIF.EDIT,\n            self.tr(\"字幕校正\"),\n            self.tr(\"字幕处理过程是否对生成的字幕进行校正\"),\n            cfg.need_optimize,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "texts=[model.value for model in cfg.transcribe_model.validator.options],  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

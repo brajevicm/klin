@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00861",
+  "source_finding_id": "P00861",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        return result\n\n    def _update_save_buttons(self):\n        try:\n            has_errors = any(\n                (k in self.validation_results and not self.validation_results[k].is_valid)\n                for k in ('name', 'hostname', 'port', 'username')\n            )\n            enabled = not has_errors\n            for btn in getattr(self, '_save_buttons', []) or []:\n                try:\n                    btn.set_sensitive(enabled)\n                except Exception:\n                    pass\n            if hasattr(self, 'set_response_enabled'):\n                try:\n                    self.set_response_enabled('save', enabled)\n                except Exception:\n                    pass\n        except Exception:\n            pass\n    def _row_set_message(self, row, message: str, is_error: bool = True):\n        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(message or \"\")\n        except Exception:\n            pass\n        # Also mirror the message into tooltips for visibility/accessibility\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(message or None)",
+      "after": "\n    def _row_clear_message(self, row):\n        self._row_set_message(row, \"\", is_error=False)\n\n    def _connect_row_validation(self, row, validator_callable):\n        # Prefer notify::text on Adw.EntryRow, fallback to child Gtk.Entry changed\n        try:\n            row.connect('notify::text', lambda r, p: validator_callable(r))\n            return\n        except Exception:\n            pass\n        try:\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None:\n                entry.connect('changed', lambda e: validator_callable(row))\n        except Exception:\n            pass\n\n    def _validate_required_row(self, row, label_text: str):\n        text = (row.get_text() if hasattr(row, 'get_text') else \"\").strip()\n        if not text:\n            self._row_set_message(row, _(f\"{label_text} is required\"), is_error=True)\n            return False\n        self._row_clear_message(row)\n        return True\n\n    def _is_nickname_taken(self, name: str) -> bool:\n        try:\n            mgr = getattr(self.parent_window, 'connection_manager', None)\n            if mgr is None or not hasattr(mgr, 'connections'):\n                return False",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

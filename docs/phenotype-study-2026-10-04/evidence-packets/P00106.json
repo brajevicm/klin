@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00106",
+  "source_finding_id": "P00106",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "feat(app): Forms\n\n# Changes\n- Removed monaco editor in favor of codemirror\n- Reimplment expressions autocompletion logic \n- Implement dynamic forms. You can pass a `Component` annotation in a UDF and it will generate a `x-tracecat-component` metadata in the jsonschema. The UI looks for these to show more specialized UI. Otherwise we fallback to a CM yaml editor.\n\n\n## Summary by cubic\nAdded a new forms system for action and workflow panels, including a flexible YAML/JSON editor, expression input with template pill support, and improved control flow fields.\n\n- **New Features**\n  - Introduced CodeMirror-based YAML and JSON editors with template expression highlighting, completion, and validation.\n  - Added ExpressionInput and ForEachField components for handling template expressions and lists of expressions.\n  - Implemented polymorphic and toggle tab fields for dynamic form rendering.\n  - Enhanced action and workflow panels to use new form components, supporting both form and YAML editing modes.\n  - Improved type handling and schema parsing for dynamic field generation.\n\n- **Bug Fixes**\n  - Fixed issues with template pill editing, cursor navigation, and atomic deletion.\n  - Improved handling of str/list[str] edge cases and type conversions in forms.\n\n<!-- End of auto-generated description by cubic. -->",
+  "diff_context": [
+    {
+      "path": "registry/tracecat_registry/integrations/agents/builder.py",
+      "before": "            # Call directly based on action type\n            if bound_action.is_template:\n                # For templates, pass the context with secrets\n                result = await run_template_action(\n                    action=bound_action,\n                    args=args,\n                    context=context,\n                )\n            else:\n                # UDFs can be called directly - secrets are now in the environment\n                result = await _run_action_direct(\n                    action=bound_action,\n                    args=args,\n                )\n    except Exception as e:\n        raise ModelRetry(str(e))\n    return result\n\n\ndef _extract_action_metadata(bound_action) -> tuple[str, type]:\n    \"\"\"Extract description and model class from a bound action.\n\n    Args:\n        bound_action: The bound action from the registry\n\n    Returns:\n        Tuple of (description, model_cls)\n\n    Raises:\n        ValueError: If template action is not set or description is missing\n    \"\"\"",
+      "after": "        with env_sandbox(flattened_secrets):\n            # Call directly based on action type\n            if bound_action.is_template:\n                # For templates, pass the context with secrets\n                result = await run_template_action(\n                    action=bound_action,\n                    args=args,\n                    context=context,\n                )\n            else:\n                # UDFs can be called directly - secrets are now in the environment\n                result = await _run_action_direct(\n                    action=bound_action,\n                    args=args,\n                )\n    except Exception as e:\n        raise ModelRetry(str(e))\n    return result\n\n\ndef _extract_action_metadata(bound_action) -> tuple[str, type]:\n    \"\"\"Extract description and model class from a bound action.\n\n    Args:\n        bound_action: The bound action from the registry\n\n    Returns:\n        Tuple of (description, model_cls)\n\n    Raises:\n        ValueError: If template action is not set or description is missing",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

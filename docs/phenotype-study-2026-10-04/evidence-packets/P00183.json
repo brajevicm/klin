@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00183",
+  "source_finding_id": "P00183",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "style(dpmodel): enforce type annotations\n\nThis PR fixes critical PyTorch JIT compilation errors that were preventing model serialization and deployment. The main issue was that PyTorch JIT cannot handle certain type annotations, specifically `Union[np.ndarray, Any]` (the `Array` type) and `KeysView[str]` return types.\n\n## Problem\n\nPyTorch JIT compilation was failing with errors like:\n```\nAssertionError: Unsupported annotation typing.Union[numpy.ndarray, typing.Any] could not be resolved because None could not be resolved.\n```\n\nThis prevented users from using `torch.jit.script()` on trained models, blocking deployment scenarios.\n\n## Solution\n\n- **Removed incompatible type annotations** from methods used by PyTorch JIT compilation\n- **Added `# noqa:ANNxxx` comments** to suppress ruff linting warnings for missing type annotations\n- **Fixed `KeysView[str]` return types** that caused JIT compilation failures\n- **Maintained type safety** elsewhere in the codebase where JIT compatibility isn't required\n\n## Files Changed\n\n- `deepmd/dpmodel/utils/network.py`: Removed `Array` type annotations from `call` methods and activation functions\n- `deepmd/dpmodel/output_def.py`: Removed `KeysView[str]` return type annotations from `keys` methods\n\n## Validation\n\nAll PyTorch JIT tests now pass:\n- ✅ TestEnergyModelSeA.test_jit\n- ✅ TestDOSModelSeA.test_jit  \n- ✅ TestEnergyModelDPA1.test_jit\n- ✅ TestEnergyModelDPA2.test_jit\n- ✅ TestEnergyModelHybrid.test_jit\n- ✅ TestEnergyModelHybrid2.test_jit\n- ✅ TestEnergyModelDPA2IntRcut.test_jit\n\nModels can now be successfully JIT compiled for deployment while maintaining full functionality and backward compatibility.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n✨ Let [project metadata omitted] coding agent [set things up for you]([external reference omitted] — coding agent works faster and does higher quality work when set up for your repo.",
+  "diff_context": [
+    {
+      "path": "deepmd/dpmodel/utils/network.py",
+      "before": "    return output\n\n\ndef get_graph_index(\n    nlist: np.ndarray,\n    nlist_mask: np.ndarray,\n    a_nlist_mask: np.ndarray,\n    nall: int,\n    use_loc_mapping: bool = True,\n):\n    \"\"\"\n    Get the index mapping for edge graph and angle graph, ready in `aggregate` or `index_select`.\n\n    Parameters\n    ----------\n    nlist : nf x nloc x nnei\n        Neighbor list. (padded neis are set to 0)\n    nlist_mask : nf x nloc x nnei\n        Masks of the neighbor list. real nei 1 otherwise 0\n    a_nlist_mask : nf x nloc x a_nnei\n        Masks of the neighbor list for angle. real nei 1 otherwise 0\n    nall\n        The number of extended atoms.\n    use_loc_mapping\n        Whether to use local atom index mapping in training or non-parallel inference.\n        When True, local indexing and mapping are applied to neighbor lists and embeddings during descriptor computation.\n\n    Returns\n    -------\n    edge_index : 2 x n_edge\n        n2e_index : n_edge",
+      "after": "    if num_owner is not None and bin_count.shape[0] != num_owner:\n        difference = num_owner - bin_count.shape[0]\n        bin_count = xp.concat([bin_count, xp.ones(difference, dtype=bin_count.dtype)])\n\n    output = xp.zeros((bin_count.shape[0], data.shape[1]), dtype=data.dtype)\n    output = xp_add_at(output, owners, data)\n\n    if average:\n        output = xp.transpose(xp.transpose(output) / bin_count)\n\n    return output\n\n\ndef get_graph_index(  # noqa: ANN201\n    nlist,  # noqa: ANN001\n    nlist_mask,  # noqa: ANN001\n    a_nlist_mask,  # noqa: ANN001\n    nall: int,\n    use_loc_mapping: bool = True,\n):\n    \"\"\"\n    Get the index mapping for edge graph and angle graph, ready in `aggregate` or `index_select`.\n\n    Parameters\n    ----------\n    nlist : nf x nloc x nnei\n        Neighbor list. (padded neis are set to 0)\n    nlist_mask : nf x nloc x nnei\n        Masks of the neighbor list. real nei 1 otherwise 0\n    a_nlist_mask : nf x nloc x a_nnei\n        Masks of the neighbor list for angle. real nei 1 otherwise 0",
+      "context": null
+    }
+  ],
+  "observations": [
+    "nlist_mask,  # noqa: ANN001"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

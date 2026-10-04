@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00010",
+  "source_finding_id": "P00010",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        except Exception as e:\n            logger.error(f\"Error loading connection data: {e}\")\n            self.show_error(_(\"Failed to load connection data\"))\n    \n\n    \n    # --- Inline validation helpers ---\n    def _apply_validation_to_row(self, row, result):\n        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(result.message or \"\")\n        except Exception:\n            pass\n        # Tooltips on row and entry\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(result.message or None)\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(result.message or None)\n        except Exception:\n            pass\n        # CSS classes: clear, then set per severity\n        try:\n            row.remove_css_class('error')\n            row.remove_css_class('warning')\n        except Exception:\n            pass\n        try:\n            if hasattr(result, 'is_valid') and not result.is_valid:\n                row.add_css_class('error')",
+      "after": "                except Exception:\n                    current_name_norm = ''\n                for conn in mgr.connections or []:\n                    n = getattr(conn, 'nickname', None)\n                    if not n:\n                        continue\n                    n_norm = str(n).strip().lower()\n                    # Exclude the current connection by name (case-insensitive), not by object identity\n                    if current_name_norm and n_norm == current_name_norm:\n                        continue\n                    names.add(str(n))\n            # Ensure fresh names after deletions\n            try:\n                if hasattr(mgr, 'load_ssh_config'):\n                    mgr.load_ssh_config()\n            except Exception:\n                pass\n            # Ensure current typed value isn't auto-included incorrectly\n            self.validator.set_existing_names(names)\n        except Exception:\n            pass\n\n    def _validate_field_row(self, field_name: str, row, context: str = \"SSH\"):\n        text = (row.get_text() if hasattr(row, 'get_text') else \"\")\n        if field_name == 'name':\n            self._update_existing_names_in_validator()\n            result = self.validator.validate_connection_name(text)\n        elif field_name == 'hostname':\n            raw = (text or '').strip()\n            if raw.startswith('[') and raw.endswith(']') and len(raw) > 2:\n                raw = raw[1:-1]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

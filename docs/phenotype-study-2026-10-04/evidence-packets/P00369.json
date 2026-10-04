@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00369",
+  "source_finding_id": "P00369",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: Add LSP stub\n\nAdds a stub implementations of a basic Language Server Protocol (LSP) to `prqlc`. LSP clients can connect to it and disconnect from it.\n\nIt use the `lsp-server` crate used by the official rust-analyzer.\n\nThe LSP specification is at [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "prqlc/prqlc/src/cli/lsp.rs",
+      "before": null,
+      "after": ") -> Result<(), Box<dyn Error + Sync + Send>> {\n    let _params: InitializeParams = serde_json::from_value(params).unwrap();\n    eprintln!(\"starting main loop\");\n    for msg in &connection.receiver {\n        eprintln!(\"got msg: {msg:?}\");\n        match msg {\n            Message::Request(req) => {\n                if connection.handle_shutdown(&req)? {\n                    return Ok(());\n                }\n                eprintln!(\"got request: {req:?}\");\n                match cast::<GotoDefinition>(req) {\n                    Ok((id, params)) => {\n                        eprintln!(\"got gotoDefinition request #{id}: {params:?}\");\n                        let result = Some(GotoDefinitionResponse::Array(Vec::new()));\n                        let result = serde_json::to_value(&result).unwrap();\n                        let resp = Response {\n                            id,\n                            result: Some(result),\n                            error: None,\n                        };\n                        connection.sender.send(Message::Response(resp))?;\n                        continue;\n                    }\n                    Err(err @ ExtractError::JsonError { .. }) => panic!(\"{err:?}\"),\n                    Err(ExtractError::MethodMismatch(req)) => req,\n                };\n                // ...\n            }\n            Message::Response(resp) => {\n                eprintln!(\"got response: {resp:?}\");",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let result = serde_json::to_value(&result).unwrap();"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

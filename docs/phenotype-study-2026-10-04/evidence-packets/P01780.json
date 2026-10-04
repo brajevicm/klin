@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01780",
+  "source_finding_id": "P01780",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/view/subtitle_interface.py",
+      "before": "        self.layoutChanged.emit()\n\n\nclass SubtitleInterface(QWidget):\n    finished = pyqtSignal(str, str)\n\n    def __init__(self, parent=None):\n        super().__init__(parent)\n        self.setAcceptDrops(True)\n        self.task = None\n        self.subtitle_path = None\n        self.custom_prompt_text = cfg.custom_prompt_text.value\n        self.setAttribute(Qt.WA_DeleteOnClose)\n        self._init_ui()\n        self._setup_signals()\n        self._update_prompt_button_style()\n        self.set_values()\n\n    def _init_ui(self):\n        self.main_layout = QVBoxLayout(self)\n        self.main_layout.setObjectName(\"main_layout\")\n        self.main_layout.setSpacing(20)\n\n        self._setup_top_layout()\n        self._setup_subtitle_table()\n        self._setup_bottom_layout()\n\n    def set_values(self):\n        self.layout_button.setText(cfg.subtitle_layout.value)\n        self.translate_button.setChecked(cfg.need_translate.value)\n        self.optimize_button.setChecked(cfg.need_optimize.value)",
+      "after": "    def update_all(self, data: Dict[str, Any]) -> None:\n        \"\"\"更新所有数据\"\"\"\n        self._data = data\n        self.layoutChanged.emit()\n\n\nclass SubtitleInterface(QWidget):\n    finished = pyqtSignal(str, str)\n\n    def __init__(self, parent: Optional[QWidget] = None):\n        super().__init__(parent)\n        self.setAcceptDrops(True)\n        self.task: Optional[SubtitleTask] = None\n        self.subtitle_path: Optional[str] = None\n        self.custom_prompt_text: str = cfg.custom_prompt_text.value\n        self.setAttribute(Qt.WA_DeleteOnClose)  # type: ignore\n        self._init_ui()\n        self._setup_signals()\n        self._update_prompt_button_style()\n        self.set_values()\n\n    def _init_ui(self):\n        self.main_layout = QVBoxLayout(self)\n        self.main_layout.setObjectName(\"main_layout\")\n        self.main_layout.setSpacing(20)\n\n        self._setup_top_layout()\n        self._setup_subtitle_table()\n        self._setup_bottom_layout()\n\n    def set_values(self):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "self.setAttribute(Qt.WA_DeleteOnClose)  # type: ignore"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

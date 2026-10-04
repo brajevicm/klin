@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00283",
+  "source_finding_id": "P00283",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        try:\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(message or None)\n        except Exception:\n            pass\n        try:\n            if is_error:\n                row.add_css_class('error')\n            else:\n                row.remove_css_class('error')\n        except Exception:\n            pass\n\n    def _row_clear_message(self, row):\n        self._row_set_message(row, \"\", is_error=False)\n\n    def _connect_row_validation(self, row, validator_callable):\n        # Prefer notify::text on Adw.EntryRow, fallback to child Gtk.Entry changed\n        try:\n            row.connect('notify::text', lambda r, p: validator_callable(r))\n            return\n        except Exception:\n            pass\n        try:\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None:\n                entry.connect('changed', lambda e: validator_callable(row))\n        except Exception:\n            pass",
+      "after": "            try:\n                if self.is_editing and self.connection:\n                    current_name_norm = str(getattr(self.connection, 'nickname', '')).strip().lower()\n            except Exception:\n                current_name_norm = ''\n            for conn in getattr(mgr, 'connections', []) or []:\n                other_name = getattr(conn, 'nickname', None)\n                if not other_name:\n                    continue\n                other_norm = str(other_name).strip().lower()\n                # Skip the same connection object and also skip the current connection name when editing\n                if current_name_norm and (conn is self.connection or other_norm == current_name_norm):\n                    continue\n                if other_norm == normalized:\n                    return True\n        except Exception:\n            return False\n        return False\n\n    def _validate_nickname_row(self, row):\n        text = (row.get_text() if hasattr(row, 'get_text') else \"\").strip()\n        if not text:\n            self._row_set_message(row, _(\"Nickname is required\"), is_error=True)\n            return False\n        if self._is_nickname_taken(text):\n            self._row_set_message(row, _(\"Nickname already exists\"), is_error=True)\n            return False\n        self._row_clear_message(row)\n        return True\n\n    def _validate_host_row(self, row, allow_empty: bool = False):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

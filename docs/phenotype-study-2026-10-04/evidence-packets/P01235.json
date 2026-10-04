@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01235",
+  "source_finding_id": "P01235",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        if hasattr(self, 'keyfile_row'):\n            self.keyfile_row.set_visible(is_key_based)\n        if hasattr(self, 'key_passphrase_row'):\n            self.key_passphrase_row.set_visible(is_key_based)\n        if hasattr(self, 'key_select_row'):\n            self.key_select_row.set_visible(is_key_based)\n        if hasattr(self, 'key_only_row'):\n            self.key_only_row.set_visible(is_key_based and self.key_select_row.get_selected() == 1)\n\n        # Password field is always available since key-based auth can also require a password\n        if hasattr(self, 'password_row'):\n            self.password_row.set_visible(True)\n        if hasattr(self, 'pubkey_auth_row'):\n            self.pubkey_auth_row.set_visible(not is_key_based)\n\n        # Also update browse availability per key selection mode\n        try:\n            self.on_key_select_changed(self.key_select_row, None)\n        except Exception:\n            pass\n        \n\n    def on_key_select_changed(self, combo_row, param):\n        \"\"\"Enable browse button only when 'Use a specific key' is selected.\"\"\"\n        try:\n            use_specific = (combo_row.get_selected() == 1) if combo_row else False\n        except Exception:\n            use_specific = False\n\n        previous_state = getattr(self, '_last_key_select_use_specific', None)",
+      "after": "            self.key_passphrase_row.set_visible(is_key_based)\n        if hasattr(self, 'key_select_row'):\n            self.key_select_row.set_visible(is_key_based)\n        if hasattr(self, 'key_only_row'):\n            self.key_only_row.set_visible(is_key_based and self.key_select_row.get_selected() == 1)\n\n        # Password field is always available since key-based auth can also require a password\n        if hasattr(self, 'password_row'):\n            self.password_row.set_visible(True)\n        if hasattr(self, 'pubkey_auth_row'):\n            self.pubkey_auth_row.set_visible(not is_key_based)\n\n        # Also update browse availability per key selection mode\n        try:\n            self.on_key_select_changed(self.key_select_row, None)\n        except Exception:\n            pass\n        \n\n    def on_key_select_changed(self, combo_row, param):\n        \"\"\"Enable browse button only when 'Use a specific key' is selected.\"\"\"\n        try:\n            use_specific = (combo_row.get_selected() == 1) if combo_row else False\n        except Exception:\n            use_specific = False\n        # Enable/disable keyfile browse UI\n        try:\n            if hasattr(self, 'keyfile_btn'):\n                self.keyfile_btn.set_sensitive(use_specific)\n            if hasattr(self, 'keyfile_row'):\n                self.keyfile_row.set_sensitive(use_specific)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

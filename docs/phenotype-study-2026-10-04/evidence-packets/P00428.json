@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00428",
+  "source_finding_id": "P00428",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/FasterWhisperSettingWidget.py",
+      "before": "        self.zip_file = zip_file\n        self.extract_path = extract_path\n\n    def run(self):\n        try:\n            subprocess.run(\n                [\"7z\", \"x\", self.zip_file, f\"-o{self.extract_path}\", \"-y\"],\n                check=True,\n                creationflags=subprocess.CREATE_NO_WINDOW if os.name == \"nt\" else 0,\n            )\n            # 删除压缩包\n            os.remove(self.zip_file)\n            self.finished.emit()\n        except subprocess.CalledProcessError as e:\n            self.error.emit(f\"解压失败: {str(e)}\")\n        except Exception as e:\n            self.error.emit(str(e))\n\n\nclass FasterWhisperDownloadDialog(MessageBoxBase):\n    \"\"\"Faster Whisper 下载对话框\"\"\"\n\n    # 添加类变量跟踪下载状态\n    is_downloading = False\n\n    def __init__(self, parent=None, setting_widget=None):\n        super().__init__(parent)\n        self.widget.setMinimumWidth(600)\n        self.program_download_thread = None\n        self.model_download_thread = None\n        self._setup_ui()",
+      "after": "        self.zip_file = zip_file\n        self.extract_path = extract_path\n\n    def run(self):\n        try:\n            subprocess.run(\n                [\"7z\", \"x\", self.zip_file, f\"-o{self.extract_path}\", \"-y\"],\n                check=True,\n                creationflags=subprocess.CREATE_NO_WINDOW if os.name == \"nt\" else 0,\n            )\n            # 删除压缩包\n            os.remove(self.zip_file)\n            self.finished.emit()\n        except subprocess.CalledProcessError as e:\n            self.error.emit(f\"解压失败: {str(e)}\")\n        except Exception as e:\n            self.error.emit(str(e))\n\n\nclass FasterWhisperDownloadDialog(MessageBoxBase):\n    \"\"\"Faster Whisper 下载对话框\"\"\"\n\n    # 添加类变量跟踪下载状态\n    is_downloading = False\n\n    def __init__(self, parent=None, setting_widget=None):\n        super().__init__(parent)\n        self.widget.setMinimumWidth(600)\n        self.program_download_thread = None\n        self.model_download_thread = None\n        self._setup_ui()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

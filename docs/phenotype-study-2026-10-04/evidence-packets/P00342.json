@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00342",
+  "source_finding_id": "P00342",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Added cluster status message, changelog and status history\n\nIntroducing cluster status messages that can be added by an administrator to the DB.\n\nAlso showing cluster changelog and cluster status history in a new view\n\n<img width=\"2547\" height=\"494\" alt=\"Screenshot 2025-09-19 at 8 34 26 PM\" src=\"[external reference omitted] />",
+  "diff_context": [
+    {
+      "path": "api/main.py",
+      "before": "        previous_exception=exc.__context__\n    )\n    return ORJSONResponse(\n        status_code=exc.status_code,\n        content=jsonable_encoder({'success': False, 'err': exc.detail}),\n    )\n\nasync def catch_exceptions_middleware(request: Request, call_next):\n    #pylint: disable=broad-except\n    body = None\n\n    try:\n        body = await request.body()\n        return await call_next(request)\n    except Exception as exc:\n        error_helpers.log_error(\n            'Error in API call - catch_exceptions_middleware',\n            url=request.url,\n            query_params=request.query_params,\n            client=request.client,\n            headers=obfuscate_authentication_token(request.headers),\n            body=body,\n            exception=exc,\n            previous_exception=exc.__context__\n        )\n        return ORJSONResponse(\n            content={\n                'success': False,\n                'err': 'Technical error with getting data from the API - Please contact us: info@green-coding.io',\n            },\n            status_code=500,",
+      "after": "        exception=exc,\n        previous_exception=exc.__context__\n    )\n    return ORJSONResponse(\n        status_code=exc.status_code,\n        content=jsonable_encoder({'success': False, 'err': exc.detail}),\n    )\n\nasync def catch_exceptions_middleware(request: Request, call_next):\n    #pylint: disable=broad-except\n    body = None\n\n    try:\n        body = await request.body()\n        return await call_next(request)\n    except Exception as exc:\n        error_helpers.log_error(\n            'Error in API call - catch_exceptions_middleware',\n            url=request.url,\n            query_params=request.query_params,\n            client=request.client,\n            headers=obfuscate_authentication_token(request.headers),\n            body=body,\n            exception=exc,\n            previous_exception=exc.__context__\n        )\n        return ORJSONResponse(\n            content={\n                'success': False,\n                'err': 'Technical error with getting data from the API - Please contact us: info@green-coding.io',\n            },",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01025",
+  "source_finding_id": "P01025",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        if additional_events is not None:\n            self._additional_events[name] = additional_events\n\n    async def start(self) -> \"WorkflowServer\":\n        \"\"\"Resumes previously running workflows, if they were not complete at last shutdown\"\"\"\n        handlers = await self._workflow_store.query(\n            HandlerQuery(\n                status_in=[\"running\"], workflow_name_in=list(self._workflows.keys())\n            )\n        )\n        for persistent in handlers:\n            workflow = self._workflows[persistent.workflow_name]\n            try:\n                ctx = Context.from_dict(workflow=workflow, data=persistent.ctx)\n                handler = workflow.run(ctx=ctx)\n            except Exception as e:\n                logger.error(\n                    f\"Failed to resume handler {persistent.handler_id} for workflow {persistent.workflow_name}: {e}\"\n                )\n                try:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=persistent.handler_id,\n                            workflow_name=persistent.workflow_name,\n                            status=\"failed\",\n                            ctx=persistent.ctx,\n                        )\n                    )\n                except Exception:\n                    pass\n                continue",
+      "after": "        if additional_events is not None:\n            self._additional_events[name] = additional_events\n\n    async def start(self) -> \"WorkflowServer\":\n        \"\"\"Resumes previously running workflows, if they were not complete at last shutdown\"\"\"\n        handlers = await self._workflow_store.query(\n            HandlerQuery(\n                status_in=[\"running\"], workflow_name_in=list(self._workflows.keys())\n            )\n        )\n        for persistent in handlers:\n            workflow = self._workflows[persistent.workflow_name]\n            try:\n                ctx = Context.from_dict(workflow=workflow, data=persistent.ctx)\n                handler = workflow.run(ctx=ctx)\n            except Exception as e:\n                logger.error(\n                    f\"Failed to resume handler {persistent.handler_id} for workflow {persistent.workflow_name}: {e}\"\n                )\n                try:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=persistent.handler_id,\n                            workflow_name=persistent.workflow_name,\n                            status=\"failed\",\n                            ctx=persistent.ctx,\n                        )\n                    )\n                except Exception:\n                    pass\n                continue",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

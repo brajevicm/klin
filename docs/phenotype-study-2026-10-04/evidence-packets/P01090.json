@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01090",
+  "source_finding_id": "P01090",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add docstring review list and tasks\n\n## Summary\n- scan repo for missing spaCy style docstrings\n- list all problematic files in `docs/missing_docstrings.md`\n- generate task list in `docs/docstring_tasks.md`\n\n## Testing\n- `python - <<'EOF'\nimport os, ast\nmissing=[]\nfor dirpath,_,files in os.walk('.'):\n    for f in files:\n        if f.endswith('.py'):\n            path=os.path.join(dirpath,f)\n            try:\n                tree=ast.parse(open(path,'r',encoding='utf-8').read())\n            except Exception:\n                continue\n            if (ast.get_docstring(tree) is None or\n                any(isinstance(n,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef)) and ast.get_docstring(n) is None for n in ast.walk(tree))):\n                missing.append(path)\nprint('missing count',len(missing))\nEOF",
+  "diff_context": [
+    {
+      "path": ".config/component_generator/scripts/dag.py",
+      "before": "\n        context = {**global_attrs, **entry}\n        agent_prompt_template = copy_env.from_string(agent_prompt_str)\n        agent_prompt = agent_prompt_template.render(**context)\n\n        content = call_external_agent(agent_prompt, agent_env)\n        print(f\"[INFO] Generated content length: {len(content)} characters\")\n        return content\n    except Exception as e:\n        print(\n            f\"[ERROR] Failed to generate content for '{entry['RENDERED_FILE_NAME']}': {e}\"\n        )\n        return None\n\n\ndef call_external_agent(prompt, agent_env):\n    \"\"\"\n    Placeholder function to integrate with an external LLM/Agent.\n    \"\"\"\n    print(\"[INFO] Prompt sent to agent (truncated):\")\n    print(prompt[:250] + \"...\\n\")  # Show a truncated version of the prompt\n\n    # Example: Using swarmauri components (adjust as needed)\n    from swarmauri.agents.RagAgent import RagAgent\n    from swarmauri.vector_stores.TfidfVectorStore import TfidfVectorStore\n\n    # You can swap in your desired LLM model here\n    llm = O1Model(api_key=[redacted], name=\"o3-mini\")\n    system_context = \"You are a helpful assistant.\"\n    agent = RagAgent(\n        llm=llm, vector_store=TfidfVectorStore(), system_context=system_context",
+      "after": "    \"\"\"\n    Renders an agent prompt template (from agent_prompt_template_path) and\n    calls an external agent to generate file content.\n    \"\"\"\n    try:\n        with open(agent_prompt_template_path, \"r\", encoding=\"utf-8\") as f:\n            agent_prompt_str = f.read()\n\n        context = {**global_attrs, **entry}\n        agent_prompt_template = copy_env.from_string(agent_prompt_str)\n        agent_prompt = agent_prompt_template.render(**context)\n\n        content = call_external_agent(agent_prompt, agent_env)\n        print(f\"[INFO] Generated content length: {len(content)} characters\")\n        return content\n    except Exception as e:\n        print(\n            f\"[ERROR] Failed to generate content for '{entry['RENDERED_FILE_NAME']}': {e}\"\n        )\n        return None\n\n\ndef call_external_agent(prompt, agent_env):\n    \"\"\"\n    Placeholder function to integrate with an external LLM/Agent.\n    \"\"\"\n    print(\"[INFO] Prompt sent to agent (truncated):\")\n    print(prompt[:250] + \"...\\n\")  # Show a truncated version of the prompt\n\n    # Example: Using swarmauri components (adjust as needed)\n    from swarmauri.agents.RagAgent import RagAgent",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

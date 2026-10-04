@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00798",
+  "source_finding_id": "P00798",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Feature/spark config\n\n## Description\n\n<!-- Add a brief description about this pull request including what it does, why it is needed, and other important information for the reviewers -->\n\n## More Information\n\n<!-- Add more in-depth information about this pull request, such as the changes made, the reasoning behind them, and any potential impacts. -->\n\n## Validation\n\n<!-- Introduce how to test this pull request. -->\n\n## Linked Issues\n\n<!--\nLink to any related issues or bugs.\n\n**If this PR fully resolves the issue, use one of the following keywords to automatically close the issue when this PR is merged:**\n\n- Closes #<issue_number>\n- Fixes #<issue_number>\n- Resolves #<issue_number>\n\n*Example: `Resolves #123`*\n\n**If this PR is only related to an issue or is a partial fix, simply reference the issue number without a keyword:**\n\n*Example: `This PR makes progress on #456` or `Related to #789`*\n-->",
+  "diff_context": [
+    {
+      "path": "trae-agent-rs/Cargo.toml",
+      "before": null,
+      "after": "[package]\nname = \"trae-agent-rs\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\nclap = { version = \"4.5\", features = [\"derive\"] }\nserde = { version = \"1.0\", features = [\"derive\"] }\nserde_yaml = \"0.9\"\nserde_json = \"1.0\"\nanyhow = \"1.0\"\ntracing = \"0.1\"\ntracing-subscriber = { version = \"0.3\", features = [\"fmt\", \"env-filter\"] }\nreqwest = { version = \"0.12\", default-features = false, features = [\"json\", \"rustls-tls\"] }\ntokio = { version = \"1.39\", features = [\"rt-multi-thread\", \"macros\"] }",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:serde_json"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01553",
+  "source_finding_id": "P01553",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "[authoring attribution omitted] PR\n\n[authoring attribution omitted] PR\n\n---\n*PR created automatically by [authoring attribution omitted] for task [5162698330863493969]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/duration/python.rs",
+      "before": "",
+      "after": "        Self::from_seconds(value)\n    }\n\n    /// Creates a new duration from the provided number of milliseconds\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_milliseconds\")]\n    fn py_from_milliseconds(_cls: &Bound<'_, PyType>, value: f64) -> Self {\n        Self::from_milliseconds(value)\n    }\n\n    /// Creates a new duration from the provided number of microseconds\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_microseconds\")]\n    fn py_from_microseconds(_cls: &Bound<'_, PyType>, value: f64) -> Self {\n        Self::from_microseconds(value)\n    }\n\n    /// Creates a new duration from the provided number of nanoseconds\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_nanoseconds\")]\n    fn py_from_nanoseconds(_cls: &Bound<'_, PyType>, value: f64) -> Self {\n        Self::from_nanoseconds(value)\n    }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "fn py_from_microseconds(_cls: &Bound<'_, PyType>, value: f64) -> Self {"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

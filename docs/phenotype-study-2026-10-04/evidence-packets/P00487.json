@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00487",
+  "source_finding_id": "P00487",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        wrapper = self._handlers.get(handler_id)\n        if wrapper is None:\n            raise HTTPException(detail=\"Handler not found\", status_code=404)\n\n        handler = wrapper.run_handler\n        if not handler.done():\n            resp = wrapper.to_dict()\n            return JSONResponse(resp, status_code=202)\n\n        try:\n            result = await handler\n            self._results[handler_id] = result\n\n            return JSONResponse(wrapper.to_dict())\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting workflow result: {e}\", status_code=500\n            )\n\n    async def _stream_events(self, request: Request) -> StreamingResponse:\n        \"\"\"\n        ---\n        summary: Stream workflow events\n        description: |\n          Streams events produced by a workflow execution. Events are emitted as\n          newline-delimited JSON by default, or as Server-Sent Events when `sse=true`.\n          Event data is formatted according to llama-index's json serializer. For\n          pydantic serializable python types, it returns:\n          {\n            \"__is_pydantic\": True,\n            \"value\": <pydantic serialized value>,",
+      "after": "\n        wrapper = self._handlers.get(handler_id)\n        if wrapper is None:\n            raise HTTPException(detail=\"Handler not found\", status_code=404)\n\n        handler = wrapper.run_handler\n        if not handler.done():\n            resp = wrapper.to_dict()\n            return JSONResponse(resp, status_code=202)\n\n        try:\n            result = await handler\n            self._results[handler_id] = result\n\n            return JSONResponse(wrapper.to_dict())\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting workflow result: {e}\", status_code=500\n            )\n\n    async def _stream_events(self, request: Request) -> StreamingResponse:\n        \"\"\"\n        ---\n        summary: Stream workflow events\n        description: |\n          Streams events produced by a workflow execution. Events are emitted as\n          newline-delimited JSON by default, or as Server-Sent Events when `sse=true`.\n          Event data is formatted according to llama-index's json serializer. For\n          pydantic serializable python types, it returns:\n          {\n            \"__is_pydantic\": True,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

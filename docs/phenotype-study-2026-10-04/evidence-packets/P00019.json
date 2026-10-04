@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00019",
+  "source_finding_id": "P00019",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "fix: handle optional fields without defaults in client documents (#487)\n\n## Summary\nThis PR fixes an issue where optional Schema fields in client documents without default values would be `undefined` when querying after being set.\n\n## Problem\nWhen using optional fields in client documents without providing default values, the fields would be lost when querying the document back, even after explicitly setting them. This was due to:\n1. The `mergeDefaultValues` function only iterating over keys from the default values object\n2. SessionIdSymbol not being replaced in synchronous `store.query()` calls\n\n## Solution\n1. **Fixed `mergeDefaultValues`** to preserve all keys from both default and explicit values\n2. **Added SessionIdSymbol replacement** in the synchronous `store.query()` method\n3. **Added comprehensive tests** to prevent regression\n\n## Test Plan\n- [x] Added unit tests for `mergeDefaultValues` function\n- [x] Added integration test reproducing the exact scenario from issue #487\n- [x] All existing tests pass\n\n## Changes\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.ts`: Fixed `mergeDefaultValues` to iterate over all keys\n- `packages/[user omitted]/livestore/src/store/store.ts`: Added SessionIdSymbol replacement in query method\n- `tests/package-common/src/issue-487.test.ts`: Added integration test\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.test.ts`: Added unit tests\n\nFixes #487\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "packages/@livestore/common/src/schema/state/sqlite/client-document-def.ts",
+      "before": "}\n\nconst mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {\n  if (\n    typeof defaultValues !== 'object' ||\n    typeof explicitDefaultValues !== 'object' ||\n    defaultValues === null ||\n    explicitDefaultValues === null\n  ) {\n    return explicitDefaultValues\n  }\n\n  return Object.keys(defaultValues as any).reduce((acc, key) => {\n    acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]\n    return acc\n  }, {} as any)\n}\n\nexport const deriveEventAndMaterializer = ({\n  name,\n  valueSchema,\n  defaultValue,\n  partialSet,\n}: {\n  name: string\n  valueSchema: Schema.Schema<any, any>\n  defaultValue: any\n  partialSet: boolean\n}) => {\n  const derivedSetEventDef = defineEvent({\n    name: `${name}Set`,",
+      "after": "}\n\nexport const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T): T => {\n  if (\n    typeof defaultValues !== 'object' ||\n    typeof explicitDefaultValues !== 'object' ||\n    defaultValues === null ||\n    explicitDefaultValues === null\n  ) {\n    return explicitDefaultValues\n  }\n\n  // Get all unique keys from both objects\n  const allKeys = new Set([\n    ...Object.keys(defaultValues as any),\n    ...Object.keys(explicitDefaultValues as any)\n  ])\n\n  return Array.from(allKeys).reduce((acc, key) => {\n    acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]\n    return acc\n  }, {} as any)\n}\n\nexport const deriveEventAndMaterializer = ({\n  name,\n  valueSchema,\n  defaultValue,\n  partialSet,\n}: {\n  name: string",
+      "context": null
+    }
+  ],
+  "observations": [
+    "...Object.keys(explicitDefaultValues as any)"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

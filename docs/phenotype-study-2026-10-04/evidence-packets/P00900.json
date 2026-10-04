@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00900",
+  "source_finding_id": "P00900",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix debug logs citation\n\n## Summary\n- capture all log levels for debug log citation\n\n## Testing\n- `nox -s lint tests`",
+  "diff_context": [
+    {
+      "path": "functions/pipes/openai_responses_api_pipeline.py",
+      "before": "                    client,\n                    self.valves.BASE_URL,\n                    self.valves.API_KEY,\n                    rid,\n                )\n            except Exception as ex:  # pragma: no cover - logging only\n                self.log.warning(\"Failed to delete response %s: %s\", rid, ex)\n\n        if last_response_id and not self.valves.STORE_RESPONSE:\n            try:\n                await delete_response(\n                    client,\n                    self.valves.BASE_URL,\n                    self.valves.API_KEY,\n                    last_response_id,\n                )\n            except Exception as ex:  # pragma: no cover - logging only\n                self.log.warning(\"Failed to delete response %s: %s\", last_response_id, ex)\n\n        if self.log.isEnabledFor(logging.DEBUG) and self._debug_logs:\n            await __event_emitter__(\n                {\n                    \"type\": \"citation\",\n                    \"data\": {\n                        \"document\": [\"\\n\".join(self._debug_logs)],\n                        \"metadata\": [\n                            {\n                                \"date_accessed\": datetime.now().isoformat(),\n                                \"source\": \"Debug Logs\",\n                            }\n                        ],",
+      "after": "                    self.valves.BASE_URL,\n                    self.valves.API_KEY,\n                    rid,\n                )\n            except Exception as ex:  # pragma: no cover - logging only\n                self.log.warning(\"Failed to delete response %s: %s\", rid, ex)\n\n        if last_response_id and not self.valves.STORE_RESPONSE:\n            try:\n                await delete_response(\n                    client,\n                    self.valves.BASE_URL,\n                    self.valves.API_KEY,\n                    last_response_id,\n                )\n            except Exception as ex:  # pragma: no cover - logging only\n                self.log.warning(\"Failed to delete response %s: %s\", last_response_id, ex)\n\n        if self.log.isEnabledFor(logging.DEBUG) and self._debug_logs:\n            await __event_emitter__(\n                {\n                    \"type\": \"citation\",\n                    \"data\": {\n                        \"document\": [\"\\n\".join(self._debug_logs)],\n                        \"metadata\": [\n                            {\n                                \"date_accessed\": datetime.now().isoformat(),\n                                \"source\": \"Debug Logs\",\n                            }\n                        ],\n                        \"source\": {\"name\": \"Debug Logs\"},",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

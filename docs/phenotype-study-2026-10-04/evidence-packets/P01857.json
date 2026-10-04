@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01857",
+  "source_finding_id": "P01857",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "feat(sources): Update sources with init errors\n\n[amazon-seller-partner]([external reference omitted] has just been migrated to manifest-only.\n[gitlab]([external reference omitted] has just been migrated to manifest-only.\n\n[amazon-ads]([external reference omitted] has been updated and is not failing anymore.\n\nThey make the CI fail, cf [this PR]([external reference omitted] containing no changes.\n\nSo we are excluding them.\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n* **Bug Fixes**\n  * Improved error handling for the Amazon Seller Partner connector.\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+  "diff_context": [
+    {
+      "path": "airbyte/sources/registry.py",
+      "before": "\ndef _is_registry_disabled(url: str) -> bool:\n    return url.upper() in {\"0\", \"F\", \"FALSE\"} or AIRBYTE_OFFLINE_MODE\n\n\ndef _registry_entry_to_connector_metadata(entry: dict) -> ConnectorMetadata:\n    name = entry[\"dockerRepository\"].replace(\"airbyte/\", \"\")\n    latest_version: str | None = entry.get(\"dockerImageTag\")\n    tags = entry.get(\"tags\", [])\n    language: Language | None = None\n\n    if \"language\" in entry and entry[\"language\"] is not None:\n        try:\n            language = Language(entry[\"language\"])\n        except Exception:\n            warnings.warn(\n                message=f\"Invalid language for connector {name}: {entry['language']}\",\n                stacklevel=2,\n            )\n    if not language and _PYTHON_LANGUAGE_TAG in tags:\n        language = Language.PYTHON\n    if not language and _MANIFEST_ONLY_TAG in tags:\n        language = Language.MANIFEST_ONLY\n\n    remote_registries: dict = entry.get(\"remoteRegistries\", {})\n    pypi_registry: dict = remote_registries.get(\"pypi\", {})\n    pypi_package_name: str = pypi_registry.get(\"packageName\", None)\n    pypi_enabled: bool = pypi_registry.get(\"enabled\", False)\n    install_types: set[InstallType] = {\n        x\n        for x in [",
+      "after": "\n\ndef _is_registry_disabled(url: str) -> bool:\n    return url.upper() in {\"0\", \"F\", \"FALSE\"} or AIRBYTE_OFFLINE_MODE\n\n\ndef _registry_entry_to_connector_metadata(entry: dict) -> ConnectorMetadata:\n    name = entry[\"dockerRepository\"].replace(\"airbyte/\", \"\")\n    latest_version: str | None = entry.get(\"dockerImageTag\")\n    tags = entry.get(\"tags\", [])\n    language: Language | None = None\n\n    if \"language\" in entry and entry[\"language\"] is not None:\n        try:\n            language = Language(entry[\"language\"])\n        except Exception:\n            warnings.warn(\n                message=f\"Invalid language for connector {name}: {entry['language']}\",\n                stacklevel=2,\n            )\n    if not language and _PYTHON_LANGUAGE_TAG in tags:\n        language = Language.PYTHON\n    if not language and _MANIFEST_ONLY_TAG in tags:\n        language = Language.MANIFEST_ONLY\n\n    remote_registries: dict = entry.get(\"remoteRegistries\", {})\n    pypi_registry: dict = remote_registries.get(\"pypi\", {})\n    pypi_package_name: str = pypi_registry.get(\"packageName\", None)\n    pypi_enabled: bool = pypi_registry.get(\"enabled\", False)\n    install_types: set[InstallType] = {\n        x",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

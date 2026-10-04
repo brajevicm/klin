@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01034",
+  "source_finding_id": "P01034",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "\n        ungrouped_row = _create_ungrouped_area(window)\n        window.connection_list.append(ungrouped_row)\n        window._ungrouped_area_visible = True\n    except Exception as e:\n        logger.error(f\"Error showing ungrouped area: {e}\")\n\n\ndef _hide_ungrouped_area(window):\n    try:\n        if not window._ungrouped_area_visible or not window._ungrouped_area_row:\n            return\n\n        window.connection_list.remove(window._ungrouped_area_row)\n        window._ungrouped_area_visible = False\n    except Exception as e:\n        logger.error(f\"Error hiding ungrouped area: {e}\")\n\n\ndef _clear_drop_indicator(window):\n    try:\n        if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n            window._drop_indicator_row.hide_drop_indicators()\n\n        window._drop_indicator_row = None\n        window._drop_indicator_position = None\n    except Exception as e:\n        logger.error(f\"Error clearing drop indicator: {e}\")\n        # Ensure cleanup even if there's an error\n        window._drop_indicator_row = None\n        window._drop_indicator_position = None",
+      "after": "\n        ungrouped_row = _create_ungrouped_area(window)\n        window.connection_list.append(ungrouped_row)\n        window._ungrouped_area_visible = True\n    except Exception as e:\n        logger.error(f\"Error showing ungrouped area: {e}\")\n\n\ndef _hide_ungrouped_area(window):\n    try:\n        if not window._ungrouped_area_visible or not window._ungrouped_area_row:\n            return\n\n        window.connection_list.remove(window._ungrouped_area_row)\n        window._ungrouped_area_visible = False\n    except Exception as e:\n        logger.error(f\"Error hiding ungrouped area: {e}\")\n\n\ndef _clear_drop_indicator(window):\n    try:\n        if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n            window._drop_indicator_row.hide_drop_indicators()\n\n        window._drop_indicator_row = None\n        window._drop_indicator_position = None\n    except Exception as e:\n        logger.error(f\"Error clearing drop indicator: {e}\")\n        # Ensure cleanup even if there's an error\n        window._drop_indicator_row = None\n        window._drop_indicator_position = None",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

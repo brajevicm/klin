@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00028",
+  "source_finding_id": "P00028",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                            except Exception:\n                                pass\n                        if hasattr(self, 'remote_bind_port_row') and 'listen_port' in rule:\n                            try:\n                                self.remote_bind_port_row.set_text(str(int(rule['listen_port'])))\n                            except Exception:\n                                self.remote_bind_port_row.set_text(str(rule['listen_port']))\n                        # Destination (local) host/port\n                        if hasattr(self, 'dest_host_row'):\n                            try:\n                                self.dest_host_row.set_text(\n                                    str(rule.get('local_host') or rule.get('remote_host', 'localhost'))\n                                )\n                            except Exception:\n                                pass\n                        if hasattr(self, 'dest_port_row'):\n                            try:\n                                self.dest_port_row.set_text(\n                                    str(int(rule.get('local_port') or rule.get('remote_port') or 0))\n                                )\n                            except Exception:\n                                self.dest_port_row.set_text(str(rule.get('local_port') or rule.get('remote_port') or ''))\n                    \n                    # Handle dynamic forwarding\n                    elif rule_type == 'dynamic' and hasattr(self, 'dynamic_forwarding_enabled'):\n                        self.dynamic_forwarding_enabled.set_active(True)\n                        if hasattr(self, 'dynamic_port_row') and 'listen_port' in rule:\n                            try:\n                                self.dynamic_port_row.set_text(str(int(rule['listen_port'])))\n                            except Exception:\n                                self.dynamic_port_row.set_text(str(rule['listen_port']))",
+      "after": "        except Exception:\n            pass\n        # Tooltips on row and entry\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(result.message or None)\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(result.message or None)\n        except Exception:\n            pass\n        # CSS classes: clear, then set per severity\n        try:\n            row.remove_css_class('error')\n            row.remove_css_class('warning')\n        except Exception:\n            pass\n        try:\n            if hasattr(result, 'is_valid') and not result.is_valid:\n                row.add_css_class('error')\n            elif hasattr(result, 'severity') and result.severity == 'warning':\n                row.add_css_class('warning')\n        except Exception:\n            pass\n\n    def _update_existing_names_in_validator(self):\n        try:\n            mgr = getattr(self.parent_window, 'connection_manager', None)\n            names = set()\n            if mgr and hasattr(mgr, 'connections'):\n                # Normalize current connection name (when editing) to exclude it from duplicates",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

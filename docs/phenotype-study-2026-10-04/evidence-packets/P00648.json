@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00648",
+  "source_finding_id": "P00648",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "feat: add template governance utilities\n\n## Summary\n- implement template signing and linting utilities\n- load the golden-spec fuzz set from package data\n- test governance logic and fuzz set loading\n\n## Testing\n- `ruff check .` *(fails: 17 errors)*\n- `black --check src/meta_agent/template_governance.py src/meta_agent/utils/golden_specs.py tests/test_template_governance.py tests/test_golden_spec_fuzz_set.py`\n- `mypy src/meta_agent/template_governance.py src/meta_agent/utils/golden_specs.py tests/test_template_governance.py tests/test_golden_spec_fuzz_set.py` *(fails: 3 errors)*\n- `pyright src/meta_agent/template_governance.py src/meta_agent/utils/golden_specs.py tests/test_template_governance.py tests/test_golden_spec_fuzz_set.py`\n- `pytest tests/test_template_governance.py tests/test_golden_spec_fuzz_set.py` *(fails: ModuleNotFoundError for pytest_asyncio)*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/meta_agent/template_governance.py",
+      "before": null,
+      "after": "from pathlib import Path\nfrom typing import Dict, List, Tuple\n\nfrom .sandbox.sandbox_manager import SandboxManager\n\n\nclass TemplateGovernance:\n    \"\"\"Handle template signing, verification and linting.\"\"\"\n\n    def __init__(self, secret: [redacted], cache_path: str | Path | None = None) -> None:\n        self.secret = [redacted]\n        self.cache_path = Path(cache_path or \"template_signatures.json\")\n        if self.cache_path.exists():\n            try:\n                self.cache: Dict[str, str] = json.loads(self.cache_path.read_text())\n            except Exception:\n                self.cache = {}\n        else:\n            self.cache = {}\n\n    # --------------------------------------------------------------\n    def _save_cache(self) -> None:\n        self.cache_path.write_text(json.dumps(self.cache, indent=2), encoding=\"utf-8\")\n\n    def sign(self, content: str) -> str:\n        \"\"\"Sign ``content`` and store signature in the cache.\"\"\"\n        signature = hmac.new(\n            self.secret, content.encode(\"utf-8\"), hashlib.sha256\n        ).hexdigest()\n        checksum = hashlib.sha256(content.encode(\"utf-8\")).hexdigest()\n        self.cache[checksum] = signature",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception:"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

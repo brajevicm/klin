@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01663",
+  "source_finding_id": "P01663",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: Add generic tree-sitter parser with configuration file support\n\n## Summary\n\nThis PR implements a generic tree-sitter based parser (`similarity-generic`) that can analyze code similarity for multiple programming languages using configurable JSON files.\n\n## Key Features\n\n### 1. Generic Tree-Sitter Parser\n- Configurable parser that works with any tree-sitter grammar\n- JSON-based configuration for language-specific AST node mappings\n- Support for function and type extraction\n\n### 2. New CLI Tool: `similarity-generic`\n- Supports 6 languages out of the box: Go, Java, C, C++, C#, Ruby\n- `--supported` option to list available languages\n- `--show-config <language>` to display configuration examples\n- Custom language support via JSON configuration files\n\n### 3. Language Configuration Format\n```json\n{\n  \"language\": \"go\",\n  \"function_nodes\": [\"function_declaration\", \"method_declaration\"],\n  \"type_nodes\": [\"type_declaration\", \"struct_type\", \"interface_type\"],\n  \"field_mappings\": {\n    \"name_field\": \"name\",\n    \"params_field\": \"parameters\",\n    \"body_field\": \"body\"\n  },\n  \"value_nodes\": [\"identifier\", \"string_literal\"],\n  \"test_patterns\": {\n    \"name_prefixes\": [\"Test\", \"Benchmark\"]\n  }\n}\n```\n\n### 4. Clear Separation of Concerns\n- **Dedicated tools** for optimized performance:\n  - `similarity-py` for Python (using tree-sitter)\n  - `similarity-ts` for TypeScript/JavaScript (using oxc_parser - ~10x faster)\n  - `similarity-rs` for Rust (planned)\n- **Generic tool** for other languages and experimentation\n\n## Usage Examples\n\n```bash\n# Analyze Go code\nsimilarity-generic main.go --language go\n\n# Show supported languages\nsimilarity-generic --supported\n\n# Get configuration for a language\nsimilarity-generic --show-config java > java-config.json\n\n# Use custom configuration\nsimilarity-generic code.xyz --config custom-lang.json\n```\n\n…",
+  "diff_context": [
+    {
+      "path": "crates/similarity-generic/build.rs",
+      "before": null,
+      "after": "    output.push_str(\"use once_cell::sync::Lazy;\\n\");\n    output.push_str(\"use std::collections::HashMap;\\n\\n\");\n\n    // Generate a static HashMap of language configs\n    output.push_str(\n        \"pub static LANGUAGE_CONFIGS: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {\\n\",\n    );\n    output.push_str(\"    let mut map = HashMap::new();\\n\");\n\n    if configs_dir.exists() {\n        for entry in fs::read_dir(configs_dir).unwrap() {\n            let entry = entry.unwrap();\n            let path = entry.path();\n\n            if path.extension().and_then(|s| s.to_str()) == Some(\"json\") {\n                let file_name = path.file_stem().unwrap().to_str().unwrap();\n                let content = fs::read_to_string(&path).unwrap();\n\n                // Escape the JSON content for inclusion in Rust code\n                let escaped_content =\n                    content.replace('\\\\', \"\\\\\\\\\").replace('\"', \"\\\\\\\"\").replace('\\n', \"\\\\n\");\n\n                output.push_str(&format!(\n                    \"    map.insert(\\\"{file_name}\\\", \\\"{escaped_content}\\\");\\n\"\n                ));\n            }\n        }\n    }\n\n    output.push_str(\"    map\\n\");\n    output.push_str(\"});\\n\");",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let file_name = path.file_stem().unwrap().to_str().unwrap();"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

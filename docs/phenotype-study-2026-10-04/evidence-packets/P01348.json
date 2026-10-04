@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01348",
+  "source_finding_id": "P01348",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        try:\n            entry = self.port_row.get_child()\n            if entry and hasattr(entry, 'set_input_purpose'):\n                entry.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if entry and hasattr(entry, 'set_max_length'):\n                entry.set_max_length(5)\n        except Exception:\n            pass\n        self.port_row.set_text(\"22\")\n        basic_group.add(self.port_row)\n\n        # Authentication Group\n        auth_group = Adw.PreferencesGroup(title=_(\"Authentication\"))\n        \n        # Authentication Method\n        auth_model = Gtk.StringList()\n        auth_model.append(_(\"Key-based (recommended)\"))\n        auth_model.append(_(\"Password\"))\n        \n        self.auth_method_row = Adw.ComboRow()\n        self.auth_method_row.set_title(_(\"Authentication Method\"))\n        self.auth_method_row.set_model(auth_model)\n        self.auth_method_row.connect(\"notify::selected\", self.on_auth_method_changed)\n        # Default to key-based for new connections\n        try:\n            self.auth_method_row.set_selected(0)\n        except Exception:\n            pass\n        auth_group.add(self.auth_method_row)\n\n        # Key selection mode for key-based auth",
+      "after": "        self.key_dropdown.set_hexpand(True)\n        # Populate via helper\n        self._key_paths = []\n        self._populate_detected_keys()\n\n        def _on_key_selected(drop, _param):\n            try:\n                idx = drop.get_selected()\n                if idx < 0 or idx >= len(getattr(self, '_key_paths', [])):\n                    return\n                path = self._key_paths[idx]\n                if path == \"__BROWSE__\":\n                    # Revert selection to previous if any\n                    try:\n                        drop.set_selected(0)\n                    except Exception:\n                        pass\n                    self.browse_for_key_file()\n                elif path:\n                    self._selected_keyfile_path = path\n                    if hasattr(self.keyfile_row, 'set_subtitle'):\n                        self.keyfile_row.set_subtitle(path)\n                    \n                    # Update passphrase field for the selected key\n                    self._update_passphrase_for_key(path)\n                    \n                    # Auto-select matching certificate if available\n                    self._auto_select_matching_certificate(path)\n                    \n            except Exception:\n                pass",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

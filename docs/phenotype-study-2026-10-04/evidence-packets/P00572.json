@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00572",
+  "source_finding_id": "P00572",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            row.add_suffix(edit_button)\n            \n            # Add the row to the list\n            self.rules_list.append(row)\n        \n        # Show the rules list\n        self.rules_list.show()\n    \n    def browse_for_key_file(self):\n        \"\"\"Open file chooser to browse for SSH key file using portal-aware API.\"\"\"\n        try:\n            dialog = Gtk.FileDialog(title=_(\"Select SSH Key File\"))\n\n            # Default to SSH directory when available\n            try:\n                ssh_dir = get_ssh_dir()\n                if os.path.isdir(ssh_dir):\n                    dialog.set_initial_folder(Gio.File.new_for_path(ssh_dir))\n            except Exception:\n                pass\n\n            parent = self.get_transient_for()\n            if not isinstance(parent, Gtk.Window):\n                parent = None\n\n            dialog.open(parent, None, self.on_key_file_selected)\n        except Exception as e:\n            logger.error(f\"Failed to open key file chooser: {e}\")\n\n    def browse_for_certificate_file(self):\n        \"\"\"Open file chooser to browse for SSH certificate file using portal-aware API.\"\"\"",
+      "after": "            cert_filter.add_pattern(\"*.pub\")\n            all_filter = Gtk.FileFilter()\n            all_filter.set_name(_(\"All Files\"))\n            all_filter.add_pattern(\"*\")\n\n            filters = Gio.ListStore.new(Gtk.FileFilter)\n            filters.append(cert_filter)\n            filters.append(all_filter)\n            dialog.set_filters(filters)\n            dialog.set_default_filter(cert_filter)\n\n            parent = self.get_transient_for()\n            if not isinstance(parent, Gtk.Window):\n                parent = None\n            dialog.open(parent, None, self.on_certificate_file_selected)\n        except Exception as e:\n            logger.error(f\"Failed to open certificate file chooser: {e}\")\n\n\n    \n    def on_key_file_selected(self, dialog, result):\n        \"\"\"Handle selected key file from file chooser\"\"\"\n        try:\n            key_file = dialog.open_finish(result)\n        except GLib.Error:\n            return\n        if key_file:\n            key_path = key_file.get_path()\n            self.keyfile_row.set_subtitle(key_path)\n\n            # Add the browsed key to the dropdown if it's not already there",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

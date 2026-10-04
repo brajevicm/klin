@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01043",
+  "source_finding_id": "P01043",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Eval: Fix agent log mounting path\n\nCurrently, `/logs/` folder on container mounts to `runs/{run_id}/{task_id}/{trial_name}/sessions/` path. This is not ideal; it should not have included `sessions` folder.\n\nThis PR fixes this problem. Now agents (running inside container) could write logs to `/logs/agent-logs` folder - see example in #413 :\n\n```python\nenv[\"SAVE_TRAJECTORY_PATH\"] = \"/logs/agent-logs\"\n```\n\nWith this PR:\n\n```bash\nruns/2025-07-06__09-54-50/broken-python\n└── broken-python.1-of-1.2025-07-06__09-54-50\n    ├── agent-logs\n    │   └── ae7569df-9beb-4118-aa18-8532e3404885-0c8e73fd80775642.json\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 10 files\n```\n\nWithout this PR:\n```bash\nruns/2025-07-06__10-02-25/broken-python\n└── broken-python.1-of-1.2025-07-06__10-02-25\n    ├── agent-logs\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 9 files\n```",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "            trial_name=trial_name,\n            input_path=task_path,\n            run_id=self._run_id,\n            output_path=self._run_path,\n        )\n\n        try:\n            trial_results = self._run_trial(trial_handler)\n\n            trial_handler.trial_paths.results_path.write_text(\n                trial_results.model_dump_json(indent=4)\n            )\n\n            return trial_results\n\n        except Exception as e:\n            logger.error(\n                f\"Harness execution failed for {task_path}: {e}\",\n                exc_info=True,\n            )\n            trial_results = TrialResults(\n                trial_name=trial_name,\n                task_id=trial_handler.task_id,\n                instruction=trial_handler.instruction,\n                failure_mode=FailureMode.UNKNOWN_AGENT_ERROR,\n            )\n            return trial_results\n\n    def _get_trial_name(\n        self,\n        task_path: Path,",
+      "after": "            trial_name=trial_name,\n            input_path=task_path,\n            run_id=self._run_id,\n            output_path=self._run_path,\n        )\n\n        try:\n            trial_results = self._run_trial(trial_handler)\n\n            trial_handler.trial_paths.results_path.write_text(\n                trial_results.model_dump_json(indent=4)\n            )\n\n            return trial_results\n\n        except Exception as e:\n            logger.error(\n                f\"Harness execution failed for {task_path}: {e}\",\n                exc_info=True,\n            )\n            trial_results = TrialResults(\n                trial_name=trial_name,\n                task_id=trial_handler.task_id,\n                instruction=trial_handler.instruction,\n                failure_mode=FailureMode.UNKNOWN_AGENT_ERROR,\n            )\n            return trial_results\n\n    def _get_trial_name(\n        self,\n        task_path: Path,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

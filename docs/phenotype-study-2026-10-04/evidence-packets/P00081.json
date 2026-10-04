@@ -1,0 +1,16 @@
+{
+  "packet_id": "P00081",
+  "source_finding_id": "P00081",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "math::rotation::DCM::from_r2 (method)"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

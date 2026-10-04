@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00082",
+  "source_finding_id": "P00082",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat(config): add c12 and support rulesync configs\n\nFixes #30.\n\nFunny story -- I made a _very similar_ tool the other day and figured I'd just upstream some of this 🎉. This all works, but I'd suggest we figure out what you think the best options are for the config file. I'd lean towards supporting `rulesync.jsonc` to align with more modern tooling, but leaving the door open for other formats that provide value such as `.ts` or `.js` with jsdoc (and we can allow `.rulesyncrc` as well). Originally implemented this with `cosmicconfig`, but `c12` is nice and opens the door for more advanced github/gitlab/etc based template syncing mechanisms in the future via `extends`.",
+  "diff_context": [
+    {
+      "path": "src/cli/commands/config.test.ts",
+      "before": null,
+      "after": "\n    it(\"should create TypeScript config with custom options\", async () => {\n      await configCommand({\n        init: true,\n        format: \"ts\",\n        targets: \"cursor,kiro\",\n        verbose: false,\n      });\n\n      const content = mockWriteFileSync.mock.calls[0]?.[1] as string;\n      expect(content).toContain('[\"cursor\",\"kiro\"]');\n      expect(content).toContain(\"verbose: false\");\n    });\n\n    it(\"should error for invalid format\", async () => {\n      await configCommand({ init: true, format: \"invalid\" as any }).catch(() => {});\n\n      expect(console.error).toHaveBeenCalledWith(\n        expect.stringContaining(\"❌ Invalid format: invalid. Valid formats are:\"),\n      );\n    });\n\n    it(\"should handle write errors\", async () => {\n      mockWriteFileSync.mockImplementation(() => {\n        throw new Error(\"Write failed\");\n      });\n\n      await configCommand({ init: true }).catch(() => {});\n\n      expect(console.error).toHaveBeenCalledWith(\n        expect.stringContaining(\"❌ Failed to create configuration file: Write failed\"),",
+      "context": null
+    }
+  ],
+  "observations": [
+    "await configCommand({ init: true, format: \"invalid\" as any }).catch(() => {});"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

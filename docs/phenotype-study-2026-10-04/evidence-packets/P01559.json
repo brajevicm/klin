@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01559",
+  "source_finding_id": "P01559",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Eval: Fix agent log mounting path\n\nCurrently, `/logs/` folder on container mounts to `runs/{run_id}/{task_id}/{trial_name}/sessions/` path. This is not ideal; it should not have included `sessions` folder.\n\nThis PR fixes this problem. Now agents (running inside container) could write logs to `/logs/agent-logs` folder - see example in #413 :\n\n```python\nenv[\"SAVE_TRAJECTORY_PATH\"] = \"/logs/agent-logs\"\n```\n\nWith this PR:\n\n```bash\nruns/2025-07-06__09-54-50/broken-python\n└── broken-python.1-of-1.2025-07-06__09-54-50\n    ├── agent-logs\n    │   └── ae7569df-9beb-4118-aa18-8532e3404885-0c8e73fd80775642.json\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 10 files\n```\n\nWithout this PR:\n```bash\nruns/2025-07-06__10-02-25/broken-python\n└── broken-python.1-of-1.2025-07-06__10-02-25\n    ├── agent-logs\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 9 files\n```",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "                f\"{trial_handler.task.max_test_timeout_sec}s for task \"\n                f\"{trial_handler.task_id}.\"\n            )\n\n            return FailureMode.TEST_TIMEOUT\n\n        return FailureMode.NONE\n\n    def _parse_results(\n        self,\n        trial_handler: TrialHandler,\n        post_test_pane: str,\n    ) -> tuple[dict[str, UnitTestStatus] | None, FailureMode]:\n        try:\n            return trial_handler.parser.parse(post_test_pane), FailureMode.NONE\n        except Exception as e:\n            self._logger.error(\n                f\"Error parsing results for task {trial_handler.task_id}: {e}. It's \"\n                \"possible that the tests failed to run. Inspect \"\n                f\"{trial_handler.trial_paths.post_test_pane_path.absolute()} for more \"\n                \"information.\"\n            )\n            return None, FailureMode.PARSE_ERROR\n\n    async def _run_agent_with_timeout(\n        self,\n        trial_handler: TrialHandler,\n        session: TmuxSession,\n        logging_dir: Path,\n        timeout_sec: float,\n        agent: BaseAgent,",
+      "after": "                f\"{trial_handler.task.max_test_timeout_sec}s for task \"\n                f\"{trial_handler.task_id}.\"\n            )\n\n            return FailureMode.TEST_TIMEOUT\n\n        return FailureMode.NONE\n\n    def _parse_results(\n        self,\n        trial_handler: TrialHandler,\n        post_test_pane: str,\n    ) -> tuple[dict[str, UnitTestStatus] | None, FailureMode]:\n        try:\n            return trial_handler.parser.parse(post_test_pane), FailureMode.NONE\n        except Exception as e:\n            self._logger.error(\n                f\"Error parsing results for task {trial_handler.task_id}: {e}. It's \"\n                \"possible that the tests failed to run. Inspect \"\n                f\"{trial_handler.trial_paths.post_test_pane_path.absolute()} for more \"\n                \"information.\"\n            )\n            return None, FailureMode.PARSE_ERROR\n\n    async def _run_agent_with_timeout(\n        self,\n        trial_handler: TrialHandler,\n        session: TmuxSession,\n        logging_dir: Path,\n        timeout_sec: float,\n        agent: BaseAgent,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

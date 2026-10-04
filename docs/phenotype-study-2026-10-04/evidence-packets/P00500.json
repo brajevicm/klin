@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00500",
+  "source_finding_id": "P00500",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Move to net status RPC\n\n## Summary\n- adopt insert_exit_v2 in exit and attach metadata\n- fetch network status via get_net_status in client and GUI\n- derive exits from net status on broker\n- filter auto exits by metadata\n\n## Testing\n- `cargo check`",
+  "diff_context": [
+    {
+      "path": "binaries/geph5-broker/src/rpc_impl.rs",
+      "before": "            Cache::builder()\n                .time_to_live(Duration::from_secs(10))\n                .build()\n        });\n\n        let exit_list = EXIT_CACHE\n            .try_get_with((), async {\n                let exits: Vec<(VerifyingKey, ExitDescriptor)> =\n                    sqlx::query_as(\"select * from exits_new natural left join exit_metadata on exits_new.pubkey=exit_metadata.pubkey\")\n                        .fetch_all(POSTGRES.deref())\n                        .await?\n                        .into_iter()\n                        .map(|row: ExitRowWithMetadata| {\n                            (\n                                VerifyingKey::from_bytes(&row.pubkey).unwrap(),\n                                ExitDescriptor {\n                                    c2e_listen: row.c2e_listen.parse().unwrap(),\n                                    b2e_listen: row.b2e_listen.parse().unwrap(),\n                                    country: CountryCode::for_alpha2_caseless(&row.country)\n                                        .unwrap(),\n                                    city: row.city,\n                                    load: row.load,\n                                    expiry: row.expiry as _,\n                                },\n                            )\n                        })\n                        .collect();\n                let exit_list = ExitList {\n                    all_exits: exits,\n                    city_names: serde_yaml::from_str(include_str!(\"city_names.yaml\")).unwrap(),\n                };",
+      "after": "        static CACHE: Lazy<Cache<(), NetStatus>> = Lazy::new(|| {\n            Cache::builder()\n                .time_to_live(Duration::from_secs(10))\n                .build()\n        });\n\n        let ns = CACHE\n            .try_get_with((), async {\n                let exits: Vec<ExitRowWithMetadata> =\n                    sqlx::query_as(\"select * from exits_new\")\n                        .fetch_all(POSTGRES.deref())\n                        .await?;\n                let exits = exits\n                    .into_iter()\n                    .map(|row| {\n                        let vk = VerifyingKey::from_bytes(&row.pubkey).unwrap();\n                        let desc = ExitDescriptor {\n                            c2e_listen: row.c2e_listen.parse().unwrap(),\n                            b2e_listen: row.b2e_listen.parse().unwrap(),\n                            country: CountryCode::for_alpha2_caseless(&row.country).unwrap(),\n                            city: row.city,\n                            load: row.load,\n                            expiry: row.expiry as _,\n                        };\n                        let meta = row\n                            .metadata\n                            .map(|j| j.0)\n                            .unwrap_or_else(|| default_exit_metadata(&desc.country));\n                        (hex::encode(vk.as_bytes()), (vk, desc, meta))\n                    })\n                    .collect();",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let vk = VerifyingKey::from_bytes(&row.pubkey).unwrap();"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

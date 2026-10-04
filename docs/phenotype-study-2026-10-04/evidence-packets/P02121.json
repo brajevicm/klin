@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02121",
+  "source_finding_id": "P02121",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                        'enabled': True,\n                        'listen_addr': listen_addr,\n                        'listen_port': listen_port,\n                        'remote_host': remote_host,\n                        'remote_port': remote_port,\n                    })\n                elif rtype == 'remote':\n                    local_host = (r.get('local_host') or r.get('remote_host') or '').strip() or 'localhost'\n                    local_port = int(r.get('local_port') or r.get('remote_port') or 0)\n                    if local_port <= 0:\n                        continue\n                    sanitized.append({\n                        'type': 'remote',\n                        'enabled': True,\n                        'listen_addr': listen_addr,\n                        'listen_port': listen_port,\n                        'local_host': local_host,\n                        'local_port': local_port,\n                    })\n                elif rtype == 'dynamic':\n                    sanitized.append({\n                        'type': 'dynamic',\n                        'enabled': True,\n                        'listen_addr': listen_addr,\n                        'listen_port': listen_port,\n                    })\n            except Exception:\n                # Skip malformed rule\n                pass\n        return sanitized",
+      "after": "                        self._validate_port_row(self.remote_port_row, _(\"Target Port\"))\n                elif switch == self.remote_forwarding_enabled:\n                    if hasattr(self, 'remote_bind_host_row'):\n                        self._validate_host_row(self.remote_bind_host_row, allow_empty=True)\n                    if hasattr(self, 'remote_bind_port_row'):\n                        self._validate_port_row(self.remote_bind_port_row, _(\"Remote port\"))\n                    if hasattr(self, 'dest_host_row'):\n                        self._validate_host_row(self.dest_host_row, allow_empty=False)\n                    if hasattr(self, 'dest_port_row'):\n                        self._validate_port_row(self.dest_port_row, _(\"Destination port\"))\n                elif switch == self.dynamic_forwarding_enabled:\n                    if hasattr(self, 'dynamic_bind_row'):\n                        self._validate_host_row(self.dynamic_bind_row, allow_empty=True)\n                    if hasattr(self, 'dynamic_port_row'):\n                        self._validate_port_row(self.dynamic_port_row, _(\"Local Port\"))\n        except Exception:\n            pass\n        \n        # Initialize forwarding_rules if it doesn't exist\n        if not hasattr(self, 'forwarding_rules'):\n            self.forwarding_rules = []\n            \n        # Determine the rule type based on the switch\n        rule_type = None\n        if switch == self.local_forwarding_enabled:\n            rule_type = 'local'\n        elif switch == self.remote_forwarding_enabled:\n            rule_type = 'remote'\n        elif switch == self.dynamic_forwarding_enabled:\n            rule_type = 'dynamic'\n            ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

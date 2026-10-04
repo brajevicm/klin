@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00254",
+  "source_finding_id": "P00254",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "feat(config): add c12 and support rulesync configs\n\nFixes #30.\n\nFunny story -- I made a _very similar_ tool the other day and figured I'd just upstream some of this 🎉. This all works, but I'd suggest we figure out what you think the best options are for the config file. I'd lean towards supporting `rulesync.jsonc` to align with more modern tooling, but leaving the door open for other formats that provide value such as `.ts` or `.js` with jsdoc (and we can allow `.rulesyncrc` as well). Originally implemented this with `cosmicconfig`, but `c12` is nice and opens the door for more advanced github/gitlab/etc based template syncing mechanisms in the future via `extends`.",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n\t\"name\": \"rulesync\",\n\t\"version\": \"0.49.0\",\n\t\"description\": \"Unified AI rules management CLI tool that generates configuration files for various AI development tools\",\n\t\"keywords\": [\n\t\t\"ai\",\n\t\t\"rules\",\n\t\t\"cli\",\n\t\t\"copilot\",\n\t\t\"cursor\",\n\t\t\"cline\",\n\t\t\"configuration\",\n\t\t\"development\"\n\t],\n\t\"homepage\": \"https://github.com/dyoshikawa/rulesync#readme\",\n\t\"bugs\": {",
+      "after": "{\n\t\"name\": \"rulesync\",\n\t\"version\": \"0.49.0\",\n\t\"description\": \"Unified AI rules management CLI tool that generates configuration files for various AI development tools\",\n\t\"keywords\": [\n\t\t\"ai\",\n\t\t\"rules\",\n\t\t\"cli\",\n\t\t\"copilot\",\n\t\t\"cursor\",\n\t\t\"cline\",\n\t\t\"configuration\",\n\t\t\"development\"\n\t],\n\t\"homepage\": \"https://github.com/dyoshikawa/rulesync#readme\",\n\t\"bugs\": {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:c12"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

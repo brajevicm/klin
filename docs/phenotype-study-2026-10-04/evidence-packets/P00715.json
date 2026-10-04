@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00715",
+  "source_finding_id": "P00715",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "API Endpoints used by Sentry CLI\n\nAdd a static inventory of HTTP endpoints used by sentry-cli and instructions to regenerate it.\n\nThis PR delivers the generated documentation as per the plan, which involved identifying and documenting all HTTP endpoints within the `sentry-cli` codebase. It includes a structured list of endpoints and the `ripgrep` commands used for extraction and validation.\n\n---\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "script.py",
+      "before": null,
+      "after": "    args = parser.parse_args(argv)\n\n    # Read input\n    try:\n        if args.input == \"-\":\n            stream = sys.stdin.read()\n        else:\n            with open(args.input, \"r\", encoding=\"utf-8\") as fh:\n                stream = fh.read()\n    except Exception as exc:\n        print(f\"Failed to read input {args.input!r}: {exc}\", file=sys.stderr)\n        return 2\n\n    try:\n        yaml_map = parse_yaml(stream)\n    except Exception as exc:\n        print(f\"Failed to parse YAML input: {exc}\", file=sys.stderr)\n        return 3\n\n    sections = build_rows(yaml_map)\n\n    # Flatten into a single list of rows, attaching section value to each row\n    all_rows: t.List[t.Dict[str, t.Any]] = []\n    for section_name, rows in sections.items():\n        for r in rows:\n            r_copy = dict(r)\n            r_copy[\"section\"] = section_name\n            all_rows.append(r_copy)\n\n    if not args.no_sort:\n        # sorting is handled inside render_one_big_table",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

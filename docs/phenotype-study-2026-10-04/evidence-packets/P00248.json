@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00248",
+  "source_finding_id": "P00248",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Fix CrossFrameLMS responses\n\n## Summary\n- avoid undefined fields in CrossFrameLMS responses\n- add async CrossFrameLMS tests\n\n## Testing\n- `npm run lint --silent`\n- `npm test --silent`",
+  "diff_context": [
+    {
+      "path": "test/facades/CrossFrameFacade.spec.ts",
+      "before": "    };\n\n    // Call _onMessage with the mock event\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_onMessage\"](mockEvent);\n\n    // Verify _process was called with the correct arguments\n    expect(processSpy).toHaveBeenCalledWith(mockEvent.data, src);\n  });\n\n  it(\"ignores message events without messageId or method\", () => {\n    // Create a spy on the _process method\n    // eslint-disable-next-line\n    // @ts-ignore\n    const processSpy = vi.spyOn(server, \"_process\").mockImplementation(() => {});\n\n    // Create mock message events with missing fields\n    const mockEventNoId = {\n      data: {\n        method: \"LMSGetValue\",\n        params: [\"cmi.core.lesson_status\"],\n      },\n      origin: \"http://parent\",\n      source: src,\n    };\n\n    const mockEventNoMethod = {\n      data: {\n        messageId: \"42\",\n        params: [\"cmi.core.lesson_status\"],",
+      "after": "  });\n\n  it(\"handles async API method rejecting\", async () => {\n    apiMock.LMSGetValue = vi.fn().mockRejectedValue(new Error(\"boom\"));\n    const msg: MessageData = {\n      messageId: \"51\",\n      method: \"LMSGetValue\",\n      params: [\"cmi.core.lesson_status\"],\n    };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    await new Promise((r) => setTimeout(r, 0));\n    const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;\n    expect(resp.error).toBeDefined();\n    expect(resp.error!.message).toBe(\"boom\");\n  });\n\n  it(\"handles message events correctly\", () => {\n    // Create a spy on the _process method\n    // eslint-disable-next-line\n    // @ts-ignore\n    const processSpy = vi.spyOn(server, \"_process\").mockImplementation(() => {});\n\n    // Create a mock message event\n    const mockEvent = {\n      data: {\n        messageId: \"42\",\n        method: \"LMSGetValue\",\n        params: [\"cmi.core.lesson_status\"],\n      },",
+      "context": null
+    }
+  ],
+  "observations": [
+    "expect(resp.error!.message).toBe(\"boom\");"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

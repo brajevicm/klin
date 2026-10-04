@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01906",
+  "source_finding_id": "P01906",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add support for Python 3.14\n\nThis change adds support for Python 3.14 by updating the CI configuration, project metadata, and test environments. It also includes fixes to the test suite that were necessary to ensure all tests pass with the new Python version.\n\n---\n*PR created automatically by [authoring attribution omitted] for task [14591641658420415645]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "tests/test_buggy_attrs.py",
+      "before": "\n\ndef test_descriptor():\n    class T:\n        r = RevealAccess(10, 'var ' r'')\n\n        def __init__(self):\n            self.d = D()\n\n        @property\n        def p(self):\n            'this is p'\n            return 1\n\n        @p.setter\n        def p(self):\n            pass\n\n        @p.deleter\n        def p(self):\n            pass\n\n    t = T()\n    pattrs = pdir(t).pattrs\n    for pattr in pattrs:\n        if pattr.name == 'd':\n            assert category_match(pattr.category, AttrCategory.DESCRIPTOR)\n            assert pattr.doc == ('class D with getter, setter, deleter, ' 'this is D')\n        if pattr.name == 'r':\n            assert category_match(pattr.category, AttrCategory.DESCRIPTOR)\n            assert pattr.doc == (",
+      "after": "\n\ndef test_descriptor():\n    class T:\n        r = RevealAccess(10, 'var ' r'')\n\n        def __init__(self):\n            self.d = D()\n\n        @property\n        def p(self):\n            'this is p'\n            return 1\n\n        @p.setter\n        def p(self, value):\n            pass\n\n        @p.deleter\n        def p(self):\n            pass\n\n    t = T()\n    pattrs = pdir(t).pattrs\n    for pattr in pattrs:\n        if pattr.name == 'd':\n            assert category_match(pattr.category, AttrCategory.DESCRIPTOR)\n            assert pattr.doc == ('class D with getter, setter, deleter, ' 'this is D')\n        if pattr.name == 'r':\n            assert category_match(pattr.category, AttrCategory.DESCRIPTOR)\n            assert pattr.doc == (",
+      "context": null
+    }
+  ],
+  "observations": [
+    "def p(self, value):"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

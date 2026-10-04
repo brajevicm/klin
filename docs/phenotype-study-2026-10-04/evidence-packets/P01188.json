@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01188",
+  "source_finding_id": "P01188",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/WhisperCppSettingWidget.py",
+      "before": "        if os.path.exists(MODEL_PATH):\n            # 根据操作系统打开文件夹\n            open_folder(str(MODEL_PATH))\n\n\nclass WhisperCppSettingWidget(QWidget):\n    def __init__(self, parent=None):\n        super().__init__(parent)\n        self.setup_ui()\n        self.setup_signals()\n\n    def setup_ui(self):\n        self.main_layout = QVBoxLayout(self)\n\n        # 创建单向滚动区域和容器\n        self.scrollArea = SingleDirectionScrollArea(orient=Qt.Vertical, parent=self)\n        self.scrollArea.setStyleSheet(\n            \"QScrollArea{background: transparent; border: none}\"\n        )\n\n        self.container = QWidget(self)\n        self.container.setStyleSheet(\"QWidget{background: transparent}\")\n        self.containerLayout = QVBoxLayout(self.container)\n\n        self.setting_group = SettingCardGroup(\n            self.tr(\"Whisper CPP 设置（不稳定 🤔）\"), self\n        )\n\n        # 模型选择\n        self.model_card = ComboBoxSettingCard(\n            cfg.whisper_model,",
+      "after": "        if os.path.exists(MODEL_PATH):\n            # 根据操作系统打开文件夹\n            open_folder(str(MODEL_PATH))\n\n\nclass WhisperCppSettingWidget(QWidget):\n    def __init__(self, parent=None):\n        super().__init__(parent)\n        self.setup_ui()\n        self.setup_signals()\n\n    def setup_ui(self):\n        self.main_layout = QVBoxLayout(self)\n\n        # 创建单向滚动区域和容器\n        self.scrollArea = SingleDirectionScrollArea(orient=Qt.Vertical, parent=self)  # type: ignore\n        self.scrollArea.setStyleSheet(\n            \"QScrollArea{background: transparent; border: none}\"\n        )\n\n        self.container = QWidget(self)\n        self.container.setStyleSheet(\"QWidget{background: transparent}\")\n        self.containerLayout = QVBoxLayout(self.container)\n\n        self.setting_group = SettingCardGroup(\n            self.tr(\"Whisper CPP 设置（不稳定 🤔）\"), self\n        )\n\n        # 模型选择\n        self.model_card = ComboBoxSettingCard(\n            cfg.whisper_model,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "self.scrollArea = SingleDirectionScrollArea(orient=Qt.Vertical, parent=self)  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

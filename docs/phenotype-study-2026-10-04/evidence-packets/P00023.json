@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00023",
+  "source_finding_id": "P00023",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "        trial_handler: TrialHandler,\n        session: TmuxSession,\n        logging_dir: Path,\n        timeout_sec: float,\n        agent: BaseAgent,\n    ) -> AgentResult | None:\n        loop = asyncio.get_event_loop()\n        task = loop.run_in_executor(\n            None,\n            partial(\n                agent.perform_task,\n                instruction=trial_handler.instruction,\n                session=session,\n                logging_dir=logging_dir,\n            ),\n        )\n        return await asyncio.wait_for(task, timeout=timeout_sec)\n\n    def _run_agent(\n        self,\n        session: TmuxSession,\n        trial_handler: TrialHandler,\n        agent: BaseAgent,\n    ) -> tuple[AgentResult | None, FailureMode]:\n        # Calculate the timeout for the agent run\n        if self._global_agent_timeout_sec:\n            agent_timeout_sec = self._global_agent_timeout_sec\n        else:\n            agent_timeout_sec = (\n                trial_handler.task.max_agent_timeout_sec\n                * self._global_timeout_multiplier",
+      "after": "                return None, FailureMode.CONTEXT_LENGTH_EXCEEDED\n            elif isinstance(last_exception, OutputLengthExceededError):\n                self._logger.error(\n                    f\"Output length exceeded for task {trial_handler.task_id}: \"\n                    f\"{last_exception}\"\n                )\n                return None, FailureMode.OUTPUT_LENGTH_EXCEEDED\n            elif isinstance(last_exception, ParseError):\n                self._logger.error(\n                    f\"Failed to parse LLM response for task {trial_handler.task_id}: \"\n                    f\"{last_exception}\"\n                )\n                return None, FailureMode.FATAL_LLM_PARSE_ERROR\n            return None, FailureMode.UNKNOWN_AGENT_ERROR\n\n        except Exception as e:\n            self._logger.error(\n                f\"Error running agent for task {trial_handler.task_id}: {e}\"\n            )\n            return None, FailureMode.UNKNOWN_AGENT_ERROR\n\n    def _run_trial(\n        self,\n        trial_handler: TrialHandler,\n    ) -> TrialResults:\n        self._logger.debug(f\"Running task: {trial_handler.task_id}\")\n\n        results = TrialResults(\n            trial_name=trial_handler.trial_name,\n            task_id=trial_handler.task_id,\n            instruction=trial_handler.instruction,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

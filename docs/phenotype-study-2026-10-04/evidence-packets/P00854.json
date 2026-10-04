@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00854",
+  "source_finding_id": "P00854",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add prepare_local.py\n\nAdds a new script at `slippi_db/prepare_local.py` which allows users to supply a path to a folder containing subfolders with slippi replays inside (default slippi client behavior) and creates 7z archives at some destination.\n\nExample usage:\n```\npython slippi_db/prepare_local.py --slp_root /mnt/c/Users/sbtri/OneDrive/Documents/Slippi/ --zip_root testing_script\nPROCESSING: /mnt/c/Users/sbtri/OneDrive/Documents/Slippi/2024-06 and creating an archive at /home/[project metadata omitted]/projects/slippi-ai/testing_script/Raw/2024-06.7z\nPROCESSING: /mnt/c/Users/sbtri/OneDrive/Documents/Slippi/2024-07 and creating an archive at /home/[project metadata omitted]/projects/slippi-ai/testing_script/Raw/2024-07.7z\n```\n\nThis is just a tiny convenience script that some people may find helpful - let me know what you think!",
+  "diff_context": [
+    {
+      "path": "slippi_db/scripts/prepare_local.py",
+      "before": null,
+      "after": "\n    # create a list of all directories found under source\n    directories = [d for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]\n\n    if len(directories) == 0:\n        print(f'No directories contained in {source}, no work to be done.')\n        return\n\n    # for each directory under source, create a 7z archive in the destination\n    for d in directories:\n        source_dir = os.path.join(source, d)\n        destination_archive = os.path.join(dest, 'Raw', f'{d}.7z')\n        print(f'PROCESSING: {source_dir} and creating an archive at {destination_archive}')\n\n        command = f'7z a -t7z -mx=5 \"{destination_archive}\" \"{source_dir}\"'\n        process = subprocess.run(command, shell=True, capture_output=True, text=True)\n        if process.returncode != 0:\n            print(f'WARNING: failed to create 7z archive for: {d}')\n            print(process.stderr)\n\ndef main(_):\n    run_preparation(FLAGS.slp_root, FLAGS.zip_root)\n\nif __name__ == '__main__':\n    SLP_ROOT = flags.DEFINE_string('slp_root',\n        None,\n        'root directory containing slippi files',\n        required=True)\n\n    ZIP_ROOT = flags.DEFINE_string('zip_root',\n        None,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `subprocess` call with `shell=True` identified, security issue"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

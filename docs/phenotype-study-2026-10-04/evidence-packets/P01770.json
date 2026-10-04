@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01770",
+  "source_finding_id": "P01770",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "refactor: modularize notification system and simplify implementation\n\nRefactored the notification system from a monolithic bash script to a modular Python\nimplementation following the ruthless simplicity philosophy:\n\nBreaking Changes:\n- Makefile now uses NOTIFY=true instead of N=1 for notification flags\n- Notifications default to OFF for all CLI tools (must explicitly enable)\n\nArchitecture:\n- Created modular notification system in amplifier/utils/notifications/\n  - Clean Pydantic models for type safety\n  - Platform-specific handlers (macOS, Linux, Windows/WSL)\n  - Simple CLI interface for direct usage\n- Replaced bash script with Python hook adapter for [authoring attribution omitted] integration\n- Renamed hooks to indicate WHEN they trigger (on_notification_hook.py, etc.)\n\nSimplifications:\n- Removed ALL duration tracking (60% complexity reduction)\n- Eliminated progress notifications (only completion events now)\n- Simplified project name extraction (just directory name, no git parsing)\n- Standardized notification format: \"Amplifier\" title with project context\n\nIntegration:\n- Added --notify flag to knowledge synthesis, synthesis pipeline, and CCSDK tools\n- Toolkit-level integration for CCSDK (all tools inherit capability)\n- Top-level commands handle notifications (no passthrough to sub-tools)\n\nUser Experience:\n- Terminal context (project name) always prominent in subtitle\n- Consistent notification format across all tools\n- Simple NOTIFY=true pattern in Makefile commands\n- Clear session identification for multiple terminals\n\nFollowing the implementation philosophy: removed non-essential complexity,\nmaintained clean module boundaries, and achieved ruthless simplicity.\nThe notification system now does exactly what's needed - informs users\nwhen tasks complete with clear context - nothing more.\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": ".claude/tools/on_notification_hook.py",
+      "before": null,
+      "after": "            debug=debug,\n        )\n\n        response = sender.send(request)\n\n        # Print debug info if enabled\n        if debug and response.debug_log:\n            print(f\"[DEBUG] {response.debug_log}\", file=sys.stderr)\n\n        # Exit with appropriate code\n        sys.exit(0 if response.success else 1)\n\n    except json.JSONDecodeError as e:\n        print(f\"Error parsing JSON input: {e}\", file=sys.stderr)\n        sys.exit(1)\n    except Exception as e:\n        print(f\"Error in notification hook: {e}\", file=sys.stderr)\n        sys.exit(1)\n\n\nif __name__ == \"__main__\":\n    main()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception as e:"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

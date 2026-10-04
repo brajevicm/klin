@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00118",
+  "source_finding_id": "P00118",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        \n        try:\n            # Run ssh-keygen -y to test the passphrase\n            result = subprocess.run([\n                'ssh-keygen', '-y', '-P', passphrase, '-f', key_path\n            ], capture_output=True, text=True, timeout=10)\n            \n            # Exit code 0 means the passphrase is valid\n            return result.returncode == 0\n        except subprocess.TimeoutExpired:\n            logger.error(f\"Timeout verifying passphrase for key: {key_path}\")\n            return False\n        except subprocess.CalledProcessError:\n            # This shouldn't happen since we're capturing output, but handle it\n            return False\n        except Exception as e:\n            logger.error(f\"Error verifying passphrase for key {key_path}: {e}\")\n            return False\n\nclass SSHConfigEntry(GObject.Object):\n    \"\"\"Data model for SSH config entries\"\"\"\n    \n    def __init__(self, key=\"\", value=\"\"):\n        super().__init__()\n        self.key = key\n        self.value = value\n\nclass SSHConfigAdvancedTab(Gtk.Box):\n    \"\"\"Advanced SSH Configuration Tab for GTK 4\"\"\"\n\n    def __init__(self, connection_manager, parent_dialog=None):",
+      "after": "        \n        try:\n            # Run ssh-keygen -y to test the passphrase\n            result = subprocess.run([\n                'ssh-keygen', '-y', '-P', passphrase, '-f', key_path\n            ], capture_output=True, text=True, timeout=10)\n            \n            # Exit code 0 means the passphrase is valid\n            return result.returncode == 0\n        except subprocess.TimeoutExpired:\n            logger.error(f\"Timeout verifying passphrase for key: {key_path}\")\n            return False\n        except subprocess.CalledProcessError:\n            # This shouldn't happen since we're capturing output, but handle it\n            return False\n        except Exception as e:\n            logger.error(f\"Error verifying passphrase for key {key_path}: {e}\")\n            return False\n\nclass SSHConfigEntry(GObject.Object):\n    \"\"\"Data model for SSH config entries\"\"\"\n    \n    def __init__(self, key=\"\", value=\"\"):\n        super().__init__()\n        self.key = key\n        self.value = value\n\nclass SSHConfigAdvancedTab(Gtk.Box):\n    \"\"\"Advanced SSH Configuration Tab for GTK 4\"\"\"\n\n    def __init__(self, connection_manager, parent_dialog=None):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

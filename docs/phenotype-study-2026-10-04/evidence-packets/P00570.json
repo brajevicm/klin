@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00570",
+  "source_finding_id": "P00570",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                return\n            if getattr(display, \"_pf_css_installed\", False):\n                return\n            provider = Gtk.CssProvider()\n            css = \"\"\"\n            .pf-indicator {}\n            .pf-local { color: #E01B24; }\n            .pf-remote { color: #2EC27E; }\n            .pf-dynamic { color: #3584E4; }\n            \"\"\"\n            provider.load_from_data(css.encode(\"utf-8\"))\n            Gtk.StyleContext.add_provider_for_display(\n                display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION\n            )\n            setattr(display, \"_pf_css_installed\", True)\n        except Exception:\n            pass\n\n    def _update_forwarding_indicators(self):\n        self._install_pf_css()\n        if not hasattr(self, \"indicator_box\") or self.indicator_box is None:\n            return\n\n        child = self.indicator_box.get_first_child()\n        while child is not None:\n            next_child = child.get_next_sibling()\n            self.indicator_box.remove(child)\n            child = next_child\n\n        rules = getattr(self.connection, \"forwarding_rules\", []) or []\n        has_local = any(r.get(\"enabled\", True) and r.get(\"type\") == \"local\" for r in rules)",
+      "after": "                return\n            if getattr(display, \"_pf_css_installed\", False):\n                return\n            provider = Gtk.CssProvider()\n            css = \"\"\"\n            .pf-indicator {}\n            .pf-local { color: #E01B24; }\n            .pf-remote { color: #2EC27E; }\n            .pf-dynamic { color: #3584E4; }\n            \"\"\"\n            provider.load_from_data(css.encode(\"utf-8\"))\n            Gtk.StyleContext.add_provider_for_display(\n                display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION\n            )\n            setattr(display, \"_pf_css_installed\", True)\n        except Exception:\n            pass\n\n    def _update_forwarding_indicators(self):\n        self._install_pf_css()\n        if not hasattr(self, \"indicator_box\") or self.indicator_box is None:\n            return\n\n        child = self.indicator_box.get_first_child()\n        while child is not None:\n            next_child = child.get_next_sibling()\n            self.indicator_box.remove(child)\n            child = next_child\n\n        rules = getattr(self.connection, \"forwarding_rules\", []) or []\n        has_local = any(r.get(\"enabled\", True) and r.get(\"type\") == \"local\" for r in rules)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

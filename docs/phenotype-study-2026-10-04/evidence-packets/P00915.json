@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00915",
+  "source_finding_id": "P00915",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "fix: ignore directories",
+  "diff_context": [
+    {
+      "path": "crates/lib/src/core/linter/core.rs",
+      "before": "                        .file_name()\n                        .unwrap()\n                        .to_str()\n                        .unwrap()\n                        .to_string(),\n                ];\n\n                (dir_name, None, file_name)\n            })\n            .collect();\n\n        path_walk.extend(path_walk_ignore_file);\n\n        let mut buffer = Vec::new();\n        let mut ignores = AHashMap::new();\n        let sql_file_exts = self.config.sql_file_exts();\n\n        for (dirpath, _, filenames) in path_walk {\n            for fname in filenames {\n                let fpath = Path::new(&dirpath).join(&fname);\n\n                // Handle potential .sqlfluffignore files\n                if ignore_files && fname == ignore_file_name {\n                    let file = File::open(&fpath).unwrap();\n                    let lines = BufReader::new(file).lines();\n                    let spec = lines.map_while(Result::ok); // Simple placeholder for pathspec logic\n                    ignores.insert(dirpath.clone(), spec.collect::<Vec<String>>());\n\n                    // We don't need to process the ignore file any further\n                    continue;\n                }",
+      "after": "                        !should_ignore\n                    })\n                    .filter_map(Result::ok)\n                    .collect()\n            } else {\n                // No ignorer provided, use original behavior\n                walkdir.into_iter().filter_map(Result::ok).collect()\n            };\n\n            // Group entries by directory to maintain the original data structure\n            let mut dir_files: AHashMap<String, Vec<String>> = AHashMap::new();\n\n            for entry in entries {\n                if entry.file_type().is_file() {\n                    let dirpath = entry.path().parent().unwrap().to_str().unwrap().to_string();\n                    let filename = entry.file_name().to_str().unwrap().to_string();\n                    dir_files.entry(dirpath).or_default().push(filename);\n                }\n            }\n\n            dir_files\n                .into_iter()\n                .map(|(dirpath, files)| (dirpath, None, files))\n                .collect_vec()\n        };\n\n        // TODO:\n        // let ignore_file_paths = ConfigLoader.find_ignore_config_files(\n        //     path=path, working_path=working_path, ignore_file_name=ignore_file_name\n        // );\n        let ignore_file_paths: Vec<String> = Vec::new();",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let filename = entry.file_name().to_str().unwrap().to_string();"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,16 @@
+{
+  "packet_id": "P02043",
+  "source_finding_id": "P02043",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "astro::utils::compute_mean_to_true_anomaly_rad (function)"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

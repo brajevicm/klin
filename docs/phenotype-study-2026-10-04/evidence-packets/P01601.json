@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01601",
+  "source_finding_id": "P01601",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/src/firestore.ts",
+      "before": null,
+      "after": "    firestore,\n    collectionName,\n    pageSize = 1000,\n    parse: parseConversions = {} as FirebaseConversions<TRecord, TItem>,\n    serialize: serializeConversions = {} as FirebaseConversions<TItem, TRecord>,\n    converter,\n    autoId = false,\n    queryConstraints = [],\n    rowUpdateMode = \"partial\",\n    includeMetadataChanges = false,\n    queryBuilder,\n    useTransactions = false,\n    ...restConfig\n  } = config\n\n  const getKey = config.getKey || ((item: TItem) => (item as any).id as TKey)\n\n  const parse = (record: TRecord) =>\n    convert<TRecord, TItem>(parseConversions, record)\n  const serialUpd = (item: Partial<TItem>) =>\n    convertPartial<TItem, TRecord>(serializeConversions, item)\n  const serialIns = (item: TItem) =>\n    convert<TItem, TRecord>(serializeConversions, item)\n\n  const collectionRef = collection(firestore, collectionName)\n  const backoff = new ExponentialBackoff()\n\n  let unsubscribeSnapshot: Unsubscribe | undefined\n  const cancelSnapshot = () => {\n    if (unsubscribeSnapshot) {\n      unsubscribeSnapshot()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const getKey = config.getKey || ((item: TItem) => (item as any).id as TKey)"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01368",
+  "source_finding_id": "P01368",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "style(dpmodel): enforce type annotations\n\nThis PR fixes critical PyTorch JIT compilation errors that were preventing model serialization and deployment. The main issue was that PyTorch JIT cannot handle certain type annotations, specifically `Union[np.ndarray, Any]` (the `Array` type) and `KeysView[str]` return types.\n\n## Problem\n\nPyTorch JIT compilation was failing with errors like:\n```\nAssertionError: Unsupported annotation typing.Union[numpy.ndarray, typing.Any] could not be resolved because None could not be resolved.\n```\n\nThis prevented users from using `torch.jit.script()` on trained models, blocking deployment scenarios.\n\n## Solution\n\n- **Removed incompatible type annotations** from methods used by PyTorch JIT compilation\n- **Added `# noqa:ANNxxx` comments** to suppress ruff linting warnings for missing type annotations\n- **Fixed `KeysView[str]` return types** that caused JIT compilation failures\n- **Maintained type safety** elsewhere in the codebase where JIT compatibility isn't required\n\n## Files Changed\n\n- `deepmd/dpmodel/utils/network.py`: Removed `Array` type annotations from `call` methods and activation functions\n- `deepmd/dpmodel/output_def.py`: Removed `KeysView[str]` return type annotations from `keys` methods\n\n## Validation\n\nAll PyTorch JIT tests now pass:\n- ✅ TestEnergyModelSeA.test_jit\n- ✅ TestDOSModelSeA.test_jit  \n- ✅ TestEnergyModelDPA1.test_jit\n- ✅ TestEnergyModelDPA2.test_jit\n- ✅ TestEnergyModelHybrid.test_jit\n- ✅ TestEnergyModelHybrid2.test_jit\n- ✅ TestEnergyModelDPA2IntRcut.test_jit\n\nModels can now be successfully JIT compiled for deployment while maintaining full functionality and backward compatibility.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n✨ Let [project metadata omitted] coding agent [set things up for you]([external reference omitted] — coding agent works faster and does higher quality work when set up for your repo.",
+  "diff_context": [
+    {
+      "path": "deepmd/dpmodel/utils/network.py",
+      "before": "            jax,\n        )\n\n        # see https://github.com/jax-ml/jax/discussions/15617\n        return jax.nn.sigmoid(x)\n    xp = array_api_compat.array_namespace(x)\n    return 1 / (1 + xp.exp(-x))\n\n\nclass Identity(NativeOP):\n    def __init__(self) -> None:\n        super().__init__()\n\n    def call(self, x: np.ndarray) -> np.ndarray:\n        \"\"\"The Identity operation layer.\"\"\"\n        return x\n\n    def serialize(self) -> dict:\n        return {\n            \"@class\": \"Identity\",\n            \"@version\": 1,\n        }\n\n    @classmethod\n    def deserialize(cls, data: dict) -> \"Identity\":\n        return Identity()\n\n\nclass NativeLayer(NativeOP):\n    \"\"\"Native representation of a layer.",
+      "after": "    if array_api_compat.is_jax_array(x):\n        from deepmd.jax.env import (\n            jax,\n        )\n\n        # see https://github.com/jax-ml/jax/discussions/15617\n        return jax.nn.sigmoid(x)\n    xp = array_api_compat.array_namespace(x)\n    return 1 / (1 + xp.exp(-x))\n\n\nclass Identity(NativeOP):\n    def __init__(self) -> None:\n        super().__init__()\n\n    def call(self, x):  # noqa: ANN001, ANN201\n        \"\"\"The Identity operation layer.\"\"\"\n        return x\n\n    def serialize(self) -> dict:\n        return {\n            \"@class\": \"Identity\",\n            \"@version\": 1,\n        }\n\n    @classmethod\n    def deserialize(cls, data: dict) -> \"Identity\":\n        return Identity()\n\n\nclass NativeLayer(NativeOP):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "def call(self, x):  # noqa: ANN001, ANN201"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

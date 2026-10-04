@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01142",
+  "source_finding_id": "P01142",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/typespec-vscode/src/typespec-utils.ts",
+      "before": "import vscode from \"vscode\";\nimport { StartFileName } from \"./const.js\";\nimport logger from \"./log/logger.js\";\nimport { getDirectoryPath, joinPaths, normalizeSlashes } from \"./path-utils.js\";\nimport { Result, ResultCode } from \"./types.js\";\nimport { ConfirmOptions, QuickPickOptionsWithExternalLink, tryExecuteWithUi } from \"./ui-utils.js\";\nimport { isFile, loadModule, loadPackageJsonFile, spawnExecutionAndLogToOutput } from \"./utils.js\";\n\nexport async function getEntrypointTspFile(tspPath: string): Promise<string | undefined> {\n  const isFilePath = await isFile(tspPath);\n  let baseDir = isFilePath ? getDirectoryPath(tspPath) : tspPath;\n\n  while (true) {\n    const pkgPath = path.resolve(baseDir, \"package.json\");\n    if (await isFile(pkgPath)) {\n      /* get the tspMain from package.json. */\n      try {\n        const data = await readFile(pkgPath, { encoding: \"utf-8\" });\n        const packageJson = JSON.parse(data);\n        const tspMain = packageJson.tspMain;\n        if (typeof tspMain === \"string\") {\n          const tspMainFile = path.resolve(baseDir, tspMain);\n          if (await isFile(tspMainFile)) {\n            logger.debug(`tspMain file ${tspMainFile} selected as entrypoint file.`);\n            return tspMainFile;\n          }\n        }\n      } catch (error) {\n        logger.error(`An error occurred while reading the package.json file ${pkgPath}`, [error]);\n      }\n    }",
+      "after": "  ServerDiagnostic,\n} from \"@typespec/compiler/internals\";\nimport vscode from \"vscode\";\nimport { StartFileName } from \"./const.js\";\nimport logger from \"./log/logger.js\";\nimport { joinPaths, normalizeSlashes } from \"./path-utils.js\";\nimport { Result, ResultCode, SettingName } from \"./types.js\";\nimport { ConfirmOptions, QuickPickOptionsWithExternalLink, tryExecuteWithUi } from \"./ui-utils.js\";\nimport { isFile, loadModule, loadPackageJsonFile, spawnExecutionAndLogToOutput } from \"./utils.js\";\n\nexport async function getEntrypointTspFile(tspPath: string): Promise<string | undefined> {\n  const configEntrypoints = vscode.workspace\n    .getConfiguration()\n    .get<string[]>(SettingName.CompileEntrypoint);\n  const logAdapter = (log: ServerLog) => {\n    logger.log(log.level, log.message, log.detail as any);\n  };\n  return await resolveEntrypointFile(\n    NodeSystemHost,\n    configEntrypoints,\n    tspPath,\n    undefined,\n    logAdapter,\n  );\n}\n\nexport async function TraverseMainTspFileInWorkspace() {\n  return vscode.workspace\n    .findFiles(`**/${StartFileName}`, \"**/node_modules/**\")\n    .then((uris) =>\n      uris",
+      "context": null
+    }
+  ],
+  "observations": [
+    "logger.log(log.level, log.message, log.detail as any);"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

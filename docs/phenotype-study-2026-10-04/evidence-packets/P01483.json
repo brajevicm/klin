@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01483",
+  "source_finding_id": "P01483",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Add docstring review list and tasks\n\n## Summary\n- scan repo for missing spaCy style docstrings\n- list all problematic files in `docs/missing_docstrings.md`\n- generate task list in `docs/docstring_tasks.md`\n\n## Testing\n- `python - <<'EOF'\nimport os, ast\nmissing=[]\nfor dirpath,_,files in os.walk('.'):\n    for f in files:\n        if f.endswith('.py'):\n            path=os.path.join(dirpath,f)\n            try:\n                tree=ast.parse(open(path,'r',encoding='utf-8').read())\n            except Exception:\n                continue\n            if (ast.get_docstring(tree) is None or\n                any(isinstance(n,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef)) and ast.get_docstring(n) is None for n in ast.walk(tree))):\n                missing.append(path)\nprint('missing count',len(missing))\nEOF",
+  "diff_context": [
+    {
+      "path": ".config/component_generator/scripts/dag.py",
+      "before": "\n        # Render FILE_NAME -> RENDERED_FILE_NAME\n        unrendered_name = record[\"FILE_NAME\"] + \".j2\"\n        new_record[\"FILE_NAME\"] = unrendered_name\n        try:\n            rendered_template = env.from_string(unrendered_name)\n            rendered_name = rendered_template.render(**context)\n            new_record[\"RENDERED_FILE_NAME\"] = rendered_name.replace(\".j2\", \"\")\n        except Exception as e:\n            print(f\"[ERROR] Failed to render FILE_NAME '{unrendered_name}': {e}\")\n            new_record[\"RENDERED_FILE_NAME\"] = unrendered_name.replace(\".j2\", \"\")\n\n        # Render DEPENDENCIES -> RENDERED_DEPENDENCIES\n        rendered_deps = []\n        for dep in record.get(\"DEPENDENCIES\", []):\n            try:\n                rendered_dep = env.from_string(dep).render(**context)\n                rendered_deps.append(rendered_dep)\n            except Exception as e:\n                print(f\"[ERROR] Failed to render DEPENDENCY '{dep}': {e}\")\n                rendered_deps.append(dep)\n        new_record[\"RENDERED_DEPENDENCIES\"] = rendered_deps\n\n        # Render all other fields\n        for key, val in record.items():\n            if key in [\"FILE_NAME\", \"DEPENDENCIES\"]:\n                continue\n\n            if isinstance(val, str):\n                try:\n                    new_record[key] = env.from_string(val).render(**context)",
+      "after": "    \"\"\"\n    env = Environment(autoescape=False)\n    resolved_entries = []\n\n    for record in files_payload:\n        context = {**global_attrs, **record}\n        new_record = {}\n\n        # Render FILE_NAME -> RENDERED_FILE_NAME\n        unrendered_name = record[\"FILE_NAME\"] + \".j2\"\n        new_record[\"FILE_NAME\"] = unrendered_name\n        try:\n            rendered_template = env.from_string(unrendered_name)\n            rendered_name = rendered_template.render(**context)\n            new_record[\"RENDERED_FILE_NAME\"] = rendered_name.replace(\".j2\", \"\")\n        except Exception as e:\n            print(f\"[ERROR] Failed to render FILE_NAME '{unrendered_name}': {e}\")\n            new_record[\"RENDERED_FILE_NAME\"] = unrendered_name.replace(\".j2\", \"\")\n\n        # Render DEPENDENCIES -> RENDERED_DEPENDENCIES\n        rendered_deps = []\n        for dep in record.get(\"DEPENDENCIES\", []):\n            try:\n                rendered_dep = env.from_string(dep).render(**context)\n                rendered_deps.append(rendered_dep)\n            except Exception as e:\n                print(f\"[ERROR] Failed to render DEPENDENCY '{dep}': {e}\")\n                rendered_deps.append(dep)\n        new_record[\"RENDERED_DEPENDENCIES\"] = rendered_deps\n\n        # Render all other fields",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00832",
+  "source_finding_id": "P00832",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        try:\n            group_id = manager.get_connection_group(self.connection.nickname)\n        except Exception:\n            group_id = None\n\n        visited = set()\n        while group_id:\n            if group_id in visited:\n                break\n            visited.add(group_id)\n\n            group_info = None\n            try:\n                if hasattr(manager, 'groups'):\n                    group_info = manager.groups.get(group_id)\n            except Exception:\n                group_info = None\n\n            if not group_info:\n                break\n\n            color = _parse_color(group_info.get('color'))\n            if color:\n                return color\n\n            group_id = group_info.get('parent_id')\n\n        return None\n\n    def _apply_group_color_style(self):\n        mode = _get_color_display_mode(getattr(self, 'config', None))",
+      "after": "        try:\n            group_id = manager.get_connection_group(self.connection.nickname)\n        except Exception:\n            group_id = None\n\n        visited = set()\n        while group_id:\n            if group_id in visited:\n                break\n            visited.add(group_id)\n\n            group_info = None\n            try:\n                if hasattr(manager, 'groups'):\n                    group_info = manager.groups.get(group_id)\n            except Exception:\n                group_info = None\n\n            if not group_info:\n                break\n\n            color = _parse_color(group_info.get('color'))\n            if color:\n                return color\n\n            group_id = group_info.get('parent_id')\n\n        return None\n\n    def _apply_group_color_style(self):\n        mode = _get_color_display_mode(getattr(self, 'config', None))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01625",
+  "source_finding_id": "P01625",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/package.json",
+      "before": null,
+      "after": "{\n  \"name\": \"@tanstack/db-sync-server\",\n  \"description\": \"HTTP server for TanStack DB collections using Electric-compatible streaming API\",\n  \"version\": \"0.1.0\",\n  \"dependencies\": {\n    \"@tanstack/db\": \"workspace:*\",\n    \"crypto\": \"^1.0.1\"\n  },\n  \"devDependencies\": {\n    \"@types/node\": \"^20.0.0\",\n    \"@vitest/coverage-istanbul\": \"^3.0.9\",\n    \"vitest\": \"^3.0.0\"\n  },\n  \"exports\": {\n    \".\": {\n      \"import\": {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:crypto"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00599",
+  "source_finding_id": "P00599",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            if hasattr(self, 'local_command_row') and self.local_command_row.get_text().strip():\n                local_cmd = self.local_command_row.get_text().strip()\n                config_lines.append(\"    PermitLocalCommand yes\")\n                config_lines.append(f\"    LocalCommand {local_cmd}\")\n            \n            # Add remote command if specified\n            if hasattr(self, 'remote_command_row') and self.remote_command_row.get_text().strip():\n                remote_cmd = self.remote_command_row.get_text().strip()\n                # Ensure shell stays active after command\n                if 'exec $SHELL' not in remote_cmd:\n                    remote_cmd = f\"{remote_cmd} ; exec $SHELL -l\"\n                config_lines.append(f\"    RemoteCommand {remote_cmd}\")\n                config_lines.append(\"    RequestTTY yes\")\n            \n            return '\\n'.join(config_lines)\n            \n        except Exception as e:\n            logger.debug(f\"Failed to generate SSH config from settings: {e}\")\n            # Return a basic template if generation fails\n            return f\"\"\"# SSH Config Block for this connection\n# Generated from current settings\nHost {getattr(self, 'nickname_row', None).get_text().strip() if hasattr(self, 'nickname_row') else 'my-server'}\n    HostName {getattr(self, 'hostname_row', None).get_text().strip() if hasattr(self, 'hostname_row') else 'example.com'}\n    User {getattr(self, 'username_row', None).get_text().strip() if hasattr(self, 'username_row') else 'user'}\n    Port {getattr(self, 'port_row', None).get_text().strip() if hasattr(self, 'port_row') else '22'}\"\"\"\n    \n    def load_connection_data(self):\n        \"\"\"Load connection data into the dialog fields\"\"\"\n        if not self.is_editing or not self.connection:\n            return\n        ",
+      "after": "                self.hostname_row.set_text(self.connection.hostname or \"\")\n            if hasattr(self.connection, 'username'):\n                self.username_row.set_text(self.connection.username or \"\")\n            if hasattr(self.connection, 'port'):\n                try:\n                    self.port_row.set_text(str(int(self.connection.port) if self.connection.port else 22))\n                except Exception:\n                    self.port_row.set_text(\"22\")\n\n            # Load proxy settings\n            if hasattr(self.connection, 'proxy_jump'):\n                try:\n                    self.proxy_jump_row.set_text(\n                        \",\".join(self.connection.proxy_jump or [])\n                    )\n                except Exception:\n                    self.proxy_jump_row.set_text(\"\")\n            if hasattr(self.connection, 'forward_agent'):\n                try:\n                    self.forward_agent_row.set_active(bool(self.connection.forward_agent))\n                except Exception:\n                    self.forward_agent_row.set_active(False)\n            \n            # Set authentication method and related fields\n            auth_method = getattr(self.connection, 'auth_method', 0)\n            self.auth_method_row.set_selected(auth_method)\n            self.on_auth_method_changed(self.auth_method_row, None)  # Update UI state\n            try:\n                self.pubkey_auth_row.set_active(bool(getattr(self.connection, 'pubkey_auth_no', False)))\n            except Exception:\n                self.pubkey_auth_row.set_active(False)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

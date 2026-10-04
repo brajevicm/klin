@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00802",
+  "source_finding_id": "P00802",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "Add non-React ConvexSessionClient\n\n# Add non-React ConvexSessionClient\n\nAdds a non-React equivalent of the React session helpers directly in the `react/sessions.ts` file.\n\nThe ConvexSessionClient class wraps a ConvexClient and adds sessionQuery, sessionMutation, and sessionAction methods that inject the sessionId parameter.\n\n## Implementation Details\n- Added `ConvexSessionClient` class to the existing `react/sessions.ts` file\n- Implemented `sessionQuery`, `sessionMutation`, and `sessionAction` methods\n- Reused existing `SessionFunction` and `SessionArgsArray` types\n- Added session storage functionality that mimics the React provider\n- Added tests to verify functionality\n\nLink to [authoring attribution omitted] run: [external reference omitted]\nRequested by: Ian Macartney (ian[user omitted].dev)\n\nBy submitting this pull request, I confirm that you can use, modify, copy, and redistribute this contribution, under the terms of your choice.",
+  "diff_context": [
+    {
+      "path": "packages/convex-helpers/react/sessions.test.ts",
+      "before": "",
+      "after": "      \"query\",\n      \"public\",\n      { arg: string; sessionId: SessionId },\n      any\n    >\n  >\n>().toEqualTypeOf<[{ arg: string }]>();\n\nexpectTypeOf<\n  SessionArgsArray<\n    FunctionReference<\"query\", \"public\", { sessionId: SessionId }, any>\n  >\n>().toEqualTypeOf<[args?: EmptyObject | undefined]>();\n\ndescribe(\"ConvexSessionClient\", () => {\n  let mockClient: { query: any; mutation: any; action: any };\n  let sessionClient: ConvexReactSessionClient;\n  const sessionId = \"test-session-id\" as SessionId;\n\n  beforeEach(() => {\n    mockClient = {\n      query: vi.fn().mockResolvedValue(\"query-result\"),\n      mutation: vi.fn().mockResolvedValue(\"mutation-result\"),\n      action: vi.fn().mockResolvedValue(\"action-result\"),\n    };\n    sessionClient = new ConvexReactSessionClient(\"http://localhost:3000\", {\n      sessionId,\n    });\n    sessionClient.query = mockClient.query;\n    sessionClient.mutation = mockClient.mutation;\n    sessionClient.action = mockClient.action;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let mockClient: { query: any; mutation: any; action: any };"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

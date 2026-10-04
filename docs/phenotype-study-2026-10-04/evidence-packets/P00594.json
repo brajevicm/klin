@@ -1,0 +1,16 @@
+{
+  "packet_id": "P00594",
+  "source_finding_id": "P00594",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "export const MigrationStatusModal: React.FC<MigrationStatusModalProps> = ({ isOpen, onClose }) => {"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

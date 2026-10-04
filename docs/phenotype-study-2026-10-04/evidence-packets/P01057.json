@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01057",
+  "source_finding_id": "P01057",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "Cargo.toml",
+      "before": "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]",
+      "after": "[package]\nname = \"app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\nitoa = \"=1.0.11\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:itoa"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

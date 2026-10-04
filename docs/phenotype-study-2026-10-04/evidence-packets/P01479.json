@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01479",
+  "source_finding_id": "P01479",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        try:\n            # Ensure visibility/sensitivity matches defaults\n            self.on_auth_method_changed(self.auth_method_row, None)\n            self.on_key_select_changed(self.key_select_row, None)\n        except Exception:\n            pass\n        \n        # Key Passphrase\n        self.key_passphrase_row = Adw.PasswordEntryRow(title=_(\"Key Passphrase\"))\n        self.key_passphrase_row.set_show_apply_button(False)\n        auth_group.add(self.key_passphrase_row)\n        \n        # Password\n        self.password_row = Adw.PasswordEntryRow(title=_(\"Password (optional)\"))\n        self.password_row.set_show_apply_button(False)\n        # Always visible; optional for key-based auth\n        self.password_row.set_visible(True)\n        auth_group.add(self.password_row)\n\n        # Disable pubkey authentication toggle for password auth\n        self.pubkey_auth_row = Adw.SwitchRow()\n        self.pubkey_auth_row.set_title(_(\"Disable public key authentication (force password only)\"))\n        self.pubkey_auth_row.set_active(False)\n        auth_group.add(self.pubkey_auth_row)\n\n        # ProxyJump Group\n        proxy_group = Adw.PreferencesGroup(title=_(\"ProxyJump\"))\n\n        # ProxyJump hosts (comma-separated for multiple hops)\n        self.proxy_jump_row = Adw.EntryRow(title=_(\"Multiple comma-separated hosts supported: bastion1,bastion2,bastion3\"))\n        proxy_group.add(self.proxy_jump_row)",
+      "after": "        self.local_forwarding_enabled = Adw.SwitchRow()\n        self.local_forwarding_enabled.set_title(_(\"Local Port Forwarding\"))\n        self.local_forwarding_enabled.set_subtitle(_(\"Forward a local port to a remote host\"))\n        local_forwarding_group.add(self.local_forwarding_enabled)\n        \n        # Local port forwarding settings\n        local_settings_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)\n        local_settings_box.set_margin_start(12)\n        local_settings_box.set_margin_end(12)\n        local_settings_box.set_margin_bottom(12)\n        \n        local_port_row = Adw.EntryRow()\n        local_port_row.set_title(_(\"Local Port\"))\n        try:\n            local_port_row.set_subtitle(_(\"Local port to forward\"))\n        except Exception:\n            pass\n        try:\n            lpe = local_port_row.get_child()\n            if lpe and hasattr(lpe, 'set_input_purpose'):\n                lpe.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if lpe and hasattr(lpe, 'set_max_length'):\n                lpe.set_max_length(5)\n        except Exception:\n            pass\n        local_settings_box.append(local_port_row)\n        \n        remote_host_row = Adw.EntryRow()\n        remote_host_row.set_title(_(\"Target Host\"))\n        entry = remote_host_row.get_child()\n        if entry and hasattr(entry, 'set_placeholder_text'):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

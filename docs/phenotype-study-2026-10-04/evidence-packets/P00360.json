@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00360",
+  "source_finding_id": "P00360",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "examples/react/todo/src/lib/collections.ts",
+      "before": "",
+      "after": "  })\n)\n\n// Firebase Todo Collection\nexport const firebaseTodoCollection = createCollection(\n  firebaseCollectionOptions({\n    id: `todos`,\n    firestore,\n    collectionName: `todos`,\n    getKey: (item) => item.id,\n    schema: selectTodoSchema,\n    rowUpdateMode: `partial`,\n    parse: {\n      created_at: (timestamp: any) =>\n        timestamp?.toDate?.() || new Date(timestamp),\n      updated_at: (timestamp: any) =>\n        timestamp?.toDate?.() || new Date(timestamp),\n    },\n  })\n)\n\n// Firebase Config Collection\nexport const firebaseConfigCollection = createCollection(\n  firebaseCollectionOptions({\n    id: `config`,\n    firestore,\n    collectionName: `config`,\n    getKey: (item) => item.id,\n    schema: selectConfigSchema,\n    rowUpdateMode: `partial`,\n    parse: {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "updated_at: (timestamp: any) =>"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

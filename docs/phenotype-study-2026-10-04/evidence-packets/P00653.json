@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00653",
+  "source_finding_id": "P00653",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Fix bugs in health checks\n\nFix bugs:\n\n- Only the last slice was getting health checks\n- Health checks were only checked once at the start of the loop\n- There was no timeout for waiting on the health checks",
+  "diff_context": [
+    {
+      "path": "src/levanter/infra/ray_tpu.py",
+      "before": "\n\ndef _separate_process_fn(underlying_function, args, kwargs):\n    \"\"\"\n    Helper function for _forkify_remote_fn. This runs the function in a separate process.\n    \"\"\"\n\n    def target_fn(queue, args, kwargs):\n        try:\n            # Call the original function\n            result = underlying_function(*args, **kwargs)\n            queue.put((True, result))  # Success, put the result\n        except Exception as e:\n            # Capture and return the full traceback in case of an exception\n            info = ser_exc_info(e)\n            queue.put((False, info))\n\n    queue = multiprocessing.Queue()\n    process = multiprocessing.Process(target=target_fn, args=(queue, args, kwargs))\n    process.start()\n    process.join()\n\n    # Retrieve the result or error from the queue\n    logger.info(\"Process finished\")\n    try:\n        success, value = queue.get(timeout=1)\n    except QueueEmpty:\n        logger.error(\"Process timed out\")\n        process.terminate()\n        raise TimeoutError(\"Process timed out\")",
+      "after": "    except subprocess.CalledProcessError:\n        pass\n\n\n\ndef _separate_process_fn(underlying_function, args, kwargs):\n    \"\"\"\n    Helper function for _forkify_remote_fn. This runs the function in a separate process.\n    \"\"\"\n\n    def target_fn(queue, args, kwargs):\n        try:\n            # Call the original function\n            result = underlying_function(*args, **kwargs)\n            queue.put((True, result))  # Success, put the result\n        except Exception as e:\n            # Capture and return the full traceback in case of an exception\n            info = ser_exc_info(e)\n            queue.put((False, info))\n\n    queue = multiprocessing.Queue()\n    process = multiprocessing.Process(target=target_fn, args=(queue, args, kwargs))\n    process.start()\n    process.join()\n\n    # Retrieve the result or error from the queue\n    logger.info(\"Process finished\")\n    try:\n        success, value = queue.get(timeout=1)\n    except QueueEmpty:\n        logger.error(\"Process timed out\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

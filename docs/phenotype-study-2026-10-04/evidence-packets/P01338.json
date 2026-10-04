@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01338",
+  "source_finding_id": "P01338",
+  "study_version": 1,
+  "language": "TypeScript",
+  "task_context": "[WIP]: Add Firebase integration",
+  "diff_context": [
+    {
+      "path": "packages/firebase-db-collection/tests/firestore.test.ts",
+      "before": null,
+      "after": "\n      // All should be inserted\n      expect(collection.getAll()).toHaveLength(600)\n    })\n  })\n\n  describe(\"Type Conversions\", () => {\n    it(\"should handle date conversions\", async () => {\n      const collection = createCollection(\n        firebaseCollectionOptions<TestTodo>({\n          id: \"todos\",\n          firestore,\n          collectionName: \"todos\",\n          getKey: (item) => item.id,\n          parse: {\n            createdAt: (timestamp: any) => timestamp?.toDate?.() || timestamp,\n            updatedAt: (timestamp: any) => timestamp?.toDate?.() || timestamp,\n          },\n        })\n      )\n\n      await collection.preload()\n\n      const todo: TestTodo = {\n        id: \"1\",\n        text: \"Test todo\",\n        completed: false,\n        createdAt: new Date(),\n      }\n\n      await collection.insert(todo)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "createdAt: (timestamp: any) => timestamp?.toDate?.() || timestamp,"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

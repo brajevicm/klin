@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01569",
+  "source_finding_id": "P01569",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    if not n:\n                        continue\n                    n_norm = str(n).strip().lower()\n                    # Exclude the current connection by name (case-insensitive), not by object identity\n                    if current_name_norm and n_norm == current_name_norm:\n                        continue\n                    names.add(str(n))\n            # Ensure fresh names after deletions\n            try:\n                if hasattr(mgr, 'load_ssh_config'):\n                    mgr.load_ssh_config()\n            except Exception:\n                pass\n            # Ensure current typed value isn't auto-included incorrectly\n            self.validator.set_existing_names(names)\n        except Exception:\n            pass\n\n    def _validate_field_row(self, field_name: str, row, context: str = \"SSH\"):\n        text = (row.get_text() if hasattr(row, 'get_text') else \"\")\n        if field_name == 'name':\n            self._update_existing_names_in_validator()\n            result = self.validator.validate_connection_name(text)\n        elif field_name == 'hostname':\n            raw = (text or '').strip()\n            if raw.startswith('[') and raw.endswith(']') and len(raw) > 2:\n                raw = raw[1:-1]\n            result = self.validator.validate_hostname(raw, allow_empty=True)\n        elif field_name == 'port':\n            result = self.validator.validate_port(text, context)\n        elif field_name == 'username':",
+      "after": "    def _update_save_buttons(self):\n        try:\n            has_errors = any(\n                (k in self.validation_results and not self.validation_results[k].is_valid)\n                for k in ('name', 'hostname', 'port', 'username')\n            )\n            enabled = not has_errors\n            for btn in getattr(self, '_save_buttons', []) or []:\n                try:\n                    btn.set_sensitive(enabled)\n                except Exception:\n                    pass\n            if hasattr(self, 'set_response_enabled'):\n                try:\n                    self.set_response_enabled('save', enabled)\n                except Exception:\n                    pass\n        except Exception:\n            pass\n    def _row_set_message(self, row, message: str, is_error: bool = True):\n        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(message or \"\")\n        except Exception:\n            pass\n        # Also mirror the message into tooltips for visibility/accessibility\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(message or None)\n        except Exception:\n            pass",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

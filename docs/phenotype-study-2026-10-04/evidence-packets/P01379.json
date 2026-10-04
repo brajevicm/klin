@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01379",
+  "source_finding_id": "P01379",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "feat: added `hk test`",
+  "diff_context": [
+    {
+      "path": "src/test_runner.rs",
+      "before": null,
+      "after": "\n#[allow(unused)]\npub struct TestResult {\n    pub step: String,\n    pub name: String,\n    pub ok: bool,\n    pub stdout: String,\n    pub stderr: String,\n    pub code: i32,\n    pub duration_ms: u128,\n    pub reasons: Vec<String>,\n}\n\npub async fn run_test_named(step: &Step, name: &str, test: &StepTest) -> Result<TestResult> {\n    let started_at = Instant::now();\n    let tmp = tempfile::tempdir().unwrap();\n    let sandbox = tmp.path().to_path_buf();\n    let mut tctx = crate::tera::Context::default();\n    tctx.insert(\"tmp\", &sandbox.display().to_string());\n    let files: Vec<PathBuf> = match &test.files {\n        Some(files) => files\n            .iter()\n            .map(|f| crate::tera::render(f, &tctx).unwrap_or_else(|_| f.clone()))\n            .map(PathBuf::from)\n            .collect(),\n        None => test\n            .write\n            .keys()\n            .map(|f| crate::tera::render(f, &tctx).unwrap_or_else(|_| f.clone()))\n            .map(PathBuf::from)\n            .collect(),",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let tmp = tempfile::tempdir().unwrap();"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

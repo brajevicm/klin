@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00793",
+  "source_finding_id": "P00793",
+  "study_version": 1,
+  "language": "Rust",
+  "task_context": "Fix: Handle RustType marker in nested type annotations\n\n## Summary\n\nFixes an issue where `pyo3_stub_gen.RustType[\"TypeName\"]` markers were not being processed when nested inside complex type annotations like dict values.\n\n## Problem\n\nPreviously, when using RustType markers within nested type annotations, the marker was output as-is instead of being expanded to the actual type:\n\n```python\n# Before (incorrect)\ndef evaluate(self, instance_data: builtins.dict[builtins.str, pyo3_stub_gen.RustType[\"InstanceValue\"]]) -> builtins.str:\n```\n\n## Solution\n\nModified `expr_to_type_string_inner` in `parse_python.rs` to check for RustType markers before converting expressions to strings. This ensures markers are detected and expanded at any nesting level.\n\n## Changes\n\n- **pyo3-stub-gen-derive/src/gen_stub/parse_python.rs**: Added RustType marker check at the start of `expr_to_type_string_inner`\n- **examples/pure/src/rust_type_marker.rs**: Added Example 5 demonstrating nested RustType markers\n- **examples/pure/src/lib.rs**: Added `InstanceValue` and `Problem` classes to module exports\n\n## Result\n\nThe marker is now correctly expanded:\n\n```python\n# After (correct)\ndef evaluate(self, instance_data: builtins.dict[builtins.str, InstanceValue]) -> builtins.str:\n```\n\n## Test Results\n\n✅ All tests pass:\n- pytest: 21 passed\n- pyright: 0 errors\n- ruff: All checks passed\n- mypy: Success\n- stubtest: Success\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "examples/pure/src/rust_type_marker.rs",
+      "before": "",
+      "after": "}\n\n#[gen_stub_pyclass]\n#[pyclass]\npub struct Problem {}\n\n#[gen_stub_pymethods]\n#[pymethods]\nimpl Problem {\n    #[new]\n    fn new() -> Self {\n        Self {}\n    }\n\n    #[gen_stub(skip)]\n    fn evaluate(\n        &self,\n        instance_data: std::collections::HashMap<String, Py<InstanceValue>>,\n    ) -> String {\n        let _ = instance_data;\n        \"result\".to_string()\n    }\n}\n\nsubmit! {\n    gen_methods_from_python! {\n        r#\"\n        import builtins\n\n        class Problem:\n            def evaluate(",
+      "context": null
+    }
+  ],
+  "observations": [
+    "fn evaluate("
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

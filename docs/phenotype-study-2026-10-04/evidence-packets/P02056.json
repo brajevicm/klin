@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02056",
+  "source_finding_id": "P02056",
+  "study_version": 1,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            use_specific = (combo_row.get_selected() == 1) if combo_row else False\n        except Exception:\n            use_specific = False\n\n        previous_state = getattr(self, '_last_key_select_use_specific', None)\n\n        # When leaving specific-key mode, remember the current passphrase before disabling fields\n        if previous_state and not use_specific:\n            try:\n                if hasattr(self, 'key_passphrase_row'):\n                    self._cached_key_passphrase = self.key_passphrase_row.get_text()\n            except Exception:\n                self._cached_key_passphrase = None\n\n        # Enable/disable keyfile browse UI\n        try:\n            if hasattr(self, 'keyfile_btn'):\n                self.keyfile_btn.set_sensitive(use_specific)\n            if hasattr(self, 'keyfile_row'):\n                self.keyfile_row.set_sensitive(use_specific)\n            if hasattr(self, 'key_dropdown'):\n                self.key_dropdown.set_sensitive(use_specific)\n            if hasattr(self, 'certificate_row'):\n                self.certificate_row.set_sensitive(use_specific)\n            if hasattr(self, 'cert_dropdown'):\n                self.cert_dropdown.set_sensitive(use_specific)\n            if hasattr(self, 'key_only_row'):\n                self.key_only_row.set_visible(use_specific)\n                self.key_only_row.set_sensitive(use_specific)\n            if hasattr(self, 'key_passphrase_row'):\n                self.key_passphrase_row.set_sensitive(use_specific)",
+      "after": "        # Enable/disable keyfile browse UI\n        try:\n            if hasattr(self, 'keyfile_btn'):\n                self.keyfile_btn.set_sensitive(use_specific)\n            if hasattr(self, 'keyfile_row'):\n                self.keyfile_row.set_sensitive(use_specific)\n            if hasattr(self, 'key_dropdown'):\n                self.key_dropdown.set_sensitive(use_specific)\n            if hasattr(self, 'certificate_row'):\n                self.certificate_row.set_sensitive(use_specific)\n            if hasattr(self, 'cert_dropdown'):\n                self.cert_dropdown.set_sensitive(use_specific)\n            if hasattr(self, 'key_only_row'):\n                self.key_only_row.set_visible(use_specific)\n                self.key_only_row.set_sensitive(use_specific)\n        except Exception:\n            pass\n        \n    \n    def validate_ssh_config_syntax(self, config_text):\n        \"\"\"Basic SSH config syntax validation\"\"\"\n        try:\n            lines = config_text.strip().split('\\n')\n            for i, line in enumerate(lines, 1):\n                line = line.strip()\n                # Skip empty lines and comments\n                if not line or line.startswith('#'):\n                    continue\n                \n                # Check for Host directive (should be at start of line)\n                if line.startswith('Host '):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}
