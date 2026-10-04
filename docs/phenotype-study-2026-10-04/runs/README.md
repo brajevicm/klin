@@ -21,3 +21,16 @@ Each record must validate against `../schema.json#/$defs/controlled_run` and pre
 Shadow findings are measured but never surfaced: `shown=false`, with null feedback text/hash and no evidence-packet id.
 
 No result file should be committed before the corresponding fresh session and independent verifier run have actually completed.
+
+
+## Finalization order
+
+During execution, preserve raw run evidence immediately, but do not finalize a
+schema-valid `runs/<run_id>.json` for an Active run until the shared blind
+packet namespace has assigned its `evidence_packet_id`.
+
+That namespace is shared with #457 and the frozen hard-negative replay. The
+packet id is therefore a post-collection join key, not something the agent sees
+during the run. Preserve the pre-repair finding snapshot and exact feedback text
+at delivery time; add only the blind packet id later. Never regenerate the
+finding from the repaired tree.
