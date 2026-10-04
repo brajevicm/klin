@@ -210,9 +210,14 @@ fn promotion_proves_the_exact_release_is_ready_and_verifies_the_result() {
         promoted.contains("group: promote-release"),
         "two promotions can race each other"
     );
+    let pushed = promoted
+        .find("git push origin HEAD:main")
+        .expect("promote-release never pushes main");
+    let made_latest = promoted
+        .find("gh release edit \"$TAG\" --prerelease=false --latest")
+        .expect("promote-release never marks the release Latest");
     assert!(
-        promoted.find("git push origin HEAD:main")
-            < promoted.find("gh release edit \"$TAG\" --prerelease=false --latest"),
+        pushed < made_latest,
         "the release can become Latest before main contains its tag"
     );
 }
