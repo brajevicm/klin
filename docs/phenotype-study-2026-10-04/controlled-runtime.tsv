@@ -1,2 +1,0 @@
-study_commit	klin_version	build_command	executable_sha256	host_platform	state	notes
-43a139a8a16964a65ceb97b939c3499c9cf90b4d	0.4.1	cargo build --release --locked --bin klin			pending-local-build	Build from the exact study commit on the host that will execute controlled measurements; record SHA-256 of target/release/klin before any controlled task is opened.

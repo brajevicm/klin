@@ -1,1 +1,0 @@
-run_id	task_id	agent_family	repetition	arm	phenotype_id	finding_event_id	source_finding_id	label	outcome	finding_disappeared	underlying_problem_repaired	introduced_candidate_phenotype	final_change_quality	additional_turns	feedback_bytes	repeated_same_finding	wall_ms	task_correctness	human_escalation	notes
