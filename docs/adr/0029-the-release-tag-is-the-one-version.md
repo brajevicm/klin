@@ -112,11 +112,15 @@ A release has one protected-code path:
    `patch`, `minor`, `major` or an exact `X.Y.Z`. The workflow runs
    `cargo-release --no-tag`, pushes the generated commit to
    `release/vX.Y.Z` and creates or refreshes a pull request to `main`.
-2. That pull request runs the ordinary `quality / gates` check and every
-   normal rule on `main`. No release workflow can push directly to `main`.
-3. When the release PR actually merges, `publish-release` verifies the
-   version-bearing files, creates `vX.Y.Z` on the exact merged commit and
-   pushes that tag. The push uses `RELEASE_TOKEN` because a tag pushed by the
+2. That pull request runs the ordinary required `quality / gates` job. For a
+   release branch, the job proves that the seven release files differ from the
+   PR base only by the configured version substitutions and runs `dist plan`
+   before merge. No separate release-plan check exists, and no release workflow
+   can push directly to `main`.
+3. When the release PR actually merges, `publish-release` re-runs the exact
+   release-diff validator as defense in depth, requires the PR-head `gates`
+   check to be green, creates `vX.Y.Z` on the exact merged commit and pushes
+   that tag. The push uses `RELEASE_TOKEN` because a tag pushed by the
    workflow's `GITHUB_TOKEN` would not start the tag-triggered Release
    workflow.
 4. The tag-triggered, cargo-dist-generated `release.yml` builds the exact
@@ -162,7 +166,9 @@ hard error.
   cargo-dist's normal GitHub Release creation path.
 - The exact tag build still runs fmt, clippy, nextest, build and
   `klin gate --strict`. Because the tagged commit is already on `main`, the
-  release PR's required `quality / gates` run is the authoritative diff gate.
+  release PR's required `quality / gates` run is the authoritative pre-merge
+  boundary, including exact release-diff validation and conditional
+  `dist plan`.
 - Homebrew, npm or other future dist publishers can use the same tag-triggered
   model without reintroducing a separate promotion phase.
 - Merging the release PR updates the marketplace refs before the tag-triggered
