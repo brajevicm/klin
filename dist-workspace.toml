@@ -17,7 +17,7 @@ install-path = "~/.local/bin"
 install-updater = true
 # Let cargo-dist own GitHub Release creation after the immutable tag is pushed
 create-release = true
-# A pull request that touches a release input runs `dist plan` in release-plan.yml instead
+# Pull requests validate release inputs inside the required quality / gates job
 pr-run-mode = "skip"
 # Steps that verify the exact tag in the x86_64 Linux build before anything publishes
 github-build-setup = "../verify-tag.yml"
