@@ -1,4 +1,4 @@
-# CI topology after #369
+# CI topology after #470
 
 This record holds the final CI topology, the policy for `main`, the cache
 design, the release verification and the measurements. It follows
@@ -14,7 +14,8 @@ design, the release verification and the measurements. It follows
 | `release plan` | a pull request that touches a release input | `dist plan` |
 | `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
-| `cut-release`, `promote-release`, `host compatibility` | manual dispatch | release tag, promotion, host canaries |
+| `prepare-release`, `host compatibility` | manual dispatch | release PR preparation, host canaries |
+| `publish-release` | a generated release PR merges to `main` | immutable release tag plus the draft cargo-dist consumes |
 
 ## The policy for `main`
 
@@ -80,12 +81,7 @@ dist also offers `plan-jobs`, a custom job that the build jobs need. A failed
 plan job skips the build jobs, and `host` accepts skipped build jobs. That
 path would publish a release with no binaries, so klin does not use it.
 
-On a tag, `klin gate --strict` finds no pull request base and no push base,
-so it compares against the merge-base with `origin/main` (SPEC 6.3).
-`cut-release` pushes the tag and not `main`, so that base is the tip of
-`main` and the gate judges the release commit. A local run over a new commit
-on top of `origin/main`, with a changed `Cargo.lock`, passed all 12 gates
-against the base `ed1df6e`.
+A release tag now names the exact commit produced by merging the generated release PR, so that commit is already on `origin/main`. The PR's required `quality / gates` run is therefore the authoritative diff gate. The tag workflow still re-runs fmt, clippy, nextest, the debug build and `klin gate --strict` on the exact commit before cargo-dist publishes artifacts.
 
 The release jobs run on `ubuntu-22.04`, and `quality` runs on
 `ubuntu-latest`. The tests have not run on `ubuntu-22.04` yet, so the first
