@@ -191,8 +191,9 @@ Re-review, without deleting the primary value:
 - every packet that required unblinding;
 - every hard-negative packet;
 - every packet of a phenotype that later has >10% primary `undesired`;
-- a deterministic 20% sample of the remaining packets, selected by the lowest
-  SHA-256 of `357-secondary-v1:<packet_id>`.
+- a deterministic sample of exactly `ceil(0.20 * N)` of the remaining `N`
+  packets (zero when `N = 0`), selected by ascending
+  `(SHA-256("357-secondary-v1:" + packet_id), packet_id)`.
 
 The coordinator merges the selected packets into one list ordered by SHA-256 of
 `357-secondary-v1:<packet_id>`. The secondary reviewer does not see why a
