@@ -30,7 +30,7 @@
   <text x="510.0" y="121" text-anchor="middle" font-size="12.5" fill="#6EE7B7">start of turn vs now</text>
 
   <rect x="204" y="196" width="160" height="60" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
-  <text x="284.0" y="222" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">Finding returned</text>
+  <text x="284.0" y="222" text-anchor="middle" font-size="15" font-weight="600" fill="#0F172A">Agent repairs</text>
   <text x="284.0" y="241" text-anchor="middle" font-size="12.5" fill="#667085">while context remains</text>
 
   <rect x="404" y="196" width="212" height="60" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
