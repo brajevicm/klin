@@ -27,13 +27,19 @@ deterministic arm order. Running it without `--allow-pending` is the execution
 gate: it refuses to produce an executable plan until (a) each family has one
 identical neutral-preflight model/host binding repeated across all nine task
 rows or is explicitly unavailable, (b) every base-project check list is frozen,
-and (c) the study-commit klin executable has a recorded SHA-256 in
-`controlled-runtime.tsv`.
+and (c) the frozen v0.4.2 release archive has been verified and its extracted
+klin executable SHA-256 recorded in `controlled-runtime.tsv`.
 
-The first implementation step therefore cannot inspect task outcomes: build and
-hash the study-commit binary, finish the two neutral host preflights, record the
-bindings, freeze base-project check commands for rows that require workflow
-discovery, and only then start the family batches. The generated plan places
+The controlled runtime source is the immutable GitHub release asset
+`klin-aarch64-apple-darwin.tar.xz` for v0.4.2. Its frozen SHA-256 is
+`6bca96b0f90bad16bac92c35d3a739ec02f5f915580d92161e35445773468b03`.
+Run `prepare-controlled-runtime.py` to download that asset, verify the archive,
+extract `klin`, calculate the executable SHA-256, and mark the runtime ready.
+No source build or manual hashing is part of the study setup.
+
+The first implementation step therefore cannot inspect task outcomes: prepare
+the frozen release runtime, finish the two neutral host preflights, record the
+bindings, and only then start the family batches. The generated plan places
 OpenAI Codex first and Claude Code second and keeps each family contiguous.
 
 ## Run contract
