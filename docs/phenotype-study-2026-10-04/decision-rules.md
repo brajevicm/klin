@@ -61,8 +61,13 @@ controlled tasks and both agent families. Of those deliveries:
   harmful repair;
 - paired task outcomes have no case where Active is incorrect/partial while its
   Shadow pair is correct solely because of the intervention;
-- `Active-better - Shadow-better >= 2` among pairs for which the phenotype
-  actually produced an Active intervention.
+- phenotype-specific pairwise benefit uses only pairs where that phenotype was
+  the sole surfaced intervention. `Active-better` means the Active final change
+  has higher independent task correctness than Shadow, or equal task
+  correctness with fewer adjudicated `valid-regression` residual sites and no
+  increase in `undesired` residual sites. `Shadow-better` is the mirror.
+  Unresolved task correctness is incomparable;
+- `Active-better - Shadow-better >= 2` among those attributable pairs.
 
 If fewer than 8 valid deliveries occur, the candidate cannot become a new
 blocker from this study; it may still qualify for REVIEW or benchmark-only.
