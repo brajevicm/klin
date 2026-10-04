@@ -1,16 +1,26 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
-  <img src="assets/klin-logo-light.svg" alt="klin" width="190">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
+    <img src="assets/klin-logo-light.svg" alt="klin" width="190">
+  </picture>
+</p>
 
-# Catch regressions while the agent can still fix them
+<h1 align="center">Catch regressions while the agent can still fix them</h1>
 
-**Deterministic quality control for coding agents.**
+<p align="center"><strong>Deterministic quality control for coding agents.</strong></p>
 
-klin catches new or worsened problems while the agent still has the context to fix them.
+<p align="center">
+  A coding agent can finish the task you asked for while making something else measurably worse.<br>
+  klin returns those regressions while the agent still has the context to respond.
+</p>
 
-**Works natively with:** Claude Code · Codex · Cursor
+<p align="center">
+  <a href="https://github.com/brajevicm/klin/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/brajevicm/klin?display_name=tag&sort=semver&style=flat-square&label=release"></a>
+  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="PR CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?event=pull_request&style=flat-square&label=PR%20CI"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/brajevicm/klin?style=flat-square"></a>
+  <a href="docs/HOST_COMPATIBILITY.md"><img alt="Integrations: Claude Code, Codex, Cursor" src="https://img.shields.io/badge/integrations-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-blue?style=flat-square"></a>
+</p>
 
 ```text
 FAIL  complexity
@@ -21,10 +31,12 @@ FAIL  complexity
 
 ## How klin works
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-how-it-works-dark.svg">
-  <img src="assets/klin-how-it-works-light.svg" width="880" alt="One agent turn: you prompt and klin marks the start. The agent edits and tries to finish, and klin compares the start of the turn with now. A new or worsened problem fails, and the agent repairs the named site in the same turn. A pass goes to CI, which checks the change again from its own checkout before merge.">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/klin-how-it-works-dark.svg">
+    <img src="assets/klin-how-it-works-light.svg" width="880" alt="One agent turn: you prompt and klin marks the start. The agent edits and tries to finish, and klin compares the start of the turn with now. A new or worsened finding is returned while the agent still has context. A local pass can be checked again by klin in CI from its own checkout.">
+  </picture>
+</p>
 
 ## Quick start
 
