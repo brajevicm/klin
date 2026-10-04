@@ -165,3 +165,10 @@ hard error.
   release PR's required `quality / gates` run is the authoritative diff gate.
 - Homebrew, npm or other future dist publishers can use the same tag-triggered
   model without reintroducing a separate promotion phase.
+- Merging the release PR updates the marketplace refs before the tag-triggered
+  cargo-dist build has finished. During that short release-build window a
+  freshly updated plugin can name the new tag before its binary assets exist.
+  The installer, `klin update` and GitHub Latest continue to see the previous
+  release until cargo-dist succeeds. This is the explicit availability tradeoff
+  for the one-merge release UX; eliminating it would require a second
+  post-publish marketplace-pointer update.
