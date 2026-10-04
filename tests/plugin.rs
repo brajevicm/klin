@@ -1053,6 +1053,7 @@ fn the_rust_suite_runs_only_for_rust_affecting_changes() {
         "src/ tests/",
         "Cargo.toml Cargo.lock rust-toolchain.toml build.rs",
         "benches/ examples/",
+        "plugins/klin/skills/klin/SKILL.md",
         "Rust inputs unchanged; skipping the Rust suite.",
     ] {
         assert!(quality.contains(held), "quality omits {held}");
