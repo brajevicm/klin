@@ -24,13 +24,17 @@ observed. They must not be inferred from this coordinator or from a later run.
 
 `controlled-plan.py --allow-pending` may be used only to inspect the
 deterministic arm order. Running it without `--allow-pending` is the execution
-gate: it refuses to produce an executable plan until every task/family row is
-either bound to the exact exposed model+host version or explicitly unavailable.
+gate: it refuses to produce an executable plan until (a) each family has one
+identical neutral-preflight model/host binding repeated across all nine task
+rows or is explicitly unavailable, (b) every base-project check list is frozen,
+and (c) the study-commit klin executable has a recorded SHA-256 in
+`controlled-runtime.tsv`.
 
-The first implementation step therefore cannot inspect task outcomes: finish the
-two host preflights, record the bindings, freeze base-project check commands for
-rows that require workflow discovery, and only then start the contiguous family
-batches.
+The first implementation step therefore cannot inspect task outcomes: build and
+hash the study-commit binary, finish the two neutral host preflights, record the
+bindings, freeze base-project check commands for rows that require workflow
+discovery, and only then start the family batches. The generated plan places
+OpenAI Codex first and Claude Code second and keeps each family contiguous.
 
 ## Run contract
 
@@ -100,3 +104,27 @@ Special-case interpretation remains frozen:
   observable verification is restored.
 
 No product admission is made by #459.
+
+
+## Frozen measurement conventions
+
+These are execution conventions for the already-preregistered metrics, fixed
+before controlled outcomes are inspected:
+
+- `wall_ms`: elapsed wall-clock milliseconds from submitting the fresh task
+  prompt until the agent reaches its final response for that run, including
+  candidate-feedback repair turns but excluding independent post-run oracle and
+  residual measurement.
+- `agent_turns`: assistant/model responses after the initial task submission.
+- finding `additional_turns`: responses caused after that finding is surfaced,
+  ending when the finding is repaired, justifiably retained, escalated, or the
+  run ends. A response shared by multiple simultaneously surfaced findings is
+  counted for each event but only once in run-level `agent_turns`.
+- `feedback_bytes`: UTF-8 byte length of the exact candidate-feedback text
+  delivered to the agent; Shadow contributes zero.
+- `repeated_same_finding`: true only when #425-compatible identity and
+  measurement basis establish that the same finding was delivered again.
+- final patch preservation is mandatory even when the detector becomes green;
+  post-run oracle/residual work happens on a verifier copy, never by editing the
+  agent's final tree.
+
