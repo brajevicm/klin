@@ -427,7 +427,7 @@ fn the_survey_is_cached_under_the_derivation_commit_and_read_back() {
 
     let held = std::fs::read_to_string(&file).unwrap_or_default();
     assert!(held.contains("\"survey\""), "{held}");
-    assert!(held.contains("\"doc_size\""), "{held}");
+    assert!(held.contains("\"doc_size_instructions\""), "{held}");
     assert!(held.contains(env!("CARGO_PKG_VERSION")), "{held}");
 
     written(
@@ -775,26 +775,34 @@ fn a_function_only_in_the_working_tree_does_not_move_the_percentile() {
     assert!(run.says("FAIL  complexity"), "{}", run.out);
 }
 
-/// A document the derivation commit lacks has no ceiling that is not read out of the working
-/// tree, so klin names it and judges nothing, until the commit holds it.
+/// An instruction file the derivation commit lacks takes the 50-word default, which reads
+/// nothing out of the working tree, until the commit holds it. #435.
 #[test]
-fn a_document_the_derivation_commit_lacks_is_a_note_and_is_not_judged() {
+fn a_document_the_derivation_commit_lacks_is_judged_under_the_new_file_default() {
     let tree = project();
     tree.words("CLAUDE.md", 400);
 
     let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("NOTE: doc_size CLAUDE.md is 400 words and is not judged"),
+        run.says("derived: doc_size CLAUDE.md 50, the 50-word default for an instruction file the derivation commit lacks"),
         "{}",
         run.out
     );
-    assert!(!run.says("CLAUDE.md is 400 words, over"), "{}", run.out);
+    assert!(
+        run.says("CLAUDE.md is 400 words, over its ceiling of 50"),
+        "{}",
+        run.out
+    );
 
     tree.write("klin.json", r#"{ "doc_size": {"CLAUDE.md": 900} }"#);
     let stated = gate(&tree);
     assert_eq!(stated.code, 0, "{}", stated.out);
-    assert!(!stated.says("NOTE: doc_size CLAUDE.md"), "{}", stated.out);
+    assert!(
+        !stated.says("derived: doc_size CLAUDE.md"),
+        "{}",
+        stated.out
+    );
     tree.remove("klin.json");
 
     tree.base();
@@ -849,19 +857,19 @@ fn a_new_function_over_the_derived_ceiling_fails() {
 }
 
 /// A tree whose documents the derivation commit all lacks still has a doc-size gate, so a run
-/// under `--strict` has its decision for it and no ceiling is read out of the working tree.
+/// under `--strict` has its decision for it and the ceiling is the new-file default.
 #[test]
 fn a_tree_whose_documents_are_all_new_still_gates_on_doc_size() {
     let tree = Tree::new();
     tree.write("src/lib.rs", CLEAN);
     tree.base();
-    tree.words("AGENTS.md", 80);
+    tree.words("AGENTS.md", 40);
 
     let run = tree.run(&["gate", "--strict"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(
-        run.says("NOTE: doc_size AGENTS.md is 80 words"),
+        run.says("derived: doc_size AGENTS.md 50, the 50-word default"),
         "{}",
         run.out
     );

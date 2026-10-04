@@ -297,7 +297,7 @@ fn file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction
     let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("neither pinned nor an instruction file the derivation commit holds"),
+        run.says("neither pinned nor an instruction file; pass --ceiling N"),
         "{}",
         run.out
     );
@@ -433,4 +433,161 @@ fn a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error() {
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is 3 words, ceiling 3"), "{}", run.out);
+}
+
+/// Each instruction file is judged on its own: one the derivation commit holds under its own
+/// derived ceiling, wherever an `AGENTS.md` sits, and one it lacks under the 50-word default. The
+/// #361 `new-claude` and `nested` routes fail. #435.
+#[test]
+fn each_instruction_file_takes_its_derived_ceiling_or_the_new_file_default() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 82);
+    tree.words("src/AGENTS.md", 173);
+    tree.base();
+    tree.words("AGENTS.md", 105);
+    tree.words("src/AGENTS.md", 191);
+    tree.words("CLAUDE.md", 47);
+    tree.words("api/AGENTS.md", 71);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    for said in [
+        "FAIL: AGENTS.md is 105 words, over its ceiling of 100.",
+        "OK: src/AGENTS.md is 191 words, ceiling 200",
+        "OK: CLAUDE.md is 47 words, ceiling 50",
+        "FAIL: api/AGENTS.md is 71 words, over its ceiling of 50.",
+        "derived: doc_size src/AGENTS.md 200, the word count at the derivation commit",
+        "derived: doc_size api/AGENTS.md 50, the 50-word default for an instruction file the \
+         derivation commit lacks",
+    ] {
+        assert!(run.says(said), "{said}: {}", run.out);
+    }
+}
+
+/// A new nested `CLAUDE.md` is no instruction file by default, and a pin overrides the
+/// automatic ceiling of a nested `AGENTS.md`. #435.
+#[test]
+fn a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "doc_size": {"api/AGENTS.md": 80} }"#);
+    tree.base();
+    tree.words("api/AGENTS.md", 71);
+    tree.words("api/CLAUDE.md", 400);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: api/AGENTS.md is 71 words, ceiling 80"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("api/CLAUDE.md"), "{}", run.out);
+}
+
+/// Many nested instruction files are each judged in one run. #435.
+#[test]
+fn a_hundred_nested_instruction_files_are_each_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    for at in 0..100 {
+        tree.words(&format!("pkg{at}/AGENTS.md"), 10);
+    }
+    tree.base();
+    tree.words("pkg7/AGENTS.md", 60);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("FAIL: pkg7/AGENTS.md is 60 words, over its ceiling of 50."),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("OK: pkg99/AGENTS.md is 10 words, ceiling 50"),
+        "{}",
+        run.out
+    );
+}
+
+/// A cached ceiling set that misses an instruction file the derivation commit holds is derived
+/// again, so the held file never takes the new-file default. #435.
+#[test]
+fn a_cache_that_misses_a_held_instruction_file_is_derived_again() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.words("src/AGENTS.md", 173);
+    tree.base();
+    let cache = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));
+    let partial = format!(
+        "{{\"version\":\"{}\",\"doc_size_instructions\":{{\"AGENTS.md\":50}}}}\n",
+        env!("CARGO_PKG_VERSION")
+    );
+    assert!(
+        cache
+            .parent()
+            .is_some_and(|under| std::fs::create_dir_all(under).is_ok())
+    );
+    assert!(std::fs::write(&cache, partial).is_ok());
+    tree.words("src/AGENTS.md", 191);
+
+    let run = tree.run(&["doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("OK: src/AGENTS.md is 191 words, ceiling 200"),
+        "{}",
+        run.out
+    );
+}
+
+/// A changed run reads only the instruction files the change set touched. #435.
+#[test]
+fn a_changed_run_judges_only_the_instruction_files_that_changed() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.words("pkg/AGENTS.md", 10);
+    tree.base();
+    tree.words("AGENTS.md", 60);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("FAIL: AGENTS.md is 60 words, over its ceiling of 50."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("pkg/AGENTS.md is"), "{}", run.out);
+}
+
+/// A changed run still reads every pinned document, so a pinned README the change set renamed
+/// is the config error a whole run reports. #435.
+#[test]
+fn a_changed_run_still_reports_a_pinned_document_that_was_renamed() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{ "doc_size": {"README.md": 100} }"#);
+    tree.words("README.md", 10);
+    tree.base();
+    tree.write("docs/.keep", "");
+    tree.git(&["mv", "README.md", "docs/README.md"]);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no such file"), "{}", run.out);
+}
+
+/// A new pin that names a missing file is a config error on a changed run where only the
+/// configuration changed. #435.
+#[test]
+fn a_changed_run_reports_a_new_pin_that_names_a_missing_file() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("AGENTS.md", 10);
+    tree.base();
+    tree.write("klin.json", r#"{ "doc_size": {"MISSING.md": 100} }"#);
+
+    let run = tree.run(&["gate", "--changed"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("no such file"), "{}", run.out);
 }

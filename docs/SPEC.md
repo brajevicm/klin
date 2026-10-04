@@ -402,8 +402,8 @@ configured or derived instance of a check. A check declares:
   each its own gate under its own `name`, rather than one section the whole
   check runs under. Only `sarif` sets it (8.3).
 - `available`, whether the tree holds what an Automatic check applies to: a
-  source root, a document at the tree root, an instruction file of 5.4 at the
-  tree root for `doc_size`, a test, a manifest klin reads. It
+  source root, a document at the tree root, an instruction file of 5.4 for
+  `doc_size`, a test, a manifest klin reads. It
   is answered from the facts of 4.3 alone and never from a derived number
 - `activation`, what the section's absence means. An Automatic check runs
   over the tree's facts where it is available and derives its own policy. A
@@ -569,8 +569,8 @@ binary and tree, not knobs in `klin.json`.
 `doc_size`, `doc_citations`, `inventory` and `lockfile` are Automatic too.
 `doc_size` is a map of document path, from the configuration's directory, to
 a ceiling, a whole number or a dated schedule (5.5). A document the map names
-is judged under that ceiling, and `AGENTS.md` and `CLAUDE.md` at the tree root
-keep their derived ceilings where the map does not name them (5.4), so a pin
+is judged under that ceiling, and the instruction files of 5.4 keep their
+automatic ceilings where the map does not name them, so a pin
 never takes an instruction file out of scrutiny. An empty map is exit 2.
 `doc_citations` reads no policy: its section is absent or `false`.
 `inventory` and `lockfile` read only `in` and `except`. The retired `doc_size` entry list of `file` and `ceiling`,
@@ -624,30 +624,53 @@ Each check documents its rule. The rules for the shipped checks:
   `removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held` in
   `tests/escapes.rs`.
 - `doc_size`: the agent instruction files `AGENTS.md` and `CLAUDE.md` at the
-  tree root, in the derivation commit and in `after`. The
-  ceiling is the word count at the derivation commit, rounded up to the next
-  50 and never below 50, so an empty document gets 50 rather than a ceiling
-  its first word breaks. An instruction file the derivation commit lacks is
-  not judged on that run. A
-  NOTE names it and its word count, and it gets a ceiling when the stamp
-  moves and the derivation commit holds it. Any other rule would read the
-  ceiling from `after`, which 4.3 forbids. Every other document, such as a
+  tree root and `AGENTS.md` in any directory the survey reads, in the
+  derivation commit and in `after`. The survey reads no hidden directory and
+  nothing in the default skip set, such as `node_modules`, `target`, `dist`
+  or `fixtures`, so an `AGENTS.md` there is not judged. Each file is judged on its own, and no
+  budget sums them. The ceiling of a file the derivation commit holds is its
+  word count there, rounded up to the next 50 and never below 50, so an empty
+  document gets 50 rather than a ceiling its first word breaks. A file the
+  derivation commit lacks takes a ceiling of 50 words, and its `derived:` line
+  names that new-file default. The 50 is a fixed product value and reads
+  nothing from `after`, so 4.3 holds. `init --pin` writes no such default:
+  it pins only the ceilings derived from files the derivation commit holds.
+  Whether a file is new comes from the derivation commit's survey. A held
+  file whose ceiling git cannot read is exit 2, never the new-file default,
+  and a cached ceiling set that misses a held file is derived again. A nested `CLAUDE.md`, a `CLAUDE.md`
+  import and a host's own rule directory are not instruction files. The
+  survey finds nested files in the one tree listing, and the derivation
+  commit's copies are read in one batch (#435). A changed run reads only the
+  automatic instruction files the change set touched: an unchanged one has
+  the base's word count, so it is under its ceiling or held at the base. A
+  changed run still reads every pinned document, so a pin that names a
+  missing file stays exit 2. A base read git cannot finish is exit 2, never
+  new debt. The base
+  copies of the documents over their ceilings are read in one batch too. Every other document, such as a
   README or a changelog, grows by design and is judged only when the section
   pins it, because the gate exists for the instruction file that grows every
   turn (8.2, #343). A document the section pins takes its pinned ceiling
   instead, and is judged wherever it sits. With no section, `doc_size` runs
-  only when the tree holds an instruction file at its root, and a tree whose
-  root holds only other documents needs a section a person writes. `--file`
+  only when the tree holds an instruction file, and a tree that holds only
+  other documents needs a section a person writes. `--file`
   on such a document with no pin is exit 2. A cache that holds a ceiling for
   any other document is no derivation of that commit, so klin derives again
   and `init --pin` never writes that ceiling into policy. Pinned by
   `a_readme_that_grows_past_its_base_word_count_passes_with_no_pin`,
   `an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin`,
   `a_pinned_readme_is_judged_under_its_pin`,
-  `a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section`
-  and
-  `file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files`
-  in `tests/doc_size.rs`, and by
+  `a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section`,
+  `file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files`,
+  `each_instruction_file_takes_its_derived_ceiling_or_the_new_file_default`,
+  `a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged`,
+  `a_hundred_nested_instruction_files_are_each_judged`,
+  `a_cache_that_misses_a_held_instruction_file_is_derived_again`,
+  `a_changed_run_judges_only_the_instruction_files_that_changed`,
+  `a_changed_run_still_reports_a_pinned_document_that_was_renamed` and
+  `a_changed_run_reports_a_new_pin_that_names_a_missing_file`
+  in `tests/doc_size.rs`, by
+  `a_document_the_derivation_commit_lacks_is_judged_under_the_new_file_default`
+  in `tests/survey.rs`, and by
   `pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds` in
   `tests/init.rs`.
 - `doc_citations`: every Markdown file at the tree root in the union of 4.3,
@@ -796,7 +819,7 @@ existing configuration.
 the complexity `cc` and `lines` the derivation commit gives, and no
 `test_lines`, which nothing derives (pinned by
 `pin_writes_no_test_lines_because_klin_never_derives_it` in `tests/init.rs`), a `doc_size`
-ceiling for each instruction file of 5.4 that commit holds at the tree root and
+ceiling for each instruction file of 5.4 that commit holds and
 for no other document, because it pins what a run derives, and the `radius`
 values history gives. The `doc_size` rule is pinned by
 `pin_writes_a_document_ceiling_only_for_the_instruction_files` in
@@ -1403,7 +1426,9 @@ percent margin that adds a WARN line. Pinned by
 and `a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error` in
 `tests/doc_size.rs`. Known limit: the count rewards terse markup and
 punishes fenced examples equally. That is a design choice for a separate
-ticket, not a defect of the rule.
+ticket, not a defect of the rule. `doc-size` is a per-document size policy
+(5.4). It does not bound the total context an agent reads, so many small
+instruction files that together pass every ceiling are not a failure.
 
 **`escapes` and `stubs` aggregate matches into sites.** A site is one file
 plus the text of one line with leading and trailing whitespace trimmed, except

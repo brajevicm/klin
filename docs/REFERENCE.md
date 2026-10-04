@@ -21,7 +21,7 @@ One key per gate, named for its section. Every check discovers what it applies t
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `<document path>` | the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where the map does not name them; every other document is judged only when the map names it | no | derived when absent | `AGENTS.md` and `CLAUDE.md` at the tree root, where the derivation commit holds them: the word count there, rounded up to the next 50 and never below 50 | — |
+| `<document path>` | the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root and `AGENTS.md` in any directory keep a derived ceiling where the map does not name them; every other document is judged only when the map names it | no | derived when absent | each instruction file the derivation commit holds: the word count there, rounded up to the next 50 and never below 50; one it lacks: 50 | — |
 
 ### `doc_citations`
 

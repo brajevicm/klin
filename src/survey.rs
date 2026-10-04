@@ -32,6 +32,9 @@ pub const TEST_SUFFIXES: &[&str] = &["_test", "_spec", ".test", ".spec", "Test",
 pub struct Survey {
     pub roots: Vec<String>,
     pub documents: Vec<String>,
+    /// The agent instruction files: `AGENTS.md` and `CLAUDE.md` at the root, and `AGENTS.md`
+    /// in any directory. Spec 5.4.
+    pub instructions: Vec<String>,
     pub test_roots: Vec<String>,
     pub manifests: Vec<String>,
     /// Whether the tree holds a source file its test convention marks, wherever it sits.
@@ -156,6 +159,7 @@ fn of(paths: &[String]) -> Survey {
     Survey {
         roots: outermost(&merged),
         documents: sorted(paths.iter().filter(|path| document(path)).cloned()),
+        instructions: sorted(paths.iter().filter(|path| instruction(path)).cloned()),
         test_roots: test_roots(&merged, &manifests, paths),
         manifests,
         tests: paths.iter().any(|path| marked(path)),
@@ -170,6 +174,11 @@ pub fn marked(path: &str) -> bool {
 
 fn document(path: &str) -> bool {
     !path.contains('/') && path.ends_with(".md")
+}
+
+/// Whether the path is an agent instruction file. Spec 5.4.
+pub fn instruction(path: &str) -> bool {
+    basename(path) == "AGENTS.md" || path == "CLAUDE.md"
 }
 
 /// Spec 5.4.
@@ -281,6 +290,10 @@ fn union(held: &Survey, now: &Survey, root: &Path) -> Survey {
             .into_iter()
             .filter(|name| root.join(name).is_file())
             .collect(),
+        instructions: both(&held.instructions, &now.instructions)
+            .into_iter()
+            .filter(|name| root.join(name).is_file())
+            .collect(),
         test_roots: both(&held.test_roots, &now.test_roots)
             .into_iter()
             .filter(|at| root.join(at).is_dir())
@@ -298,6 +311,7 @@ fn read(cached: &Value) -> Option<Survey> {
     Some(Survey {
         roots: names(cached, "roots")?,
         documents: names(cached, "documents")?,
+        instructions: names(cached, "instructions")?,
         test_roots: names(cached, "test_roots")?,
         manifests: names(cached, "manifests")?,
         tests: cached.get("tests")?.as_bool()?,
@@ -318,6 +332,7 @@ fn kept(found: &Survey) -> Value {
     let mut fields = Map::new();
     fields.insert("roots".into(), list(&found.roots));
     fields.insert("documents".into(), list(&found.documents));
+    fields.insert("instructions".into(), list(&found.instructions));
     fields.insert("test_roots".into(), list(&found.test_roots));
     fields.insert("manifests".into(), list(&found.manifests));
     fields.insert("tests".into(), found.tests.into());
