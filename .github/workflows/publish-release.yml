@@ -26,12 +26,6 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - shell: bash
-        run: |
-          version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
-
       - name: Tag and publish the merged release
         shell: bash
         env:
@@ -88,7 +82,6 @@ jobs:
             git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
             git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
           fi
-
 
           if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             # RELEASE_TOKEN is intentionally used for this push: a tag created by the
