@@ -59,7 +59,6 @@ jobs:
           fi
 
           branch="release/v$expected"
-          marker="<!-- klin-release-pr -->"
           existing=$(gh pr list --state all --base main --head "$branch" --limit 1 \
             --json number,state,mergedAt,url --jq '.[0] // empty')
 
@@ -93,18 +92,18 @@ jobs:
           git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null || true
           git push --force-with-lease origin "HEAD:refs/heads/$branch"
 
-          body=$(cat <<EOF
-          $marker
+          body=$(cat <<'EOF'
+          <!-- klin-release-pr -->
           Prepared by `.github/workflows/prepare-release.yml`.
 
-          Merging this PR publishes **v$expected** from the exact merged commit.
+          Merging this PR publishes **v__VERSION__** from the exact merged commit.
 
           - Normal `quality / gates` is authoritative.
           - No local release commands are required.
           - Manual host smoke is not required for an ordinary release; use the host compatibility ledger for host-sensitive changes.
-
           EOF
           )
+          body=${body//__VERSION__/$expected}
 
           if [[ -n "$existing" ]]; then
             number=$(jq -r '.number' <<<"$existing")
