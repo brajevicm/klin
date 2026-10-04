@@ -86,6 +86,11 @@ collect new trajectory solely for it.
 open implementation ticket with no completed calibration/production detector.
 Adding it later would be a new study version, not an amendment to these results.
 
+Other source-ticket candidates that their frozen research explicitly rejected
+are not revived here. #364's Go lock-entry candidate is also deferred rather
+than treated as rejected: study v1 has no Go population, and #364 explicitly
+states that no real `go.sum` entry sample was measured.
+
 ## 3. Study phases and data flow
 
 ```text
@@ -125,8 +130,10 @@ The exact selection and matching rules are in `populations.tsv`. In summary:
   `357-final-v1:<aiddev-pr-id>`;
 - agents are walked in the fixed pilot order
   `Claude_Code, OpenAI_Codex, Cursor, Copilot, Devin, Google_Jules`;
-- target: first 20 eligible changes per language. If fewer exist, take all
-  eligible and do not relax any rule after measurement begins.
+- target: first **40** eligible changes per language. This is four times the
+  pilot stratum and makes a zero-observation stratum's rule-of-three upper bound
+  about 7.5%, instead of 15% at n=20. If fewer than 40 exist, take all eligible
+  and do not relax any rule after measurement begins.
 
 The matched-human arm uses the same repository and a +/-60-day creation window.
 It excludes a candidate when any of these holds:
@@ -164,8 +171,13 @@ their base/reference commits. Two agent families are used:
 - Claude Code.
 
 The family is frozen, not a mutable marketing model name. Every run records the
-exact host version and model identifier exposed at execution. If a family is
-unavailable, its row is `unavailable`; do not substitute another family.
+exact host version and model identifier exposed at execution. All runs for one
+agent family execute in one contiguous study batch; if the exposed model
+identifier changes within that batch, stop that family and record the remaining
+rows as unavailable until a protocol amendment is committed. If a family is
+unavailable, do not substitute another family. Each repetition uses a fresh
+session with no memory or transcript from another run; a seed is recorded when
+the host exposes one and otherwise recorded as `not-exposed`.
 
 For each task x agent family x repetition (two repetitions), run two independent
 fresh sessions from the same base:
@@ -186,6 +198,25 @@ in an Active run, the pair may contribute to overall closed-loop quality but
 **not** to phenotype-specific Active-vs-Shadow task-benefit counts for any of
 those phenotypes. A phenotype-specific pairwise benefit is countable only when
 that phenotype is the sole surfaced intervention in the pair.
+
+### Feedback construction
+
+Feedback is frozen from the registry rather than written ad hoc during #459.
+
+- shipped rows use the exact message/fix advice emitted by the
+  `study_commit` binary;
+- a `research-block-candidate` uses:
+  `FAIL <id>\n  <site>  <detector observation>\n\n  <repair_surface>`;
+- a `research-review` uses:
+  `REVIEW <id>\n  <site>  <detector observation>\n\n  <repair_surface>\n  This is review evidence, not a compulsory repair; keep a justified exception when it preserves the task and repository contract.`;
+- a `research-note` is the same shape headed `NOTE` and never blocks;
+- Ruff observations use the exact Ruff 0.16.10 rule id and message as
+  `<detector observation>`.
+
+`repair_surface` is the literal field of `phenotypes.tsv`; dynamic facts are
+limited to id, site and detector observation. #459 may not improve wording after
+seeing a repair outcome. REVIEW delivery follows #452's hidden readiness
+semantics (`klin __agent ready`); the study adds no public command.
 
 Task correctness is independent of the candidate detector. Evidence consists of:
 
@@ -230,6 +261,19 @@ For TypeScript architecture candidates, a zero is countable only when all
 recognized local dependency sites relevant to that claim are proved or the
 candidate explicitly defines a narrower complete scope. A located alias/config
 hole is `partial`/incomplete, not clean.
+
+For `shipped-module-cycle`, derive study configuration without outcome
+inspection: collect the source roots that the frozen project discovery reports,
+sort/deduplicate them, place all of them in one layer named `study-all` with
+`can_use: null`, and set `acyclic: true`. If that configuration cannot
+represent the discovered roots, the row is unsupported rather than silently
+measured under a different policy.
+
+For the named Ruff recipe, a Ruff parse failure is retained as
+`invalid-syntax` recipe evidence as #363 specifies, but it is not a clean zero
+for either the injection or swallowed-error phenotype. Those family rows record
+measurement state `invalid-syntax` and exclude the file from their clean
+eligible denominator while preserving the parse-error evidence separately.
 
 ## 7. Finding identity
 
