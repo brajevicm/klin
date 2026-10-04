@@ -41,7 +41,7 @@ def write_version(cwd: Path, version: str, crlf_readme: bool = False) -> None:
     for relative, template in FILES.items():
         path = cwd / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        data = template.format(version=version).encode()
+        data = template.replace("{version}", version).encode()
         if crlf_readme and relative == "README.md":
             data = data.replace(b"\n", b"\r\n")
         path.write_bytes(data)
