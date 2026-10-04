@@ -17,7 +17,9 @@ jobs:
       startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     permissions:
+      checks: read
       contents: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -25,16 +27,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - shell: bash
-        run: |
-          version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
-          curl --proto '=https' --tlsv1.2 -LsSf \
-            "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
-
-      - name: Tag and publish the merged release
+      - name: Validate and tag the merged release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -53,15 +52,46 @@ jobs:
           fi
           tag="v$version"
 
-          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
-          if [[ "$cargo_version" != "$version" ]]; then
-            echo "::error title=Version mismatch::$HEAD_REF names $version but the merged Cargo.toml has $cargo_version."
+          expected_files=$(cat <<'EOF'
+          .agents/plugins/marketplace.json
+          .claude-plugin/marketplace.json
+          Cargo.lock
+          Cargo.toml
+          README.md
+          plugins/klin/.claude-plugin/plugin.json
+          plugins/klin/.cursor-plugin/plugin.json
+          EOF
+          )
+          actual_files=$(gh api --paginate "/repos/$REPOSITORY/pulls/$PR_NUMBER/files?per_page=100"             --jq '.[].filename' | LC_ALL=C sort)
+
+          if [[ "$actual_files" != "$expected_files" ]]; then
+            echo "::error title=Unexpected release diff::Release PR #$PR_NUMBER does not contain exactly the cargo-release-owned files."
+            diff -u <(printf '%s\n' "$expected_files") <(printf '%s\n' "$actual_files") || true
             exit 1
           fi
 
-          for manifest in \
-            plugins/klin/.claude-plugin/plugin.json \
-            plugins/klin/.cursor-plugin/plugin.json
+          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          if [[ "$cargo_version" != "$version" ]]; then
+            echo "::error title=Version mismatch::$HEAD_REF names $version but Cargo.toml has $cargo_version."
+            exit 1
+          fi
+
+          lock_version=$(python3 - <<'PY'
+          import tomllib
+          with open("Cargo.lock", "rb") as f:
+              packages = tomllib.load(f)["package"]
+          versions = [p["version"] for p in packages if p["name"] == "klin"]
+          if len(versions) != 1:
+              raise SystemExit(f"expected one klin package in Cargo.lock, found {len(versions)}")
+          print(versions[0])
+          PY
+          )
+          if [[ "$lock_version" != "$version" ]]; then
+            echo "::error title=Version mismatch::Cargo.lock has $lock_version instead of $version."
+            exit 1
+          fi
+
+          for manifest in             plugins/klin/.claude-plugin/plugin.json             plugins/klin/.cursor-plugin/plugin.json
           do
             held=$(jq -r '.version' "$manifest")
             [[ "$held" == "$version" ]] || {
@@ -82,6 +112,21 @@ jobs:
           grep -Fq "brajevicm/klin@$tag" README.md
           grep -Fq -- "--branch $tag" README.md
 
+          checks=$(gh api "/repos/$REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100")
+          for required in gates plan
+          do
+            conclusion=$(jq -r --arg name "$required" '
+              [.check_runs[] | select(.name == $name)]
+              | sort_by(.completed_at)
+              | last
+              | .conclusion // ""
+            ' <<<"$checks")
+            if [[ "$conclusion" != "success" ]]; then
+              echo "::error title=Required check not green::$required concluded '$conclusion' on release PR head $PR_HEAD_SHA."
+              exit 1
+            fi
+          done
+
           git fetch origin main --tags
           if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
             echo "::error title=Merge commit missing::$MERGE_SHA is not contained in origin/main."
@@ -93,30 +138,20 @@ jobs:
               echo "::error title=Release tag already exists::$tag points to $existing, not merged commit $MERGE_SHA. Tags are never moved."
               exit 1
             fi
-          else
-            git config user.name "${{ github.actor }}"
-            git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-            git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
+            echo "$tag already points to $MERGE_SHA; publication is an idempotent retry." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
 
-          dist plan --tag="$tag" --output-format=json > "$RUNNER_TEMP/plan.json"
-          title=$(jq -er .announcement_title "$RUNNER_TEMP/plan.json")
-          jq -er .announcement_github_body "$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/notes.md"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
 
-          if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
-            # RELEASE_TOKEN is intentionally used for this push: a tag created by the
-            # workflow's GITHUB_TOKEN would not trigger the tag-based Release workflow.
-            git push origin "refs/tags/$tag"
-          fi
-
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            # dist-workspace.toml has create-release=false, so dist expects this draft.
-            gh release create "$tag" --draft --verify-tag \
-              --title "$title" --notes-file "$RUNNER_TEMP/notes.md"
-          fi
+          # RELEASE_TOKEN is intentionally used for this push: a tag created by the
+          # workflow's GITHUB_TOKEN would not trigger the tag-based Release workflow.
+          git push origin "refs/tags/$tag"
 
           {
             echo "Published **$tag** from merged commit `$MERGE_SHA`."
             echo
-            echo "The existing cargo-dist Release workflow now builds and publishes the release."
+            echo "cargo-dist now owns GitHub Release creation, artifacts, installers and Latest."
           } >> "$GITHUB_STEP_SUMMARY"
