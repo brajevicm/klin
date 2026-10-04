@@ -1,0 +1,131 @@
+name: prepare-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Which part of the version moves
+        type: choice
+        options: [patch, minor, major]
+        default: minor
+      version:
+        description: Exact X.Y.Z version instead. Wins over the level when set.
+        type: string
+        default: ""
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-release@1.1.5
+
+      - name: Prepare or refresh the release pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          LEVEL: ${{ inputs.level }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+
+          current=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          expected=$(python3 - "$current" "$LEVEL" "$VERSION" <<'PY'
+          import re
+          import sys
+
+          current, level, exact = sys.argv[1:]
+          if exact:
+              if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", exact):
+                  raise SystemExit(f"exact version must be X.Y.Z, got {exact!r}")
+              print(exact)
+              raise SystemExit
+
+          major, minor, patch = map(int, current.split("."))
+          if level == "major":
+              print(f"{major + 1}.0.0")
+          elif level == "minor":
+              print(f"{major}.{minor + 1}.0")
+          elif level == "patch":
+              print(f"{major}.{minor}.{patch + 1}")
+          else:
+              raise SystemExit(f"unknown release level: {level}")
+          PY
+          )
+
+          branch="release/v$expected"
+          marker="<!-- klin-release-pr -->"
+          existing=$(gh pr list --state all --base main --head "$branch" --limit 1             --json number,state,mergedAt,url --jq '.[0] // empty')
+
+          if [[ -n "$existing" ]]; then
+            merged=$(jq -r '.mergedAt // ""' <<<"$existing")
+            state=$(jq -r '.state' <<<"$existing")
+            url=$(jq -r '.url' <<<"$existing")
+            if [[ -n "$merged" ]]; then
+              echo "Release PR already merged: $url" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if [[ "$state" == "CLOSED" ]]; then
+              echo "::error title=Release PR closed::$url was closed without merging. Reopen it or choose a different version."
+              exit 1
+            fi
+          fi
+
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+          cargo release "${VERSION:-$LEVEL}" --execute --no-confirm --no-tag
+
+          actual=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error title=Version mismatch::Expected $expected, cargo-release prepared $actual."
+            exit 1
+          fi
+
+          # Regenerate an open release PR from current main. The branch is generated state;
+          # force-with-lease prevents overwriting a concurrent update.
+          git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null || true
+          git push --force-with-lease origin "HEAD:refs/heads/$branch"
+
+          body=$(cat <<EOF
+          $marker
+          Prepared by `.github/workflows/prepare-release.yml`.
+
+          Merging this PR publishes **v$expected** from the exact merged commit.
+
+          - Normal `quality / gates` is authoritative.
+          - No local release commands are required.
+          - Manual host smoke is not required for an ordinary release; use the host compatibility ledger for host-sensitive changes.
+
+          Closes #470
+          EOF
+          )
+
+          if [[ -n "$existing" ]]; then
+            number=$(jq -r '.number' <<<"$existing")
+            gh pr edit "$number" --title "release: v$expected" --body "$body"
+            url=$(jq -r '.url' <<<"$existing")
+          else
+            url=$(gh pr create --base main --head "$branch"               --title "release: v$expected" --body "$body")
+          fi
+
+          {
+            echo "Prepared **v$expected**."
+            echo
+            echo "Release PR: $url"
+            echo
+            echo "Merge that PR after the normal required checks pass. The merge publishes the tag and starts cargo-dist automatically."
+          } >> "$GITHUB_STEP_SUMMARY"
