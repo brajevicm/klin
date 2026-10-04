@@ -138,8 +138,7 @@ fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
     }
 }
 
-/// cargo-release pushes nothing, so the release commit reaches `main` only through the
-/// promotion after the release smoke. ADR 0029, spec 19.2.
+/// cargo-release prepares the release commit, but GitHub owns the branch, PR and tag.
 #[test]
 fn cargo_release_pushes_nothing_by_itself() {
     let push = cargo_release_config()
@@ -149,39 +148,58 @@ fn cargo_release_pushes_nothing_by_itself() {
     assert_eq!(push, Some(false), "cargo-release pushes the release itself");
 }
 
-/// A release stays off `releases/latest`, the installer and `klin update` until the release
-/// smoke passed: `cut-release` makes it a draft prerelease, `dist` publishes that draft and
-/// leaves both flags alone, and `promote-release` marks it Latest. ADR 0029, spec 19.2.
+/// A release is prepared through a normal PR. Only a merged, workflow-authored release PR
+/// may create the immutable tag that starts cargo-dist. ADR 0029, #470.
 #[test]
-fn a_release_becomes_latest_only_at_the_promotion() {
-    let published = text(".github/workflows/release.yml");
-    let drafted = line_with(".github/workflows/cut-release.yml", "gh release create");
-    let promoted = line_with(".github/workflows/promote-release.yml", "gh release edit");
+fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
+    let prepared = text(".github/workflows/prepare-release.yml");
+    let published = text(".github/workflows/publish-release.yml");
+    let dist = text(".github/workflows/release.yml");
+
+    assert!(!at(".github/workflows/cut-release.yml").exists());
+    assert!(!at(".github/workflows/promote-release.yml").exists());
+
+    for held in [
+        "workflow_dispatch:",
+        "cargo release",
+        "--no-tag",
+        "release/v$expected",
+        "gh pr create --base main",
+        "secrets.RELEASE_TOKEN",
+    ] {
+        assert!(prepared.contains(held), "prepare-release omits {held}");
+    }
+    assert!(
+        !prepared.contains("git push origin main"),
+        "prepare-release bypasses protected main"
+    );
+
+    for held in [
+        "pull_request:",
+        "types: [closed]",
+        "github.event.pull_request.merged == true",
+        "<!-- klin-release-pr -->",
+        "github.event.pull_request.merge_commit_sha",
+        "git push origin \"refs/tags/$tag\"",
+        "gh release create \"$tag\" --draft --verify-tag",
+    ] {
+        assert!(published.contains(held), "publish-release omits {held}");
+    }
+    assert!(
+        !published.contains("git push origin main"),
+        "publish-release bypasses protected main"
+    );
 
     assert!(
         text(DIST_WORKSPACE)
             .lines()
             .any(|line| line.trim() == "create-release = false"),
-        "dist creates the release itself, as Latest"
+        "dist no longer consumes the draft created by publish-release"
     );
-    for flag in ["gh release create", "--latest", "--prerelease=false"] {
-        assert!(
-            !published.contains(flag),
-            "dist's release workflow runs {flag}"
-        );
-    }
-    for flag in ["--draft", "--prerelease"] {
-        assert!(
-            drafted.contains(flag),
-            "cut-release omits {flag}: {drafted}"
-        );
-    }
-    for flag in ["--prerelease=false", "--latest"] {
-        assert!(
-            promoted.contains(flag),
-            "promote-release omits {flag}: {promoted}"
-        );
-    }
+    assert!(
+        !dist.contains("pull_request:"),
+        "the generated Release workflow becomes a second PR CI path"
+    );
 }
 
 #[test]
@@ -991,6 +1009,8 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
         "Cargo.lock",
         DIST_WORKSPACE,
         ".github/workflows/release.yml",
+        ".github/workflows/prepare-release.yml",
+        ".github/workflows/publish-release.yml",
         "action.yml",
     ] {
         assert!(
@@ -1005,13 +1025,6 @@ fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
-    }
-}
-
-fn line_with(relative: &str, holds: &str) -> String {
-    match text(relative).lines().find(|line| line.contains(holds)) {
-        Some(line) => line.to_string(),
-        None => panic!("no line of {relative} holds {holds}"),
     }
 }
 
