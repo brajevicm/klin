@@ -36,8 +36,8 @@ jobs:
 
           tag="v$VERSION"
           tag_sha=$(git rev-parse "$tag^{commit}")
-          target=$(gh release view "$tag" --json isDraft,isPrerelease,targetCommitish --jq '
-            select(.isDraft == false and .isPrerelease == true) | .targetCommitish
+          target=$(gh release view "$tag" --json isDraft,isImmutable,isPrerelease,targetCommitish --jq '
+            select(.isDraft == false and .isImmutable == true and .isPrerelease == true) | .targetCommitish
           ')
           if [[ "$target" != "$tag_sha" ]]; then
             echo "::error title=Release not ready::$tag is not the published prerelease for its tag SHA. Wait for Release to finish, run the release smoke, then try again."
