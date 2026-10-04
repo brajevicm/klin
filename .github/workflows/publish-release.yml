@@ -25,6 +25,12 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
+      - shell: bash
+        run: |
+          version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
+
       - name: Tag and publish the merged release
         shell: bash
         env:
@@ -93,6 +99,10 @@ jobs:
             git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
           fi
 
+          dist plan --tag="$tag" --output-format=json > "$RUNNER_TEMP/plan.json"
+          title=$(jq -er .announcement_title "$RUNNER_TEMP/plan.json")
+          jq -er .announcement_github_body "$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/notes.md"
+
           if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
             # RELEASE_TOKEN is intentionally used for this push: a tag created by the
             # workflow's GITHUB_TOKEN would not trigger the tag-based Release workflow.
@@ -101,7 +111,8 @@ jobs:
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
             # dist-workspace.toml has create-release=false, so dist expects this draft.
-            gh release create "$tag" --draft --verify-tag --generate-notes
+            gh release create "$tag" --draft --verify-tag \
+              --title "$title" --notes-file "$RUNNER_TEMP/notes.md"
           fi
 
           {
