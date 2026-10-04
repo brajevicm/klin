@@ -155,13 +155,10 @@ fn cargo_release_only_prepares_release_files() {
     );
 }
 
-/// A release is prepared through a normal PR. Only a merged release-only PR with green
-/// release checks may create the immutable tag that starts cargo-dist. ADR 0029, #470.
+/// Preparation is one normal PR path; the removed cut/promote workflows cannot bypass main.
 #[test]
-fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
+fn a_release_is_prepared_through_a_normal_pr() {
     let prepared = text(".github/workflows/prepare-release.yml");
-    let published = text(".github/workflows/publish-release.yml");
-    let dist = text(".github/workflows/release.yml");
 
     assert!(!at(".github/workflows/cut-release.yml").exists());
     assert!(!at(".github/workflows/promote-release.yml").exists());
@@ -180,6 +177,14 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
         !prepared.contains("git push origin main"),
         "prepare-release bypasses protected main"
     );
+}
+
+/// Only a merged release-only PR with green checks may create the immutable tag; cargo-dist
+/// owns the GitHub Release after that tag push. ADR 0029, #470.
+#[test]
+fn a_merged_release_pr_is_validated_before_publication() {
+    let published = text(".github/workflows/publish-release.yml");
+    let dist = text(".github/workflows/release.yml");
 
     for held in [
         "pull_request:",
@@ -203,21 +208,14 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
         !published.contains("git push origin main"),
         "publish-release bypasses protected main"
     );
-
     assert!(
         text(DIST_WORKSPACE)
             .lines()
             .any(|line| line.trim() == "create-release = true"),
         "cargo-dist does not own GitHub Release creation"
     );
-    assert!(
-        !dist.contains("pull_request:"),
-        "the generated Release workflow becomes a second PR CI path"
-    );
-    assert!(
-        dist.contains("gh release create"),
-        "cargo-dist no longer creates the GitHub Release"
-    );
+    assert!(!dist.contains("pull_request:"), "dist becomes a second PR CI path");
+    assert!(dist.contains("gh release create"), "dist no longer creates releases");
     assert!(
         !published.contains("gh release create") && !published.contains("dist plan"),
         "publish-release still owns cargo-dist's GitHub Release lifecycle"
