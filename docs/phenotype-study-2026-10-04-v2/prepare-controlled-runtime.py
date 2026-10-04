@@ -15,7 +15,10 @@ import hashlib
 import io
 import os
 import shutil
+import subprocess
 import tarfile
+import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -52,6 +55,42 @@ def find_klin(archive: tarfile.TarFile) -> tarfile.TarInfo:
     return candidates[0]
 
 
+def download_asset() -> bytes:
+    """Download through authenticated gh first; fall back to public HTTP."""
+    gh = shutil.which("gh")
+    if gh:
+        with tempfile.TemporaryDirectory(prefix="klin-study-release-") as tmp:
+            subprocess.run(
+                [
+                    gh,
+                    "release",
+                    "download",
+                    "v0.4.2",
+                    "--repo",
+                    "brajevicm/klin",
+                    "--pattern",
+                    ASSET,
+                    "--dir",
+                    tmp,
+                    "--clobber",
+                ],
+                check=True,
+            )
+            downloaded = Path(tmp) / ASSET
+            if not downloaded.is_file():
+                raise SystemExit(f"gh release download did not produce {ASSET}")
+            return downloaded.read_bytes()
+
+    try:
+        with urllib.request.urlopen(URL) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(
+            f"failed to download {URL}: HTTP {exc.code}. "
+            "Install/authenticate GitHub CLI (gh auth login) for a private repository."
+        ) from exc
+
+
 def main() -> None:
     fields, row = read_runtime()
     if row["study_commit"] != "138dc8d0a927c60df289bd485627f472488cf2ba":
@@ -61,8 +100,7 @@ def main() -> None:
     if row["release_asset_sha256"] != ASSET_SHA256:
         raise SystemExit("runtime release-asset SHA-256 is not the frozen value")
 
-    with urllib.request.urlopen(URL) as response:
-        payload = response.read()
+    payload = download_asset()
 
     actual_asset_sha = sha256_bytes(payload)
     if actual_asset_sha != ASSET_SHA256:
