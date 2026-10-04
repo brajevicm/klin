@@ -8,10 +8,15 @@ on:
         type: string
         required: true
 
+concurrency:
+  group: promote-release
+  cancel-in-progress: false
+
 jobs:
   promote:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -19,14 +24,177 @@ jobs:
           ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
+
       - run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-      - env:
+
+      - name: Verify the exact release candidate is ready
+        shell: bash
+        env:
           GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
           VERSION: ${{ inputs.version }}
         run: |
-          test "$(gh release view "v$VERSION" --json isDraft --jq .isDraft)" = false
-          git merge --no-edit "v$VERSION"
-          git push origin main
-          gh release edit "v$VERSION" --prerelease=false --latest
+          set -euo pipefail
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Invalid version::Expected X.Y.Z, got '$VERSION'."
+            exit 1
+          fi
+
+          tag="v$VERSION"
+          if ! git rev-parse --verify --quiet "refs/tags/$tag^{commit}" >/dev/null; then
+            echo "::error title=Missing release tag::$tag does not exist."
+            exit 1
+          fi
+
+          tag_sha=$(git rev-parse "refs/tags/$tag^{commit}")
+          tag_version=$(git show "$tag:Cargo.toml" | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)
+          if [[ "$tag_version" != "$VERSION" ]]; then
+            echo "::error title=Tag/version mismatch::$tag points at Cargo.toml version '$tag_version', not '$VERSION'."
+            exit 1
+          fi
+
+          runs=$(gh api "/repos/$REPOSITORY/actions/runs?head_sha=$tag_sha&event=push&per_page=100")
+          release_run=$(jq -c --arg tag "$tag" --arg sha "$tag_sha" '
+            [
+              .workflow_runs[]
+              | select(.path == ".github/workflows/release.yml")
+              | select(.event == "push")
+              | select(.head_branch == $tag)
+              | select(.head_sha == $sha)
+            ]
+            | sort_by(.created_at)
+            | last // empty
+          ' <<<"$runs")
+
+          if [[ -z "$release_run" ]]; then
+            echo "::error title=Release workflow missing::No Release workflow run exists for $tag at $tag_sha. Do not promote this tag."
+            exit 1
+          fi
+
+          run_status=$(jq -r '.status' <<<"$release_run")
+          run_conclusion=$(jq -r '.conclusion // ""' <<<"$release_run")
+          run_url=$(jq -r '.html_url' <<<"$release_run")
+
+          if [[ "$run_status" != "completed" ]]; then
+            echo "::error title=Release still running::$tag is not ready: the exact Release workflow is '$run_status'. Wait for $run_url to complete successfully, run the release smoke, then dispatch promote-release again."
+            exit 1
+          fi
+
+          if [[ "$run_conclusion" != "success" ]]; then
+            echo "::error title=Release failed::$tag cannot be promoted because the exact Release workflow concluded '$run_conclusion': $run_url"
+            exit 1
+          fi
+
+          if ! release=$(gh api "/repos/$REPOSITORY/releases/tags/$tag"); then
+            echo "::error title=Release missing::$tag has a successful Release workflow but no GitHub release."
+            exit 1
+          fi
+
+          draft=$(jq -r '.draft' <<<"$release")
+          prerelease=$(jq -r '.prerelease' <<<"$release")
+          target=$(jq -r '.target_commitish // ""' <<<"$release")
+
+          if [[ "$draft" != "false" ]]; then
+            echo "::error title=Release still draft::$tag is still a draft even though its Release workflow succeeded."
+            exit 1
+          fi
+
+          if [[ "$target" != "$tag_sha" ]]; then
+            echo "::error title=Release target mismatch::$tag release targets '$target', but the tag resolves to '$tag_sha'."
+            exit 1
+          fi
+
+          {
+            echo "TAG=$tag"
+            echo "TAG_SHA=$tag_sha"
+            echo "RELEASE_WAS_PRERELEASE=$prerelease"
+          } >> "$GITHUB_ENV"
+
+          echo "Validated $tag at $tag_sha via $run_url." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Promote the validated tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # The release build can take several minutes. Re-read main now rather than
+          # promoting against the checkout captured when this job started.
+          git fetch origin main --tags
+          fetched_tag_sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          if [[ "$fetched_tag_sha" != "$TAG_SHA" ]]; then
+            echo "::error title=Release tag moved::$TAG resolved to $TAG_SHA during preflight and now resolves to $fetched_tag_sha."
+            exit 1
+          fi
+
+          git checkout -B main origin/main
+
+          if git merge-base --is-ancestor "$TAG_SHA" HEAD; then
+            echo "$TAG is already contained in main; treating this as an idempotent retry."
+          else
+            if [[ "$RELEASE_WAS_PRERELEASE" != "true" ]]; then
+              echo "::error title=Inconsistent release state::$TAG is already a full release but its tag is not contained in main. Refusing to repair this automatically."
+              exit 1
+            fi
+
+            release_parent=$(git rev-parse "$TAG_SHA^")
+            if ! git merge-base --is-ancestor "$release_parent" HEAD; then
+              echo "::error title=Stale or foreign release tag::$TAG was not cut from the current main lineage."
+              exit 1
+            fi
+
+            main_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+            parent_version=$(git show "$release_parent:Cargo.toml" | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)
+            if [[ "$main_version" != "$parent_version" ]]; then
+              echo "::error title=Out-of-order promotion::main now carries version '$main_version', but $TAG was cut from version '$parent_version'. Promote the newer release or reconcile the release history first."
+              exit 1
+            fi
+
+            git merge --no-edit "$TAG"
+
+            if ! git push origin HEAD:main; then
+              echo "::error title=main changed during promotion::The push was rejected, so the release flags were left untouched. Review the new main tip and re-run promote-release."
+              exit 1
+            fi
+          fi
+
+          # This edit is intentionally after the main push. If it fails, a retry is safe:
+          # the tag is already on main and the same edit can be attempted again.
+          gh release edit "$TAG" --prerelease=false --latest
+
+      - name: Verify promotion postconditions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$TAG_SHA" origin/main; then
+            echo "::error title=Promotion verification failed::$TAG is not contained in origin/main after promotion."
+            exit 1
+          fi
+
+          release=$(gh api "/repos/$REPOSITORY/releases/tags/$TAG")
+          if [[ "$(jq -r '.draft' <<<"$release")" != "false" ]]; then
+            echo "::error title=Promotion verification failed::$TAG is unexpectedly a draft."
+            exit 1
+          fi
+          if [[ "$(jq -r '.prerelease' <<<"$release")" != "false" ]]; then
+            echo "::error title=Promotion verification failed::$TAG is still marked as a prerelease."
+            exit 1
+          fi
+
+          latest=$(gh api "/repos/$REPOSITORY/releases/latest" --jq '.tag_name')
+          if [[ "$latest" != "$TAG" ]]; then
+            echo "::error title=Promotion verification failed::GitHub reports '$latest' as Latest instead of '$TAG'."
+            exit 1
+          fi
+
+          echo "Promoted $TAG: the tag is on main and the release is stable + Latest." >> "$GITHUB_STEP_SUMMARY"
