@@ -12,14 +12,14 @@
 
 <p align="center">
   A coding agent can finish the task you asked for while making something else measurably worse.<br>
-  klin returns new or worsened problems while the agent still has the context to respond.
+  klin returns those regressions while the agent still has the context to respond.
 </p>
 
 <p align="center">
   <a href="https://github.com/brajevicm/klin/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/brajevicm/klin?display_name=tag&sort=semver&style=flat-square&label=release"></a>
-  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?branch=main&style=flat-square&label=CI"></a>
+  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?event=pull_request&style=flat-square&label=PR%20CI"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/brajevicm/klin?style=flat-square"></a>
-  <a href="docs/HOST_COMPATIBILITY.md"><img alt="Hosts: Claude Code, Codex, Cursor" src="https://img.shields.io/badge/hosts-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-blue?style=flat-square"></a>
+  <a href="docs/HOST_COMPATIBILITY.md"><img alt="Integrations: Claude Code, Codex, Cursor" src="https://img.shields.io/badge/integrations-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-blue?style=flat-square"></a>
 </p>
 
 ```text
@@ -38,36 +38,66 @@ FAIL  complexity
 
 ## Quick start
 
-### 1. Install
+### 1. Install for your host
 
-From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
+Claude Code, Codex, and Cursor are klin's first-class integrations. Use the native integration for your host; the standalone CLI is the fallback for managed/manual setups and other harnesses.
 
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-source $HOME/.local/bin/env
+**Claude Code**
 
-# Set up this repository. For Claude Code only, add --host claude.
-klin install
+```text
+/plugin marketplace add brajevicm/klin
+/plugin install klin@klin
 ```
 
-Then commit `klin.json` and the generated integration files.
+**Codex**
 
-Prefer installing through your host? See [Native integrations](#native-integrations) below.
+```sh
+codex plugin marketplace add brajevicm/klin
+codex plugin add klin@klin
+```
 
-klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
+Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
-If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
+**Cursor**
 
-> [!NOTE]
-> **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
+<details>
+<summary><strong>Install the local plugin</strong></summary>
 
-### 2. Work normally
+```sh
+d=$(mktemp -d) &&
+  git clone --depth 1 --branch v0.4.2 https://github.com/brajevicm/klin "$d" &&
+  mkdir -p ~/.cursor/plugins/local &&
+  rm -rf ~/.cursor/plugins/local/klin &&
+  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
+s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || {
+  echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2
+  false
+}
+```
+
+Reload Cursor.
+
+</details>
+
+### 2. Activate this repository
+
+A native integration stays quiet until the repository opts in. At the repository root:
+
+```sh
+echo '{}' > klin.json
+```
+
+`{}` is a complete configuration. Commit `klin.json`.
+
+### 3. Work normally
 
 Use your coding agent as usual. You don't need to run anything.
 
-When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened problems go back to the agent while the change is still in its context.
+When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened findings go back to the agent while the change is still in its context.
 
-### 3. See what happened
+### 4. See what happened
+
+Install the standalone CLI if you want local reporting commands such as:
 
 ```sh
 klin stats --session
@@ -80,6 +110,22 @@ klin caught 1 regression this session. It was fixed after klin flagged it.
 ```
 
 Add `--all` for individual findings or `--json` for machine-readable output.
+
+### Standalone / managed installation
+
+Use the standalone binary when the native plugin is unavailable on your host surface, when you need explicit project/user hook files, or for managed/manual installations.
+
+From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+source $HOME/.local/bin/env
+klin install
+```
+
+`klin install` reconciles the repository integration. To target one host explicitly, append `--host claude`, `--host codex`, or `--host cursor`.
+
+If your shell can't find `klin` afterwards, open a new terminal. To update the standalone binary later, run `klin update`, then `klin install`.
 
 ## Why klin
 
@@ -119,59 +165,6 @@ Keep your linters, type checkers, tests, security scanners, and reviews. klin ad
 A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
 
 Language support varies by check. See [full current coverage and configuration →](docs/REFERENCE.md).
-
-## Native integrations
-
-Claude Code, Codex, and Cursor can also install klin through their native plugin systems.
-
-A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin stats`. If the plugin and the repository hooks are both present, only one of them handles each event.
-
-### Claude Code
-
-```text
-/plugin marketplace add brajevicm/klin
-/plugin install klin@klin
-```
-
-### Codex
-
-```sh
-codex plugin marketplace add brajevicm/klin
-codex plugin add klin@klin
-```
-
-Run `/hooks`, review and trust the klin hooks, then start a fresh session.
-
-### Cursor
-
-<details>
-<summary><strong>Install the local plugin</strong></summary>
-
-```sh
-d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.4.2 https://github.com/brajevicm/klin "$d" &&
-  mkdir -p ~/.cursor/plugins/local &&
-  rm -rf ~/.cursor/plugins/local/klin &&
-  cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
-s=$?; rm -rf "$d"; [ "$s" -eq 0 ] || {
-  echo "klin: the Cursor plugin copy failed. Run it again once the fetch works." >&2
-  false
-}
-```
-
-Reload Cursor.
-
-</details>
-
-### Opt the repository in
-
-A plugin does nothing until the repository has a `klin.json`. At the repository root, run:
-
-```sh
-echo '{}' > klin.json
-```
-
-`{}` is a complete configuration. klin derives everything else from the repository.
 
 ## Configure
 
