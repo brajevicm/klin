@@ -24,38 +24,26 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-
-      - name: Verify the release is ready
-        shell: bash
+      - name: Promote
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
           tag="v$VERSION"
           tag_sha=$(git rev-parse "$tag^{commit}")
           target=$(gh release view "$tag" --json isDraft,isPrerelease,targetCommitish --jq '
             select(.isDraft == false and .isPrerelease == true) | .targetCommitish
           ')
-
           if [[ "$target" != "$tag_sha" ]]; then
-            echo "::error title=Release not ready::$tag is not the published prerelease for its tag SHA. Wait for the Release workflow to finish, run the release smoke, then try again."
+            echo "::error title=Release not ready::$tag is not the published prerelease for its tag SHA. Wait for Release to finish, run the release smoke, then try again."
             exit 1
           fi
 
-      - name: Promote
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-
-          tag="v$VERSION"
           git fetch origin main --tags
           git checkout -B main origin/main
           git merge --no-edit "$tag"
