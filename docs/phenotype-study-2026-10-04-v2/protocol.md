@@ -97,7 +97,7 @@ Adding it later would be a new study version, not an amendment to these results.
 
 Other source-ticket candidates that their frozen research explicitly rejected
 are not revived here. #364's Go lock-entry candidate is also deferred rather
-than treated as rejected: study v1 has no Go population, and #364 explicitly
+than treated as rejected: this study has no Go population, and #364 explicitly
 states that no real `go.sum` entry sample was measured.
 
 ## 3. Study phases and data flow
@@ -275,7 +275,7 @@ cannot alone establish task correctness.
 `phenotypes.tsv` is normative. A detector not present there is exploratory and
 cannot influence #357 admission.
 
-Each phenotype has one explicit **semantic** eligibility denominator. Eligibility is decided from the frozen registry and diff/tree facts before measurement success is known. Every selected natural change gets one phenotype measurement row per phenotype in `measurements.tsv`, keyed by `(change_id, phenotype_id)`. Each finding is one row in `findings.tsv`, keyed back to that measurement row. Finding multiplicity therefore never repeats a denominator. `semantic_eligible` records whether the change belongs to that phenotype's population; `eligibility_count` records its semantic units; `measured_count` records only units for which the frozen detector/prototype produced claim-complete evidence.
+Each phenotype has one explicit **semantic** eligibility denominator. Eligibility is decided from the frozen registry and diff/tree facts before measurement success is known. Every selected natural change gets one phenotype measurement row per phenotype in `measurements.tsv`, keyed by `(change_id, phenotype_id)`. Each finding is one row in `findings.tsv`, keyed back to that measurement row. Finding multiplicity therefore never repeats a denominator. `eligibility_state` is `eligible`, `ineligible` or `unresolved`; `semantic_eligible` is respectively true, false or null. A non-empty scope does not establish semantic eligibility. `eligibility_count` records known semantic units and is null when change-level eligibility is unresolved; `measured_count` records units for which the frozen detector/prototype produced claim-complete evidence. Unknown eligibility remains separate and withholds point rates.
 
 The core prevalence and coverage outputs are always:
 
@@ -286,7 +286,7 @@ fully measured semantic-eligible changes / semantic-eligible changes
 sum(measured_count) / sum(eligibility_count)
 ```
 
-Unsupported, partial, unavailable, parse-failed, tool-error, or local-resolution-incomplete measurements remain in the semantic denominator and are not zero findings. They retain their state under #354. Missing measurement therefore lowers coverage rather than inflating prevalence.
+For known-eligible rows, unsupported, partial, unavailable, parse-failed, tool-error, or local-resolution-incomplete measurements remain in the semantic denominator and are not zero findings. They retain their state under #354. Missing measurement therefore lowers coverage rather than inflating prevalence. Rows with unresolved change eligibility remain separate and withhold point prevalence.
 
 For TypeScript architecture candidates, a zero is countable only when all
 recognized local dependency sites relevant to that claim are proved or the
@@ -308,7 +308,7 @@ For the named Ruff recipe, every changed Python file passed to the recipe is sem
 
 - Every row selected by an applicable case-set selector is evaluated; there is no later subsampling or hand-picking.
 - Frozen planted corpora (#353, #355, #362, #364 and #363) are replayed from their registered bases/routes. The pilot rows are frozen previously labeled contexts and are used only as classification controls, never as controlled-task benefit evidence.
-- A phenotype with an applicable case-set mapping whose selector yields zero executable cases cannot satisfy a new user-facing admission bar in study v1; it is benchmark/defer rather than receiving a later hand-selected control.
+- A phenotype with an applicable case-set mapping whose selector yields zero executable cases cannot satisfy a new user-facing admission bar in this study; it is benchmark/defer rather than receiving a later hand-selected control.
 - Hard-negative outcomes are written to `hard-negative-results.tsv` with case-set id, case id/route, phenotype, measurement state, finding ids and label/intervention outcome.
 
 ## 7. Finding identity
@@ -409,7 +409,7 @@ Every amendment must:
 1. be committed before inspecting affected outcomes;
 2. name the broken rule and why execution could not follow it;
 3. keep old and amended rows separately recoverable;
-4. bump `study_version` from `1`;
+4. bump `study_version` from `2`;
 5. never loosen a rule merely because observed results are inconvenient.
 
 Detector logic, candidate definitions, label boundaries, denominators and

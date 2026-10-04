@@ -24,6 +24,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter, defaultdict
 
 HERE = pathlib.Path(__file__).resolve().parent
 AIDEV_REVISION = "c63c8a57a2de34fc03fa83722412824af4d8753b"
@@ -707,7 +708,7 @@ SKIP_SEGMENTS = {
 }
 MEASUREMENT_FIELDS = (
     "row_id", "study_version", "change_id", "population_id", "repository", "base", "head",
-    "language", "phenotype_id", "semantic_eligible", "eligibility_count", "measurement_state",
+    "language", "phenotype_id", "eligibility_state", "semantic_eligible", "eligibility_count", "measurement_state",
     "measured_count", "runtime_ms", "measurement_basis", "holes", "values",
 )
 FINDING_FIELDS = (
@@ -1400,6 +1401,23 @@ def ruff_findings(root: pathlib.Path, files: list[str], phenotype: str, cache: p
     return findings, state, holes, elapsed
 
 
+def read_study_tsv(name: str) -> list[dict[str, str]]:
+    csv.field_size_limit(10_000_000)
+    path = HERE / name
+    if not path.is_file():
+        raise StudyError(f"{name} is missing")
+    with path.open(encoding="utf-8", newline="") as source:
+        return list(csv.DictReader(source, delimiter="\t"))
+
+
+def nullable_bool(value: object) -> bool | None:
+    if value is True or str(value).lower() == "true":
+        return True
+    if value is False or str(value).lower() == "false":
+        return False
+    return None
+
+
 def write_json_tsv(path: pathlib.Path, fields: tuple[str, ...], rows: list[dict[str, object]]) -> None:
     serial = []
     for row in rows:
@@ -1789,7 +1807,9 @@ def replay(cache: pathlib.Path) -> None:
             measurement = {
                 "row_id": row_id, "study_version": 2, "change_id": change_id,
                 "population_id": population_id, "repository": repository, "base": base, "head": head,
-                "language": language, "phenotype_id": pid, "semantic_eligible": semantic,
+                "language": language, "phenotype_id": pid,
+                "eligibility_state": "eligible" if semantic else "ineligible",
+                "semantic_eligible": semantic,
                 "eligibility_count": units if semantic else 0, "measurement_state": state,
                 "measured_count": measured, "runtime_ms": runtime,
                 "measurement_basis": phenotype["measurement_basis"], "holes": holes,
@@ -2415,7 +2435,7 @@ def reconcile_measurements(rows: list[dict[str, object]], cache: pathlib.Path) -
         holes = decoded_json(row.get("holes", []), [])
         holes = list(holes) if isinstance(holes, list) else []
         phenotype = str(row["phenotype_id"])
-        semantic = row.get("semantic_eligible") is True or str(row.get("semantic_eligible")) == "True"
+        semantic = nullable_bool(row.get("semantic_eligible"))
         finding_count = int(values.get("finding_count", 0) or 0)
         lockfile_census_path = replay / "runs" / f"{change_id}-lockfile-census.json"
         try:
@@ -2595,15 +2615,35 @@ def reconcile_measurements(rows: list[dict[str, object]], cache: pathlib.Path) -
         elif sample is not None and not scope_files:
             change_eligibility, change_method = False, "no changed file in the registered candidate scope"
 
-        if change_eligibility is not None:
-            semantic = change_eligibility
-        elif sample is not None and scope_files:
-            semantic = True
+        if sample is not None and change_eligibility is None and finding_count > 0:
+            change_eligibility = True
+            change_method = "a frozen detector finding proves an eligible candidate"
+
+        semantic = change_eligibility
+        eligibility_state = (
+            "unresolved" if semantic is None else "eligible" if semantic else "ineligible"
+        )
+        row["eligibility_state"] = eligibility_state
         row["semantic_eligible"] = semantic
-        values["eligible_changes_known"] = change_eligibility is not None
+        values["eligible_changes_known"] = semantic is not None
         values["eligible_change_method"] = change_method
-        if units is not None:
-            row["semantic_eligible"] = semantic
+        if semantic is None:
+            if str(row.get("measurement_state")) == "complete":
+                row["measurement_state"] = "partial"
+            hole = "registered change-level eligibility is unresolved"
+            if hole not in holes:
+                holes.append(hole)
+            row["eligibility_count"] = None
+            values["eligible_units"] = None
+            values["eligible_units_known"] = False
+            values["eligibility_unit_method"] = method or "change-level eligibility is unresolved"
+        elif semantic is False:
+            row["eligibility_count"] = 0
+            row["measured_count"] = 0
+            values["eligible_units"] = 0
+            values["eligible_units_known"] = True
+            values["eligibility_unit_method"] = method or "no semantically eligible units"
+        elif units is not None:
             row["eligibility_count"] = units
             values["eligible_units"] = units
             values["eligible_units_known"] = unit_census_known is True
@@ -2611,13 +2651,13 @@ def reconcile_measurements(rows: list[dict[str, object]], cache: pathlib.Path) -
             values["eligibility_change_method"] = change_method
             if str(row.get("measurement_state")) == "complete" and unit_census_known is not False:
                 row["measured_count"] = units
-            elif semantic and unit_census_known is False:
+            elif unit_census_known is False:
                 if str(row.get("measurement_state")) == "complete":
                     row["measurement_state"] = "partial"
                 hole = "registered eligible-unit census is incomplete; site prevalence is not estimated"
                 if hole not in holes:
                     holes.append(hole)
-        elif semantic:
+        else:
             row["eligibility_count"] = 0
             row["measured_count"] = 0
             values["eligible_units"] = 0
@@ -2629,14 +2669,6 @@ def reconcile_measurements(rows: list[dict[str, object]], cache: pathlib.Path) -
                 holes.append(hole)
             if str(row.get("measurement_state")) == "complete":
                 row["measurement_state"] = "partial"
-        else:
-            row["eligibility_count"] = 0
-            row["measured_count"] = 0
-            values["eligible_units"] = 0
-            values["eligible_units_known"] = True
-            values["eligibility_unit_method"] = "no registered unit in the changed scope"
-            values["eligibility_change_method"] = change_method
-
         values["change_outcome_known"] = detector_outcome_known(
             str(row.get("measurement_state", "")), finding_count
         )
@@ -2651,23 +2683,21 @@ def reconcile_saved_measurements(cache: pathlib.Path) -> None:
         raise StudyError("measurements.tsv is missing; run replay first")
     rows = list(csv.DictReader(path.open(encoding="utf-8"), delimiter="\t"))
     for row in rows:
-        row["eligibility_count"] = int(row["eligibility_count"] or 0)
+        row["eligibility_count"] = int(row["eligibility_count"]) if row["eligibility_count"] else None
         row["measured_count"] = int(row["measured_count"] or 0)
         row["holes"] = decoded_json(row.get("holes", "[]"), [])
         row["values"] = decoded_json(row.get("values", "{}"), {})
-        row["semantic_eligible"] = str(row["semantic_eligible"]).lower() == "true"
+        row["semantic_eligible"] = nullable_bool(row.get("semantic_eligible"))
     reconcile_measurements(rows, cache)
     write_json_tsv(path, MEASUREMENT_FIELDS, rows)
     report(cache)
 
 
-def report(cache: pathlib.Path | None = None) -> None:
-    csv.field_size_limit(10_000_000)
-    measurements_path, findings_path = HERE / "measurements.tsv", HERE / "findings.tsv"
-    if not measurements_path.is_file() or not findings_path.is_file():
-        raise StudyError("measurements.tsv or findings.tsv is missing; run replay first")
-    measurements = list(csv.DictReader(measurements_path.open(encoding="utf-8"), delimiter="\t"))
-    findings = list(csv.DictReader(findings_path.open(encoding="utf-8"), delimiter="\t"))
+def render_prevalence_report(
+    samples: list[dict[str, str]],
+    measurements: list[dict[str, str]],
+    findings: list[dict[str, str]],
+) -> str:
     counts: dict[tuple[str, str], list[dict[str, str]]] = {}
     for row in measurements:
         counts.setdefault((row["phenotype_id"], row["population_id"]), []).append(row)
@@ -2685,31 +2715,31 @@ def report(cache: pathlib.Path | None = None) -> None:
         "| Language | Agent changes | Matched human changes | Unmatched agent changes |",
         "| --- | ---: | ---: | ---: |",
     ]
-    sample_path = HERE / "natural-sample.tsv"
-    if sample_path.is_file():
-        samples = list(csv.DictReader(sample_path.open(encoding="utf-8"), delimiter="\t"))
-        for language in LANGUAGES:
-            agents = [row for row in samples if row["language"] == language and row["population"] == "natural-agent"]
-            humans = [row for row in samples if row["language"] == language and row["population"] == "matched-human"]
-            lines.append(
-                f"| {language} | {len(agents)} | {len(humans)} | "
-                f"{sum(row['match_status'] != 'matched' for row in agents)} |"
-            )
+    for language in LANGUAGES:
+        agents = [row for row in samples if row["language"] == language and row["population"] == "natural-agent"]
+        humans = [row for row in samples if row["language"] == language and row["population"] == "matched-human"]
+        lines.append(
+            f"| {language} | {len(agents)} | {len(humans)} | "
+            f"{sum(row['match_status'] != 'matched' for row in agents)} |"
+        )
     lines += [
         "",
         "Frozen detector replay only. These are descriptive measurements, not valid-regression labels or product dispositions.",
-        "Incomplete rows remain visible and are not counted as clean. When the change census is complete, an affected-change interval includes observed positives as its lower bound and unresolved eligible changes as its upper bound. Change rates are withheld when change-level eligibility is unresolved. Site rates are withheld when change eligibility, any eligible-unit census, or any eligible measurement is incomplete.",
+        "Incomplete rows remain visible and are not counted as clean. Unknown change eligibility is neither eligible nor ineligible. When the change census is complete, an affected-change interval includes observed positives as its lower bound and unresolved eligible changes as its upper bound. Change rates are withheld when change-level eligibility is unresolved. Site rates are withheld when change eligibility, any eligible-unit census, or any eligible measurement is incomplete.",
         "",
         "| Phenotype | Population | Affected / eligible changes | Findings / eligible units | Change eligibility known / sampled changes | Unit census known / possible eligible changes | Fully measured / eligible changes | Measured / eligible units | State counts |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
-    phenotypes = [line.split("\t", 1)[0] for line in (HERE / "phenotypes.tsv").read_text().splitlines()[1:]]
+    phenotypes = [row["id"] for row in read_study_tsv("phenotypes.tsv")]
     populations = ["natural-agent", "matched-human"]
     for pid in phenotypes:
         for population in populations:
             rows = counts.get((pid, population), [])
             eligible = [row for row in rows if row["semantic_eligible"] == "True"]
             eligible_changes = len(eligible)
+            possible_eligible_changes = eligible_changes + sum(
+                row["eligibility_state"] == "unresolved" for row in rows
+            )
             values_by_row = {
                 row["row_id"]: decoded_json(row.get("values", "{}"), {})
                 for row in rows
@@ -2768,11 +2798,293 @@ def report(cache: pathlib.Path | None = None) -> None:
                 states[row["measurement_state"]] = states.get(row["measurement_state"], 0) + 1
             lines.append(
                 f"| {pid} | {population} | {change_rate} | "
-                f"{site_rate} | {known_change_count} / {len(rows)} | {len(units_known)} / {eligible_changes} | {fully_measured} | "
+                f"{site_rate} | {known_change_count} / {len(rows)} | "
+                f"{len(units_known)} / {possible_eligible_changes} | {fully_measured} | "
                 f"{unit_rate} | {', '.join(f'{key}={value}' for key, value in sorted(states.items())) or '—'} |"
             )
-    lines += ["", "All counts can be recalculated from `measurements.tsv` and `findings.tsv`.", ""]
-    (HERE / "prevalence-descriptive.md").write_text("\n".join(lines))
+    lines += ["", "All counts can be recalculated from measurements.tsv and findings.tsv.", ""]
+    return "\n".join(lines)
+
+
+def report(cache: pathlib.Path | None = None) -> None:
+    measurements = read_study_tsv("measurements.tsv")
+    findings = read_study_tsv("findings.tsv")
+    samples = read_study_tsv("natural-sample.tsv")
+    (HERE / "prevalence-descriptive.md").write_text(
+        render_prevalence_report(samples, measurements, findings),
+        encoding="utf-8",
+    )
+
+
+def verify_artifacts() -> None:
+    csv.field_size_limit(10_000_000)
+    errors: list[str] = []
+
+    def check(condition: bool, message: str) -> None:
+        if not condition:
+            errors.append(message)
+
+    samples = read_study_tsv("natural-sample.tsv")
+    phenotypes = read_study_tsv("phenotypes.tsv")
+    measurements = read_study_tsv("measurements.tsv")
+    findings = read_study_tsv("findings.tsv")
+    manifest = read_study_tsv("packet-manifest.tsv")
+    hard_results = read_study_tsv("hard-negative-results.tsv")
+    inputs = json.loads((HERE / "study-inputs.json").read_text(encoding="utf-8"))
+    coordinator = json.loads((HERE / "packet-coordinator.json").read_text(encoding="utf-8"))
+
+    sample_by_id = {row["change_id"]: row for row in samples}
+    check(len(sample_by_id) == len(samples), "natural-sample.tsv contains duplicate change_id values")
+    agent_counts = inputs.get("agent_counts", {})
+    human_counts = inputs.get("matched_human_counts", {})
+    expected_counts = {
+        ("natural-agent", language): int(agent_counts.get(language, 0))
+        for language in agent_counts
+    }
+    expected_counts.update({
+        ("matched-human", language): int(human_counts.get(language, 0))
+        for language in human_counts
+    })
+    actual_counts = Counter((row["population"], row["language"]) for row in samples)
+    check(dict(actual_counts) == expected_counts, "sample population/language counts do not match study-inputs.json")
+    agent_by_id = {
+        row["change_id"]: row for row in samples if row["population"] == "natural-agent"
+    }
+    paired_agent_ids: list[str] = []
+    for row in samples:
+        if row["population"] != "matched-human":
+            continue
+        paired_agent_id = row["paired_agent_change_id"]
+        paired_agent_ids.append(paired_agent_id)
+        agent = agent_by_id.get(paired_agent_id)
+        check(agent is not None, f"{row['change_id']} has no paired agent sample")
+        if agent is not None:
+            check(
+                agent["repository"] == row["repository"] and agent["language"] == row["language"],
+                f"{row['change_id']} does not match its agent's repository/language",
+            )
+            check(agent["match_status"] == "matched", f"{row['change_id']} points to an unmatched agent")
+        check(row["match_status"] == "matched", f"{row['change_id']} is not marked matched")
+    check(
+        len(paired_agent_ids) == len(set(paired_agent_ids)),
+        "matched-human samples do not pair one-to-one with agent samples",
+    )
+    matched_agent_ids = {
+        row["change_id"] for row in samples
+        if row["population"] == "natural-agent" and row["match_status"] == "matched"
+    }
+    check(
+        set(paired_agent_ids) == matched_agent_ids,
+        "matched agent samples and matched-human pair references disagree",
+    )
+    expected_unmatched = set(inputs.get("unmatched_agent_change_ids", []))
+    actual_unmatched = {
+        row["change_id"] for row in samples
+        if row["population"] == "natural-agent" and row["match_status"] == "unmatched"
+    }
+    check(actual_unmatched == expected_unmatched, "unmatched agent ids do not match study-inputs.json")
+
+    phenotype_ids = [row["id"] for row in phenotypes]
+    check(len(set(phenotype_ids)) == len(phenotype_ids), "phenotypes.tsv contains duplicate ids")
+    measurements_by_key: dict[tuple[str, str], dict[str, str]] = {}
+    measurements_by_id: dict[str, dict[str, str]] = {}
+    for row in measurements:
+        key = (row["change_id"], row["phenotype_id"])
+        check(key not in measurements_by_key, f"duplicate measurement key {key}")
+        measurements_by_key[key] = row
+        check(row["row_id"] not in measurements_by_id, f"duplicate measurement row_id {row['row_id']}")
+        measurements_by_id[row["row_id"]] = row
+        check(row["study_version"] == "2", f"{row['row_id']} has the wrong study_version")
+        sample = sample_by_id.get(row["change_id"])
+        check(sample is not None, f"{row['row_id']} refers to a change outside natural-sample.tsv")
+        if sample is not None:
+            for field, sample_field in (
+                ("population_id", "population"), ("repository", "repository"),
+                ("base", "base"), ("head", "head"), ("language", "language"),
+            ):
+                check(row[field] == sample[sample_field], f"{row['row_id']} disagrees with sample {field}")
+        state = row.get("eligibility_state", "")
+        semantic = nullable_bool(row.get("semantic_eligible"))
+        expected_semantic = {"eligible": True, "ineligible": False, "unresolved": None}.get(state, "invalid")
+        check(expected_semantic != "invalid", f"{row['row_id']} has invalid eligibility_state {state!r}")
+        check(semantic is expected_semantic, f"{row['row_id']} eligibility_state and semantic_eligible disagree")
+        try:
+            values = json.loads(row.get("values", "{}"))
+            measured_count = int(row["measured_count"])
+            eligibility_count = int(row["eligibility_count"]) if row["eligibility_count"] else None
+        except (ValueError, TypeError, json.JSONDecodeError):
+            check(False, f"{row['row_id']} has invalid count or values data")
+            values, measured_count, eligibility_count = {}, 0, None
+        if not isinstance(values, dict):
+            check(False, f"{row['row_id']} values must be a JSON object")
+            values = {}
+        known = values.get("eligible_changes_known") if isinstance(values, dict) else None
+        if state == "unresolved":
+            check(known is False, f"{row['row_id']} unresolved eligibility is not recorded in values")
+            check(row["eligibility_count"] == "", f"{row['row_id']} unresolved eligibility has a numeric denominator")
+            check(values.get("eligible_units") is None, f"{row['row_id']} unresolved eligibility has eligible units")
+            check(row["measurement_state"] != "complete", f"{row['row_id']} is complete with unresolved eligibility")
+        else:
+            check(known is True, f"{row['row_id']} resolved eligibility is not recorded in values")
+        if state == "ineligible":
+            check(eligibility_count == 0 and measured_count == 0, f"{row['row_id']} ineligible row has nonzero counts")
+            check(values.get("eligible_units_known") is True, f"{row['row_id']} ineligible row lacks a complete zero census")
+            check(values.get("eligible_units") == 0, f"{row['row_id']} ineligible row has nonzero eligible units")
+        if values.get("eligible_units_known") is True:
+            check(eligibility_count is not None, f"{row['row_id']} has a known unit census without eligibility_count")
+            check(values.get("eligible_units") == eligibility_count, f"{row['row_id']} eligible units disagree with eligibility_count")
+        if row["measurement_state"] == "complete":
+            check(state != "unresolved", f"{row['row_id']} complete measurement has unresolved eligibility")
+            check(eligibility_count is not None, f"{row['row_id']} complete measurement has no denominator")
+            check(values.get("eligible_units_known") is True, f"{row['row_id']} complete measurement lacks a complete unit census")
+            check(measured_count == eligibility_count, f"{row['row_id']} complete measured_count differs from denominator")
+
+    expected_measurement_keys = {
+        (sample["change_id"], phenotype_id)
+        for sample in samples for phenotype_id in phenotype_ids
+    }
+    check(
+        set(measurements_by_key) == expected_measurement_keys,
+        "measurements.tsv is not exactly one row per sample change and registered phenotype",
+    )
+
+    finding_counts: dict[str, int] = defaultdict(int)
+    finding_by_row_id: dict[str, dict[str, str]] = {}
+    for row in findings:
+        finding_id = row["finding_row_id"]
+        check(finding_id not in finding_by_row_id, f"duplicate finding_row_id {finding_id}")
+        finding_by_row_id[finding_id] = row
+        check(row["study_version"] == "2", f"{finding_id} has the wrong study_version")
+        measurement = measurements_by_id.get(row["measurement_row_id"])
+        check(measurement is not None, f"{finding_id} refers to a missing measurement")
+        if measurement is not None:
+            check(measurement["eligibility_state"] == "eligible", f"{finding_id} is not on a known-eligible measurement")
+        finding_counts[row["measurement_row_id"]] += 1
+    for row in measurements:
+        try:
+            values = json.loads(row.get("values", "{}"))
+            recorded = int(values.get("finding_count", -1))
+        except (ValueError, TypeError, json.JSONDecodeError):
+            recorded = -1
+        check(recorded == finding_counts[row["row_id"]], f"{row['row_id']} finding_count does not match findings.tsv")
+
+    manifest_by_packet: dict[str, dict[str, str]] = {}
+    manifest_by_source: dict[str, dict[str, str]] = {}
+    natural_manifest_by_finding: dict[str, dict[str, str]] = {}
+    hard_manifest_sources: set[str] = set()
+    for row in manifest:
+        packet_id = row["packet_id"]
+        source_id = row["source_finding_id"]
+        check(packet_id not in manifest_by_packet, f"duplicate packet_id {packet_id}")
+        check(source_id not in manifest_by_source, f"duplicate manifest source {source_id}")
+        manifest_by_packet[packet_id] = row
+        manifest_by_source[source_id] = row
+        if row["source_kind"] == "natural":
+            finding_id = row["finding_row_id"]
+            check(finding_id not in natural_manifest_by_finding, f"duplicate natural manifest finding {finding_id}")
+            natural_manifest_by_finding[finding_id] = row
+            finding = finding_by_row_id.get(finding_id)
+            check(finding is not None, f"natural packet {packet_id} has no findings.tsv row")
+            if finding is not None:
+                check(finding["source_finding_id"] == source_id, f"natural packet {packet_id} source id disagrees")
+                check(finding["evidence_packet_id"] == packet_id, f"natural finding {finding_id} packet id disagrees")
+                check(
+                    finding["measurement_row_id"] == f"{row['change_id']}:{row['phenotype_id']}",
+                    f"natural packet {packet_id} measurement disagrees",
+                )
+        elif row["source_kind"] == "hard-negative":
+            hard_manifest_sources.add(source_id)
+        else:
+            check(False, f"packet {packet_id} has unknown source_kind {row['source_kind']!r}")
+    check(
+        set(natural_manifest_by_finding) == set(finding_by_row_id),
+        "natural findings and packet manifest do not reference each other one-to-one",
+    )
+
+    expected_hard_sources: dict[str, tuple[str, str, str]] = {}
+    for row in hard_results:
+        check(row["study_version"] == "2", f"hard-negative case {row['case_id']} has the wrong study_version")
+        try:
+            finding_ids = json.loads(row["finding_ids"])
+            if not isinstance(finding_ids, list):
+                raise ValueError("finding_ids is not a list")
+        except (ValueError, TypeError, json.JSONDecodeError):
+            check(False, f"hard-negative case {row['case_id']} has invalid finding_ids")
+            continue
+        for finding_id in finding_ids:
+            source_id = f"hard-negative:{row['case_set_id']}:{row['case_id']}:{row['phenotype_id']}:{finding_id}"
+            expected_hard_sources[source_id] = (row["case_set_id"], row["case_id"], row["phenotype_id"])
+    check(hard_manifest_sources == set(expected_hard_sources), "hard-negative findings and packet manifest do not reference each other one-to-one")
+    for source_id, key in expected_hard_sources.items():
+        row = manifest_by_source.get(source_id)
+        if row is not None:
+            check(
+                (row["case_set_id"], row["case_id"], row["phenotype_id"]) == key,
+                f"hard-negative packet for {source_id} has mismatched case metadata",
+            )
+
+    packet_dir = HERE / "evidence-packets"
+    packet_files = {path.stem: path for path in packet_dir.glob("*.json")}
+    check(set(packet_files) == set(manifest_by_packet), "packet files and packet manifest do not match")
+    for packet_id, row in manifest_by_packet.items():
+        path = packet_files.get(packet_id)
+        if path is None:
+            continue
+        try:
+            packet = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            check(False, f"{packet_id} is not valid JSON")
+            continue
+        check(packet.get("packet_id") == packet_id, f"{packet_id} file has a mismatched packet_id")
+        check(packet.get("study_version") == 2, f"{packet_id} file has the wrong study_version")
+        check(packet.get("source_finding_id") == packet_id, f"{packet_id} is not blinded")
+
+    salt = str(coordinator.get("salt", ""))
+    valid_salt = re.fullmatch(r"[0-9a-f]{64}", salt) is not None
+    check(valid_salt, "packet coordinator salt is invalid")
+    if valid_salt:
+        check(
+            coordinator.get("salt_sha256") == hashlib.sha256(bytes.fromhex(salt)).hexdigest(),
+            "packet coordinator salt digest does not match",
+        )
+    check(coordinator.get("study_version") == 2, "packet coordinator has the wrong study_version")
+    check(coordinator.get("packet_count") == len(manifest), "packet coordinator packet_count disagrees")
+
+    schema = json.loads((HERE / "schema.json").read_text(encoding="utf-8"))
+    measurement_schema = schema.get("$defs", {}).get("measurement", {})
+    required = set(measurement_schema.get("required", []))
+    properties = measurement_schema.get("properties", {})
+    check(
+        {"eligibility_state", "semantic_eligible"} <= required
+        and properties.get("eligibility_state", {}).get("enum") == ["eligible", "ineligible", "unresolved"],
+        "schema.json does not require the tri-state eligibility fields",
+    )
+    check(
+        set(properties.get("semantic_eligible", {}).get("type", [])) == {"boolean", "null"},
+        "schema.json does not allow unknown semantic eligibility",
+    )
+    check(
+        set(properties.get("eligibility_count", {}).get("type", [])) == {"integer", "null"},
+        "schema.json does not allow an unresolved denominator",
+    )
+
+    try:
+        regenerated = render_prevalence_report(samples, measurements, findings)
+        committed_report = (HERE / "prevalence-descriptive.md").read_text(encoding="utf-8")
+        check(committed_report == regenerated, "prevalence-descriptive.md is stale; run study.py report")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError) as error:
+        check(False, f"could not regenerate prevalence report: {error}")
+
+    if errors:
+        shown = errors[:40]
+        extra = len(errors) - len(shown)
+        suffix = f"\n- ... and {extra} more" if extra else ""
+        raise StudyError("artifact integrity failed:\n- " + "\n- ".join(shown) + suffix)
+    print(
+        f"verified study v2 artifacts: {len(samples)} sample changes, "
+        f"{len(measurements)} measurements, {len(findings)} findings, {len(manifest)} packets"
+    )
+
 
 
 def main(argv: list[str]) -> int:
@@ -2790,6 +3102,7 @@ def main(argv: list[str]) -> int:
     reconcile_parser.add_argument("--cache", type=pathlib.Path, required=True)
     report_parser = sub.add_parser("report", help="recalculate descriptive prevalence")
     report_parser.add_argument("--cache", type=pathlib.Path)
+    sub.add_parser("verify-artifacts", help="verify committed study data and report integrity")
     args = parser.parse_args(argv)
     if args.command == "materialize":
         materialize(args.cache)
@@ -2808,6 +3121,9 @@ def main(argv: list[str]) -> int:
         return 0
     if args.command == "report":
         report(args.cache)
+        return 0
+    if args.command == "verify-artifacts":
+        verify_artifacts()
         return 0
     return 2
 

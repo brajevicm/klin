@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/brajevicm/klin/docs/phenotype-study-2026-10-04-v2/schema.json",
-  "title": "klin phenotype admission study v1",
+  "title": "klin phenotype admission study v2",
   "description": "Frozen record shapes for #357 study children. JSONL records use one of the definitions below; TSV projections must preserve the same fields.",
   "$defs": {
     "site": {
@@ -67,6 +67,7 @@
         "head",
         "language",
         "phenotype_id",
+        "eligibility_state",
         "semantic_eligible",
         "eligibility_count",
         "measurement_state",
@@ -114,8 +115,18 @@
           "type": "string",
           "minLength": 1
         },
+        "eligibility_state": {
+          "enum": [
+            "eligible",
+            "ineligible",
+            "unresolved"
+          ]
+        },
         "eligibility_count": {
-          "type": "integer",
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0
         },
         "measurement_state": {
@@ -148,7 +159,10 @@
           "additionalProperties": true
         },
         "semantic_eligible": {
-          "type": "boolean"
+          "type": [
+            "boolean",
+            "null"
+          ]
         },
         "measured_count": {
           "type": "integer",

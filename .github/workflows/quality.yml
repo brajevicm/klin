@@ -39,6 +39,10 @@ jobs:
           fi
           python3 docs/counterfactual-2026-10-03/probe-test.py
           python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
+      - name: Verify phenotype prevalence artifacts
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 docs/phenotype-study-2026-10-04-v2/study.py verify-artifacts
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22

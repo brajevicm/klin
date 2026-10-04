@@ -13,6 +13,7 @@ python docs/phenotype-study-2026-10-04-v2/study.py build-tools --cache /path/to/
 python docs/phenotype-study-2026-10-04-v2/study.py replay --cache /path/to/cache
 python docs/phenotype-study-2026-10-04-v2/study.py reconcile --cache /path/to/cache
 python docs/phenotype-study-2026-10-04-v2/study.py report
+python docs/phenotype-study-2026-10-04-v2/study.py verify-artifacts
 ```
 
 The script stores v2 replay/build output under `cache/study-v2/`; immutable

@@ -8,7 +8,9 @@ Rates use adjudicated labels when present and primary labels otherwise.
 `unresolved` is never silently removed from the denominator: resolved-label
 rates state both the resolved denominator and the unresolved share.
 
-Semantic eligibility is independent of measurement success. For each phenotype, `eligible changes` means rows with `semantic_eligible=true`; `fully measured changes` means those rows have `measurement_state=complete` and `measured_count=eligibility_count`. Unit coverage is `sum(measured_count) / sum(eligibility_count)` over semantic-eligible rows. Prevalence denominators include incomplete rows.
+Semantic eligibility is independent of measurement success. Each row has `eligibility_state=eligible|ineligible|unresolved`; `semantic_eligible` is respectively true, false or null. A non-empty scope alone does not establish eligibility. Unresolved rows are not counted as eligible or ineligible, and a point change rate is withheld until eligibility is resolved for every sampled change. Incomplete measurements on known-eligible rows remain in prevalence denominators.
+
+`Fully measured changes` are known-eligible rows with `measurement_state=complete` and `measured_count=eligibility_count`. Unit coverage uses known-eligible rows with a complete unit census; an unknown census is reported as incomplete, not as zero.
 
 ## 1. Common evidence requirements
 
@@ -32,7 +34,7 @@ A user-facing capability, whether blocker or REVIEW, needs all of:
 5. **Hard negatives:** evaluate every applicable row selected by
    `hard-negatives.tsv`, with no later sampling. If an applicable selector
    yields no executable case, the candidate is deferred from new user-facing
-   admission in study v1.
+   admission in this study.
 6. **Identity:** repeated-finding/attention claims use compatible #425 or
    source-prototype identity; ambiguous identities are not guessed.
 7. **No AI-specific claim from rate alone:** agent and matched-human rates are
