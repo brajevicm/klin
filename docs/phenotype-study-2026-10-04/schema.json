@@ -67,8 +67,10 @@
         "head",
         "language",
         "phenotype_id",
+        "semantic_eligible",
         "eligibility_count",
         "measurement_state",
+        "measured_count",
         "finding_id",
         "finding_site",
         "evidence_packet_id",
@@ -162,6 +164,13 @@
         "values": {
           "type": "object",
           "additionalProperties": true
+        },
+        "semantic_eligible": {
+          "type": "boolean"
+        },
+        "measured_count": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false
@@ -376,6 +385,7 @@
         "agent_family",
         "model_id",
         "host_version",
+        "session_seed",
         "repetition",
         "arm",
         "arm_order",
@@ -453,7 +463,9 @@
               "shown",
               "outcome",
               "additional_turns",
-              "feedback_bytes"
+              "feedback_bytes",
+              "feedback_text",
+              "feedback_sha256"
             ],
             "properties": {
               "phenotype_id": {
@@ -486,6 +498,19 @@
               "feedback_bytes": {
                 "type": "integer",
                 "minimum": 0
+              },
+              "feedback_text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "feedback_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
               }
             },
             "additionalProperties": false
@@ -565,6 +590,10 @@
             "string",
             "null"
           ]
+        },
+        "session_seed": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "additionalProperties": false
