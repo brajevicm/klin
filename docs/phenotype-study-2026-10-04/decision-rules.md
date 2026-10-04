@@ -8,6 +8,8 @@ Rates use adjudicated labels when present and primary labels otherwise.
 `unresolved` is never silently removed from the denominator: resolved-label
 rates state both the resolved denominator and the unresolved share.
 
+Semantic eligibility is independent of measurement success. For each phenotype, `eligible changes` means rows with `semantic_eligible=true`; `fully measured changes` means those rows have `measurement_state=complete` and `measured_count=eligibility_count`. Unit coverage is `sum(measured_count) / sum(eligibility_count)` over semantic-eligible rows. Prevalence denominators include incomplete rows.
+
 ## 1. Common evidence requirements
 
 A user-facing capability, whether blocker or REVIEW, needs all of:
@@ -21,16 +23,24 @@ A user-facing capability, whether blocker or REVIEW, needs all of:
 3. **Reproducibility:** every counted result has a frozen measurement basis;
    `partial|unsupported|unavailable|tool-error|invalid-syntax|
    local-resolution-incomplete` is not a clean zero.
-4. **Hard negatives:** every applicable preregistered hard-negative family has
-   at least one evaluated case, or the candidate is deferred.
-5. **Identity:** repeated-finding/attention claims use compatible #425 or
+4. **Measurement coverage:** in the natural agent arm, fully measured change
+   coverage is at least 80% and unit coverage is at least 90%. Each language
+   stratum with at least 5 semantic-eligible changes must have at least 70%
+   fully measured change coverage. A matched-human comparison is reported as a
+   rate only when its corresponding semantic-eligible rows reach 70% fully
+   measured change coverage; otherwise it is reported as incomplete.
+5. **Hard negatives:** evaluate every applicable row selected by
+   `hard-negatives.tsv`, with no later sampling. If an applicable selector
+   yields no executable case, the candidate is deferred from new user-facing
+   admission in study v1.
+6. **Identity:** repeated-finding/attention claims use compatible #425 or
    source-prototype identity; ambiguous identities are not guessed.
-6. **No AI-specific claim from rate alone:** agent and matched-human rates are
+7. **No AI-specific claim from rate alone:** agent and matched-human rates are
    reported separately. Equal/lower human rate is not required for product
    usefulness, but an “AI-specific” claim requires evidence beyond this study's
    descriptive comparison.
 
-If a phenotype has fewer than 3 eligible agent changes, it cannot satisfy the
+If a phenotype has fewer than 3 semantic-eligible agent changes, it cannot satisfy the
 natural-support bar in this study.
 
 ### Why these floors
@@ -64,6 +74,7 @@ research** only if every condition below holds.
 - natural `unresolved` is <=10% of all labeled findings;
 - zero preregistered hard-negative case is a compulsory false block;
 - zero known incomplete measurement is counted as PASS.
+- fully measured change coverage is at least 90% and unit coverage is at least 95% in the natural agent arm.
 
 A source ticket's earlier “BLOCK candidate” does not waive these conditions.
 
@@ -227,7 +238,7 @@ Use **reject/defer for low value or unsafe precision** when any of these holds:
 - a repeated harmful-intervention mechanism is observed;
 - the predicate cannot distinguish a preregistered hard negative without facts
   the proposed product surface does not have;
-- measurement incompleteness is routinely indistinguishable from zero;
+- measurement coverage misses the preregistered admission floor, or incompleteness is routinely indistinguishable from zero;
 - repair commonly optimizes the detector while preserving the underlying
   problem;
 - the implementation violates the operational bar and no narrower measured
