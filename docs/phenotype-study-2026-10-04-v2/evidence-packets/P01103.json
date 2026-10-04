@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01103",
+  "source_finding_id": "P01103",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        if hasattr(self, 'remote_bind_port_row'):\n            self._connect_row_validation(self.remote_bind_port_row, lambda r: self._validate_port_row(r, _(\"Remote port\")))\n        if hasattr(self, 'dest_host_row'):\n            self._connect_row_validation(self.dest_host_row, lambda r: self._validate_host_row(r, allow_empty=False))\n        if hasattr(self, 'dest_port_row'):\n            self._connect_row_validation(self.dest_port_row, lambda r: self._validate_port_row(r, _(\"Destination port\")))\n        # Dynamic forwarding\n        if hasattr(self, 'dynamic_bind_row'):\n            self._connect_row_validation(self.dynamic_bind_row, lambda r: self._validate_host_row(r, allow_empty=True))\n        if hasattr(self, 'dynamic_port_row'):\n            self._connect_row_validation(self.dynamic_port_row, lambda r: self._validate_port_row(r, _(\"Local Port\")))\n\n    def _populate_detected_keys(self):\n        \"\"\"Populate key dropdown with detected private keys and a Browse item (reuse KeyManager.discover_keys).\"\"\"\n        try:\n            keys = []\n            parent = getattr(self, 'parent_window', None) or None\n            if parent and hasattr(parent, 'key_manager') and parent.key_manager:\n                keys = parent.key_manager.discover_keys() or []\n            names = []\n            paths = []\n            for k in keys:\n                try:\n                    rel = os.path.relpath(\n                        k.private_path,\n                        str(parent.key_manager.ssh_dir) if parent else None,\n                    )\n                    names.append(rel)\n                    paths.append(k.private_path)\n                except Exception:\n                    pass",
+      "after": "                current_path = None\n                if hasattr(self, '_selected_keyfile_path') and self._selected_keyfile_path:\n                    current_path = self._selected_keyfile_path\n                elif hasattr(self.keyfile_row, 'get_subtitle'):\n                    current_path = self.keyfile_row.get_subtitle() or None\n                if (not current_path) and hasattr(self, 'connection') and self.connection:\n                    current_path = getattr(self.connection, 'keyfile', None)\n                if current_path and current_path in paths:\n                    preselect_idx = paths.index(current_path)\n            except Exception:\n                preselect_idx = 0\n            try:\n                self.key_dropdown.set_selected(preselect_idx)\n            except Exception:\n                pass\n        except Exception as e:\n            logger.debug(f\"Could not populate detected keys: {e}\")\n                \n    def _populate_detected_certificates(self):\n        \"\"\"Populate certificate dropdown with detected certificate files.\"\"\"\n        try:\n            certificates = []\n            names = []\n            paths = []\n            \n            # Look for certificate files in the SSH directory\n            ssh_dir = get_ssh_dir()\n            if os.path.exists(ssh_dir) and os.path.isdir(ssh_dir):\n                for filename in os.listdir(ssh_dir):\n                    if filename.endswith('-cert.pub'):\n                        cert_path = os.path.join(ssh_dir, filename)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

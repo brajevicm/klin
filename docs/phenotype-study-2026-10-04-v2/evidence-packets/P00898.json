@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00898",
+  "source_finding_id": "P00898",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Add support for `&[char]` pattern in `split!` and `split_inclusive!` macros\n\nThis PR adds support for using `&[char]` as a pattern type in both `split!` and `split_inclusive!` macros, allowing users to split strings by any character present in a slice of characters.\n\n## Changes Made\n\n- **Extended `Split` struct**: Added `impl<'input> Split<&'input str, &[char]>` with methods for handling character slice patterns\n- **Extended `SplitInclusive` struct**: Added `impl<'input> SplitInclusive<&'input str, &[char]>` for inclusive splitting\n- **UTF-8 Safe Implementation**: Uses existing UTF-8 utilities to properly handle multi-byte Unicode characters\n- **Comprehensive Testing**: Added test suites covering various scenarios including Unicode, empty inputs, and edge cases\n- **Updated Documentation**: Added `&[char]` to supported pattern types and included practical examples\n\n## Usage Examples\n\nSplit by multiple separator characters:\n```rust\nconst TEXT: &str = \"one:two;three,four\";\nconst SEPARATORS: &[char] = &[':', ';', ','];\nconst WORDS: &[&str] = &const_str::split!(TEXT, SEPARATORS);\n// Result: [\"one\", \"two\", \"three\", \"four\"]\n```\n\nSplit inclusive by punctuation:\n```rust\nconst TEXT: &str = \"Hello, world! How are you?\";\nconst PUNCTUATION: &[char] = &[',', '!', '?'];\nconst PARTS: &[&str] = &const_str::split_inclusive!(TEXT, PUNCTUATION);\n// Result: [\"Hello,\", \" world!\", \" How are you?\"]\n```\n\nUnicode support:\n```rust\nconst TEXT: &str = \"hello世界test中文\";\nconst UNICODE_CHARS: &[char] = &['世', '中'];\nconst PARTS: &[&str] = &const_str::split!(TEXT, UNICODE_CHARS);\n// Result: [\"hello\", \"界test\", \"文\"]\n```\n\n## Implementation Details\n\nThe implementation follows the same pattern as existing `char` and `&str` pattern support:\n- Uses a `char_in_slice` helper function to check if a character matches any in the slice\n- Properly calculates output length by counting split points\n- Maintains byte position tracking for correct substring extraction\n- Handles edge cases like empty strings and empty character slices\n\nThe behavior matches the standard library's `str::split` and `str::split_inclusive` methods when used with character slice patterns.\n\nFixes #26.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n💬 Share your feedback on [project metadata omitted] coding agent for the chance to win a $200 gift card! Click [here]([external reference omitted] to start the survey.",
+  "diff_context": [
+    {
+      "path": "const-str/src/__ctfe/split.rs",
+      "before": "",
+      "after": "        testcase!(\"a中1😂1!\", \"!\");\n        testcase!(\"11111\", \"1\");\n        testcase!(\"222\", \"22\");\n        testcase!(\"啊哈哈哈\", \"哈哈\");\n        testcase!(\"some string:another string\", \":\");\n\n        testcase!(\"11111\", '1');\n        testcase!(\"a中1😂1!\", 'a');\n        testcase!(\"a中1😂1!\", '中');\n        testcase!(\"a中1😂1!\", '1');\n        testcase!(\"a中1😂1!\", '😂');\n        testcase!(\"a中1😂1!\", '!');\n    }\n\n    #[test]\n    fn test_split_char_slice() {\n        macro_rules! testcase_char_slice {\n            ($input: expr, $chars: expr) => {{\n                const CHARS: &[char] = $chars;\n                const OUTPUT: &[&str] = &$crate::split!($input, CHARS);\n\n                let ans = $input.split(CHARS).collect::<Vec<_>>();\n                assert_eq!(\n                    OUTPUT.len(),\n                    ans.len(),\n                    \"Length mismatch for input: {:?}, chars: {:?}\",\n                    $input,\n                    CHARS\n                );\n                assert_eq!(\n                    OUTPUT, &*ans,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "test_split_char_slice"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

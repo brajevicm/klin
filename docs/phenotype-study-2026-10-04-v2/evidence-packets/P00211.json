@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00211",
+  "source_finding_id": "P00211",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/src/core/eventBus.ts",
+      "before": null,
+      "after": "import type { ChangeEvent, ChangeListener } from '../types'\n\n/**\n * Simple event bus for change notifications\n * Used to wake up live requests when changes occur\n */\nexport class EventBus {\n  private listeners: Set<ChangeListener> = new Set()\n\n  /**\n   * Subscribe to change events\n   * @param listener The listener function to call when changes occur\n   * @returns Unsubscribe function\n   */\n  subscribe(listener: ChangeListener): () => void {\n    this.listeners.add(listener)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new dependency core -> (root) in packages/db-sync-server/src closes the cycle (root) -> core (5 imports, e.g. packages/db-sync-server/src/index.ts:18)"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

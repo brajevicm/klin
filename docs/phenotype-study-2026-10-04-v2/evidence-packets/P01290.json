@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01290",
+  "source_finding_id": "P01290",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Github\n\n- New file: `apps/frontend/app/api/github/branches/route.ts` (not present on main)\n  - Implements a GET endpoint to fetch branches for a given GitHub repo.\n  - Authenticates user, fetches their GitHub access token from DB.\n  - Expects `repo` query param in \"owner/repo\" format.\n  - Calls GitHub API for branches, returns JSON list of branches.\n  - Handles errors: unauthorized, missing/invalid repo param, GitHub not connected, fetch failure.\n\n- Related frontend changes:\n  - `apps/frontend/components/chat/github.tsx` now fetches branches from `/api/github/branches?repo=owner/repo`.\n  - Handles loading, error, and sorting of branches (main/master first, then alphabetical).\n  - UI lets user select repo, then branch, using the new backend endpoint.\n\n- Summary:\n  - Adds backend API for fetching branches from GitHub for a selected repo.\n  - Integrates with frontend repo/branch picker.\n  - Handles auth, error, and edge cases robustly.",
+  "diff_context": [
+    {
+      "path": "apps/frontend/app/api/github/branches/route.ts",
+      "before": null,
+      "after": "      }\n    );\n\n    if (!response.ok) {\n      console.error(\"GitHub API error:\", await response.text());\n      return NextResponse.json(\n        { error: \"Failed to fetch branches\" },\n        { status: response.status }\n      );\n    }\n\n    const branches = await response.json();\n\n    console.log(\n      `branches for ${repo}:`,\n      branches.map((branch: any) => branch.name)\n    );\n\n    // Return branches data (keeping the full structure for flexibility)\n    return NextResponse.json(branches);\n  } catch (error) {\n    console.error(\"Error fetching branches:\", error);\n\n    if (\n      error instanceof Error &&\n      error.message === \"GitHub account not connected\"\n    ) {\n      return NextResponse.json(\n        { error: \"GitHub account not connected\" },\n        { status: 400 }\n      );",
+      "context": null
+    }
+  ],
+  "observations": [
+    "branches.map((branch: any) => branch.name)"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

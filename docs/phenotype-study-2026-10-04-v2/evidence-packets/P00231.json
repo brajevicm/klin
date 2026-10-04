@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00231",
+  "source_finding_id": "P00231",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/core/utils/platform_utils.py",
+      "before": "    跨平台打开文件\n    \n    Args:\n        path: 要打开的文件路径\n    \"\"\"\n    system = platform.system()\n    \n    if system == \"Windows\":\n        os.startfile(path)\n    elif system == \"Darwin\":  # macOS\n        subprocess.Popen([\"open\", path])\n    elif system == \"Linux\":\n        subprocess.Popen([\"xdg-open\", path])\n    else:\n        # 其他系统，尝试使用默认方式\n        try:\n            subprocess.Popen([\"xdg-open\", path])\n        except:\n            print(f\"无法在当前系统打开文件: {path}\")\n\n\ndef get_subprocess_kwargs():\n    \"\"\"\n    获取跨平台的subprocess参数\n    \n    Returns:\n        dict: subprocess参数字典\n    \"\"\"\n    kwargs = {}\n    \n    # 仅在Windows上添加CREATE_NO_WINDOW标志",
+      "after": "\n\ndef open_file(path):\n    \"\"\"\n    跨平台打开文件\n\n    Args:\n        path: 要打开的文件路径\n    \"\"\"\n    system = platform.system()\n\n    if system == \"Windows\":\n        if hasattr(os, \"startfile\"):\n            getattr(os, \"startfile\")(path)\n        else:\n            subprocess.Popen([\"start\", path], shell=True)\n    elif system == \"Darwin\":  # macOS\n        subprocess.Popen([\"open\", path])\n    elif system == \"Linux\":\n        subprocess.Popen([\"xdg-open\", path])\n    else:\n        # 其他系统，尝试使用默认方式\n        try:\n            subprocess.Popen([\"xdg-open\", path])\n        except:\n            print(f\"无法在当前系统打开文件: {path}\")\n\n\ndef get_subprocess_kwargs():\n    \"\"\"\n    获取跨平台的subprocess参数",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `subprocess` call with `shell=True` identified, security issue"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

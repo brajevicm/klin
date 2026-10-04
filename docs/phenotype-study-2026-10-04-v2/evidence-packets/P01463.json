@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01463",
+  "source_finding_id": "P01463",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add backend structure for event retrieval\n\nThis PR introduces the core backend functionality for retrieving events from the datastore.\nKey changes:\n\n- Add `get_entities()` to enable querying datastore entities with support for equality filters, ordering, and limits.\n- Add `NDBEventRepository.get_events()`  to retrieve events from the datastore.\n- Add `get_events()`, a public-facing function for other modules to consistently retrieve events.\n- Add `get_events_from_testcase()`, a public-facing function for other modules to easily retrieve events with common filters.\n\nRelated to [b/435283944]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/clusterfuzz/_internal/datastore/data_handler.py",
+      "before": "\n  tmpdir = environment.get_value('BOT_TMPDIR')\n  tmp_stacktrace_file = os.path.join(tmpdir, 'stacktrace.tmp')\n\n  try:\n    with open(tmp_stacktrace_file, 'wb') as handle:\n      handle.write(unicode_stacktrace.encode('utf-8'))\n    with open(tmp_stacktrace_file, 'rb') as handle:\n      key = blobs.write_blob(handle)\n  except Exception:\n    logs.error('Unable to write crash stacktrace to temporary file.')\n    shell.remove_file(tmp_stacktrace_file)\n    return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n  shell.remove_file(tmp_stacktrace_file)\n  return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, key)\n\n\ndef get_issue_summary(testcase):\n  \"\"\"Gets an issue description string for a testcase.\"\"\"\n  # Get summary prefix. Note that values for fuzzers take priority over those\n  # from job definitions.\n  fuzzer_summary_prefix = get_value_from_fuzzer_environment_string(\n      testcase.fuzzer_name, 'SUMMARY_PREFIX')\n  job_summary_prefix = get_value_from_job_definition(testcase.job_type,\n                                                     'SUMMARY_PREFIX')\n  summary_prefix = fuzzer_summary_prefix or job_summary_prefix or ''\n\n  issue_summary = summary_prefix\n  binary_name = testcase.get_metadata('fuzzer_binary_name')\n  if binary_name:",
+      "after": "    except Exception:\n      print(\"uplaod failed\")\n      logs.error('Unable to upload crash stacktrace to signed url.')\n      return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n    return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, blob_name)\n\n  tmpdir = environment.get_value('BOT_TMPDIR')\n  tmp_stacktrace_file = os.path.join(tmpdir, 'stacktrace.tmp')\n\n  try:\n    with open(tmp_stacktrace_file, 'wb') as handle:\n      handle.write(unicode_stacktrace.encode('utf-8'))\n    with open(tmp_stacktrace_file, 'rb') as handle:\n      key = blobs.write_blob(handle)\n  except Exception:\n    logs.error('Unable to write crash stacktrace to temporary file.')\n    shell.remove_file(tmp_stacktrace_file)\n    return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n  shell.remove_file(tmp_stacktrace_file)\n  return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, key)\n\n\ndef get_issue_summary(testcase):\n  \"\"\"Gets an issue description string for a testcase.\"\"\"\n  # Get summary prefix. Note that values for fuzzers take priority over those\n  # from job definitions.\n  fuzzer_summary_prefix = get_value_from_fuzzer_environment_string(\n      testcase.fuzzer_name, 'SUMMARY_PREFIX')\n  job_summary_prefix = get_value_from_job_definition(testcase.job_type,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

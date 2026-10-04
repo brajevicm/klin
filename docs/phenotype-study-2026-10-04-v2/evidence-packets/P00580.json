@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00580",
+  "source_finding_id": "P00580",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Add REST API server command for JWT operations\n\n## Overview\n\nThis PR adds a new `server` command to jwt-hack that exposes all core JWT operations through a REST API. This enables integration with web applications, automation tools, and CI/CD pipelines.\n\n## Motivation\n\nThe existing jwt-hack CLI is powerful but limited to command-line usage. A REST API server allows:\n- Integration with web frontends and dashboards\n- Use in automated security testing pipelines\n- Remote JWT operations without shipping the entire binary\n- Easy integration with other security tools and frameworks\n\n## Changes\n\n### New Server Command\n\n```bash\n# Start with defaults (127.0.0.1:3000)\njwt-hack server\n\n# Customize host and port\njwt-hack server --host 0.0.0.0 --port 8080\n```\n\n### API Endpoints\n\nThe server provides 7 RESTful endpoints with JSON request/response format:\n\n**1. Health Check** (`POST /health`)\n```bash\ncurl -X POST [external reference omitted]\n# {\"status\":\"ok\",\"version\":\"2.3.1\"}\n```\n\n**2. Encode JWT** (`POST /encode`)\n- Supports all algorithms (HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, PS256, PS384, PS512, EdDSA, none)\n- Custom headers and payload compression\n\n**3. Decode JWT** (`POST /decode`)\n- Decodes both JWT and JWE tokens\n- Returns header, payload, and algorithm information\n\n**4. Verify JWT** (`POST /verify`)\n- Signature verification with HMAC and asymmetric keys\n- Optional expiration validation\n\n**5. Crack JWT** (`POST /crack`)\n- Dictionary attack mode with wordlist files\n- Brute force mode with customizable character sets\n- Character set presets (az, AZ, aZ, 19, aZ19, ascii)\n\n**6. Generate Payloads** (`POST /payload`)\n- None algorithm attacks\n- JKU/X5U header injection\n- Algorithm confusion attacks\n- KID SQL injection\n- X5C and CTY header manipulation\n\n…",
+  "diff_context": [
+    {
+      "path": "src/cmd/server.rs",
+      "before": null,
+      "after": "    utils::log_info(\"Starting JWT-HACK REST API server\".to_string());\n    utils::log_info(format!(\"Listening on http://{}:{}\", host, port));\n    utils::log_info(\"Available endpoints:\".to_string());\n    utils::log_info(\"  POST /health      - Health check\".to_string());\n    utils::log_info(\"  POST /decode      - Decode JWT token\".to_string());\n    utils::log_info(\"  POST /encode      - Encode JWT token\".to_string());\n    utils::log_info(\"  POST /verify      - Verify JWT token\".to_string());\n    utils::log_info(\"  POST /crack       - Crack JWT secret\".to_string());\n    utils::log_info(\"  POST /payload     - Generate attack payloads\".to_string());\n    utils::log_info(\"  POST /scan        - Scan JWT for vulnerabilities\".to_string());\n\n    let app = build_router();\n    let addr = format!(\"{}:{}\", host, port);\n    let listener = tokio::net::TcpListener::bind(&addr)\n        .await\n        .expect(\"Failed to bind to address\");\n\n    utils::log_success(format!(\"Server started successfully on {}\", addr));\n\n    axum::serve(listener, app)\n        .await\n        .expect(\"Server failed to start\");\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn test_default_crack_mode() {\n        assert_eq!(default_crack_mode(), \"dict\");",
+      "context": null
+    }
+  ],
+  "observations": [
+    ".expect(\"Failed to bind to address\");"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

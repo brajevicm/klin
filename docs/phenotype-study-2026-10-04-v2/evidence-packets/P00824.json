@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00824",
+  "source_finding_id": "P00824",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/payments/manual.ts",
+      "before": null,
+      "after": "import { saveOrder } from \"../db/orders\";\n\n// Bank transfers settle offline, days later, so this is deliberately not a\n// PaymentProvider: checkout never offers it and nothing charges a card.\nexport class ManualInvoice {\n  async charge(cents: number): Promise<string> {\n    const reference = `INV-${Date.now()}`;\n    await saveOrder(reference, cents);\n    return reference;\n  }\n\n  async refund(chargeId: string): Promise<void> {\n    console.info(`refund ${chargeId} by bank transfer`);\n  }\n}\n\nexport async function invoiceLater(cents: number, email: string): Promise<string> {\n  const reference = await new ManualInvoice().charge(cents);\n  console.info(`invoice ${reference} sent to ${email}`);\n  return reference;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "ManualInvoice in src/payments/ defines charge, refund like every member; it does not implement PaymentProvider, which 2 of 5 sibling files implement (e.g. paypal.ts, stripe.ts)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

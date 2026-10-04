@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02029",
+  "source_finding_id": "P02029",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            self._sync_key_dropdown_with_current_keyfile()\n    \n    def on_certificate_file_selected(self, dialog, result):\n        \"\"\"Handle selected certificate file from file chooser\"\"\"\n        try:\n            cert_file = dialog.open_finish(result)\n        except GLib.Error:\n            return\n        if cert_file:\n            cert_path = cert_file.get_path()\n            self.certificate_row.set_subtitle(cert_path)\n\n            # Add the browsed certificate to the dropdown if it's not already there\n            if hasattr(self, '_cert_paths') and cert_path not in self._cert_paths:\n                self._cert_paths.append(cert_path)\n                # Update the dropdown model with just the filename\n                if hasattr(self, 'cert_dropdown'):\n                    model = self.cert_dropdown.get_model()\n                    if model:\n                        filename = os.path.basename(cert_path)\n                        model.append(filename)\n\n            # Set the selected certificate path\n            self._selected_cert_path = cert_path\n\n            # Sync the dropdown to select the browsed certificate\n            self._sync_cert_dropdown_with_current_cert()\n    \n    def _sync_cert_dropdown_with_current_cert(self):\n        \"\"\"Sync the certificate dropdown selection with the current certificate path\"\"\"\n        try:",
+      "after": "                logger.debug(f\"Syncing certificate dropdown to: {current_path} (index {preselect_idx})\")\n                self.cert_dropdown.set_selected(preselect_idx)\n            else:\n                # If the certificate is not in the dropdown, add it and then select it\n                if current_path and hasattr(self, '_cert_paths') and hasattr(self, 'cert_dropdown'):\n                    self._cert_paths.append(current_path)\n                    model = self.cert_dropdown.get_model()\n                    if model:\n                        filename = os.path.basename(current_path)\n                        model.append(filename)\n                        preselect_idx = len(self._cert_paths) - 1\n                        logger.debug(f\"Added external certificate to dropdown: {filename} (path: {current_path}, index {preselect_idx})\")\n                        self.cert_dropdown.set_selected(preselect_idx)\n                else:\n                    logger.debug(f\"Could not find certificate '{current_path}' in dropdown paths\")\n        except Exception as e:\n            logger.debug(f\"Failed to sync certificate dropdown: {e}\")\n    \n    def on_delete_forwarding_rule_clicked(self, button, rule):\n        \"\"\"Handle delete port forwarding rule button click\"\"\"\n        if not hasattr(self, 'forwarding_rules'):\n            return\n            \n        # Remove the rule from the list\n        self.forwarding_rules = [r for r in self.forwarding_rules if r != rule]\n        \n        # Reload the rules UI\n        self.load_port_forwarding_rules()\n        \n        logger.info(f\"Deleted port forwarding rule: {rule}\")\n    ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

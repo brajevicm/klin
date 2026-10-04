@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00855",
+  "source_finding_id": "P00855",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat(autogen): add mcp detection for autogen agentchat\n\nEnables MCP Server detection for Autogen AgenChat workflows.\nAnalyzer searches for usage patterns shown in [Autogen docs]([external reference omitted]\n\nTwo main usage patterns covered:\n1. Invididual adapters for each tool\n```\nserver_params = <some_params_object>(...)\nadapter = await <some_adapter>.from_server_params(server_params, \"some_mcp_tool\")\nagent = <some_agent>(..., tools=[tool1, tool2, adapter])\n```\n\n2. List of adapters from server params\n```\nserver_params = <some_params_object>(...)\nmcp_tools = await mcp_server_tools(server_params)\nagent = <some_agent>(..., tools=mcp_tools)\n```\n\nPotential TODOs/improvements for the future:\n- detect tool concatenation with `+`, handle all cases of operands (list literal vs variable assigned somewhere before in code)",
+  "diff_context": [
+    {
+      "path": "examples/autogen/agentchat/autogen_mcp_2/autogen_mcp_2.py",
+      "before": null,
+      "after": "\nasync def main() -> None:\n    # Setup server params for local filesystem access\n    desktop = str(Path.home() / \"Desktop\")\n    server_params = StdioServerParams(\n        command=\"npx.cmd\", args=[\"-y\", \"@modelcontextprotocol/server-filesystem\", desktop]\n    )\n\n    # Get all available tools from the server\n    tools = await mcp_server_tools(server_params)\n\n    # Create an agent that can use all the tools\n    agent = AssistantAgent(\n        name=\"file_manager\",\n        model_client=OpenAIChatCompletionClient(model=\"gpt-4\"),\n        tools=tools,  # type: ignore\n    )\n\n    # The agent can now use any of the filesystem tools\n    await agent.run(task=\"Create a file called test.txt with some content\", cancellation_token=[redacted]\n\n\nif __name__ == \"__main__\":\n    asyncio.run(main())",
+      "context": null
+    }
+  ],
+  "observations": [
+    "tools=tools,  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

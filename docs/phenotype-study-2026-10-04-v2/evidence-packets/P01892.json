@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01892",
+  "source_finding_id": "P01892",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/MySettingCard.py",
+      "before": "        self.iconLabel = SettingIconWidget(icon, self)\n        self.titleLabel = QLabel(title, self)\n        self.contentLabel = QLabel(content or \"\", self)\n        self.hBoxLayout = QHBoxLayout(self)\n        self.vBoxLayout = QVBoxLayout()\n\n        if not content:\n            self.contentLabel.hide()\n\n        self.setFixedHeight(70 if content else 50)\n        self.iconLabel.setFixedSize(16, 16)\n\n        # initialize layout\n        self.hBoxLayout.setSpacing(0)\n        self.hBoxLayout.setContentsMargins(16, 0, 0, 0)\n        self.hBoxLayout.setAlignment(Qt.AlignVCenter)\n        self.vBoxLayout.setSpacing(0)\n        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)\n        self.vBoxLayout.setAlignment(Qt.AlignVCenter)\n\n        self.hBoxLayout.addWidget(self.iconLabel, 0, Qt.AlignLeft)\n        self.hBoxLayout.addSpacing(16)\n\n        self.hBoxLayout.addLayout(self.vBoxLayout)\n        self.vBoxLayout.addWidget(self.titleLabel, 0, Qt.AlignLeft)\n        self.vBoxLayout.addWidget(self.contentLabel, 0, Qt.AlignLeft)\n\n        self.hBoxLayout.addSpacing(16)\n        self.hBoxLayout.addStretch(1)\n\n        self.contentLabel.setObjectName(\"contentLabel\")",
+      "after": "        self.iconLabel = SettingIconWidget(icon, self)\n        self.titleLabel = QLabel(title, self)\n        self.contentLabel = QLabel(content or \"\", self)\n        self.hBoxLayout = QHBoxLayout(self)\n        self.vBoxLayout = QVBoxLayout()\n\n        if not content:\n            self.contentLabel.hide()\n\n        self.setFixedHeight(70 if content else 50)\n        self.iconLabel.setFixedSize(16, 16)\n\n        # initialize layout\n        self.hBoxLayout.setSpacing(0)\n        self.hBoxLayout.setContentsMargins(16, 0, 0, 0)\n        self.hBoxLayout.setAlignment(Qt.AlignVCenter)  # type: ignore\n        self.vBoxLayout.setSpacing(0)\n        self.vBoxLayout.setContentsMargins(0, 0, 0, 0)\n        self.vBoxLayout.setAlignment(Qt.AlignVCenter)  # type: ignore\n\n        self.hBoxLayout.addWidget(self.iconLabel, 0, Qt.AlignLeft)  # type: ignore\n        self.hBoxLayout.addSpacing(16)\n\n        self.hBoxLayout.addLayout(self.vBoxLayout)\n        self.vBoxLayout.addWidget(self.titleLabel, 0, Qt.AlignLeft)  # type: ignore\n        self.vBoxLayout.addWidget(self.contentLabel, 0, Qt.AlignLeft)  # type: ignore\n\n        self.hBoxLayout.addSpacing(16)\n        self.hBoxLayout.addStretch(1)\n\n        self.contentLabel.setObjectName(\"contentLabel\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "self.hBoxLayout.setAlignment(Qt.AlignVCenter)  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

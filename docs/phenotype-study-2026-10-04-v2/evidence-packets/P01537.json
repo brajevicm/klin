@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01537",
+  "source_finding_id": "P01537",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add backend structure for event retrieval\n\nThis PR introduces the core backend functionality for retrieving events from the datastore.\nKey changes:\n\n- Add `get_entities()` to enable querying datastore entities with support for equality filters, ordering, and limits.\n- Add `NDBEventRepository.get_events()`  to retrieve events from the datastore.\n- Add `get_events()`, a public-facing function for other modules to consistently retrieve events.\n- Add `get_events_from_testcase()`, a public-facing function for other modules to easily retrieve events with common filters.\n\nRelated to [b/435283944]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/clusterfuzz/_internal/datastore/data_handler.py",
+      "before": "  if len(unicode_stacktrace) <= data_types.STACKTRACE_LENGTH_LIMIT:\n    return unicode_stacktrace\n  # TODO(alhijazi): Once the migration is done, callers are expected to\n  # always pass a `blob_name` and a `signed_upload_url`.\n  if signed_upload_url:\n    try:\n      storage.upload_signed_url(\n          unicode_stacktrace.encode('utf-8'), signed_upload_url)\n      logs.info('Uploaded stacktrace using signed url.')\n    except Exception:\n      print(\"uplaod failed\")\n      logs.error('Unable to upload crash stacktrace to signed url.')\n      return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n    return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, blob_name)\n\n  tmpdir = environment.get_value('BOT_TMPDIR')\n  tmp_stacktrace_file = os.path.join(tmpdir, 'stacktrace.tmp')\n\n  try:\n    with open(tmp_stacktrace_file, 'wb') as handle:\n      handle.write(unicode_stacktrace.encode('utf-8'))\n    with open(tmp_stacktrace_file, 'rb') as handle:\n      key = blobs.write_blob(handle)\n  except Exception:\n    logs.error('Unable to write crash stacktrace to temporary file.')\n    shell.remove_file(tmp_stacktrace_file)\n    return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n  shell.remove_file(tmp_stacktrace_file)\n  return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, key)",
+      "after": "\n\ndef filter_stacktrace(stacktrace, blob_name=None, signed_upload_url=None):\n  \"\"\"Filters stacktrace and returns content appropriate for storage as an\n  appengine entity.\"\"\"\n  unicode_stacktrace = utils.decode_to_unicode(stacktrace)\n  if len(unicode_stacktrace) <= data_types.STACKTRACE_LENGTH_LIMIT:\n    return unicode_stacktrace\n  # TODO(alhijazi): Once the migration is done, callers are expected to\n  # always pass a `blob_name` and a `signed_upload_url`.\n  if signed_upload_url:\n    try:\n      storage.upload_signed_url(\n          unicode_stacktrace.encode('utf-8'), signed_upload_url)\n      logs.info('Uploaded stacktrace using signed url.')\n    except Exception:\n      print(\"uplaod failed\")\n      logs.error('Unable to upload crash stacktrace to signed url.')\n      return unicode_stacktrace[(-1 * data_types.STACKTRACE_LENGTH_LIMIT):]\n\n    return '%s%s' % (data_types.BLOBSTORE_STACK_PREFIX, blob_name)\n\n  tmpdir = environment.get_value('BOT_TMPDIR')\n  tmp_stacktrace_file = os.path.join(tmpdir, 'stacktrace.tmp')\n\n  try:\n    with open(tmp_stacktrace_file, 'wb') as handle:\n      handle.write(unicode_stacktrace.encode('utf-8'))\n    with open(tmp_stacktrace_file, 'rb') as handle:\n      key = blobs.write_blob(handle)\n  except Exception:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

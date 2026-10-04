@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01698",
+  "source_finding_id": "P01698",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            if key and value and key != \"Select SSH option...\":\n                config_lines.append(f\"    {key} {value}\")\n                \n        config_text = \"Host your-host-name\\n\" + \"\\n\".join(config_lines)\n        \n        buffer = self.config_text_view.get_buffer()\n        buffer.set_text(config_text)\n\n    def on_edit_ssh_config_clicked(self, button):\n        \"\"\"Open raw editor for the SSH config file.\"\"\"\n        try:\n            from .ssh_config_editor import SSHConfigEditorWindow\n            parent = self.get_ancestor(Adw.Window)\n            editor = SSHConfigEditorWindow(parent, self.connection_manager, on_saved=self._on_editor_saved)\n            editor.present()\n        except Exception as e:\n            logger.error(f\"Failed to open SSH config editor: {e}\")\n\n    def _on_editor_saved(self):\n        \"\"\"Refresh preview and parent dialog after editor saves.\"\"\"\n        try:\n            self.update_config_preview()\n            if self.parent_dialog and hasattr(self.parent_dialog, '_refresh_connection_data_from_ssh_config'):\n                self.parent_dialog._refresh_connection_data_from_ssh_config()\n        except Exception as e:\n            logger.error(f\"Error refreshing after SSH config save: {e}\")\n\n    def get_config_entries(self):\n        \"\"\"Get all valid config entries\"\"\"\n        entries = []\n        for row_grid in self.config_entries:",
+      "after": "            if key and value and key != \"Select SSH option...\":\n                config_lines.append(f\"    {key} {value}\")\n                \n        config_text = \"Host your-host-name\\n\" + \"\\n\".join(config_lines)\n        \n        buffer = self.config_text_view.get_buffer()\n        buffer.set_text(config_text)\n\n    def on_edit_ssh_config_clicked(self, button):\n        \"\"\"Open raw editor for the SSH config file.\"\"\"\n        try:\n            from .ssh_config_editor import SSHConfigEditorWindow\n            parent = self.get_ancestor(Adw.Window)\n            editor = SSHConfigEditorWindow(parent, self.connection_manager, on_saved=self._on_editor_saved)\n            editor.present()\n        except Exception as e:\n            logger.error(f\"Failed to open SSH config editor: {e}\")\n\n    def _on_editor_saved(self):\n        \"\"\"Refresh preview and parent dialog after editor saves.\"\"\"\n        try:\n            self.update_config_preview()\n            if self.parent_dialog and hasattr(self.parent_dialog, '_refresh_connection_data_from_ssh_config'):\n                self.parent_dialog._refresh_connection_data_from_ssh_config()\n        except Exception as e:\n            logger.error(f\"Error refreshing after SSH config save: {e}\")\n\n    def get_config_entries(self):\n        \"\"\"Get all valid config entries\"\"\"\n        entries = []\n        for row_grid in self.config_entries:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

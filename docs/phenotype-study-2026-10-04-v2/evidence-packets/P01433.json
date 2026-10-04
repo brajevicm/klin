@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01433",
+  "source_finding_id": "P01433",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"ledger-web\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"workspaces\": [\n    \"packages/*\"\n  ],\n  \"imports\": {\n    \"#config\": \"./src/config.ts\"\n  },\n  \"dependencies\": {\n    \"agent-base\": \"7.1.1\",\n    \"lodash\": \"4.17.21\",\n    \"zod\": \"3.23.8\"\n  },",
+      "after": "{\n  \"name\": \"ledger-web\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"workspaces\": [\n    \"packages/*\"\n  ],\n  \"imports\": {\n    \"#config\": \"./src/config.ts\"\n  },\n  \"dependencies\": {\n    \"agent-base\": \"7.1.1\",\n    \"lodash\": \"4.17.21\",\n    \"yaml\": \"2.5.0\",\n    \"zod\": \"3.23.8\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:yaml"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

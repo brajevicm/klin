@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00604",
+  "source_finding_id": "P00604",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/thread/batch_process_thread.py",
+      "before": "            Qt.QueuedConnection,\n        )\n        thread.error.connect(\n            partial(self._on_error_wrapper, batch_task), Qt.QueuedConnection\n        )\n        thread.finished.connect(\n            partial(self._on_finished_wrapper, batch_task), Qt.QueuedConnection\n        )\n\n        thread.start()\n\n    def on_full_process_synthesis_progress(\n        self, batch_task: BatchTask, progress: int, message: str\n    ):\n        \"\"\"处理全流程任务中视频合成部分的进度\"\"\"\n        if batch_task.status == BatchTaskStatus.RUNNING:\n            progress_value = 66 + progress // 3  # 视频合成占最后34%进度\n            self.task_progress.emit(batch_task.file_path, progress_value, message)\n\n    def stop_task(self, file_path: str):\n        if file_path in self.current_tasks:\n            task = self.current_tasks[file_path]\n            if task.current_thread:\n                if hasattr(task.current_thread, \"stop\"):\n                    task.current_thread.stop()\n            del self.current_tasks[file_path]\n            # 从队列中移除任务\n            with self.task_queue.mutex:\n                self.task_queue.queue.clear()\n\n    def stop_all(self):",
+      "after": "        if file_path in self.current_tasks:\n            task = self.current_tasks[file_path]\n            if task.current_thread:\n                if hasattr(task.current_thread, \"stop\"):\n                    task.current_thread.stop()  # type: ignore\n            del self.current_tasks[file_path]\n            # 从队列中移除任务\n            with self.task_queue.mutex:\n                self.task_queue.queue.clear()\n\n    def stop_all(self):\n        self.is_running = False\n        # 停止所有线程\n        for thread in self.threads:\n            if hasattr(thread, \"stop\"):\n                thread.stop()  # type: ignore\n            thread.wait()  # 等待线程结束\n        self.threads.clear()\n        self.current_tasks.clear()\n        # 清空任务队列\n        with self.task_queue.mutex:\n            self.task_queue.queue.clear()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "thread.stop()  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

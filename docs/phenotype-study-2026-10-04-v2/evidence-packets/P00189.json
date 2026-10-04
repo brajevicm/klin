@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00189",
+  "source_finding_id": "P00189",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "[authoring attribution omitted] PR\n\n[authoring attribution omitted] PR\n\n---\n*PR created automatically by [authoring attribution omitted] for task [5162698330863493969]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/duration/python.rs",
+      "before": "    }\n\n    /// Creates a new Duration from its full nanoseconds\n    /// :type nanos: int\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_total_nanoseconds\")]\n    fn py_from_total_nanoseconds(_cls: &Bound<'_, PyType>, nanos: i128) -> Self {\n        Self::from_total_nanoseconds(nanos)\n    }\n}",
+      "after": "    }\n\n    /// Creates a new Duration from its full nanoseconds\n    /// :type nanos: int\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_total_nanoseconds\")]\n    fn py_from_total_nanoseconds(_cls: &Bound<'_, PyType>, nanos: i128) -> Self {\n        Self::from_total_nanoseconds(nanos)\n    }\n\n    /// Creates a new duration from the provided number of days\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_days\")]\n    fn py_from_days(_cls: &Bound<'_, PyType>, value: f64) -> Self {\n        Self::from_days(value)\n    }\n\n    /// Creates a new duration from the provided number of hours\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_hours\")]\n    fn py_from_hours(_cls: &Bound<'_, PyType>, value: f64) -> Self {\n        Self::from_hours(value)\n    }\n\n    /// Creates a new duration from the provided number of minutes\n    /// :rtype: Duration\n    #[classmethod]\n    #[pyo3(name = \"from_minutes\")]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "fn py_from_days(_cls: &Bound<'_, PyType>, value: f64) -> Self {"
+  ],
+  "measurement_holes": [
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

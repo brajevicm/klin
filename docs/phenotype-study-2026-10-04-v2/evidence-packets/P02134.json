@@ -1,0 +1,24 @@
+{
+  "packet_id": "P02134",
+  "source_finding_id": "P02134",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/src/index.ts",
+      "before": null,
+      "after": "export type { SyncEndpoint } from './types'\nexport { createSyncHandler } from './server/handler'\n\n// Re-export core types for advanced usage\nexport type {\n  ElectricMessage,\n  ElectricOperation,\n  ElectricControl,\n  Offset,\n  PK,\n  ChangeOp,\n  ChangeEvent,\n  ShapeHandle,\n  ElectricHeaders\n} from './types'\n\n// Re-export core classes for testing/advanced usage",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new dependency (root) -> server in packages/db-sync-server/src closes the cycle server -> (root) (1 imports, e.g. packages/db-sync-server/src/server/handler.ts:2)"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

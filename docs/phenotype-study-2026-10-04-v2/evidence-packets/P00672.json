@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00672",
+  "source_finding_id": "P00672",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "            \n        except Exception as e:\n            logger.error(f\"Error in new execution: {e}\", exc_info=True)\n            yield RunErrorEvent(\n                type=EventType.RUN_ERROR,\n                message=str(e),\n                code=\"EXECUTION_ERROR\"\n            )\n        finally:\n            # Clean up execution if complete and no pending tool calls (HITL scenarios)\n            async with self._execution_lock:\n                if input.thread_id in self._active_executions:\n                    execution = self._active_executions[input.thread_id]\n                    execution.is_complete = True\n                    \n                    # Check if session has pending tool calls before cleanup\n                    has_pending = await self._has_pending_tool_calls(input.thread_id)\n                    if not has_pending:\n                        del self._active_executions[input.thread_id]\n                        logger.debug(f\"Cleaned up execution for thread {input.thread_id}\")\n                    else:\n                        logger.info(f\"Preserving execution for thread {input.thread_id} - has pending tool calls (HITL scenario)\")\n    \n    async def _start_background_execution(\n        self, \n        input: RunAgentInput\n    ) -> ExecutionState:\n        \"\"\"Start ADK execution in background with tool support.\n        \n        Args:\n            input: The run input",
+      "after": "                    await self._cleanup_stale_executions()\n                    \n                    if len(self._active_executions) >= self._max_concurrent:\n                        raise RuntimeError(\n                            f\"Maximum concurrent executions ({self._max_concurrent}) reached\"\n                        )\n                \n                # Check if there's an existing execution for this thread and wait for it\n                existing_execution = self._active_executions.get(input.thread_id)\n\n            # If there was an existing execution, wait for it to complete\n            if existing_execution and not existing_execution.is_complete:\n                logger.debug(f\"Waiting for existing execution to complete for thread {input.thread_id}\")\n                try:\n                    await existing_execution.task\n                except Exception as e:\n                    logger.debug(f\"Previous execution completed with error: {e}\")\n            \n            # Start background execution\n            execution = await self._start_background_execution(\n                input,\n                tool_results=tool_results,\n                message_batch=message_batch,\n            )\n            \n            # Store execution (replacing any previous one)\n            async with self._execution_lock:\n                self._active_executions[input.thread_id] = execution\n            \n            # Stream events and track tool calls\n            logger.debug(f\"Starting to stream events for execution {execution.thread_id}\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

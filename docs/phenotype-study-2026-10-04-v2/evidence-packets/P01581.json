@@ -1,0 +1,34 @@
+{
+  "packet_id": "P01581",
+  "source_finding_id": "P01581",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "task: thread start safety\n\nEnforce safety rules to ensure that the startup parameter for a new kernel thread can be interpreted safely, and require `unsafe` when the compiler cannot enforce startup parameter safety on its own.",
+  "diff_context": [
+    {
+      "path": "svsm (kernel/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "requests::request_loop_main (function)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 7 unmeasured and 0 unreadable files",
+    "public-api public surface has 10 holes and 336 opaque items",
+    "{\"file\": \"kernel/src/mm/vm/mapping/api.rs\", \"gate\": \"public-api\", \"line\": 145, \"outcome\": \"unresolved\", \"text\": \"pub fn new<T>(mapping: T) -> Self — svsm (kernel/Cargo.toml) — an inherent impl of Mapping outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"kernel/src/mm/vm/mapping/api.rs\", \"gate\": \"public-api\", \"line\": 154, \"outcome\": \"unresolved\", \"text\": \"pub fn get(&self) -> ReadLockGuard<'_, Box<dyn VirtualMapping>> { — svsm (kernel/Cargo.toml) — an inherent impl of Mapping outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"kernel/src/mm/vm/mapping/api.rs\", \"gate\": \"public-api\", \"line\": 158, \"outcome\": \"unresolved\", \"text\": \"pub fn get_mut(&self) -> WriteLockGuard<'_, Box<dyn VirtualMapping>> { — svsm (kernel/Cargo.toml) — an inherent impl of Mapping outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"release/src/lib.rs\", \"gate\": \"public-api\", \"line\": 9, \"outcome\": \"unresolved\", \"text\": \"mod git_version; — release (release/Cargo.toml) — names no file the tree holds: release/src/git_version.rs, release/src/git_version/mod.rs\"}",
+    "{\"file\": \"verus_stub/src/lib.rs\", \"gate\": \"public-api\", \"line\": 4, \"outcome\": \"unresolved\", \"text\": \"pub use builtin_macros::*; — verus_stub (verus_stub/Cargo.toml) — builtin_macros::* globs another crate, whose names klin cannot list\"}",
+    "{\"file\": \"verus_stub/src/lib.rs\", \"gate\": \"public-api\", \"line\": 7, \"outcome\": \"unresolved\", \"text\": \"pub use vstd::prelude::*; — verus_stub (verus_stub/Cargo.toml) — vstd::prelude::* globs another crate, whose names klin cannot list\"}",
+    "{\"file\": \"verify_proof/src/frac_ptr.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "{\"file\": \"verify_proof/src/set.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "{\"file\": \"verify_proof/src/sum.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

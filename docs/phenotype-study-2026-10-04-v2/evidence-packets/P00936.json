@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00936",
+  "source_finding_id": "P00936",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "feat: update locale without page reload",
+  "diff_context": [
+    {
+      "path": "packages/react/src/client/provider.tsx",
+      "before": "export function LingoProvider<D>(props: LingoProviderProps<D>) {\n  // TODO: handle case when no dictionary is provided - throw suspense? return null / other fallback?\n  if (!props.dictionary) {\n    throw new Error(\"LingoProvider: dictionary is not provided.\");\n  }\n\n  return (\n    <LingoContext.Provider\n      value={{ dictionary: props.dictionary }}\n      children={props.children}\n    />\n  );\n}\n\nexport type LingoProviderWrapperProps<D> = {\n  loadDictionary: (locale: string) => Promise<D>;\n  children: React.ReactNode;\n};\n\nexport function LingoProviderWrapper<D>(props: LingoProviderWrapperProps<D>) {\n  const [dictionary, setDictionary] = useState<D | null>(null);\n\n  // for client-side rendered apps, the dictionary is also loaded on the client\n  useEffect(() => {\n    (async () => {\n      try {\n        const locale = getLocaleFromCookies();\n        console.log(\n          `[Lingo.dev] Loading dictionary file for locale ${locale}...`,\n        );\n        const localeDictionary = await props.loadDictionary(locale);",
+      "after": "  setLocale?: (locale: string) => Promise<void> | void;\n  children: React.ReactNode;\n};\n\nexport function LingoProvider<D>(props: LingoProviderProps<D>) {\n  // TODO: handle case when no dictionary is provided - throw suspense? return null / other fallback?\n  if (!props.dictionary) {\n    throw new Error(\"LingoProvider: dictionary is not provided.\");\n  }\n\n  return (\n    <LingoContext.Provider\n      value={{\n        dictionary: props.dictionary,\n        locale:\n          props.locale ?? (props as any).dictionary?.locale ?? DEFAULT_LOCALE,\n        setLocale: props.setLocale,\n      }}\n    >\n      {props.children}\n    </LingoContext.Provider>\n  );\n}\n\nexport type LingoProviderWrapperProps<D> = {\n  loadDictionary: (locale: string) => Promise<D>;\n  children: React.ReactNode;\n};\n\nexport function LingoProviderWrapper<D>(props: LingoProviderWrapperProps<D>) {\n  const [locale, setLocaleState] = useState<string>(getLocaleFromCookies());",
+      "context": null
+    }
+  ],
+  "observations": [
+    "props.locale ?? (props as any).dictionary?.locale ?? DEFAULT_LOCALE,"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

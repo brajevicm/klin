@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00771",
+  "source_finding_id": "P00771",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat(app): Forms\n\n# Changes\n- Removed monaco editor in favor of codemirror\n- Reimplment expressions autocompletion logic \n- Implement dynamic forms. You can pass a `Component` annotation in a UDF and it will generate a `x-tracecat-component` metadata in the jsonschema. The UI looks for these to show more specialized UI. Otherwise we fallback to a CM yaml editor.\n\n\n## Summary by cubic\nAdded a new forms system for action and workflow panels, including a flexible YAML/JSON editor, expression input with template pill support, and improved control flow fields.\n\n- **New Features**\n  - Introduced CodeMirror-based YAML and JSON editors with template expression highlighting, completion, and validation.\n  - Added ExpressionInput and ForEachField components for handling template expressions and lists of expressions.\n  - Implemented polymorphic and toggle tab fields for dynamic form rendering.\n  - Enhanced action and workflow panels to use new form components, supporting both form and YAML editing modes.\n  - Improved type handling and schema parsing for dynamic field generation.\n\n- **Bug Fixes**\n  - Fixed issues with template pill editing, cursor navigation, and atomic deletion.\n  - Improved handling of str/list[str] edge cases and type conversions in forms.\n\n<!-- End of auto-generated description by cubic. -->",
+  "diff_context": [
+    {
+      "path": "frontend/src/components/builder/panel/action-panel.tsx",
+      "before": "\n            <div className=\"w-full min-w-[30rem]\">\n              <div className=\"flex items-center justify-start\">\n                <TabsList className=\"h-8 justify-start rounded-none bg-transparent p-0\">\n                  <TabsTrigger\n                    className=\"flex h-full min-w-24 items-center justify-center rounded-none border-b-2 border-transparent py-0 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none\"\n                    value=\"inputs\"\n                  >\n                    <LayoutListIcon className=\"mr-2 size-4\" />\n                    <span>Inputs</span>\n                  </TabsTrigger>\n                  <TabsTrigger\n                    className=\"flex h-full min-w-24 items-center justify-center rounded-none border-b-2 border-transparent py-0 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none\"\n                    value=\"control-flow\"\n                  >\n                    <SplitIcon className=\"mr-2 size-4\" />\n                    <span>If-condition / Loops</span>\n                  </TabsTrigger>\n                  <TabsTrigger\n                    className=\"flex h-full min-w-24 items-center justify-center rounded-none border-b-2 border-transparent py-0 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none\"\n                    value=\"retry-policy\"\n                  >\n                    <RotateCcwIcon className=\"mr-2 size-4\" />\n                    <span>Retries</span>\n                  </TabsTrigger>\n                  {registryAction.is_template && (\n                    <TabsTrigger\n                      className=\"flex h-full min-w-24 items-center justify-center rounded-none border-b-2 border-transparent py-0 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none\"\n                      value=\"template-inputs\"\n                    >\n                      <FileTextIcon className=\"mr-2 size-4\" />",
+      "after": "      commitAllEditors,\n    ]\n  )\n\n  // If the form is dirty, set the save state to unsaved\n  useEffect(() => {\n    if (methods.formState.isDirty) {\n      setSaveState(SaveState.UNSAVED)\n    }\n  }, [methods.formState.isDirty])\n\n  const onSubmit = useCallback(\n    async (values: ActionFormSchema) => {\n      try {\n        await handleSave(values)\n      } catch (error) {\n        console.error(\"Failed to save action\", error)\n        setSaveState(SaveState.ERROR)\n        setValidationResults([\n          {\n            status: \"error\",\n            msg: \"Failed to save action\",\n            detail: [\n              {\n                type: \"general\",\n                msg: String(error),\n              },\n            ],\n            ref: slugify(action?.title ?? \"\"),\n          },\n        ])",
+      "context": null
+    }
+  ],
+  "observations": [
+    "} catch (error) {"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01200",
+  "source_finding_id": "P01200",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "                  type: object\n                  properties:\n                    start:\n                      description: JSON schema for the start event\n                    stop:\n                      description: JSON schema for the stop event\n                  required: [start, stop]\n          404:\n            description: Workflow not found\n          500:\n            description: Error while getting the JSON schema for the start or stop event\n        \"\"\"\n        workflow = self._extract_workflow(request)\n        try:\n            start_event_schema = workflow.workflow.start_event_class.model_json_schema()\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting schema of start event for workflow: {e}\",\n                status_code=500,\n            )\n        try:\n            stop_event_schema = workflow.workflow.stop_event_class.model_json_schema()\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting schema of stop event for workflow: {e}\",\n                status_code=500,\n            )\n\n        return JSONResponse({\"start\": start_event_schema, \"stop\": stop_event_schema})\n\n    async def _get_workflow_representation(self, request: Request) -> JSONResponse:",
+      "after": "                  type: object\n                  properties:\n                    start:\n                      description: JSON schema for the start event\n                    stop:\n                      description: JSON schema for the stop event\n                  required: [start, stop]\n          404:\n            description: Workflow not found\n          500:\n            description: Error while getting the JSON schema for the start or stop event\n        \"\"\"\n        workflow = self._extract_workflow(request)\n        try:\n            start_event_schema = workflow.workflow.start_event_class.model_json_schema()\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting schema of start event for workflow: {e}\",\n                status_code=500,\n            )\n        try:\n            stop_event_schema = workflow.workflow.stop_event_class.model_json_schema()\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error getting schema of stop event for workflow: {e}\",\n                status_code=500,\n            )\n\n        return JSONResponse({\"start\": start_event_schema, \"stop\": stop_event_schema})\n\n    async def _get_workflow_representation(self, request: Request) -> JSONResponse:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00224",
+  "source_finding_id": "P00224",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "",
+      "after": "                    message=str(e),\n                    code=\"BACKGROUND_EXECUTION_ERROR\"\n                )\n            )\n            await event_queue.put(None)\n        finally:\n            # Background task cleanup completed\n            # Ensure the ADK runner releases any resources (e.g. toolsets)\n            if runner is not None:\n                close_method = getattr(runner, \"close\", None)\n                if close_method is not None:\n                    try:\n                        close_result = close_method()\n                        if inspect.isawaitable(close_result):\n                            await close_result\n                    except Exception as close_error:\n                        logger.warning(\n                            \"Error while closing ADK runner for thread %s: %s\",\n                            input.thread_id,\n                            close_error,\n                        )\n    \n    async def _cleanup_stale_executions(self):\n        \"\"\"Clean up stale executions.\"\"\"\n        stale_threads = []\n        \n        for thread_id, execution in self._active_executions.items():\n            if execution.is_stale(self._execution_timeout):\n                stale_threads.append(thread_id)\n        \n        for thread_id in stale_threads:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

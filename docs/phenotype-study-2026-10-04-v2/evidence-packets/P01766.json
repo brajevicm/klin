@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01766",
+  "source_finding_id": "P01766",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        try:\n            value = int(text)\n            if value < 1 or value > 65535:\n                self._row_set_message(row, _(\"Port must be between 1 and 65535\"), is_error=True)\n                return False\n            # Clear errors; we are not styling warnings inline\n            self._row_clear_message(row)\n            return True\n        except Exception:\n            self._row_set_message(row, _(\"Port must be a number\"), is_error=True)\n            return False\n\n    def _install_inline_validators(self):\n        # General page fields\n        if hasattr(self, 'nickname_row'):\n            self._connect_row_validation(self.nickname_row, lambda r: self._validate_field_row('name', r))\n        if hasattr(self, 'username_row'):\n            self._connect_row_validation(self.username_row, lambda r: self._validate_field_row('username', r))\n        if hasattr(self, 'hostname_row'):\n            self._connect_row_validation(self.hostname_row, lambda r: self._validate_field_row('hostname', r))\n        if hasattr(self, 'port_row'):\n            self._connect_row_validation(self.port_row, lambda r: self._validate_field_row('port', r, context=\"SSH\"))\n        # Local forwarding\n        if hasattr(self, 'local_port_row'):\n            self._connect_row_validation(self.local_port_row, lambda r: self._validate_port_row(r, _(\"Local Port\")))\n        if hasattr(self, 'remote_host_row'):\n            self._connect_row_validation(self.remote_host_row, lambda r: self._validate_host_row(r, allow_empty=False))\n        if hasattr(self, 'remote_port_row'):\n            self._connect_row_validation(self.remote_port_row, lambda r: self._validate_port_row(r, _(\"Target Port\")))\n        # Remote forwarding\n        if hasattr(self, 'remote_bind_host_row'):",
+      "after": "        try:\n            keys = []\n            parent = getattr(self, 'parent_window', None) or None\n            if parent and hasattr(parent, 'key_manager') and parent.key_manager:\n                keys = parent.key_manager.discover_keys() or []\n            names = []\n            paths = []\n            for k in keys:\n                try:\n                    rel = os.path.relpath(\n                        k.private_path,\n                        str(parent.key_manager.ssh_dir) if parent else None,\n                    )\n                    names.append(rel)\n                    paths.append(k.private_path)\n                except Exception:\n                    pass\n            # Add placeholder when none\n            if not names:\n                names.append(_(\"No keys detected\"))\n                paths.append(\"\")\n            # Add browse option\n            names.append(_(\"Browse…\"))\n            paths.append(\"__BROWSE__\")\n            self._key_paths = paths\n            model = Gtk.StringList()\n            for n in names:\n                model.append(n)\n            self.key_dropdown.set_model(model)\n            # Preselect currently set keyfile if present\n            preselect_idx = 0",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

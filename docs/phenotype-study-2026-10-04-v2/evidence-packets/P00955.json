@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00955",
+  "source_finding_id": "P00955",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: Add LSP stub\n\nAdds a stub implementations of a basic Language Server Protocol (LSP) to `prqlc`. LSP clients can connect to it and disconnect from it.\n\nIt use the `lsp-server` crate used by the official rust-analyzer.\n\nThe LSP specification is at [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "prqlc/prqlc/src/cli/lsp.rs",
+      "before": null,
+      "after": "            return Err(e.into());\n        }\n    };\n    main_loop(connection, initialization_params)?;\n    io_threads.join()?;\n\n    // Shut down gracefully.\n    eprintln!(\"shutting down server\");\n    Ok(())\n}\n\nfn main_loop(\n    connection: Connection,\n    params: serde_json::Value,\n) -> Result<(), Box<dyn Error + Sync + Send>> {\n    let _params: InitializeParams = serde_json::from_value(params).unwrap();\n    eprintln!(\"starting main loop\");\n    for msg in &connection.receiver {\n        eprintln!(\"got msg: {msg:?}\");\n        match msg {\n            Message::Request(req) => {\n                if connection.handle_shutdown(&req)? {\n                    return Ok(());\n                }\n                eprintln!(\"got request: {req:?}\");\n                match cast::<GotoDefinition>(req) {\n                    Ok((id, params)) => {\n                        eprintln!(\"got gotoDefinition request #{id}: {params:?}\");\n                        let result = Some(GotoDefinitionResponse::Array(Vec::new()));\n                        let result = serde_json::to_value(&result).unwrap();\n                        let resp = Response {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let _params: InitializeParams = serde_json::from_value(params).unwrap();"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

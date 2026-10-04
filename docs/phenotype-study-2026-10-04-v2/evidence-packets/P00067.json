@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00067",
+  "source_finding_id": "P00067",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: added `hk test`",
+  "diff_context": [
+    {
+      "path": "src/test_runner.rs",
+      "before": null,
+      "after": "use std::path::PathBuf;\nuse std::time::Instant;\n\nuse crate::{\n    Result,\n    step::Step,\n    step_test::{RunKind, StepTest},\n};\nuse ensembler::CmdLineRunner;\n\n#[allow(unused)]\npub struct TestResult {\n    pub step: String,\n    pub name: String,\n    pub ok: bool,\n    pub stdout: String,\n    pub stderr: String,\n    pub code: i32,\n    pub duration_ms: u128,\n    pub reasons: Vec<String>,\n}\n\npub async fn run_test_named(step: &Step, name: &str, test: &StepTest) -> Result<TestResult> {\n    let started_at = Instant::now();\n    let tmp = tempfile::tempdir().unwrap();\n    let sandbox = tmp.path().to_path_buf();",
+      "context": null
+    }
+  ],
+  "observations": [
+    "#[allow(unused)]"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

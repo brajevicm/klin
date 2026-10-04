@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01573",
+  "source_finding_id": "P01573",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Move kernel cmdline parsing to dedicated crate\n\nCreates a new dedicated crate for kernel command line parsing functionality,\nmoving it out of bootc-lib for better separation of concerns and modularity.\n\nChanges:\n- Create new bootc-kernel-cmdline crate under crates/kernel_cmdline/\n- Move kernel_cmdline.rs from bootc-lib to the new crate as lib.rs\n- Add bootc-kernel-cmdline dependency to bootc-lib\n- Update imports in bootc-lib to use bootc_kernel_cmdline:: namespace\n- Add missing Debug derive and documentation to fix lints\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>\nSigned-off-by: John Eckersberg <[project metadata omitted][user omitted].com>",
+  "diff_context": [
+    {
+      "path": "crates/kernel_cmdline/src/lib.rs",
+      "before": null,
+      "after": "        self.iter()\n            .filter_map(|p| p.to_str())\n            .find(move |p| p.key == key)\n    }\n\n    /// Find all kernel arguments starting with the given prefix which must be UTF-8.\n    /// Non-UTF8 values are ignored.\n    ///\n    /// This is a variant of [`Self::find`].\n    pub fn find_all_starting_with_str(\n        &'a self,\n        prefix: &'a str,\n    ) -> impl Iterator<Item = ParameterStr<'a>> + 'a {\n        self.iter()\n            .filter_map(|p| p.to_str())\n            .filter(move |p| p.key.0.starts_with(prefix))\n    }\n\n    /// Locate the value of the kernel argument with the given key name.\n    ///\n    /// Returns the first value matching the given key, or `None` if not found.\n    /// Key comparison treats dashes and underscores as equivalent.\n    pub fn value_of(&'a self, key: impl AsRef<[u8]>) -> Option<&'a [u8]> {\n        self.find(key).and_then(|p| p.value)\n    }\n\n    /// Locate the UTF-8 value of the kernel argument with the given key name.\n    ///\n    /// Returns the first value matching the given key, or `None` if not found.\n    /// Key comparison treats dashes and underscores as equivalent.\n    pub fn value_of_utf8(&'a self, key: &str) -> Result<Option<&'a str>, std::str::Utf8Error> {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "find_all_starting_with_str calls p.key.0.starts_with directly; the base calls it only inside Cmdline.find_all_starting_with_str (crates/lib/src/kernel_cmdline.rs:80), which 2 call site(s) use"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01966",
+  "source_finding_id": "P01966",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat(app): Forms\n\n# Changes\n- Removed monaco editor in favor of codemirror\n- Reimplment expressions autocompletion logic \n- Implement dynamic forms. You can pass a `Component` annotation in a UDF and it will generate a `x-tracecat-component` metadata in the jsonschema. The UI looks for these to show more specialized UI. Otherwise we fallback to a CM yaml editor.\n\n\n## Summary by cubic\nAdded a new forms system for action and workflow panels, including a flexible YAML/JSON editor, expression input with template pill support, and improved control flow fields.\n\n- **New Features**\n  - Introduced CodeMirror-based YAML and JSON editors with template expression highlighting, completion, and validation.\n  - Added ExpressionInput and ForEachField components for handling template expressions and lists of expressions.\n  - Implemented polymorphic and toggle tab fields for dynamic form rendering.\n  - Enhanced action and workflow panels to use new form components, supporting both form and YAML editing modes.\n  - Improved type handling and schema parsing for dynamic field generation.\n\n- **Bug Fixes**\n  - Fixed issues with template pill editing, cursor navigation, and atomic deletion.\n  - Improved handling of str/list[str] edge cases and type conversions in forms.\n\n<!-- End of auto-generated description by cubic. -->",
+  "diff_context": [
+    {
+      "path": "frontend/__tests__/yaml-editor.test.tsx",
+      "before": null,
+      "after": "  createPillClickHandler: () => () => false,\n  editingRangeField: {},\n  enhancedCursorLeft: () => false,\n  enhancedCursorRight: () => false,\n  templatePillTheme: [],\n}))\n\ndescribe(\"YamlStyledEditor Implementation\", () => {\n  beforeEach(() => {\n    jest.clearAllMocks()\n  })\n\n  it(\"should have the correct interface structure\", () => {\n    // This test verifies that the YamlStyledEditor has the expected ref interface\n    const TestComponent = () => {\n      const methods = useForm<{ testField: any }>({\n        defaultValues: { testField: { key: \"value\" } },\n      })\n      const ref = React.useRef<YamlStyledEditorRef>(null)\n\n      React.useEffect(() => {\n        // Test that the ref has the expected commitToForm method\n        if (ref.current) {\n          expect(typeof ref.current.commitToForm).toBe(\"function\")\n        }\n      }, [])\n\n      return (\n        <FormProvider {...methods}>\n          <YamlStyledEditor\n            ref={ref}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const methods = useForm<{ testField: any }>({"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

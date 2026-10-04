@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01862",
+  "source_finding_id": "P01862",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        listen_addr_row = Adw.EntryRow(title=_(\"Bind address (optional)\"))\n        listen_port_row = Adw.EntryRow()\n        listen_port_row.set_title(_(\"Local port\"))\n        try:\n            lpe2 = listen_port_row.get_child()\n            if lpe2 and hasattr(lpe2, 'set_input_purpose'):\n                lpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if lpe2 and hasattr(lpe2, 'set_max_length'):\n                lpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        remote_host_row = Adw.EntryRow(title=_(\"Host\"))\n        remote_port_row = Adw.EntryRow()\n        remote_port_row.set_title(_(\"Port\"))\n        try:\n            rpe2 = remote_port_row.get_child()\n            if rpe2 and hasattr(rpe2, 'set_input_purpose'):\n                rpe2.set_input_purpose(Gtk.InputPurpose.DIGITS)\n            if rpe2 and hasattr(rpe2, 'set_max_length'):\n                rpe2.set_max_length(5)\n        except Exception:\n            pass\n\n        # Pack rows\n        group = Adw.PreferencesGroup()\n        group.add(type_row)\n        group.add(listen_addr_row)\n        group.add(listen_port_row)\n        group.add(remote_host_row)\n        group.add(remote_port_row)",
+      "after": "        # Create main container\n        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)\n        main_box.append(header_bar)\n        main_box.append(box)\n        \n        # Set content for Adw.Window\n        dialog.set_content(main_box)\n\n        # Populate when editing\n        if existing_rule:\n            t = existing_rule.get('type', 'local')\n            type_row.set_selected({'local':0,'remote':1,'dynamic':2}.get(t,0))\n            listen_addr_row.set_text(str(existing_rule.get('listen_addr', 'localhost')))\n            try:\n                listen_port_row.set_text(str(int(existing_rule.get('listen_port', 0) or 0)))\n            except Exception:\n                listen_port_row.set_text(str(existing_rule.get('listen_port', '')))\n            if t == 'remote':\n                # For remote rules, the destination is local_host/local_port\n                remote_host_row.set_text(str(existing_rule.get('local_host', 'localhost')))\n                try:\n                    remote_port_row.set_text(str(int(existing_rule.get('local_port', 0) or 0)))\n                except Exception:\n                    remote_port_row.set_text(str(existing_rule.get('local_port', '')))\n            else:\n                remote_host_row.set_text(str(existing_rule.get('remote_host', 'localhost')))\n                try:\n                    remote_port_row.set_text(str(int(existing_rule.get('remote_port', 0) or 0)))\n                except Exception:\n                    remote_port_row.set_text(str(existing_rule.get('remote_port', '')))\n        else:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

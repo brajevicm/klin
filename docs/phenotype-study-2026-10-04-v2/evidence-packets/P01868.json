@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01868",
+  "source_finding_id": "P01868",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "requirements.txt",
+      "before": null,
+      "after": "rich==13.7.1",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency pypi:rich"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

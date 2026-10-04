@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00782",
+  "source_finding_id": "P00782",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/core/utils/test_opanai.py",
+      "before": "            elif model_name.startswith(\"claude-3\"):\n                return 6\n            elif model_name.startswith((\"deepseek\", \"glm\")):\n                return 3\n            return 0\n\n        sorted_models = sorted(\n            [model.id for model in models], key=lambda x: (-get_model_weight(x), x)\n        )\n        return sorted_models\n    except Exception:\n        return []",
+      "after": "            model_name = model_name.lower()\n            if model_name.startswith((\"gpt-5\", \"claude-4\")):\n                return 10\n            elif model_name.startswith(\"gpt-4\"):\n                return 5\n            elif model_name.startswith(\"gemini-2\"):\n                return 6\n            elif model_name.startswith((\"deepseek\", \"glm\")):\n                return 3\n            return 0\n\n        sorted_models = sorted(\n            [model.id for model in models], key=lambda x: (-get_model_weight(x), x)\n        )\n        return sorted_models\n    except Exception:\n        return []",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

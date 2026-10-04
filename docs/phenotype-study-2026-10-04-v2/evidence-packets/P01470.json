@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01470",
+  "source_finding_id": "P01470",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        # Assemble the layout\n        main_box.append(scrolled_window)\n        main_box.append(bottom_section)\n        \n        # Set the content\n        self.set_content(main_box)\n        \n        # Install inline validators for key fields\n        try:\n            self._install_inline_validators()\n        except Exception as e:\n            logger.debug(f\"Failed to install inline validators: {e}\")\n        # After building views, populate existing data if editing\n        try:\n            self.load_connection_data()\n            # Re-run validations after loading existing values\n            try:\n                self._run_initial_validation()\n            except Exception:\n                pass\n        except Exception as e:\n            logger.error(f\"Failed to populate connection data: {e}\")\n    \n    def create_preferences_content(self):\n        \"\"\"Create the preferences content with all pages\"\"\"\n        # Create a notebook for tabbed interface\n        notebook = Gtk.Notebook()\n        notebook.set_show_tabs(True)\n        notebook.set_show_border(False)\n        \n        # General page",
+      "after": "        \n        # Set the content\n        self.set_content(main_box)\n        \n        # Install inline validators for key fields\n        try:\n            self._install_inline_validators()\n        except Exception as e:\n            logger.debug(f\"Failed to install inline validators: {e}\")\n        # After building views, populate existing data if editing\n        try:\n            self.load_connection_data()\n            # Re-run validations after loading existing values\n            try:\n                self._run_initial_validation()\n            except Exception:\n                pass\n        except Exception as e:\n            logger.error(f\"Failed to populate connection data: {e}\")\n    \n    def create_preferences_content(self):\n        \"\"\"Create the preferences content with all pages\"\"\"\n        # Create a notebook for tabbed interface\n        notebook = Gtk.Notebook()\n        notebook.set_show_tabs(True)\n        notebook.set_show_border(False)\n        \n        # General page\n        general_page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)\n        general_page.set_margin_top(12)\n        general_page.set_margin_bottom(12)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01743",
+  "source_finding_id": "P01743",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "            except Exception as e:\n                raise HTTPException(\n                    detail=f\"Failed to deserialize event: {e}\", status_code=400\n                )\n\n            # Send the event to the context\n            try:\n                ctx.send_event(event, step=step)\n            except Exception as e:\n                raise HTTPException(\n                    detail=f\"Failed to send event: {e}\", status_code=400\n                )\n\n            return JSONResponse({\"status\": \"sent\"})\n\n        except HTTPException:\n            raise\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error processing request: {e}\", status_code=500\n            )\n\n    #\n    # Private methods\n    #\n    def _extract_workflow(self, request: Request) -> _NamedWorkflow:\n        if \"name\" not in request.path_params:\n            raise HTTPException(detail=\"'name' parameter missing\", status_code=400)\n        name = request.path_params[\"name\"]\n\n        if name not in self._workflows:",
+      "after": "            raise HTTPException(detail=\"Context not available\", status_code=500)\n\n        # Parse request body\n        try:\n            body = await request.json()\n            event_str = body.get(\"event\")\n            step = body.get(\"step\")\n\n            if not event_str:\n                raise HTTPException(detail=\"Event data is required\", status_code=400)\n\n            # Deserialize the event\n            serializer = JsonSerializer()\n            try:\n                event = serializer.deserialize(event_str)\n            except Exception as e:\n                raise HTTPException(\n                    detail=f\"Failed to deserialize event: {e}\", status_code=400\n                )\n\n            # Send the event to the context\n            try:\n                ctx.send_event(event, step=step)\n            except Exception as e:\n                raise HTTPException(\n                    detail=f\"Failed to send event: {e}\", status_code=400\n                )\n\n            return JSONResponse({\"status\": \"sent\"})\n\n        except HTTPException:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

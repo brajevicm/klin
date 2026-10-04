@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00245",
+  "source_finding_id": "P00245",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add parameters max-area, max-width and max-height \n\nAdd parameters that may help to filter out events with improbably high areas, widths and/or heights, like fog or rain.\n\nAll new parameters are relative i.e. they can assume values between 0.0 to 1.0 representing a fraction of a full frame dimension.",
+  "diff_context": [
+    {
+      "path": "tests/test_maxarea.py",
+      "before": null,
+      "after": "\n# On some ARM chips (e.g. Apple M1), results are slightly different, so we allow a 1 frame\n# delta on the events for those platforms.\nBASE_COMMAND_TIMECODE_LIST_GOLDEN = \"\"\"\n00:00:08.229,00:00:32.113,00:00:33.117,00:00:38.937\n\"\"\"[1:]\n\n\ndef _run_dvr_scan(args: List[str]) -> str:\n    \"\"\"Helper to run dvr-scan with a list of arguments and return the output.\"\"\"\n    # Add quotes around arguments with spaces.\n    processed_args = []\n    for arg in args:\n        processed_args.append(f'\"{arg}\"' if \" \" in str(arg) else str(arg))\n    command = \" \".join([DVR_SCAN_COMMAND] + processed_args)\n    return subprocess.check_output(\n        command,\n        shell=True,\n        text=True,\n    )\n\n\ndef test_scan_haze(tmp_path):\n    \"\"\"Test haze video without max-area filter\"\"\"\n    output = _run_dvr_scan(\n        BASE_COMMAND\n        + [\n            \"--output-dir\",\n            tmp_path,\n            \"--scan-only\",\n        ]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `subprocess` call with `shell=True` identified, security issue"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00589",
+  "source_finding_id": "P00589",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add Wavetable LFO visualizers\n\n## Summary\n- add canvases for Wavetable LFOs\n- wire canvases to parameter layout\n- add JS visualizer for Wavetable LFOs\n- include the new script on the Wavetable editor page\n\n## Testing\n- `pip install -r requirements.txt`\n- `pytest -q`\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "handlers/wavetable_param_editor_handler_class.py",
+      "before": "            preset_path = result['path']\n\n            macro_updates = {}\n            for i in range(8):\n                val = form.getvalue(f'macro_{i}_value')\n                if val is not None:\n                    macro_updates[i] = val\n            macro_result = update_macro_values(preset_path, macro_updates, preset_path)\n            if not macro_result['success']:\n                return self.format_error_response(macro_result['message'])\n\n            macros_data_str = form.getvalue('macros_data')\n            if macros_data_str:\n                try:\n                    macros_data = json.loads(macros_data_str)\n                except Exception:\n                    macros_data = []\n            else:\n                macros_data = []\n\n            # Update macro names\n            name_updates = {m.get('index'): m.get('name') for m in macros_data}\n            name_result = update_preset_macro_names(preset_path, name_updates)\n            if not name_result['success']:\n                return self.format_error_response(name_result['message'])\n\n            # Determine existing mappings to remove\n            existing_info = extract_macro_information(preset_path)\n            existing_mapped = existing_info.get('mapped_parameters', {}) if existing_info['success'] else {}\n\n            processed = set()",
+      "after": "            preset_path = result['path']\n\n            macro_updates = {}\n            for i in range(8):\n                val = form.getvalue(f'macro_{i}_value')\n                if val is not None:\n                    macro_updates[i] = val\n            macro_result = update_macro_values(preset_path, macro_updates, preset_path)\n            if not macro_result['success']:\n                return self.format_error_response(macro_result['message'])\n\n            macros_data_str = form.getvalue('macros_data')\n            if macros_data_str:\n                try:\n                    macros_data = json.loads(macros_data_str)\n                except Exception:\n                    macros_data = []\n            else:\n                macros_data = []\n\n            # Update macro names\n            name_updates = {m.get('index'): m.get('name') for m in macros_data}\n            name_result = update_preset_macro_names(preset_path, name_updates)\n            if not name_result['success']:\n                return self.format_error_response(name_result['message'])\n\n            # Determine existing mappings to remove\n            existing_info = extract_macro_information(preset_path)\n            existing_mapped = existing_info.get('mapped_parameters', {}) if existing_info['success'] else {}\n\n            processed = set()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

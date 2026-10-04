@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01456",
+  "source_finding_id": "P01456",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Implement warnings table and frontend display\n\n## Summary\n- add `warnings` table\n- expose warnings via new API endpoint\n- record system check warnings in the DB\n- surface run warnings in stats and compare pages\n- adapt tests to use warnings table\n\n## Testing\n- `pip install -r requirements-dev.txt`\n- `pylint $(git ls-files '*.py')` *(fails: Unable to import packages)*\n- `pytest -k warnings` *(fails: ModuleNotFoundError: No module named 'tests')*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "lib/scenario_runner.py",
+      "before": "                        WHERE id=%s''',\n                        params=(invalid_message, self._run_id)\n                    )\n                break # one is enough\n\n    def cleanup(self, continue_measurement=False):\n        #https://github.com/green-coding-solutions/green-metrics-tool/issues/97\n        print(TerminalColors.OKCYAN, '\\nStarting cleanup routine', TerminalColors.ENDC)\n\n        if continue_measurement is False:\n            print('Stopping metric providers')\n            for metric_provider in self.__metric_providers:\n                try:\n                    metric_provider.stop_profiling()\n                # pylint: disable=broad-exception-caught\n                except Exception as exc:\n                    error_helpers.log_error(f\"Could not stop profiling on {metric_provider.__class__.__name__}\", exception=exc)\n            self.__metric_providers.clear()\n\n\n        print('Stopping containers')\n        for container_id in self.__containers:\n            subprocess.run(['docker', 'rm', '-f', container_id], check=True, stderr=subprocess.DEVNULL)\n        self.__containers = {}\n\n        print('Removing network')\n        for network_name in self.__networks:\n            # no check=True, as the network might already be gone. We do not want to fail here\n            subprocess.run(['docker', 'network', 'rm', network_name], stderr=subprocess.DEVNULL, check=False)\n        self.__networks.clear()",
+      "after": "                    print(TerminalColors.WARNING, '\\nSkipping saving identification if run is invalid due to missing run id or --dev-no-save', TerminalColors.ENDC)\n                else:\n                    self.__warnings.append(invalid_message)\n                break # one is enough\n\n    def cleanup(self, continue_measurement=False):\n        #https://github.com/green-coding-solutions/green-metrics-tool/issues/97\n        print(TerminalColors.OKCYAN, '\\nStarting cleanup routine', TerminalColors.ENDC)\n\n        if continue_measurement is False:\n            print('Stopping metric providers')\n            for metric_provider in self.__metric_providers:\n                try:\n                    metric_provider.stop_profiling()\n                # pylint: disable=broad-exception-caught\n                except Exception as exc:\n                    error_helpers.log_error(f\"Could not stop profiling on {metric_provider.__class__.__name__}\", exception=exc)\n            self.__metric_providers.clear()\n\n\n        print('Stopping containers')\n        for container_id in self.__containers:\n            subprocess.run(['docker', 'rm', '-f', container_id], check=True, stderr=subprocess.DEVNULL)\n        self.__containers = {}\n\n        print('Removing network')\n        for network_name in self.__networks:\n            # no check=True, as the network might already be gone. We do not want to fail here\n            subprocess.run(['docker', 'network', 'rm', network_name], stderr=subprocess.DEVNULL, check=False)\n        self.__networks.clear()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

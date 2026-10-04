@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00398",
+  "source_finding_id": "P00398",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        \n        # Create header bar with window controls\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        \n        # Create main container\n        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)\n        main_box.append(header_bar)\n        main_box.append(box)\n        \n        # Set content for Adw.Window\n        dialog.set_content(main_box)\n        \n        # Load initial data\n        refresh_port_info()\n        \n        # Ensure dialog closes when the window controller is activated\n        dialog.connect(\"close-request\", lambda *_: dialog.destroy())\n        \n        # Show the window\n        dialog.present()\n\n    def _autosave_forwarding_changes(self):\n        \"\"\"Disabled autosave to avoid log floods; saving occurs on dialog Save.\"\"\"\n        return\n    \n    def on_cancel_clicked(self, button):\n        \"\"\"Handle cancel button click\"\"\"\n        self.close()\n    \n    def on_save_clicked(self, *_args):",
+      "after": "            self.show_error(_(\"Please enter a nickname for this connection\"))\n            return\n            \n        # Initialize forwarding_rules list if needed\n        if not hasattr(self, 'forwarding_rules') or self.forwarding_rules is None:\n            self.forwarding_rules = []\n        \n        # Persist exactly what is in the editor list (enabled rules only) - no sanitization\n        forwarding_rules = [dict(r) for r in self.forwarding_rules if r.get('enabled', True)]\n        try:\n            logger.info(\n                \"ConnectionDialog save: %d forwarding rules collected, keyfile: '%s'\",\n                len(forwarding_rules or []), keyfile_value\n            )\n            logger.debug(\"Forwarding rules: %s\", forwarding_rules)\n        except Exception:\n            pass\n        \n        # Detect if password text was changed by user during this edit session\n        try:\n            password_changed = (self.password_row.get_text() != getattr(self, '_orig_password', None))\n        except Exception:\n            password_changed = False\n\n        # Resolve keyfile from dropdown/browse/subtitle/existing\n        try:\n            keyfile_value = ''\n            if hasattr(self, 'key_dropdown') and hasattr(self, '_key_paths'):\n                sel = self.key_dropdown.get_selected()\n                if 0 <= sel < len(self._key_paths):\n                    pth = self._key_paths[sel]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

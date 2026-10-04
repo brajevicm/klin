@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01582",
+  "source_finding_id": "P01582",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "\n            if not key or not value or key == \"Select SSH option...\":\n                continue\n\n            if key.lower() == \"host\":\n                host_rows.append(row_grid)\n                continue\n\n            config_lines.append(f\"{key} {value}\")\n\n        if host_rows:\n            def _remove_rows():\n                for row in host_rows:\n                    try:\n                        self.on_remove_option(None, row)\n                    except Exception:\n                        pass\n                self.update_config_preview()\n                return False\n\n            GLib.idle_add(_remove_rows)\n\n        return \"\\n\".join(config_lines)\n\n    def _update_parent_connection(self):\n        \"\"\"Update the parent connection object with current advanced tab data\"\"\"\n        try:\n            parent_dialog = self.get_ancestor(Adw.Window)\n            if parent_dialog and hasattr(parent_dialog, 'connection') and parent_dialog.connection:\n                extra_config = self.get_extra_ssh_config()\n                parent_dialog.connection.extra_ssh_config = extra_config",
+      "after": "\n            if not key or not value or key == \"Select SSH option...\":\n                continue\n\n            if key.lower() == \"host\":\n                host_rows.append(row_grid)\n                continue\n\n            config_lines.append(f\"{key} {value}\")\n\n        if host_rows:\n            def _remove_rows():\n                for row in host_rows:\n                    try:\n                        self.on_remove_option(None, row)\n                    except Exception:\n                        pass\n                self.update_config_preview()\n                return False\n\n            GLib.idle_add(_remove_rows)\n\n        return \"\\n\".join(config_lines)\n\n    def _update_parent_connection(self):\n        \"\"\"Update the parent connection object with current advanced tab data\"\"\"\n        try:\n            parent_dialog = self.get_ancestor(Adw.Window)\n            if parent_dialog and hasattr(parent_dialog, 'connection') and parent_dialog.connection:\n                extra_config = self.get_extra_ssh_config()\n                parent_dialog.connection.extra_ssh_config = extra_config",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

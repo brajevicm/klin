@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00960",
+  "source_finding_id": "P00960",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "fc to qemu migration 1",
+  "diff_context": [
+    {
+      "path": "apps/server/src/execution/firecracker/firecracker-vm-runner.ts",
+      "before": "          \"shadow.io/repo-url\": taskConfig.repoUrl,\n          \"shadow.io/base-branch\": taskConfig.baseBranch,\n          \"shadow.io/shadow-branch\": taskConfig.shadowBranch,\n          \"shadow.io/vm-type\": \"firecracker\",\n        },\n      },\n      spec: {\n        serviceAccountName: \"shadow-firecracker-vm-sa\",\n        runtimeClassName: \"kata-qemu\",\n        nodeSelector: {\n          firecracker: \"true\",\n          kvm: \"enabled\",\n        },\n        tolerations: [\n          {\n            key: \"firecracker.shadow.ai/dedicated\",\n            operator: \"Equal\",\n            value: \"true\",\n            effect: \"NoSchedule\",\n          },\n        ],\n        restartPolicy: \"Never\",\n        initContainers: [\n          {\n            name: \"vm-image-loader\",\n            image: \"alpine:latest\",\n            securityContext: {\n              privileged: true,\n              runAsUser: 0,\n            },\n            command: [\"/bin/sh\", \"-c\"],",
+      "after": "          \"task-id\": taskConfig.id,\n          \"user-id\": taskConfig.userId,\n        },\n        annotations: {\n          \"shadow.io/task-id\": taskConfig.id,\n          \"shadow.io/repo-url\": taskConfig.repoUrl,\n          \"shadow.io/base-branch\": taskConfig.baseBranch,\n          \"shadow.io/shadow-branch\": taskConfig.shadowBranch,\n          \"shadow.io/vm-type\": \"kata-qemu\",\n        },\n      },\n      spec: {\n        serviceAccountName: \"shadow-firecracker-vm-sa\",\n        runtimeClassName: \"kata-qemu\",\n        nodeSelector: {\n          firecracker: \"true\", // TODO: Rename to kata-qemu or vm in future\n        },\n        tolerations: [\n          {\n            key: \"firecracker.shadow.ai/dedicated\",\n            operator: \"Equal\",\n            value: \"true\",\n            effect: \"NoSchedule\",\n          },\n        ],\n        restartPolicy: \"Never\",\n        initContainers: [\n          {\n            name: \"workspace-init\",\n            image: \"alpine/git:latest\",\n            env: [",
+      "context": null
+    }
+  ],
+  "observations": [
+    "comment marker"
+  ],
+  "measurement_holes": [
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

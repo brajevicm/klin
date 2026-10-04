@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01672",
+  "source_finding_id": "P01672",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add Wavetable LFO visualizers\n\n## Summary\n- add canvases for Wavetable LFOs\n- wire canvases to parameter layout\n- add JS visualizer for Wavetable LFOs\n- include the new script on the Wavetable editor page\n\n## Testing\n- `pip install -r requirements.txt`\n- `pytest -q`\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "handlers/wavetable_param_editor_handler_class.py",
+      "before": "            if os.path.exists(preset_path):\n                return self.format_error_response(\"Preset already exists\")\n            try:\n                shutil.copy(DEFAULT_PRESET, preset_path)\n                refresh_success, refresh_message = refresh_library()\n                if refresh_success:\n                    message = (\n                        f\"Created new preset {os.path.basename(preset_path)}. \"\n                        \"Library refreshed.\"\n                    )\n                else:\n                    message = (\n                        f\"Created new preset {os.path.basename(preset_path)}. \"\n                        f\"Library refresh failed: {refresh_message}\"\n                    )\n            except Exception as exc:\n                return self.format_error_response(f\"Could not create preset: {exc}\")\n        else:\n            preset_path = form.getvalue('preset_select')\n\n        if not preset_path:\n            return self.format_error_response(\"No preset selected\")\n\n        is_core = preset_path.startswith(CORE_LIBRARY_DIR)\n\n        rename_flag = False\n        if action == 'save_params':\n            try:\n                count = int(form.getvalue('param_count', '0'))\n            except ValueError:\n                count = 0",
+      "after": "            if os.path.exists(preset_path):\n                return self.format_error_response(\"Preset already exists\")\n            try:\n                shutil.copy(DEFAULT_PRESET, preset_path)\n                refresh_success, refresh_message = refresh_library()\n                if refresh_success:\n                    message = (\n                        f\"Created new preset {os.path.basename(preset_path)}. \"\n                        \"Library refreshed.\"\n                    )\n                else:\n                    message = (\n                        f\"Created new preset {os.path.basename(preset_path)}. \"\n                        f\"Library refresh failed: {refresh_message}\"\n                    )\n            except Exception as exc:\n                return self.format_error_response(f\"Could not create preset: {exc}\")\n        else:\n            preset_path = form.getvalue('preset_select')\n\n        if not preset_path:\n            return self.format_error_response(\"No preset selected\")\n\n        is_core = preset_path.startswith(CORE_LIBRARY_DIR)\n\n        rename_flag = False\n        if action == 'save_params':\n            try:\n                count = int(form.getvalue('param_count', '0'))\n            except ValueError:\n                count = 0",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

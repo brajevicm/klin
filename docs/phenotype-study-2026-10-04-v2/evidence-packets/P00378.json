@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00378",
+  "source_finding_id": "P00378",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/src/server/handler.ts",
+      "before": null,
+      "after": "import type { Collection } from '@tanstack/db'\nimport type { SyncEndpoint, ElectricHeaders } from '../types'\nimport { VersionIndex } from '../core/versionIndex'\nimport { EventBus } from '../core/eventBus'\nimport { ElectricStreamEncoder } from '../core/stream'\nimport { globalRegistry } from '../core/registry'\nimport { parseOffset, isValidOffset, formatOffset } from '../core/offsets'\n\n/**\n * Create a sync handler for a TanStack DB collection\n * @param endpoint The sync endpoint configuration\n * @returns A function that handles HTTP requests\n */\nexport function createSyncHandler(endpoint: SyncEndpoint): (req: Request) => Promise<Response> {\n  const { collection, pageSize = 5000, liveTimeoutMs = 30000 } = endpoint\n  \n  // Create version index and event bus",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new dependency server -> (root) in packages/db-sync-server/src closes the cycle (root) -> server (1 imports, e.g. packages/db-sync-server/src/index.ts:2)"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

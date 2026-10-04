@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01790",
+  "source_finding_id": "P01790",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/slug.test.ts",
+      "before": "  });\n\n  it(\"drops punctuation at both ends\", () => {\n    expect(slugify(\"  ¡Hola, mundo!  \")).toBe(\"hola-mundo\");\n    expect(slugify(\"--a--\")).toBe(\"a\");\n  });\n\n  it(\"caps the length\", () => {\n    expect(slugify(\"x\".repeat(100))).toHaveLength(40);\n  });\n\n  it(\"rejects an empty title\", () => {\n    expect(() => slugify(\"   \")).toThrow(\"empty title\");\n  });\n});\n\ndescribe(\"uniqueSlug\", () => {\n  it(\"adds a counter when the slug is taken\", async () => {\n    const taken = new Set([\"hello-world\", \"hello-world-2\"]);\n    await expect(uniqueSlug(\"Hello World\", async (s) => taken.has(s))).resolves.toBe(\"hello-world-3\");\n  });\n});\n\ndescribe(\"rendering\", () => {\n  it(\"shows the slug\", () => {\n    document.body.textContent = slugify(\"Hello World\");\n    screen.getByText(\"hello-world\");\n  });\n});",
+      "after": "  });\n\n  it(\"drops punctuation at both ends\", () => {\n    expect(slugify(\"  ¡Hola, mundo!  \")).toBe(\"hola-mundo\");\n    expect(slugify(\"--a--\")).toBe(\"a\");\n  });\n\n  it(\"caps the length\", () => {\n    expect(slugify(\"x\".repeat(100))).toHaveLength(40);\n  });\n\n  it(\"rejects an empty title\", () => {\n    expect(() => slugify(\"   \")).toThrow(\"empty title\");\n  });\n\n  it(\"does not throw on a long title\", () => {\n    slugify(\"y\".repeat(10_000));\n  });\n});\n\ndescribe(\"uniqueSlug\", () => {\n  it(\"adds a counter when the slug is taken\", async () => {\n    const taken = new Set([\"hello-world\", \"hello-world-2\"]);\n    await expect(uniqueSlug(\"Hello World\", async (s) => taken.has(s))).resolves.toBe(\"hello-world-3\");\n  });\n});\n\ndescribe(\"rendering\", () => {\n  it(\"shows the slug\", () => {\n    document.body.textContent = slugify(\"Hello World\");\n    screen.getByText(\"hello-world\");",
+      "context": null
+    }
+  ],
+  "observations": [
+    "does not throw on a long title"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00068",
+  "source_finding_id": "P00068",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Add crates-io-rs example using Spin SDK for HTTP capabilities\n\n## Overview\n\nThis PR adds a new Rust-based WebAssembly component example (`crates-io-rs`) that demonstrates HTTP networking using Spin SDK. The example fetches crate information from the crates.io API, showcasing how to build components that interact with external APIs while running in Wassette's secure sandbox.\n\n## Implementation Details\n\nThe example uses the Spin SDK (which provides excellent HTTP support on the `wasm32-wasip1` target) to implement a component that:\n\n- **Fetches crate information** from the crates.io public API\n- **Parses JSON responses** with proper error handling\n- **Returns formatted markdown** including:\n  - Crate name and description\n  - Latest version number\n  - Total and recent download statistics\n  - List of recent versions\n\n### Example Usage\n\n```bash\n# Build the component\ncd examples/crates-io-rs\ncargo component build --release\n\n# Run with Wassette\njust run-crates-io-rs\n```\n\nThen ask the AI agent:\n```\nPlease get information about the \"serde\" crate from crates.io\n```\n\n## Key Features\n\n- ✅ **Full HTTP Networking**: Demonstrates async HTTP requests using Spin SDK's async runtime\n- ✅ **Security-First**: Includes `policy.yaml` that restricts network access to only crates.io (principle of least privilege)\n- ✅ **Well Documented**: Comprehensive README with context about WASIp3 and current implementation approach\n- ✅ **Production Ready**: Passes all linting, formatting, and build checks\n\n## Files Changed\n\n- `examples/crates-io-rs/` - New example directory with complete implementation\n- `Justfile` - Added build and run commands for the new example\n- `.github/workflows/examples.yml` - Added to publishing workflow for GHCR\n- `CHANGELOG.md` - Documented the new example\n\n## About WASIp3\n\nWASIp3 (WASI Preview 3) is an upcoming version of the WebAssembly System Interface that introduces native async support through the Component Model. As of Wasmtime v37, WASIp3 is available as an experimental preview but is not yet production-ready.\n\n**This example uses Spin SDK's async runtime**, not native WASIp3 async primitives. The key innovation in WASIp3 is its native async support at the Component Model level, which differs from Spin SDK's approach. The README includes comprehensive documentation explaining:\n\n- What WASIp3 is and its key features (native async primitives)\n- How this example differs from native WASIp3\n- What to expect when WASIp3 becomes production-ready\n- How to experiment with WASIp3 features in Wasmtime v37+\n\nWhen WASIp3 becomes production-ready in future Wasmtime releases, components can be migrated to use native `wasi:http/outgoing-handler[user omitted].3.0` interfaces.\n…",
+  "diff_context": [
+    {
+      "path": "examples/crates-io-rs/src/lib.rs",
+      "before": null,
+      "after": "// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT license.\n\nuse serde::{Deserialize, Serialize};\nuse spin_sdk::http::{send, Request, Response};\n\n#[allow(warnings)]\nmod bindings;\n\nuse bindings::Guest;\n\nstruct Component;\n\n#[derive(Debug, Deserialize, Serialize)]\nstruct CrateResponse {\n    #[serde(rename = \"crate\")]\n    crate_info: CrateInfo,\n    versions: Vec<Version>,\n}\n\n#[derive(Debug, Deserialize, Serialize)]\nstruct CrateInfo {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "#[allow(warnings)]"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

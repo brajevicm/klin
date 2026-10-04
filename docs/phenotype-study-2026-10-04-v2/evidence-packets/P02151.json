@@ -1,0 +1,24 @@
+{
+  "packet_id": "P02151",
+  "source_finding_id": "P02151",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "main.py",
+      "before": "\nlogger = logger.setup_logger(\"VideoCaptioner\")\n\n\ndef exception_hook(exctype, value, tb):\n    logger.error(\"\".join(traceback.format_exception(exctype, value, tb)))\n    sys.__excepthook__(exctype, value, tb)  # 调用默认的异常处理\n\n\nsys.excepthook = exception_hook\n\n\n# Enable DPI Scale\nif cfg.get(cfg.dpiScale) == \"Auto\":\n    QApplication.setHighDpiScaleFactorRoundingPolicy(\n        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough\n    )\n    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)\nelse:\n    os.environ[\"QT_ENABLE_HIGHDPI_SCALING\"] = \"0\"\n    os.environ[\"QT_SCALE_FACTOR\"] = str(cfg.get(cfg.dpiScale))\nQApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)\n\napp = QApplication(sys.argv)\napp.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings)\n\n# Internationalization (Multi-language)\nlocale = cfg.get(cfg.language).value\ntranslator = FluentTranslator(locale)\nmyTranslator = QTranslator()\ntranslations_path = (",
+      "after": "\nlogger_instance = setup_logger(\"VideoCaptioner\")\n\n\ndef exception_hook(exctype, value, tb):\n    logger_instance.error(\"\".join(traceback.format_exception(exctype, value, tb)))\n    sys.__excepthook__(exctype, value, tb)  # 调用默认的异常处理\n\n\nsys.excepthook = exception_hook\n\n\n# Enable DPI Scale\nif cfg.get(cfg.dpiScale) == \"Auto\":\n    QApplication.setHighDpiScaleFactorRoundingPolicy(\n        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough  # type: ignore\n    )\n    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # type: ignore\nelse:\n    os.environ[\"QT_ENABLE_HIGHDPI_SCALING\"] = \"0\"\n    os.environ[\"QT_SCALE_FACTOR\"] = str(cfg.get(cfg.dpiScale))\nQApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # type: ignore\n\napp = QApplication(sys.argv)\napp.setAttribute(Qt.AA_DontCreateNativeWidgetSiblings, True)  # type: ignore\n\n# Internationalization (Multi-language)\nlocale = cfg.get(cfg.language).value\ntranslator = FluentTranslator(locale)\nmyTranslator = QTranslator()\ntranslations_path = (",
+      "context": null
+    }
+  ],
+  "observations": [
+    "Qt.HighDpiScaleFactorRoundingPolicy.PassThrough  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

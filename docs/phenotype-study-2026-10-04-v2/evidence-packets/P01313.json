@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01313",
+  "source_finding_id": "P01313",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat: Add agent chat and runbook management\n\n## Summary\nAdds real-time chat interface, runbook management, and agent configuration features with comprehensive chat readiness validation.\n\n## Changes\n\n### [authoring attribution omitted] Chat System\n- **Real-time SSE streaming chat** with persistent history across sessions\n- **Chat readiness validation** prevents users from sending messages when system isn't configured\n- **Smart UI states**: Shows loading spinner, input field, or configuration notice based on readiness\n- **Context-aware messaging** for cases with entity-specific conversation history\n\n### 📚 Runbook Management\n- **Create/manage runbooks** from chat conversations (renamed from agendas)\n- **Save chat flows** as reusable automation templates\n- **Conversation-to-runbook conversion** with automated content extraction\n\n### ⚙️ Agent Configuration\n- **Centralized agent settings** for model selection and provider credentials\n- **Multi-provider support** with credential management for OpenAI, Anthropic, etc.\n- **Default model configuration** with organization-wide settings\n- **Credential validation** with real-time status checking\n\n### 🛡️ Chat Readiness Validation (New)\n- **`useChatReadiness` hook**: Validates agent configuration before allowing chat\n- **Three validation states**: \n  - ✅ Ready: Default model set + provider credentials configured\n  - ⏳ Loading: Checking configuration status\n  - ⚠️ Not Ready: Missing model or credentials\n- **Polished disabled state UI**: Professional status card with contextual messaging and direct fix link\n- **Prevents message loss**: No more \"vanishing messages\" when configuration is incomplete\n\n## Technical Implementation\n\n### Backend Infrastructure\n- **New modules**: `tracecat/agent/`, `tracecat/chat/`, `tracecat/prompt/`\n- **Redis integration** for streaming chat with SSE support\n- **3 new database migrations** for chat, prompt, and tools tables\n- **Agent service layer** for model and credential management\n\n### Frontend Architecture\n- **Chat components**: Real-time interface with message streaming\n- **Agent settings**: Comprehensive configuration UI with validation\n- **Readiness validation**: Smart conditional rendering based on system state\n- **Enhanced UX**: Loading states, error handling, and contextual guidance\n\n### Key Files Changed\n```\nBackend (40+ files):\n- tracecat/agent/         # Agent service and models\n- tracecat/chat/          # Chat service and SSE streaming  \n- tracecat/prompt/        # Runbook management\n- alembic/versions/       # 3 new database migrations\n\nFrontend (40+ files):\n- src/components/chat/    # Chat interface components\n- src/components/organization/org-settings-agent.tsx  # Agent config UI\n- src/lib/hooks.tsx       # useChatReadiness + agent hooks\n- src/hooks/use-chat.ts   # Chat state management\n…",
+  "diff_context": [
+    {
+      "path": "tracecat/prompt/router.py",
+      "before": null,
+      "after": "\n                                    # Ensure in all cases we advance the current ID\n                                    current_id = message_id\n\n                                except Exception as e:\n                                    logger.warning(\n                                        \"Failed to process stream message\",\n                                        error=str(e),\n                                        message_id=message_id,\n                                    )\n                                    continue\n\n                    # Send heartbeat to keep connection alive\n                    await asyncio.sleep(0.1)\n\n                except Exception as e:\n                    logger.error(\"Error reading from Redis stream\", error=str(e))\n                    yield 'event: error\\ndata: {\"error\": \"Stream read error\"}\\n\\n'\n                    await asyncio.sleep(1)\n\n        except Exception as e:\n            logger.error(\"Fatal error in stream generator\", error=str(e))\n            yield 'event: error\\ndata: {\"error\": \"Fatal stream error\"}\\n\\n'\n        finally:\n            logger.info(\"Prompt execution stream ended\", stream_key=stream_key)\n\n    return StreamingResponse(\n        event_generator(),\n        media_type=\"text/event-stream\",\n        headers={\n            \"Cache-Control\": \"no-cache\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception as e:"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

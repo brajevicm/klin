@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02008",
+  "source_finding_id": "P02008",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Custom directory",
+  "diff_context": [
+    {
+      "path": "amplifier/cli.py",
+      "before": "@click.option(\"--json\", is_flag=True, help=\"Output as JSON\")\ndef transcript_list(last: int | None, json: bool) -> None:\n    \"\"\"List available conversation transcripts.\"\"\"\n    from amplifier.transcript import TranscriptManager\n\n    manager = TranscriptManager()\n\n    if json:\n        click.echo(manager.list_transcripts_json(last_n=last))\n    else:\n        transcripts = manager.list_transcripts(last_n=last)\n        if not transcripts:\n            click.echo(\"No transcripts found\")\n        else:\n            for t in transcripts:\n                # Extract session ID\n                import re\n                from datetime import datetime\n\n                match = re.search(r\"compact_\\d+_\\d+_([a-f0-9-]+)\\.txt\", t.name)\n                session_id = match.group(1) if match else \"unknown\"\n\n                mtime = datetime.fromtimestamp(t.stat().st_mtime, tz=UTC)\n                size_kb = t.stat().st_size / 1024\n                click.echo(f\"{session_id[:8]}... | {mtime.strftime('%Y-%m-%d %H:%M')} | {size_kb:.1f}KB | {t.name}\")\n\n\n@transcript_cmd.command(name=\"load\")\n@click.argument(\"session_id\")\ndef transcript_load(session_id: str) -> None:\n    \"\"\"Load and output a specific transcript.\"\"\"",
+      "after": "    # Check if directory already exists\n    if directory_path.exists() and not force:\n        raise click.ClickException(f\"Directory already exists at {directory_path}. Use --force to overwrite.\")\n\n    # Parse source\n    try:\n        source_info = parse_source(config[\"directory\"])\n    except ValueError as e:\n        raise click.ClickException(f\"Invalid directory source: {e}\")\n\n    # Fetch the directory\n    try:\n        click.echo(f\"Fetching directory from {config['directory']}...\")\n        do_fetch(source_info, directory_path)\n        click.echo(f\"Successfully fetched directory to {directory_path}\")\n    except Exception as e:\n        raise click.ClickException(f\"Failed to fetch directory: {e}\")\n\n\n@directory_cmd.command(name=\"freeze\")\n@click.option(\"--verbose\", \"-v\", is_flag=True, help=\"Show skipped files\")\ndef directory_freeze(verbose: bool) -> None:\n    \"\"\"Copy official directory files to custom overlay (skips existing files).\"\"\"\n    # Get paths\n    source_dir = Path.cwd() / \".amplifier\" / \"directory\"\n    dest_base = Path.cwd() / \".amplifier.local\" / \"directory\"\n\n    # Validate source exists\n    if not source_dir.exists():\n        raise click.ClickException(\"No official directory found. Run 'amplifier directory fetch' first.\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

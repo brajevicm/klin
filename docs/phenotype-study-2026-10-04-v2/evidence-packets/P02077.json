@@ -1,0 +1,24 @@
+{
+  "packet_id": "P02077",
+  "source_finding_id": "P02077",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Prevent loss of access to data with auto-configuration for legacy Redis databases\n\n### **User description**\n## Summary\n\nFixes loss of access to data issue affecting some (likely most) Docker users upgrading to v0.23. When existing installations used minimal environment variables, they relied on hardcoded defaults that distributed data across Redis databases 1, 6, 7, 8, and 11. With v0.23's shift to defaulting everything to database 0, these installations would lose access to their existing data without any indication of the problem.\n\nThe solution introduces auto-configuration that detects legacy data distribution and automatically configures the application to preserve access while providing a clear path toward database consolidation.\n\n## Problem Context\n\n**Affected users**: Docker installations using only `SECRET` and `REDIS_URI` environment variables\n**Risk**: Complete loss of access to sessions, customers, secrets, and other data\n**Timing**: During v0.23 upgrade when new defaults take effect\n\nWithout this fix, the application would silently connect to database 0 while user data remained inaccessible in legacy databases, creating a hidden migration scenario with no warning.\n\n## Technical Implementation\n\n### Auto-Configuration Logic\n- **Detection**: Scans Redis databases 1-15 for existing data patterns\n- **Analysis**: Determines if current configuration uses defaults that would cause data loss  \n- **Response**: Automatically updates `OT.conf['redis']['dbs']` to preserve access to detected legacy databases\n- **Communication**: Clear messaging about what's happening and next steps\n\n### User Experience Changes\n\n**Case A: Explicit Configuration** (unchanged)\n```\nLEGACY DATA DETECTED - No action required\nFound existing data in legacy databases:\n  • 500 session records in database 1 [was legacy default]\n✅ Continuing with existing configuration\n```\n\n**Case B: Minimal Environment Variables** (now protected)\n```\nLEGACY DATA DETECTED - Auto-configuring for compatibility  \nFound existing data in legacy databases:\n  • 500 session records in database 1\nAuto-configured database mappings to preserve data access\nTo migrate to database 0 (recommended before v1.0): `bin/ots migrate-redis-data --run`\n```\n\n## Security & Compatibility\n\n- **Backward compatible**: No impact on existing explicit configurations\n- **Forward compatible**: Clear path to v1.0 database consolidation  \n- **Non-destructive**: Never modifies or moves data automatically\n- **Transparent**: Logs all auto-configuration decisions for auditability\n\n## Testing\n\n- **15 test cases** covering detection logic, auto-configuration scenarios, and edge cases\n- **Demo script** (`scripts/test_auto_config_demo.rb`) for ongoing validation\n- **Migration tool compatibility** maintained with new detection format\n\n## Migration Path\n\nUsers get three clear options without pressure:\n…",
+  "diff_context": [
+    {
+      "path": "lib/onetime/cli/migrate_redis_data_command.rb",
+      "before": null,
+      "after": "\n    def migrate_redis_data\n      puts \"\\nRedis Legacy Data Migration Tool\"\n      puts '=' * 50\n\n      # Reset env var to allow detection to run again\n      ENV.delete('SKIP_LEGACY_DATA_CHECK')\n\n      # First, detect legacy data\n      puts 'Scanning for legacy data distribution...'\n      require_relative '../initializers/detect_legacy_data'\n\n      # Include the detection methods\n      extend Onetime::Initializers\n\n      # Override skip check for this command - we always want to scan during migration\n      def skip_legacy_data_check? = false\n\n      detection_result = detect_legacy_data\n      legacy_data      = detection_result[:legacy_locations] || detection_result\n\n      if legacy_data.empty?\n        puts <<~MESSAGE\n\n          ✅ No legacy data detected. All data appears to be in the correct databases.\n          Migration not needed.\n\n        MESSAGE\n        return\n      end",
+      "context": null
+    }
+  ],
+  "observations": [
+    "# Override skip check for this command - we always want to scan during migration"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

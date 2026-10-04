@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00857",
+  "source_finding_id": "P00857",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[project metadata omitted] 修复了模型重复跳回tiny的bug，合并到master。\n\n修复了模型重复跳回tiny的bug",
+  "diff_context": [
+    {
+      "path": "app/core/bk_asr/whisper_cpp.py",
+      "before": "",
+      "after": "        try:\n            cmd = [\"ffmpeg\", \"-i\", filepath]\n            result = subprocess.run(\n                cmd,\n                capture_output=True,\n                text=True,\n                encoding=\"utf-8\",\n                errors=\"replace\",\n                creationflags=subprocess.CREATE_NO_WINDOW if os.name == \"nt\" else 0,\n            )\n            info = result.stderr\n            if duration_match := re.search(r\"Duration: (\\d+):(\\d+):(\\d+\\.\\d+)\", info):\n                hours, minutes, seconds = map(float, duration_match.groups())\n                return int(hours * 3600 + minutes * 60 + seconds)\n            return self.DEFAULT_DURATION\n        except Exception as e:\n            logger.warning(\"获取音频时长失败: %s\", str(e))\n            return self.DEFAULT_DURATION\n\n\nif __name__ == \"__main__\":\n    # 示例调用\n    def test_callback(progress, message):\n        print(f\"[回调] 进度: {progress}% - {message}\")\n\n    asr = WhisperCppASR(\n        audio_path=\"audio.wav\",\n        whisper_cpp_path=\"/opt/homebrew/bin/whisper-cpp\",\n        whisper_model=\"large-v2\",\n        language=\"zh\",\n        need_word_time_stamp=False,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

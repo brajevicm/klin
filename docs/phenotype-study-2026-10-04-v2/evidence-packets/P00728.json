@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00728",
+  "source_finding_id": "P00728",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat(autogen): add mcp detection for autogen agentchat\n\nEnables MCP Server detection for Autogen AgenChat workflows.\nAnalyzer searches for usage patterns shown in [Autogen docs]([external reference omitted]\n\nTwo main usage patterns covered:\n1. Invididual adapters for each tool\n```\nserver_params = <some_params_object>(...)\nadapter = await <some_adapter>.from_server_params(server_params, \"some_mcp_tool\")\nagent = <some_agent>(..., tools=[tool1, tool2, adapter])\n```\n\n2. List of adapters from server params\n```\nserver_params = <some_params_object>(...)\nmcp_tools = await mcp_server_tools(server_params)\nagent = <some_agent>(..., tools=mcp_tools)\n```\n\nPotential TODOs/improvements for the future:\n- detect tool concatenation with `+`, handle all cases of operands (list literal vs variable assigned somewhere before in code)",
+  "diff_context": [
+    {
+      "path": "agentic_radar/analysis/ast_utils.py",
+      "before": "",
+      "after": "        kwargs = {kw.arg: extract_value(kw.value) for kw in value.keywords if kw.arg}\n        return SimpleFunctionCallAssignment(\n            target=target.id, function_name=function_name, args=args, kwargs=kwargs\n        )\n    return None\n\n\ndef walk_and_parse_python_files(\n    root_dir: str\n) -> Generator[tuple[str, ast.AST], None, None]:\n    for file_path in walk_python_files(root_dir):\n        with open(file_path, \"r\", encoding=\"utf-8\") as f:\n            try:\n                tree = ast.parse(f.read(), filename=file_path)\n                yield file_path, tree\n            except Exception:\n                continue\n\n\ndef kwargize_params(args: list, kwargs: dict, param_names: list[str]) -> dict:\n    params = {param_name: None for param_name in param_names}\n    for i, arg in enumerate(args):\n        if i < len(param_names):\n            params[param_names[i]] = arg\n    params.update(kwargs)\n    return params",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01518",
+  "source_finding_id": "P01518",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add Wavetable LFO visualizers\n\n## Summary\n- add canvases for Wavetable LFOs\n- wire canvases to parameter layout\n- add JS visualizer for Wavetable LFOs\n- include the new script on the Wavetable editor page\n\n## Testing\n- `pip install -r requirements.txt`\n- `pytest -q`\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "handlers/wavetable_param_editor_handler_class.py",
+      "before": "                if len(params) == 1:\n                    pname = params[0].get(\"name\", f\"Knob {i + 1}\")\n                    name = friendly(pname)\n                    label_class = \" placeholder\"\n                else:\n                    name = f\"Knob {i + 1}\"\n            val = info.get(\"value\", 0.0)\n            try:\n                val = float(val)\n            except Exception:\n                val = 0.0\n            display_val = round(val, 1)\n            classes = [\"macro-knob\"]\n            if info.get(\"parameters\"):\n                classes.append(f\"macro-{i}\")\n            cls_str = \" \".join(classes)\n            html.append(\n                f'<div class=\"{cls_str}\" data-index=\"{i}\">'\n                f'<span class=\"macro-label{label_class}\" data-index=\"{i}\">{name}</span>'\n                f'<input id=\"macro_{i}_dial\" type=\"range\" class=\"macro-dial input-knob\" '\n                f'data-target=\"macro_{i}_value\" data-display=\"macro_{i}_disp\" '\n                f'value=\"{display_val}\" min=\"0\" max=\"127\" step=\"0.1\" data-decimals=\"1\">'\n                f'<span id=\"macro_{i}_disp\" class=\"macro-number\"></span>'\n                f'<input type=\"hidden\" name=\"macro_{i}_value\" value=\"{display_val}\">'\n                f'</div>'\n            )\n        html.append('</div>')\n        return ''.join(html)",
+      "after": "        for i in range(8):\n            info = by_index.get(i, {\"name\": f\"Macro {i}\", \"value\": 0.0})\n            name = info.get(\"name\", f\"Macro {i}\")\n            label_class = \"\"\n            if not name or name == f\"Macro {i}\":\n                params = info.get(\"parameters\") or []\n                if len(params) == 1:\n                    pname = params[0].get(\"name\", f\"Knob {i + 1}\")\n                    name = friendly(pname)\n                    label_class = \" placeholder\"\n                else:\n                    name = f\"Knob {i + 1}\"\n            val = info.get(\"value\", 0.0)\n            try:\n                val = float(val)\n            except Exception:\n                val = 0.0\n            display_val = round(val, 1)\n            classes = [\"macro-knob\"]\n            if info.get(\"parameters\"):\n                classes.append(f\"macro-{i}\")\n            cls_str = \" \".join(classes)\n            html.append(\n                f'<div class=\"{cls_str}\" data-index=\"{i}\">'\n                f'<span class=\"macro-label{label_class}\" data-index=\"{i}\">{name}</span>'\n                f'<input id=\"macro_{i}_dial\" type=\"range\" class=\"macro-dial input-knob\" '\n                f'data-target=\"macro_{i}_value\" data-display=\"macro_{i}_disp\" '\n                f'value=\"{display_val}\" min=\"0\" max=\"127\" step=\"0.1\" data-decimals=\"1\">'\n                f'<span id=\"macro_{i}_disp\" class=\"macro-number\"></span>'\n                f'<input type=\"hidden\" name=\"macro_{i}_value\" value=\"{display_val}\">'\n                f'</div>'",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

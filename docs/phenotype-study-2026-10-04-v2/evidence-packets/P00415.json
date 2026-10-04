@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00415",
+  "source_finding_id": "P00415",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                connections_payload.append(\n                    {\n                        \"nickname\": nickname,\n                        \"index\": row_index,\n                        \"order\": selection_order,\n                    }\n                )\n                selection_order += 1\n\n        if not connections_payload:\n            row_index = None\n            try:\n                idx = self.get_index()\n                if isinstance(idx, int) and idx >= 0:\n                    row_index = idx\n            except Exception:\n                row_index = None\n\n            connections_payload.append(\n                {\n                    \"nickname\": self.connection.nickname,\n                    \"index\": row_index,\n                    \"order\": 0,\n                }\n            )\n\n        connections_payload.sort(\n            key=lambda item: (\n                item.get(\"index\") is None,\n                item.get(\"index\") if isinstance(item.get(\"index\"), int) else item.get(\"order\", 0),\n            )",
+      "after": "                connections_payload.append(\n                    {\n                        \"nickname\": nickname,\n                        \"index\": row_index,\n                        \"order\": selection_order,\n                    }\n                )\n                selection_order += 1\n\n        if not connections_payload:\n            row_index = None\n            try:\n                idx = self.get_index()\n                if isinstance(idx, int) and idx >= 0:\n                    row_index = idx\n            except Exception:\n                row_index = None\n\n            connections_payload.append(\n                {\n                    \"nickname\": self.connection.nickname,\n                    \"index\": row_index,\n                    \"order\": 0,\n                }\n            )\n\n        connections_payload.sort(\n            key=lambda item: (\n                item.get(\"index\") is None,\n                item.get(\"index\") if isinstance(item.get(\"index\"), int) else item.get(\"order\", 0),\n            )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

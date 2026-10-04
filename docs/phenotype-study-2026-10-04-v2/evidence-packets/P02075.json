@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02075",
+  "source_finding_id": "P02075",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Add update_issue tool for MCP\n\nA new `update_issue` tool was implemented to allow updating Sentry issue status and assignment via the MCP.\n\nKey changes include:\n*   In `packages/mcp-server/src/schema.ts`, `ParamIssueStatus` and `ParamAssignedTo` were added to define valid update parameters.\n*   The `SentryApiService` in `packages/mcp-server/src/api-client/client.ts` gained an `updateIssue` method to interact with the Sentry API's PUT endpoint for issues.\n*   `packages/mcp-server/src/toolDefinitions.ts` was updated with the `update_issue` tool definition, including its parameters (`organizationSlug`, `issueId`, `issueUrl`, `status`, `assignedTo`), detailed description, examples, and usage hints.\n*   The `update_issue` handler was added to `packages/mcp-server/src/tools.ts`. It handles parameter parsing, validates inputs (requiring `issueId` or `issueUrl`, and at least one of `status` or `assignedTo`), calls the API, and generates a structured markdown output detailing changes and current status.\n*   Mock PUT endpoints for issue updates were added to `packages/mcp-server-mocks/src/index.ts` to support testing.\n*   Comprehensive tests for the `update_issue` tool were added to `packages/mcp-server/src/tools.test.ts`, covering status updates, assignment changes, URL parsing, and validation scenarios.\n\nThe changes enable users to resolve, ignore, or reassign Sentry issues directly through the MCP interface.\n\nFixes #34",
+  "diff_context": [
+    {
+      "path": "packages/mcp-server-mocks/src/index.ts",
+      "before": "            \"team:write\",\n            \"project:read\",\n            \"project:admin\",\n            \"alerts:read\",\n          ],\n        },\n        { status: 201 },\n      );\n    },\n  },\n  {\n    method: \"post\",\n    path: \"/api/0/teams/sentry-mcp-evals/the-goats/projects/\",\n    fetch: async ({ request }) => {\n      // TODO: validate payload (only accept 'cloudflare-mcp' for project name)\n      const body = (await request.json()) as any;\n      return HttpResponse.json({\n        ...projectFixture,\n        name: body?.name || \"cloudflare-mcp\",\n        slug: body?.slug || \"cloudflare-mcp\",\n        platform: body?.platform || \"node\",\n      });\n    },\n  },\n  {\n    method: \"put\",\n    path: \"/api/0/projects/sentry-mcp-evals/cloudflare-mcp/\",\n    fetch: async ({ request }) => {\n      const body = (await request.json()) as any;\n      return HttpResponse.json({\n        ...projectFixture,",
+      "after": "            \"team:write\",\n            \"project:read\",\n            \"project:admin\",\n            \"alerts:read\",\n          ],\n        },\n        { status: 201 },\n      );\n    },\n  },\n  {\n    method: \"post\",\n    path: \"/api/0/teams/sentry-mcp-evals/the-goats/projects/\",\n    fetch: async ({ request }) => {\n      // TODO: validate payload (only accept 'cloudflare-mcp' for project name)\n      const body = (await request.json()) as any;\n      return HttpResponse.json({\n        ...projectFixture,\n        name: body?.name || \"cloudflare-mcp\",\n        slug: body?.slug || \"cloudflare-mcp\",\n        platform: body?.platform || \"node\",\n      });\n    },\n  },\n  {\n    method: \"put\",\n    path: \"/api/0/projects/sentry-mcp-evals/cloudflare-mcp/\",\n    fetch: async ({ request }) => {\n      const body = (await request.json()) as any;\n      return HttpResponse.json({\n        ...projectFixture,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const body = (await request.json()) as any;"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

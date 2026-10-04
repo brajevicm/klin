@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00407",
+  "source_finding_id": "P00407",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        _hide_ungrouped_area(window)\n        _stop_connection_autoscroll(window)\n\n        # Mark drag as no longer in progress\n        if hasattr(window, '_drag_in_progress'):\n            window._drag_in_progress = False\n\n        # Extract Python object from GObject.Value drops\n        if isinstance(value, GObject.Value):\n            extracted = None\n            for getter in (\"get_boxed\", \"get_object\", \"get\"):\n                try:\n                    extracted = getattr(value, getter)()\n                    if extracted is not None:\n                        break\n                except Exception:\n                    continue\n            value = extracted\n\n\n        if not isinstance(value, dict):\n            return False\n\n        drop_type = value.get(\"type\")\n        changes_made = False\n\n        if drop_type == \"connection\":\n            connections_payload = value.get(\"connections\")\n            ordered_pairs: List[tuple[int, str]] = []\n\n            if isinstance(connections_payload, list):",
+      "after": "        _hide_ungrouped_area(window)\n        _stop_connection_autoscroll(window)\n\n        # Mark drag as no longer in progress\n        if hasattr(window, '_drag_in_progress'):\n            window._drag_in_progress = False\n\n        # Extract Python object from GObject.Value drops\n        if isinstance(value, GObject.Value):\n            extracted = None\n            for getter in (\"get_boxed\", \"get_object\", \"get\"):\n                try:\n                    extracted = getattr(value, getter)()\n                    if extracted is not None:\n                        break\n                except Exception:\n                    continue\n            value = extracted\n\n\n        if not isinstance(value, dict):\n            return False\n\n        drop_type = value.get(\"type\")\n        changes_made = False\n\n        if drop_type == \"connection\":\n            connections_payload = value.get(\"connections\")\n            ordered_pairs: List[tuple[int, str]] = []\n\n            if isinstance(connections_payload, list):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`continue` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

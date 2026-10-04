@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00852",
+  "source_finding_id": "P00852",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Eval: Fix agent log mounting path\n\nCurrently, `/logs/` folder on container mounts to `runs/{run_id}/{task_id}/{trial_name}/sessions/` path. This is not ideal; it should not have included `sessions` folder.\n\nThis PR fixes this problem. Now agents (running inside container) could write logs to `/logs/agent-logs` folder - see example in #413 :\n\n```python\nenv[\"SAVE_TRAJECTORY_PATH\"] = \"/logs/agent-logs\"\n```\n\nWith this PR:\n\n```bash\nruns/2025-07-06__09-54-50/broken-python\n└── broken-python.1-of-1.2025-07-06__09-54-50\n    ├── agent-logs\n    │   └── ae7569df-9beb-4118-aa18-8532e3404885-0c8e73fd80775642.json\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 10 files\n```\n\nWithout this PR:\n```bash\nruns/2025-07-06__10-02-25/broken-python\n└── broken-python.1-of-1.2025-07-06__10-02-25\n    ├── agent-logs\n    ├── commands.txt\n    ├── panes\n    │   ├── post-agent.txt\n    │   ├── post-test.txt\n    │   └── pre-agent.txt\n    ├── results.json\n    └── sessions\n        ├── agent.cast\n        ├── agent.log\n        ├── tests.cast\n        └── tests.log\n\n4 directories, 9 files\n```",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "        for i, (task_path, duration) in enumerate(self._task_durations, 1):\n            task_name = task_path.name\n            minutes = int(duration // 60)\n            seconds = int(duration % 60)\n\n            # Try to get more details about duration source\n            try:\n                task = Task.from_yaml(task_path / \"task.yaml\")\n                if task.estimated_duration_sec is not None:\n                    source = \"historical\"\n                else:\n                    source = (\n                        f\"calculated ({task.max_agent_timeout_sec}+\"\n                        f\"{task.max_test_timeout_sec})/2\"\n                    )\n            except Exception:\n                source = \"fallback\"\n\n            print(f\"{i:2d}. {task_name:<40} {minutes:2d}m {seconds:2d}s ({source})\")\n\n        print(\"=\" * 80)\n        print(f\"Total tasks: {len(self._task_durations)}\")\n        print(\"=\" * 80 + \"\\n\")\n\n    def _init_logger(self) -> None:\n        file_handler = logging.FileHandler(self._log_output_path)\n        file_handler.setLevel(logging.DEBUG)\n        logger.addHandler(file_handler)\n\n        if not self._livestream:\n            console_handler = logging.StreamHandler()",
+      "after": "        for i, (task_path, duration) in enumerate(self._task_durations, 1):\n            task_name = task_path.name\n            minutes = int(duration // 60)\n            seconds = int(duration % 60)\n\n            # Try to get more details about duration source\n            try:\n                task = Task.from_yaml(task_path / \"task.yaml\")\n                if task.estimated_duration_sec is not None:\n                    source = \"historical\"\n                else:\n                    source = (\n                        f\"calculated ({task.max_agent_timeout_sec}+\"\n                        f\"{task.max_test_timeout_sec})/2\"\n                    )\n            except Exception:\n                source = \"fallback\"\n\n            print(f\"{i:2d}. {task_name:<40} {minutes:2d}m {seconds:2d}s ({source})\")\n\n        print(\"=\" * 80)\n        print(f\"Total tasks: {len(self._task_durations)}\")\n        print(\"=\" * 80 + \"\\n\")\n\n    def _init_logger(self) -> None:\n        file_handler = logging.FileHandler(self._log_output_path)\n        file_handler.setLevel(logging.DEBUG)\n        logger.addHandler(file_handler)\n\n        if not self._livestream:\n            console_handler = logging.StreamHandler()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

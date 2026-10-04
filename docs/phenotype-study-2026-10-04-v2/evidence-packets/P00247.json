@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00247",
+  "source_finding_id": "P00247",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add type annotations to examples/planning files\n\nThis change adds type annotations to the Python files under the `examples/misc/` directory to improve code readability and maintainability. For any classes from the Google Ads library, types from the `v20` API version were used as requested.",
+  "diff_context": [
+    {
+      "path": "examples/account_management/update_user_access.py",
+      "before": "    \"\"\"Gets the customer user access given an email address.\n\n    Args:\n      client: The Google Ads client.\n      customer_id: The customer ID.\n      email_address: The email address of the user whose access role should\n          be updated.\n\n    Returns:\n      The user ID integer if a customer is found, otherwise None.\n    \"\"\"\n    googleads_service: GoogleAdsServiceClient = client.get_service(\n        \"GoogleAdsService\"\n    )\n\n    # Creates a query that retrieves all customer user accesses.\n    # Use the LIKE query for filtering to ignore the text case for email\n    # address when searching for a match.\n    query = f\"\"\"\n        SELECT\n          customer_user_access.user_id,\n          customer_user_access.email_address,\n          customer_user_access.access_role,\n          customer_user_access.access_creation_date_time\n        FROM customer_user_access\n        WHERE customer_user_access.email_address LIKE '{email_address}'\"\"\"\n\n    search_request: SearchGoogleAdsRequest = client.get_type(\n        \"SearchGoogleAdsRequest\"\n    )\n    search_request.customer_id = customer_id",
+      "after": "      client: The Google Ads client.\n      customer_id: The customer ID.\n      email_address: The email address of the user whose access role should\n          be updated.\n\n    Returns:\n      The user ID integer if a customer is found, otherwise None.\n    \"\"\"\n    googleads_service: GoogleAdsServiceClient = client.get_service(\n        \"GoogleAdsService\"\n    )\n\n    # Creates a query that retrieves all customer user accesses.\n    # Use the LIKE query for filtering to ignore the text case for email\n    # address when searching for a match.\n    query = f\"\"\"\n        SELECT\n          customer_user_access.user_id,\n          customer_user_access.email_address,\n          customer_user_access.access_role,\n          customer_user_access.access_creation_date_time\n        FROM customer_user_access\n        WHERE customer_user_access.email_address LIKE '{email_address}'\"\"\"\n\n    search_request: SearchGoogleAdsRequest = client.get_type(\n        \"SearchGoogleAdsRequest\"\n    )\n    search_request.customer_id = customer_id\n    search_request.query = query\n\n    response: SearchPagedResponse = googleads_service.search(",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

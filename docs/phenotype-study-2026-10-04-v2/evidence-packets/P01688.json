@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01688",
+  "source_finding_id": "P01688",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Set default sorting by duration\n\n# Made by Cursor\n\nThis PR simplifies and streamlines task ordering within `terminal-bench`.\n\n**Key Changes:**\n\n*   **Default Duration Sorting**: The harness now automatically sorts tasks by duration (longest first) for optimal concurrent execution. The `--order-by-duration` CLI option has been removed.\n*   **Simplified Architecture**: The dedicated `TrialSorter` class and `SortingMethod` enum have been removed. The sorting logic is now a direct method (`sort_by_duration`) within the `Dataset` class.\n*   **Explicit Control**: The `Harness` explicitly calls `dataset.sort_by_duration()` after dataset initialization, providing clear control over when sorting occurs.\n*   **Improved Logging**: Task order is now logged using `logger.info` and `tabulate` for a professional, readable table, replacing previous print statements.\n*   **Consistent Path Handling**: `TaskPaths` is now used for `task.yaml` access within the sorting logic.",
+  "diff_context": [
+    {
+      "path": "terminal_bench/harness/harness.py",
+      "before": "                cleanup=self._cleanup,\n                global_timeout_multiplier=self._global_timeout_multiplier,\n                global_agent_timeout_sec=self._global_agent_timeout_sec,\n                global_test_timeout_sec=self._global_test_timeout_sec,\n            ),\n        )\n\n        run_lock.to_json(self._run_lock_path)\n\n    def _is_resolved(self, parser_results: dict[str, UnitTestStatus] | None) -> bool:\n        if parser_results is None:\n            return False\n\n        return all(\n            result == UnitTestStatus.PASSED for result in parser_results.values()\n        )\n\n    def _setup_test_env(self, terminal: Terminal, trial_handler: TrialHandler) -> None:\n        paths = [\n            trial_handler.task_paths.run_tests_path,\n        ]\n\n        if trial_handler.task_paths.test_dir.exists():\n            paths.append(trial_handler.task_paths.test_dir)\n\n        terminal.copy_to_container(\n            paths=paths,\n            container_dir=str(DockerComposeManager.CONTAINER_TEST_DIR),\n        )\n\n    def _run_tests(",
+      "after": "                f\"{test_timeout_sec}s for task \"\n                f\"{trial_handler.task_id}.\"\n            )\n\n            return FailureMode.TEST_TIMEOUT\n\n        return FailureMode.NONE\n\n    def _parse_results(\n        self,\n        trial_handler: TrialHandler,\n        post_test_pane: str,\n    ) -> tuple[dict[str, UnitTestStatus] | None, FailureMode]:\n        try:\n            return trial_handler.parser.parse(post_test_pane), FailureMode.NONE\n        except Exception as e:\n            self._logger.error(\n                f\"Error parsing results for task {trial_handler.task_id}: {e}. It's \"\n                \"possible that the tests failed to run. Inspect \"\n                f\"{trial_handler.trial_paths.post_test_pane_path.absolute()} for more \"\n                \"information.\"\n            )\n            return None, FailureMode.PARSE_ERROR\n\n    async def _run_agent_with_timeout(\n        self,\n        trial_handler: TrialHandler,\n        session: TmuxSession,\n        logging_dir: Path,\n        timeout_sec: float,\n        agent: BaseAgent,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

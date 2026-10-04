@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01674",
+  "source_finding_id": "P01674",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "feat(config): add c12 and support rulesync configs\n\nFixes #30.\n\nFunny story -- I made a _very similar_ tool the other day and figured I'd just upstream some of this 🎉. This all works, but I'd suggest we figure out what you think the best options are for the config file. I'd lean towards supporting `rulesync.jsonc` to align with more modern tooling, but leaving the door open for other formats that provide value such as `.ts` or `.js` with jsdoc (and we can allow `.rulesyncrc` as well). Originally implemented this with `cosmicconfig`, but `c12` is nice and opens the door for more advanced github/gitlab/etc based template syncing mechanisms in the future via `extends`.",
+  "diff_context": [
+    {
+      "path": "src/utils/config-loader.test.ts",
+      "before": null,
+      "after": "    targets: [\"copilot\"],\n  },\n  invalid: {\n    targets: [\"invalid-tool\"],\n  },\n} as const;\n\ndescribe(\"config-loader\", () => {\n  beforeEach(() => {\n    vi.clearAllMocks();\n  });\n\n  describe(\"loadConfig\", () => {\n    it(\"should return default config when no config file is found\", async () => {\n      const { loadConfig: loadC12Config } = await import(\"c12\");\n      (loadC12Config as any).mockResolvedValue({\n        config: {},\n        configFile: undefined,\n      });\n\n      const result = await loadConfig();\n\n      expect(result.isEmpty).toBe(true);\n      expect(result.filepath).toBeUndefined();\n      expect(result.config).toMatchObject({\n        aiRulesDir: \".rulesync\",\n        watchEnabled: false,\n        defaultTargets: expect.arrayContaining([\"copilot\", \"cursor\", \"claudecode\"]),\n      });\n    });",
+      "context": null
+    }
+  ],
+  "observations": [
+    "(loadC12Config as any).mockResolvedValue({"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

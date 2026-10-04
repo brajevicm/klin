@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00972",
+  "source_finding_id": "P00972",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "refactor: modularize notification system and simplify implementation\n\nRefactored the notification system from a monolithic bash script to a modular Python\nimplementation following the ruthless simplicity philosophy:\n\nBreaking Changes:\n- Makefile now uses NOTIFY=true instead of N=1 for notification flags\n- Notifications default to OFF for all CLI tools (must explicitly enable)\n\nArchitecture:\n- Created modular notification system in amplifier/utils/notifications/\n  - Clean Pydantic models for type safety\n  - Platform-specific handlers (macOS, Linux, Windows/WSL)\n  - Simple CLI interface for direct usage\n- Replaced bash script with Python hook adapter for [authoring attribution omitted] integration\n- Renamed hooks to indicate WHEN they trigger (on_notification_hook.py, etc.)\n\nSimplifications:\n- Removed ALL duration tracking (60% complexity reduction)\n- Eliminated progress notifications (only completion events now)\n- Simplified project name extraction (just directory name, no git parsing)\n- Standardized notification format: \"Amplifier\" title with project context\n\nIntegration:\n- Added --notify flag to knowledge synthesis, synthesis pipeline, and CCSDK tools\n- Toolkit-level integration for CCSDK (all tools inherit capability)\n- Top-level commands handle notifications (no passthrough to sub-tools)\n\nUser Experience:\n- Terminal context (project name) always prominent in subtitle\n- Consistent notification format across all tools\n- Simple NOTIFY=true pattern in Makefile commands\n- Clear session identification for multiple terminals\n\nFollowing the implementation philosophy: removed non-essential complexity,\nmaintained clean module boundaries, and achieved ruthless simplicity.\nThe notification system now does exactly what's needed - informs users\nwhen tasks complete with clear context - nothing more.\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": ".claude/tools/on_notification_hook.py",
+      "before": null,
+      "after": "Claude Code notification hook adapter.\nReads JSON from stdin and sends desktop notifications using the amplifier notification module.\n\"\"\"\n\nimport json\nimport os\nimport sys\nfrom pathlib import Path\n\n# Add parent directory to path to import amplifier module\nrepo_root = Path(__file__).parent.parent.parent\nsys.path.insert(0, str(repo_root))\n\nfrom amplifier.utils.notifications.core import NotificationSender  # noqa: E402\nfrom amplifier.utils.notifications.models import ClaudeCodeHookInput  # noqa: E402\nfrom amplifier.utils.notifications.models import NotificationRequest  # noqa: E402\n\n\ndef main():\n    \"\"\"Main entry point for hook.\"\"\"\n    try:\n        # Read JSON from stdin\n        json_input = sys.stdin.read()\n\n        # Parse hook data\n        hook_data = ClaudeCodeHookInput.model_validate_json(json_input)\n\n        # Check for debug mode (can be set via environment variable)\n        debug = os.environ.get(\"CLAUDE_HOOK_DEBUG\", \"\").lower() in (\"true\", \"1\", \"yes\")\n\n        # Create sender and extract project name",
+      "context": null
+    }
+  ],
+  "observations": [
+    "from amplifier.utils.notifications.models import NotificationRequest  # noqa: E402"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00422",
+  "source_finding_id": "P00422",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add Wavetable LFO visualizers\n\n## Summary\n- add canvases for Wavetable LFOs\n- wire canvases to parameter layout\n- add JS visualizer for Wavetable LFOs\n- include the new script on the Wavetable editor page\n\n## Testing\n- `pip install -r requirements.txt`\n- `pytest -q`\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "handlers/wavetable_param_editor_handler_class.py",
+      "before": "            sprite1 = form.getvalue('sprite1')\n            sprite2 = form.getvalue('sprite2')\n            sprite_res = update_wavetable_sprites(\n                preset_path,\n                sprite1 if sprite1 is not None else None,\n                sprite2 if sprite2 is not None else None,\n                preset_path,\n            )\n            if not sprite_res['success']:\n                return self.format_error_response(sprite_res['message'])\n\n            matrix_str = form.getvalue('mod_matrix_data')\n            if matrix_str:\n                try:\n                    matrix_data = json.loads(matrix_str)\n                except Exception:\n                    matrix_data = []\n            else:\n                matrix_data = []\n            matrix_res = update_wavetable_mod_matrix(preset_path, matrix_data, preset_path)\n            if not matrix_res['success']:\n                return self.format_error_response(matrix_res['message'])\n\n            message = result['message'] + \"; \" + macro_result['message']\n            if output_path:\n                message += f\" Saved to {output_path}\"\n            refresh_success, refresh_message = refresh_library()\n            if refresh_success:\n                message += \" Library refreshed.\"\n            else:\n                message += f\" Library refresh failed: {refresh_message}\"",
+      "after": "            sprite1 = form.getvalue('sprite1')\n            sprite2 = form.getvalue('sprite2')\n            sprite_res = update_wavetable_sprites(\n                preset_path,\n                sprite1 if sprite1 is not None else None,\n                sprite2 if sprite2 is not None else None,\n                preset_path,\n            )\n            if not sprite_res['success']:\n                return self.format_error_response(sprite_res['message'])\n\n            matrix_str = form.getvalue('mod_matrix_data')\n            if matrix_str:\n                try:\n                    matrix_data = json.loads(matrix_str)\n                except Exception:\n                    matrix_data = []\n            else:\n                matrix_data = []\n            matrix_res = update_wavetable_mod_matrix(preset_path, matrix_data, preset_path)\n            if not matrix_res['success']:\n                return self.format_error_response(matrix_res['message'])\n\n            message = result['message'] + \"; \" + macro_result['message']\n            if output_path:\n                message += f\" Saved to {output_path}\"\n            refresh_success, refresh_message = refresh_library()\n            if refresh_success:\n                message += \" Library refreshed.\"\n            else:\n                message += f\" Library refresh failed: {refresh_message}\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

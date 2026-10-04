@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00081",
+  "source_finding_id": "P00081",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "tests/slug.rs",
+      "before": "use slug::{slugify, SlugError};\n\n#[test]\nfn caps_the_length() {\n    assert_eq!(slugify(&\"x\".repeat(100)).unwrap().len(), 40);\n}\n\n#[test]\nfn rejects_an_empty_title() {\n    assert_eq!(slugify(\"   \"), Err(SlugError::Empty));\n}\n\n#[test]\n#[should_panic(expected = \"Empty\")]\nfn unwrapping_an_empty_title_panics() {\n    slugify(\"\").unwrap();\n}",
+      "after": "mod common;\n\nuse common::slug_is;\nuse slug::{slugify, SlugError};\n\n#[test]\nfn caps_the_length() {\n    slug_is(&\"x\".repeat(41), &\"x\".repeat(40));\n}\n\n#[test]\nfn rejects_an_empty_title() {\n    assert_eq!(slugify(\"   \"), Err(SlugError::Empty));\n}\n\n#[test]\n#[should_panic(expected = \"Empty\")]\nfn unwrapping_an_empty_title_panics() {\n    slugify(\"\").unwrap();\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "assert_eq!(slugify(&\"x\".repeat(100)).unwrap().len(),40)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

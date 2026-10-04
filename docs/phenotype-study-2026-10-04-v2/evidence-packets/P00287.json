@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00287",
+  "source_finding_id": "P00287",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Move to net status RPC\n\n## Summary\n- adopt insert_exit_v2 in exit and attach metadata\n- fetch network status via get_net_status in client and GUI\n- derive exits from net status on broker\n- filter auto exits by metadata\n\n## Testing\n- `cargo check`",
+  "diff_context": [
+    {
+      "path": "binaries/geph5-broker/src/rpc_impl.rs",
+      "before": "        Ok(signed)\n    }\n\n    async fn get_exits(&self) -> Result<StdcodeSigned<ExitList>, GenericError> {\n        let exit_list = self.get_all_exits().await?;\n\n        Ok(StdcodeSigned::new(\n            exit_list,\n            DOMAIN_EXIT_DESCRIPTOR,\n            MASTER_SECRET.deref(),\n        ))\n    }\n\n    async fn get_free_exits(&self) -> Result<StdcodeSigned<ExitList>, GenericError> {\n        let mut exit_list = self.get_all_exits().await?;\n        exit_list.all_exits.retain(|(_, e)| !is_plus_exit(e));\n        Ok(StdcodeSigned::new(\n            exit_list,\n            DOMAIN_EXIT_DESCRIPTOR,\n            MASTER_SECRET.deref(),\n        ))\n    }\n\n    async fn get_user_info(&self, auth_token: [redacted] -> Result<Option<UserInfo>, AuthError> {\n        match valid_auth_token(auth_token).await {\n            Ok(Some((user_id, _))) => get_user_info(user_id).await,\n            Ok(None) => Ok(None),\n            Err(_) => Err(AuthError::RateLimited),\n        }\n    }",
+      "after": "        }\n        .blind_sign(epoch, &blind_token);\n        tracing::debug!(elapsed = debug(start.elapsed()), \"blind signing done\");\n        Ok(signed)\n    }\n\n    async fn get_exits(&self) -> Result<StdcodeSigned<ExitList>, GenericError> {\n        let ns = self.net_status_inner().await?;\n        let all_exits = ns\n            .exits\n            .into_values()\n            .map(|(vk, desc, _)| (vk, desc))\n            .collect();\n        let exit_list = ExitList {\n            all_exits,\n            city_names: serde_yaml::from_str(include_str!(\"city_names.yaml\")).unwrap(),\n        };\n        Ok(StdcodeSigned::new(\n            exit_list,\n            DOMAIN_EXIT_DESCRIPTOR,\n            MASTER_SECRET.deref(),\n        ))\n    }\n\n    async fn get_free_exits(&self) -> Result<StdcodeSigned<ExitList>, GenericError> {\n        let ns = self.net_status_inner().await?;\n        let all_exits = ns\n            .exits\n            .into_values()\n            .filter(|(_, _, meta)| meta.allowed_levels.contains(&AccountLevel::Free))\n            .map(|(vk, desc, _)| (vk, desc))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "city_names: serde_yaml::from_str(include_str!(\"city_names.yaml\")).unwrap(),"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

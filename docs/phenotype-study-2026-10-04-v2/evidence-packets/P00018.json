@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00018",
+  "source_finding_id": "P00018",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Feature/spark config\n\n## Description\n\n<!-- Add a brief description about this pull request including what it does, why it is needed, and other important information for the reviewers -->\n\n## More Information\n\n<!-- Add more in-depth information about this pull request, such as the changes made, the reasoning behind them, and any potential impacts. -->\n\n## Validation\n\n<!-- Introduce how to test this pull request. -->\n\n## Linked Issues\n\n<!--\nLink to any related issues or bugs.\n\n**If this PR fully resolves the issue, use one of the following keywords to automatically close the issue when this PR is merged:**\n\n- Closes #<issue_number>\n- Fixes #<issue_number>\n- Resolves #<issue_number>\n\n*Example: `Resolves #123`*\n\n**If this PR is only related to an issue or is a partial fix, simply reference the issue number without a keyword:**\n\n*Example: `This PR makes progress on #456` or `Related to #789`*\n-->",
+  "diff_context": [
+    {
+      "path": "trae-agent-rs/src/main.rs",
+      "before": null,
+      "after": "                match run_bash_capture(&current_dir, \"git status -s | cat\") { Ok((_c, out)) => print!(\"{}\", out), Err(e) => eprintln!(\"{}\", e) }\n            }\n            \"ai\" => {\n                let args: Vec<&str> = parts.collect();\n                if args.is_empty() { eprintln!(\"usage: ai <prompt> [--model MODEL]\"); continue; }\n                // naive parse for --model\n                let mut model = \"deepseek/deepseek-chat\".to_string();\n                let mut prompt_parts: Vec<&str> = Vec::new();\n                let mut iter = args.iter().copied();\n                while let Some(token) = iter.next() {\n                    if token =[redacted] \"--model\" { if let Some(m) = iter.next() { model = m.to_string(); } continue; }\n                    prompt_parts.push(token);\n                }\n                let prompt = prompt_parts.join(\" \");\n                if prompt.is_empty() { eprintln!(\"usage: ai <prompt> [--model MODEL]\"); continue; }\n                match tokio::runtime::Runtime::new().unwrap().block_on(call_openrouter(&model, &prompt)) {\n                    Ok(text) => { println!(\"{}\", text); record_trajectory(trajectory_file, serde_json::json!({\"event\":\"code.ai\",\"model\":model,\"prompt\":prompt}))?; }\n                    Err(e) => eprintln!(\"AI error: {}\", e),\n                }\n            }\n            unknown => {\n                eprintln!(\"Unknown command: {}\", unknown);\n                print_code_help();\n            }\n        }\n    }\n    println!(\"Goodbye.\");\n    Ok(())\n}\n\nfn main() -> Result<()> {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "match tokio::runtime::Runtime::new().unwrap().block_on(call_openrouter(&model, &prompt)) {"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

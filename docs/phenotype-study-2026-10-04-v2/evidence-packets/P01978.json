@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01978",
+  "source_finding_id": "P01978",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "            \n            # Handle mixed drag scenarios (dragging connection over group, etc.)\n            elif (hasattr(row, \"connection\") and hasattr(window, \"_dragged_group_id\")):\n                # Dragging group over connection - show indicator\n                _show_drop_indicator(window, row, position)\n            elif hasattr(row, \"group_id\") and dragged_connections:\n                # Dragging connection over group - only show indicator on the group itself (not above/below)\n                # This indicates the connection will be added to the group\n                _show_drop_indicator_on_group(window, row)\n            else:\n                _clear_drop_indicator(window)\n        else:\n            # Clear indicators if we're over a non-valid target\n            _clear_drop_indicator(window)\n        return Gdk.DragAction.MOVE\n    except Exception as e:\n        logger.error(f\"Error handling motion: {e}\")\n        return Gdk.DragAction.MOVE\n\n\ndef _on_connection_list_leave(window, target):\n    _clear_drop_indicator(window)\n    _hide_ungrouped_area(window)\n    _stop_connection_autoscroll(window)\n\n    # Mark drag as no longer in progress\n    if hasattr(window, '_drag_in_progress'):\n        window._drag_in_progress = False\n    \n    return True",
+      "after": "            \n            # Handle mixed drag scenarios (dragging connection over group, etc.)\n            elif (hasattr(row, \"connection\") and hasattr(window, \"_dragged_group_id\")):\n                # Dragging group over connection - show indicator\n                _show_drop_indicator(window, row, position)\n            elif hasattr(row, \"group_id\") and dragged_connections:\n                # Dragging connection over group - only show indicator on the group itself (not above/below)\n                # This indicates the connection will be added to the group\n                _show_drop_indicator_on_group(window, row)\n            else:\n                _clear_drop_indicator(window)\n        else:\n            # Clear indicators if we're over a non-valid target\n            _clear_drop_indicator(window)\n        return Gdk.DragAction.MOVE\n    except Exception as e:\n        logger.error(f\"Error handling motion: {e}\")\n        return Gdk.DragAction.MOVE\n\n\ndef _on_connection_list_leave(window, target):\n    _clear_drop_indicator(window)\n    _hide_ungrouped_area(window)\n    _stop_connection_autoscroll(window)\n\n    # Mark drag as no longer in progress\n    if hasattr(window, '_drag_in_progress'):\n        window._drag_in_progress = False\n    \n    return True",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

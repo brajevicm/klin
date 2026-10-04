@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01821",
+  "source_finding_id": "P01821",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add docstring review list and tasks\n\n## Summary\n- scan repo for missing spaCy style docstrings\n- list all problematic files in `docs/missing_docstrings.md`\n- generate task list in `docs/docstring_tasks.md`\n\n## Testing\n- `python - <<'EOF'\nimport os, ast\nmissing=[]\nfor dirpath,_,files in os.walk('.'):\n    for f in files:\n        if f.endswith('.py'):\n            path=os.path.join(dirpath,f)\n            try:\n                tree=ast.parse(open(path,'r',encoding='utf-8').read())\n            except Exception:\n                continue\n            if (ast.get_docstring(tree) is None or\n                any(isinstance(n,(ast.ClassDef,ast.FunctionDef,ast.AsyncFunctionDef)) and ast.get_docstring(n) is None for n in ast.walk(tree))):\n                missing.append(path)\nprint('missing count',len(missing))\nEOF",
+  "diff_context": [
+    {
+      "path": ".config/component_generator/scripts/dag.py",
+      "before": "\n            elif isinstance(val, list):\n                rendered_list = []\n                for item in val:\n                    if isinstance(item, str):\n                        try:\n                            rendered_item = env.from_string(item).render(**context)\n                            rendered_list.append(rendered_item)\n                        except Exception as e:\n                            print(\n                                f\"[ERROR] Failed to render list item '{item}' in field '{key}': {e}\"\n                            )\n                            rendered_list.append(item)\n                    else:\n                        rendered_list.append(item)\n                new_record[key] = rendered_list\n            else:\n                new_record[key] = val\n\n        resolved_entries.append(new_record)\n\n    return resolved_entries\n\n\n# 3. TOPOLOGICAL SORT\ndef topological_sort(payload):\n    \"\"\"\n    Returns a list of entries sorted so that if file A depends on file B,\n    then B comes before A.\n    \"\"\"\n    graph, in_degree = build_forward_graph(payload)",
+      "after": "                try:\n                    new_record[key] = env.from_string(val).render(**context)\n                except Exception as e:\n                    print(\n                        f\"[ERROR] Failed to render field '{key}' with value '{val}': {e}\"\n                    )\n                    new_record[key] = val\n\n            elif isinstance(val, list):\n                rendered_list = []\n                for item in val:\n                    if isinstance(item, str):\n                        try:\n                            rendered_item = env.from_string(item).render(**context)\n                            rendered_list.append(rendered_item)\n                        except Exception as e:\n                            print(\n                                f\"[ERROR] Failed to render list item '{item}' in field '{key}': {e}\"\n                            )\n                            rendered_list.append(item)\n                    else:\n                        rendered_list.append(item)\n                new_record[key] = rendered_list\n            else:\n                new_record[key] = val\n\n        resolved_entries.append(new_record)\n\n    return resolved_entries\n",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00495",
+  "source_finding_id": "P00495",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Statically link unixodbc and update configurations\n\nStatically link `unixODBC` and configure `rpath` to simplify distribution and enable placing ODBC drivers in a `sqlpage/` subdirectory.\n\nThis change embeds the `unixODBC` driver manager directly into the SQLPage binary, removing the need for separate installation on target systems. The updated `rpath` allows database-specific ODBC drivers to be placed alongside the SQLPage executable in a `sqlpage/` directory, streamlining self-contained application packaging.\n\n---\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "Cargo.toml",
+      "before": "[package]\nname = \"sqlpage\"\nversion = \"0.38.0-beta.1\"\nedition = \"2021\"\ndescription = \"Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.\"\nkeywords = [\"web\", \"sql\", \"framework\"]\nlicense = \"MIT\"\nhomepage = \"https://sql-page.com/\"\nrepository = \"https://github.com/sqlpage/SQLPage\"\ndocumentation = \"https://docs.rs/sqlpage\"\ninclude = [\"/src\", \"/README.md\", \"/build.rs\", \"/sqlpage\"]\n\n[profile.superoptimized]\ninherits = \"release\"\nstrip = \"debuginfo\"\nlto = \"fat\"",
+      "after": "[package]\nname = \"sqlpage\"\nversion = \"0.38.0-beta.1\"\nedition = \"2021\"\ndescription = \"Build data user interfaces entirely in SQL. A web server that takes .sql files and formats the query result using pre-made configurable professional-looking components.\"\nkeywords = [\"web\", \"sql\", \"framework\"]\nlicense = \"MIT\"\nhomepage = \"https://sql-page.com/\"\nrepository = \"https://github.com/sqlpage/SQLPage\"\ndocumentation = \"https://docs.rs/sqlpage\"\ninclude = [\"/src\", \"/README.md\", \"/build.rs\", \"/sqlpage\"]\n\n[profile.superoptimized]\ninherits = \"release\"\nstrip = \"debuginfo\"\nlto = \"fat\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:odbc-sys"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

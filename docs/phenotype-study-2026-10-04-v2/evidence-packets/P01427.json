@@ -1,0 +1,40 @@
+{
+  "packet_id": "P01427",
+  "source_finding_id": "P01427",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Expose max_fetch_tasks as a configurable scan option\n\nThis PR exposes `max_fetch_tasks` as a configurable parameter in `ScanOptions`, allowing users to control the number of concurrent tasks used for fetching blocks during scan operations. Previously, this value was hardcoded to 1, which could limit throughput for scan-heavy workloads.\n\n## Changes Made\n\n- **Added `max_fetch_tasks` field to `ScanOptions`** with a default value of 1 (preserving existing behavior)\n- **Updated `reader.rs`** to use `options.max_fetch_tasks` instead of the hardcoded value\n- **Added convenience method** `with_max_fetch_tasks()` for fluent configuration\n- **Added comprehensive tests** to validate the new functionality\n- **Applied formatting** using `cargo fmt`\n\n## Usage\n\n```rust\n// Default behavior (preserves existing performance characteristics)\nlet default_options = ScanOptions::default(); // max_fetch_tasks = 1\n\n// Higher throughput configuration for scan-heavy workloads\nlet high_throughput_options = ScanOptions::default()\n    .with_max_fetch_tasks(8);\n\n// Combined with other scan options\nlet custom_options = ScanOptions::default()\n    .with_max_fetch_tasks(4)\n    .with_cache_blocks(true)\n    .with_read_ahead_bytes(8192);\n\n// Use in scan operations\nlet iter = db.scan_with_options(range, &custom_options).await?;\n```\n\n## Backward Compatibility\n\nThis change is 100% backward compatible:\n- Default `max_fetch_tasks` value remains 1\n- All existing code continues to work without modification\n- New parameter is entirely opt-in\n\nUsers can now tune scan performance for their specific workloads while maintaining the conservative default behavior that ensures predictable resource usage.\n\nFixes #875.\n\n<!-- START [project metadata omitted] CODING AGENT TIPS -->\n---\n\n✨ Let [project metadata omitted] coding agent [set things up for you]([external reference omitted] — coding agent works faster and does higher quality work when set up for your repo.",
+  "diff_context": [
+    {
+      "path": "slatedb (slatedb/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "config::ScanOptions (type)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 4 unmeasured and 0 unreadable files",
+    "public-api public surface has 30 holes and 52 opaque items",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1992, \"outcome\": \"unresolved\", \"text\": \"pub const VT_ID: flatbuffers::VOffsetT = 4; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1993, \"outcome\": \"unresolved\", \"text\": \"pub const VT_MANIFEST_ID: flatbuffers::VOffsetT = 6; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1994, \"outcome\": \"unresolved\", \"text\": \"pub const VT_CHECKPOINT_EXPIRE_TIME_S: flatbuffers::VOffsetT = 8; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1995, \"outcome\": \"unresolved\", \"text\": \"pub const VT_CHECKPOINT_CREATE_TIME_S: flatbuffers::VOffsetT = 10; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1996, \"outcome\": \"unresolved\", \"text\": \"pub const VT_METADATA_TYPE: flatbuffers::VOffsetT = 12; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 1997, \"outcome\": \"unresolved\", \"text\": \"pub const VT_METADATA: flatbuffers::VOffsetT = 14; — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2000, \"outcome\": \"unresolved\", \"text\": \"pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2004, \"outcome\": \"unresolved\", \"text\": \"pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>( — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2020, \"outcome\": \"unresolved\", \"text\": \"pub fn id(&self) -> Uuid<'a> { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2027, \"outcome\": \"unresolved\", \"text\": \"pub fn manifest_id(&self) -> u64 { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2034, \"outcome\": \"unresolved\", \"text\": \"pub fn checkpoint_expire_time_s(&self) -> u32 { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2041, \"outcome\": \"unresolved\", \"text\": \"pub fn checkpoint_create_time_s(&self) -> u32 { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2048, \"outcome\": \"unresolved\", \"text\": \"pub fn metadata_type(&self) -> CheckpointMetadata { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2055, \"outcome\": \"unresolved\", \"text\": \"pub fn metadata(&self) -> Option<flatbuffers::Table<'a>> { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"slatedb/src/generated/manifest_generated.rs\", \"gate\": \"public-api\", \"line\": 2063, \"outcome\": \"unresolved\", \"text\": \"pub fn metadata_as_writer_checkpoint(&self) -> Option<WriterCheckpoint<'a>> { — slatedb (slatedb/Cargo.toml) — an inherent impl of Checkpoint outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

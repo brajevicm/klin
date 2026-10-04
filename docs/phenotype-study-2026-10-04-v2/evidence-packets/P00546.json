@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00546",
+  "source_finding_id": "P00546",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        self.port_info_button.set_tooltip_text(_(\"View information about currently used ports and potential conflicts\"))\n        self.port_info_button.connect(\"clicked\", self.on_view_port_info_clicked)\n        self.port_info_button.add_css_class(\"flat\")\n        button_box.append(self.port_info_button)\n        \n        rules_group.add(button_box)\n        \n        # Rules list\n        self.rules_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)\n        rules_group.add(self.rules_list)\n        \n        # Add a placeholder if no rules\n        self.placeholder = Gtk.Label(\n            label=_(\"No port forwarding rules configured\"),\n            margin_top=12,\n            margin_bottom=12\n        )\n        self.placeholder.add_css_class(\"dim-label\")\n        self.rules_list.append(self.placeholder)\n\n        # Initialize empty rules list if it doesn't exist\n        if not hasattr(self, 'forwarding_rules'):\n            self.forwarding_rules = []\n\n        # Load any existing rules if editing\n        if self.is_editing and self.connection and hasattr(self.connection, 'forwarding_rules'):\n            self.load_port_forwarding_rules()\n\n        # About Port Forwarding Group\n        about_group = Adw.PreferencesGroup(\n            title=_(\"About Port Forwarding\"),",
+      "after": "            title=_(\"Connection Commands\"),\n            description=_(\n                \"Run a command automatically on connect.\\n\\n\"\n                \"• Local Command: Runs on your machine after connection (requires PermitLocalCommand).\\n\"\n                \"• Remote Command: Runs on the remote host (uses RequestTTY for interactive shell).\"\n            )\n        )\n        self.local_command_row = Adw.EntryRow(title=_(\"Local Command\"))\n        try:\n            self.local_command_row.set_subtitle(_(\"Executed locally after connect\"))\n        except Exception:\n            pass\n        self.remote_command_row = Adw.EntryRow(title=_(\"Remote Command\"))\n        try:\n            self.remote_command_row.set_subtitle(_(\"Executed on remote; TTY requested for interactivity\"))\n        except Exception:\n            pass\n        commands_group.add(self.local_command_row)\n        commands_group.add(self.remote_command_row)\n\n        return commands_group\n    \n    def load_port_forwarding_rules(self):\n        \"\"\"Load port forwarding rules from the connection and update UI\"\"\"\n        if not hasattr(self, 'rules_list') or not hasattr(self, 'forwarding_rules'):\n            return\n            \n        # Clear existing rules UI\n        while self.rules_list.get_first_child():\n            self.rules_list.remove(self.rules_list.get_first_child())\n        ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

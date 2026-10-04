@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00249",
+  "source_finding_id": "P00249",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                        listen_addr_row.set_text('127.0.0.1')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('8080')\n                    except Exception:\n                        listen_port_row.set_text('8080')\n                    if not remote_host_row.get_text().strip():\n                        remote_host_row.set_text('localhost')\n                    try:\n                        if int((remote_port_row.get_text() or '0').strip() or '0') == 0:\n                            remote_port_row.set_text('22')\n                    except Exception:\n                        remote_port_row.set_text('22')\n                elif idx == 1:  # Remote\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('localhost')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('8080')\n                    except Exception:\n                        listen_port_row.set_text('8080')\n                    if not remote_host_row.get_text().strip():\n                        remote_host_row.set_text('localhost')\n                    try:\n                        if int((remote_port_row.get_text() or '0').strip() or '0') == 0:\n                            remote_port_row.set_text('22')\n                    except Exception:\n                        remote_port_row.set_text('22')\n                else:  # Dynamic\n                    if not listen_addr_row.get_text().strip():\n                        listen_addr_row.set_text('127.0.0.1')",
+      "after": "            self._save_rule_from_editor(existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row)\n            dialog.destroy()\n        \n        cancel_button.connect('clicked', _on_cancel_clicked)\n        save_button.connect('clicked', _on_save_clicked)\n        \n        # Show the window\n        dialog.present()\n\n    def _save_rule_from_editor(self, existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row):\n        idx = type_row.get_selected()\n        rtype = 'local' if idx == 0 else ('remote' if idx == 1 else 'dynamic')\n        listen_addr = listen_addr_row.get_text().strip() or '127.0.0.1'\n        try:\n            listen_port = int((listen_port_row.get_text() or '0').strip() or '0')\n        except Exception:\n            listen_port = 0\n        if listen_port <= 0:\n            self.show_error(_(\"Please enter a valid listen port (> 0)\"))\n            return\n        \n        # Check for port conflicts (for local and dynamic forwarding)\n        if rtype in ['local', 'dynamic']:\n            try:\n                port_checker = get_port_checker()\n                conflicts = port_checker.get_port_conflicts([listen_port], listen_addr)\n                \n                if conflicts:\n                    port, port_info = conflicts[0]\n                    conflict_msg = _(\"Port {port} is already in use\").format(port=port)\n                    if port_info.process_name:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

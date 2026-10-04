@@ -1,0 +1,27 @@
+{
+  "packet_id": "P00715",
+  "source_finding_id": "P00715",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: add global --dialect CLI option for all commands\n\nAdd global --dialect argument that allows overriding the dialect for any command.\nThis provides a convenient way to test different dialects without modifying\nconfiguration files.\n\nUsage:\n  sqruff lint --dialect bigquery file.sql\n  sqruff parse --dialect clickhouse file.sql\n  sqruff fix --dialect ansi file.sql\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "sqruff_cli_lib (crates/cli-lib/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "commands::Cli (type)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 4 unmeasured and 0 unreadable files",
+    "public-api public surface has 0 holes and 346 opaque items",
+    "{\"file\": \"crates/lib/src/rules/aliasing/al07.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "{\"file\": \"crates/lib/src/rules/structure/st08.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

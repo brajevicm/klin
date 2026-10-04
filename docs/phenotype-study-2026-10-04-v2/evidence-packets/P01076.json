@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01076",
+  "source_finding_id": "P01076",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                \n    def _populate_detected_certificates(self):\n        \"\"\"Populate certificate dropdown with detected certificate files.\"\"\"\n        try:\n            certificates = []\n            names = []\n            paths = []\n            \n            # Look for certificate files in the SSH directory\n            ssh_dir = get_ssh_dir()\n            if os.path.exists(ssh_dir) and os.path.isdir(ssh_dir):\n                for filename in os.listdir(ssh_dir):\n                    if filename.endswith('-cert.pub'):\n                        cert_path = os.path.join(ssh_dir, filename)\n                        if os.path.isfile(cert_path):\n                            certificates.append(cert_path)\n                            names.append(filename)\n                            paths.append(cert_path)\n            \n            # Add placeholder when none\n            if not names:\n                names.append(_(\"No certificates detected\"))\n                paths.append(\"\")\n            \n            # Add browse option\n            names.append(_(\"Browse…\"))\n            paths.append(\"__BROWSE__\")\n            \n            self._cert_paths = paths\n            model = Gtk.StringList()\n            for n in names:",
+      "after": "                if current_key_path:\n                    key_basename = os.path.basename(current_key_path)\n                    # Remove common extensions to get base name\n                    for ext in ['.pub', '.key', '.pem', '.rsa', '.dsa', '.ecdsa', '.ed25519']:\n                        if key_basename.endswith(ext):\n                            key_basename = key_basename[:-len(ext)]\n                            break\n                    \n                    # Look for matching certificate\n                    expected_cert_name = f\"{key_basename}-cert.pub\"\n                    expected_cert_path = os.path.join(os.path.dirname(current_key_path), expected_cert_name)\n                    \n                    if expected_cert_path in paths:\n                        preselect_idx = paths.index(expected_cert_path)\n                        logger.debug(f\"Auto-selected matching certificate: {expected_cert_name}\")\n            except Exception:\n                preselect_idx = 0\n            \n            try:\n                self.cert_dropdown.set_selected(preselect_idx)\n            except Exception:\n                pass\n                \n        except Exception as e:\n            logger.debug(f\"Could not populate detected certificates: {e}\")\n    \n    def _auto_select_matching_certificate(self, key_path):\n        \"\"\"Auto-select certificate that matches the selected key\"\"\"\n        try:\n            if not hasattr(self, 'cert_dropdown') or not hasattr(self, '_cert_paths'):\n                return",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01967",
+  "source_finding_id": "P01967",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Fix debug logs citation\n\n## Summary\n- capture all log levels for debug log citation\n\n## Testing\n- `nox -s lint tests`",
+  "diff_context": [
+    {
+      "path": "functions/pipes/openai_responses_api_pipeline.py",
+      "before": "                        continue\n                    if et == \"response.output_text.annotation.added\":\n                        raw = str(getattr(event, \"annotation\", \"\"))\n                        title_m = re.search(r\"title='([^']*)'\", raw)\n                        url_m = re.search(r\"url='([^']*)'\", raw)\n                        title = title_m.group(1) if title_m else \"Unknown Title\"\n                        url = url_m.group(1) if url_m else \"\"\n                        url = url.replace(\"?utm_source=openai\", \"\").replace(\"&utm_source=openai\", \"\")\n                        await __event_emitter__({\"type\": \"citation\", \"data\": {\"document\": [title], \"metadata\": [{\"date_accessed\": datetime.now().isoformat(), \"source\": title}], \"source\": {\"name\": url, \"url\": url}}})\n                        continue\n                    if et == \"response.completed\":\n                        if event.response.usage:\n                            self._update_usage(\n                                usage_total, event.response.usage, loop_count\n                            )\n                        continue\n            except Exception as ex:\n                self.log.error(\"Error in pipeline loop %d: %s\", loop_count, ex)\n                await __event_emitter__(\n                    {\n                        \"type\": \"message\",\n                        \"data\": {\n                            \"content\": f\"❌ {type(ex).__name__}: {ex}\\n{''.join(traceback.format_exc(limit=5))}\",\n                        },\n                    }\n                )\n                break\n\n            if pending_calls:\n                results = await self._execute_tools(pending_calls, __tools__)\n                for call, result in zip(pending_calls, results):",
+      "after": "                    if et == \"response.output_text.annotation.added\":\n                        raw = str(getattr(event, \"annotation\", \"\"))\n                        title_m = re.search(r\"title='([^']*)'\", raw)\n                        url_m = re.search(r\"url='([^']*)'\", raw)\n                        title = title_m.group(1) if title_m else \"Unknown Title\"\n                        url = url_m.group(1) if url_m else \"\"\n                        url = url.replace(\"?utm_source=openai\", \"\").replace(\"&utm_source=openai\", \"\")\n                        await __event_emitter__({\"type\": \"citation\", \"data\": {\"document\": [title], \"metadata\": [{\"date_accessed\": datetime.now().isoformat(), \"source\": title}], \"source\": {\"name\": url, \"url\": url}}})\n                        continue\n                    if et == \"response.completed\":\n                        if event.response.usage:\n                            self._update_usage(\n                                usage_total, event.response.usage, loop_count\n                            )\n                        continue\n            except Exception as ex:\n                self.log.error(\"Error in pipeline loop %d: %s\", loop_count, ex)\n                await __event_emitter__(\n                    {\n                        \"type\": \"message\",\n                        \"data\": {\n                            \"content\": f\"❌ {type(ex).__name__}: {ex}\\n{''.join(traceback.format_exc(limit=5))}\",\n                        },\n                    }\n                )\n                break\n\n            if pending_calls:\n                results = await self._execute_tools(pending_calls, __tools__)\n                for call, result in zip(pending_calls, results):\n                    function_call_output = {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

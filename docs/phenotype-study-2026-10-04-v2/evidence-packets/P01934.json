@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01934",
+  "source_finding_id": "P01934",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                            'remote_command': getattr(connection, 'remote_command', ''),\n                            'forwarding_rules': getattr(connection, 'forwarding_rules', []),\n                            'extra_ssh_config': extra_config\n                        }\n                        \n                        logger.debug(f\"Config data for preview: {config_data}\")\n                        \n                        # Generate the complete SSH config block\n                        config_text = self.connection_manager.format_ssh_config_entry(config_data)\n                        \n                        logger.debug(f\"Generated config text: {config_text}\")\n                        \n                        buffer = self.config_text_view.get_buffer()\n                        buffer.set_text(config_text)\n                        return\n            except Exception as e:\n                logger.error(f\"Error updating SSH config preview: {e}\")\n        \n        # Fallback: show only the extra config parameters\n        config_lines = []\n        \n        for row_grid in self.config_entries:\n            key = self._get_dropdown_selected_text(row_grid.key_dropdown)\n            value = row_grid.value_entry.get_text().strip()\n            \n            if key and value and key != \"Select SSH option...\":\n                config_lines.append(f\"    {key} {value}\")\n                \n        config_text = \"Host your-host-name\\n\" + \"\\n\".join(config_lines)\n        \n        buffer = self.config_text_view.get_buffer()",
+      "after": "                            'remote_command': getattr(connection, 'remote_command', ''),\n                            'forwarding_rules': getattr(connection, 'forwarding_rules', []),\n                            'extra_ssh_config': extra_config\n                        }\n                        \n                        logger.debug(f\"Config data for preview: {config_data}\")\n                        \n                        # Generate the complete SSH config block\n                        config_text = self.connection_manager.format_ssh_config_entry(config_data)\n                        \n                        logger.debug(f\"Generated config text: {config_text}\")\n                        \n                        buffer = self.config_text_view.get_buffer()\n                        buffer.set_text(config_text)\n                        return\n            except Exception as e:\n                logger.error(f\"Error updating SSH config preview: {e}\")\n        \n        # Fallback: show only the extra config parameters\n        config_lines = []\n        \n        for row_grid in self.config_entries:\n            key = self._get_dropdown_selected_text(row_grid.key_dropdown)\n            value = row_grid.value_entry.get_text().strip()\n            \n            if key and value and key != \"Select SSH option...\":\n                config_lines.append(f\"    {key} {value}\")\n                \n        config_text = \"Host your-host-name\\n\" + \"\\n\".join(config_lines)\n        \n        buffer = self.config_text_view.get_buffer()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

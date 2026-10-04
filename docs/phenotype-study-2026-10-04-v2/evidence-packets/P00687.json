@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00687",
+  "source_finding_id": "P00687",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "    \n    def _get_app_name(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve app name with clear precedence.\"\"\"\n        if self._static_app_name:\n            return self._static_app_name\n        elif self._app_name_extractor:\n            return self._app_name_extractor(input)\n        else:\n            return self._default_app_extractor(input)\n    \n    def _default_app_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default app extraction logic - use agent name directly.\"\"\"\n        # Use the ADK agent's name as app name\n        try:\n            return self._adk_agent.name\n        except Exception as e:\n            logger.warning(f\"Could not get agent name for app_name, using default: {e}\")\n            return \"AG-UI ADK Agent\"\n    \n    def _get_user_id(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve user ID with clear precedence.\"\"\"\n        if self._static_user_id:\n            return self._static_user_id\n        elif self._user_id_extractor:\n            return self._user_id_extractor(input)\n        else:\n            return self._default_user_extractor(input)\n    \n    def _default_user_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default user extraction logic.\"\"\"\n        # Use thread_id as default (assumes thread per user)",
+      "after": "    \n    def _get_app_name(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve app name with clear precedence.\"\"\"\n        if self._static_app_name:\n            return self._static_app_name\n        elif self._app_name_extractor:\n            return self._app_name_extractor(input)\n        else:\n            return self._default_app_extractor(input)\n    \n    def _default_app_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default app extraction logic - use agent name directly.\"\"\"\n        # Use the ADK agent's name as app name\n        try:\n            return self._adk_agent.name\n        except Exception as e:\n            logger.warning(f\"Could not get agent name for app_name, using default: {e}\")\n            return \"AG-UI ADK Agent\"\n    \n    def _get_user_id(self, input: RunAgentInput) -> str:\n        \"\"\"Resolve user ID with clear precedence.\"\"\"\n        if self._static_user_id:\n            return self._static_user_id\n        elif self._user_id_extractor:\n            return self._user_id_extractor(input)\n        else:\n            return self._default_user_extractor(input)\n    \n    def _default_user_extractor(self, input: RunAgentInput) -> str:\n        \"\"\"Default user extraction logic.\"\"\"\n        # Use thread_id as default (assumes thread per user)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

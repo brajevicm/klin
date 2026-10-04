@@ -1,0 +1,16 @@
+{
+  "packet_id": "P00173",
+  "source_finding_id": "P00173",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "def __init__("
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

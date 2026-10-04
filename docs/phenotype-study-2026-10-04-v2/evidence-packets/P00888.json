@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00888",
+  "source_finding_id": "P00888",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "    \n    def validate_ssh_config_syntax(self, config_text):\n        \"\"\"Basic SSH config syntax validation\"\"\"\n        try:\n            lines = config_text.strip().split('\\n')\n            for i, line in enumerate(lines, 1):\n                line = line.strip()\n                # Skip empty lines and comments\n                if not line or line.startswith('#'):\n                    continue\n                \n                # Check for Host directive (should be at start of line)\n                if line.startswith('Host '):\n                    host_name = line[5:].strip()\n                    if not host_name:\n                        return False, f\"Line {i}: Host directive requires a name\"\n                \n                # Check for indented options (should start with spaces/tabs)\n                elif line.startswith(' ') or line.startswith('\\t'):\n                    # Basic option format check\n                    if ' ' not in line.strip():\n                        return False, f\"Line {i}: Invalid option format\"\n                    \n                    option_parts = line.strip().split(' ', 1)\n                    if len(option_parts) < 2:\n                        return False, f\"Line {i}: Option requires a value\"\n                \n                # Check for non-indented, non-comment lines\n                elif not line.startswith('#'):\n                    return False, f\"Line {i}: Expected 'Host' directive or indented option\"\n            ",
+      "after": "            key_only_row = getattr(self, 'key_only_row', None)\n            \n            # Get values from UI or use defaults\n            nickname_val = nickname.get_text().strip() if nickname else \"my-server\"\n            host_val = host.get_text().strip() if host else \"example.com\"\n            username_val = username.get_text().strip() if username else \"user\"\n            port_val = port.get_text().strip() if port else \"22\"\n            \n            # Get authentication settings\n            auth_method_val = auth_method.get_selected() if auth_method else 0\n            selection_val = key_select_mode.get_selected() if key_select_mode else 0\n            key_select_mode_val = 0\n            if selection_val == 1:\n                try:\n                    only_active = key_only_row.get_active() if key_only_row else True\n                except Exception:\n                    only_active = True\n                key_select_mode_val = 1 if only_active else 2\n            \n            # Get keyfile and certificate if available\n            keyfile_val = \"\"\n            certificate_val = \"\"\n            if hasattr(self, 'keyfile_row') and self.keyfile_row.get_subtitle():\n                keyfile_val = self.keyfile_row.get_subtitle()\n            elif hasattr(self, '_selected_keyfile_path') and self._selected_keyfile_path:\n                keyfile_val = self._selected_keyfile_path\n            elif hasattr(self, 'connection') and self.connection:\n                keyfile_val = getattr(self.connection, 'keyfile', '')\n            \n            # Validate keyfile path - skip placeholder text\n            if keyfile_val and keyfile_val.lower() in ['select key file or leave empty for auto-detection', '']:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

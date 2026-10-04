@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01901",
+  "source_finding_id": "P01901",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix confusion between \"toml\" and \"tomli\"\n\nHi,\n\nIt was realy hard for me too to wrap my head around this, so I documented here: [external reference omitted]\n\nHere's the full evolution story of this library: pytoml -> toml -> tomli -> tomllib\n\ntomli & tomllib should be 99% the same thing",
+  "diff_context": [
+    {
+      "path": "pyproject.toml",
+      "before": "[build-system]\nrequires = [\"setuptools>=40.8.0\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"\n\n\n[project]\nname = \"sqlfluff\"\nversion = \"3.4.2\"\ndescription = \"The SQL Linter for Humans\"\nreadme = {file = \"README.md\", content-type = \"text/markdown\"}\nrequires-python = \">=3.9\"\nauthors = [\n  {name = \"Alan Cruickshank\", email = \"alan@designingoverload.com\"},\n]\nlicense = {file = \"LICENSE.md\"}\nclassifiers = [",
+      "after": "[build-system]\nrequires = [\"setuptools>=40.8.0\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"\n\n\n[project]\nname = \"sqlfluff\"\nversion = \"3.4.2\"\ndescription = \"The SQL Linter for Humans\"\nreadme = {file = \"README.md\", content-type = \"text/markdown\"}\nrequires-python = \">=3.9\"\nauthors = [\n  {name = \"Alan Cruickshank\", email = \"alan@designingoverload.com\"},\n]\nlicense = {file = \"LICENSE.md\"}\nclassifiers = [",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency pypi:tomli"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

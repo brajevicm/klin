@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01665",
+  "source_finding_id": "P01665",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/adk_agent.py",
+      "before": "            metadata = self._get_session_metadata(session_id)\n\n            if metadata:\n                app_name = metadata[\"app_name\"]\n                user_id = metadata[\"user_id\"]\n\n                # Get pending calls using SessionManager\n                pending_calls = await self._session_manager.get_state_value(\n                    session_id=session_id,\n                    app_name=app_name,\n                    user_id=user_id,\n                    key=\"pending_tool_calls\",\n                    default=[]\n                )\n                return len(pending_calls) > 0\n        except Exception as e:\n            logger.error(f\"Failed to check pending tool calls for session {session_id}: {e}\")\n\n        return False\n    \n    \n    def _default_run_config(self, input: RunAgentInput) -> ADKRunConfig:\n        \"\"\"Create default RunConfig with SSE streaming enabled.\"\"\"\n        return ADKRunConfig(\n            streaming_mode=StreamingMode.SSE,\n            save_input_blobs_as_artifacts=True\n        )\n    \n    \n    def _create_runner(self, adk_agent: BaseAgent, user_id: str, app_name: str) -> Runner:\n        \"\"\"Create a new runner instance.\"\"\"",
+      "after": "            metadata = self._get_session_metadata(session_id)\n\n            if metadata:\n                app_name = metadata[\"app_name\"]\n                user_id = metadata[\"user_id\"]\n\n                # Get pending calls using SessionManager\n                pending_calls = await self._session_manager.get_state_value(\n                    session_id=session_id,\n                    app_name=app_name,\n                    user_id=user_id,\n                    key=\"pending_tool_calls\",\n                    default=[]\n                )\n                return len(pending_calls) > 0\n        except Exception as e:\n            logger.error(f\"Failed to check pending tool calls for session {session_id}: {e}\")\n\n        return False\n    \n    \n    def _default_run_config(self, input: RunAgentInput) -> ADKRunConfig:\n        \"\"\"Create default RunConfig with SSE streaming enabled.\"\"\"\n        return ADKRunConfig(\n            streaming_mode=StreamingMode.SSE,\n            save_input_blobs_as_artifacts=True\n        )\n    \n    \n    def _create_runner(self, adk_agent: BaseAgent, user_id: str, app_name: str) -> Runner:\n        \"\"\"Create a new runner instance.\"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

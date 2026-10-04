@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01010",
+  "source_finding_id": "P01010",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Refactor: Unify `SerIter` and `SerIterOwned`\n\nThe `SerIter` and `SerIterOwned` structs were nearly identical, with the only difference being that `SerIter` handled iterators yielding borrowed references (`&'a T`) and `SerIterOwned` handled iterators yielding owned values (`T`).\n\nThis commit unifies these two structs into a single, more flexible `SerIter` that is generic over iterators whose items implement `Borrow<T>`. This allows the new `SerIter` to handle both owned and borrowed values, eliminating redundant code and simplifying the public API.\n\nThe documentation and examples have been updated to reflect these changes.\n\n---\n*PR created automatically by [authoring attribution omitted] for task [16837819993224102504]([external reference omitted]",
+  "diff_context": [
+    {
+      "path": "epserde/src/impls/iter.rs",
+      "before": "\n        let mut c = 0;\n        for item in iter.deref_mut() {\n            unsafe { item._ser_inner(backend) }?;\n            c += 1;\n        }\n\n        if c != len {\n            Err(ser::Error::IteratorLengthMismatch {\n                actual: c,\n                expected: len,\n            })\n        } else {\n            Ok(())\n        }\n    }\n}",
+      "after": "}\n\nimpl<T, I> SerHelper<Deep> for SerIter<T, I>\nwhere\n    I: ExactSizeIterator,\n    I::Item: Borrow<T>,\n    T: DeepCopy,\n{\n    unsafe fn _ser_inner(&self, backend: &mut impl WriteWithNames) -> ser::Result<()> {\n        let mut iter = self.0.borrow_mut();\n        let len = iter.len();\n        backend.write(\"len\", &len)?;\n\n        let mut c = 0;\n        for item in iter.deref_mut() {\n            unsafe { item.borrow()._ser_inner(backend)? };\n            c += 1;\n        }\n\n        if c != len {\n            Err(ser::Error::IteratorLengthMismatch {\n                actual: c,\n                expected: len,\n            })\n        } else {\n            Ok(())\n        }\n    }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "unsafe { item.borrow()._ser_inner(backend)? };"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

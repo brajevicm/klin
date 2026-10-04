@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01593",
+  "source_finding_id": "P01593",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                                window.group_manager.reorder_group(group_id, target_group_id, position)\n                                changes_made = True\n                            else:\n                                # Different levels - move to new parent (existing functionality)\n                                if _move_group(window, group_id, target_group_id):\n                                    changes_made = True\n                        else:\n                            logger.warning(f\"Target group '{target_group_id}' does not exist\")\n\n        # Only rebuild the connection list once if changes were made\n        if changes_made:\n            window.rebuild_connection_list()\n            return True\n\n        return False\n    except Exception as e:\n        logger.error(f\"Error handling drop: {e}\")\n        return False\n\n\ndef _get_target_group_at_position(window, x, y):\n    try:\n        row = window.connection_list.get_row_at_y(int(y))\n        if row and hasattr(row, \"group_id\"):\n            return row.group_id\n        elif row and hasattr(row, \"connection\"):\n            connection = row.connection\n            return window.group_manager.get_connection_group(connection.nickname)\n        return None\n    except Exception:\n        return None",
+      "after": "                                window.group_manager.reorder_group(group_id, target_group_id, position)\n                                changes_made = True\n                            else:\n                                # Different levels - move to new parent (existing functionality)\n                                if _move_group(window, group_id, target_group_id):\n                                    changes_made = True\n                        else:\n                            logger.warning(f\"Target group '{target_group_id}' does not exist\")\n\n        # Only rebuild the connection list once if changes were made\n        if changes_made:\n            window.rebuild_connection_list()\n            return True\n\n        return False\n    except Exception as e:\n        logger.error(f\"Error handling drop: {e}\")\n        return False\n\n\ndef _get_target_group_at_position(window, x, y):\n    try:\n        row = window.connection_list.get_row_at_y(int(y))\n        if row and hasattr(row, \"group_id\"):\n            return row.group_id\n        elif row and hasattr(row, \"connection\"):\n            connection = row.connection\n            return window.group_manager.get_connection_group(connection.nickname)\n        return None\n    except Exception:\n        return None",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

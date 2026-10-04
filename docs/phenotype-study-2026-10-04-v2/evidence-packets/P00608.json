@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00608",
+  "source_finding_id": "P00608",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Fix CrossFrameLMS responses\n\n## Summary\n- avoid undefined fields in CrossFrameLMS responses\n- add async CrossFrameLMS tests\n\n## Testing\n- `npm run lint --silent`\n- `npm test --silent`",
+  "diff_context": [
+    {
+      "path": "test/facades/CrossFrameFacade.spec.ts",
+      "before": "  let server: any;\n  let src: any;\n\n  beforeEach(() => {\n    apiMock = { LMSGetValue: vi.fn().mockReturnValue(\"completed\") };\n    server = new CrossFrameLMS(apiMock, \"http://parent\");\n    src = { postMessage: vi.fn() };\n  });\n\n  it(\"processes valid call and replies\", () => {\n    const msg: MessageData = {\n      messageId: \"42\",\n      method: \"LMSGetValue\",\n      params: [\"cmi.core.lesson_status\"],\n    };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    expect(apiMock.LMSGetValue).toHaveBeenCalledWith(\"cmi.core.lesson_status\");\n    expect(src.postMessage).toHaveBeenCalledWith(\n      { messageId: \"42\", result: \"completed\", error: undefined },\n      \"http://parent\",\n    );\n  });\n\n  it(\"handles missing method with error\", () => {\n    const msg: MessageData = { messageId: \"99\", method: \"foo\", params: [] };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;",
+      "after": "  let server: any;\n  let src: any;\n\n  beforeEach(() => {\n    apiMock = { LMSGetValue: vi.fn().mockReturnValue(\"completed\") };\n    server = new CrossFrameLMS(apiMock, \"http://parent\");\n    src = { postMessage: vi.fn() };\n  });\n\n  it(\"processes valid call and replies\", () => {\n    const msg: MessageData = {\n      messageId: \"42\",\n      method: \"LMSGetValue\",\n      params: [\"cmi.core.lesson_status\"],\n    };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    expect(apiMock.LMSGetValue).toHaveBeenCalledWith(\"cmi.core.lesson_status\");\n    expect(src.postMessage).toHaveBeenCalledWith(\n      { messageId: \"42\", result: \"completed\" },\n      \"http://parent\",\n    );\n  });\n\n  it(\"handles missing method with error\", () => {\n    const msg: MessageData = { messageId: \"99\", method: \"foo\", params: [] };\n    // eslint-disable-next-line\n    // @ts-ignore\n    server[\"_process\"](msg, src);\n    const resp = (src.postMessage as any).mock.calls[0][0] as MessageResponse;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "// eslint-disable-next-line"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,16 @@
+{
+  "packet_id": "P00758",
+  "source_finding_id": "P00758",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "math::cartesian::CartesianState::eq_within (method)"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

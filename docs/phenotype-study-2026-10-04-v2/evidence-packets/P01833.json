@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01833",
+  "source_finding_id": "P01833",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            else:\n                continue\n                \n            # Add description\n            row.set_subtitle(description)\n            \n            # Add delete button\n            delete_button = Gtk.Button(\n                icon_name=\"user-trash-symbolic\",\n                valign=Gtk.Align.CENTER,\n                css_classes=[\"flat\", \"error\"]\n            )\n            delete_button.connect(\"clicked\", self.on_delete_forwarding_rule_clicked, rule)\n            row.add_suffix(delete_button)\n            \n            # Add edit button\n            edit_button = Gtk.Button(\n                icon_name=\"document-edit-symbolic\",\n                valign=Gtk.Align.CENTER,\n                css_classes=[\"flat\"]\n            )\n            edit_button.connect(\"clicked\", self.on_edit_forwarding_rule_clicked, rule)\n            row.add_suffix(edit_button)\n            \n            # Add the row to the list\n            self.rules_list.append(row)\n        \n        # Show the rules list\n        self.rules_list.show()\n    \n    def browse_for_key_file(self):",
+      "after": "\n            dialog.open(parent, None, self.on_key_file_selected)\n        except Exception as e:\n            logger.error(f\"Failed to open key file chooser: {e}\")\n\n    def browse_for_certificate_file(self):\n        \"\"\"Open file chooser to browse for SSH certificate file using portal-aware API.\"\"\"\n        try:\n            dialog = Gtk.FileDialog(title=_(\"Select SSH Certificate File\"))\n\n            # Default to SSH directory when available\n            try:\n                ssh_dir = get_ssh_dir()\n                if os.path.isdir(ssh_dir):\n                    dialog.set_initial_folder(Gio.File.new_for_path(ssh_dir))\n            except Exception:\n                pass\n\n            # Add filter for certificate files\n            cert_filter = Gtk.FileFilter()\n            cert_filter.set_name(_(\"SSH Certificate Files\"))\n            cert_filter.add_pattern(\"*-cert.pub\")\n            cert_filter.add_pattern(\"*.pub\")\n            all_filter = Gtk.FileFilter()\n            all_filter.set_name(_(\"All Files\"))\n            all_filter.add_pattern(\"*\")\n\n            filters = Gio.ListStore.new(Gtk.FileFilter)\n            filters.append(cert_filter)\n            filters.append(all_filter)\n            dialog.set_filters(filters)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

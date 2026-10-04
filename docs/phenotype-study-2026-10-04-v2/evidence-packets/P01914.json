@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01914",
+  "source_finding_id": "P01914",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Implement warnings table and frontend display\n\n## Summary\n- add `warnings` table\n- expose warnings via new API endpoint\n- record system check warnings in the DB\n- surface run warnings in stats and compare pages\n- adapt tests to use warnings table\n\n## Testing\n- `pip install -r requirements-dev.txt`\n- `pylint $(git ls-files '*.py')` *(fails: Unable to import packages)*\n- `pytest -k warnings` *(fails: ModuleNotFoundError: No module named 'tests')*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "api/api_helpers.py",
+      "before": "        detail_name_condition =  \"AND p.detail_name = %s\"\n        params.append(detail_name)\n\n    machine_id_condition = ''\n    if machine_id is not None:\n        check_int_field_api(machine_id, 'machine_id', 1024) # can cause exception\n        machine_id_condition =  \"AND r.machine_id = %s\"\n        params.append(machine_id)\n\n    sorting_condition = 'r.commit_timestamp ASC, r.created_at ASC'\n    if sorting is not None and sorting.strip() == 'run':\n        sorting_condition = 'r.created_at ASC, r.commit_timestamp ASC'\n\n    query = f\"\"\"\n            SELECT\n                r.id, r.name, r.created_at, p.metric, p.detail_name, p.phase,\n                p.value, p.unit, r.commit_hash, r.commit_timestamp, r.gmt_hash,\n                row_number() OVER () AS row_num\n            FROM runs as r\n            LEFT JOIN phase_stats as p ON\n                r.id = p.run_id\n            WHERE\n                (TRUE = %s OR r.user_id = ANY(%s::int[]))\n                AND r.uri = %s\n                AND r.filename = %s\n                AND r.branch = %s\n                AND r.end_measurement IS NOT NULL\n                AND r.failed != TRUE\n                AND p.phase LIKE %s\n                {metric_condition}\n                {start_date_condition}",
+      "after": "    detail_name_condition = ''\n    if detail_name is not None and detail_name.strip() != '':\n        detail_name_condition =  \"AND p.detail_name = %s\"\n        params.append(detail_name)\n\n    machine_id_condition = ''\n    if machine_id is not None:\n        check_int_field_api(machine_id, 'machine_id', 1024) # can cause exception\n        machine_id_condition =  \"AND r.machine_id = %s\"\n        params.append(machine_id)\n\n    sorting_condition = 'r.commit_timestamp ASC, r.created_at ASC'\n    if sorting is not None and sorting.strip() == 'run':\n        sorting_condition = 'r.created_at ASC, r.commit_timestamp ASC'\n\n    query = f\"\"\"\n            SELECT\n                r.id, r.name, r.created_at, p.metric, p.detail_name, p.phase,\n                p.value, p.unit, r.commit_hash, r.commit_timestamp, r.gmt_hash,\n                row_number() OVER () AS row_num\n            FROM runs as r\n            LEFT JOIN phase_stats as p ON\n                r.id = p.run_id\n            WHERE\n                (TRUE = %s OR r.user_id = ANY(%s::int[]))\n                AND r.uri = %s\n                AND r.filename = %s\n                AND r.branch = %s\n                AND r.end_measurement IS NOT NULL\n                AND r.failed != TRUE\n                AND p.phase LIKE %s",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

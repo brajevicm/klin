@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01109",
+  "source_finding_id": "P01109",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "fix: handle optional fields without defaults in client documents (#487)\n\n## Summary\nThis PR fixes an issue where optional Schema fields in client documents without default values would be `undefined` when querying after being set.\n\n## Problem\nWhen using optional fields in client documents without providing default values, the fields would be lost when querying the document back, even after explicitly setting them. This was due to:\n1. The `mergeDefaultValues` function only iterating over keys from the default values object\n2. SessionIdSymbol not being replaced in synchronous `store.query()` calls\n\n## Solution\n1. **Fixed `mergeDefaultValues`** to preserve all keys from both default and explicit values\n2. **Added SessionIdSymbol replacement** in the synchronous `store.query()` method\n3. **Added comprehensive tests** to prevent regression\n\n## Test Plan\n- [x] Added unit tests for `mergeDefaultValues` function\n- [x] Added integration test reproducing the exact scenario from issue #487\n- [x] All existing tests pass\n\n## Changes\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.ts`: Fixed `mergeDefaultValues` to iterate over all keys\n- `packages/[user omitted]/livestore/src/store/store.ts`: Added SessionIdSymbol replacement in query method\n- `tests/package-common/src/issue-487.test.ts`: Added integration test\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.test.ts`: Added unit tests\n\nFixes #487\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "packages/@livestore/common/src/schema/state/sqlite/client-document-def.test.ts",
+      "before": "  const id = `00000000-0000-0000-0000-000000000000`\n  return { ...muationEvent, id }\n}",
+      "after": "  const id = `00000000-0000-0000-0000-000000000000`\n  return { ...muationEvent, id }\n}\n\ndescribe('mergeDefaultValues', () => {\n  test('merges values from both objects', () => {\n    const defaults = { a: 1, b: 2 }\n    const explicit = { a: 10, b: 20 }\n    const result = mergeDefaultValues(defaults, explicit)\n\n    expect(result).toEqual({ a: 10, b: 20 })\n  })\n\n  test('uses default values when explicit values are undefined', () => {\n    const defaults = { a: 1, b: 2 }\n    const explicit = { a: undefined, b: 20 } as any\n    const result = mergeDefaultValues(defaults, explicit)\n\n    expect(result).toEqual({ a: 1, b: 20 })\n  })\n\n  test('should preserve properties that are not in default values', () => {\n    const defaults = { a: 1, b: 2 }\n    const explicit = { a: 10, b: 20, c: 30 }\n    const result = mergeDefaultValues(defaults, explicit)\n\n    // Should include ALL properties from explicit, not just those in defaults\n    expect(result).toEqual({ a: 10, b: 20, c: 30 })\n    expect('c' in result).toBe(true)\n  })",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const explicit = { a: undefined, b: 20 } as any"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

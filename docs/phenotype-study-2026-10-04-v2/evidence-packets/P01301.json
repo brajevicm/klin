@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01301",
+  "source_finding_id": "P01301",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "refactor: add safe obj generation\n\nshould fix #47 #49 #57 when using deepseek-r1 and a fallback model (gpt4o/qwen-2.5b-instruct) is given",
+  "diff_context": [
+    {
+      "path": "src/utils/safe-generator.ts",
+      "before": null,
+      "after": "        }\n\n        // If no fallback model or all attempts failed, throw the original error\n        throw error;\n      }\n    }\n  }\n\n  private async handleGenerateObjectError<T>(error: unknown): Promise<GenerateObjectResult<T>> {\n    if (NoObjectGeneratedError.isInstance(error)) {\n      console.error('Object not generated according to schema, fallback to manual JSON parsing');\n      try {\n        const partialResponse = JSON.parse((error as any).text);\n        return {\n          object: partialResponse as T,\n          usage: (error as any).usage\n        };\n      } catch (parseError) {\n        throw error;\n      }\n    }\n    throw error;\n  }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "usage: (error as any).usage"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

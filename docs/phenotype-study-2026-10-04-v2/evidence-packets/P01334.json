@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01334",
+  "source_finding_id": "P01334",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "feat: 认知激活模式系统与recall工具增强\n\n## 概述\n\n实现基于学术研究的认知激活模式系统，增强recall工具的约束机制，修复状态锚定相关bug。\n\n## 新增功能\n\n### 🧠 认知激活模式 (Cognitive Activation Modes)\n\n实现三种认知激活模式，支持不同场景的记忆检索需求：\n\n- **Creative** (创造性探索): 广泛联想，发现远距离连接\n  - firingThreshold=0.05, maxCycles=12, maxActivations=150\n- **Balanced** (平衡模式): 系统默认行为\n  - firingThreshold=0.1, maxCycles=8, maxActivations=100\n- **Focused** (聚焦检索): 精确查找，优先常用记忆\n  - firingThreshold=0.2, maxCycles=4, maxActivations=50\n\n参数设计基于：\n- ACT-R认知架构\n- Exploration-Exploitation理论\n- Dual Process Theory (系统1 vs 系统2)\n\n### 🔧 Recall工具增强\n\n严格限制recall必须使用记忆网络中实际存在的词汇：\n\n- 移除\"语义相近\"、\"概念抽象\"等模糊策略\n- 强制执行工作流：action查看网络图 → 选择已存在的词 → recall\n- 添加明确的失败处理指导\n- 禁止AI推测或转换不存在的词汇\n\n## 修复\n\n### 🐛 状态锚定bug修复\n\n修复空Mind对象被错误锚定导致状态污染的问题：\n\n**问题**: AI违规使用不存在的词recall时，返回空Mind仍被锚定，导致每次重启都尝试恢复失败状态\n\n**修复**: \n- 添加系统级防御：仅当 `mind.activatedCues.size > 0` 时才锚定\n- 添加debug日志记录skip anchoring的情况\n- 防止空Mind污染state.json\n\n### 🔧 其他修复\n\n- 修复TwoPhaseRecallStrategy错误使用centerCue导致激活失败\n- 改进logger API支持自然顺序：`logger.info(msg, obj)`\n- 添加详细的mode参数传递日志\n\n## 技术细节\n\n### 文件变更\n\n- `packages/core/src/cognition/ActivationMode.js` - 新增认知模式定义\n- `packages/core/src/cognition/CognitionManager.js` - 添加锚定验证逻辑\n- `packages/core/src/cognition/strategies/TwoPhaseRecallStrategy.js` - 集成mode参数\n- `packages/mcp-server/src/tools/recall.ts` - 强化提示词约束\n…",
+  "diff_context": [
+    {
+      "path": "packages/mcp-server/src/tools/recall.ts",
+      "before": "  }\n};",
+      "after": "        description: '认知激活模式：creative(创造性探索，广泛联想)、balanced(平衡模式，默认)、focused(聚焦检索，精确查找)'\n      }\n    },\n    required: ['role', 'query']\n  },\n  handler: async (args: { role: string; query?: string; mode?: string }) => {\n    const core = await import('@promptx/core');\n    const coreExports = core.default || core;\n    const cli = (coreExports as any).cli || (coreExports as any).pouch?.cli;\n\n    if (!cli || !cli.execute) {\n      throw new Error('CLI not available in @promptx/core');\n    }\n\n    // 构建 CLI 参数，传递 mode 作为对象\n    const cliArgs: any[] = [{\n      role: args.role,\n      query: args.query,\n      mode: args.mode\n    }];\n\n    const result = await cli.execute('recall', cliArgs);\n    return outputAdapter.convertToMCPFormat(result);\n  }\n};",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const cliArgs: any[] = [{"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

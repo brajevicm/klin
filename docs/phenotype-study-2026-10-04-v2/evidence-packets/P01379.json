@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01379",
+  "source_finding_id": "P01379",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "aime 2024 / 2025\n\n## Description\n<!-- Provide a brief description of the changes in this PR -->\n\n## Type of Change\n<!-- Mark the relevant option with an \"x\" -->\n- [ ] Bug fix (non-breaking change which fixes an issue)\n- [ ] New feature (non-breaking change which adds functionality)\n- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)\n- [ ] Documentation update\n- [ ] Test improvement\n\n## Testing\n<!-- Describe the tests you ran to verify your changes -->\n- [ ] All existing tests pass\n- [ ] New tests have been added to cover the changes\n- [ ] Tests have been run locally with `python -m pytest tests/`\n\n### Test Coverage\n<!-- If applicable, mention the test coverage for new code -->\n- Current coverage: ___%\n- Coverage after changes: ___%\n\n## Checklist\n- [ ] My code follows the style guidelines of this project\n- [ ] I have performed a self-review of my own code\n- [ ] I have commented my code, particularly in hard-to-understand areas\n- [ ] I have made corresponding changes to the documentation\n- [ ] My changes generate no new warnings\n- [ ] Any dependent changes have been merged and published\n\n## Additional Notes\n<!-- Add any additional notes, screenshots, or context about the PR here -->",
+  "diff_context": [
+    {
+      "path": "verifiers/scripts/eval.py",
+      "before": "            model=model,\n            num_examples=num_examples,\n            rollouts_per_example=rollouts_per_example,\n            api_base_url=api_base_url,\n            sampling_args=sampling_args,\n            env_args=env_args,\n        )\n        out_path = write_report(\n            env_module_file=env_module_file, meta=meta, results=results\n        )\n        print(f\"Saved HTML report to {out_path}\")\n        # Update README reports block with sanitized content\n        update_readme_reports_section(env_module_file=env_module_file)\n    except Exception as e:\n        print(f\"Failed to write HTML report: {e}\")\n\n\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\n        \"env\", type=str, default=\"gsm8k\", help=\"Environment module name\"\n    )\n    parser.add_argument(\n        \"--env-args\",\n        \"-a\",\n        type=json.loads,\n        default={},\n        help='Environment module arguments as JSON object (e.g., \\'{\"key\": \"value\", \"num\": 42}\\')',\n    )\n    parser.add_argument(\n        \"--endpoints-path\",",
+      "after": "            env_id=env,\n            env_version=get_env_version(module_name),\n            model=model,\n            num_examples=num_examples,\n            rollouts_per_example=rollouts_per_example,\n            api_base_url=api_base_url,\n            sampling_args=sampling_args,\n            env_args=env_args,\n        )\n        out_path = write_report(\n            env_module_file=env_module_file, meta=meta, results=results\n        )\n        print(f\"Saved HTML report to {out_path}\")\n        # Update README reports block with sanitized content\n        update_readme_reports_section(env_module_file=env_module_file)\n    except Exception as e:\n        print(f\"Failed to write HTML report: {e}\")\n\n\ndef main():\n    parser = argparse.ArgumentParser()\n    parser.add_argument(\n        \"env\", type=str, default=\"gsm8k\", help=\"Environment module name\"\n    )\n    parser.add_argument(\n        \"--env-args\",\n        \"-a\",\n        type=json.loads,\n        default={},\n        help='Environment module arguments as JSON object (e.g., \\'{\"key\": \"value\", \"num\": 42}\\')',\n    )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

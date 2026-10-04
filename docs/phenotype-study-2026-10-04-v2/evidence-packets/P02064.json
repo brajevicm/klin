@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02064",
+  "source_finding_id": "P02064",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Test [project metadata omitted] Agent (Will not be merged)\n\nThis PR completely refactors the discord-hybrid-sharding project into a modern pnpm monorepo structure, separating concerns between generic process management and Discord-specific functionality while maintaining backward compatibility.\n\n## 🏗️ Architecture Changes\n\n### New Package Structure\n- **`[user omitted]/core`** - Framework-agnostic process management library\n- **`[user omitted]/discord`** - Discord-specific implementation using the core package\n\nThe monorepo uses pnpm workspaces for efficient dependency management and provides strong TypeScript typing throughout.\n\n## ✨ Core Package Features\n\nThe new `[user omitted]/core` package provides reusable process management primitives:\n\n```typescript\nimport { WorkerProcess, IPCMessage, Queue, PromiseHandler } from '[user omitted]/core';\n\n// Create and manage worker processes\nconst worker = new WorkerProcess('./worker.js', {\n  processData: { workerId: 1 }\n});\n\n// Type-safe IPC communication\nawait worker.send(IPCMessage.custom({ task: 'process-data' }));\n\n// Priority-based queues with concurrency\nconst queue = new Queue({ concurrency: 4 });\nqueue.setProcessor(async (task) => await processTask(task));\n```\n\nKey components include:\n- **Process Abstractions**: `IProcessManager`, `ISpawnableProcess` interfaces\n- **Worker & Child Process Support**: Type-safe implementations for both execution modes\n- **IPC System**: Request/response patterns with timeout handling\n- **Queue Management**: Priority-based processing with concurrency control\n- **Promise Utilities**: Timeout and cancellation support\n\n## [authoring attribution omitted] Discord Package Benefits\n\nThe `[user omitted]/discord` package maintains full backward compatibility while adding new capabilities:\n\n```typescript\n// Existing v2.x code continues to work\nimport { ClusterManager, ClusterClient } from '[user omitted]/discord';\n\nconst manager = new ClusterManager('./bot.js', {\n  totalShards: 'auto',\n  totalClusters: 4,\n  mode: 'process'\n});\n\n// New utilities for shard management\nimport { shardIdForGuildId, calculateShardDistribution } from '[user omitted]/discord';\n```\n\nFeatures include:\n- **Shard Distribution**: Automatic calculation and guild-to-shard mapping\n- **Memory Efficiency**: Maintains the 40-60% memory savings vs standard sharding\n…",
+  "diff_context": [
+    {
+      "path": "packages/core/src/queue/Queue.ts",
+      "before": null,
+      "after": "  \n  /** Queue processing finished */\n  finish: [];\n}\n\n/**\n * Generic queue implementation with priority support\n */\nexport class Queue<T = any> extends EventEmitter {\n  private items: QueueItem<T>[] = [];\n  private processing = false;\n  private stopped = false;\n  private currentlyProcessing = 0;\n  \n  private readonly options: Required<QueueOptions>;\n  private processor?: (item: T) => Promise<any> | any;\n\n  constructor(options: QueueOptions = {}) {\n    super();\n    this.options = {\n      auto: options.auto ?? true,\n      delay: options.delay ?? 0,\n      concurrency: options.concurrency ?? 1,\n    };\n  }\n\n  /**\n   * Set the processor function for queue items\n   */\n  setProcessor(processor: (item: T) => Promise<any> | any): this {\n    this.processor = processor;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "private processor?: (item: T) => Promise<any> | any;"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

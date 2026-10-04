@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01366",
+  "source_finding_id": "P01366",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                        'remote_host': self.remote_host_row.get_text().strip() or 'localhost',\n                        'remote_port': int((self.remote_port_row.get_text() or '0').strip() or '0')\n                    })\n                elif rule_type == 'remote' and hasattr(self, 'remote_bind_host_row') and hasattr(self, 'remote_bind_port_row') and hasattr(self, 'dest_host_row') and hasattr(self, 'dest_port_row'):\n                    rule.update({\n                        'listen_addr': self.remote_bind_host_row.get_text().strip() or 'localhost',\n                        'listen_port': int((self.remote_bind_port_row.get_text() or '0').strip() or '0'),\n                        'local_host': self.dest_host_row.get_text().strip() or 'localhost',\n                        'local_port': int((self.dest_port_row.get_text() or '0').strip() or '0')\n                    })\n                elif rule_type == 'dynamic' and hasattr(self, 'dynamic_port_row'):\n                    rule.update({\n                        'listen_addr': (self.dynamic_bind_row.get_text().strip() if hasattr(self, 'dynamic_bind_row') else '') or '127.0.0.1',\n                        'listen_port': int((self.dynamic_port_row.get_text() or '0').strip() or '0')\n                    })\n                \n                self.forwarding_rules.append(rule)\n                logger.debug(f\"Updated {rule_type} forwarding rule: {rule}\")\n            \n            # Update the rules list in the UI\n            self.load_port_forwarding_rules()\n    \n    def show_error(self, message):\n        \"\"\"Show error message\"\"\"\n        try:\n            if hasattr(self, 'present'):\n                self.present()\n        except Exception:\n            pass\n        \n        # Use the parent window as the transient parent for the error dialog",
+      "after": "                return\n            \n            # Clear the passphrase field first\n            self.key_passphrase_row.set_text(\"\")\n            \n            # Try to load passphrase from secure storage for the selected key\n            if hasattr(self, 'connection_manager') and self.connection_manager:\n                stored_passphrase = self.connection_manager.get_key_passphrase(key_path)\n                if stored_passphrase:\n                    self.key_passphrase_row.set_text(stored_passphrase)\n                    logger.debug(f\"Loaded passphrase for key: {key_path}\")\n                else:\n                    logger.debug(f\"No stored passphrase for key: {key_path}\")\n            else:\n                logger.debug(f\"No connection manager available for key: {key_path}\")\n        except Exception as e:\n            logger.debug(f\"Failed to update passphrase for key {key_path}: {e}\")\n    \n    def _refresh_connection_data_from_ssh_config(self):\n        \"\"\"Refresh connection data from the updated SSH config file\"\"\"\n        try:\n            if not self.is_editing or not self.connection:\n                return\n            \n            # Reload the connection manager to get fresh data from SSH config\n            if hasattr(self, 'connection_manager') and self.connection_manager:\n                self.connection_manager.load_ssh_config()\n                \n                # Find the updated connection by nickname\n                updated_connection = self.connection_manager.find_connection_by_nickname(self.connection.nickname)\n                if updated_connection:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

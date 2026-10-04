@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00275",
+  "source_finding_id": "P00275",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        except Exception:\n            certificate_value = ''\n\n\n        # Get extra SSH config from advanced tab\n        extra_ssh_config = ''\n        if hasattr(self, 'advanced_tab'):\n            try:\n                extra_ssh_config = self.advanced_tab.get_extra_ssh_config()\n                logger.debug(f\"Retrieved extra SSH config from advanced tab: {extra_ssh_config}\")\n            except Exception as e:\n                logger.error(f\"Error getting extra SSH config from advanced tab: {e}\")\n                extra_ssh_config = ''\n\n        key_select_mode_val = 0\n        try:\n            if hasattr(self, 'key_select_row'):\n                key_selection = self.key_select_row.get_selected()\n                if key_selection == 1:\n                    use_only = getattr(self, 'key_only_row', None)\n                    only_active = use_only.get_active() if use_only else True\n                    key_select_mode_val = 1 if only_active else 2\n        except Exception:\n            key_select_mode_val = 0\n\n        # Gather connection data\n        connection_data = {\n            'nickname': self.nickname_row.get_text().strip(),\n            'hostname': self.hostname_row.get_text().strip(),\n            'username': self.username_row.get_text().strip(),\n            'port': int(self.port_row.get_text().strip() or '22'),",
+      "after": "            'password_changed': bool(password_changed),\n        }\n        \n        if getattr(self, 'force_split_from_group', False):\n            connection_data['__split_from_group'] = True\n            if getattr(self, 'split_group_source', None):\n                connection_data['__split_source'] = self.split_group_source\n            if getattr(self, 'split_original_nickname', None):\n                connection_data['__split_original_nickname'] = self.split_original_nickname\n\n        # Update the connection object locally when editing (do not persist here; window handles persistence)\n        if self.is_editing and self.connection:\n            try:\n                self.connection.data.update(connection_data)\n                self.connection.data.pop('aliases', None)\n            except Exception:\n                pass\n            if hasattr(self.connection, 'aliases'):\n                self.connection.aliases = []\n            self.connection.proxy_jump = connection_data.get('proxy_jump', [])\n            self.connection.forward_agent = connection_data.get('forward_agent', False)\n            # Explicitly update forwarding rules to ensure they're fresh\n            self.connection.forwarding_rules = forwarding_rules\n            \n        # Emit signal with connection data\n        self.emit('connection-saved', connection_data)\n        self.close()\n\n    def _sanitize_forwarding_rules(self, rules):\n        \"\"\"Validate and normalize forwarding rules before saving.\n        - Ensure listen_addr defaults to 127.0.0.1 (or 0.0.0.0 for remote if provided as such)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

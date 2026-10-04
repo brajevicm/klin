@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00386",
+  "source_finding_id": "P00386",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "perf: optimize canonical_hashes_range with Vec::with_capacity pre-allocation + benchmark\n\n  PR Description:\n\n  ## Summary\n  Optimizes the `canonical_hashes_range` method in `Memory[project metadata omitted]StateProviderRef` by pre-allocating the vector capacity, resulting in significant performance improvements across most use cases.\n\n  ## Changes\n  - Pre-allocate `in_memory_hashes` vector with `Vec::with_capacity((end - start) as usize)`\n  - Refactor to use local variable for block number to avoid duplicate method calls\n  - Add comprehensive benchmark suite for `canonical_hashes_range` method\n\n  ## Performance Impact\n  Benchmark results show substantial improvements:\n\n  | Scenario | Before | After | Improvement |\n  |----------|--------|-------|-------------|\n  | Small blocks (10) | 110ns | 60ns | **45% faster** |\n  | Medium blocks (100) | 338ns | 149ns | **56% faster** |\n  | Range size 100 | 622ns | 377ns | **39% faster** |\n  | All in-memory matches | 476ns | 234ns | **51% faster** |\n\n  Most test cases show **20-56% performance improvements** by eliminating vector reallocations during hash collection.\n\n  ## Test Plan\n  - [x] Added comprehensive benchmark suite with multiple scenarios\n  - [x] Verified performance improvements across different workloads\n  - [x] Confirmed no regressions in functionality\n  - [x] All existing tests pass\n\n  [authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n  [authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "crates/chain-state/benches/canonical_hashes_range.rs",
+      "before": null,
+      "after": "fn bench_canonical_hashes_range(c: &mut Criterion) {\n    let mut group = c.benchmark_group(\"canonical_hashes_range\");\n\n    let scenarios = [(\"small\", 10), (\"medium\", 100), (\"large\", 1000)];\n\n    for (name, num_blocks) in scenarios {\n        group.bench_function(format!(\"{}_blocks_{}\", name, num_blocks), |b| {\n            let (provider, blocks) = setup_provider_with_blocks(num_blocks);\n            let start_block = blocks[0].recovered_block().number;\n            let end_block = blocks[num_blocks / 2].recovered_block().number;\n\n            b.iter(|| {\n                black_box(\n                    provider\n                        .canonical_hashes_range(black_box(start_block), black_box(end_block))\n                        .unwrap(),\n                )\n            })\n        });\n    }\n\n    let (provider, blocks) = setup_provider_with_blocks(500);\n    let base_block = blocks[100].recovered_block().number;\n\n    let range_sizes = [1, 10, 50, 100, 250];\n    for range_size in range_sizes {\n        group.bench_function(format!(\"range_size_{}\", range_size), |b| {\n            let end_block = base_block + range_size;\n\n            b.iter(|| {\n                black_box(",
+      "context": null
+    }
+  ],
+  "observations": [
+    ".unwrap(),"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

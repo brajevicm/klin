@@ -1,0 +1,36 @@
+{
+  "packet_id": "P01074",
+  "source_finding_id": "P01074",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: implement substring search for group uuid\n\nCloses #1327",
+  "diff_context": [
+    {
+      "path": "lldap_domain_handlers (crates/domain-handlers/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "handler::GroupRequestFilter (type)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 3 unmeasured and 0 unreadable files",
+    "public-api public surface has 18 holes and 1082 opaque items",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 67, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 70, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 102, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 132, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 143, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/auth/src/opaque.rs\", \"gate\": \"public-api\", \"line\": 171, \"outcome\": \"unresolved\", \"text\": \"pub use super::*; — lldap_auth (crates/auth/Cargo.toml) — cyclic module re-export gives unbounded public paths\"}",
+    "{\"file\": \"crates/graphql-server/src/query/attribute.rs\", \"gate\": \"public-api\", \"line\": 138, \"outcome\": \"unresolved\", \"text\": \"pub fn user_attributes_from_schema( — lldap_graphql_server (crates/graphql-server/Cargo.toml) — an inherent impl of AttributeValue outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"crates/graphql-server/src/query/attribute.rs\", \"gate\": \"public-api\", \"line\": 182, \"outcome\": \"unresolved\", \"text\": \"pub fn group_attributes_from_schema( — lldap_graphql_server (crates/graphql-server/Cargo.toml) — an inherent impl of AttributeValue outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"crates/graphql-server/src/query/attribute.rs\", \"gate\": \"public-api\", \"line\": 225, \"outcome\": \"unresolved\", \"text\": \"pub fn group_details_attributes_from_schema( — lldap_graphql_server (crates/graphql-server/Cargo.toml) — an inherent impl of AttributeValue outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"app/src/infra/modal.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "{\"file\": \"app/src/infra/tooltip.rs\", \"gate\": \"public-api\", \"outcome\": \"unparsed\", \"text\": \"the Rust grammar rejected it\"}",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

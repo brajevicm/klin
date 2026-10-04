@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00478",
+  "source_finding_id": "P00478",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Feature/spark config\n\n## Description\n\n<!-- Add a brief description about this pull request including what it does, why it is needed, and other important information for the reviewers -->\n\n## More Information\n\n<!-- Add more in-depth information about this pull request, such as the changes made, the reasoning behind them, and any potential impacts. -->\n\n## Validation\n\n<!-- Introduce how to test this pull request. -->\n\n## Linked Issues\n\n<!--\nLink to any related issues or bugs.\n\n**If this PR fully resolves the issue, use one of the following keywords to automatically close the issue when this PR is merged:**\n\n- Closes #<issue_number>\n- Fixes #<issue_number>\n- Resolves #<issue_number>\n\n*Example: `Resolves #123`*\n\n**If this PR is only related to an issue or is a partial fix, simply reference the issue number without a keyword:**\n\n*Example: `This PR makes progress on #456` or `Related to #789`*\n-->",
+  "diff_context": [
+    {
+      "path": "trae-agent-rs/src/main.rs",
+      "before": null,
+      "after": "                \"file\": file,\n                \"search\": search,\n                \"replace\": replace,\n                \"once\": once,\n                \"replacements\": count,\n            }))?;\n        }\n        Commands::Interactive => {\n            interactive_loop(&config, &cli.working_dir, &cli.trajectory_file)?;\n        }\n        Commands::Code => {\n            let cwd = cli.working_dir.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(\".\")));\n            code_loop(cwd, &cli.trajectory_file)?;\n        }\n        Commands::Ai { model, prompt } => {\n            let rt = tokio::runtime::Runtime::new().unwrap();\n            let out = rt.block_on(call_openrouter(&model, &prompt))?;\n            println!(\"{}\", out);\n        }\n    }\n\n    Ok(())\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let rt = tokio::runtime::Runtime::new().unwrap();"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

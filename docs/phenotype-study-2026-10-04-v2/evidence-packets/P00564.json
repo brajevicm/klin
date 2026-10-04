@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00564",
+  "source_finding_id": "P00564",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Filter internal events in workflow consumer\n\nAdd `internal` query parameter to `/events/{handler_id}` to filter out internal workflow events by default.\n\n---\nLinear Issue: [LI-3716]([external reference omitted]\n\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error processing request body: {e}\", status_code=500\n            )\n\n    def _run_workflow_handler(\n        self, handler_id: str, workflow_name: str, handler: WorkflowHandler\n    ) -> _WorkflowHandler:\n        \"\"\"\n        Streams events from the handler, persisting them, and pushing them to a queue.\n        Stores a _WorkflowHandler helper that wraps the handler with it's queue and streaming task.\n        \"\"\"\n        queue: asyncio.Queue[Event] = asyncio.Queue()\n\n        async def _stream_events(handler: WorkflowHandler) -> None:\n            async def checkpoint(status: Status) -> None:\n                if not handler.ctx:\n                    return\n                ctx = handler.ctx.to_dict()\n                backoffs = list(self._persistence_backoff)\n                while True:\n                    try:\n                        await self._workflow_store.update(\n                            PersistentHandler(\n                                handler_id=handler_id,\n                                workflow_name=workflow_name,\n                                status=status,\n                                ctx=ctx,\n                            )\n                        )\n                        return",
+      "after": "                        workflow_name_in=[workflow_name],\n                        status_in=[\"completed\"],\n                    )\n                )\n                if len(persisted_handlers) == 0:\n                    raise HTTPException(detail=\"Handler not found\", status_code=404)\n\n                context = Context.from_dict(workflow, persisted_handlers[0].ctx)\n\n            handler_id = handler_id or nanoid()\n            return (context, start_event, run_kwargs, handler_id)\n\n        except HTTPException:\n            # Re-raise HTTPExceptions as-is (like start_event validation errors)\n            raise\n        except Exception as e:\n            raise HTTPException(\n                detail=f\"Error processing request body: {e}\", status_code=500\n            )\n\n    def _run_workflow_handler(\n        self, handler_id: str, workflow_name: str, handler: WorkflowHandler\n    ) -> _WorkflowHandler:\n        \"\"\"\n        Streams events from the handler, persisting them, and pushing them to a queue.\n        Stores a _WorkflowHandler helper that wraps the handler with it's queue and streaming task.\n        \"\"\"\n        queue: asyncio.Queue[Event] = asyncio.Queue()\n\n        async def _stream_events(handler: WorkflowHandler) -> None:\n            async def checkpoint(status: Status) -> None:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

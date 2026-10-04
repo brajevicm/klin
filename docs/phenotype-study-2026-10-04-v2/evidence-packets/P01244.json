@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01244",
+  "source_finding_id": "P01244",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                window._drag_in_progress = True\n                # Don't disable selection mode - keep it for visual feedback\n                \n                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in group drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear the dragged group tracking\n                if hasattr(window, \"_dragged_group_id\"):\n                    delattr(window, \"_dragged_group_id\")\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in group drag end: {e}\")\n\n    def _setup_double_click_gesture(self):\n        gesture = Gtk.GestureClick()\n        gesture.set_button(1)\n        gesture.connect(\"pressed\", self._on_double_click)\n        self.add_controller(gesture)\n\n    def _on_double_click(self, gesture, n_press, x, y):\n        if n_press == 2:\n            self._toggle_expand()\n\n    def _toggle_expand(self):\n        expanded = not self.group_info.get(\"expanded\", True)\n        self.group_info[\"expanded\"] = expanded",
+      "after": "                window._drag_in_progress = True\n                # Don't disable selection mode - keep it for visual feedback\n                \n                _show_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in group drag begin: {e}\")\n\n    def _on_drag_end(self, source, drag, delete_data):\n        try:\n            window = self.get_root()\n            if window:\n                # Clear the dragged group tracking\n                if hasattr(window, \"_dragged_group_id\"):\n                    delattr(window, \"_dragged_group_id\")\n                _hide_ungrouped_area(window)\n        except Exception as e:\n            logger.error(f\"Error in group drag end: {e}\")\n\n    def _setup_double_click_gesture(self):\n        gesture = Gtk.GestureClick()\n        gesture.set_button(1)\n        gesture.connect(\"pressed\", self._on_double_click)\n        self.add_controller(gesture)\n\n    def _on_double_click(self, gesture, n_press, x, y):\n        if n_press == 2:\n            self._toggle_expand()\n\n    def _toggle_expand(self):\n        expanded = not self.group_info.get(\"expanded\", True)\n        self.group_info[\"expanded\"] = expanded",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

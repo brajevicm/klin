@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01917",
+  "source_finding_id": "P01917",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[project metadata omitted] 修复了模型重复跳回tiny的bug，合并到master。\n\n修复了模型重复跳回tiny的bug",
+  "diff_context": [
+    {
+      "path": "app/core/bk_asr/whisper_cpp.py",
+      "before": "",
+      "after": "        audio_path=\"audio.wav\",\n        whisper_cpp_path=\"/opt/homebrew/bin/whisper-cpp\",\n        whisper_model=\"large-v2\",\n        language=\"zh\",\n        need_word_time_stamp=False,\n    )\n\n    # 获取可用模型\n    available_models = asr.get_available_models()\n    print(f\"可用模型: {available_models}\")\n\n    # 动态切换模型\n    try:\n        asr.update_model(\"base\")\n        print(\"模型切换成功\")\n    except Exception as e:\n        print(f\"模型切换失败: {e}\")\n\n    result = asr._run(callback=test_callback)\n    print(\"识别结果：\")\n    print(result)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

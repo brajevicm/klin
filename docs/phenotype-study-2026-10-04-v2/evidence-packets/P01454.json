@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01454",
+  "source_finding_id": "P01454",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/thread/video_info_thread.py",
+      "before": "        super().__init__()\n        self.file_path = file_path\n\n    def run(self):\n        try:\n            # 生成缩略图到临时文件\n            temp_dir = tempfile.gettempdir()\n            file_name = Path(self.file_path).stem\n            thumbnail_path = os.path.join(temp_dir, f\"{file_name}_thumbnail.jpg\")\n            \n            # 获取视频信息\n            video_info = self._get_video_info(thumbnail_path)\n            self.finished.emit(video_info)\n\n        except Exception as e:\n            self.error.emit(str(e))\n\n    def _get_video_info(self, thumbnail_path: str) -> VideoInfo:\n        \"\"\"获取视频信息\"\"\"\n        try:\n            cmd = [\"ffmpeg\", \"-i\", self.file_path]\n            # logger.info(f\"获取视频信息执行命令: {' '.join(cmd)}\")\n            result = subprocess.run(\n                cmd,\n                capture_output=True,\n                text=True,\n                encoding='utf-8',\n                errors='replace',\n                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0\n            )\n            info = result.stderr",
+      "after": "    def __init__(self, file_path):\n        super().__init__()\n        self.file_path = file_path\n\n    def run(self):\n        try:\n            # 生成缩略图到临时文件\n            temp_dir = tempfile.gettempdir()\n            file_name = Path(self.file_path).stem\n            thumbnail_path = os.path.join(temp_dir, f\"{file_name}_thumbnail.jpg\")\n\n            # 获取视频信息\n            video_info = self._get_video_info(thumbnail_path)\n            self.finished.emit(video_info)\n\n        except Exception as e:\n            self.error.emit(str(e))\n\n    def _get_video_info(self, thumbnail_path: str) -> VideoInfo:\n        \"\"\"获取视频信息\"\"\"\n        try:\n            cmd = [\"ffmpeg\", \"-i\", self.file_path]\n            # logger.info(f\"获取视频信息执行命令: {' '.join(cmd)}\")\n            result = subprocess.run(\n                cmd,\n                capture_output=True,\n                text=True,\n                encoding=\"utf-8\",\n                errors=\"replace\",\n                creationflags=getattr(subprocess, \"CREATE_NO_WINDOW\", 0),\n            )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

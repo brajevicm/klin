@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01844",
+  "source_finding_id": "P01844",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "refactor: modularize notification system and simplify implementation\n\nRefactored the notification system from a monolithic bash script to a modular Python\nimplementation following the ruthless simplicity philosophy:\n\nBreaking Changes:\n- Makefile now uses NOTIFY=true instead of N=1 for notification flags\n- Notifications default to OFF for all CLI tools (must explicitly enable)\n\nArchitecture:\n- Created modular notification system in amplifier/utils/notifications/\n  - Clean Pydantic models for type safety\n  - Platform-specific handlers (macOS, Linux, Windows/WSL)\n  - Simple CLI interface for direct usage\n- Replaced bash script with Python hook adapter for [authoring attribution omitted] integration\n- Renamed hooks to indicate WHEN they trigger (on_notification_hook.py, etc.)\n\nSimplifications:\n- Removed ALL duration tracking (60% complexity reduction)\n- Eliminated progress notifications (only completion events now)\n- Simplified project name extraction (just directory name, no git parsing)\n- Standardized notification format: \"Amplifier\" title with project context\n\nIntegration:\n- Added --notify flag to knowledge synthesis, synthesis pipeline, and CCSDK tools\n- Toolkit-level integration for CCSDK (all tools inherit capability)\n- Top-level commands handle notifications (no passthrough to sub-tools)\n\nUser Experience:\n- Terminal context (project name) always prominent in subtitle\n- Consistent notification format across all tools\n- Simple NOTIFY=true pattern in Makefile commands\n- Clear session identification for multiple terminals\n\nFollowing the implementation philosophy: removed non-essential complexity,\nmaintained clean module boundaries, and achieved ruthless simplicity.\nThe notification system now does exactly what's needed - informs users\nwhen tasks complete with clear context - nothing more.\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "amplifier/utils/notifications/platforms.py",
+      "before": null,
+      "after": "\n    try:\n        if subtitle:\n            # Use HTML formatting for subtitle\n            formatted_title = f\"<b>{subtitle}</b>\"\n        else:\n            formatted_title = title\n\n        result = subprocess.run(\n            [\"notify-send\", formatted_title, message],\n            capture_output=True,\n            text=True,\n            timeout=5,\n        )\n        return result.returncode == 0, result.stderr if result.returncode != 0 else None\n    except Exception as e:\n        return False, str(e)\n\n\ndef send_wsl_notification(\n    message: str, title: str = \"Claude Code\", subtitle: str | None = None\n) -> tuple[bool, str | None]:\n    \"\"\"Send notification on WSL using Windows PowerShell.\"\"\"\n    try:\n        if subtitle:\n            # Use ToastText02 template with two text fields\n            ps_script = f\"\"\"\n                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null\n                [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null\n                [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception as e:"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

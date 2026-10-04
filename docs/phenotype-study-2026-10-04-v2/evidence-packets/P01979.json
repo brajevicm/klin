@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01979",
+  "source_finding_id": "P01979",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "fix: handle optional fields without defaults in client documents (#487)\n\n## Summary\nThis PR fixes an issue where optional Schema fields in client documents without default values would be `undefined` when querying after being set.\n\n## Problem\nWhen using optional fields in client documents without providing default values, the fields would be lost when querying the document back, even after explicitly setting them. This was due to:\n1. The `mergeDefaultValues` function only iterating over keys from the default values object\n2. SessionIdSymbol not being replaced in synchronous `store.query()` calls\n\n## Solution\n1. **Fixed `mergeDefaultValues`** to preserve all keys from both default and explicit values\n2. **Added SessionIdSymbol replacement** in the synchronous `store.query()` method\n3. **Added comprehensive tests** to prevent regression\n\n## Test Plan\n- [x] Added unit tests for `mergeDefaultValues` function\n- [x] Added integration test reproducing the exact scenario from issue #487\n- [x] All existing tests pass\n\n## Changes\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.ts`: Fixed `mergeDefaultValues` to iterate over all keys\n- `packages/[user omitted]/livestore/src/store/store.ts`: Added SessionIdSymbol replacement in query method\n- `tests/package-common/src/issue-487.test.ts`: Added integration test\n- `packages/[user omitted]/common/src/schema/state/sqlite/client-document-def.test.ts`: Added unit tests\n\nFixes #487\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "packages/@livestore/common/src/schema/state/sqlite/client-document-def.test.ts",
+      "before": "",
+      "after": "      description: 'First attempt',\n      filter: 'all' \n    })\n    expect('description' in result).toBe(true)\n  })\n\n  test('handles non-object values', () => {\n    expect(mergeDefaultValues('default', 'explicit')).toBe('explicit')\n    expect(mergeDefaultValues(42, 100)).toBe(100)\n    expect(mergeDefaultValues(null, { a: 1 })).toEqual({ a: 1 })\n    expect(mergeDefaultValues({ a: 1 }, null)).toBe(null)\n  })\n\n  test('handles nested objects (current implementation does not deep merge)', () => {\n    const defaults = { a: { x: 1, y: 2 }, b: 3 }\n    const explicit = { a: { x: 10 }, b: 30 } as any\n    const result = mergeDefaultValues(defaults, explicit)\n\n    // Current implementation replaces entire nested object\n    expect(result).toEqual({ a: { x: 10 }, b: 30 })\n    // Note: 'y' is lost because the entire 'a' object is replaced\n  })\n\n  test('should handle mix of default and new properties', () => {\n    const defaults = { \n      required1: 'default1',\n      required2: 'default2'\n    }\n    const userSet = {\n      required1: 'user1',      // Override default\n      required2: 'default2',   // Keep default  ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const explicit = { a: { x: 10 }, b: 30 } as any"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

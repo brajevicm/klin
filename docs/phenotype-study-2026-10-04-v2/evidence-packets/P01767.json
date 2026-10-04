@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01767",
+  "source_finding_id": "P01767",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "重构日志配置，移除调试模式，添加日志级别和输出文件选项；更新配置文件模式至v4.0\n\nresolve #411,#326,#143",
+  "diff_context": [
+    {
+      "path": "run.py",
+      "before": "            for i in index:\n                value = get_ip(ip_type, i)\n                if value:\n                    break\n        elif str(index).isdigit():  # 数字 local eth\n            value = getattr(ip, \"local_v\" + ip_type)(index)\n        elif index.startswith('cmd:'):  # cmd\n            value = str(check_output(index[4:]).strip().decode('utf-8'))\n        elif index.startswith('shell:'):  # shell\n            value = str(check_output(\n                index[6:], shell=True).strip().decode('utf-8'))\n        elif index.startswith('url:'):  # 自定义 url\n            value = getattr(ip, \"public_v\" + ip_type)(index[4:])\n        elif index.startswith('regex:'):  # 正则 regex\n            value = getattr(ip, \"regex_v\" + ip_type)(index[6:])\n        else:\n            value = getattr(ip, index + \"_v\" + ip_type)()\n    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):\n    for proxy in proxy_list:\n        if not proxy or (proxy.upper() in ['DIRECT', 'NONE']):\n            dns.Config.PROXY = None\n        else:\n            dns.Config.PROXY = proxy\n        record_type, domain = kw['record_type'], kw['domain']\n        print('\\n%s %s(%s) ==> %s [via %s]' %\n              (asctime(), domain, record_type, kw['ip'], proxy))",
+      "after": "                if value:\n                    break\n        elif str(index).isdigit():  # 数字 local eth\n            value = getattr(ip, \"local_v\" + ip_type)(index)\n        elif index.startswith('cmd:'):  # cmd\n            value = str(check_output(index[4:]).strip().decode('utf-8'))\n        elif index.startswith('shell:'):  # shell\n            value = str(check_output(\n                index[6:], shell=True).strip().decode('utf-8'))\n        elif index.startswith('url:'):  # 自定义 url\n            value = getattr(ip, \"public_v\" + ip_type)(index[4:])\n        elif index.startswith('regex:'):  # 正则 regex\n            value = getattr(ip, \"regex_v\" + ip_type)(index[6:])\n        else:\n            value = getattr(ip, index + \"_v\" + ip_type)()\n    except Exception as e:\n        error(e)\n    return value\n\n\ndef change_dns_record(dns, proxy_list, **kw):\n    for proxy in proxy_list:\n        if not proxy or (proxy.upper() in ['DIRECT', 'NONE']):\n            dns.Config.PROXY = None\n        else:\n            dns.Config.PROXY = proxy\n        record_type, domain = kw['record_type'], kw['domain']\n        info(\"%s(%s) ==> %s [via %s]\", domain, record_type, kw['ip'], proxy)\n        try:\n            return dns.update_record(domain, kw['ip'], record_type=record_type)\n        except Exception as e:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

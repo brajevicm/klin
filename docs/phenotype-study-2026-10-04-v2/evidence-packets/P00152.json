@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00152",
+  "source_finding_id": "P00152",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        # Remove from old parent's children\n        if old_parent_id and old_parent_id in window.group_manager.groups:\n            if group_id in window.group_manager.groups[old_parent_id][\"children\"]:\n                window.group_manager.groups[old_parent_id][\"children\"].remove(group_id)\n\n        # Update parent reference\n        group[\"parent_id\"] = target_parent_id\n        \n        # Add to new parent's children\n        if target_parent_id and target_parent_id in window.group_manager.groups:\n            if group_id not in window.group_manager.groups[target_parent_id][\"children\"]:\n                window.group_manager.groups[target_parent_id][\"children\"].append(group_id)\n\n        window.group_manager._save_groups()\n        return True\n    except Exception as e:\n        logger.error(f\"Error moving group: {e}\")\n        return False\n\n\ndef _update_connection_autoscroll(window, y):\n    \"\"\"Update autoscroll velocity based on pointer position within the viewport.\"\"\"\n    scrolled = getattr(window, \"connection_scrolled\", None)\n    if not scrolled:\n        _stop_connection_autoscroll(window)\n        return\n\n    allocation = scrolled.get_allocation()\n    height = allocation.height\n    if height <= 0:\n        _stop_connection_autoscroll(window)",
+      "after": "        # Remove from old parent's children\n        if old_parent_id and old_parent_id in window.group_manager.groups:\n            if group_id in window.group_manager.groups[old_parent_id][\"children\"]:\n                window.group_manager.groups[old_parent_id][\"children\"].remove(group_id)\n\n        # Update parent reference\n        group[\"parent_id\"] = target_parent_id\n        \n        # Add to new parent's children\n        if target_parent_id and target_parent_id in window.group_manager.groups:\n            if group_id not in window.group_manager.groups[target_parent_id][\"children\"]:\n                window.group_manager.groups[target_parent_id][\"children\"].append(group_id)\n\n        window.group_manager._save_groups()\n        return True\n    except Exception as e:\n        logger.error(f\"Error moving group: {e}\")\n        return False\n\n\ndef _update_connection_autoscroll(window, y):\n    \"\"\"Update autoscroll velocity based on pointer position within the viewport.\"\"\"\n    scrolled = getattr(window, \"connection_scrolled\", None)\n    if not scrolled:\n        _stop_connection_autoscroll(window)\n        return\n\n    allocation = scrolled.get_allocation()\n    height = allocation.height\n    if height <= 0:\n        _stop_connection_autoscroll(window)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

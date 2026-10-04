@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02012",
+  "source_finding_id": "P02012",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "[authoring attribution omitted]/address issue 556 and on GitHub\n\nAddresses [external reference omitted] and [external reference omitted]\n## Summary\n- iterate unseen transcript messages in arrival order so tool results and user messages are handled without reordering\n- allow `_start_new_execution` and the background runner to accept explicit message batches, ensuring only the intended messages are marked processed\n- extend the tool-result flow tests to assert ordering and capture the batches passed through the execution helpers\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "integrations/adk-middleware/python/src/ag_ui_adk/session_manager.py",
+      "before": "        \"\"\"Get total number of tracked sessions.\"\"\"\n        return len(self._session_keys)\n    \n    def get_user_session_count(self, user_id: str) -> int:\n        \"\"\"Get number of sessions for a user.\"\"\"\n        return len(self._user_sessions.get(user_id, set()))\n    \n    async def stop_cleanup_task(self):\n        \"\"\"Stop the cleanup task.\"\"\"\n        if self._cleanup_task:\n            self._cleanup_task.cancel()\n            try:\n                await self._cleanup_task\n            except asyncio.CancelledError:\n                pass\n            self._cleanup_task = None",
+      "after": "                \n                if session and hasattr(session, 'last_update_time'):\n                    age = current_time - session.last_update_time\n                    if age > self._timeout:\n                        # Check for pending tool calls before deletion (HITL scenarios)\n                        pending_calls = session.state.get(\"pending_tool_calls\", []) if session.state else []\n                        if pending_calls:\n                            logger.info(f\"Preserving expired session {session_key} - has {len(pending_calls)} pending tool calls (HITL)\")\n                        else:\n                            await self._delete_session(session)\n                            expired_count += 1\n                elif not session:\n                    # Session doesn't exist, just untrack it\n                    self._untrack_session(session_key, user_id)\n                    \n            except Exception as e:\n                logger.error(f\"Error checking session {session_key}: {e}\")\n        \n        if expired_count > 0:\n            logger.info(f\"Cleaned up {expired_count} expired sessions\")\n    \n    def get_session_count(self) -> int:\n        \"\"\"Get total number of tracked sessions.\"\"\"\n        return len(self._session_keys)\n    \n    def get_user_session_count(self, user_id: str) -> int:\n        \"\"\"Get number of sessions for a user.\"\"\"\n        return len(self._user_sessions.get(user_id, set()))\n    \n    async def stop_cleanup_task(self):\n        \"\"\"Stop the cleanup task.\"\"\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

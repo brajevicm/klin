@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00192",
+  "source_finding_id": "P00192",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/EditComboBoxSettingCard.py",
+      "before": "        content: str = None,\n        items: List[str] = None,\n        parent=None,\n    ):\n        super().__init__(icon, title, content, parent)\n\n        self.configItem = configItem\n        self.items = items or []\n\n        # 创建可编辑的组合框\n        self.comboBox = EditableComboBox(self)\n        for item in self.items:\n            self.comboBox.addItem(item)\n\n        # 设置布局\n        self.hBoxLayout.addWidget(self.comboBox, 1, Qt.AlignRight)\n        self.hBoxLayout.addSpacing(16)\n\n        # 设置最小宽度\n        self.comboBox.setMinimumWidth(280)\n\n        # 设置初始值\n        self.setValue(qconfig.get(configItem))\n\n        # 连接信号\n        self.comboBox.currentTextChanged.connect(self.__onTextChanged)\n        configItem.valueChanged.connect(self.setValue)\n\n    def __onTextChanged(self, text: str):\n        \"\"\"当文本改变时触发\"\"\"\n        self.setValue(text)",
+      "after": "        content: Optional[str] = None,\n        items: Optional[List[str]] = None,\n        parent=None,\n    ):\n        super().__init__(icon, title, content, parent)\n\n        self.configItem = configItem\n        self.items = items or []\n\n        # 创建可编辑的组合框\n        self.comboBox = EditableComboBox(self)\n        for item in self.items:\n            self.comboBox.addItem(item)\n\n        # 设置布局\n        self.hBoxLayout.addWidget(self.comboBox, 1, Qt.AlignRight)  # type: ignore\n        self.hBoxLayout.addSpacing(16)\n\n        # 设置最小宽度\n        self.comboBox.setMinimumWidth(280)\n\n        # 设置初始值\n        self.setValue(qconfig.get(configItem))\n\n        # 连接信号\n        self.comboBox.currentTextChanged.connect(self.__onTextChanged)\n        configItem.valueChanged.connect(self.setValue)\n\n    def __onTextChanged(self, text: str):\n        \"\"\"当文本改变时触发\"\"\"\n        self.setValue(text)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "self.hBoxLayout.addWidget(self.comboBox, 1, Qt.AlignRight)  # type: ignore"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

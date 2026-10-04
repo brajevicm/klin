@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00980",
+  "source_finding_id": "P00980",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    try:\n                        remote_cmd_val = getattr(self.connection, 'remote_command', '') or (\n                            self.connection.data.get('remote_command') if hasattr(self.connection, 'data') else ''\n                        ) or ''\n                    except Exception:\n                        remote_cmd_val = ''\n                    self.remote_command_row.set_text(_display_safe(remote_cmd_val))\n            except Exception:\n                pass\n            \n            # Initialize forwarding rules list if it doesn't exist\n            if not hasattr(self, 'forwarding_rules'):\n                self.forwarding_rules = []\n                \n            # Initialize forwarding_rules if it doesn't exist\n            if not hasattr(self, 'forwarding_rules'):\n                self.forwarding_rules = []\n                \n            # Initialize forwarding_rules if it doesn't exist\n            if not hasattr(self, 'forwarding_rules'):\n                self.forwarding_rules = []\n                \n            # Load port forwarding rules\n            if hasattr(self.connection, 'forwarding_rules') and self.connection.forwarding_rules:\n                self.forwarding_rules = self.connection.forwarding_rules\n                logger.debug(f\"Loaded forwarding rules: {self.forwarding_rules}\")\n                \n                # Reset all toggles and hide settings boxes first\n                toggle_map = {\n                    'local_forwarding_enabled': ('local_settings_box', 'local'),\n                    'remote_forwarding_enabled': ('remote_settings_box', 'remote'),",
+      "after": "                        box.set_visible(has_rule)\n                \n                # Update UI based on saved rules\n                for rule in self.forwarding_rules:\n                    if not rule.get('enabled', True):\n                        continue\n                        \n                    rule_type = rule.get('type')\n                    \n                    # Handle local forwarding\n                    if rule_type == 'local' and hasattr(self, 'local_forwarding_enabled'):\n                        self.local_forwarding_enabled.set_active(True)\n                        if hasattr(self, 'local_port_row') and 'listen_port' in rule:\n                            try:\n                                self.local_port_row.set_text(str(int(rule['listen_port'])))\n                            except Exception:\n                                self.local_port_row.set_text(str(rule['listen_port']))\n                        if hasattr(self, 'remote_host_row') and 'remote_host' in rule:\n                            self.remote_host_row.set_text(rule['remote_host'])\n                        if hasattr(self, 'remote_port_row') and 'remote_port' in rule:\n                            try:\n                                self.remote_port_row.set_text(str(int(rule['remote_port'])))\n                            except Exception:\n                                self.remote_port_row.set_text(str(rule['remote_port']))\n                    \n                    # Handle remote forwarding\n                    elif rule_type == 'remote' and hasattr(self, 'remote_forwarding_enabled'):\n                        self.remote_forwarding_enabled.set_active(True)\n                        if hasattr(self, 'remote_bind_host_row') and 'listen_addr' in rule:\n                            try:\n                                self.remote_bind_host_row.set_text(str(rule.get('listen_addr') or 'localhost'))",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

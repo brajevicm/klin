@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00643",
+  "source_finding_id": "P00643",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Add REST API server command for JWT operations\n\n## Overview\n\nThis PR adds a new `server` command to jwt-hack that exposes all core JWT operations through a REST API. This enables integration with web applications, automation tools, and CI/CD pipelines.\n\n## Motivation\n\nThe existing jwt-hack CLI is powerful but limited to command-line usage. A REST API server allows:\n- Integration with web frontends and dashboards\n- Use in automated security testing pipelines\n- Remote JWT operations without shipping the entire binary\n- Easy integration with other security tools and frameworks\n\n## Changes\n\n### New Server Command\n\n```bash\n# Start with defaults (127.0.0.1:3000)\njwt-hack server\n\n# Customize host and port\njwt-hack server --host 0.0.0.0 --port 8080\n```\n\n### API Endpoints\n\nThe server provides 7 RESTful endpoints with JSON request/response format:\n\n**1. Health Check** (`POST /health`)\n```bash\ncurl -X POST [external reference omitted]\n# {\"status\":\"ok\",\"version\":\"2.3.1\"}\n```\n\n**2. Encode JWT** (`POST /encode`)\n- Supports all algorithms (HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, PS256, PS384, PS512, EdDSA, none)\n- Custom headers and payload compression\n\n**3. Decode JWT** (`POST /decode`)\n- Decodes both JWT and JWE tokens\n- Returns header, payload, and algorithm information\n\n**4. Verify JWT** (`POST /verify`)\n- Signature verification with HMAC and asymmetric keys\n- Optional expiration validation\n\n**5. Crack JWT** (`POST /crack`)\n- Dictionary attack mode with wordlist files\n- Brute force mode with customizable character sets\n- Character set presets (az, AZ, aZ, 19, aZ19, ascii)\n\n**6. Generate Payloads** (`POST /payload`)\n- None algorithm attacks\n- JKU/X5U header injection\n- Algorithm confusion attacks\n- KID SQL injection\n- X5C and CTY header manipulation\n\n…",
+  "diff_context": [
+    {
+      "path": "Cargo.toml",
+      "before": "[package]\nname = \"jwt-hack\"\nversion = \"2.3.1\"\nedition = \"2021\"\nauthors = [\"hahwul\"]\ndescription = \"Hack the JWT (JSON Web Token) - A tool for JWT security testing and token manipulation\"\nrepository = \"https://github.com/hahwul/jwt-hack\"\nlicense = \"MIT\"\nkeywords = [\"jwt\", \"security\", \"penetration-testing\", \"hacking\", \"cli\"]\ncategories = [\"command-line-utilities\", \"cryptography\"]\n\n[dependencies]\nclap = { version = \"4.4\", features = [\"derive\"] }\njsonwebtoken = [redacted]\nserde = { version = \"1.0\", features = [\"derive\"] }\nserde_json = \"1.0\"",
+      "after": "[package]\nname = \"jwt-hack\"\nversion = \"2.3.1\"\nedition = \"2021\"\nauthors = [\"hahwul\"]\ndescription = \"Hack the JWT (JSON Web Token) - A tool for JWT security testing and token manipulation\"\nrepository = \"https://github.com/hahwul/jwt-hack\"\nlicense = \"MIT\"\nkeywords = [\"jwt\", \"security\", \"penetration-testing\", \"hacking\", \"cli\"]\ncategories = [\"command-line-utilities\", \"cryptography\"]\n\n[dependencies]\nclap = { version = \"4.4\", features = [\"derive\"] }\njsonwebtoken = [redacted]\nserde = { version = \"1.0\", features = [\"derive\"] }\nserde_json = \"1.0\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:tower"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

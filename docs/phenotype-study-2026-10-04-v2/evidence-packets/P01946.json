@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01946",
+  "source_finding_id": "P01946",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Fix SSE parsing for responses pipeline\"\n\nReverts [project metadata omitted]#222",
+  "diff_context": [
+    {
+      "path": "functions/pipes/openai_responses_api_pipeline.py",
+      "before": "            if from_assistant and not text.strip():\n                continue\n            blocks.append({\"type\": \"output_text\" if from_assistant else \"input_text\", \"text\": text})\n        for f in m.get(\"files\", ()):\n            if f and f.get(\"type\") in (\"image\", \"image_url\"):\n                blocks.append({\"type\": \"input_image\" if role == \"user\" else \"output_image\", \"image_url\": f.get(\"url\") or f.get(\"image_url\", {}).get(\"url\")})\n        if blocks:\n            input_items.append({\"role\": role, \"content\": blocks})\n    return input_items\n\n\ndef pretty_log_block(data: Any, label: str = \"\") -> str:\n    \"\"\"Return a pretty formatted string for debug logging.\"\"\"\n    try:\n        content = json.dumps(data, indent=2, default=str)\n    except Exception:\n        content = str(data)\n    label_line = f\"{label} =\" if label else \"\"\n    return f\"\\n{'-' * 40}\\n{label_line}\\n{content}\\n{'-' * 40}\"\n\n\ndef assemble_responses_payload(\n    valves: Pipe.Valves,\n    chat_id: str,\n    body: dict[str, Any],\n    instructions: str,\n    tools: list[dict[str, Any]],\n    user_email: str | None,\n) -> dict[str, Any]:\n    \"\"\"Combine chat history and parameters into a request payload.\"\"\"\n    model = body.get(\"model\", valves.MODEL_ID.split(\",\")[0])",
+      "after": "            if from_assistant and not text.strip():\n                continue\n            blocks.append({\"type\": \"output_text\" if from_assistant else \"input_text\", \"text\": text})\n        for f in m.get(\"files\", ()):\n            if f and f.get(\"type\") in (\"image\", \"image_url\"):\n                blocks.append({\"type\": \"input_image\" if role == \"user\" else \"output_image\", \"image_url\": f.get(\"url\") or f.get(\"image_url\", {}).get(\"url\")})\n        if blocks:\n            input_items.append({\"role\": role, \"content\": blocks})\n    return input_items\n\n\ndef pretty_log_block(data: Any, label: str = \"\") -> str:\n    \"\"\"Return a pretty formatted string for debug logging.\"\"\"\n    try:\n        content = json.dumps(data, indent=2, default=str)\n    except Exception:\n        content = str(data)\n    label_line = f\"{label} =\" if label else \"\"\n    return f\"\\n{'-' * 40}\\n{label_line}\\n{content}\\n{'-' * 40}\"\n\n\ndef assemble_responses_payload(\n    valves: Pipe.Valves,\n    chat_id: str,\n    body: dict[str, Any],\n    instructions: str,\n    tools: list[dict[str, Any]],\n    user_email: str | None,\n) -> dict[str, Any]:\n    \"\"\"Combine chat history and parameters into a request payload.\"\"\"\n    model = body.get(\"model\", valves.MODEL_ID.split(\",\")[0])",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

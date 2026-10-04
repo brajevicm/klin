@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00887",
+  "source_finding_id": "P00887",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            # Load key selection mode (prefer fresh manager copy by nickname)\n            try:\n                if hasattr(self, 'key_select_row'):\n                    mode = None\n                    # Prefer fresh parse from manager if available\n                    try:\n                        mgr = getattr(self.parent_window, 'connection_manager', None)\n                        if mgr and hasattr(self.connection, 'nickname'):\n                            fresh = mgr.find_connection_by_nickname(self.connection.nickname)\n                            if fresh is not None and hasattr(fresh, 'key_select_mode'):\n                                mode = int(getattr(fresh, 'key_select_mode', 0) or 0)\n                    except Exception:\n                        mode = None\n                    if mode is None:\n                        try:\n                            mode = int(getattr(self.connection, 'key_select_mode', 0) or 0)\n                        except Exception:\n                            try:\n                                mode = int(self.connection.data.get('key_select_mode', 0)) if hasattr(self.connection, 'data') else 0\n                            except Exception:\n                                mode = 0\n                    if has_specific_key and mode not in (1, 2):\n                        mode = 2\n                        try:\n                            self.connection.key_select_mode = 2\n                        except Exception:\n                            pass\n                        try:\n                            if hasattr(self.connection, 'data'):\n                                self.connection.data['key_select_mode'] = 2\n                        except Exception:",
+      "after": "\n            \n                        # SSH config block content is now handled by the SSH config editor window\n            # No need to load it into an inline editor anymore\n            \n            # Load extra SSH config into advanced tab\n            try:\n                extra_config = getattr(self.connection, 'extra_ssh_config', '') or ''\n                logger.debug(f\"Loading extra SSH config from connection: {extra_config}\")\n                if hasattr(self, 'advanced_tab'):\n                    if extra_config:\n                        self.advanced_tab.set_extra_ssh_config(extra_config)\n                        logger.debug(f\"Set extra SSH config in advanced tab: {extra_config}\")\n                    # Update the preview to show existing connection data\n                    self.advanced_tab.update_config_preview()\n            except Exception as e:\n                logger.error(f\"Error loading extra SSH config: {e}\")\n            \n            # Load commands if present\n            try:\n                def _display_safe(val: str) -> str:\n                    # Show exactly as in config; if user had quoted, keep quotes intact\n                    if not isinstance(val, str):\n                        return ''\n                    return val\n\n                if hasattr(self, 'local_command_row'):\n                    local_cmd_val = ''\n                    try:\n                        local_cmd_val = getattr(self.connection, 'local_command', '') or (\n                            self.connection.data.get('local_command') if hasattr(self.connection, 'data') else ''",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

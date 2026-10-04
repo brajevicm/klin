@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01765",
+  "source_finding_id": "P01765",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Force user to specify number of offchain parameters when building\n\nThis prevents errors during migration from v2 by forgetting to remove datum/redeemer args",
+  "diff_context": [
+    {
+      "path": "opshin/__main__.py",
+      "before": "            if isinstance(e, SyntaxError):\n                start_line = e.lineno\n                pos_in_line = e.offset\n                if hasattr(e, \"orig_err\"):\n                    error_class_name = e.orig_err.__class__.__name__\n                    message = str(e.orig_err)\n            else:\n                start_line = 1\n                pos_in_line = 1\n            if args.output_format_json:\n                print(\n                    convert_linter_to_json(\n                        line=start_line,\n                        column=pos_in_line,\n                        error_class=error_class_name,\n                        message=message,\n                    )\n                )\n            else:\n                print(\n                    f\"{args.input_file}:{start_line}:{pos_in_line}: {error_class_name}: {message}\"\n                )\n\n\ndef convert_linter_to_json(\n    line: int,\n    column: int,\n    error_class: str,\n    message: str,\n):\n    # output in lists",
+      "after": "            OPSHIN_LOG_HANDLER.setFormatter(\n                logging.Formatter(\n                    '{\"line\":%(lineno)d,\"column\":%(col_offset)d,\"error_class\":\"%(levelname)s\",\"message\":\"%(message)s\"}'\n                )\n            )\n        else:\n            OPSHIN_LOG_HANDLER.setFormatter(\n                logging.Formatter(\n                    args.input_file\n                    + \":%(lineno)d:%(col_offset)d:%(levelname)s: %(message)s\"\n                )\n            )\n\n        try:\n            perform_command(args)\n        except Exception as e:\n            error_class_name = e.__class__.__name__\n            message = str(e)\n            if isinstance(e, SyntaxError):\n                start_line = e.lineno\n                pos_in_line = e.offset\n                if hasattr(e, \"orig_err\"):\n                    error_class_name = e.orig_err.__class__.__name__\n                    message = str(e.orig_err)\n            else:\n                start_line = 1\n                pos_in_line = 1\n            if args.output_format_json:\n                print(\n                    convert_linter_to_json(\n                        line=start_line,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

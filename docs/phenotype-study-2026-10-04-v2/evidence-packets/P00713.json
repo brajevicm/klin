@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00713",
+  "source_finding_id": "P00713",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "feat: implement offset-aware chunk retrieval with peer manager refactoring\n\n## Summary\n\nThis PR implements offset-aware chunk retrieval capabilities and includes a major refactoring to extract peer management logic from ArweaveCompositeClient into a dedicated ArweavePeerManager class.\n\n## Key Features\n\n### 🎯 Offset-Aware Chunk Retrieval\n- **Custom ETF parser**: Parse Arweave sync bucket data to understand peer capabilities\n- **Intelligent peer selection**: Choose peers based on which 10GB data ranges they have\n- **Immediate sync bucket fetching**: No more 5-minute delays - fetch sync buckets immediately on peer discovery\n- **Better chunk retrieval efficiency**: Route requests to peers that actually have the data\n\n### 🔄 Peer Management Improvements  \n- **Randomized weighted selection**: Prevents retry loops with failed peers\n- **Fixed URL construction**: Clean URLs without double slashes\n- **Enhanced error logging**: Detailed debugging information for chunk requests\n- **Proper fallback logic**: Falls back to regular selection when no offset-aware peers available\n\n### 🏗️ Architectural Refactoring\n- **Dedicated ArweavePeerManager class**: Extracted from ArweaveCompositeClient\n- **DNS resolution support**: For preferred URLs with configurable refresh intervals\n- **Multi-category peer pools**: Separate management for chain, getChunk, and postChunk operations\n- **Dependency injection**: Clean separation of concerns with proper interfaces\n- **Auto-refresh capabilities**: Configurable intervals for peer list updates\n\n## Technical Implementation\n\n### New Files\n- `src/lib/etf-sync-buckets-parser.ts` - Custom ETF parser for Arweave sync buckets\n- `src/lib/etf-sync-buckets-parser.test.ts` - Comprehensive parser tests\n\n### Major Changes\n- **ArweavePeerManager**: New class with offset-aware peer selection\n- **ArweaveCompositeClient**: Enhanced chunk request logging and URL handling  \n- **System integration**: Proper initialization and dependency injection\n\n### ETF Parser Features\n- Minimal parser specifically for Arweave sync buckets (2-tuple format)\n- Extracts bucket indices without parsing share values (performance optimized)\n- Comprehensive error handling and validation\n- Full test coverage with edge cases\n\n### Offset-Aware Selection Algorithm\n1. Calculate bucket index from absolute offset (offset / 10GB)\n2. Find peers that have the required bucket in their sync data\n3. Apply weighted randomized selection among candidate peers\n4. Fall back to regular weighted selection if no peers have the bucket\n\n## Benefits\n\n### Performance\n- **Faster chunk retrieval**: Direct routing to capable peers\n- **Reduced network overhead**: Fewer failed requests to peers without data\n- **Immediate effectiveness**: No startup delays waiting for sync bucket data\n\n### Reliability  \n- **Prevents retry loops**: Randomized selection avoids repeatedly trying failed peers\n- **Better error visibility**: Enhanced logging helps debug issues\n…",
+  "diff_context": [
+    {
+      "path": "src/data/chain-tx-offset-source.test.ts",
+      "before": null,
+      "after": "/**\n * AR.IO Gateway\n * Copyright (C) 2022-2025 Permanent Data Solutions, Inc. All Rights Reserved.\n *\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\nimport { strict as assert } from 'node:assert';\nimport { afterEach, beforeEach, describe, it, mock } from 'node:test';\nimport { ChainTxOffsetSource } from './chain-tx-offset-source.js';\nimport { TxOffsetResult } from '../types.js';\nimport log from '../log.js';\n\ndescribe('ChainTxOffsetSource', () => {\n  let chainTxOffsetSource: ChainTxOffsetSource;\n  let mockArweaveClient: any;\n\n  const validTxData = {\n    data_root: 'abc123',\n    data_size: '256',\n  };\n\n  const chainFindResult = {\n    txId: 'tx123',\n    txOffset: 1000,\n  };\n\n  const expectedResult: TxOffsetResult = {\n    data_root: 'abc123',\n    id: 'tx123',\n    offset: 1000,",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let mockArweaveClient: any;"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

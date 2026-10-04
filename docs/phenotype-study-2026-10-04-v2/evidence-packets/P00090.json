@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00090",
+  "source_finding_id": "P00090",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Generate minimal sentry-python reproduction\n\n<!-- Describe your PR here -->\nThis PR provides a minimal reproduction for issue #4657, where the `clickhouse-driver` integration prematurely consumes generators when `send_default_pii` is enabled.\n\nThe reproduction includes:\n- `simple_reproduce.py`: A clear demonstration of the generator consumption.\n- `reproduce_issue.py`: A comprehensive script showing behavior with and without Sentry.\n- `test_generator_issue.py`: A pytest-compatible test case to verify the fix.\n- `README.md`: Instructions and details on the bug's location.\n\n---\n\nThank you for contributing to `sentry-python`! Please add tests to validate your changes, and lint your code using `tox -e linters`.\n\nRunning the test suite on your PR might require maintainer approval.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>\n\n<sub>[Learn more]([external reference omitted] about [authoring attribution omitted]s</sub>",
+  "diff_context": [
+    {
+      "path": "reproduction/reproduce_issue.py",
+      "before": null,
+      "after": "            super().__init__()\n            self.connection = type('Connection', (), {\n                'host': 'localhost',\n                'port': 9000,\n                'database': 'default',\n                '_sentry_span': None\n            })()\n            \n        def send_data(self, sample_block, data, *args):\n            \"\"\"This simulates the actual clickhouse-driver send_data signature\"\"\"\n            logger.info(\"Original send_data called\")\n            # This is where clickhouse-driver would normally consume the data\n            # But Sentry's wrapper already consumed it!\n            try:\n                list(data)\n            except Exception as e:\n                logger.info(f\"Expected: data already consumed by Sentry wrapper\")\n    \n    original_client = Client\n    clickhouse_driver.client.Client = TracebackClient\n    \n    try:\n        client = Client()\n        \n        # This will throw in Sentry's wrapper\n        try:\n            client.send_data(None, exception_generator())\n        except ValueError as e:\n            logger.error(f\"Exception raised in Sentry wrapper: {e}\")\n            logger.info(\"This proves the generator is consumed by Sentry before clickhouse-driver uses it\")\n            ",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

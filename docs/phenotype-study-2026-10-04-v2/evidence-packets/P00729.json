@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00729",
+  "source_finding_id": "P00729",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "pyproject.toml",
+      "before": "[project]\nname = \"ledger\"\nversion = \"0.1.0\"\nrequires-python = \">=3.9\"\ndependencies = [\n  \"requests>=2.31\",\n  \"PyYAML>=6\",\n  \"python-dateutil>=2.9\",\n  \"google-cloud-storage>=2\",\n  \"pywin32>=306; sys_platform == 'win32'\",\n]\n\n[project.optional-dependencies]\nfast = [\"orjson>=3\"]\n\n[dependency-groups]",
+      "after": "[project]\nname = \"ledger\"\nversion = \"0.1.0\"\nrequires-python = \">=3.9\"\ndependencies = [\n  \"requests>=2.31\",\n  \"PyYAML>=6\",\n  \"python-dateutil>=2.9\",\n  \"google-cloud-storage>=2\",\n  \"pywin32>=306; sys_platform == 'win32'\",\n  \"Pillow>=10\",\n  \"PyJWT>=2\",\n  \"scikit-learn>=1.4\",\n  \"beautifulsoup4>=4.12\",\n]",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency pypi:scikit-learn"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00024",
+  "source_finding_id": "P00024",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/compiler/src/server/entrypoint-resolver.ts",
+      "before": null,
+      "after": "  path: string,\n  fileSystemCache: FileSystemCache | undefined,\n  log: (log: ServerLog) => void,\n): Promise<string | undefined> {\n  const options = { allowFileNotFound: true };\n\n  const pathStat = await doIO(() => host.stat(path), path, logMainFileSearchDiagnostic, options);\n  const isFilePath = pathStat?.isFile() ?? false;\n  let dir = isFilePath ? getDirectoryPath(path) : path;\n\n  if (!entrypoints) {\n    entrypoints = [\"main.tsp\"];\n  }\n\n  while (true) {\n    let pkg: any;\n    const pkgPath = joinPaths(dir, \"package.json\");\n    const cached = await fileSystemCache?.get(pkgPath);\n    if (cached?.data) {\n      pkg = cached.data;\n    } else {\n      [pkg] = await loadFile(host, pkgPath, JSON.parse, logMainFileSearchDiagnostic, options);\n      await fileSystemCache?.setData(pkgPath, pkg ?? {});\n    }\n\n    const tspMain = resolveTspMain(pkg);\n    if (typeof tspMain === \"string\") {\n      log({\n        level: \"debug\",\n        message: `tspMain resolved from package.json (${pkgPath}) as ${tspMain}`,\n      });",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let pkg: any;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

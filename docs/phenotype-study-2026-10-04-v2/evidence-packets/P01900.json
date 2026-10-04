@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01900",
+  "source_finding_id": "P01900",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/lib.rs",
+      "before": "mod tests {\n    use super::*;\n\n    #[test]\n    fn joins_words_with_a_dash() {\n        assert_eq!(slugify(\"Hello World\").unwrap(), \"hello-world\");\n    }\n\n    #[test]\n    fn drops_punctuation_at_both_ends() {\n        assert_eq!(slugify(\"  ¡Hola, mundo!  \").unwrap(), \"hola-mundo\");\n        assert_eq!(slugify(\"--a--\").unwrap(), \"a\");\n    }\n}",
+      "after": "mod tests {\n    use super::*;\n\n    #[test]\n    fn joins_words_with_a_dash() {\n        assert_eq!(slugify(\"Hello World\").unwrap(), \"hello-world\");\n    }\n\n    #[test]\n    fn drops_punctuation_at_both_ends() {\n        assert_eq!(slugify(\"  ¡Hola, mundo!  \").unwrap(), \"hola-mundo\");\n        assert_eq!(slugify(\"--a--\").unwrap(), \"a\");\n    }\n\n    #[test]\n    fn slugify_is_deterministic() {\n        assert_eq!(slugify(\"Hello World\"), slugify(\"Hello World\"));\n    }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "slugify_is_deterministic"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

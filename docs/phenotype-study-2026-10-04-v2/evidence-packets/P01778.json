@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01778",
+  "source_finding_id": "P01778",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            except Exception:\n                pass\n            if hasattr(self.connection, 'aliases'):\n                self.connection.aliases = []\n            self.connection.proxy_jump = connection_data.get('proxy_jump', [])\n            self.connection.forward_agent = connection_data.get('forward_agent', False)\n            # Explicitly update forwarding rules to ensure they're fresh\n            self.connection.forwarding_rules = forwarding_rules\n            \n        # Emit signal with connection data\n        self.emit('connection-saved', connection_data)\n        self.close()\n\n    def _sanitize_forwarding_rules(self, rules):\n        \"\"\"Validate and normalize forwarding rules before saving.\n        - Ensure listen_addr defaults to 127.0.0.1 (or 0.0.0.0 for remote if provided as such)\n        - Ensure listen_port > 0\n        - For local/remote: ensure remote_host non-empty and remote_port > 0\n        Invalid rules are dropped silently.\n        \"\"\"\n        sanitized = []\n        for r in rules or []:\n            try:\n                rtype = r.get('type')\n                listen_addr = (r.get('listen_addr') or '').strip() or '127.0.0.1'\n                listen_port = int(r.get('listen_port') or 0)\n                if listen_port <= 0:\n                    continue\n                if rtype == 'local':\n                    remote_host = (r.get('remote_host') or '').strip() or 'localhost'\n                    remote_port = int(r.get('remote_port') or 0)",
+      "after": "                    sanitized.append({\n                        'type': 'remote',\n                        'enabled': True,\n                        'listen_addr': listen_addr,\n                        'listen_port': listen_port,\n                        'local_host': local_host,\n                        'local_port': local_port,\n                    })\n                elif rtype == 'dynamic':\n                    sanitized.append({\n                        'type': 'dynamic',\n                        'enabled': True,\n                        'listen_addr': listen_addr,\n                        'listen_port': listen_port,\n                    })\n            except Exception:\n                # Skip malformed rule\n                pass\n        return sanitized\n\n\n    \n    def on_forwarding_toggled(self, switch, param, settings_box):\n        \"\"\"Handle toggling of port forwarding settings visibility and state\"\"\"\n        is_active = switch.get_active()\n        settings_box.set_visible(is_active)\n        # Run inline validation on fields within this section when enabled\n        try:\n            if is_active:\n                if switch == self.local_forwarding_enabled:\n                    if hasattr(self, 'local_port_row'):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

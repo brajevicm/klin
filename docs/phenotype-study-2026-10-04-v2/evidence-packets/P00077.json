@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00077",
+  "source_finding_id": "P00077",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/view/subtitle_interface.py",
+      "before": "                self.tr(\"保存成功\"),\n                self.tr(f\"字幕已保存至:\") + file_path,\n                duration=3000,\n                parent=self,\n            )\n        except Exception as e:\n            InfoBar.error(\n                self.tr(\"保存失败\"),\n                self.tr(\"保存字幕文件失败: \") + str(e),\n                duration=5000,\n                parent=self,\n            )\n\n    def on_open_folder_clicked(self):\n        \"\"\"打开文件夹按钮点击事件\"\"\"\n        if not self.task:\n            InfoBar.warning(\n                self.tr(\"警告\"), self.tr(\"请先加载字幕文件\"), duration=3000, parent=self\n            )\n            return\n        output_path = Path(self.task.output_path)\n        target_dir = str(\n            output_path.parent\n            if output_path.exists()\n            else Path(self.task.subtitle_path).parent\n        )\n        open_folder(target_dir)\n\n    def load_subtitle_file(self, file_path):\n        self.subtitle_path = file_path\n        asr_data = ASRData.from_subtitle_file(file_path)",
+      "after": "            # 转换并保存字幕\n            asr_data = ASRData.from_json(self.model._data)\n            layout = cfg.subtitle_layout.value\n\n            if file_path.endswith(\".ass\"):\n                style_str = get_subtitle_style(cfg.subtitle_style_name.value)\n                asr_data.to_ass(style_str, layout, file_path)\n            else:\n                asr_data.save(file_path, layout=layout)\n            InfoBar.success(\n                self.tr(\"保存成功\"),\n                self.tr(f\"字幕已保存至:\") + file_path,\n                duration=3000,\n                parent=self,\n            )\n        except Exception as e:\n            InfoBar.error(\n                self.tr(\"保存失败\"),\n                self.tr(\"保存字幕文件失败: \") + str(e),\n                duration=5000,\n                parent=self,\n            )\n\n    def on_open_folder_clicked(self) -> None:\n        \"\"\"打开文件夹按钮点击事件\"\"\"\n        if not self.task:\n            InfoBar.warning(\n                self.tr(\"警告\"), self.tr(\"请先加载字幕文件\"), duration=3000, parent=self\n            )\n            return\n        if not self.task:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

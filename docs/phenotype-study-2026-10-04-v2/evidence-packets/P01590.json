@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01590",
+  "source_finding_id": "P01590",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Implement warnings table and frontend display\n\n## Summary\n- add `warnings` table\n- expose warnings via new API endpoint\n- record system check warnings in the DB\n- surface run warnings in stats and compare pages\n- adapt tests to use warnings table\n\n## Testing\n- `pip install -r requirements-dev.txt`\n- `pylint $(git ls-files '*.py')` *(fails: Unable to import packages)*\n- `pytest -k warnings` *(fails: ModuleNotFoundError: No module named 'tests')*\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "lib/scenario_runner.py",
+      "before": "\n            # pylint: disable=broad-exception-caught\n            # we definitely want to first try to stop all providers and then fail\n            try:\n                metric_provider.stop_profiling()\n            except Exception as exc:\n                errors.append(f\"Could not stop profiling on {metric_provider.__class__.__name__}: {str(exc)}\")\n\n            try:\n                df = metric_provider.read_metrics()\n            except RuntimeError as exc:\n                errors.append(f\"{metric_provider.__class__.__name__} returned error message: {str(exc)}\")\n                continue\n\n            if isinstance(df, list):\n                for i, dfi in enumerate(df):\n                    metric_importer.import_measurements(dfi, metric_provider._sub_metrics_name[i], self._run_id)\n            else:\n                metric_importer.import_measurements(df, metric_provider._metric_name, self._run_id)\n\n            print('Imported', TerminalColors.HEADER, len(df), TerminalColors.ENDC, 'metrics from ', metric_provider.__class__.__name__)\n\n        self.__metric_providers.clear()\n        if errors:\n            raise RuntimeError(\"\\n\".join(errors))\n\n\n    def read_and_cleanup_processes(self):\n        print(TerminalColors.HEADER, '\\nReading process stdout/stderr (if selected) and cleaning them up', TerminalColors.ENDC)\n\n        for ps in self.__ps_to_kill:",
+      "after": "            return\n\n        errors = []\n        for metric_provider in self.__metric_providers:\n            if not metric_provider.has_started():\n                continue\n\n            stderr_read = metric_provider.get_stderr()\n            if stderr_read:\n                errors.append(f\"Stderr on {metric_provider.__class__.__name__} was NOT empty: {stderr_read}\")\n\n            # pylint: disable=broad-exception-caught\n            # we definitely want to first try to stop all providers and then fail\n            try:\n                metric_provider.stop_profiling()\n            except Exception as exc:\n                errors.append(f\"Could not stop profiling on {metric_provider.__class__.__name__}: {str(exc)}\")\n\n            try:\n                df = metric_provider.read_metrics()\n            except RuntimeError as exc:\n                errors.append(f\"{metric_provider.__class__.__name__} returned error message: {str(exc)}\")\n                continue\n\n            if isinstance(df, list):\n                for i, dfi in enumerate(df):\n                    metric_importer.import_measurements(dfi, metric_provider._sub_metrics_name[i], self._run_id)\n            else:\n                metric_importer.import_measurements(df, metric_provider._metric_name, self._run_id)\n\n            print('Imported', TerminalColors.HEADER, len(df), TerminalColors.ENDC, 'metrics from ', metric_provider.__class__.__name__)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00352",
+  "source_finding_id": "P00352",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat(app): Forms\n\n# Changes\n- Removed monaco editor in favor of codemirror\n- Reimplment expressions autocompletion logic \n- Implement dynamic forms. You can pass a `Component` annotation in a UDF and it will generate a `x-tracecat-component` metadata in the jsonschema. The UI looks for these to show more specialized UI. Otherwise we fallback to a CM yaml editor.\n\n\n## Summary by cubic\nAdded a new forms system for action and workflow panels, including a flexible YAML/JSON editor, expression input with template pill support, and improved control flow fields.\n\n- **New Features**\n  - Introduced CodeMirror-based YAML and JSON editors with template expression highlighting, completion, and validation.\n  - Added ExpressionInput and ForEachField components for handling template expressions and lists of expressions.\n  - Implemented polymorphic and toggle tab fields for dynamic form rendering.\n  - Enhanced action and workflow panels to use new form components, supporting both form and YAML editing modes.\n  - Improved type handling and schema parsing for dynamic field generation.\n\n- **Bug Fixes**\n  - Fixed issues with template pill editing, cursor navigation, and atomic deletion.\n  - Improved handling of str/list[str] edge cases and type conversions in forms.\n\n<!-- End of auto-generated description by cubic. -->",
+  "diff_context": [
+    {
+      "path": "frontend/src/components/builder/panel/action-panel.tsx",
+      "before": "      .optional(),\n    run_if: z\n      .string()\n      .max(1000, \"Run if must be less than 1000 characters\")\n      .optional(),\n    retry_policy: z\n      .string()\n      .max(1000, \"Retry policy must be less than 1000 characters\")\n      .optional(),\n    options: z\n      .string()\n      .max(1000, \"Options must be less than 1000 characters\")\n      .optional(),\n  }),\n  is_interactive: z.boolean().default(false),\n  interaction: z\n    .discriminatedUnion(\"type\", [\n      z.object({\n        type: z.literal(\"response\"),\n        timeout: z.number().nullish(),\n      }),\n      z.object({\n        type: z.literal(\"approval\"),\n        timeout: z.number().nullish(),\n      }),\n    ])\n    .optional(),\n})\ntype ActionFormSchema = z.infer<typeof actionFormSchema>\n\nconst isControlFlowOption = (key: string) => {",
+      "after": "import { CenteredSpinner } from \"@/components/loading/spinner\"\nimport { AlertNotification } from \"@/components/notifications\"\nimport { actionTypeToLabel } from \"@/components/registry/icons\"\nimport { ValidationErrorView } from \"@/components/validation-errors\"\n\n// These are YAML strings\nconst actionFormSchema = z.object({\n  title: z\n    .string()\n    .max(100, \"Title must be less than 100 characters\")\n    .optional(),\n  description: z\n    .string()\n    .max(500, \"Description must be less than 500 characters\")\n    .optional(),\n  // AI-TODO: Add validation for the inputs\n  inputs: z.record(z.string(), z.unknown()),\n  for_each: z\n    .union([\n      z.string().max(1000, \"For each must be less than 1000 characters\"),\n      z.array(\n        z.string().max(1000, \"For each must be less than 1000 characters\")\n      ),\n    ])\n    .optional(),\n  run_if: z\n    .string()\n    .max(1000, \"Run if must be less than 1000 characters\")\n    .optional(),\n  // Retry policy fields\n  max_attempts: z.number().int().min(0).optional(),",
+      "context": null
+    }
+  ],
+  "observations": [
+    "comment marker"
+  ],
+  "measurement_holes": [
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

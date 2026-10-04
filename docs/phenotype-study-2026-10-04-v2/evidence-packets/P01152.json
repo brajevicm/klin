@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01152",
+  "source_finding_id": "P01152",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        \n        # Port list\n        port_list = Gtk.ListBox()\n        port_list.set_selection_mode(Gtk.SelectionMode.NONE)\n        port_list.add_css_class(\"boxed-list\")\n        scrolled.set_child(port_list)\n        \n        box.append(scrolled)\n        \n        def refresh_port_info():\n            \"\"\"Refresh the port information display\"\"\"\n            # Clear existing items\n            while row := port_list.get_first_child():\n                port_list.remove(row)\n            \n            try:\n                port_checker = get_port_checker()\n                ports = port_checker.get_listening_ports(refresh=True)\n                \n                if not ports:\n                    # Show empty state\n                    empty_row = Adw.ActionRow()\n                    empty_row.set_title(_(\"No listening ports found\"))\n                    empty_row.set_subtitle(_(\"All ports appear to be available\"))\n                    port_list.append(empty_row)\n                    return\n                \n                # Sort ports by port number\n                ports.sort(key=lambda p: p.port)\n                \n                for port_info in ports:",
+      "after": "                    else:\n                        subtitle = _(\"Unknown process\")\n                    \n                    row.set_subtitle(subtitle)\n                    \n                    # Add icon based on port type\n                    if port_info.port < 1024:\n                        icon = Gtk.Image.new_from_icon_name(\"security-high-symbolic\")\n                        icon.set_tooltip_text(_(\"System port (requires root)\"))\n                    else:\n                        icon = Gtk.Image.new_from_icon_name(\"network-transmit-receive-symbolic\")\n                    \n                    row.add_prefix(icon)\n                    port_list.append(row)\n                    \n            except Exception as e:\n                logger.error(f\"Error refreshing port info: {e}\")\n                error_row = Adw.ActionRow()\n                error_row.set_title(_(\"Error loading port information\"))\n                error_row.set_subtitle(str(e))\n                port_list.append(error_row)\n        \n        # Connect refresh button\n        refresh_button.connect(\"clicked\", lambda *_: refresh_port_info())\n        \n        # Create header bar with window controls\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        \n        # Create main container\n        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

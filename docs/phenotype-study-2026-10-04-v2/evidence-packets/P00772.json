@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00772",
+  "source_finding_id": "P00772",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                    \n                    # Add icon based on port type\n                    if port_info.port < 1024:\n                        icon = Gtk.Image.new_from_icon_name(\"security-high-symbolic\")\n                        icon.set_tooltip_text(_(\"System port (requires root)\"))\n                    else:\n                        icon = Gtk.Image.new_from_icon_name(\"network-transmit-receive-symbolic\")\n                    \n                    row.add_prefix(icon)\n                    port_list.append(row)\n                    \n            except Exception as e:\n                logger.error(f\"Error refreshing port info: {e}\")\n                error_row = Adw.ActionRow()\n                error_row.set_title(_(\"Error loading port information\"))\n                error_row.set_subtitle(str(e))\n                port_list.append(error_row)\n        \n        # Connect refresh button\n        refresh_button.connect(\"clicked\", lambda *_: refresh_port_info())\n        \n        # Create header bar with window controls\n        header_bar = Adw.HeaderBar()\n        header_bar.set_show_end_title_buttons(True)\n        \n        # Create main container\n        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)\n        main_box.append(header_bar)\n        main_box.append(box)\n        \n        # Set content for Adw.Window",
+      "after": "    def on_cancel_clicked(self, button):\n        \"\"\"Handle cancel button click\"\"\"\n        self.close()\n    \n    def on_save_clicked(self, *_args):\n        \"\"\"Handle save button click or dialog save response\"\"\"\n        # Block save and focus the first invalid field if any inline validation fails\n        invalid_row = None\n        try:\n            invalid_row = self._validate_all_required_for_save()\n        except Exception:\n            invalid_row = None\n        if invalid_row is not None:\n            try:\n                self._focus_row(invalid_row)\n            except Exception:\n                pass\n            return\n        # Validate required fields\n        if not self.nickname_row.get_text().strip():\n            self.show_error(_(\"Please enter a nickname for this connection\"))\n            return\n            \n        # Initialize forwarding_rules list if needed\n        if not hasattr(self, 'forwarding_rules') or self.forwarding_rules is None:\n            self.forwarding_rules = []\n        \n        # Persist exactly what is in the editor list (enabled rules only) - no sanitization\n        forwarding_rules = [dict(r) for r in self.forwarding_rules if r.get('enabled', True)]\n        try:\n            logger.info(",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

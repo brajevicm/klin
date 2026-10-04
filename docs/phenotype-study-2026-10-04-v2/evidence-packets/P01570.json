@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01570",
+  "source_finding_id": "P01570",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Expose db collections via electric http shape\n\nAdds the `packages/db-sync-server` package to expose TanStack DB collections via the Electric HTTP Shape API.\n\nDuring development, an unexpected behavior was observed where `@[project metadata omitted]` collections, despite having unique keys, would overwrite previously inserted items. E2E tests were adjusted to reflect this current collection behavior, while verifying the sync server's logic.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>",
+  "diff_context": [
+    {
+      "path": "packages/db-sync-server/src/core/versionIndex.ts",
+      "before": null,
+      "after": "      [Infinity, 0],\n      true,\n      () => {\n        hasChanges = true\n        return { break: true } // Stop after first match\n      }\n    )\n    return hasChanges\n  }\n\n  /**\n   * Get a snapshot of all current rows (for initial sync)\n   * @param collection The collection to scan\n   * @returns Iterator of [pk, row] pairs\n   */\n  *scanSnapshot<T>(collection: any): IterableIterator<[PK, T]> {\n    // Backfill PK metadata for existing rows\n    const snapshot: [PK, T][] = []\n    collection.forEach((row: T, pk: PK) => {\n      // Check if we already have metadata for this PK\n      const existing = this.pkIndex.get(pk)\n      if (!existing) {\n        // Add metadata for existing row (version 0 means it existed before tracking)\n        this.pkIndex.set(pk, { version: 0, deleted: false })\n      }\n      snapshot.push([pk, row])\n    })\n    \n    for (const item of snapshot) {\n      yield item\n    }",
+      "context": null
+    }
+  ],
+  "observations": [
+    "*scanSnapshot<T>(collection: any): IterableIterator<[PK, T]> {"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

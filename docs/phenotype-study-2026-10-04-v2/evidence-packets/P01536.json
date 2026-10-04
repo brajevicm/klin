@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01536",
+  "source_finding_id": "P01536",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "API Endpoints used by Sentry CLI\n\nAdd a static inventory of HTTP endpoints used by sentry-cli and instructions to regenerate it.\n\nThis PR delivers the generated documentation as per the plan, which involved identifying and documenting all HTTP endpoints within the `sentry-cli` codebase. It includes a structured list of endpoints and the `ripgrep` commands used for extraction and validation.\n\n---\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "script.py",
+      "before": null,
+      "after": "    return (len(METHOD_ORDER), m)\n\n\ndef parse_yaml(stream: str) -> t.Dict[str, t.Any]:\n    data = yaml.safe_load(stream)\n    if not isinstance(data, dict):\n        raise ValueError(\"Top-level YAML must be a mapping of path -> metadata\")\n    return data\n\n\ndef build_rows(yaml_map: t.Dict[str, t.Any]) -> t.Dict[str, t.List[t.Dict[str, t.Any]]]:\n    sections: t.Dict[str, t.List[t.Dict[str, t.Any]]] = {}\n    for path, meta in yaml_map.items():\n        try:\n            endpoint_section = meta.get(\"section\") if isinstance(meta, dict) else None\n        except Exception:\n            endpoint_section = None\n        section_name = endpoint_section or \"Uncategorized\"\n\n        absolute = False\n        owner = None\n        endpoint_name = None\n        backend_class = None\n        methods = {}\n\n        if isinstance(meta, dict):\n            absolute = bool(meta.get(\"absolute\", False))\n            owner = meta.get(\"owner\")\n            endpoint_name = meta.get(\"name\")\n            backend_class = meta.get(\"class\")\n            methods = meta.get(\"methods\") or {}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception:"
+  ],
+  "measurement_holes": [
+    "the frozen prototype does not expose a complete eligible-unit census; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

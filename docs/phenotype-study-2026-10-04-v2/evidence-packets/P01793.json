@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01793",
+  "source_finding_id": "P01793",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "feat: add fractional reserve warning banner\n\n## Summary\nAdds a warning banner to alert users when the LNbits instance is operating on fractional reserves (when user balances exceed the underlying node balance). This improves transparency and allows users to make informed decisions about using the instance.\n\nThe banner only displays when:\n- A real funding source is configured (not VoidWallet)\n- The balance delta exceeds the watchdog threshold\n- A user is logged in\n\n## Changes\n- Added FRACTIONAL_RESERVE boolean flag to helpers.py template context\n- Implemented yellow warning banner with bold black text in base.html\n- Added fractional_reserve_warning translation string to en.js\n\n## Screenshots\nBanner displays at the top of the page (inside q-header, before q-toolbar) with:\n- Yellow background (`bg-warning` - Quasar default warning color)\n- Bold black text for maximum readability\n- Black warning icon\n\n## Test Plan\n- [x] Banner code is present in HTML when FRACTIONAL_RESERVE is true\n- [x] Banner is hidden when FRACTIONAL_RESERVE is false\n- [x] Banner is hidden when user is not logged in\n- [x] Text is readable (bold black on yellow background)\n- [x] Banner positioning is correct (no overlap with header)\n- [x] All linter checks pass (Prettier, Black, Ruff)\n- [x] Bundle is up to date\n\n## Screenshot\n\n![Screenshot_18-10-2025_203245_lnbits-dev weeksfamily me]([external reference omitted]\n\nFixes #3429\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "lnbits/helpers.py",
+      "before": "        return {**data}\n    return {key: data[key] for key in filter_keys if key in data}\n\n\ndef version_parse(v: str):\n    \"\"\"\n    Wrapper for version.parse() that does not throw if the version is invalid.\n    Instead it return the lowest possible version (\"0.0.0\")\n    \"\"\"\n    try:\n        # remove release candidate suffix\n        v = v.split(\"-\")[0].split(\"rc\")[0]\n        return version.parse(v)\n    except Exception:\n        return version.parse(\"0.0.0\")\n\n\ndef is_lnbits_version_ok(\n    min_lnbits_version: str | None, max_lnbits_version: str | None\n) -> bool:\n    if min_lnbits_version and (\n        version_parse(min_lnbits_version) > version_parse(settings.version)\n    ):\n        return False\n    if max_lnbits_version and (\n        version_parse(max_lnbits_version) <= version_parse(settings.version)\n    ):\n        return False\n\n    return True",
+      "after": "    if not filter_keys:\n        # return shallow clone of the dict even if there are no filters\n        return {**data}\n    return {key: data[key] for key in filter_keys if key in data}\n\n\ndef version_parse(v: str):\n    \"\"\"\n    Wrapper for version.parse() that does not throw if the version is invalid.\n    Instead it return the lowest possible version (\"0.0.0\")\n    \"\"\"\n    try:\n        # remove release candidate suffix\n        v = v.split(\"-\")[0].split(\"rc\")[0]\n        return version.parse(v)\n    except Exception:\n        return version.parse(\"0.0.0\")\n\n\ndef is_lnbits_version_ok(\n    min_lnbits_version: str | None, max_lnbits_version: str | None\n) -> bool:\n    if min_lnbits_version and (\n        version_parse(min_lnbits_version) > version_parse(settings.version)\n    ):\n        return False\n    if max_lnbits_version and (\n        version_parse(max_lnbits_version) <= version_parse(settings.version)\n    ):\n        return False",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

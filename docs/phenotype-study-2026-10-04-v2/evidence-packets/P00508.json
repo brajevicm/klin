@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00508",
+  "source_finding_id": "P00508",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Custom directory",
+  "diff_context": [
+    {
+      "path": "amplifier/cli.py",
+      "before": "\n\n@click.command(name=\"fetch-directory\")\n@click.option(\n    \"--force\",\n    \"-f\",\n    is_flag=True,\n    help=\"Overwrite existing directory if it exists\",\n)\ndef fetch_directory_cmd(force: bool) -> None:\n    \"\"\"Fetch the directory specified in .amplifier/config.yaml.\"\"\"\n    from amplifier.directory_fetcher import fetch_directory as do_fetch\n    from amplifier.directory_source import parse_source\n\n    # Get paths\n    project_path = Path.cwd()\n    amplifier_path = project_path / \".amplifier\"\n    config_path = amplifier_path / \"config.yaml\"\n    directory_path = amplifier_path / \"directory\"\n\n    # Check if config exists\n    if not config_path.exists():\n        raise click.ClickException(f\"Config file not found at {config_path}. Run 'amplifier init' first.\")\n\n    # Load config\n    with open(config_path) as f:\n        config = yaml.safe_load(f)\n\n    if not config or \"directory\" not in config:\n        raise click.ClickException(\n            \"No 'directory' entry found in config.yaml. Expected format: directory: git+username/repo/path\"",
+      "after": "\n@mode.command()\n@click.argument(\"mode_name\", type=str)\ndef set(mode_name: str):\n    \"\"\"Set the current mode.\"\"\"\n    # Validate mode exists\n    available_modes = list_modes()\n    if mode_name not in available_modes:\n        click.echo(f\"Error: Invalid mode '{mode_name}'\", err=True)\n        click.echo(f\"Available modes: {', '.join(available_modes)}\", err=True)\n        ctx = click.get_current_context()\n        ctx.exit(1)\n\n    try:\n        set_mode(mode_name)\n    except Exception as e:\n        click.echo(f\"Error setting mode: {e}\", err=True)\n        ctx = click.get_current_context()\n        ctx.exit(1)\n\n    click.echo(f\"Mode set to: {mode_name}\")\n\n\n@mode.command()\ndef unset():\n    \"\"\"Unset the current mode.\"\"\"\n    unset_mode()\n    click.echo(\"Mode unset.\")\n\n\n@click.group(name=\"directory\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

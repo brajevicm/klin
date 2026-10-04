@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00232",
+  "source_finding_id": "P00232",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Move kernel cmdline parsing to dedicated crate\n\nCreates a new dedicated crate for kernel command line parsing functionality,\nmoving it out of bootc-lib for better separation of concerns and modularity.\n\nChanges:\n- Create new bootc-kernel-cmdline crate under crates/kernel_cmdline/\n- Move kernel_cmdline.rs from bootc-lib to the new crate as lib.rs\n- Add bootc-kernel-cmdline dependency to bootc-lib\n- Update imports in bootc-lib to use bootc_kernel_cmdline:: namespace\n- Add missing Debug derive and documentation to fix lints\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>\nSigned-off-by: John Eckersberg <[project metadata omitted][user omitted].com>",
+  "diff_context": [
+    {
+      "path": "crates/kernel_cmdline/src/lib.rs",
+      "before": null,
+      "after": "\n    #[test]\n    fn test_parameter_pathological() {\n        // valid things that certified insane people would do\n\n        // quotes don't get removed from keys\n        let p = Parameter::from(\"\\\"\\\"\\\"\");\n        assert_eq!(p.key.0, b\"\\\"\\\"\\\"\");\n\n        // quotes only get stripped from the absolute ends of values\n        let p = Parameter::from(\"foo=\\\"internal \\\" quotes \\\" are ok\\\"\");\n        assert_eq!(p.value, Some(b\"internal \\\" quotes \\\" are ok\".as_slice()));\n\n        // non-UTF8 things are in fact valid\n        let non_utf8_byte = b\"\\xff\";\n        #[allow(invalid_from_utf8)]\n        let failed_conversion = str::from_utf8(non_utf8_byte);\n        assert!(failed_conversion.is_err());\n        let mut p = b\"foo=\".to_vec();\n        p.push(non_utf8_byte[0]);\n        let p = Parameter::from(&p);\n        assert_eq!(p.value, Some(non_utf8_byte.as_slice()));\n    }\n\n    #[test]\n    fn test_parameter_equality() {\n        // substrings are not equal\n        let foo = Parameter::from(\"foo\");\n        let bar = Parameter::from(\"foobar\");\n        assert_ne!(foo, bar);\n        assert_ne!(bar, foo);",
+      "context": null
+    }
+  ],
+  "observations": [
+    "#[allow(invalid_from_utf8)]"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

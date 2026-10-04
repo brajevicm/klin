@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01042",
+  "source_finding_id": "P01042",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "            if persist_status is not None:\n                if handler.run_handler.ctx is not None:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=handler.handler_id,\n                            workflow_name=handler.workflow_name,\n                            status=persist_status,\n                            ctx=handler.run_handler.ctx.to_dict(),\n                        )\n                    )\n                else:\n                    await self._workflow_store.delete(\n                        HandlerQuery(handler_id_in=[handler.handler_id])\n                    )\n        if handler.task is not None and not handler.task.done():\n            try:\n                handler.task.cancel()\n            except Exception:\n                pass\n        self._handlers.pop(handler.handler_id, None)\n        self._results.pop(handler.handler_id, None)\n\n\n@dataclass\nclass _WorkflowHandler:\n    \"\"\"A wrapper around a handler: WorkflowHandler. Necessary to monitor and dispatch events from the handler's stream_events\"\"\"\n\n    run_handler: WorkflowHandler\n    queue: asyncio.Queue[Event]\n    task: asyncio.Task[None]\n    # only one consumer of the queue at a time allowed",
+      "after": "            handler_id=handler_id,\n            workflow_name=workflow_name,\n            started_at=datetime.now(timezone.utc),\n            updated_at=datetime.now(timezone.utc),\n            completed_at=None,\n        )\n        self._handlers[handler_id] = wrapper\n        return wrapper\n\n    async def _close_handler(\n        self, handler: _WorkflowHandler, *, persist_status: Status | None = None\n    ) -> None:\n        if not handler.run_handler.done():\n            try:\n                handler.run_handler.cancel()\n            except Exception:\n                pass\n            try:\n                await handler.run_handler.cancel_run()\n            except Exception:\n                pass\n            if persist_status is not None:\n                if handler.run_handler.ctx is not None:\n                    await self._workflow_store.update(\n                        PersistentHandler(\n                            handler_id=handler.handler_id,\n                            workflow_name=handler.workflow_name,\n                            status=persist_status,\n                            ctx=handler.run_handler.ctx.to_dict(),\n                        )\n                    )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

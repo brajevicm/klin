@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01130",
+  "source_finding_id": "P01130",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Feature/spark config\n\n## Description\n\n<!-- Add a brief description about this pull request including what it does, why it is needed, and other important information for the reviewers -->\n\n## More Information\n\n<!-- Add more in-depth information about this pull request, such as the changes made, the reasoning behind them, and any potential impacts. -->\n\n## Validation\n\n<!-- Introduce how to test this pull request. -->\n\n## Linked Issues\n\n<!--\nLink to any related issues or bugs.\n\n**If this PR fully resolves the issue, use one of the following keywords to automatically close the issue when this PR is merged:**\n\n- Closes #<issue_number>\n- Fixes #<issue_number>\n- Resolves #<issue_number>\n\n*Example: `Resolves #123`*\n\n**If this PR is only related to an issue or is a partial fix, simply reference the issue number without a keyword:**\n\n*Example: `This PR makes progress on #456` or `Related to #789`*\n-->",
+  "diff_context": [
+    {
+      "path": "trae-agent-rs/src/main.rs",
+      "before": null,
+      "after": "        }\n        if input == \"status\" {\n            println!(\n                \"working_dir: {}\",\n                working_dir\n                    .as_ref()\n                    .map(|p| p.display().to_string())\n                    .unwrap_or_else(|| \"<none>\".into())\n            );\n            println!(\"trajectory_file: {}\", trajectory_file.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| \"<none>\".into()));\n            println!(\"config_loaded: {}\", config.is_some());\n            continue;\n        }\n\n        let mut parts = input.split_whitespace();\n        let cmd = parts.next().unwrap();\n        match cmd {\n            \"run\" => {\n                let task: String = parts.collect::<Vec<_>>().join(\" \");\n                if task.is_empty() { bail!(\"usage: run <text>\"); }\n                println!(\"Trae (rs) is running task: {task}\");\n                record_trajectory(trajectory_file, serde_json::json!({\n                    \"event\": \"run\",\n                    \"task\": task,\n                }))?;\n            }\n            \"bash\" => {\n                let cmd_vec: Vec<String> = parts.map(|s| s.to_string()).collect();\n                if cmd_vec.is_empty() { bail!(\"usage: bash <cmd...>\"); }\n                let code = run_bash(working_dir, &cmd_vec)?;\n                println!(\"Command exited with status {code}\");",
+      "context": null
+    }
+  ],
+  "observations": [
+    "let cmd = parts.next().unwrap();"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

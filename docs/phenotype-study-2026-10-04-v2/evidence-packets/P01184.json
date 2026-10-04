@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01184",
+  "source_finding_id": "P01184",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                # Update the connection's keyfile attribute if it comes from private_key\n                if not getattr(self.connection, 'keyfile', None) and hasattr(self.connection, 'private_key'):\n                    self.connection.keyfile = keyfile_path\n\n                # Only update the UI if we have a valid path\n                if keyfile_path and keyfile_path.lower() not in ['select key file or leave empty for auto-detection', '']:\n                    logger.debug(f\"Setting keyfile path in UI: {keyfile_path}\")\n                    has_specific_key = True\n                    self.keyfile_row.set_subtitle(keyfile_path)\n                    # Sync the dropdown to match the loaded keyfile\n                    self._sync_key_dropdown_with_current_keyfile()\n                else:\n                    logger.debug(f\"Skipping invalid keyfile path: {keyfile_path}\")\n            \n            # Load certificate path if present\n            if hasattr(self.connection, 'certificate') and self.connection.certificate:\n                cert_path = str(self.connection.certificate).strip()\n                if cert_path and cert_path.lower() not in ['select certificate file (optional)', '']:\n                    logger.debug(f\"Setting certificate path in UI: {cert_path}\")\n                    self.certificate_row.set_subtitle(cert_path)\n                    # Sync the dropdown to match the loaded certificate\n                    self._sync_cert_dropdown_with_current_cert()\n                else:\n                    logger.debug(f\"Skipping invalid certificate path: {cert_path}\")\n            \n            if hasattr(self.connection, 'password') and self.connection.password:\n                self.password_row.set_text(self.connection.password)\n            else:\n                # Fallback: fetch from keyring so the dialog shows stored password (masked)\n                try:\n                    mgr = getattr(self.parent_window, 'connection_manager', None)",
+      "after": "            try:\n                self._orig_password = [redacted]\n            except Exception:\n                self._orig_password = [redacted]\n                \n            # Load key passphrase from connection object or from secure storage\n            if hasattr(self.connection, 'key_passphrase') and self.connection.key_passphrase:\n                self.key_passphrase_row.set_text(self.connection.key_passphrase)\n            else:\n                # Try to load from secure storage if we have a keyfile\n                try:\n                    if hasattr(self, 'connection_manager') and self.connection_manager and keyfile:\n                        stored_passphrase = self.connection_manager.get_key_passphrase(keyfile)\n                        if stored_passphrase:\n                            self.key_passphrase_row.set_text(stored_passphrase)\n                except Exception as e:\n                    logger.debug(f\"Failed to load stored passphrase: {e}\")\n\n            # Load key selection mode (prefer fresh manager copy by nickname)\n            try:\n                if hasattr(self, 'key_select_row'):\n                    mode = None\n                    # Prefer fresh parse from manager if available\n                    try:\n                        mgr = getattr(self.parent_window, 'connection_manager', None)\n                        if mgr and hasattr(self.connection, 'nickname'):\n                            fresh = mgr.find_connection_by_nickname(self.connection.nickname)\n                            if fresh is not None and hasattr(fresh, 'key_select_mode'):\n                                mode = int(getattr(fresh, 'key_select_mode', 0) or 0)\n                    except Exception:\n                        mode = None",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

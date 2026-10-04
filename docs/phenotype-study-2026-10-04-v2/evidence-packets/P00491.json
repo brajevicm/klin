@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00491",
+  "source_finding_id": "P00491",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "            if (not keyfile_value) and hasattr(self.keyfile_row, 'get_subtitle'):\n                keyfile_value = self.keyfile_row.get_subtitle() or ''\n            if (not keyfile_value) and self.is_editing and hasattr(self, 'connection') and self.connection:\n                keyfile_value = str(getattr(self.connection, 'keyfile', '') or '')\n        except Exception:\n            keyfile_value = ''\n\n        # Verify passphrase before proceeding with save\n        key_passphrase = self.key_passphrase_row.get_text()\n        \n        if keyfile_value and keyfile_value != \"Select key file\" and key_passphrase:\n            # Verify the passphrase matches the private key\n            if not self.validator.verify_key_passphrase(keyfile_value, key_passphrase):\n                self.show_error(_(\"The passphrase you entered is invalid for this key. Please try again.\"))\n                return\n\n        # Store key passphrase in secret storage if provided\n        if keyfile_value and keyfile_value != \"Select key file\":\n            try:\n                if hasattr(self, 'connection_manager') and self.connection_manager:\n                    if hasattr(self.connection_manager, 'store_key_passphrase'):\n                        if key_passphrase:\n                            # Store new or modified passphrase (already verified above)\n                            self.connection_manager.store_key_passphrase(keyfile_value, key_passphrase)\n                        elif hasattr(self.connection_manager, 'delete_key_passphrase'):\n                            # User cleared the field - remove stored passphrase\n                            self.connection_manager.delete_key_passphrase(keyfile_value)\n            except Exception as e:\n                logger.warning(f\"Failed to store/delete key passphrase: {e}\")\n\n        # Get certificate path",
+      "after": "            if (not certificate_value) and self.is_editing and hasattr(self, 'connection') and self.connection:\n                conn_cert_value = str(getattr(self.connection, 'certificate', '') or '')\n                # Filter out placeholder text\n                if conn_cert_value and not conn_cert_value.lower().startswith('select certificate'):\n                    certificate_value = conn_cert_value\n        except Exception:\n            certificate_value = ''\n\n\n        # Get extra SSH config from advanced tab\n        extra_ssh_config = ''\n        if hasattr(self, 'advanced_tab'):\n            try:\n                extra_ssh_config = self.advanced_tab.get_extra_ssh_config()\n                logger.debug(f\"Retrieved extra SSH config from advanced tab: {extra_ssh_config}\")\n            except Exception as e:\n                logger.error(f\"Error getting extra SSH config from advanced tab: {e}\")\n                extra_ssh_config = ''\n\n        key_select_mode_val = 0\n        try:\n            if hasattr(self, 'key_select_row'):\n                key_selection = self.key_select_row.get_selected()\n                if key_selection == 1:\n                    use_only = getattr(self, 'key_only_row', None)\n                    only_active = use_only.get_active() if use_only else True\n                    key_select_mode_val = 1 if only_active else 2\n        except Exception:\n            key_select_mode_val = 0\n\n        # Gather connection data",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

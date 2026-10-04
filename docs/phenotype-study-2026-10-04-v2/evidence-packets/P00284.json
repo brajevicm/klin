@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00284",
+  "source_finding_id": "P00284",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Custom directory",
+  "diff_context": [
+    {
+      "path": "amplifier/cli.py",
+      "before": "    if ctx.invoked_subcommand is None:\n        # No subcommand - show current mode\n        current_mode = get_mode()\n        if current_mode is None:\n            click.echo(\"No mode set.\")\n        else:\n            click.echo(current_mode)\n\n\n@mode.command()\ndef list():\n    \"\"\"List available modes.\"\"\"\n    modes = list_modes()\n    for mode_name in modes:\n        click.echo(mode_name)\n\n\n@mode.command()\n@click.argument(\"mode_name\", type=str)\ndef set(mode_name: str):\n    \"\"\"Set the current mode.\"\"\"\n    # Validate mode exists\n    available_modes = list_modes()\n    if mode_name not in available_modes:\n        click.echo(f\"Error: Invalid mode '{mode_name}'\", err=True)\n        click.echo(f\"Available modes: {', '.join(available_modes)}\", err=True)\n        ctx = click.get_current_context()\n        ctx.exit(1)\n\n    try:\n        set_mode(mode_name)",
+      "after": "    # Fetch the directory content\n    original_cwd = Path.cwd()\n    try:\n        # Change to target directory for fetch operation\n        os.chdir(target_path)\n\n        click.echo(\"📦 Fetching directory content...\")\n\n        source = parse_source(default_config[\"directory\"])\n        target_directory = target_amplifier_dir / \"directory\"\n\n        fetch_directory(source, target_directory)\n\n        click.echo(f\"✅ Successfully initialized amplifier project at {target_path}\")\n\n    except Exception as e:\n        click.echo(f\"⚠️  Warning: Failed to fetch directory content: {e}\", err=True)\n        click.echo(\"You can manually fetch it later with: amplifier directory fetch\")\n\n    finally:\n        # Always restore original working directory\n        os.chdir(original_cwd)\n\n\n@click.group(invoke_without_command=True)\n@click.pass_context\ndef mode(ctx):\n    \"\"\"Mode management commands.\"\"\"\n    if ctx.invoked_subcommand is None:\n        # No subcommand - show current mode\n        current_mode = get_mode()",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

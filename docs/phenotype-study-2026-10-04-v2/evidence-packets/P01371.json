@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01371",
+  "source_finding_id": "P01371",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "                    has_active_terminal = terminal.is_connected\n\n            self.connection.is_connected = has_active_terminal\n\n            if has_active_terminal:\n                self.status_icon.set_from_icon_name(\"network-idle-symbolic\")\n                host_value = _get_connection_host(self.connection) or _get_connection_alias(self.connection)\n                self.status_icon.set_tooltip_text(\n                    f\"Connected to {host_value}\"\n                )\n            else:\n                self.status_icon.set_from_icon_name(\"network-offline-symbolic\")\n                self.status_icon.set_tooltip_text(\"Disconnected\")\n\n            self.status_icon.queue_draw()\n        except Exception as e:\n            logger.error(\n                f\"Error updating status for {getattr(self.connection, 'nickname', 'connection')}: {e}\"\n            )\n\n    def update_display(self):\n        if hasattr(self.connection, \"nickname\") and hasattr(self, \"nickname_label\"):\n            self.nickname_label.set_markup(f\"<b>{self.connection.nickname}</b>\")\n\n        if hasattr(self.connection, \"username\") and hasattr(self, \"host_label\"):\n            self._apply_host_label_text(include_port=True)\n        self._update_forwarding_indicators()\n        self.update_status()\n        self._apply_group_color_style()\n",
+      "after": "                    has_active_terminal = terminal.is_connected\n\n            self.connection.is_connected = has_active_terminal\n\n            if has_active_terminal:\n                self.status_icon.set_from_icon_name(\"network-idle-symbolic\")\n                host_value = _get_connection_host(self.connection) or _get_connection_alias(self.connection)\n                self.status_icon.set_tooltip_text(\n                    f\"Connected to {host_value}\"\n                )\n            else:\n                self.status_icon.set_from_icon_name(\"network-offline-symbolic\")\n                self.status_icon.set_tooltip_text(\"Disconnected\")\n\n            self.status_icon.queue_draw()\n        except Exception as e:\n            logger.error(\n                f\"Error updating status for {getattr(self.connection, 'nickname', 'connection')}: {e}\"\n            )\n\n    def update_display(self):\n        if hasattr(self.connection, \"nickname\") and hasattr(self, \"nickname_label\"):\n            self.nickname_label.set_markup(f\"<b>{self.connection.nickname}</b>\")\n\n        if hasattr(self.connection, \"username\") and hasattr(self, \"host_label\"):\n            self._apply_host_label_text(include_port=True)\n        self._update_forwarding_indicators()\n        self.update_status()\n        self._apply_group_color_style()\n",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

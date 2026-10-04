@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00969",
+  "source_finding_id": "P00969",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Fix usage of EnvVar class\n\nI noticed while working on #319 that there was a regression due to the release of CrewAI 0.121.1, which affected imports in this repo.\n\nNote that by modifying these files the `pre-commit` hook reformatted them.",
+  "diff_context": [
+    {
+      "path": "generate_tool_specs.py",
+      "before": "            fields = schema.get(\"schema\", {}).get(\"fields\", {})\n            tool_info = {\n                \"name\": tool_class.__name__,\n                \"humanized_name\": self._extract_field_default(fields.get(\"name\"), fallback=tool_class.__name__),\n                \"description\": self._extract_field_default(fields.get(\"description\")).strip(),\n                \"run_params\": self._extract_params(fields.get(\"args_schema\")),\n                \"env_vars\": self._extract_env_vars(fields.get(\"env_vars\")),\n            }\n\n            self.tools_spec.append(tool_info)\n\n        except Exception as e:\n            print(f\"Error extracting {tool_class.__name__}: {e}\")\n\n    def _unwrap_schema(self, schema: Dict) -> Dict:\n        while schema.get(\"type\") in {\"function-after\", \"default\"} and \"schema\" in schema:\n            schema = schema[\"schema\"]\n        return schema\n\n    def _extract_field_default(self, field: Optional[Dict], fallback: str = \"\") -> str:\n        if not field:\n            return fallback\n            \n        schema = field.get(\"schema\", {})\n        default = schema.get(\"default\")\n        return default if isinstance(default, str) else fallback\n\n    def _extract_params(self, args_schema_field: Optional[Dict]) -> List[Dict[str, str]]:\n        if not args_schema_field:\n            return []",
+      "after": "            fields = schema.get(\"schema\", {}).get(\"fields\", {})\n            tool_info = {\n                \"name\": tool_class.__name__,\n                \"humanized_name\": self._extract_field_default(\n                    fields.get(\"name\"), fallback=tool_class.__name__\n                ),\n                \"description\": self._extract_field_default(\n                    fields.get(\"description\")\n                ).strip(),\n                \"run_params\": self._extract_params(fields.get(\"args_schema\")),\n                \"env_vars\": self._extract_env_vars(fields.get(\"env_vars\")),\n            }\n\n            self.tools_spec.append(tool_info)\n\n        except Exception as e:\n            print(f\"Error extracting {tool_class.__name__}: {e}\")\n\n    def _unwrap_schema(self, schema: Dict) -> Dict:\n        while (\n            schema.get(\"type\") in {\"function-after\", \"default\"} and \"schema\" in schema\n        ):\n            schema = schema[\"schema\"]\n        return schema\n\n    def _extract_field_default(self, field: Optional[Dict], fallback: str = \"\") -> str:\n        if not field:\n            return fallback\n\n        schema = field.get(\"schema\", {})\n        default = schema.get(\"default\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

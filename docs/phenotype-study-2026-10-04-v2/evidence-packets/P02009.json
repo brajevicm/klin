@@ -1,0 +1,21 @@
+{
+  "packet_id": "P02009",
+  "source_finding_id": "P02009",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Add type annotations to examples/planning files\n\nThis change adds type annotations to the Python files under the `examples/misc/` directory to improve code readability and maintainability. For any classes from the Google Ads library, types from the `v20` API version were used as requested.",
+  "diff_context": [
+    {
+      "path": "examples/planning/get_ad_group_criterion_cpc_bid_simulations.py",
+      "before": "    query = f\"\"\"\n        SELECT\n          ad_group_criterion_simulation.ad_group_id,\n          ad_group_criterion_simulation.criterion_id,\n          ad_group_criterion_simulation.start_date,\n          ad_group_criterion_simulation.end_date,\n          ad_group_criterion_simulation.cpc_bid_point_list.points\n        FROM ad_group_criterion_simulation\n        WHERE\n          ad_group_criterion_simulation.type = CPC_BID\n          AND ad_group_criterion_simulation.ad_group_id = {ad_group_id}\"\"\"\n\n    # Issues a search request using streaming.\n    stream = googleads_service.search_stream(\n        customer_id=customer_id, query=query\n    )\n\n    # Iterates over all rows in all messages and prints the requested field\n    # values for the ad group criterion CPC bid simulation in each row.\n    for batch in stream:\n        for row in batch.results:\n            simulation = row.ad_group_criterion_simulation\n\n            print(\n                \"found ad group criterion CPC bid simulation for \"\n                f\"ad group ID {simulation.ad_group_id}, \"\n                f\"criterion ID {simulation.criterion_id}, \"\n                f\"start date {simulation.start_date}, \"\n                f\"end date {simulation.end_date}\"\n            )",
+      "after": "from google.ads.googleads.v20.services.services.google_ads_service.client import (\n    GoogleAdsServiceClient,\n)\nfrom google.ads.googleads.v20.services.types.google_ads_service import (\n    SearchGoogleAdsStreamResponse,\n    GoogleAdsRow,\n)\n\n\n# [START get_ad_group_criterion_cpc_bid_simulations]\ndef main(client: GoogleAdsClient, customer_id: str, ad_group_id: str):\n    googleads_service: GoogleAdsServiceClient = client.get_service(\n        \"GoogleAdsService\"\n    )\n\n    query = f\"\"\"\n        SELECT\n          ad_group_criterion_simulation.ad_group_id,\n          ad_group_criterion_simulation.criterion_id,\n          ad_group_criterion_simulation.start_date,\n          ad_group_criterion_simulation.end_date,\n          ad_group_criterion_simulation.cpc_bid_point_list.points\n        FROM ad_group_criterion_simulation\n        WHERE\n          ad_group_criterion_simulation.type = CPC_BID\n          AND ad_group_criterion_simulation.ad_group_id = {ad_group_id}\"\"\"\n\n    # Issues a search request using streaming.\n    stream: Iterable[SearchGoogleAdsStreamResponse] = (\n        googleads_service.search_stream(customer_id=customer_id, query=query)\n    )",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

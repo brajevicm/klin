@@ -1,0 +1,23 @@
+{
+  "packet_id": "P00168",
+  "source_finding_id": "P00168",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"shop\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"dependencies\": {\n    \"is-number\": \"7.0.0\"\n  }\n}",
+      "after": "{\n  \"name\": \"shop\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"dependencies\": {\n    \"is-number\": \"7.0.0\",\n    \"is-odd\": \"3.0.1\"\n  }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:is-odd"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00690",
+  "source_finding_id": "P00690",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "feat: Replace binary file checks with istextorbinary\n\nThis PR replaces the manual binary file check, which was based on a list of file extensions, with the `istextorbinary` library. This provides a more robust way to check if a file is binary by checking both the file extension and the file content. This change also removes the `BINARY_EXTENSIONS` constant and its usages.",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"aider-desk\",\n  \"version\": \"0.24.1-dev\",\n  \"description\": \"Aider desktop application wrapper\",\n  \"main\": \"./out/main/index.js\",\n  \"author\": \"Hotovo\",\n  \"homepage\": \"https://www.hotovo.com\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/hotovo/aider-desk.git\"\n  },\n  \"scripts\": {\n    \"format\": \"prettier --write .\",\n    \"lint\": \"eslint src --fix\",\n    \"typecheck:node\": \"tsc --noEmit -p tsconfig.node.json --composite false\",\n    \"typecheck:web\": \"tsc --noEmit -p tsconfig.web.json --composite false\",",
+      "after": "{\n  \"name\": \"aider-desk\",\n  \"version\": \"0.24.1-dev\",\n  \"description\": \"Aider desktop application wrapper\",\n  \"main\": \"./out/main/index.js\",\n  \"author\": \"Hotovo\",\n  \"homepage\": \"https://www.hotovo.com\",\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/hotovo/aider-desk.git\"\n  },\n  \"scripts\": {\n    \"format\": \"prettier --write .\",\n    \"lint\": \"eslint src --fix\",\n    \"typecheck:node\": \"tsc --noEmit -p tsconfig.node.json --composite false\",\n    \"typecheck:web\": \"tsc --noEmit -p tsconfig.web.json --composite false\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:istextorbinary"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

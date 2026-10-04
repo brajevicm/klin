@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00654",
+  "source_finding_id": "P00654",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix stateful llama-index examples\n\nThere was a small bug in the llama-index examples that used state\n\nBasically, the tools that modify state need to save it at the end. Otherwise, there is a final state snapshot event emitted from the integration code that will erase all the modifications that have been made to the state so far\n\nThe fix is just to add `await ctx.store.set(\"state\", state)` -- however, newer versions of llama-index workflows have an async context manager to make it even easier to access and modify state safely. Within the context manager, no other tool can modify state, so its safe if the agent makes multiple tool calls at once.",
+  "diff_context": [
+    {
+      "path": "typescript-sdk/integrations/llamaindex/server-py/pyproject.toml",
+      "before": "[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n[project]\nname = \"server\"\nversion = \"0.1.0\"\ndescription = \"Add your description here\"\nreadme = \"README.md\"\nrequires-python = \">=3.9, <3.14\"\ndependencies = [\n    \"llama-index-core>=0.12.41,<0.13\",\n    \"llama-index-agent-openai>=0.4.9,<0.5\",\n    \"llama-index-protocols-ag-ui>=0.1.2\",\n    \"jsonpatch>=1.33\",\n    \"uvicorn>=0.27.0\",",
+      "after": "[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n[project]\nname = \"server\"\nversion = \"0.1.0\"\ndescription = \"Add your description here\"\nreadme = \"README.md\"\nrequires-python = \">=3.9, <3.14\"\ndependencies = [\n    \"llama-index-core>=0.14.0,<0.15\",\n    \"llama-index-llms-openai>=0.5.0,<0.6.0\",\n    \"llama-index-protocols-ag-ui>=0.2.2,<0.3\",\n    \"jsonpatch>=1.33\",\n    \"uvicorn>=0.27.0\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency pypi:llama-index-llms-openai"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

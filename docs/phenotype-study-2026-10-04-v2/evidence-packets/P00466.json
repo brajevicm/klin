@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00466",
+  "source_finding_id": "P00466",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "    def _row_set_message(self, row, message: str, is_error: bool = True):\n        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(message or \"\")\n        except Exception:\n            pass\n        # Also mirror the message into tooltips for visibility/accessibility\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(message or None)\n        except Exception:\n            pass\n        try:\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(message or None)\n        except Exception:\n            pass\n        try:\n            if is_error:\n                row.add_css_class('error')\n            else:\n                row.remove_css_class('error')\n        except Exception:\n            pass\n\n    def _row_clear_message(self, row):\n        self._row_set_message(row, \"\", is_error=False)\n\n    def _connect_row_validation(self, row, validator_callable):\n        # Prefer notify::text on Adw.EntryRow, fallback to child Gtk.Entry changed",
+      "after": "            self._row_set_message(row, _(f\"{label_text} is required\"), is_error=True)\n            return False\n        self._row_clear_message(row)\n        return True\n\n    def _is_nickname_taken(self, name: str) -> bool:\n        try:\n            mgr = getattr(self.parent_window, 'connection_manager', None)\n            if mgr is None or not hasattr(mgr, 'connections'):\n                return False\n            normalized = (name or '').strip().lower()\n            current_name_norm = ''\n            try:\n                if self.is_editing and self.connection:\n                    current_name_norm = str(getattr(self.connection, 'nickname', '')).strip().lower()\n            except Exception:\n                current_name_norm = ''\n            for conn in getattr(mgr, 'connections', []) or []:\n                other_name = getattr(conn, 'nickname', None)\n                if not other_name:\n                    continue\n                other_norm = str(other_name).strip().lower()\n                # Skip the same connection object and also skip the current connection name when editing\n                if current_name_norm and (conn is self.connection or other_norm == current_name_norm):\n                    continue\n                if other_norm == normalized:\n                    return True\n        except Exception:\n            return False\n        return False",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

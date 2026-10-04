@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01381",
+  "source_finding_id": "P01381",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "API Endpoints used by Sentry CLI\n\nAdd a static inventory of HTTP endpoints used by sentry-cli and instructions to regenerate it.\n\nThis PR delivers the generated documentation as per the plan, which involved identifying and documenting all HTTP endpoints within the `sentry-cli` codebase. It includes a structured list of endpoints and the `ripgrep` commands used for extraction and validation.\n\n---\n<a href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Cursor\" src=\"[external reference omitted] href=\"[external reference omitted] media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted] media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted] alt=\"Open in Web\" src=\"[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "script.py",
+      "before": null,
+      "after": "Behavior:\n  - Reads YAML from a file or stdin (use '-' for stdin)\n  - Writes Markdown to a file or stdout (use '-' for stdout)\n  - Does not hardcode any specific input path\n\nThis implements the rules in plan_script.md for table layout and sorting.\n\"\"\"\nfrom __future__ import annotations\n\nimport argparse\nimport sys\nimport typing as t\n\ntry:\n    import yaml\nexcept Exception as exc:  # pragma: no cover - helpful error message at runtime\n    print(\n        \"Missing dependency: PyYAML is required. Install with `pip install pyyaml`.\",\n        file=sys.stderr,\n    )\n    raise\n\n\nMETHOD_ORDER = [\"GET\", \"POST\", \"PUT\", \"DELETE\", \"PATCH\", \"HEAD\", \"OPTIONS\"]\n\n\ndef bool_to_yesno(val: t.Any) -> str:\n    return \"Yes\" if bool(val) else \"No\"\n\n\ndef sanitize_code_span(value: str) -> str:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "except Exception as exc:  # pragma: no cover - helpful error message at runtime"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

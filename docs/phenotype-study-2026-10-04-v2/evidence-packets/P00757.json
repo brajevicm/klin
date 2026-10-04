@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00757",
+  "source_finding_id": "P00757",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "[typespec-vscode] setting custom entrypoint file for tsp project\n\nFix: [external reference omitted]\n\nSetting custom entrypoint file for tsp project",
+  "diff_context": [
+    {
+      "path": "packages/compiler/test/server/entrypoint-resolver.test.ts",
+      "before": null,
+      "after": "\n  expect(result).toBe(expected);\n});\n\nit(\"finds client-provided entrypoint in parent directory when not in current\", async () => {\n  const host = createMockHost();\n  const root = \"/repo\";\n  const sub = joinPaths(root, \"pkg\", \"src\");\n  const filePath = joinPaths(sub, \"file.tsp\");\n  const expected = joinPaths(root, \"main.tsp\");\n\n  vi.mocked(host.stat).mockImplementation(async (path) => {\n    // Only the parent root with main.tsp exists\n    return path === expected ? ({ isFile: () => true } as any) : ({ isFile: () => false } as any);\n  });\n  vi.mocked(host.readFile).mockResolvedValue({ text: \"{}\" } as any);\n\n  const { log } = createLogger();\n  const result = await resolveEntrypointFile(\n    host,\n    [\"missing.tsp\", \"main.tsp\"],\n    filePath,\n    undefined,\n    log,\n  );\n  expect(result).toBe(expected);\n});\n\nit(\"falls back to tspMain from package.json when no client entrypoints exist\", async () => {\n  const host = createMockHost();\n  const dir = \"/lib\";",
+      "context": null
+    }
+  ],
+  "observations": [
+    "vi.mocked(host.readFile).mockResolvedValue({ text: \"{}\" } as any);"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00475",
+  "source_finding_id": "P00475",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                                self.local_port_row.set_text(str(rule['listen_port']))\n                        if hasattr(self, 'remote_host_row') and 'remote_host' in rule:\n                            self.remote_host_row.set_text(rule['remote_host'])\n                        if hasattr(self, 'remote_port_row') and 'remote_port' in rule:\n                            try:\n                                self.remote_port_row.set_text(str(int(rule['remote_port'])))\n                            except Exception:\n                                self.remote_port_row.set_text(str(rule['remote_port']))\n                    \n                    # Handle remote forwarding\n                    elif rule_type == 'remote' and hasattr(self, 'remote_forwarding_enabled'):\n                        self.remote_forwarding_enabled.set_active(True)\n                        if hasattr(self, 'remote_bind_host_row') and 'listen_addr' in rule:\n                            try:\n                                self.remote_bind_host_row.set_text(str(rule.get('listen_addr') or 'localhost'))\n                            except Exception:\n                                pass\n                        if hasattr(self, 'remote_bind_port_row') and 'listen_port' in rule:\n                            try:\n                                self.remote_bind_port_row.set_text(str(int(rule['listen_port'])))\n                            except Exception:\n                                self.remote_bind_port_row.set_text(str(rule['listen_port']))\n                        # Destination (local) host/port\n                        if hasattr(self, 'dest_host_row'):\n                            try:\n                                self.dest_host_row.set_text(\n                                    str(rule.get('local_host') or rule.get('remote_host', 'localhost'))\n                                )\n                            except Exception:\n                                pass\n                        if hasattr(self, 'dest_port_row'):",
+      "after": "                \n                # Load the rules into the UI\n                self.load_port_forwarding_rules()\n                \n        except Exception as e:\n            logger.error(f\"Error loading connection data: {e}\")\n            self.show_error(_(\"Failed to load connection data\"))\n    \n\n    \n    # --- Inline validation helpers ---\n    def _apply_validation_to_row(self, row, result):\n        try:\n            if hasattr(row, 'set_subtitle'):\n                row.set_subtitle(result.message or \"\")\n        except Exception:\n            pass\n        # Tooltips on row and entry\n        try:\n            if hasattr(row, 'set_tooltip_text'):\n                row.set_tooltip_text(result.message or None)\n            entry = row.get_child() if hasattr(row, 'get_child') else None\n            if entry is not None and hasattr(entry, 'set_tooltip_text'):\n                entry.set_tooltip_text(result.message or None)\n        except Exception:\n            pass\n        # CSS classes: clear, then set per severity\n        try:\n            row.remove_css_class('error')\n            row.remove_css_class('warning')\n        except Exception:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: `try`-`except`-`pass` detected, consider logging the exception"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

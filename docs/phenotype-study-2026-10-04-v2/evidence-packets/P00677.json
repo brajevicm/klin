@@ -1,0 +1,27 @@
+{
+  "packet_id": "P00677",
+  "source_finding_id": "P00677",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: Add generic tree-sitter parser with configuration file support\n\n## Summary\n\nThis PR implements a generic tree-sitter based parser (`similarity-generic`) that can analyze code similarity for multiple programming languages using configurable JSON files.\n\n## Key Features\n\n### 1. Generic Tree-Sitter Parser\n- Configurable parser that works with any tree-sitter grammar\n- JSON-based configuration for language-specific AST node mappings\n- Support for function and type extraction\n\n### 2. New CLI Tool: `similarity-generic`\n- Supports 6 languages out of the box: Go, Java, C, C++, C#, Ruby\n- `--supported` option to list available languages\n- `--show-config <language>` to display configuration examples\n- Custom language support via JSON configuration files\n\n### 3. Language Configuration Format\n```json\n{\n  \"language\": \"go\",\n  \"function_nodes\": [\"function_declaration\", \"method_declaration\"],\n  \"type_nodes\": [\"type_declaration\", \"struct_type\", \"interface_type\"],\n  \"field_mappings\": {\n    \"name_field\": \"name\",\n    \"params_field\": \"parameters\",\n    \"body_field\": \"body\"\n  },\n  \"value_nodes\": [\"identifier\", \"string_literal\"],\n  \"test_patterns\": {\n    \"name_prefixes\": [\"Test\", \"Benchmark\"]\n  }\n}\n```\n\n### 4. Clear Separation of Concerns\n- **Dedicated tools** for optimized performance:\n  - `similarity-py` for Python (using tree-sitter)\n  - `similarity-ts` for TypeScript/JavaScript (using oxc_parser - ~10x faster)\n  - `similarity-rs` for Rust (planned)\n- **Generic tool** for other languages and experimentation\n\n## Usage Examples\n\n```bash\n# Analyze Go code\nsimilarity-generic main.go --language go\n\n# Show supported languages\nsimilarity-generic --supported\n\n# Get configuration for a language\nsimilarity-generic --show-config java > java-config.json\n\n# Use custom configuration\nsimilarity-generic code.xyz --config custom-lang.json\n```\n\n…",
+  "diff_context": [
+    {
+      "path": "similarity_core (crates/core/Cargo.toml)",
+      "before": null,
+      "after": null,
+      "context": null
+    }
+  ],
+  "observations": [
+    "language_parser::LanguageParser (type)"
+  ],
+  "measurement_holes": [
+    "public-api coverage has 1 unmeasured and 0 unreadable files",
+    "public-api public surface has 4 holes and 43 opaque items",
+    "{\"file\": \"crates/core/src/cli_parallel.rs\", \"gate\": \"public-api\", \"line\": 34, \"outcome\": \"unresolved\", \"text\": \"pub fn new(func1: F, func2: F, similarity: f64) -> Self { — similarity_core (crates/core/Cargo.toml) — an inherent impl of SimilarityResult outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "{\"file\": \"crates/core/src/function_extractor.rs\", \"gate\": \"public-api\", \"line\": 18, \"outcome\": \"unresolved\", \"text\": \"pub fn new(func1: FunctionDefinition, func2: FunctionDefinition, similarity: f64) -> Self { — similarity_core (crates/core/Cargo.toml) — an inherent impl of SimilarityResult outside the module that declares it, and 2 modules declare a type of that name\"}",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

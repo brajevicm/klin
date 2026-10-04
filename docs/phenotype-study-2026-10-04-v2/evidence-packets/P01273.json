@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01273",
+  "source_finding_id": "P01273",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Simplify schema for send event to handler in WorkflowServer",
+  "diff_context": [
+    {
+      "path": "src/workflows/server/server.py",
+      "before": "        \"\"\"\n        Acquires the lock to iterate over the events, and returns generator of events.\n        \"\"\"\n        try:\n            await asyncio.wait_for(self.consumer_mutex.acquire(), timeout=timeout)\n        except asyncio.TimeoutError:\n            raise NoLockAvailable(\n                f\"No lock available to acquire after {timeout}s timeout\"\n            )\n        return self._iter_events(timeout=timeout)\n\n    async def _iter_events(self, timeout: float = 1) -> AsyncGenerator[Event, None]:\n        \"\"\"\n        Converts the queue to an async generator while the workflow is still running, and there are still events.\n        For better or worse, multiple consumers will compete for events\n        \"\"\"\n\n        try:\n            while not self.queue.empty() or not self.task.done():\n                available_events = []\n                while not self.queue.empty():\n                    available_events.append(self.queue.get_nowait())\n                for event in available_events:\n                    yield event\n                queue_get_task: asyncio.Task[Event] = asyncio.create_task(\n                    self.queue.get()\n                )\n                task_waitable = self.task\n                done, pending = await asyncio.wait(\n                    {queue_get_task, task_waitable}, return_when=asyncio.FIRST_COMPLETED\n                )",
+      "after": "        return \"completed\"\n\n    @property\n    def error(self) -> str | None:\n        if not self.run_handler.done():\n            return None\n        exc = self.run_handler.exception()\n        return str(exc) if exc is not None else None\n\n    @property\n    def result(self) -> RunResultT | None:\n        if not self.run_handler.done():\n            return None\n        try:\n            return self.run_handler.result()\n        except Exception:\n            return None\n\n    async def acquire_events_stream(\n        self, timeout: float = 1\n    ) -> AsyncGenerator[Event, None]:\n        \"\"\"\n        Acquires the lock to iterate over the events, and returns generator of events.\n        \"\"\"\n        try:\n            await asyncio.wait_for(self.consumer_mutex.acquire(), timeout=timeout)\n        except asyncio.TimeoutError:\n            raise NoLockAvailable(\n                f\"No lock available to acquire after {timeout}s timeout\"\n            )\n        return self._iter_events(timeout=timeout)",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

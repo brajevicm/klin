@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00304",
+  "source_finding_id": "P00304",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                        listen_addr_row.set_text('127.0.0.1')\n                    try:\n                        if int((listen_port_row.get_text() or '0').strip() or '0') == 0:\n                            listen_port_row.set_text('1080')\n                    except Exception:\n                        listen_port_row.set_text('1080')\n            except Exception:\n                pass\n        type_row.connect('notify::selected', _sync_visibility)\n        _sync_visibility()\n\n        # Handle button clicks\n        def _on_cancel_clicked(button):\n            dialog.destroy()\n        \n        def _on_save_clicked(button):\n            self._save_rule_from_editor(existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row)\n            dialog.destroy()\n        \n        cancel_button.connect('clicked', _on_cancel_clicked)\n        save_button.connect('clicked', _on_save_clicked)\n        \n        # Show the window\n        dialog.present()\n\n    def _save_rule_from_editor(self, existing_rule, type_row, listen_addr_row, listen_port_row, remote_host_row, remote_port_row):\n        idx = type_row.get_selected()\n        rtype = 'local' if idx == 0 else ('remote' if idx == 1 else 'dynamic')\n        listen_addr = listen_addr_row.get_text().strip() or '127.0.0.1'\n        try:\n            listen_port = int((listen_port_row.get_text() or '0').strip() or '0')",
+      "after": "                    if port_info.process_name:\n                        conflict_msg += _(\" by {process} (PID: {pid})\").format(\n                            process=port_info.process_name, \n                            pid=port_info.pid\n                        )\n                    \n                    # Suggest alternative port\n                    alt_port = port_checker.find_available_port(listen_port, listen_addr)\n                    if alt_port:\n                        conflict_msg += _(\"\\n\\nSuggested alternative: port {alt_port}\").format(alt_port=alt_port)\n                    \n                    # Show error dialog with conflict information\n                    self.show_error(conflict_msg)\n                    return\n                    \n            except Exception as e:\n                logger.debug(f\"Could not check port conflict for {listen_port}: {e}\")\n                # Continue without port checking if there's an error\n        rule = {\n            'type': rtype,\n            'enabled': True,\n            'listen_addr': listen_addr,\n            'listen_port': listen_port,\n        }\n        if rtype == 'local':\n            # LocalForward: [listen_addr:]listen_port remote_host:remote_port\n            rule['remote_host'] = remote_host_row.get_text().strip() or 'localhost'\n            try:\n                rule['remote_port'] = int((remote_port_row.get_text() or '0').strip() or '0')\n            except Exception:\n                rule['remote_port'] = 0",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,23 @@
+{
+  "packet_id": "P02149",
+  "source_finding_id": "P02149",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Pull request for issue #4\n\nFixes #4",
+  "diff_context": [
+    {
+      "path": "src/appstate/processor.rs",
+      "before": "                    log::warn!(target: \"AppState\", \"No app state sync key found for key_id: {:?}\", hex::encode(key_id));\n                    continue;\n                }\n                Err(e) => {\n                    log::warn!(target: \"AppState\", \"Failed to fetch app state sync key: {e:?}\");\n                    continue;\n                }\n            };\n            let keys = keys::expand_app_state_keys(&key_struct.key_data);\n\n            for mutation in &patch.mutations {\n                if let Err(_e) = self\n                    .decode_mutation(&keys, mutation, &mut new_mutations)\n                    .await\n                {\n                    //log::warn!(target: \"AppState\", \"Failed to decode one mutation, skipping: {e:?}\");\n                }\n            }\n        }\n\n        if !missing_keys.is_empty() {\n            return Err(AppStateError::KeysNotFound(missing_keys));\n        }\n\n        Ok((new_mutations, current_state))\n    }\n\n    pub async fn decode_mutation(\n        &self,\n        keys: &keys::ExpandedAppStateKeys,\n        mutation: &wa::SyncdMutation,",
+      "after": "                        }\n                        Ok(None) => {\n                            log::warn!(target: \"AppState\", \"Snapshot for '{}' references key_id {:?} which was not found. Skipping snapshot processing.\", list.name, hex::encode(key_id_bytes));\n                            missing_keys.push(key_id_bytes.to_vec());\n                        }\n                        Err(e) => {\n                            log::error!(target: \"AppState\", \"Failed to fetch app state sync key for snapshot of '{}': {:?}. Skipping snapshot processing.\", list.name, e);\n                        }\n                    }\n                } else {\n                    log::warn!(target: \"AppState\", \"Snapshot for '{}' has KeyId message but missing 'id' bytes. Skipping snapshot processing.\", list.name);\n                }\n            } else {\n                log::warn!(target: \"AppState\", \"Snapshot for '{}' is missing key_id. Skipping snapshot processing.\", list.name);\n            }\n            // TODO: Verify snapshot.mac (using the expanded_keys.snapshot_mac)\n            // TODO: Recalculate LT-Hash (current_state.hash) based on all records in new_mutations from snapshot\n        }\n\n        // Process patches (runs whether snapshot was present or not)\n        for patch in &list.patches {\n            let version = patch.version.as_ref().map_or(0, |v| v.version());\n            current_state.version = version;\n\n            // TODO: Verify patch.snapshot_mac and patch.patch_mac\n            // For now, we will proceed directly to mutation decoding.\n\n            let key_id_bytes_from_patch = patch\n                .key_id\n                .as_ref()\n                .and_then(|k| k.id.as_ref())",
+      "context": null
+    }
+  ],
+  "observations": [
+    "comment marker"
+  ],
+  "measurement_holes": [
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

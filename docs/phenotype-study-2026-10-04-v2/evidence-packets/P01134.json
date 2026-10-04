@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01134",
+  "source_finding_id": "P01134",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "(extension) preload next episode's danmaku when video reaches 50% point [DA-116]",
+  "diff_context": [
+    {
+      "path": "packages/danmaku-anywhere/src/content/player/monitors/VideoEvent.service.ts",
+      "before": null,
+      "after": "      this.handleTimeUpdate.bind(this)(event.target as HTMLVideoElement)\n    )\n  }\n\n  public addVideoEventListener<K extends VideoEventType>(\n    event: K,\n    callback: VideoEventCallback<K>\n  ) {\n    if (!this.videoEventListeners.has(event)) {\n      this.videoEventListeners.set(\n        event,\n        new Set([callback as VideoEventCallback])\n      )\n    } else {\n      // biome-ignore lint/style/noNonNullAssertion: checked with has()\n      this.videoEventListeners.get(event)!.add(callback as VideoEventCallback)\n    }\n\n    if (this.activeVideoElement) {\n      // If there is an active video element, add the listener to it immediately\n      this.activeVideoElement.addEventListener(event, callback)\n    }\n  }\n\n  public removeVideoEventListener<K extends VideoEventType>(\n    event: K,\n    callback: VideoEventCallback<K>\n  ) {\n    if (this.videoEventListeners.has(event)) {\n      // If there is an active video element, remove the listener from it\n      if (this.activeVideoElement) {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "this.videoEventListeners.get(event)!.add(callback as VideoEventCallback)"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

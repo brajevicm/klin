@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01388",
+  "source_finding_id": "P01388",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/core/subtitle_processor/translate.py",
+      "before": "            batch_num=batch_num,\n            target_language=target_language,\n            retry_times=retry_times,\n            timeout=timeout,\n            update_callback=update_callback,\n        )\n        self.session = requests.Session()\n        self.endpoint = \"http://translate.google.com/m\"\n        self.headers = {\n            \"User-Agent\": \"Mozilla/4.0 (compatible;MSIE 6.0;Windows NT 5.1;SV1;.NET CLR 1.1.4322;.NET CLR 2.0.50727;.NET CLR 3.0.04506.30)\"\n        }\n        self.lang_map = {\n            \"简体中文\": \"zh-CN\",\n            \"繁体中文\": \"zh-TW\",\n            \"英语\": \"en\",\n            \"日本語\": \"ja\",\n            \"韩语\": \"ko\",\n            \"粤语\": \"yue\",\n            \"法语\": \"fr\",\n            \"德语\": \"de\",\n            \"西班牙语\": \"es\",\n            \"俄语\": \"ru\",\n            \"葡萄牙语\": \"pt\",\n            \"土耳其语\": \"tr\",\n        }\n\n    def _translate_chunk(self, subtitle_chunk: Dict[str, str]) -> Dict[str, str]:\n        \"\"\"翻译字幕块\"\"\"\n        result = {}\n        if self.target_language in self.lang_map.values():\n            target_lang = self.target_language",
+      "after": "                result = parsed\n\n            if isinstance(result, dict):\n                if self.is_reflect:\n                    return {\n                        k: (\n                            v.get(\"revised_translation\", v)\n                            if isinstance(v, dict)\n                            else str(v)\n                        )\n                        for k, v in result.items()\n                    }\n                return {k: str(v) for k, v in result.items()}\n            else:\n                raise ValueError(f\"翻译结果不是字典格式\")\n        except Exception as e:\n            raise ValueError(f\"解析翻译结果失败：{str(e)}\")\n\n\nclass GoogleTranslator(BaseTranslator):\n    \"\"\"谷歌翻译器\"\"\"\n\n    def __init__(\n        self,\n        thread_num: int = 10,\n        batch_num: int = 20,\n        target_language: str = \"Chinese\",\n        retry_times: int = 1,\n        timeout: int = 20,\n        update_callback: Optional[Callable] = None,\n    ):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

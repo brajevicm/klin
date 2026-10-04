@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01293",
+  "source_finding_id": "P01293",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Generate minimal sentry-python reproduction\n\n<!-- Describe your PR here -->\nThis PR provides a minimal reproduction for issue #4657, where the `clickhouse-driver` integration prematurely consumes generators when `send_default_pii` is enabled.\n\nThe reproduction includes:\n- `simple_reproduce.py`: A clear demonstration of the generator consumption.\n- `reproduce_issue.py`: A comprehensive script showing behavior with and without Sentry.\n- `test_generator_issue.py`: A pytest-compatible test case to verify the fix.\n- `README.md`: Instructions and details on the bug's location.\n\n---\n\nThank you for contributing to `sentry-python`! Please add tests to validate your changes, and lint your code using `tox -e linters`.\n\nRunning the test suite on your PR might require maintainer approval.\n\n---\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Cursor\" src=\"[external reference omitted]\n  </picture>\n</a>\n<a href=\"[external reference omitted]\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"[external reference omitted]\n    <source media=\"(prefers-color-scheme: light)\" srcset=\"[external reference omitted]\n    <img alt=\"Open in Web\" src=\"[external reference omitted]\n  </picture>\n</a>\n\n<sub>[Learn more]([external reference omitted] about [authoring attribution omitted]s</sub>",
+  "diff_context": [
+    {
+      "path": "reproduction/reproduce_issue.py",
+      "before": null,
+      "after": "            client.send_data(None, exception_generator())\n        except ValueError as e:\n            logger.error(f\"Exception raised in Sentry wrapper: {e}\")\n            logger.info(\"This proves the generator is consumed by Sentry before clickhouse-driver uses it\")\n            \n    finally:\n        clickhouse_driver.client.Client = original_client\n\n\nif __name__ == \"__main__\":\n    logger.info(\"Starting clickhouse-driver generator issue reproduction...\\n\")\n    \n    # Test 1: Without Sentry (should work)\n    try:\n        test_without_sentry()\n    except Exception as e:\n        logger.error(f\"Test without Sentry failed: {e}\")\n    \n    # Test 2: With Sentry (will fail due to bug)\n    try:\n        test_with_sentry()\n    except AssertionError:\n        logger.info(\"Expected failure - this demonstrates the bug\")\n    \n    # Test 3: Show exact traceback scenario\n    try:\n        demonstrate_traceback_generator()\n    except Exception as e:\n        logger.error(f\"Traceback demonstration error: {e}\")\n    \n    logger.info(\"\\n✓ Reproduction complete!\")",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01547",
+  "source_finding_id": "P01547",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Add standard schema support\n\nnot quite #558 but at least you can do something like \n\n```ts\nimport { toStandardSchema } from \"convex-helpers/standardSchema\";\n\nconst standardValidator = toStandardSchema(v.object({\n  name: v.string(),\n  age: v.number(),\n}));\n\nstandardValidator[\"~standard\"].validate({\n  name: \"John\",\n  age: 30,\n});\n```\n\n---\nBy submitting this pull request, I confirm that you can use, modify, copy, and redistribute this contribution, under the terms of your choice.",
+  "diff_context": [
+    {
+      "path": "package.json",
+      "before": "{\n  \"name\": \"convex-helpers-base\",\n  \"private\": \"true\",\n  \"description\": \"Home to [packages](./packages/) to complement the official convex package.\",\n  \"scripts\": {\n    \"init\": \"convex dev --until-success\",\n    \"dev\": \"npm-run-all --parallel dev:backend dev:frontend dev:helpers\",\n    \"dev:backend\": \"convex dev\",\n    \"dev:frontend\": \"vite\",\n    \"dev:helpers\": \"cd packages/convex-helpers && npm run dev\",\n    \"predev\": \"npm run build\",\n    \"format\": \"prettier --write .\",\n    \"lint\": \"tsc --project tsconfig.test.json && prettier --check .\",\n    \"build\": \"cd packages/convex-helpers && npm run build\",\n    \"clean\": \"rm -rf packages/convex-helpers/dist\",\n    \"pack\": \"cd packages/convex-helpers/dist && npm pack --pack-destination ../../..\",",
+      "after": "{\n  \"name\": \"convex-helpers-base\",\n  \"private\": \"true\",\n  \"description\": \"Home to [packages](./packages/) to complement the official convex package.\",\n  \"scripts\": {\n    \"init\": \"convex dev --until-success\",\n    \"dev\": \"npm-run-all --parallel dev:backend dev:frontend dev:helpers\",\n    \"dev:backend\": \"convex dev\",\n    \"dev:frontend\": \"vite\",\n    \"dev:helpers\": \"cd packages/convex-helpers && npm run dev\",\n    \"predev\": \"npm run build\",\n    \"format\": \"prettier --write .\",\n    \"lint\": \"tsc --project tsconfig.test.json && prettier --check .\",\n    \"build\": \"cd packages/convex-helpers && npm run build\",\n    \"clean\": \"rm -rf packages/convex-helpers/dist\",\n    \"pack\": \"cd packages/convex-helpers/dist && npm pack --pack-destination ../../..\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:@standard-schema/spec"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

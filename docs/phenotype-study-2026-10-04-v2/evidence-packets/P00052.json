@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00052",
+  "source_finding_id": "P00052",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        candidate = candidate.get_next_sibling()\n\n    return None\n\n\n\n\ndef _resolve_base_margin_start(widget: Optional[Gtk.Widget]) -> int:\n    \"\"\"Return a sane starting margin for sidebar rows.\"\"\"\n\n    if widget is None:\n        return _DEFAULT_ROW_MARGIN_START\n\n    try:\n        margin = widget.get_margin_start()\n    except Exception:\n        return _DEFAULT_ROW_MARGIN_START\n\n    try:\n        if margin is None or margin <= _MIN_VALID_MARGIN:\n            return _DEFAULT_ROW_MARGIN_START\n    except TypeError:\n        return _DEFAULT_ROW_MARGIN_START\n\n    return margin\n\n\ndef _install_sidebar_color_css():\n    global _COLOR_CSS_INSTALLED\n    if _COLOR_CSS_INSTALLED:\n        return",
+      "after": "        candidate = candidate.get_next_sibling()\n\n    return None\n\n\n\n\ndef _resolve_base_margin_start(widget: Optional[Gtk.Widget]) -> int:\n    \"\"\"Return a sane starting margin for sidebar rows.\"\"\"\n\n    if widget is None:\n        return _DEFAULT_ROW_MARGIN_START\n\n    try:\n        margin = widget.get_margin_start()\n    except Exception:\n        return _DEFAULT_ROW_MARGIN_START\n\n    try:\n        if margin is None or margin <= _MIN_VALID_MARGIN:\n            return _DEFAULT_ROW_MARGIN_START\n    except TypeError:\n        return _DEFAULT_ROW_MARGIN_START\n\n    return margin\n\n\ndef _install_sidebar_color_css():\n    global _COLOR_CSS_INSTALLED\n    if _COLOR_CSS_INSTALLED:\n        return",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

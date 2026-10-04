@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00332",
+  "source_finding_id": "P00332",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "chore(native): update Expo SDK to version 52.0.0\n\n## Changes\n- Update Expo from 51.0.20 to 52.0.0\n- Update react-native to 0.76.0\n- Update related expo packages to compatible versions\n- Explicitly opt-out of New Architecture for now\n\n## Testing Required\n- [ ] Verify native app builds successfully\n- [ ] Test basic functionality\n- [ ] Verify no regressions in existing features\n\n## Notes\n- Opted out of New Architecture for now to ensure smooth upgrade\n- iOS minimum version is now 15.1\n- Android SDK version changes:\n  - minSdkVersion: 23 -> 24\n  - compileSdkVersion: 34 -> 35\n\nLink to [authoring attribution omitted] run: [external reference omitted]",
+  "diff_context": [
+    {
+      "path": "apps/native/package.json",
+      "before": "{\n  \"name\": \"native-app\",\n  \"version\": \"1.0.0\",\n  \"main\": \"index.tsx\",\n  \"scripts\": {\n    \"dev\": \"expo start\",\n    \"start\": \"expo start\",\n    \"android\": \"expo start --android\",\n    \"ios\": \"expo start --ios\",\n    \"web\": \"expo start --web\"\n  },\n  \"dependencies\": {\n    \"@clerk/clerk-expo\": \"^1.1.0\",\n    \"@packages/backend\": \"*\",\n    \"@react-navigation/native-stack\": \"^6.10.0\",\n    \"@react-navigation/native\": \"^6.1.17\",",
+      "after": "{\n  \"name\": \"native-app\",\n  \"version\": \"1.0.0\",\n  \"main\": \"index.tsx\",\n  \"scripts\": {\n    \"dev\": \"expo start\",\n    \"start\": \"expo start\",\n    \"android\": \"expo start --android\",\n    \"ios\": \"expo start --ios\",\n    \"web\": \"expo start --web\"\n  },\n  \"dependencies\": {\n    \"@clerk/clerk-expo\": \"^2.7.7\",\n    \"@expo/vector-icons\": \"^14.0.2\",\n    \"@packages/backend\": \"*\",\n    \"@react-navigation/bottom-tabs\": \"^7.2.0\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency npm:react-native-web"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

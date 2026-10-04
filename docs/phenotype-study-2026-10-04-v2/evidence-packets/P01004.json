@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01004",
+  "source_finding_id": "P01004",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Restore centered drop indicator alignment\n\n## Summary\n- restore the drop target indicator alignment for group and connection rows so the pill stays centered during drag and drop\n\n## Testing\n- not run (not requested)\n\n------\n[external reference omitted]",
+  "diff_context": [
+    {
+      "path": "sshpilot/sidebar.py",
+      "before": "        # Only update if the indicator has changed\n        if (window._drop_indicator_row != row or\n            window._drop_indicator_position != position):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show indicator on the target row\n            if hasattr(row, 'show_drop_indicator'):\n                show_top = (position == \"above\")\n                row.show_drop_indicator(show_top)\n\n            window._drop_indicator_row = row\n            window._drop_indicator_position = position\n    except Exception as e:\n        logger.error(f\"Error showing drop indicator: {e}\")\n\n\ndef _show_drop_indicator_on_group(window, row):\n    \"\"\"Show a special indicator when dropping a connection onto a group (adds to group)\"\"\"\n    try:\n        # Only update if the indicator has changed\n        if (window._drop_indicator_row != row or\n            window._drop_indicator_position != \"on_group\"):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show group highlight indicator instead of line indicators",
+      "after": "        # Only update if the indicator has changed\n        if (window._drop_indicator_row != row or\n            window._drop_indicator_position != position):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show indicator on the target row\n            if hasattr(row, 'show_drop_indicator'):\n                show_top = (position == \"above\")\n                row.show_drop_indicator(show_top)\n\n            window._drop_indicator_row = row\n            window._drop_indicator_position = position\n    except Exception as e:\n        logger.error(f\"Error showing drop indicator: {e}\")\n\n\ndef _show_drop_indicator_on_group(window, row):\n    \"\"\"Show a special indicator when dropping a connection onto a group (adds to group)\"\"\"\n    try:\n        # Only update if the indicator has changed\n        if (window._drop_indicator_row != row or\n            window._drop_indicator_position != \"on_group\"):\n            \n            # Clear any existing indicators\n            if window._drop_indicator_row and hasattr(window._drop_indicator_row, 'hide_drop_indicators'):\n                window._drop_indicator_row.hide_drop_indicators()\n            \n            # Show group highlight indicator instead of line indicators",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

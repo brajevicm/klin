@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00401",
+  "source_finding_id": "P00401",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "refactor: add safe obj generation\n\nshould fix #47 #49 #57 when using deepseek-r1 and a fallback model (gpt4o/qwen-2.5b-instruct) is given",
+  "diff_context": [
+    {
+      "path": "src/utils/safe-generator.ts",
+      "before": null,
+      "after": "\n      this.tokenTracker.trackUsage(model, result.usage);\n      return result;\n\n    } catch (error) {\n      // First fallback: Try manual JSON parsing of the error response\n      try {\n        const errorResult = await this.handleGenerateObjectError<T>(error);\n        this.tokenTracker.trackUsage(model, errorResult.usage);\n        return errorResult;\n\n      } catch (parseError) {\n        // Second fallback: Try with fallback model if provided\n        const fallbackModel = getModel('fallback');\n        if (NoObjectGeneratedError.isInstance(parseError)) {\n          const failedOutput = (parseError as any).text;\n          console.error(`${model} failed on object generation ${failedOutput} -> manual parsing failed again -> trying fallback model`, fallbackModel);\n          try {\n            const fallbackResult = await generateObject({\n              model: fallbackModel,\n              schema,\n              prompt: `Extract the desired information from this text: \\n ${failedOutput}`,\n              maxTokens: getToolConfig('fallback').maxTokens,\n              temperature: getToolConfig('fallback').temperature,\n            });\n\n            this.tokenTracker.trackUsage(model, fallbackResult.usage);\n            return fallbackResult;\n          } catch (fallbackError) {\n            // If fallback model also fails, try parsing its error response\n            return await this.handleGenerateObjectError<T>(fallbackError);",
+      "context": null
+    }
+  ],
+  "observations": [
+    "const failedOutput = (parseError as any).text;"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

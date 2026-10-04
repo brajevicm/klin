@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01386",
+  "source_finding_id": "P01386",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "src/notify/slack.ts",
+      "before": null,
+      "after": "import type { Notifier } from \"./notifier\";\n\nexport class SlackNotifier implements Notifier {\n  async deliver(to: string, text: string): Promise<void> {\n    console.info(`slack to ${to}: ${text}`);\n  }\n}",
+      "context": null
+    }
+  ],
+  "observations": [
+    "SlackNotifier in src/notify/ declares `*notifier` like 3 sibling files, 2 of which implement LegacyNotifier; is named `*Notifier` like 2 members; it does not implement LegacyNotifier, which 2 of 4 sibling files implement (e.g. email.ts, sms.ts)"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

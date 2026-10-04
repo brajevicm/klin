@@ -1,0 +1,23 @@
+{
+  "packet_id": "P01779",
+  "source_finding_id": "P01779",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Review the submitted change against its base tree and visible test intent.",
+  "diff_context": [
+    {
+      "path": "shop/users.py",
+      "before": "import sqlite3\nfrom dataclasses import dataclass\n\n\n@dataclass(frozen=True)\nclass User:\n    id: int\n    name: str\n    email: str\n\n\ndef find_by_name(db: sqlite3.Connection, name: str) -> list[User]:\n    rows = db.execute(\"SELECT id, name, email FROM users WHERE name = ?\", (name,)).fetchall()\n    return [User(*row) for row in rows]\n\n\ndef find_by_id(db: sqlite3.Connection, user_id: int) -> User | None:\n    row = db.execute(\"SELECT id, name, email FROM users WHERE id = ?\", (user_id,)).fetchone()\n    return User(*row) if row else None",
+      "after": "import sqlite3\nfrom dataclasses import dataclass\n\nCOLUMNS = \"id, name, email\"\n\n\n@dataclass(frozen=True)\nclass User:\n    id: int\n    name: str\n    email: str\n\n\ndef find_by_name(db: sqlite3.Connection, name: str) -> list[User]:\n    rows = db.execute(f\"SELECT {COLUMNS} FROM users WHERE name = ?\", (name,)).fetchall()\n    return [User(*row) for row in rows]\n\n\ndef find_by_id(db: sqlite3.Connection, user_id: int) -> User | None:\n    row = db.execute(\"SELECT id, name, email FROM users WHERE id = ?\", (user_id,)).fetchone()\n    return User(*row) if row else None",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Possible SQL injection vector through string-based query construction"
+  ],
+  "measurement_holes": [
+    "the frozen case source has no route-level task description"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

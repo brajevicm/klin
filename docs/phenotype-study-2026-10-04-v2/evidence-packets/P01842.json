@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01842",
+  "source_finding_id": "P01842",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "(extension) preload next episode's danmaku when video reaches 50% point [DA-116]",
+  "diff_context": [
+    {
+      "path": "packages/danmaku-anywhere/src/content/player/monitors/VideoNodeObserver.ts",
+      "before": "  }\n}",
+      "after": "  ) {\n    if (!this.eventMap.has(event)) {\n      this.eventMap.set(event, new Set())\n    }\n\n    // biome-ignore lint/style/noNonNullAssertion: checked using has\n    this.eventMap.get(event)!.add(listener)\n  }\n\n  public removeEventListener(\n    event: VideoNodeObserverEvent,\n    listener: VideoChangeListener\n  ) {\n    if (this.eventMap.has(event)) {\n      // biome-ignore lint/style/noNonNullAssertion: checked using has\n      this.eventMap.get(event)!.delete(listener)\n    }\n  }\n\n  public start(selector: string) {\n    this.selector = selector\n\n    const [current, err] = tryCatchSync<HTMLVideoElement | null>(() =>\n      document.querySelector(this.selector)\n    )\n\n    if (err) {\n      throw new Error(`Error selecting video element: ${err.message}`)\n    }\n\n    if (current) {",
+      "context": null
+    }
+  ],
+  "observations": [
+    "this.eventMap.get(event)!.delete(listener)"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

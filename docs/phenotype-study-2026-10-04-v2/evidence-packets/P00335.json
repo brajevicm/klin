@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00335",
+  "source_finding_id": "P00335",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "        \"\"\"Get the selected text from a dropdown\"\"\"\n        try:\n            selected = dropdown.get_selected()\n            if selected > 0:  # Skip the first item which is \"Select SSH option...\"\n                model = dropdown.get_model()\n                if model and selected < model.get_n_items():\n                    # Gtk.DropDown models provide items as Gtk.StringObject instances in\n                    # newer GTK versions.  Some environments may return plain strings\n                    # (or other objects) instead, so fall back to ``str()`` when the\n                    # \"get_string\" accessor is not available.\n                    item = model.get_item(selected)\n                    getter = getattr(item, \"get_string\", None)\n                    if callable(getter):\n                        return getter()\n                    return str(item)\n        except Exception as e:\n            logger.debug(f\"Error getting dropdown selected text: {e}\")\n        return \"\"\n\n    def _set_dropdown_to_option(self, dropdown, option_name):\n        \"\"\"Set dropdown to a specific SSH option\"\"\"\n        try:\n            model = dropdown.get_model()\n            if model:\n                logger.debug(f\"Looking for option '{option_name}' in dropdown model\")\n                for i in range(1, model.get_n_items()):  # Start from 1 to skip \"Select SSH option...\"\n                    item = model.get_item(i)\n                    getter = getattr(item, \"get_string\", None)\n                    model_string = getter() if callable(getter) else str(item)\n                    logger.debug(f\"Model item {i}: '{model_string}'\")\n                    # Case-insensitive comparison for SSH options",
+      "after": "        \"\"\"Get the selected text from a dropdown\"\"\"\n        try:\n            selected = dropdown.get_selected()\n            if selected > 0:  # Skip the first item which is \"Select SSH option...\"\n                model = dropdown.get_model()\n                if model and selected < model.get_n_items():\n                    # Gtk.DropDown models provide items as Gtk.StringObject instances in\n                    # newer GTK versions.  Some environments may return plain strings\n                    # (or other objects) instead, so fall back to ``str()`` when the\n                    # \"get_string\" accessor is not available.\n                    item = model.get_item(selected)\n                    getter = getattr(item, \"get_string\", None)\n                    if callable(getter):\n                        return getter()\n                    return str(item)\n        except Exception as e:\n            logger.debug(f\"Error getting dropdown selected text: {e}\")\n        return \"\"\n\n    def _set_dropdown_to_option(self, dropdown, option_name):\n        \"\"\"Set dropdown to a specific SSH option\"\"\"\n        try:\n            model = dropdown.get_model()\n            if model:\n                logger.debug(f\"Looking for option '{option_name}' in dropdown model\")\n                for i in range(1, model.get_n_items()):  # Start from 1 to skip \"Select SSH option...\"\n                    item = model.get_item(i)\n                    getter = getattr(item, \"get_string\", None)\n                    model_string = getter() if callable(getter) else str(item)\n                    logger.debug(f\"Model item {i}: '{model_string}'\")\n                    # Case-insensitive comparison for SSH options",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

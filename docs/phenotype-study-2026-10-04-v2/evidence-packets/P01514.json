@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01514",
+  "source_finding_id": "P01514",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                logger.debug(f\"Option '{option_name}' not found in dropdown model\")\n        except Exception as e:\n            logger.debug(f\"Error setting dropdown to option {option_name}: {e}\")\n\n\n\n    def get_extra_ssh_config(self):\n        \"\"\"Get extra SSH config as a string for saving\"\"\"\n        config_lines: list[str] = []\n        host_rows = []\n\n        for row_grid in self.config_entries.copy():\n            try:\n                key = self._get_dropdown_selected_text(row_grid.key_dropdown)\n                value = row_grid.value_entry.get_text().strip()\n            except Exception:\n                continue\n\n            if not key or not value or key == \"Select SSH option...\":\n                continue\n\n            if key.lower() == \"host\":\n                host_rows.append(row_grid)\n                continue\n\n            config_lines.append(f\"{key} {value}\")\n\n        if host_rows:\n            def _remove_rows():\n                for row in host_rows:\n                    try:",
+      "after": "                logger.debug(f\"Option '{option_name}' not found in dropdown model\")\n        except Exception as e:\n            logger.debug(f\"Error setting dropdown to option {option_name}: {e}\")\n\n\n\n    def get_extra_ssh_config(self):\n        \"\"\"Get extra SSH config as a string for saving\"\"\"\n        config_lines: list[str] = []\n        host_rows = []\n\n        for row_grid in self.config_entries.copy():\n            try:\n                key = self._get_dropdown_selected_text(row_grid.key_dropdown)\n                value = row_grid.value_entry.get_text().strip()\n            except Exception:\n                continue\n\n            if not key or not value or key == \"Select SSH option...\":\n                continue\n\n            if key.lower() == \"host\":\n                host_rows.append(row_grid)\n                continue\n\n            config_lines.append(f\"{key} {value}\")\n\n        if host_rows:\n            def _remove_rows():\n                for row in host_rows:\n                    try:",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

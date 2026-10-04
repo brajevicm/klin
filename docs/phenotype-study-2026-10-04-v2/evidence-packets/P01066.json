@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01066",
+  "source_finding_id": "P01066",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/core/subtitle_processor/translate.py",
+      "before": "    def _translate_chunk(self, subtitle_chunk: Dict[str, str]) -> Dict[str, str]:\n        \"\"\"翻译字幕块\"\"\"\n        pass\n\n    def stop(self):\n        \"\"\"停止翻译器\"\"\"\n        if not self.is_running:\n            return\n\n        logger.info(\"正在停止翻译器...\")\n        self.is_running = False\n        if hasattr(self, \"executor\") and self.executor is not None:\n            try:\n                self.executor.shutdown(wait=False, cancel_futures=True)\n            except Exception as e:\n                logger.error(f\"关闭线程池时出错：{str(e)}\")\n            finally:\n                self.executor = None\n\n\nclass OpenAITranslator(BaseTranslator):\n    \"\"\"OpenAI翻译器\"\"\"\n\n    def __init__(\n        self,\n        thread_num: int = 10,\n        batch_num: int = 20,\n        target_language: str = \"Chinese\",\n        model: str = \"gpt-4o-mini\",\n        custom_prompt: str = \"\",\n        is_reflect: bool = False,",
+      "after": "    @abstractmethod\n    def _translate_chunk(self, subtitle_chunk: Dict[str, str]) -> Dict[str, str]:\n        \"\"\"翻译字幕块\"\"\"\n        pass\n\n    def stop(self):\n        \"\"\"停止翻译器\"\"\"\n        if not self.is_running:\n            return\n\n        logger.info(\"正在停止翻译器...\")\n        self.is_running = False\n        if hasattr(self, \"executor\") and self.executor is not None:\n            try:\n                self.executor.shutdown(wait=False, cancel_futures=True)\n            except Exception as e:\n                logger.error(f\"关闭线程池时出错：{str(e)}\")\n            finally:\n                self.executor = None\n\n\nclass OpenAITranslator(BaseTranslator):\n    \"\"\"OpenAI翻译器\"\"\"\n\n    def __init__(\n        self,\n        thread_num: int = 10,\n        batch_num: int = 20,\n        target_language: str = \"Chinese\",\n        model: str = \"gpt-4o-mini\",\n        custom_prompt: str = \"\",",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

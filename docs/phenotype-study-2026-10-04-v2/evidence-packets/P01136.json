@@ -1,0 +1,21 @@
+{
+  "packet_id": "P01136",
+  "source_finding_id": "P01136",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "fix: resolve all pyright type checking errors\n\n## Summary\n\nThis PR fixes all pyright type checking errors in the project, improving code quality and type safety without affecting runtime behavior.\n\n## Changes\n\n### Major Improvements\n- ✅ Add  with basic type checking configuration\n- ✅ Fix all PyQt5-related type errors with  annotations for dynamic attributes\n- ✅ Add  type annotations for nullable parameters\n- ✅ Fix Path to str type conversions where needed\n- ✅ Enhance None safety checks to prevent runtime errors\n- ✅ Fix SQLAlchemy ORM type compatibility issues\n- ✅ Fix signal connection parameter type issues\n- ✅ Improve LLM model configuration checks, remove forced defaults\n\n### Affected Areas\n- **app/components**: Fix Qt attribute access and Optional parameter types\n- **app/view**: Fix imports and Qt attribute access issues\n- **app/thread**: Enhance None safety checks and task type conversions\n- **app/core**: Fix API calls, cache paths and type conversions\n\n### Type Checking Results\n- Before: 578 errors\n- After: 0 errors\n- All changes are type annotation and safety check related\n- No runtime behavior changes\n\n## Testing\n- [x] All type errors resolved\n- [x] Program runs without errors\n- [x] Import tests pass\n- [x] Core functionality preserved\n\n## Notes\n- Used official  package for better PyQt5 type support\n- Added  only for legitimate PyQt5 dynamic attributes\n- Enhanced error messages for better user experience when LLM model is not configured\n\n[authoring attribution omitted] [authoring attribution omitted] [[authoring attribution omitted]]([external reference omitted]\n\n[authoring attribution omitted] <noreply[user omitted].com>",
+  "diff_context": [
+    {
+      "path": "app/components/MyVideoWidget.py",
+      "before": "        try:\n            # 将路径转换为 URI 格式\n\n            subtitle_uri = Path(subtitle_file).as_uri()\n\n            # 添加字幕轨道\n            result = self._player.add_slave(\n                vlc.MediaSlaveType.subtitle, subtitle_uri, True\n            )\n\n            # 获取字幕轨道信息\n            spu_description = self._player.video_get_spu_description()\n\n            return result == 0\n        except Exception as e:\n            return False\n\n    def get_subtitle_tracks(self) -> list:\n        \"\"\"获取所有可用的字幕轨道\"\"\"\n        if not self._player:\n            return []\n\n        tracks = []\n        spu_count = self._player.video_get_spu_count()\n        for i in range(spu_count):\n            track_info = self._player.video_get_spu_description()[i]\n            tracks.append(track_info)\n        return tracks\n\n    def set_subtitle_track(self, track_id: int):\n        \"\"\"设置当前使用的字幕轨道",
+      "after": "\n        try:\n            # 将路径转换为 URI 格式\n\n            subtitle_uri = Path(subtitle_file).as_uri()\n\n            # 添加字幕轨道\n            result = self._player.add_slave(\n                vlc.MediaSlaveType.subtitle, subtitle_uri, True\n            )\n\n            # 获取字幕轨道信息\n            spu_description = self._player.video_get_spu_description()\n\n            return result == 0\n        except Exception as e:\n            return False\n\n    def get_subtitle_tracks(self) -> list:\n        \"\"\"获取所有可用的字幕轨道\"\"\"\n        if not self._player:\n            return []\n\n        tracks = []\n        spu_count = self._player.video_get_spu_count()\n        for i in range(spu_count):\n            track_info = self._player.video_get_spu_description()[i]\n            tracks.append(track_info)\n        return tracks\n\n    def set_subtitle_track(self, track_id: int):",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

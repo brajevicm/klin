@@ -1,0 +1,21 @@
+{
+  "packet_id": "P00145",
+  "source_finding_id": "P00145",
+  "study_version": 2,
+  "language": "Python",
+  "task_context": "Revert \"Preserve key passphrase when toggling specific-key mode\"\n\nReverts [project metadata omitted]#648",
+  "diff_context": [
+    {
+      "path": "sshpilot/connection_dialog.py",
+      "before": "                if idx < 0 or idx >= len(getattr(self, '_key_paths', [])):\n                    return\n                path = self._key_paths[idx]\n                if path == \"__BROWSE__\":\n                    # Revert selection to previous if any\n                    try:\n                        drop.set_selected(0)\n                    except Exception:\n                        pass\n                    self.browse_for_key_file()\n                elif path:\n                    self._selected_keyfile_path = path\n                    if hasattr(self.keyfile_row, 'set_subtitle'):\n                        self.keyfile_row.set_subtitle(path)\n                    \n                    # Update passphrase field for the selected key\n                    self._update_passphrase_for_key(path)\n                    \n                    # Auto-select matching certificate if available\n                    self._auto_select_matching_certificate(path)\n                    \n            except Exception:\n                pass\n        try:\n            self.key_dropdown.connect('notify::selected', _on_key_selected)\n        except Exception:\n            pass\n\n        # Pack dropdown and add to row\n        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)\n        box.append(self.key_dropdown)",
+      "after": "        self.cert_dropdown.set_hexpand(True)\n        # Populate via helper\n        self._cert_paths = []\n        self._populate_detected_certificates()\n\n        def _on_cert_selected(drop, _param):\n            try:\n                idx = drop.get_selected()\n                if idx < 0 or idx >= len(getattr(self, '_cert_paths', [])):\n                    return\n                path = self._cert_paths[idx]\n                if path == \"__BROWSE__\":\n                    # Revert selection to previous if any\n                    try:\n                        drop.set_selected(0)\n                    except Exception:\n                        pass\n                    self.browse_for_certificate_file()\n                elif path:\n                    self._selected_cert_path = path\n                    if hasattr(self.certificate_row, 'set_subtitle'):\n                        self.certificate_row.set_subtitle(path)\n                    \n            except Exception:\n                pass\n        try:\n            self.cert_dropdown.connect('notify::selected', _on_cert_selected)\n        except Exception:\n                pass\n\n        # Pack dropdown and add to row",
+      "context": null
+    }
+  ],
+  "observations": [
+    "[rule omitted]: Do not catch blind exception: `Exception`"
+  ],
+  "measurement_holes": [],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

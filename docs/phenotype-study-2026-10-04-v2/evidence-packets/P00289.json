@@ -1,0 +1,24 @@
+{
+  "packet_id": "P00289",
+  "source_finding_id": "P00289",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat: Add support for `ordered_float::NotNan`, `ordered_float::OrderedFloat` type\n\n[ordered-float]([external reference omitted] provides several wrapper types (`NotNan`, `OrderedFloat`) for `Hash`, `Ord` and `Eq` implementations on f64 and f32.\nHope we can support those types, thanks a lot!",
+  "diff_context": [
+    {
+      "path": "Cargo.toml",
+      "before": "[workspace]\nmembers = [\n  \"pyo3-stub-gen\",\n  \"pyo3-stub-gen-derive\",\n  \"examples/pure\",\n  \"examples/mixed\",\n  \"examples/mixed_sub\",\n  \"examples/test-dash-package\",\n]\nresolver = \"2\"\n\n[workspace.package]\nversion = \"0.14.0\"\nedition = \"2021\"\n\ndescription = \"Stub file (*.pyi) generator for PyO3\"",
+      "after": "[workspace]\nmembers = [\n  \"pyo3-stub-gen\",\n  \"pyo3-stub-gen-derive\",\n  \"examples/pure\",\n  \"examples/mixed\",\n  \"examples/mixed_sub\",\n  \"examples/test-dash-package\",\n]\nresolver = \"2\"\n\n[workspace.package]\nversion = \"0.14.0\"\nedition = \"2021\"\n\ndescription = \"Stub file (*.pyi) generator for PyO3\"",
+      "context": null
+    }
+  ],
+  "observations": [
+    "new direct dependency crates:ordered-float"
+  ],
+  "measurement_holes": [
+    "the frozen dependency prototype does not expose a complete changed-manifest eligible-unit census",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

@@ -1,0 +1,16 @@
+{
+  "packet_id": "P01354",
+  "source_finding_id": "P01354",
+  "study_version": 2,
+  "language": "TypeScript",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {"
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

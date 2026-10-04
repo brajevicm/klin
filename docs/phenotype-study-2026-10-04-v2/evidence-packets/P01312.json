@@ -1,0 +1,16 @@
+{
+  "packet_id": "P01312",
+  "source_finding_id": "P01312",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "Review the submitted change against the surrounding code.",
+  "diff_context": [],
+  "observations": [
+    "pub fn build("
+  ],
+  "measurement_holes": [
+    "the frozen pilot worksheet has no saved source excerpt or task context"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}

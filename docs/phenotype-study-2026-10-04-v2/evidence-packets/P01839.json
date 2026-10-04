@@ -1,0 +1,24 @@
+{
+  "packet_id": "P01839",
+  "source_finding_id": "P01839",
+  "study_version": 2,
+  "language": "Rust",
+  "task_context": "feat(mex): add MEX module for GraphQL query handling",
+  "diff_context": [
+    {
+      "path": "src/mex.rs",
+      "before": null,
+      "after": "        struct MexPayload<T: Serialize> {\n            variables: T,\n        }\n\n        let payload = MexPayload { variables };\n        let payload_bytes = serde_json::to_vec(&payload)?;\n\n        let query_node = NodeBuilder::new(\"query\")\n            .attr(\"query_id\", query_id)\n            .bytes(payload_bytes)\n            .build();\n\n        let iq = InfoQuery {\n            namespace: \"w:mex\",\n            query_type: InfoQueryType::Get,\n            to: SERVER_JID.parse().unwrap(),\n            content: Some(NodeContent::Nodes(vec![query_node])),\n            id: None,\n            target: None,\n            timeout: None,\n        };\n\n        let resp_node = self.send_iq(iq).await?;\n\n        let result_node =\n            resp_node\n                .get_optional_child(\"result\")\n                .ok_or_else(|| IqError::ServerError {\n                    code: 500,\n                    text: \"Missing <result> node in mex response\".to_string(),\n                })?;",
+      "context": null
+    }
+  ],
+  "observations": [
+    "to: SERVER_JID.parse().unwrap(),"
+  ],
+  "measurement_holes": [
+    "changed test candidates and skip-capable sites are not separately counted; changed source lines are a proxy",
+    "registered eligible-unit census is unavailable; site prevalence is not estimated"
+  ],
+  "blindness_revealed": [],
+  "unblind_requests": []
+}
