@@ -2908,7 +2908,7 @@ fn same_line_alias_holes_stay_distinct_sites() {
 }
 
 #[test]
-fn an_added_optional_parameter_or_overload_is_still_a_changed_contract_in_the_hook() {
+fn an_added_optional_parameter_or_overload_is_still_a_changed_contract_by_hand_and_in_the_hook() {
     for source in [
         "export function parse(input: string, mode?: number): number { return 1; }\n",
         "export function parse(input: string): number;\nexport function parse(input: number): number;\nexport function parse(input: string | number): number { return 1; }\n",
@@ -2919,12 +2919,13 @@ fn an_added_optional_parameter_or_overload_is_still_a_changed_contract_in_the_ho
             "export function parse(input: string): number { return 1; }\n",
         );
         tree.write("web/src/index.ts", source);
-        let run = hook(&tree);
-        assert_eq!(run.code, 2, "{}", run.out);
-        assert!(
-            run.says("An added optional parameter or overload is still a changed contract"),
-            "{}",
-            run.out
-        );
+        for (run, code) in [(by_hand(&tree), 1), (hook(&tree), 2)] {
+            assert_eq!(run.code, code, "{}", run.out);
+            assert!(
+                run.says("An added optional parameter or overload is still a changed contract"),
+                "{}",
+                run.out
+            );
+        }
     }
 }

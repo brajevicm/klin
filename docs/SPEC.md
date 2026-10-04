@@ -1409,8 +1409,10 @@ The remedies MUST name the legitimate repair (#433):
 
 - `doc-size` tells the agent to keep in the file what the task asked for;
   only a person raises the ceiling, in a reviewed commit.
-- `doc-citations` offers deleting the citing sentence only if the cited file
-  is gone on purpose.
+- `doc-citations` tells the agent to update the citation when a file moves
+  or is renamed. It offers deleting the citing sentence only when the
+  referenced content was intentionally removed and the sentence no longer
+  applies.
 - `lockfile` on an unlocked dependency tells the agent to report why an
   install cannot run and forbids writing lockfile entries by hand.
 - `escapes` tells the agent to remove a skip or fix what made the test fail,
