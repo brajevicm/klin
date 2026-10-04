@@ -1042,6 +1042,32 @@ fn every_pull_request_runs_one_authoritative_quality_gate() {
     }
 }
 
+/// The required check always reports, but docs/README-only pull requests do not pay for the
+/// Rust cache, compiler, test runner or klin gate. Dependency/toolchain changes still do.
+#[test]
+fn the_rust_suite_runs_only_for_rust_affecting_changes() {
+    let quality = text(".github/workflows/quality.yml");
+
+    for held in [
+        "Detect Rust-affecting changes",
+        "src/ tests/",
+        "Cargo.toml Cargo.lock rust-toolchain.toml build.rs",
+        "benches/ examples/",
+        "plugins/klin/skills/klin/SKILL.md",
+        "Rust inputs unchanged; skipping the Rust suite.",
+    ] {
+        assert!(quality.contains(held), "quality omits {held}");
+    }
+
+    assert!(
+        quality
+            .matches("if: steps.changes.outputs.rust == 'true'")
+            .count()
+            >= 7,
+        "one or more expensive Rust steps run unconditionally"
+    );
+}
+
 /// Exact release validation compares raw Git content and modes after reverting only the
 /// version substitutions. Whole-file ownership and text normalization are not trusted.
 #[test]

@@ -1,7 +1,7 @@
 name: quality
 
-# No path filter: klin measures docs, config and workflows too, and a required check that a filter
-# skips never reports.
+# The required `gates` check must always report. Expensive Rust steps are skipped below when a
+# pull request changes no Rust-affecting inputs.
 on:
   pull_request:
 
@@ -18,9 +18,28 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
+      - name: Detect Rust-affecting changes
+        id: changes
+        env:
+          CHANGE_BASE: ${{ github.event.pull_request.base.sha }}
+          CHANGE_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          rust_inputs=(
+            src/ tests/
+            Cargo.toml Cargo.lock rust-toolchain.toml build.rs
+            benches/ examples/
+            plugins/klin/skills/klin/SKILL.md
+          )
+          if git diff --quiet "$CHANGE_BASE...$CHANGE_HEAD" -- "${rust_inputs[@]}"; then
+            echo "rust=false" >> "$GITHUB_OUTPUT"
+            echo "Rust inputs unchanged; skipping the Rust suite." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+          fi
       # rust-cache.yml saves this cache on main. A cache saved on one merge ref serves no sibling
       # pull request.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: steps.changes.outputs.rust == 'true'
         with:
           shared-key: gates
           save-if: false
@@ -85,10 +104,16 @@ jobs:
           python3 docs/counterfactual-2026-10-03/probe-test.py
           python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
       - run: cargo fmt --check
+        if: steps.changes.outputs.rust == 'true'
       - run: cargo clippy --all-targets --locked -- -D warnings
+        if: steps.changes.outputs.rust == 'true'
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        if: steps.changes.outputs.rust == 'true'
         with:
           tool: cargo-nextest@0.9.143
       - run: cargo nextest run --locked
+        if: steps.changes.outputs.rust == 'true'
       - run: cargo build --locked
+        if: steps.changes.outputs.rust == 'true'
       - run: ./target/debug/klin gate --strict
+        if: steps.changes.outputs.rust == 'true'
