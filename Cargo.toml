@@ -10,6 +10,7 @@ license = "Apache-2.0"
 allow-branch = ["main"]
 publish = false
 push = false
+tag = false
 pre-release-commit-message = "Release {{version}}"
 tag-message = "Release {{version}}"
 pre-release-replacements = [

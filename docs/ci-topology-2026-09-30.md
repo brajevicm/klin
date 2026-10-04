@@ -1,4 +1,4 @@
-# CI topology after #369
+# CI topology after #470
 
 This record holds the final CI topology, the policy for `main`, the cache
 design, the release verification and the measurements. It follows
@@ -9,12 +9,12 @@ design, the release verification and the measurements. It follows
 
 | Workflow | Trigger | Work |
 | --- | --- | --- |
-| `quality` | each pull request push | fmt, clippy, nextest, debug build, `klin gate --strict` |
+| `quality` | each pull request push | actionlint when workflows change; exact release diff + `dist plan` when release inputs change; fmt, clippy, nextest, debug build, `klin gate --strict` |
 | `rust cache` | a push to `main` that changes a cache key input, weekly, manual dispatch | clippy and the test build, to save the dependency cache |
-| `release plan` | a pull request that touches a release input | `dist plan` |
 | `Release` | a pushed version tag | the dist builds, with the `quality` work on the exact tag in the x86_64 Linux build, then host and announce |
 | `benchmark` | the `benchmark` label on a pull request | release builds of base and head, perf rows |
-| `cut-release`, `promote-release`, `host compatibility` | manual dispatch | release tag, promotion, host canaries |
+| `prepare-release`, `host compatibility` | manual dispatch | release PR preparation, host canaries |
+| `publish-release` | a generated release PR merges to `main` | revalidate the exact release diff + green `gates`, then push the immutable tag |
 
 ## The policy for `main`
 
@@ -29,15 +29,16 @@ each push to `main` before the protection exists. The owner plans to protect
 after a merge. Two pull requests that each pass `quality` can merge into a
 `main` that fails, and the next pull request run shows the failure.
 
-The protection that makes a push run on `main` redundant has all of these:
+As of 2026-10-04, the active **Protect main** ruleset has all of these:
 
 - `main` accepts changes only through pull requests, with no bypass.
-- `quality / gates` is a required check.
-- A merge must be up to date with `main`, or a merge queue tests the merged
-  tree.
+- `quality / gates` is the required status check.
+- Required checks use strict/up-to-date evaluation.
+- Review conversations must be resolved before merge.
+- Merge commits are the allowed merge method.
 
-The protection is a decision for the repository owner, and #369 does not
-make it.
+That makes a duplicate push-to-`main` quality workflow unnecessary and makes
+`gates` the single protected merge boundary.
 
 ## Rust cache
 
@@ -80,12 +81,7 @@ dist also offers `plan-jobs`, a custom job that the build jobs need. A failed
 plan job skips the build jobs, and `host` accepts skipped build jobs. That
 path would publish a release with no binaries, so klin does not use it.
 
-On a tag, `klin gate --strict` finds no pull request base and no push base,
-so it compares against the merge-base with `origin/main` (SPEC 6.3).
-`cut-release` pushes the tag and not `main`, so that base is the tip of
-`main` and the gate judges the release commit. A local run over a new commit
-on top of `origin/main`, with a changed `Cargo.lock`, passed all 12 gates
-against the base `ed1df6e`.
+A release tag now names the exact commit produced by merging the generated release PR, so that commit is already on `origin/main`. The PR's required `quality / gates` run is therefore the authoritative pre-merge gate: it proves the release diff is exactly the version transformation and runs `dist plan` whenever release inputs changed. The tag workflow still re-runs fmt, clippy, nextest, the debug build and `klin gate --strict` on the exact commit before cargo-dist publishes artifacts.
 
 The release jobs run on `ubuntu-22.04`, and `quality` runs on
 `ubuntu-latest`. The tests have not run on `ubuntu-22.04` yet, so the first
@@ -148,8 +144,8 @@ cache.
 ### Monthly usage at the #368 cadence
 
 The cadence from 2026-09-16 to 2026-09-30 was 254 pull request pushes, at
-most 115 pushes to `main`, about 15 `release plan` runs and 3 releases in 15
-days. A month holds about twice that. A newer push cancels an older pull
+most 115 pushes to `main`, about 15 release-sensitive pull requests and 3
+releases in 15 days. A month holds about twice that. A newer push cancels an older pull
 request run, so the real counts may be lower. `rust cache` runs about 4 times
 a month on its schedule, and once for each change to a cache key input. The
 estimate is 8 runs of 3 minutes.
@@ -158,9 +154,13 @@ estimate is 8 runs of 3 minutes.
 | --- | ---: | ---: |
 | Pull requests, 508 runs | 2,540 | 2,032 |
 | `rust cache`, about 8 runs | 24 | 24 |
-| `release plan`, 30 runs | 30 | 30 |
 | 6 releases, with the verification | 90 | 90 |
-| Linux minutes in a month | 2,684 | 2,176 |
+| Linux minutes in a month | 2,654 | 2,146 |
+
+The conditional `dist plan` work now runs inside `quality` instead of a
+separate billed job, so a release-sensitive PR may still push that job across a
+minute boundary. The table removes only the former separate 30 one-minute
+jobs.
 
 The 6 releases also use about 42 macOS minutes. The GitHub Free plan
 includes 2,000 minutes each month, and GitHub Pro includes 3,000. At the

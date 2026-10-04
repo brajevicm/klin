@@ -1,0 +1,85 @@
+name: publish-release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Validate and tag the merged release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$PR_BODY" != *"<!-- klin-release-pr -->"* ]]; then
+            echo "::error title=Untrusted release PR::The merged release branch is missing the prepare-release marker."
+            exit 1
+          fi
+
+          version="${HEAD_REF#release/v}"
+          python3 .github/validate-release-pr.py "$PR_BASE_SHA" "$PR_HEAD_SHA" "$version"
+          tag="v$version"
+
+          conclusion=$(gh api "/repos/$REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name == "gates")] | sort_by(.completed_at) | last | .conclusion // ""')
+          if [[ "$conclusion" != "success" ]]; then
+            echo "::error title=Required check not green::gates concluded '$conclusion' on release PR head $PR_HEAD_SHA."
+            exit 1
+          fi
+
+          git fetch origin main --tags
+          if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
+            echo "::error title=Merge commit missing::$MERGE_SHA is not contained in origin/main."
+            exit 1
+          fi
+
+          if existing=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}"); then
+            if [[ "$existing" != "$MERGE_SHA" ]]; then
+              echo "::error title=Release tag already exists::$tag points to $existing, not merged commit $MERGE_SHA. Tags are never moved."
+              exit 1
+            fi
+            echo "$tag already points to $MERGE_SHA; publication is an idempotent retry." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
+
+          # RELEASE_TOKEN is intentionally used for this push: a tag created by the
+          # workflow's GITHUB_TOKEN would not trigger the tag-based Release workflow.
+          git push origin "refs/tags/$tag"
+
+          {
+            printf 'Published **%s** from merged commit %s.\n' "$tag" "$MERGE_SHA"
+            echo
+            echo "cargo-dist now owns GitHub Release creation, artifacts, installers and Latest."
+          } >> "$GITHUB_STEP_SUMMARY"

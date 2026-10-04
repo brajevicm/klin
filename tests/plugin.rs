@@ -138,50 +138,93 @@ fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
     }
 }
 
-/// cargo-release pushes nothing, so the release commit reaches `main` only through the
-/// promotion after the release smoke. ADR 0029, spec 19.2.
+/// cargo-release prepares the release commit, but GitHub owns the branch, PR and tag.
 #[test]
-fn cargo_release_pushes_nothing_by_itself() {
-    let push = cargo_release_config()
-        .get("push")
-        .and_then(cargo_toml::Value::as_bool);
+fn cargo_release_only_prepares_release_files() {
+    let release = cargo_release_config();
 
-    assert_eq!(push, Some(false), "cargo-release pushes the release itself");
+    assert_eq!(
+        release.get("push").and_then(cargo_toml::Value::as_bool),
+        Some(false),
+        "cargo-release pushes the release itself"
+    );
+    assert_eq!(
+        release.get("tag").and_then(cargo_toml::Value::as_bool),
+        Some(false),
+        "cargo-release creates the release tag instead of publish-release"
+    );
 }
 
-/// A release stays off `releases/latest`, the installer and `klin update` until the release
-/// smoke passed: `cut-release` makes it a draft prerelease, `dist` publishes that draft and
-/// leaves both flags alone, and `promote-release` marks it Latest. ADR 0029, spec 19.2.
+/// Preparation is one normal PR path; the removed cut/promote workflows cannot bypass main.
 #[test]
-fn a_release_becomes_latest_only_at_the_promotion() {
-    let published = text(".github/workflows/release.yml");
-    let drafted = line_with(".github/workflows/cut-release.yml", "gh release create");
-    let promoted = line_with(".github/workflows/promote-release.yml", "gh release edit");
+fn a_release_is_prepared_through_a_normal_pr() {
+    let prepared = text(".github/workflows/prepare-release.yml");
 
+    assert!(!at(".github/workflows/cut-release.yml").exists());
+    assert!(!at(".github/workflows/promote-release.yml").exists());
+
+    for held in [
+        "workflow_dispatch:",
+        "cargo release",
+        "--no-tag",
+        "release/v$expected",
+        "gh pr create --base main",
+        "secrets.RELEASE_TOKEN",
+    ] {
+        assert!(prepared.contains(held), "prepare-release omits {held}");
+    }
+    assert!(
+        !prepared.contains("git push origin main"),
+        "prepare-release bypasses protected main"
+    );
+}
+
+/// Only a merged release-only PR with green checks may create the immutable tag; cargo-dist
+/// owns the GitHub Release after that tag push. ADR 0029, #470.
+#[test]
+fn a_merged_release_pr_is_validated_before_publication() {
+    let published = text(".github/workflows/publish-release.yml");
+    let dist = text(".github/workflows/release.yml");
+
+    for held in [
+        "pull_request:",
+        "types: [closed]",
+        "github.event.pull_request.merged == true",
+        "startsWith(github.event.pull_request.head.ref, 'release/v')",
+        "<!-- klin-release-pr -->",
+        "github.event.pull_request.merge_commit_sha",
+        "checks: read",
+        "PR_BASE_SHA:",
+        ".github/validate-release-pr.py",
+        "check-runs?per_page=100",
+        "select(.name == \"gates\")",
+        "git merge-base --is-ancestor",
+        "git push origin \"refs/tags/$tag\"",
+    ] {
+        assert!(published.contains(held), "publish-release omits {held}");
+    }
+    assert!(
+        !published.contains("git push origin main"),
+        "publish-release bypasses protected main"
+    );
     assert!(
         text(DIST_WORKSPACE)
             .lines()
-            .any(|line| line.trim() == "create-release = false"),
-        "dist creates the release itself, as Latest"
+            .any(|line| line.trim() == "create-release = true"),
+        "cargo-dist does not own GitHub Release creation"
     );
-    for flag in ["gh release create", "--latest", "--prerelease=false"] {
-        assert!(
-            !published.contains(flag),
-            "dist's release workflow runs {flag}"
-        );
-    }
-    for flag in ["--draft", "--prerelease"] {
-        assert!(
-            drafted.contains(flag),
-            "cut-release omits {flag}: {drafted}"
-        );
-    }
-    for flag in ["--prerelease=false", "--latest"] {
-        assert!(
-            promoted.contains(flag),
-            "promote-release omits {flag}: {promoted}"
-        );
-    }
+    assert!(
+        !dist.contains("pull_request:"),
+        "dist becomes a second PR CI path"
+    );
+    assert!(
+        dist.contains("gh release create"),
+        "dist no longer creates releases"
+    );
+    assert!(
+        !published.contains("gh release create") && !published.contains("dist plan"),
+        "publish-release still owns cargo-dist's GitHub Release lifecycle"
+    );
 }
 
 #[test]
@@ -967,15 +1010,15 @@ fn the_host_canary_stays_out_of_pull_request_gating() {
     );
 }
 
-/// The quality check runs on every pull request, so a change to a doc, the config or a workflow
-/// cannot skip it. `dist plan` runs only on the pull requests that touch a release input, in its
-/// own workflow, because dist's `release.yml` skips pull requests. #368.
+/// The one required quality job owns every pre-merge release check. cargo-dist's generated
+/// release workflow still skips pull requests, so there is no second CI authority. #368, #470.
 #[test]
-fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan() {
-    let plan = text(".github/workflows/release-plan.yml");
+fn every_pull_request_runs_one_authoritative_quality_gate() {
+    let quality = text(".github/workflows/quality.yml");
 
+    assert!(!at(".github/workflows/release-plan.yml").exists());
     assert!(
-        !text(".github/workflows/quality.yml")
+        !quality
             .lines()
             .any(|line| line.trim_start().starts_with("paths")),
         "a path filter can skip the quality check"
@@ -986,32 +1029,52 @@ fn every_pull_request_runs_the_quality_check_and_a_release_input_runs_dist_plan(
             .any(|line| line.trim() == "pull_request:"),
         "dist's release workflow runs on every pull request"
     );
-    for input in [
-        "Cargo.toml",
-        "Cargo.lock",
-        DIST_WORKSPACE,
-        ".github/workflows/release.yml",
-        "action.yml",
+    for held in [
+        "actionlint@v1.7.12",
+        "Validate exact release diff",
+        ".github/validate-release-pr.py",
+        "Validate cargo-dist plan",
+        "dist plan --output-format=json",
+        "Cargo.toml Cargo.lock rust-toolchain.toml dist-workspace.toml",
+        ".github/workflows/prepare-release.yml .github/workflows/publish-release.yml",
     ] {
-        assert!(
-            plan.contains(&format!("\"{input}\"")),
-            "{input} skips dist plan"
-        );
+        assert!(quality.contains(held), "quality omits {held}");
     }
-    assert!(plan.contains("dist plan"), "release-plan runs no dist plan");
+}
+
+/// Exact release validation compares raw Git content and modes after reverting only the
+/// version substitutions. Whole-file ownership and text normalization are not trusted.
+#[test]
+fn release_validation_rejects_non_version_content_changes() {
+    let validator = text(".github/validate-release-pr.py");
+    let quality = text(".github/workflows/quality.yml");
+
+    for held in [
+        ".agents/plugins/marketplace.json",
+        ".claude-plugin/marketplace.json",
+        "Cargo.lock",
+        "Cargo.toml",
+        "README.md",
+        "plugins/klin/.claude-plugin/plugin.json",
+        "plugins/klin/.cursor-plugin/plugin.json",
+        "git_bytes",
+        "ls-tree",
+        "file mode changed",
+        "normalized != before",
+        "changes bytes beyond the expected",
+    ] {
+        assert!(validator.contains(held), "release validator omits {held}");
+    }
+    assert!(
+        quality.contains("python3 .github/test-release-validator.py"),
+        "gates do not exercise release byte/mode validation"
+    );
 }
 
 fn json(relative: &str) -> serde_json::Value {
     match serde_json::from_str(&text(relative)) {
         Ok(held) => held,
         Err(why) => panic!("{relative} is not JSON: {why}"),
-    }
-}
-
-fn line_with(relative: &str, holds: &str) -> String {
-    match text(relative).lines().find(|line| line.contains(holds)) {
-        Some(line) => line.to_string(),
-        None => panic!("no line of {relative} holds {holds}"),
     }
 }
 

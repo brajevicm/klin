@@ -7,7 +7,7 @@ verified, not what is expected to work.
 `tests/host.rs` and `tests/plugin.rs` stay the deterministic contract: they
 prove klin still speaks the host contract klin last verified. They cannot
 prove the current stable host still loads the plugin, runs the lifecycle and
-honors klin's answer. That is what the canary and the release smoke cover.
+honors klin's answer. That is what the canary and targeted manual verification cover.
 
 `docs/cursor-compatibility.md` holds the detailed measured evidence for
 Cursor. This file does not replace it.
@@ -30,11 +30,11 @@ Do not record a surface as covered because it carries the same vendor name.
 
 ## The ledger
 
-| host | supported surface | host version | OS | date | automated canary | release smoke | notes |
+| host | supported surface | host version | OS | date | automated canary | manual evidence | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Claude Code | local plugin marketplace plus `claude plugin install klin@klin` | not yet recorded | ubuntu-latest | — | not yet run | not recorded | the canary needs `ANTHROPIC_API_KEY`; without it a run is inconclusive, not a pass |
 | Codex | `codex plugin add klin@klin` | not yet recorded | ubuntu-latest | — | not yet run | not recorded | Codex does not trust plugin hooks on install, and no headless trust flow is documented. The canary is inconclusive until `CODEX_TRUST_COMMAND` names a CI-only trust step |
-| Cursor | native plugin at `~/.cursor/plugins/local/klin` | 3.20.21 | macOS | 2026-09-16 | not automatable | not recorded | hook behavior measured by hand, see `cursor-compatibility.md`. No documented route says the headless agent loads a local plugin, so the canary stops at `INCONCLUSIVE` and this row is release-smoke-only. `CURSOR_HEADLESS_PLUGINS=1` lets the canary go further once somebody verifies such a route |
+| Cursor | native plugin at `~/.cursor/plugins/local/klin` | 3.20.21 | macOS | 2026-09-16 | not automatable | not recorded | hook behavior measured by hand, see `cursor-compatibility.md`. No documented route says the headless agent loads a local plugin, so the canary stops at `INCONCLUSIVE` and this row needs manual evidence. `CURSOR_HEADLESS_PLUGINS=1` lets the canary go further once somebody verifies such a route |
 
 A row moves to a verified version, date and `PASS` only after a run that
 concluded. An inconclusive run never rewrites a row.
@@ -126,44 +126,34 @@ whenever that word is not `PASS`.
 Only `COMPAT` fails the job. `INFRA` and `INCONCLUSIVE` keep their evidence
 and leave the ledger untouched.
 
-## Release smoke
+## Manual host verification
 
-Run the smoke after `cut-release` pushes a new tag and `dist` publishes its
-release as a prerelease, and before `promote-release` merges the tag into
-`main` and marks the release Latest. Until the promotion, plugin users, the
-installer and `klin update` stay on the last release (ADR 0029). Verify each
-host by hand on a clean profile with the current stable version. Record the
-host version, OS, klin version, date and PASS or FAIL in the ledger above.
+Manual host verification is compatibility evidence, not a mandatory release
+gate. Ordinary releases go through the GitHub release PR, normal
+`quality / gates`, and cargo-dist without a manual Claude Code, Codex or
+Cursor ceremony.
 
-When the smoke fails, do not promote the tag. Its release stays a prerelease,
-so no route serves it as Latest. Fix the plugin, then cut the version after the
-failed tag with the `version` input of `cut-release`. `main` still holds the
-version before the failed tag, so a `level` input names the failed version
-again.
+Run a targeted manual check when a release contains functional changes to the
+plugin wrapper, hooks, host event handling, marketplace/plugin structure or
+installation integration, or when the current host evidence is stale, red or
+inconclusive. Version-only manifest and marketplace-ref rewrites made by a
+release PR do not count as functional host changes.
 
-Install from the new tag through the documented commands, with the tag
-appended:
+When a manual check is needed, use a clean profile with the current stable
+host and record the host version, OS, klin version, date and PASS or FAIL in
+the ledger.
 
-- Claude Code: `/plugin marketplace add brajevicm/klin#vX.Y.Z`, then
-  `/plugin install klin@klin`.
-- Codex: `codex plugin marketplace add brajevicm/klin --ref vX.Y.Z`, then
-  `codex plugin add klin@klin`.
+For Claude Code and Codex, install the relevant tagged release through the
+documented marketplace commands. For Cursor, use the documented tagged plugin
+copy and reload the window. Verify only the compatibility journey that cannot
+be proven headlessly:
 
-For every host:
-
-1. the plugin installs or loads from the new tag through those commands,
-2. a repository with a `klin.json` invokes klin,
+1. the plugin installs or loads,
+2. a repository with `klin.json` invokes klin,
 3. the guard refuses an attempted write to `klin.json`,
 4. a deterministic failing stop reaches the agent through the host's block or
    report channel.
 
-Codex adds two steps:
-
-1. review and trust klin's hooks through the normal `/hooks` trust flow,
-2. start a fresh session and prove the trusted hooks run.
-
-Cursor adds one step: the documented plugin copy with `--branch vX.Y.Z`, and a
-window reload.
-
-This smoke exists because marketplace, trust and reload flows have no reliable
-headless API. Do not build UI automation to avoid it.
+Codex additionally requires the normal hook-trust flow and a fresh session.
+Do not build brittle UI automation merely to remove these explicitly manual
+host checks.
