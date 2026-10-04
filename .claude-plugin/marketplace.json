@@ -13,7 +13,7 @@
         "source": "git-subdir",
         "url": "https://github.com/brajevicm/klin.git",
         "path": "plugins/klin",
-        "ref": "v0.4.1"
+        "ref": "v0.4.2"
       },
       "description": "Gate every stop against the base commit. The hooks call klin, and bin/klin fetches the pinned release on first run.",
       "license": "Apache-2.0",

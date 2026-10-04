@@ -98,7 +98,7 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ```sh
 d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.4.1 https://github.com/brajevicm/klin "$d" &&
+  git clone --depth 1 --branch v0.4.2 https://github.com/brajevicm/klin "$d" &&
   mkdir -p ~/.cursor/plugins/local &&
   rm -rf ~/.cursor/plugins/local/klin &&
   cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
@@ -231,7 +231,7 @@ GitHub Actions:
 - uses: actions/checkout@v5
   with:
     fetch-depth: 0
-- uses: brajevicm/klin@v0.4.1
+- uses: brajevicm/klin@v0.4.2
 ```
 
 Other CI: install klin, fetch the full Git history, then run:
