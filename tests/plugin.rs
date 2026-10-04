@@ -140,12 +140,19 @@ fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
 
 /// cargo-release prepares the release commit, but GitHub owns the branch, PR and tag.
 #[test]
-fn cargo_release_pushes_nothing_by_itself() {
-    let push = cargo_release_config()
-        .get("push")
-        .and_then(cargo_toml::Value::as_bool);
+fn cargo_release_only_prepares_release_files() {
+    let release = cargo_release_config();
 
-    assert_eq!(push, Some(false), "cargo-release pushes the release itself");
+    assert_eq!(
+        release.get("push").and_then(cargo_toml::Value::as_bool),
+        Some(false),
+        "cargo-release pushes the release itself"
+    );
+    assert_eq!(
+        release.get("tag").and_then(cargo_toml::Value::as_bool),
+        Some(false),
+        "cargo-release creates the release tag instead of publish-release"
+    );
 }
 
 /// A release is prepared through a normal PR. Only a merged, workflow-authored release PR
