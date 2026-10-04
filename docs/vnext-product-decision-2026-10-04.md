@@ -514,7 +514,8 @@ The #452 six-command decision is confirmed.
 
 ### setup
 
-`klin setup` subsumes current init/install behavior and is safe/idempotent to
+`klin setup` is repository setup, not CLI-binary installation. It subsumes
+current init/install repository-integration intent and is safe/idempotent to
 rerun for integration repair.
 
 The current pinning use case survives as:
@@ -535,7 +536,8 @@ klin check
 klin check complexity public-api
 ```
 
-No lifecycle flags.
+`--changed` may narrow scope and `--json` changes representation. Neither
+changes the trust model. No lifecycle flags.
 
 ### status
 
