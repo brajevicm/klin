@@ -151,7 +151,7 @@ jobs:
           git push origin "refs/tags/$tag"
 
           {
-            echo "Published **$tag** from merged commit `$MERGE_SHA`."
+            printf 'Published **%s** from merged commit `%s`.\n' "$tag" "$MERGE_SHA"
             echo
             echo "cargo-dist now owns GitHub Release creation, artifacts, installers and Latest."
           } >> "$GITHUB_STEP_SUMMARY"
