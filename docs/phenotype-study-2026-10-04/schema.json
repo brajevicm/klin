@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/brajevicm/klin/docs/phenotype-study-2026-10-04/schema.json",
+  "title": "klin phenotype admission study v1",
+  "description": "Frozen record shapes for #357 study children. JSONL records use one of the definitions below; TSV projections must preserve the same fields.",
+  "$defs": {
+    "site": {
+      "type": ["object", "null"],
+      "properties": {
+        "path": {"type": "string"},
+        "start_line": {"type": ["integer", "null"], "minimum": 1},
+        "end_line": {"type": ["integer", "null"], "minimum": 1},
+        "start_byte": {"type": ["integer", "null"], "minimum": 0},
+        "end_byte": {"type": ["integer", "null"], "minimum": 0},
+        "owner": {"type": ["string", "null"]}
+      },
+      "required": ["path", "start_line", "end_line"],
+      "additionalProperties": false
+    },
+    "measurement": {
+      "type": "object",
+      "required": ["row_id", "study_version", "change_id", "population_id", "repository", "base", "head", "language", "phenotype_id", "eligibility_count", "measurement_state", "finding_id", "finding_site", "evidence_packet_id", "runtime_ms", "measurement_basis", "holes"],
+      "properties": {
+        "row_id": {"type": "string", "minLength": 1},
+        "study_version": {"const": 1},
+        "change_id": {"type": "string", "minLength": 1},
+        "population_id": {"type": "string", "minLength": 1},
+        "repository": {"type": "string", "pattern": "^[^/]+/[^/]+$"},
+        "base": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "language": {"enum": ["Rust", "TypeScript", "Python"]},
+        "phenotype_id": {"type": "string", "minLength": 1},
+        "eligibility_count": {"type": "integer", "minimum": 0},
+        "measurement_state": {"enum": ["complete", "partial", "unsupported", "unavailable", "tool-error", "invalid-syntax", "local-resolution-incomplete"]},
+        "finding_id": {"type": ["string", "null"]},
+        "finding_site": {"$ref": "#/$defs/site"},
+        "evidence_packet_id": {"type": ["string", "null"]},
+        "runtime_ms": {"type": "number", "minimum": 0},
+        "measurement_basis": {"type": "string", "minLength": 1},
+        "holes": {"type": "array", "items": {"type": "string"}},
+        "values": {"type": "object", "additionalProperties": true}
+      },
+      "additionalProperties": false
+    },
+    "evidence_packet": {
+      "type": "object",
+      "required": ["packet_id", "study_version", "language", "task_context", "diff_context", "observations", "measurement_holes", "blindness_revealed", "unblind_requests"],
+      "properties": {
+        "packet_id": {"type": "string", "minLength": 1},
+        "study_version": {"const": 1},
+        "language": {"enum": ["Rust", "TypeScript", "Python"]},
+        "task_context": {"type": ["string", "null"]},
+        "diff_context": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "before", "after", "context"],
+            "properties": {
+              "path": {"type": "string"},
+              "before": {"type": ["string", "null"]},
+              "after": {"type": ["string", "null"]},
+              "context": {"type": ["string", "null"]}
+            },
+            "additionalProperties": false
+          }
+        },
+        "observations": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "measurement_holes": {"type": "array", "items": {"type": "string"}},
+        "blindness_revealed": {"type": "array", "items": {"enum": ["phenotype", "source_ticket", "source_disposition", "population", "agent_family", "arm", "repository", "other"]}},
+        "unblind_requests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "reason"],
+            "properties": {"field": {"type": "string"}, "reason": {"type": "string"}},
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "label": {
+      "type": "object",
+      "required": ["packet_id", "pass", "label", "task_correctness", "delta_status", "behavior_preservation", "human_judgment", "repeated", "reason", "labeler"],
+      "properties": {
+        "packet_id": {"type": "string"},
+        "pass": {"enum": ["primary", "secondary", "adjudication"]},
+        "label": {"enum": ["valid-regression", "valid-review", "undesired", "unresolved"]},
+        "task_correctness": {"enum": ["correct", "incorrect", "partial", "unresolved"]},
+        "delta_status": {"enum": ["new", "worsened", "held", "unresolved"]},
+        "behavior_preservation": {"enum": ["preserved", "changed-intended", "changed-harmful", "not-applicable", "unresolved"]},
+        "human_judgment": {"enum": ["required", "not-required", "unresolved"]},
+        "repeated": {"type": "boolean"},
+        "reason": {"type": "string", "minLength": 1},
+        "labeler": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "controlled_run": {
+      "type": "object",
+      "required": ["run_id", "study_version", "task_id", "repository", "base", "agent_family", "model_id", "host_version", "repetition", "arm", "arm_order", "final_tree", "finding_events", "project_checks", "oracle_state", "task_correctness", "wall_ms", "agent_turns", "feedback_bytes", "human_escalations"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "study_version": {"const": 1},
+        "task_id": {"type": "string"},
+        "repository": {"type": "string"},
+        "base": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "agent_family": {"enum": ["OpenAI Codex", "Claude Code"]},
+        "model_id": {"type": "string"},
+        "host_version": {"type": "string"},
+        "repetition": {"enum": [1, 2]},
+        "arm": {"enum": ["Active", "Shadow"]},
+        "arm_order": {"enum": [1, 2]},
+        "final_tree": {"type": ["string", "null"]},
+        "finding_events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["phenotype_id", "finding_id", "placement", "shown", "outcome", "additional_turns", "feedback_bytes"],
+            "properties": {
+              "phenotype_id": {"type": "string"},
+              "finding_id": {"type": "string"},
+              "placement": {"type": "string"},
+              "shown": {"type": "boolean"},
+              "outcome": {"enum": ["correct-repair", "appeasement", "unresolved-repair", "harmful-repair", "human-escalation", "justified-retention", "not-applicable"]},
+              "additional_turns": {"type": "integer", "minimum": 0},
+              "feedback_bytes": {"type": "integer", "minimum": 0}
+            },
+            "additionalProperties": false
+          }
+        },
+        "project_checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["command", "state", "evidence"],
+            "properties": {
+              "command": {"type": "string"},
+              "state": {"enum": ["pass", "fail", "unavailable", "timeout", "not-run"]},
+              "evidence": {"type": ["string", "null"]}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oracle_state": {"enum": ["complete", "partial", "unavailable"]},
+        "task_correctness": {"enum": ["correct", "incorrect", "partial", "unresolved"]},
+        "wall_ms": {"type": "number", "minimum": 0},
+        "agent_turns": {"type": "integer", "minimum": 0},
+        "feedback_bytes": {"type": "integer", "minimum": 0},
+        "human_escalations": {"type": "integer", "minimum": 0},
+        "final_patch_path": {"type": ["string", "null"]},
+        "residual_measurement_path": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "cost": {
+      "type": "object",
+      "required": ["phenotype_id", "placement", "ownership", "klin_runtime_ms", "external_runtime_ms", "project_runtime_ms", "memory_bytes", "cache_bytes", "extra_parses", "source_reads", "configuration_beyond_empty", "tool_installation", "new_files_services", "ci_setup", "host_portability", "reproduction_steps", "measurement_holes", "human_interruptions_per_100", "human_review_only_cases", "agent_repair_turns", "feedback_bytes", "implementation_mechanisms", "maintenance_burden"],
+      "properties": {
+        "phenotype_id": {"type": "string"},
+        "placement": {"type": "string"},
+        "ownership": {"enum": ["shipped-native", "candidate-native", "named-recipe", "user-owned"]},
+        "klin_runtime_ms": {"type": ["number", "null"], "minimum": 0},
+        "external_runtime_ms": {"type": ["number", "null"], "minimum": 0},
+        "project_runtime_ms": {"type": ["number", "null"], "minimum": 0},
+        "memory_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "cache_bytes": {"type": ["integer", "null"], "minimum": 0},
+        "extra_parses": {"type": ["integer", "null"], "minimum": 0},
+        "source_reads": {"type": ["integer", "null"], "minimum": 0},
+        "configuration_beyond_empty": {"type": "string"},
+        "tool_installation": {"type": "string"},
+        "new_files_services": {"type": "string"},
+        "ci_setup": {"type": "string"},
+        "host_portability": {"type": "string"},
+        "reproduction_steps": {"type": "string"},
+        "measurement_holes": {"type": "array", "items": {"type": "string"}},
+        "human_interruptions_per_100": {"type": ["number", "null"], "minimum": 0},
+        "human_review_only_cases": {"type": ["integer", "null"], "minimum": 0},
+        "agent_repair_turns": {"type": ["number", "null"], "minimum": 0},
+        "feedback_bytes": {"type": ["number", "null"], "minimum": 0},
+        "implementation_mechanisms": {"type": "array", "items": {"type": "string"}},
+        "maintenance_burden": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
