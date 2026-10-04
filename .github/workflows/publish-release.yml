@@ -29,7 +29,8 @@ jobs:
       - shell: bash
         run: |
           version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
-          curl --proto '=https' --tlsv1.2 -LsSf             "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
 
       - name: Tag and publish the merged release
         shell: bash
@@ -53,7 +54,9 @@ jobs:
             exit 1
           fi
 
-          for manifest in             plugins/klin/.claude-plugin/plugin.json             plugins/klin/.cursor-plugin/plugin.json
+          for manifest in \
+            plugins/klin/.claude-plugin/plugin.json \
+            plugins/klin/.cursor-plugin/plugin.json
           do
             held=$(jq -r '.version' "$manifest")
             [[ "$held" == "$version" ]] || {
@@ -98,7 +101,8 @@ jobs:
 
           if ! gh release view "$tag" >/dev/null 2>&1; then
             # dist-workspace.toml has create-release=false, so dist expects this draft.
-            gh release create "$tag" --draft --verify-tag               --title "$title" --notes-file "$RUNNER_TEMP/notes.md"
+            gh release create "$tag" --draft --verify-tag \
+              --title "$title" --notes-file "$RUNNER_TEMP/notes.md"
           fi
 
           {
