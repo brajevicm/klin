@@ -180,14 +180,22 @@ their base/reference commits. Two agent families are used:
 - OpenAI Codex;
 - Claude Code.
 
-The family is frozen, not a mutable marketing model name. Every run records the
-exact host version and model identifier exposed at execution. All runs for one
-agent family execute in one contiguous study batch; if the exposed model
-identifier changes within that batch, stop that family and record the remaining
-rows as unavailable until a protocol amendment is committed. If a family is
-unavailable, do not substitute another family. Each repetition uses a fresh
-session with no memory or transcript from another run; a seed is recorded when
-the host exposes one and otherwise recorded as `not-exposed`. `schema.json` requires that value as `session_seed`. For every surfaced finding event, the run record preserves the exact feedback text plus its SHA-256; Shadow events record null feedback text/hash.
+The agent family and model-binding procedure are frozen. Before any controlled
+task is opened, measured, or run, the coordinator resolves each host once in a
+neutral no-repository preflight and records the exact exposed model identifier
+and host version in `tasks.tsv`. That exact model identifier is then explicitly
+selected for every run in that family. If the host cannot expose and reselect
+that exact model identifier, the family is recorded unavailable; do not
+substitute another model or family. All runs for one agent family execute in one
+contiguous study batch. If a run exposes a different model identifier from the
+preflight binding, that run is invalid and the family stops until a protocol
+amendment is committed. The preflight binding happens before any controlled
+outcome is inspected. Each repetition uses a fresh session with no memory or
+transcript from another run; a seed is recorded when the host exposes one and
+otherwise recorded as `not-exposed`. `schema.json` requires that value as
+`session_seed`. For every surfaced finding event, the run record preserves the
+exact feedback text plus its SHA-256; Shadow events record null feedback
+text/hash and no evidence-packet id.
 
 For each task x agent family x repetition (two repetitions), run two independent
 fresh sessions from the same base:
@@ -313,11 +321,29 @@ measurement basis and compatible identity semantics.
 
 ## 8. Blind evidence packets
 
-#457 generates packet IDs independently of phenotype and population. Before
-any packet exists, the coordinator draws a 32-byte random `salt`. Packets are
-numbered in ascending order of SHA-256 of
-`357-label-v1:<salt>:<measurement-row id>`. The salt and the row-to-packet map
-are stored only in the unblinded manifest until primary labeling is complete.
+#457/#459 and the frozen hard-negative replay share one blind-packet namespace.
+Before any packet exists, the coordinator draws a 32-byte random `salt`. Every
+labelable finding gets one unique `source_finding_id` before packet ordering:
+
+```text
+natural finding:
+  natural:<finding_row_id>
+
+controlled Active finding:
+  controlled:<run_id>:<finding_event_id>
+
+hard-negative finding:
+  hard-negative:<case_set_id>:<case_id>:<phenotype_id>:<finding_id>
+```
+
+`finding_event_id` is unique within a controlled run. Hard-negative
+`finding_id` values are unique within one case-set/case/phenotype result.
+Packets are sorted by
+`(SHA256("357-label-v1:" + salt + ":" + source_finding_id), source_finding_id)`
+and then numbered in that order. `packet-manifest.tsv` maps
+`source_finding_id -> packet_id` plus the source-kind/join keys needed to
+recover the unblinded record. The salt and source-to-packet map remain hidden
+from labelers until primary labeling is complete.
 
 Where judging remains possible, a label packet hides:
 
@@ -337,11 +363,14 @@ The packet schema is in `schema.json`.
 
 ## 9. Label contract
 
-`label-rules.md` is normative. Each natural finding, and each finding surfaced
-in an Active run, gets exactly one primary label. #459 packs a surfaced finding
-under section 8 before its repair outcome is joined; the labeler sees the base
-and the change the finding was raised on, never the later repair. A delivery
-is valid when its final label is `valid-regression` or `valid-review`:
+`label-rules.md` is normative. Each natural finding, each finding surfaced
+in an Active run, and each finding emitted by a frozen hard-negative case gets
+exactly one primary label and therefore one section-8 `source_finding_id`.
+#459 packs a surfaced finding before its repair outcome is joined; the labeler
+sees the base and the change the finding was raised on, never the later repair.
+Shadow findings are measured but not surfaced or labeled and have no
+evidence-packet id. A delivery is valid when its final label is
+`valid-regression` or `valid-review`:
 
 - `valid-regression`
 - `valid-review`
