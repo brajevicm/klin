@@ -189,8 +189,10 @@ fn a_release_is_prepared_by_pr_and_published_only_after_merge() {
         "<!-- klin-release-pr -->",
         "github.event.pull_request.merge_commit_sha",
         "git merge-base --is-ancestor",
+        "dist plan --tag=\"$tag\"",
         "git push origin \"refs/tags/$tag\"",
         "gh release create \"$tag\" --draft --verify-tag",
+        "--notes-file",
     ] {
         assert!(published.contains(held), "publish-release omits {held}");
     }
