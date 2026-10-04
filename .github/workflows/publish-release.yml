@@ -115,10 +115,8 @@ jobs:
           checks=$(gh api "/repos/$REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100")
           for required in gates plan
           do
-            # $name below is a jq variable, not a shell expansion.
-            # shellcheck disable=SC2016
-            conclusion=$(jq -r --arg name "$required" '
-              [.check_runs[] | select(.name == $name)]
+            conclusion=$(required="$required" jq -r '
+              [.check_runs[] | select(.name == env.required)]
               | sort_by(.completed_at)
               | last
               | .conclusion // ""
