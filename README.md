@@ -1,16 +1,26 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
-  <img src="assets/klin-logo-light.svg" alt="klin" width="190">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
+    <img src="assets/klin-logo-light.svg" alt="klin" width="220">
+  </picture>
+</p>
 
-# Catch regressions while the agent can still fix them
+<h1 align="center">Catch regressions while the agent can still fix them</h1>
 
-**Deterministic quality control for coding agents.**
+<p align="center"><strong>Quality control for coding agents.</strong></p>
 
-klin catches new or worsened problems while the agent still has the context to fix them.
+<p align="center">
+  A coding agent can finish the task you asked for while making something else measurably worse.<br>
+  klin returns new or worsened problems while the agent still has the context to respond.
+</p>
 
-**Works natively with:** Claude Code · Codex · Cursor
+<p align="center">
+  <a href="https://github.com/brajevicm/klin/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/brajevicm/klin?display_name=tag&sort=semver&style=flat-square&label=release"></a>
+  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?branch=main&style=flat-square&label=CI"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/brajevicm/klin?style=flat-square"></a>
+  <a href="docs/HOST_COMPATIBILITY.md"><img alt="Hosts: Claude Code, Codex, Cursor" src="https://img.shields.io/badge/hosts-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-blue?style=flat-square"></a>
+</p>
 
 ```text
 FAIL  complexity
@@ -42,6 +52,8 @@ klin install
 
 Then commit `klin.json` and the generated integration files.
 
+Prefer your host's native plugin flow? See [Native plugins](#native-plugins) below.
+
 klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
 
 If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
@@ -68,6 +80,47 @@ klin caught 1 regression this session. It was fixed after klin flagged it.
 ```
 
 Add `--all` for individual findings or `--json` for machine-readable output.
+
+## Why klin
+
+A coding agent can finish the task you asked for and make something else worse.
+
+Most deterministic tools tell you what is wrong **now**. klin asks:
+
+**Did this problem appear or get worse during this work?**
+
+```text
+quality debt        before    after    result
+unchanged               8        8       ✓ pass
+improved                8        6       ✓ pass
+worsened                8        9       ✗ fail
+```
+
+Existing debt does not block adoption. Only new or worsened debt fails. The one exception is a broken build: it blocks the agent until the code builds again.
+
+**Deterministic, not another LLM.** klin measures specific properties and shows concrete evidence.
+
+**No baseline to maintain.** klin reads the before-state from Git, so there is no baseline file to keep in sync.
+
+**Repair now, verify later.** Local hooks return findings while the agent still has context. CI checks the committed result on its own.
+
+**The agent fixes code, not the bar.** Intentional exceptions go in `accepted`, and a person reviews them.
+
+## What klin catches
+
+- **Complexity creeps up.** A function grows too complex or too long for the repository's current bar.
+- **Architecture drifts.** Code crosses a layer you defined, closes a new dependency cycle, or breaks a convention you wrote down. These checks need a `layering` or `conventions` section in `klin.json`.
+- **Guardrails get bypassed.** A test gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch. If a test disappears, klin asks the agent about it once.
+- **Work is left unfinished.** The change adds a TODO, a placeholder, a stub, or code that nothing references.
+- **A public contract changes.** An exported Rust or TypeScript surface disappears or changes its declared contract.
+- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or has a version the lockfile does not record.
+- **Documentation goes stale.** A Markdown file at the repository root still points to a path the code moved away from.
+
+Keep your linters, type checkers, tests, security scanners, and reviews. klin adds a ratchet around the agent's change.
+
+A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
+
+Language support varies by check. See [full current coverage and configuration →](docs/REFERENCE.md).
 
 ## Native plugins
 
@@ -121,59 +174,6 @@ echo '{}' > klin.json
 ```
 
 `{}` is a complete configuration. klin derives everything else from the repository.
-
-## Why klin
-
-A coding agent can finish the task you asked for and make something else worse.
-
-Most deterministic tools tell you what is wrong **now**. klin asks:
-
-**Did this problem appear or get worse during this work?**
-
-```text
-quality debt        before    after    result
-unchanged               8        8       ✓ pass
-improved                8        6       ✓ pass
-worsened                8        9       ✗ fail
-```
-
-Existing debt does not block adoption. Only new or worsened debt fails. The one exception is a broken build: it blocks the agent until the code builds again.
-
-**Deterministic, not another LLM.** klin measures specific properties and shows concrete evidence.
-
-**No baseline to maintain.** klin reads the before-state from Git, so there is no baseline file to keep in sync.
-
-**Repair now, verify later.** Local hooks return findings while the agent still has context. CI checks the committed result on its own.
-
-**The agent fixes code, not the bar.** Intentional exceptions go in `accepted`, and a person reviews them.
-
-## What klin catches
-
-- **Complexity creeps up.** A function grows too complex or too long for the repository's current bar.
-- **Architecture drifts.** Code crosses a layer you defined, closes a new dependency cycle, or breaks a convention you wrote down. These checks need a `layering` or `conventions` section in `klin.json`.
-- **Guardrails get bypassed.** A test gets skipped, or the change adds `@ts-ignore`, `eslint-disable`, or another escape hatch. If a test disappears, klin asks the agent about it once.
-- **Work is left unfinished.** The change adds a TODO, a placeholder, a stub, or code that nothing references.
-- **A public contract changes.** An exported Rust or TypeScript surface disappears or changes its declared contract.
-- **Dependencies fall out of sync.** A dependency is missing from the lockfile, loses its exact pin, or has a version the lockfile does not record.
-- **Documentation goes stale.** A Markdown file at the repository root still points to a path the code moved away from.
-
-Keep your linters, type checkers, tests, security scanners, and reviews. klin adds a ratchet around the agent's change.
-
-A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
-
-### Language support
-
-| Language                  | What klin checks                                                                              |
-| ------------------------- | --------------------------------------------------------------------------------------------- |
-| Rust, TypeScript          | Complexity, escape hatches, unfinished work, unused code, architecture, public API, lockfiles |
-| Go, JavaScript            | Complexity, escape hatches, unfinished work, lockfiles                                        |
-| Python                    | Complexity, escape hatches, unfinished work                                                   |
-| Java, Kotlin, Ruby, Swift | Complexity, escape hatches                                                                    |
-| Shell                     | Escape hatches                                                                                |
-
-Documentation links, text and file conventions, and SARIF input work in any language.
-
-[Full coverage and configuration →](docs/REFERENCE.md)
 
 ## Configure
 
