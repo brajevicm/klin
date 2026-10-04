@@ -26,10 +26,12 @@ route holds a build of its own.
 
 The version is written in `Cargo.toml`, the plugin manifests and the
 marketplace entries, plus two lines in the README. The wrapper reads the
-manifest at run time. `cargo-release` rewrites all of them in one commit and
-tags it, from the `cut-release` workflow or from a laptop. A CLI test fails
-when a manifest or a marketplace entry disagrees with `Cargo.toml`, so a pin
-that moves by hand is caught before a tag exists.
+manifest at run time. `prepare-release` runs `cargo-release --no-tag`, so cargo-release rewrites all
+of them in one commit without creating the release tag. The workflow pushes
+that commit to a deterministic release branch and opens a pull request. After
+the PR merges, `publish-release` creates the tag on the exact merged commit. A
+CLI test fails when a manifest or a marketplace entry disagrees with
+`Cargo.toml`, so a bad release PR is caught before a tag exists.
 
 Each route updates with the tool the person already uses:
 
