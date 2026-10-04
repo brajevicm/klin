@@ -95,38 +95,6 @@ Use your coding agent as usual. You don't need to run anything.
 
 When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened findings go back to the agent while the change is still in its context.
 
-### 4. See what happened
-
-Install the standalone CLI if you want local reporting commands such as:
-
-```sh
-klin stats --session
-```
-
-```text
-Nothing needs your attention.
-
-klin caught 1 regression this session. It was fixed after klin flagged it.
-```
-
-Add `--all` for individual findings or `--json` for machine-readable output.
-
-### Standalone / managed installation
-
-Use the standalone binary when the native plugin is unavailable on your host surface, when you need explicit project/user hook files, or for managed/manual installations.
-
-From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-source $HOME/.local/bin/env
-klin install
-```
-
-`klin install` reconciles the repository integration. To target one host explicitly, append `--host claude`, `--host codex`, or `--host cursor`.
-
-If your shell can't find `klin` afterwards, open a new terminal. To update the standalone binary later, run `klin update`, then `klin install`.
-
 ## Why klin
 
 Most deterministic tools tell you what is wrong **now**. klin asks:
@@ -165,6 +133,40 @@ Keep your linters, type checkers, tests, security scanners, and reviews. klin ad
 A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
 
 Language support varies by check. See [full current coverage and configuration →](docs/REFERENCE.md).
+
+## Standalone and other agents
+
+Native integrations are the recommended path for Claude Code, Codex, and Cursor. Use the standalone binary when the native plugin is unavailable on your host surface, when you need explicit project/user hook files, or for managed/manual installations.
+
+From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+source $HOME/.local/bin/env
+klin install
+```
+
+`klin install` reconciles the repository integration. To target one host explicitly, append `--host claude`, `--host codex`, or `--host cursor`.
+
+Other coding-agent harnesses can integrate through klin's [versioned lifecycle contract](docs/HARNESS_INTEGRATION.md).
+
+To update the standalone binary later, run `klin update`, then `klin install`. Native plugins update through their host's plugin mechanism.
+
+### Inspect a session
+
+The standalone CLI also provides local reporting:
+
+```sh
+klin stats --session
+```
+
+```text
+Nothing needs your attention.
+
+klin caught 1 regression this session. It was fixed after klin flagged it.
+```
+
+Add `--all` for individual findings or `--json` for machine-readable output.
 
 ## Configure
 
