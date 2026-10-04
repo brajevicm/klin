@@ -2,7 +2,7 @@
 
 ## Status
 
-**Preparation in progress; no controlled outcomes have been inspected.**
+**Ready for controlled execution; no controlled outcomes have been inspected.**
 
 This artifact executes the study-v2 preregistered controlled arm. It does not
 change the frozen task set, phenotype registry, feedback wording, admission
@@ -24,7 +24,8 @@ observed. They must not be inferred from this coordinator or from a later run.
 
 `controlled-plan.py --allow-pending` may be used only to inspect the
 deterministic arm order. Running it without `--allow-pending` is the execution
-gate: it refuses to produce an executable plan until (a) each family has one
+gate. As of the frozen runtime/preflight state, all execution prerequisites are
+satisfied: it refuses to produce an executable plan until (a) each family has one
 identical neutral-preflight model/host binding repeated across all nine task
 rows or is explicitly unavailable, (b) every base-project check list is frozen,
 and (c) the frozen v0.4.2 release archive has been verified and its extracted
