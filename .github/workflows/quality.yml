@@ -28,6 +28,7 @@ jobs:
             src/ tests/
             Cargo.toml Cargo.lock rust-toolchain.toml build.rs
             benches/ examples/
+            plugins/klin/skills/klin/SKILL.md
           )
           if git diff --quiet "$CHANGE_BASE...$CHANGE_HEAD" -- "${rust_inputs[@]}"; then
             echo "rust=false" >> "$GITHUB_OUTPUT"
