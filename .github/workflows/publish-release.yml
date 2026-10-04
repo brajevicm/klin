@@ -19,7 +19,6 @@ jobs:
     permissions:
       checks: read
       contents: write
-      pull-requests: read
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -32,7 +31,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
@@ -46,89 +45,15 @@ jobs:
           fi
 
           version="${HEAD_REF#release/v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error title=Invalid release branch::$HEAD_REF does not name an X.Y.Z release."
-            exit 1
-          fi
+          python3 .github/validate-release-pr.py "$PR_BASE_SHA" "$PR_HEAD_SHA" "$version"
           tag="v$version"
 
-          expected_files=$(cat <<'EOF'
-          .agents/plugins/marketplace.json
-          .claude-plugin/marketplace.json
-          Cargo.lock
-          Cargo.toml
-          README.md
-          plugins/klin/.claude-plugin/plugin.json
-          plugins/klin/.cursor-plugin/plugin.json
-          EOF
-          )
-          actual_files=$(gh api --paginate "/repos/$REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" \
-            --jq '.[].filename' | LC_ALL=C sort)
-
-          if [[ "$actual_files" != "$expected_files" ]]; then
-            echo "::error title=Unexpected release diff::Release PR #$PR_NUMBER does not contain exactly the cargo-release-owned files."
-            diff -u <(printf '%s\n' "$expected_files") <(printf '%s\n' "$actual_files") || true
+          conclusion=$(gh api "/repos/$REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name == "gates")] | sort_by(.completed_at) | last | .conclusion // ""')
+          if [[ "$conclusion" != "success" ]]; then
+            echo "::error title=Required check not green::gates concluded '$conclusion' on release PR head $PR_HEAD_SHA."
             exit 1
           fi
-
-          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
-          if [[ "$cargo_version" != "$version" ]]; then
-            echo "::error title=Version mismatch::$HEAD_REF names $version but Cargo.toml has $cargo_version."
-            exit 1
-          fi
-
-          lock_version=$(python3 - <<'PY'
-          import tomllib
-          with open("Cargo.lock", "rb") as f:
-              packages = tomllib.load(f)["package"]
-          versions = [p["version"] for p in packages if p["name"] == "klin"]
-          if len(versions) != 1:
-              raise SystemExit(f"expected one klin package in Cargo.lock, found {len(versions)}")
-          print(versions[0])
-          PY
-          )
-          if [[ "$lock_version" != "$version" ]]; then
-            echo "::error title=Version mismatch::Cargo.lock has $lock_version instead of $version."
-            exit 1
-          fi
-
-          for manifest in \
-            plugins/klin/.claude-plugin/plugin.json \
-            plugins/klin/.cursor-plugin/plugin.json
-          do
-            held=$(jq -r '.version' "$manifest")
-            [[ "$held" == "$version" ]] || {
-              echo "::error title=Version mismatch::$manifest has $held instead of $version."
-              exit 1
-            }
-          done
-
-          for market in .claude-plugin/marketplace.json .agents/plugins/marketplace.json
-          do
-            held=$(jq -r '.plugins[0].source.ref' "$market")
-            [[ "$held" == "$tag" ]] || {
-              echo "::error title=Version mismatch::$market names $held instead of $tag."
-              exit 1
-            }
-          done
-
-          grep -Fq "brajevicm/klin@$tag" README.md
-          grep -Fq -- "--branch $tag" README.md
-
-          checks=$(gh api "/repos/$REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100")
-          for required in gates plan
-          do
-            conclusion=$(required="$required" jq -r '
-              [.check_runs[] | select(.name == env.required)]
-              | sort_by(.completed_at)
-              | last
-              | .conclusion // ""
-            ' <<<"$checks")
-            if [[ "$conclusion" != "success" ]]; then
-              echo "::error title=Required check not green::$required concluded '$conclusion' on release PR head $PR_HEAD_SHA."
-              exit 1
-            fi
-          done
 
           git fetch origin main --tags
           if ! git merge-base --is-ancestor "$MERGE_SHA" origin/main; then
