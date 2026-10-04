@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/klin-logo-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="assets/klin-logo-light.svg">
-    <img src="assets/klin-logo-light.svg" alt="klin" width="220">
+    <img src="assets/klin-logo-light.svg" alt="klin" width="190">
   </picture>
 </p>
 
