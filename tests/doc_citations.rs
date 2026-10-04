@@ -293,6 +293,11 @@ fn a_citation_whose_target_moved_fails_and_the_remedy_names_the_moved_file() {
     let run = tree.run(&["doc-citations"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
+        run.says("Delete the sentence that cites it only if the cited file is gone on purpose"),
+        "{}",
+        run.out
+    );
+    assert!(
         run.says("ARCH.md:1  not under the roots — likely src/data/store.py  src/store.py"),
         "{}",
         run.out

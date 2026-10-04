@@ -135,6 +135,17 @@ fn the_failure_says_what_fixes_the_code() {
         "--ceiling",
         "100",
     ]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Keep in this file what the task asked for"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Only a person raises the ceiling, in a reviewed commit"),
+        "{}",
+        run.out
+    );
     assert!(run.says("docs/"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
 }

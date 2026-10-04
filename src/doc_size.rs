@@ -50,10 +50,11 @@ pub const RULE: &str = "the word count at the derivation commit, rounded up to t
 const NEW_CEILING: u64 = 50;
 const NEW_RULE: &str = "the 50-word default for an instruction file the derivation commit lacks";
 const MARGIN_FRACTION: f64 = 0.02;
-const REMEDY: &str = "Remove or compress redundant instruction text first. An instruction that \
+const REMEDY: &str = "Keep in this file what the task asked for. Remove or compress redundant \
+    instruction text first. An instruction that \
     can be a gate costs no words — encode it as a gate and point at it. Point at background in \
-    docs/ only where the instruction keeps its intent. A larger ceiling is a person's decision, \
-    not a fix.";
+    docs/ only where the instruction keeps its intent. Only a person raises the ceiling, \
+    in a reviewed commit.";
 
 #[derive(clap::Args)]
 pub struct Args {

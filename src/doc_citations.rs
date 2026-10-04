@@ -41,7 +41,7 @@ pub const EXTENSIONS: &[&str] = &[
 ];
 const EVERY_FILE: &str = "";
 const REMEDY: &str = "Point the citation at where the file is now (a bare filename resolves \
-    when exactly one file under the roots has that name), or delete the sentence that cites it.";
+    when exactly one file under the roots has that name). Delete the sentence that cites it only if the cited file is gone on purpose.";
 
 #[derive(clap::Args)]
 pub struct Args {

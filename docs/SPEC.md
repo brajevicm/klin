@@ -1405,6 +1405,22 @@ runs only where `cfg(test)` is set. `ignore` counts at any place after the predi
 Rust grammar then reads the `cfg_attr` it found, so whitespace and comments
 inside the attribute change nothing.
 
+The remedies MUST name the legitimate repair (#433):
+
+- `doc-size` tells the agent to keep in the file what the task asked for;
+  only a person raises the ceiling, in a reviewed commit.
+- `doc-citations` offers deleting the citing sentence only if the cited file
+  is gone on purpose.
+- `lockfile` on an unlocked dependency tells the agent to report why an
+  install cannot run and forbids writing lockfile entries by hand.
+- `escapes` tells the agent to remove a skip or fix what made the test fail,
+  and says that swallowing an error in place of the escape is not a fix.
+- `public-api`, including its hook remedy, says that an added optional
+  parameter or overload is still a changed contract (ADR 0054).
+
+These are output requirements; measurements, ratchets, block policy,
+accepted entries, journal, stats and CI semantics are unchanged.
+
 #### 8.2.1 Measurement rules of the shipped checks
 
 The table above names what each shipped check measures. This section states

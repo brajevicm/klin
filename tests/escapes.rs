@@ -1277,3 +1277,21 @@ fn the_retired_skip_rust_tests_key_names_the_key_that_replaced_it() {
     assert!(run.says("\"skip_test_idioms\""), "{}", run.out);
     assert!(run.says("Rename the key"), "{}", run.out);
 }
+
+#[test]
+fn a_skipped_test_gets_a_remedy_that_restores_the_test_and_rejects_swallowed_errors() {
+    let tree = tree();
+    tree.write("src/check.test.ts", "test.skip('works', () => {});\n");
+    let run = tree.run(&["escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("Remove the skip, or fix what made the test fail"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Swallowing an error in place of the escape is not a fix"),
+        "{}",
+        run.out
+    );
+}

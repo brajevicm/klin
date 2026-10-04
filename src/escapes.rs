@@ -154,7 +154,8 @@ pub const KIND: Kind = Kind {
         condition: "where the code opts out of a check",
         fix_advice: Remedy::Fixed(
             "Fix what the escape hides: handle the error instead of unwrapping it, \
-             address the lint instead of allowing it. Accepting a new escape is a policy \
+             address the lint instead of allowing it. Remove the skip, or fix what made the test fail. \
+             Swallowing an error in place of the escape is not a fix. Accepting a new escape is a policy \
              decision for a person, in the config, in a reviewed commit.",
         ),
         ceiling: None,
