@@ -192,8 +192,14 @@ fn a_release_becomes_latest_only_at_the_promotion() {
             "promote-release omits {invariant}"
         );
     }
+    let pushed = promoted
+        .find("git push origin main")
+        .expect("promote-release never pushes main");
+    let made_latest = promoted
+        .find("gh release edit")
+        .expect("promote-release never marks the release Latest");
     assert!(
-        promoted.find("git push origin main") < promoted.find("gh release edit"),
+        pushed < made_latest,
         "the release can become Latest before main contains its tag"
     );
 }
