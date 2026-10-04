@@ -105,8 +105,11 @@ These are internal execution placements, not public command modes.
 
 Stop is fast, bounded, native feedback inside the coding-agent loop.
 
-- It runs only product-owned native work whose placement is `stop`.
-- It does not launch arbitrary external analyzers or project-owned commands.
+- It runs only product-owned native quality work whose placement is `stop`.
+- The quality-measurement path does not launch arbitrary external analyzers.
+- Existing configured/derived project-build feedback may still run in the host Stop
+  loop as a separate repair signal; it is not part of klin's quality judgement
+  and does not become part of the public `check` contract.
 - Readiness-only work adds zero work to a Stop where readiness was not declared.
 - The controlled 1M / 20-changed acceptable envelope remains <=1500 ms.
 - <500 ms remains the strategic target.
@@ -291,7 +294,7 @@ The persisted readiness record is versioned and contains at least:
 ```text
 record_schema
 tree
-klin_build_or_version
+klin_build_identity / measurement-semantics identity
 measurement_basis_digest / referenced basis records
 judgement
 measurement
@@ -314,7 +317,13 @@ The derived readiness state is:
 Reuse rules:
 
 - complete PASS/REVIEW/FAIL results may be reused for the identical tree and
-  compatible basis;
+  compatible basis **only when every contributing evidence source declares that
+  its recorded basis is sufficient for reuse**;
+- native deterministic evidence is reusable when its tree/policy/producer basis
+  matches;
+- external evidence that depends on ignored files, ambient environment,
+  project-installed dependencies or another unrecorded input is non-cacheable by
+  default and must rerun even when the source tree is unchanged;
 - INCOMPLETE is never reused, because the missing tool/environment may have
   changed outside the Git tree;
 - ERROR and drift write no reusable verdict;
@@ -467,12 +476,14 @@ Change the vNext presentation semantics.
 
 The first local Stop may interrupt on a newly deleted test to obtain the
 agent's reason, but an intentional deletion is not made "clean" by reply-only
-clearance. After acknowledgement, it remains a **REVIEW** item through
-readiness/check/report until a person reviews/accepts the change through the
-normal repository review/policy mechanism.
+clearance. After acknowledgement, the deletion remains a **REVIEW** item in
+readiness/check/report output; the agent's reply does not erase the evidence.
 
-It is not a permanent FAIL merely because the test was intentionally removed,
-and the agent is not forced to recreate a test solely to clear the REVIEW.
+The REVIEW itself does not require a new klin acceptance workflow and does not
+change exit status. The repository's normal human code-review process owns the
+decision. It is not a permanent FAIL merely because the test was intentionally
+removed, and the agent is not forced to recreate a test solely to clear the
+REVIEW.
 
 ### build
 
