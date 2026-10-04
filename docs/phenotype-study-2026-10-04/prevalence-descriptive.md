@@ -11,68 +11,68 @@ Rate differences are descriptive and do not establish an AI-specific effect.
 | TypeScript | 40 | 31 | 9 |
 | Python | 40 | 34 | 6 |
 
-Frozen detector replay only. These are descriptive rates, not valid-regression labels or product dispositions.
-Unsupported, partial, unavailable, invalid-syntax, local-resolution-incomplete and tool-error rows remain visible and do not count as clean measurements.
+Frozen detector replay only. These are descriptive measurements, not valid-regression labels or product dispositions.
+Incomplete rows remain visible and are not counted as clean. When the change census is complete, an affected-change interval includes observed positives as its lower bound and unresolved eligible changes as its upper bound. Change rates are withheld when change-level eligibility is unresolved. Site rates are withheld when change eligibility, any eligible-unit census, or any eligible measurement is incomplete.
 
-| Phenotype | Population | Affected / eligible changes | Findings / eligible units | Fully measured / eligible changes | Measured / eligible units | State counts |
-| --- | --- | ---: | ---: | ---: | ---: | --- |
-| shipped-complexity | natural-agent | 0 / 53 | 0 / 1848 | 40 / 53 | 1514 / 1848 | complete=40, partial=13, unsupported=67 |
-| shipped-complexity | matched-human | 0 / 45 | 0 / 1810 | 35 / 45 | 1325 / 1810 | complete=35, partial=10, unsupported=47 |
-| shipped-escapes | natural-agent | 36 / 120 | 383 / 15492 | 120 / 120 | 15492 / 15492 | complete=120 |
-| shipped-escapes | matched-human | 21 / 92 | 82 / 7324 | 92 / 92 | 7324 / 7324 | complete=92 |
-| shipped-stubs | natural-agent | 6 / 120 | 9 / 15507 | 119 / 120 | 15478 / 15507 | complete=119, partial=1 |
-| shipped-stubs | matched-human | 4 / 92 | 4 / 7339 | 92 / 92 | 7339 / 7339 | complete=92 |
-| shipped-test-deletion | natural-agent | 0 / 26 | 0 / 37 | 0 / 26 | 31 / 37 | partial=26, unsupported=94 |
-| shipped-test-deletion | matched-human | 0 / 23 | 0 / 36 | 0 / 23 | 32 / 36 | partial=23, unsupported=69 |
-| shipped-test-skip | natural-agent | 36 / 120 | 383 / 15492 | 0 / 120 | 15492 / 15492 | partial=120 |
-| shipped-test-skip | matched-human | 21 / 92 | 82 / 7324 | 0 / 92 | 7324 / 7324 | partial=92 |
-| shipped-dead-symbols | natural-agent | 3 / 80 | 10 / 136504 | 60 / 80 | 60459 / 136504 | complete=60, partial=20, unsupported=40 |
-| shipped-dead-symbols | matched-human | 0 / 58 | 0 / 125937 | 41 / 58 | 53363 / 125937 | complete=41, partial=17, unsupported=34 |
-| shipped-reachability | natural-agent | 0 / 53 | 0 / 15906 | 53 / 53 | 15906 / 15906 | complete=53, unsupported=67 |
-| shipped-reachability | matched-human | 0 / 39 | 0 / 13387 | 39 / 39 | 13387 / 13387 | complete=39, unsupported=53 |
-| shipped-lockfile | natural-agent | 2 / 25 | 4 / 598 | 20 / 25 | 330 / 598 | complete=20, partial=5, unsupported=95 |
-| shipped-lockfile | matched-human | 1 / 18 | 2 / 8813 | 10 / 18 | 8521 / 8813 | complete=10, partial=8, unsupported=74 |
-| shipped-module-cycle | natural-agent | 2 / 79 | 10 / 85144 | 19 / 79 | 3501 / 85144 | complete=19, partial=60, unsupported=41 |
-| shipped-module-cycle | matched-human | 1 / 57 | 8 / 78347 | 11 / 57 | 2115 / 78347 | complete=11, partial=46, unsupported=35 |
-| shipped-public-api | natural-agent | 6 / 50 | 11 / 107551 | 5 / 50 | 346 / 107551 | complete=5, partial=45, unsupported=70 |
-| shipped-public-api | matched-human | 3 / 37 | 12 / 101233 | 4 / 37 | 253 / 101233 | complete=4, partial=33, unsupported=55 |
-| test-all-checks-removed | natural-agent | 0 / 80 | 0 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| test-all-checks-removed | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| test-weakened-rust | natural-agent | 0 / 40 | 0 / 8569 | 0 / 40 | 8569 / 8569 | partial=40, unsupported=80 |
-| test-weakened-rust | matched-human | 0 / 27 | 0 / 4729 | 0 / 27 | 4729 / 4729 | partial=27, unsupported=65 |
-| test-disabled | natural-agent | 0 / 80 | 0 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| test-disabled | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| test-expected-mirrors-production | natural-agent | 0 / 80 | 0 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| test-expected-mirrors-production | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| test-new-unchecked | natural-agent | 3 / 80 | 17 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| test-new-unchecked | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| design-family-bypass | natural-agent | 1 / 80 | 9 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| design-family-bypass | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| design-registration-bypass | natural-agent | 1 / 80 | 6 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| design-registration-bypass | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| design-wrapper-bypass | natural-agent | 2 / 80 | 2 / 30421 | 0 / 80 | 30421 / 30421 | partial=80, unsupported=40 |
-| design-wrapper-bypass | matched-human | 0 / 58 | 0 / 14074 | 0 / 58 | 14074 / 14074 | partial=58, unsupported=34 |
-| design-component-cycle | natural-agent | 2 / 40 | 10 / 21852 | 0 / 40 | 21142 / 21852 | local-resolution-incomplete=2, partial=38, unsupported=80 |
-| design-component-cycle | matched-human | 0 / 31 | 0 / 9345 | 0 / 31 | 8195 / 9345 | local-resolution-incomplete=3, partial=28, unsupported=61 |
-| unfinished-ellipsis-body | natural-agent | 0 / 40 | 0 / 25468 | 0 / 40 | 25468 / 25468 | partial=40, unsupported=80 |
-| unfinished-ellipsis-body | matched-human | 0 / 34 | 0 / 16193 | 0 / 34 | 16193 / 16193 | partial=34, unsupported=58 |
-| unfinished-throw-body | natural-agent | 0 / 40 | 0 / 25468 | 0 / 40 | 25468 / 25468 | partial=40, unsupported=80 |
-| unfinished-throw-body | matched-human | 1 / 34 | 1 / 16193 | 0 / 34 | 16193 / 16193 | partial=34, unsupported=58 |
-| error-empty-handler | natural-agent | 1 / 40 | 1 / 25468 | 0 / 40 | 25468 / 25468 | partial=40, unsupported=80 |
-| error-empty-handler | matched-human | 1 / 34 | 1 / 16193 | 0 / 34 | 16193 / 16193 | partial=34, unsupported=58 |
-| error-default-handler | natural-agent | 0 / 40 | 0 / 25468 | 0 / 40 | 25468 / 25468 | partial=40, unsupported=80 |
-| error-default-handler | matched-human | 0 / 34 | 0 / 16193 | 0 / 34 | 16193 / 16193 | partial=34, unsupported=58 |
-| error-broad-handler | natural-agent | 6 / 40 | 33 / 25468 | 0 / 40 | 25468 / 25468 | partial=40, unsupported=80 |
-| error-broad-handler | matched-human | 3 / 34 | 16 / 16193 | 0 / 34 | 16193 / 16193 | partial=34, unsupported=58 |
-| python-uv-lock | natural-agent | 0 / 4 | 0 / 11 | 0 / 4 | 5 / 11 | partial=4, unsupported=116 |
-| python-uv-lock | matched-human | 0 / 5 | 0 / 274 | 0 / 5 | 236 / 274 | partial=5, unsupported=87 |
-| cargo-lock-entry-shape | natural-agent | 0 / 13 | 0 / 3451 | 0 / 13 | 3451 / 3451 | partial=13, unsupported=107 |
-| cargo-lock-entry-shape | matched-human | 0 / 9 | 0 / 1918 | 0 / 9 | 1918 / 1918 | partial=9, unsupported=83 |
-| new-direct-dependency | natural-agent | 14 / 14 | 49 / 49 | 14 / 14 | 49 / 49 | complete=14, unsupported=106 |
-| new-direct-dependency | matched-human | 11 / 11 | 41 / 41 | 11 / 11 | 41 / 41 | complete=11, unsupported=81 |
-| ruff-python-injection | natural-agent | 4 / 39 | 15 / 286 | 39 / 39 | 286 / 286 | complete=39, unsupported=81 |
-| ruff-python-injection | matched-human | 6 / 34 | 12 / 162 | 34 / 34 | 162 / 162 | complete=34, unsupported=58 |
-| ruff-python-swallowed | natural-agent | 18 / 39 | 273 / 286 | 39 / 39 | 286 / 286 | complete=39, unsupported=81 |
-| ruff-python-swallowed | matched-human | 19 / 34 | 486 / 162 | 34 / 34 | 162 / 162 | complete=34, unsupported=58 |
+| Phenotype | Population | Affected / eligible changes | Findings / eligible units | Change eligibility known / sampled changes | Unit census known / possible eligible changes | Fully measured / eligible changes | Measured / eligible units | State counts |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| shipped-complexity | natural-agent | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 62 / 120 | 50 / 110 | unavailable | unavailable | complete=40, partial=13, unsupported=57 |
+| shipped-complexity | matched-human | unavailable (0 observed; eligibility unresolved for 41) | unavailable | 51 / 92 | 45 / 86 | unavailable | unavailable | complete=35, partial=10, unsupported=41 |
+| shipped-escapes | natural-agent | 36 / 120 | 383 / 49112 | 120 / 120 | 120 / 120 | 120 / 120 | 49112 / 49112 | complete=120 |
+| shipped-escapes | matched-human | 21 / 92 | 82 / 21911 | 92 / 92 | 92 / 92 | 92 / 92 | 21911 / 21911 | complete=92 |
+| shipped-stubs | natural-agent | 6–7 / 120 | unavailable | 120 / 120 | 0 / 120 | 0 / 120 | unavailable | partial=120 |
+| shipped-stubs | matched-human | 4 / 92 | unavailable | 92 / 92 | 0 / 92 | 0 / 92 | unavailable | partial=92 |
+| shipped-test-deletion | natural-agent | unavailable (0 observed; eligibility unresolved for 43) | unavailable | 77 / 120 | 16 / 62 | unavailable | unavailable | partial=26, unsupported=36 |
+| shipped-test-deletion | matched-human | unavailable (0 observed; eligibility unresolved for 29) | unavailable | 63 / 92 | 16 / 46 | unavailable | unavailable | partial=23, unsupported=23 |
+| shipped-test-skip | natural-agent | unavailable (36 observed; eligibility unresolved for 84) | unavailable | 36 / 120 | 0 / 120 | unavailable | unavailable | partial=120 |
+| shipped-test-skip | matched-human | unavailable (21 observed; eligibility unresolved for 71) | unavailable | 21 / 92 | 0 / 92 | unavailable | unavailable | partial=92 |
+| shipped-dead-symbols | natural-agent | unavailable (3 observed; eligibility unresolved for 77) | unavailable | 43 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| shipped-dead-symbols | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| shipped-reachability | natural-agent | unavailable (0 observed; eligibility unresolved for 80) | unavailable | 40 / 120 | 0 / 80 | unavailable | unavailable | partial=53, unsupported=27 |
+| shipped-reachability | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=39, unsupported=19 |
+| shipped-lockfile | natural-agent | unavailable (2 observed; eligibility unresolved for 23) | unavailable | 97 / 120 | 0 / 25 | unavailable | unavailable | partial=25 |
+| shipped-lockfile | matched-human | unavailable (1 observed; eligibility unresolved for 17) | unavailable | 75 / 92 | 0 / 18 | unavailable | unavailable | partial=18 |
+| shipped-module-cycle | natural-agent | unavailable (2 observed; eligibility unresolved for 78) | unavailable | 42 / 120 | 0 / 80 | unavailable | unavailable | partial=79, unsupported=1 |
+| shipped-module-cycle | matched-human | unavailable (1 observed; eligibility unresolved for 57) | unavailable | 35 / 92 | 0 / 58 | unavailable | unavailable | partial=57, unsupported=1 |
+| shipped-public-api | natural-agent | unavailable (6 observed; eligibility unresolved for 74) | unavailable | 46 / 120 | 0 / 80 | unavailable | unavailable | partial=50, unsupported=30 |
+| shipped-public-api | matched-human | unavailable (3 observed; eligibility unresolved for 55) | unavailable | 37 / 92 | 0 / 58 | unavailable | unavailable | partial=37, unsupported=21 |
+| test-all-checks-removed | natural-agent | unavailable (0 observed; eligibility unresolved for 80) | unavailable | 40 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| test-all-checks-removed | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| test-weakened-rust | natural-agent | unavailable (0 observed; eligibility unresolved for 40) | unavailable | 80 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| test-weakened-rust | matched-human | unavailable (0 observed; eligibility unresolved for 27) | unavailable | 65 / 92 | 0 / 27 | unavailable | unavailable | partial=27 |
+| test-disabled | natural-agent | unavailable (0 observed; eligibility unresolved for 80) | unavailable | 40 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| test-disabled | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| test-expected-mirrors-production | natural-agent | unavailable (0 observed; eligibility unresolved for 80) | unavailable | 40 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| test-expected-mirrors-production | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| test-new-unchecked | natural-agent | unavailable (3 observed; eligibility unresolved for 77) | unavailable | 43 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| test-new-unchecked | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| design-family-bypass | natural-agent | unavailable (1 observed; eligibility unresolved for 79) | unavailable | 41 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| design-family-bypass | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| design-registration-bypass | natural-agent | unavailable (1 observed; eligibility unresolved for 79) | unavailable | 41 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| design-registration-bypass | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| design-wrapper-bypass | natural-agent | unavailable (2 observed; eligibility unresolved for 78) | unavailable | 42 / 120 | 0 / 80 | unavailable | unavailable | partial=80 |
+| design-wrapper-bypass | matched-human | unavailable (0 observed; eligibility unresolved for 58) | unavailable | 34 / 92 | 0 / 58 | unavailable | unavailable | partial=58 |
+| design-component-cycle | natural-agent | unavailable (2 observed; eligibility unresolved for 38) | unavailable | 82 / 120 | 0 / 40 | unavailable | unavailable | local-resolution-incomplete=2, partial=38 |
+| design-component-cycle | matched-human | unavailable (0 observed; eligibility unresolved for 31) | unavailable | 61 / 92 | 0 / 31 | unavailable | unavailable | local-resolution-incomplete=3, partial=28 |
+| unfinished-ellipsis-body | natural-agent | unavailable (0 observed; eligibility unresolved for 40) | unavailable | 80 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| unfinished-ellipsis-body | matched-human | unavailable (0 observed; eligibility unresolved for 34) | unavailable | 58 / 92 | 0 / 34 | unavailable | unavailable | partial=34 |
+| unfinished-throw-body | natural-agent | unavailable (0 observed; eligibility unresolved for 40) | unavailable | 80 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| unfinished-throw-body | matched-human | unavailable (1 observed; eligibility unresolved for 33) | unavailable | 59 / 92 | 0 / 34 | unavailable | unavailable | partial=34 |
+| error-empty-handler | natural-agent | unavailable (1 observed; eligibility unresolved for 39) | unavailable | 81 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| error-empty-handler | matched-human | unavailable (1 observed; eligibility unresolved for 33) | unavailable | 59 / 92 | 0 / 34 | unavailable | unavailable | partial=34 |
+| error-default-handler | natural-agent | unavailable (0 observed; eligibility unresolved for 40) | unavailable | 80 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| error-default-handler | matched-human | unavailable (0 observed; eligibility unresolved for 34) | unavailable | 58 / 92 | 0 / 34 | unavailable | unavailable | partial=34 |
+| error-broad-handler | natural-agent | unavailable (6 observed; eligibility unresolved for 34) | unavailable | 86 / 120 | 0 / 40 | unavailable | unavailable | partial=40 |
+| error-broad-handler | matched-human | unavailable (3 observed; eligibility unresolved for 31) | unavailable | 61 / 92 | 0 / 34 | unavailable | unavailable | partial=34 |
+| python-uv-lock | natural-agent | unavailable (0 observed; eligibility unresolved for 4) | unavailable | 116 / 120 | 0 / 4 | unavailable | unavailable | partial=4 |
+| python-uv-lock | matched-human | unavailable (0 observed; eligibility unresolved for 5) | unavailable | 87 / 92 | 0 / 5 | unavailable | unavailable | partial=5 |
+| cargo-lock-entry-shape | natural-agent | unavailable (0 observed; eligibility unresolved for 13) | unavailable | 107 / 120 | 0 / 13 | unavailable | unavailable | partial=13 |
+| cargo-lock-entry-shape | matched-human | unavailable (0 observed; eligibility unresolved for 9) | unavailable | 83 / 92 | 0 / 9 | unavailable | unavailable | partial=9 |
+| new-direct-dependency | natural-agent | 14 / 27 | unavailable | 120 / 120 | 0 / 27 | 0 / 27 | unavailable | partial=27 |
+| new-direct-dependency | matched-human | 11 / 24 | unavailable | 92 / 92 | 0 / 24 | 0 / 24 | unavailable | partial=24 |
+| ruff-python-injection | natural-agent | 4–5 / 40 | unavailable | 120 / 120 | 40 / 40 | 39 / 40 | unavailable | complete=39, unsupported=1 |
+| ruff-python-injection | matched-human | 6 / 34 | 12 / 162 | 92 / 92 | 34 / 34 | 34 / 34 | 162 / 162 | complete=34 |
+| ruff-python-swallowed | natural-agent | 18–19 / 40 | unavailable | 120 / 120 | 40 / 40 | 39 / 40 | unavailable | complete=39, unsupported=1 |
+| ruff-python-swallowed | matched-human | 19 / 34 | 486 / 162 | 92 / 92 | 34 / 34 | 34 / 34 | 162 / 162 | complete=34 |
 
 All counts can be recalculated from `measurements.tsv` and `findings.tsv`.

@@ -16,6 +16,10 @@ python docs/phenotype-study-2026-10-04/study.py replay --cache /path/to/study-ca
 python docs/phenotype-study-2026-10-04/study.py report
 ```
 
+For an existing replay, `reconcile --cache /path/to/study-cache` refreshes the
+registered-unit census and prevalence report from the cached changed-scope run
+records without rerunning the frozen detectors.
+
 materialize writes the frozen agent and matched-human sample, skipped-candidate
 audit and input manifest. replay builds klin and the three frozen prototypes
 from study_commit, runs the registered measurements and frozen hard-negative
@@ -32,5 +36,9 @@ normal scope; the derived acyclic `layering` section is added for the registered
 module-cycle measurement.
 
 The prevalence report is descriptive. It does not add blind labels or make a
-product disposition. Rows with incomplete coverage remain in the denominator
-and are reported with their measurement state.
+product disposition. Rows with incomplete coverage remain visible and are not
+counted as clean. Change rates are withheld when the registered change-level
+eligibility census is incomplete. Site rates are withheld when the change
+census, eligible-unit census or measurement is incomplete. For a complete
+change census, unresolved measurements are shown as an observed-to-possible
+interval.

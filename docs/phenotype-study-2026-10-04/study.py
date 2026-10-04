@@ -1131,8 +1131,11 @@ def relevant(phenotype: str, language: str, files: list[str]) -> list[str]:
     paths = set(files)
     if phenotype in {"shipped-complexity", "shipped-escapes", "shipped-stubs", "shipped-test-skip"}:
         return [path for path in files if path.endswith(LANGUAGES[language])]
-    if phenotype in {"shipped-dead-symbols", "shipped-reachability", "shipped-public-api"}:
+    if phenotype in {"shipped-dead-symbols", "shipped-reachability"}:
         return [path for path in files if language in ("Rust", "TypeScript") and path.endswith(LANGUAGES[language])]
+    if phenotype == "shipped-public-api":
+        suffixes = LANGUAGES[language] + (("Cargo.toml",) if language == "Rust" else ("package.json",))
+        return [path for path in files if language in ("Rust", "TypeScript") and path.endswith(suffixes)]
     if phenotype == "shipped-test-deletion":
         return [path for path in files if path.endswith(LANGUAGES[language])]
     if phenotype == "shipped-lockfile":
@@ -1686,6 +1689,7 @@ def replay(cache: pathlib.Path) -> None:
         "study_version", "case_set_id", "case_id", "phenotype_id",
         "measurement_state", "finding_ids", "result", "reason",
     ), hard_results)
+    reconcile_measurements(measurement_rows, cache)
     write_json_tsv(HERE / "measurements.tsv", MEASUREMENT_FIELDS, measurement_rows)
     coordinator_path = HERE / "packet-coordinator.json"
     if coordinator_path.is_file():
@@ -2181,6 +2185,309 @@ def replay_fixture_hard_negatives(
     return results, packets
 
 
+def decoded_json(value: object, fallback: object) -> object:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return fallback
+    return value
+
+
+def report_record(path: pathlib.Path) -> dict[str, object] | None:
+    if not path.is_file():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    report_value = value.get("report") if isinstance(value, dict) else None
+    return report_value if isinstance(report_value, dict) else None
+
+
+def measurement_gate_finding_count(report_value: dict[str, object] | None, gate_name: str) -> int:
+    if report_value is None:
+        return 0
+    findings = report_value.get("findings", [])
+    return sum(
+        isinstance(item, dict)
+        and item.get("gate") == gate_name
+        and item.get("outcome") in {"new", "worsened"}
+        for item in findings if isinstance(findings, list)
+    )
+
+
+def detector_outcome_known(state: str, holes: list[object], finding_count: int) -> bool:
+    if finding_count or state == "complete":
+        return True
+    if state != "partial":
+        return False
+    census_only = (
+        "eligible-unit census",
+        "changed source lines are a proxy",
+        "changed test candidates and skip-capable sites are not separately counted",
+        "eligible direct python dependency entries are not separately enumerated",
+        "eligible registry lock entries are not separately enumerated",
+    )
+    return not any(
+        not any(marker in str(hole).lower() for marker in census_only)
+        for hole in holes
+    )
+
+
+def reconcile_measurements(rows: list[dict[str, object]], cache: pathlib.Path) -> None:
+    """Replace whole-tree/file coverage metrics with registered-scope censuses.
+
+    Some frozen detectors do not expose their registered eligible-unit census. Those rows keep
+    their observed findings, but carry a partial state and cannot produce a site prevalence rate.
+    """
+    samples_path = HERE / "natural-sample.tsv"
+    samples = list(csv.DictReader(samples_path.open(encoding="utf-8"), delimiter="\t"))
+    by_change = {str(sample["change_id"]): sample for sample in samples}
+    phenotype_languages = {
+        row["id"]: set(row["languages"].split("|"))
+        for row in csv.DictReader((HERE / "phenotypes.tsv").open(encoding="utf-8"), delimiter="\t")
+    }
+    replay = cache / "replay"
+    scopes: dict[str, dict[str, object] | None] = {}
+    full_reports: dict[str, dict[str, object] | None] = {}
+    paths_by_change: dict[str, tuple[pathlib.Path, list[str]]] = {}
+    head_paths_by_change: dict[str, set[str]] = {}
+
+    for change_id, sample in by_change.items():
+        bare = bare_repository(cache, str(sample["repository"]))
+        if not bare.is_dir():
+            paths_by_change[change_id] = (bare, [], [])
+            scopes[change_id] = None
+            full_reports[change_id] = None
+            continue
+        paths = changed_paths(bare, str(sample["base"]), str(sample["head"]))
+        head_paths = all_paths(bare, str(sample["head"]))
+        paths_by_change[change_id] = (bare, paths)
+        head_paths_by_change[change_id] = set(head_paths)
+        scopes[change_id] = report_record(replay / "runs" / f"{change_id}-scope.json")
+        full_reports[change_id] = report_record(replay / "runs" / f"{change_id}.json")
+
+    for row in rows:
+        change_id = str(row["change_id"])
+        sample = by_change.get(change_id)
+        values = decoded_json(row.get("values", {}), {})
+        values = values if isinstance(values, dict) else {}
+        holes = decoded_json(row.get("holes", []), [])
+        holes = list(holes) if isinstance(holes, list) else []
+        phenotype = str(row["phenotype_id"])
+        semantic = row.get("semantic_eligible") is True or str(row.get("semantic_eligible")) == "True"
+        starting_state = str(row.get("measurement_state", ""))
+        finding_count = int(values.get("finding_count", 0) or 0)
+        units: int | None = None
+        unit_census_known: bool | None = None
+        method = ""
+
+        scope_files: list[str] = []
+        if sample is not None:
+            bare, changed = paths_by_change[change_id]
+            recorded_scope_files = values.get("measurement_scope_files", [])
+            scope_files = (
+                relevant(phenotype, str(sample["language"]), changed)
+                if bare.is_dir()
+                else recorded_scope_files if isinstance(recorded_scope_files, list) else []
+            )
+            if phenotype in {"ruff-python-injection", "ruff-python-swallowed"} and bare.is_dir():
+                scope_files = [path for path in scope_files if path in head_paths_by_change[change_id]]
+            values["measurement_scope_files"] = scope_files
+
+        if sample is not None and phenotype == "shipped-complexity":
+            existing = int(row.get("eligibility_count", 0) or 0)
+            has_finding = measurement_gate_finding_count(full_reports.get(change_id), "complexity") > 0
+            gate = gate_record(scopes.get(change_id), "complexity")
+            coverage = (gate or {}).get("coverage") or {}
+            incomplete = bool(int(coverage.get("not_measured", 0) or 0) or int(coverage.get("unreadable", 0) or 0))
+            if existing > 0:
+                units, method = existing, "changed functions parsed and judged by frozen klin complexity"
+                unit_census_known = not incomplete
+            elif semantic or has_finding:
+                semantic = True
+                row["semantic_eligible"] = True
+                if has_finding or int(coverage.get("found", 0)) > 0:
+                    method = "changed functions could not be enumerated by the failing/empty CLI summary"
+            elif not incomplete:
+                units, unit_census_known = 0, True
+                method = "no changed complexity function in the frozen scope"
+
+        elif sample is not None and phenotype == "shipped-escapes":
+            bare, _paths = paths_by_change[change_id]
+            scope_files = values.get("measurement_scope_files", [])
+            if bare.is_dir() and isinstance(scope_files, list):
+                units = diff_line_count(bare, str(sample["base"]), str(sample["head"]), [str(path) for path in scope_files])
+                method = "added and deleted source-line events in supported changed files"
+                unit_census_known = True
+
+        elif sample is not None and phenotype == "shipped-test-deletion":
+            gate = gate_record(scopes.get(change_id), "inventory")
+            if gate is not None:
+                coverage = gate.get("coverage") or {}
+                finding_count = measurement_gate_finding_count(scopes.get(change_id), "inventory")
+                census_hole = int(coverage.get("not_measured", 0)) or int(coverage.get("unreadable", 0))
+                unresolved_identity = any(
+                    any(word in str(hole).lower() for word in ("unresolved", "unparsed", "unknown"))
+                    for hole in holes
+                )
+                if not census_hole:
+                    units = int(gate.get("held") or 0) + finding_count
+                    method = "before-tree test identities held or removed in changed scope"
+                    unit_census_known = not unresolved_identity
+                else:
+                    method = "inventory could not census every before-tree test identity in changed scope"
+                    units = int(gate.get("held") or 0) + finding_count
+                    unit_census_known = False
+
+        elif sample is not None and phenotype == "shipped-reachability":
+            method = "frozen project module-discovery membership is not exposed in the replay record"
+
+        elif sample is not None and phenotype in {"ruff-python-injection", "ruff-python-swallowed"}:
+            if isinstance(scope_files, list):
+                units = len(scope_files)
+                method = "changed Python files passed to the registered Ruff family"
+                unit_census_known = True
+
+        elif sample is not None and phenotype == "new-direct-dependency":
+            dependency_path = replay / "runs" / f"{change_id}-dependencies.json"
+            try:
+                dependency = json.loads(dependency_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                dependency = {}
+            if not dependency.get("added_error") and isinstance(dependency.get("added"), list):
+                method = "full changed-manifest dependency-name census is unavailable"
+                values["change_outcome_known"] = True
+                if scope_files and row.get("measurement_state") == "unsupported":
+                    row["measurement_state"] = "partial"
+            elif scope_files:
+                row["measurement_state"] = "tool-error"
+                row["measured_count"] = 0
+                error = dependency.get("added_error") or "cached dependency parser result is missing"
+                holes.append(str(error))
+                values["tool_failure"] = True
+                values["change_outcome_known"] = False
+
+        supported_language = sample is not None and str(sample["language"]) in phenotype_languages.get(phenotype, set())
+        change_eligibility: bool | None = None
+        change_method = "registered change-level eligibility is not exposed by the frozen detector"
+
+        if sample is not None and not supported_language:
+            change_eligibility, change_method = False, "language is outside the frozen phenotype scope"
+        elif sample is not None and not paths_by_change[change_id][0].is_dir():
+            change_method = "repository scope cache is unavailable"
+        elif sample is not None and phenotype in {"shipped-escapes", "shipped-stubs"}:
+            change_eligibility = bool(scope_files)
+            change_method = "changed supported source-file scope"
+        elif sample is not None and phenotype in {"ruff-python-injection", "ruff-python-swallowed"}:
+            change_eligibility = bool(scope_files)
+            change_method = "changed Python files passed to the exact Ruff recipe"
+        elif sample is not None and phenotype == "new-direct-dependency":
+            change_eligibility = bool(scope_files)
+            change_method = "changed supported dependency-manifest scope"
+        elif sample is not None and phenotype == "shipped-reachability":
+            if int(values.get("finding_count", 0) or 0) > 0:
+                change_eligibility = True
+                change_method = "a frozen reachability finding proves an eligible candidate"
+            elif not scope_files:
+                change_eligibility = False
+                change_method = "no changed supported source file in the registered candidate scope"
+            else:
+                change_method = "frozen project module-discovery membership is not exposed in the replay record"
+        elif sample is not None and phenotype == "shipped-complexity":
+            gate = gate_record(scopes.get(change_id), "complexity")
+            coverage = (gate or {}).get("coverage") or {}
+            census_hole = bool(int(coverage.get("not_measured", 0) or 0) or int(coverage.get("unreadable", 0) or 0))
+            if units is not None and units > 0:
+                change_eligibility = True
+                change_method = "at least one changed complexity function enumerated by the frozen CLI"
+            elif unit_census_known is True and not census_hole:
+                change_eligibility = False
+                change_method = "no changed complexity function in the frozen scope"
+        elif sample is not None and phenotype == "shipped-test-deletion":
+            gate = gate_record(scopes.get(change_id), "inventory")
+            coverage = (gate or {}).get("coverage") or {}
+            census_hole = bool(int(coverage.get("not_measured", 0) or 0) or int(coverage.get("unreadable", 0) or 0))
+            if units is not None and units > 0:
+                change_eligibility = True
+                change_method = "at least one before-tree test identity is present in changed scope"
+            elif unit_census_known is True and not census_hole:
+                change_eligibility = False
+                change_method = "no before-tree test identity is present in changed scope"
+        elif sample is not None and int(values.get("finding_count", 0) or 0) > 0:
+            change_eligibility, change_method = True, "a frozen detector finding proves an eligible candidate"
+        elif sample is not None and not scope_files:
+            change_eligibility, change_method = False, "no changed file in the registered candidate scope"
+
+        if change_eligibility is not None:
+            semantic = change_eligibility
+        elif sample is not None and scope_files:
+            semantic = True
+        row["semantic_eligible"] = semantic
+        values["eligible_changes_known"] = change_eligibility is not None
+        values["eligible_change_method"] = change_method
+        if not isinstance(values.get("change_outcome_known"), bool):
+            values["change_outcome_known"] = detector_outcome_known(
+                starting_state, holes, finding_count
+            )
+
+        if units is not None:
+            row["semantic_eligible"] = semantic
+            row["eligibility_count"] = units
+            values["eligible_units"] = units
+            values["eligible_units_known"] = unit_census_known is True
+            values["eligibility_unit_method"] = method
+            values["eligibility_change_method"] = change_method
+            if str(row.get("measurement_state")) == "complete" and unit_census_known is not False:
+                row["measured_count"] = units
+            elif semantic and unit_census_known is False:
+                if str(row.get("measurement_state")) == "complete":
+                    row["measurement_state"] = "partial"
+                hole = "registered eligible-unit census is incomplete; site prevalence is not estimated"
+                if hole not in holes:
+                    holes.append(hole)
+        elif semantic:
+            row["eligibility_count"] = 0
+            row["measured_count"] = 0
+            values["eligible_units"] = 0
+            values["eligible_units_known"] = False
+            values["eligibility_unit_method"] = method or "registered eligible-unit census unavailable"
+            values["eligibility_change_method"] = change_method
+            hole = "registered eligible-unit census is unavailable; site prevalence is not estimated"
+            if hole not in holes:
+                holes.append(hole)
+            if str(row.get("measurement_state")) == "complete":
+                row["measurement_state"] = "partial"
+        else:
+            row["eligibility_count"] = 0
+            row["measured_count"] = 0
+            values["eligible_units"] = 0
+            values["eligible_units_known"] = True
+            values["eligibility_unit_method"] = "no registered unit in the changed scope"
+            values["eligibility_change_method"] = change_method
+
+        row["holes"] = holes
+        row["values"] = values
+
+
+def reconcile_saved_measurements(cache: pathlib.Path) -> None:
+    csv.field_size_limit(10_000_000)
+    path = HERE / "measurements.tsv"
+    if not path.is_file():
+        raise StudyError("measurements.tsv is missing; run replay first")
+    rows = list(csv.DictReader(path.open(encoding="utf-8"), delimiter="\t"))
+    for row in rows:
+        row["eligibility_count"] = int(row["eligibility_count"] or 0)
+        row["measured_count"] = int(row["measured_count"] or 0)
+        row["holes"] = decoded_json(row.get("holes", "[]"), [])
+        row["values"] = decoded_json(row.get("values", "{}"), {})
+        row["semantic_eligible"] = str(row["semantic_eligible"]).lower() == "true"
+    reconcile_measurements(rows, cache)
+    write_json_tsv(path, MEASUREMENT_FIELDS, rows)
+    report(cache)
+
+
 def report(cache: pathlib.Path | None = None) -> None:
     csv.field_size_limit(10_000_000)
     measurements_path, findings_path = HERE / "measurements.tsv", HERE / "findings.tsv"
@@ -2217,11 +2524,11 @@ def report(cache: pathlib.Path | None = None) -> None:
             )
     lines += [
         "",
-        "Frozen detector replay only. These are descriptive rates, not valid-regression labels or product dispositions.",
-        "Unsupported, partial, unavailable, invalid-syntax, local-resolution-incomplete and tool-error rows remain visible and do not count as clean measurements.",
+        "Frozen detector replay only. These are descriptive measurements, not valid-regression labels or product dispositions.",
+        "Incomplete rows remain visible and are not counted as clean. When the change census is complete, an affected-change interval includes observed positives as its lower bound and unresolved eligible changes as its upper bound. Change rates are withheld when change-level eligibility is unresolved. Site rates are withheld when change eligibility, any eligible-unit census, or any eligible measurement is incomplete.",
         "",
-        "| Phenotype | Population | Affected / eligible changes | Findings / eligible units | Fully measured / eligible changes | Measured / eligible units | State counts |",
-        "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+        "| Phenotype | Population | Affected / eligible changes | Findings / eligible units | Change eligibility known / sampled changes | Unit census known / possible eligible changes | Fully measured / eligible changes | Measured / eligible units | State counts |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     phenotypes = [line.split("\t", 1)[0] for line in (HERE / "phenotypes.tsv").read_text().splitlines()[1:]]
     populations = ["natural-agent", "matched-human"]
@@ -2230,18 +2537,66 @@ def report(cache: pathlib.Path | None = None) -> None:
             rows = counts.get((pid, population), [])
             eligible = [row for row in rows if row["semantic_eligible"] == "True"]
             eligible_changes = len(eligible)
-            eligible_units = sum(int(row["eligibility_count"]) for row in eligible)
+            values_by_row = {
+                row["row_id"]: decoded_json(row.get("values", "{}"), {})
+                for row in rows
+            }
+            known_change_count = sum(
+                isinstance(values_by_row[row["row_id"]], dict)
+                and values_by_row[row["row_id"]].get("eligible_changes_known") is True
+                for row in rows
+            )
+            change_census_known = known_change_count == len(rows)
+            units_known = [
+                row for row in eligible
+                if isinstance(values_by_row[row["row_id"]], dict)
+                and values_by_row[row["row_id"]].get("eligible_units_known") is True
+            ]
+            eligible_units = sum(int(row["eligibility_count"]) for row in units_known)
             measured_changes = sum(row["measurement_state"] == "complete" for row in eligible)
-            measured_units = sum(int(row["measured_count"]) for row in eligible)
             affected_changes = sum(finding_counts.get(row["row_id"], 0) > 0 for row in eligible)
+            unresolved_changes = sum(
+                values_by_row[row["row_id"]].get("change_outcome_known") is not True
+                and finding_counts.get(row["row_id"], 0) == 0
+                for row in eligible
+            )
+            if not change_census_known:
+                change_rate = (
+                    f"unavailable ({affected_changes} observed; eligibility unresolved for "
+                    f"{len(rows) - known_change_count})"
+                )
+            elif not eligible_changes:
+                change_rate = "no eligible changes"
+            elif unresolved_changes:
+                change_rate = f"{affected_changes}–{affected_changes + unresolved_changes} / {eligible_changes}"
+            else:
+                change_rate = f"{affected_changes} / {eligible_changes}"
             affected_sites = sum(finding_counts.get(row["row_id"], 0) for row in eligible)
+            exact_sites = (
+                change_census_known
+                and len(units_known) == eligible_changes
+                and measured_changes == eligible_changes
+            )
+            measured_units = sum(int(row["measured_count"]) for row in units_known)
+            site_rate = (
+                f"{affected_sites} / {eligible_units}"
+                if exact_sites and eligible_changes else "unavailable"
+            )
+            unit_rate = (
+                f"{measured_units} / {eligible_units}"
+                if exact_sites and eligible_changes else "unavailable"
+            )
+            fully_measured = (
+                f"{measured_changes} / {eligible_changes}"
+                if change_census_known else "unavailable"
+            )
             states: dict[str, int] = {}
-            for row in rows:
+            for row in eligible:
                 states[row["measurement_state"]] = states.get(row["measurement_state"], 0) + 1
             lines.append(
-                f"| {pid} | {population} | {affected_changes} / {eligible_changes} | "
-                f"{affected_sites} / {eligible_units} | {measured_changes} / {eligible_changes} | "
-                f"{measured_units} / {eligible_units} | {', '.join(f'{key}={value}' for key, value in sorted(states.items())) or '—'} |"
+                f"| {pid} | {population} | {change_rate} | "
+                f"{site_rate} | {known_change_count} / {len(rows)} | {len(units_known)} / {eligible_changes} | {fully_measured} | "
+                f"{unit_rate} | {', '.join(f'{key}={value}' for key, value in sorted(states.items())) or '—'} |"
             )
     lines += ["", "All counts can be recalculated from `measurements.tsv` and `findings.tsv`.", ""]
     (HERE / "prevalence-descriptive.md").write_text("\n".join(lines))
@@ -2258,6 +2613,8 @@ def main(argv: list[str]) -> int:
     build_parser.add_argument("--cache", type=pathlib.Path, required=True)
     replay_parser = sub.add_parser("replay", help="measure every selected natural change")
     replay_parser.add_argument("--cache", type=pathlib.Path, required=True)
+    reconcile_parser = sub.add_parser("reconcile", help="refresh registered-unit census and descriptive rates")
+    reconcile_parser.add_argument("--cache", type=pathlib.Path, required=True)
     report_parser = sub.add_parser("report", help="recalculate descriptive prevalence")
     report_parser.add_argument("--cache", type=pathlib.Path)
     args = parser.parse_args(argv)
@@ -2272,6 +2629,9 @@ def main(argv: list[str]) -> int:
         return 0
     if args.command == "replay":
         replay(args.cache)
+        return 0
+    if args.command == "reconcile":
+        reconcile_saved_measurements(args.cache)
         return 0
     if args.command == "report":
         report(args.cache)
