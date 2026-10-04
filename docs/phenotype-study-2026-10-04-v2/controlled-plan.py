@@ -52,17 +52,28 @@ def runtime(allow_pending: bool) -> dict[str, str]:
     row = rows[0]
     if row["study_commit"] != STUDY_COMMIT or row["klin_version"] != STUDY_VERSION:
         raise SystemExit("controlled-runtime row does not match the frozen study basis")
+    if row["source_kind"] != "github-release":
+        raise SystemExit("controlled runtime must use the frozen GitHub release asset")
+    if row["release_tag"] != "v0.4.2":
+        raise SystemExit("controlled runtime release tag does not match study v2")
+    if row["release_asset"] != "klin-aarch64-apple-darwin.tar.xz":
+        raise SystemExit("controlled runtime release asset does not match the frozen Apple Silicon artifact")
+    if row["release_asset_sha256"] != "6bca96b0f90bad16bac92c35d3a739ec02f5f915580d92161e35445773468b03":
+        raise SystemExit("controlled runtime release-asset SHA-256 does not match the frozen v0.4.2 release")
+    if row["host_platform"] != "aarch64-apple-darwin":
+        raise SystemExit("controlled runtime host_platform must match the frozen release asset")
+
     state = row["state"]
     if state == "ready":
         if not re.fullmatch(r"[0-9a-f]{64}", row["executable_sha256"]):
             raise SystemExit("ready runtime lacks a lowercase 64-hex executable SHA-256")
-        if not row["host_platform"]:
-            raise SystemExit("ready runtime lacks host_platform")
-    elif state == "pending-local-build":
+    elif state == "release-asset-frozen":
+        if row["executable_sha256"]:
+            raise SystemExit("release-asset-frozen runtime must not predeclare an executable SHA-256")
         if not allow_pending:
             raise SystemExit(
-                "study binary is not frozen yet; build study_commit locally and record "
-                "the exact executable SHA-256 before opening controlled tasks"
+                "release asset is frozen but the extracted binary has not been verified; "
+                "run prepare-controlled-runtime.py before opening controlled tasks"
             )
     else:
         raise SystemExit(f"unknown controlled runtime state: {state!r}")
