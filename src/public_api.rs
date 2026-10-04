@@ -48,13 +48,15 @@ const REMOVED: &str = "removed";
 const CHANGED: &str = "changed";
 const SURFACE_TEXT: &str = "(surface)";
 const REMEDY: &str = "Keep the surface, the item or the declared contract the base had where the task \
-                      allows it. For a changed contract, a new item beside the unchanged one keeps \
+                      allows it. An added optional parameter or overload is still a changed contract. \
+                      For a changed contract, a new item beside the unchanged one keeps \
                       the base's contract where that serves the task. Do not change what the task \
                       asked for only to satisfy this gate. If the break is intended, a person \
                       accepts it with an accepted entry in a reviewed commit, and until then CI \
                       refuses it.";
 const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract the base had where \
-                           the task allows it. For a changed contract, a new item beside the \
+                           the task allows it. An added optional parameter or overload is still a changed \
+                           contract. For a changed contract, a new item beside the \
                            unchanged one keeps the base's contract where that serves the task. Do \
                            not change what the task asked for only to satisfy this gate. If this \
                            stop blocked on a break the task intends, say so in your reply and stop \

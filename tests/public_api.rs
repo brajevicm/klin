@@ -1028,7 +1028,7 @@ fn a_changed_signature_and_a_removed_item_fail_and_an_addition_passes() {
         "{}",
         run.out
     );
-    assert!(!run.says("added"), "{}", run.out);
+    assert!(!run.says("added, declared at"), "{}", run.out);
 }
 
 #[test]
@@ -2905,4 +2905,27 @@ fn same_line_alias_holes_stay_distinct_sites() {
     let run = by_hand(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("could not be resolved"), "{}", run.out);
+}
+
+#[test]
+fn an_added_optional_parameter_or_overload_is_still_a_changed_contract_by_hand_and_in_the_hook() {
+    for source in [
+        "export function parse(input: string, mode?: number): number { return 1; }\n",
+        "export function parse(input: string): number;\nexport function parse(input: number): number;\nexport function parse(input: string | number): number { return 1; }\n",
+    ] {
+        let tree = Tree::new();
+        package_of(
+            &tree,
+            "export function parse(input: string): number { return 1; }\n",
+        );
+        tree.write("web/src/index.ts", source);
+        for (run, code) in [(by_hand(&tree), 1), (hook(&tree), 2)] {
+            assert_eq!(run.code, code, "{}", run.out);
+            assert!(
+                run.says("An added optional parameter or overload is still a changed contract"),
+                "{}",
+                run.out
+            );
+        }
+    }
 }

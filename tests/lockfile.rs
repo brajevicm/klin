@@ -995,6 +995,16 @@ fn a_new_dependency_missing_from_the_lockfile_gets_a_remedy_that_names_the_insta
         "{}",
         run.out
     );
+    assert!(
+        run.says("If you cannot run the install, report why"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Do not write lockfile entries by hand"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("Restore the exact version"), "{}", run.out);
     assert!(!run.says("Install again"), "{}", run.out);
 }
@@ -1014,7 +1024,8 @@ fn a_finding_with_several_values_prints_the_remedy_for_each() {
     assert!(
         run.says(
             "Run the project's own install, so the lockfile records the dependency. A \
-             dependency the lockfile does not know is one no install has ever resolved. Restore \
+             dependency the lockfile does not know is one no install has ever resolved. If you cannot \
+             run the install, report why. Do not write lockfile entries by hand. Restore \
              the exact version the base pinned, or pin an exact version for a new dependency."
         ),
         "{}",

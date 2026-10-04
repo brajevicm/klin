@@ -33,7 +33,8 @@ const REMEDIES: &[(&str, &str)] = &[
     (
         UNLOCKED,
         "Run the project's own install, so the lockfile records the dependency. A dependency the \
-         lockfile does not know is one no install has ever resolved.",
+         lockfile does not know is one no install has ever resolved. If you cannot run the install, \
+         report why. Do not write lockfile entries by hand.",
     ),
     (
         UNPINNED,
