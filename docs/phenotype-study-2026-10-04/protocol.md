@@ -164,7 +164,7 @@ window or scale rule after seeing outcomes.
 
 ## 5. Controlled population
 
-`populations.tsv` freezes six real repository tasks, two per language, and
+`populations.tsv` freezes nine real repository tasks, three per language, and
 their base/reference commits. Two agent families are used:
 
 - OpenAI Codex;
@@ -177,7 +177,7 @@ identifier changes within that batch, stop that family and record the remaining
 rows as unavailable until a protocol amendment is committed. If a family is
 unavailable, do not substitute another family. Each repetition uses a fresh
 session with no memory or transcript from another run; a seed is recorded when
-the host exposes one and otherwise recorded as `not-exposed`.
+the host exposes one and otherwise recorded as `not-exposed`. `schema.json` requires that value as `session_seed`. For every surfaced finding event, the run record preserves the exact feedback text plus its SHA-256; Shadow events record null feedback text/hash.
 
 For each task x agent family x repetition (two repetitions), run two independent
 fresh sessions from the same base:
@@ -186,7 +186,7 @@ fresh sessions from the same base:
 - **Active:** a registered finding is surfaced at its registered lifecycle
   placement and with the frozen product/research message.
 
-That is 6 x 2 x 2 x 2 = **48 planned runs**. Pair order is deterministic from
+That is 9 x 2 x 2 x 2 = **72 planned runs**. Pair order is deterministic from
 SHA-256 of `357-arm-v1:<task-id>:<agent-family>:<repetition>`: low bit 0 means
 Active first, 1 means Shadow first. Both sessions start from a clean copy of the frozen base; neither sees the
 other result.
@@ -246,16 +246,18 @@ cannot alone establish task correctness.
 `phenotypes.tsv` is normative. A detector not present there is exploratory and
 cannot influence #357 admission.
 
-Each phenotype has one explicit eligibility denominator. The core prevalence
-outputs are always:
+Each phenotype has one explicit **semantic** eligibility denominator. Eligibility is decided from the frozen registry and diff/tree facts before measurement success is known. Every selected natural change gets a phenotype measurement row. `semantic_eligible` records whether the change belongs to that phenotype's population; `eligibility_count` records its semantic units; `measured_count` records only units for which the frozen detector/prototype produced claim-complete evidence.
+
+The core prevalence and coverage outputs are always:
 
 ```text
-affected changes / eligible changes
-affected sites / eligible units
+affected changes / semantic-eligible changes
+affected sites / semantic-eligible units
+fully measured semantic-eligible changes / semantic-eligible changes
+sum(measured_count) / sum(eligibility_count)
 ```
 
-Unsupported, partial, unavailable, parse-failed, or local-resolution-incomplete
-measurements are not zero findings. They retain their state under #354.
+Unsupported, partial, unavailable, parse-failed, tool-error, or local-resolution-incomplete measurements remain in the semantic denominator and are not zero findings. They retain their state under #354. Missing measurement therefore lowers coverage rather than inflating prevalence.
 
 For TypeScript architecture candidates, a zero is countable only when all
 recognized local dependency sites relevant to that claim are proved or the
@@ -269,11 +271,16 @@ sort/deduplicate them, place all of them in one layer named `study-all` with
 represent the discovered roots, the row is unsupported rather than silently
 measured under a different policy.
 
-For the named Ruff recipe, a Ruff parse failure is retained as
-`invalid-syntax` recipe evidence as #363 specifies, but it is not a clean zero
-for either the injection or swallowed-error phenotype. Those family rows record
-measurement state `invalid-syntax` and exclude the file from their clean
-eligible denominator while preserving the parse-error evidence separately.
+For the named Ruff recipe, every changed Python file passed to the recipe is semantically eligible. A Ruff parse failure is retained as `invalid-syntax` recipe evidence as #363 specifies, is not a clean zero for either family, and contributes zero measured units for that file. Tool failures and invalid syntax therefore reduce coverage; they never remove the file from the eligibility denominator.
+
+### Frozen hard-negative population
+
+`hard-negatives.tsv` is normative. It freezes the hard-negative case sets and deterministic inclusion rules before final-study outcomes are inspected.
+
+- Every row selected by an applicable case-set selector is evaluated; there is no later subsampling or hand-picking.
+- Frozen planted corpora (#353, #355, #362, #364 and #363) are replayed from their registered bases/routes. The pilot rows are frozen previously labeled contexts and are used only as classification controls, never as controlled-task benefit evidence.
+- A phenotype with an applicable case-set mapping whose selector yields zero executable cases cannot satisfy a new user-facing admission bar in study v1; it is benchmark/defer rather than receiving a later hand-selected control.
+- Hard-negative outcomes are written to `hard-negative-results.tsv` with case-set id, case id/route, phenotype, measurement state, finding ids and label/intervention outcome.
 
 ## 7. Finding identity
 
@@ -372,6 +379,7 @@ tasks.tsv
 runs/
 outcomes.tsv
 residual-measurements.tsv
+hard-negative-results.tsv
 product-cost.tsv
 ```
 
