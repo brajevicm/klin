@@ -1,0 +1,108 @@
+name: publish-release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v') &&
+      contains(github.event.pull_request.body, '<!-- klin-release-pr -->')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - shell: bash
+        run: |
+          version=$(sed -n 's/^cargo-dist-version = "\(.*\)"$/\1/p' dist-workspace.toml)
+          curl --proto '=https' --tlsv1.2 -LsSf             "https://github.com/axodotdev/cargo-dist/releases/download/v$version/cargo-dist-installer.sh" | sh
+
+      - name: Tag and publish the merged release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+
+          version="${HEAD_REF#release/v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Invalid release branch::$HEAD_REF does not name an X.Y.Z release."
+            exit 1
+          fi
+          tag="v$version"
+
+          cargo_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          if [[ "$cargo_version" != "$version" ]]; then
+            echo "::error title=Version mismatch::$HEAD_REF names $version but the merged Cargo.toml has $cargo_version."
+            exit 1
+          fi
+
+          for manifest in             plugins/klin/.claude-plugin/plugin.json             plugins/klin/.cursor-plugin/plugin.json
+          do
+            held=$(jq -r '.version' "$manifest")
+            [[ "$held" == "$version" ]] || {
+              echo "::error title=Version mismatch::$manifest has $held instead of $version."
+              exit 1
+            }
+          done
+
+          for market in .claude-plugin/marketplace.json .agents/plugins/marketplace.json
+          do
+            held=$(jq -r '.plugins[0].source.ref' "$market")
+            [[ "$held" == "$tag" ]] || {
+              echo "::error title=Version mismatch::$market names $held instead of $tag."
+              exit 1
+            }
+          done
+
+          grep -Fq "brajevicm/klin@$tag" README.md
+          grep -Fq -- "--branch $tag" README.md
+
+          git fetch origin --tags
+          if existing=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}"); then
+            if [[ "$existing" != "$MERGE_SHA" ]]; then
+              echo "::error title=Release tag already exists::$tag points to $existing, not merged commit $MERGE_SHA. Tags are never moved."
+              exit 1
+            fi
+          else
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+            git tag -a "$tag" "$MERGE_SHA" -m "Release $version"
+          fi
+
+          dist plan --tag="$tag" --output-format=json > "$RUNNER_TEMP/plan.json"
+          title=$(jq -er .announcement_title "$RUNNER_TEMP/plan.json")
+          jq -er .announcement_github_body "$RUNNER_TEMP/plan.json" > "$RUNNER_TEMP/notes.md"
+
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            # RELEASE_TOKEN is intentionally used for this push: a tag created by the
+            # workflow's GITHUB_TOKEN would not trigger the tag-based Release workflow.
+            git push origin "refs/tags/$tag"
+          fi
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            # dist-workspace.toml has create-release=false, so dist expects this draft.
+            gh release create "$tag" --draft --verify-tag               --title "$title" --notes-file "$RUNNER_TEMP/notes.md"
+          fi
+
+          {
+            echo "Published **$tag** from merged commit `$MERGE_SHA`."
+            echo
+            echo "The existing cargo-dist Release workflow now builds and publishes the release."
+          } >> "$GITHUB_STEP_SUMMARY"
