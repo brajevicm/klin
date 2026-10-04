@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
@@ -28,12 +26,12 @@ fn tree(config: &str) -> Tree {
     tree
 }
 
-fn stop(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+fn stop(tree: &Tree, event: &str) -> crate::harness::Run {
+    crate::harness::feed(tree.root(), &["gate", "--hook"], event)
 }
 
 fn prompt(tree: &Tree) {
-    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let run = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -234,7 +232,7 @@ fn a_new_prompt_does_not_get_the_no_prompt_note_from_an_earlier_intervention() {
     let first = stop(&tree, A_STOP);
     assert_eq!(first.code, 2, "{}", first.out);
     let session_start = r#"{"hook_event_name": "SessionStart", "session_id": "s-1"}"#;
-    let started = harness::feed(tree.root(), &["radius"], session_start);
+    let started = crate::harness::feed(tree.root(), &["radius"], session_start);
     assert_eq!(started.code, 0, "{}", started.out);
 
     let second = stop(&tree, A_SECOND_STOP);
@@ -318,7 +316,7 @@ fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() 
     let file = tree.at("a-file");
     tree.write("a-file", "");
 
-    let run = harness::feed_with(
+    let run = crate::harness::feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", file.as_str())],
         &["gate", "--hook"],
@@ -453,7 +451,7 @@ fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() 
     let tree = radius_tree();
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9",
                     "prompt": "Fix the thing\nmore context on a second line"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = crate::harness::feed(tree.root(), &["radius"], event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -472,11 +470,14 @@ fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() 
 fn a_prompt_after_a_measurable_change_carries_the_radius_facts() {
     let tree = radius_tree();
     let session = r#"{"hook_event_name": "SessionStart", "session_id": "s-9"}"#;
-    assert_eq!(harness::feed(tree.root(), &["radius"], session).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], session).code,
+        0
+    );
     tree.write("src/a.rs", "// held\n// more\n");
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9", "prompt": "go"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = crate::harness::feed(tree.root(), &["radius"], event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -499,7 +500,7 @@ fn journal_prompt_false_turns_off_the_excerpt_and_keeps_the_rest() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = crate::harness::feed(tree.root(), &["radius"], event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -519,7 +520,7 @@ fn a_configuration_that_will_not_load_turns_off_the_excerpt() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = crate::harness::feed(tree.root(), &["radius"], event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -542,7 +543,7 @@ fn a_schedule_with_no_step_due_turns_off_the_excerpt() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = crate::harness::feed(tree.root(), &["radius"], event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -551,8 +552,8 @@ fn a_schedule_with_no_step_due_turns_off_the_excerpt() {
     assert!(line.get("text").is_none(), "{line}");
 }
 
-fn guard(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["guard"], event)
+fn guard(tree: &Tree, event: &str) -> crate::harness::Run {
+    crate::harness::feed(tree.root(), &["guard"], event)
 }
 
 #[test]

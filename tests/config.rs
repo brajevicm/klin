@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Tree, run_from};
+use crate::harness::{Tree, run_from};
 
 const ONE_DOC: &str = r#"{"doc_size": {"README.md": 10}}"#;
 

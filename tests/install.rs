@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const CANONICAL_SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
@@ -181,7 +179,7 @@ fn install_opts_the_repository_in_from_a_nested_directory() {
     tree.write(".claude/settings.json", "{}\n");
     tree.write("apps/web/index.ts", "export const one = 1;\n");
 
-    let run = harness::run_from(&tree.path("apps/web"), &["install"]);
+    let run = crate::harness::run_from(&tree.path("apps/web"), &["install"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
     assert!(!tree.path("apps/web/klin.json").exists(), "{}", run.out);
@@ -980,7 +978,7 @@ fn after_the_cursor_plugin_copy_is_removed_the_committed_hooks_run() {
         "workspace_roots": [tree.root()],
         "prompt": "go",
     });
-    let run = harness::feed(tree.root(), &["radius"], &prompt.to_string());
+    let run = crate::harness::feed(tree.root(), &["radius"], &prompt.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.field("prompts"), "1", "{}", run.out);

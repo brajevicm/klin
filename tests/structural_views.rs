@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::{Value, json};
 
 const CONFIG: &str = r#"{"dead_symbols":{"in":["src","web"]}}"#;
@@ -28,7 +26,13 @@ fn reachability_views(scenario: fn(&Tree)) -> Value {
 }
 
 fn views_for(config: &str, gate_name: &str, report: &[&str], scenario: fn(&Tree)) -> Value {
-    let seen = observed(&harness::binary(), config, gate_name, report, scenario);
+    let seen = observed(
+        &crate::harness::binary(),
+        config,
+        gate_name,
+        report,
+        scenario,
+    );
     if let Ok(other) = std::env::var("KLIN_DIFF_BIN") {
         assert_eq!(
             seen,
@@ -49,7 +53,7 @@ fn observed(
     let tree = Tree::new();
     tree.write("klin.json", config);
     scenario(&tree);
-    let run = |args: &[&str]| harness::feed_as(klin, tree.root(), args, A_STOP);
+    let run = |args: &[&str]| crate::harness::feed_as(klin, tree.root(), args, A_STOP);
     let judged = |flags: &[&str]| {
         let mut args = vec!["gate", "--json", "--gate", gate_name];
         args.extend_from_slice(flags);

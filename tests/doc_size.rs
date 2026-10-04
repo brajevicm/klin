@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 #[test]
 fn a_document_under_its_ceiling_passes_and_prints_both_numbers() {

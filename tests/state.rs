@@ -1,9 +1,7 @@
-mod harness;
-
 use std::path::Path;
 use std::process::Command;
 
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 
 const GATES: &str = r#""doc_size": {"README.md": 10}"#;
 const CLEAN: &str = "fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
@@ -52,7 +50,7 @@ fn list_prints_the_state_directory_under_the_git_directory() {
 fn the_build_stamp_lands_under_the_git_directory_where_git_never_sees_it() {
     let tree = tree("\"build\": \"false\",");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let run = crate::harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.state("build-blocked").is_file(), "{}", run.out);
     assert_eq!(tree.status(), "", "the run touched the working tree");
@@ -71,7 +69,7 @@ fn two_clones_of_one_repository_get_two_state_directories() {
     let environment = [("KLIN_STATE_DIR", under.as_str())];
 
     let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
-    let theirs = state_line(&harness::run_from_with(
+    let theirs = state_line(&crate::harness::run_from_with(
         clone.root(),
         &environment,
         &["gate", "--list"],
@@ -99,7 +97,7 @@ fn a_git_worktree_gets_its_own_state_directory() {
     );
 
     let mine = state_line(&tree.run(&["gate", "--list"]));
-    let theirs = state_line(&harness::run_from(&at, &["gate", "--list"]));
+    let theirs = state_line(&crate::harness::run_from(&at, &["gate", "--list"]));
     assert!(theirs.ends_with("/klin"), "{theirs}");
     assert_ne!(mine, theirs);
 }
@@ -212,14 +210,14 @@ fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
 #[test]
 fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
     let tree = tree("");
-    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let first = crate::harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
     assert_eq!(first.code, 0, "{}", first.out);
     assert_eq!(tree.field("verdict"), "green", "{}", first.out);
 
     let _lock = held_lock(&tree);
     tree.words("README.md", 30);
 
-    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let held = crate::harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(held.says("held the state directory"), "{}", held.out);
     assert!(held.says("FAIL  doc-size"), "{}", held.out);
@@ -232,12 +230,12 @@ fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
 #[test]
 fn a_build_failure_at_a_stop_that_cannot_take_the_state_directory_spends_no_block() {
     let tree = tree("\"build\": \"test ! -f fails\",");
-    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let first = crate::harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
     assert_eq!(first.code, 0, "{}", first.out);
 
     let _lock = held_lock(&tree);
     tree.write("fails", "");
-    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let held = crate::harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(held.says("does not build"), "{}", held.out);
     assert!(held.says("held the state directory"), "{}", held.out);

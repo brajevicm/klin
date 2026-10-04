@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree, feed};
+use crate::harness::{Run, Tree, feed};
 
 const A_CONFIG: &str = r#"{
   "doc_size": {"README.md": 10}

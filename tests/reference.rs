@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 fn printed() -> String {
     let tree = Tree::bare();

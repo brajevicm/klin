@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::{Value, json};
 
 const DAY: u64 = 86_400;
@@ -1078,12 +1076,12 @@ fn an_escape() -> String {
     )
 }
 
-fn hook(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+fn hook(tree: &Tree, event: &str) -> crate::harness::Run {
+    crate::harness::feed(tree.root(), &["gate", "--hook"], event)
 }
 
 fn prompt(tree: &Tree) {
-    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let run = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -1096,7 +1094,7 @@ fn blocked(tree: &Tree) {
 }
 
 /// What a stop hands the person through the host's `systemMessage`, or nothing.
-fn told(run: &harness::Run) -> String {
+fn told(run: &crate::harness::Run) -> String {
     run.printed
         .lines()
         .find_map(|line| {

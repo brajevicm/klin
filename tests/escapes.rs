@@ -1,9 +1,6 @@
-mod harness;
+use crate::text;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const CONFIG: &str = r#"{
   "escapes": { "in": "src" }

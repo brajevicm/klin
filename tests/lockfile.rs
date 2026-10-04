@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 fn manifest(dependencies: &str) -> String {
     format!("[package]\nname = \"t\"\n\n[dependencies]\n{dependencies}")
@@ -396,7 +394,7 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_
     tree.base();
     tree.write("testdata/broken/package.json", "{ not json");
     let run = tree.run(&["gate", "--gate", "lockfile"]);
-    let stop = harness::feed(
+    let stop = crate::harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "lockfile"],
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,

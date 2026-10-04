@@ -1,8 +1,6 @@
-mod harness;
-
 use std::path::Path;
 
-use harness::{Run, Tree, feed};
+use crate::harness::{Run, Tree, feed};
 use serde_json::{Value, json};
 
 const A_CONFIG: &str = r#"{

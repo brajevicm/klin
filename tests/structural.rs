@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::{Value, json};
 
 const GATES: [&str; 3] = ["complexity", "dead-symbols", "reachability"];

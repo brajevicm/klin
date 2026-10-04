@@ -5,6 +5,15 @@ edition = "2024"
 description = "Quality ratchets for AI-driven development, in one binary."
 repository = "https://github.com/brajevicm/klin"
 license = "Apache-2.0"
+autotests = false
+
+[[test]]
+name = "suite"
+path = "tests/suite.rs"
+
+[[test]]
+name = "performance"
+path = "tests/performance.rs"
 
 [package.metadata.release]
 allow-branch = ["main"]

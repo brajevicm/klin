@@ -1,9 +1,7 @@
-mod harness;
-
 use std::fs;
 use std::path::PathBuf;
 
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::{Value, json};
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
@@ -286,10 +284,13 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
     tree.write("src/lib.rs", "pub fn api() {}\n");
     tree.write("src/main.rs", "fn main() {}\n");
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     tree.write("src/lib.rs", "pub fn api() {}\nfn debt() {}\n");
     let stop = || {
-        let run = harness::feed(
+        let run = crate::harness::feed(
             tree.root(),
             &[
                 "gate",
@@ -316,7 +317,10 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
 
     let first = stop();
     let second = stop();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     tree.git(&["checkout", "-q", "-b", "elsewhere"]);
     let third = stop();
 
@@ -637,7 +641,7 @@ fn a_configuration_root_below_the_git_top_level_lists_its_own_subtree() {
     tree.write("app/src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
 
     let warm = light_beside_whole(&tree, |tree| {
-        harness::run_from(
+        crate::harness::run_from(
             &tree.path("app"),
             &["gate", "--json", "--changed", "--gate", "dead-symbols"],
         )

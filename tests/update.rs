@@ -1,9 +1,7 @@
-mod harness;
-
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
-use harness::Tree;
+use crate::harness::Tree;
 
 /// `klin update` hands the run to `klin-update` and returns what it returned. Spec 19.5.
 #[test]

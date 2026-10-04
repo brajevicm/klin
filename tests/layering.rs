@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const LAYERS: &str = r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":["domain"]},"domain":{"in":"src/domain","can_use":[]}}}}"#;
 
@@ -127,7 +125,7 @@ const WEB: &str = r#"{"layering":{"acyclic":true,"layers":{"view":{"in":"web/vie
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const PACKAGE: &str = "[package]\nname = \"t\"\nversion = \"0.1.0\"\nedition = \"2024\"\n";
 
-fn changed(tree: &Tree) -> harness::Run {
+fn changed(tree: &Tree) -> crate::harness::Run {
     tree.run(&["gate", "--changed", "--gate", "layering"])
 }
 
@@ -284,7 +282,7 @@ fn a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook() {
     tree.write("src/ui.rs", "pub fn show() {}\n");
 
     let run = tree.run(&["layering"]);
-    let hook = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let hook = crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(

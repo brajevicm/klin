@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 fn tree(conventions: &str) -> Tree {
     let tree = Tree::new();
@@ -202,12 +200,12 @@ fn a_site_the_code_removed_passes_with_nothing_to_say() {
     assert!(!run.says("NOTE"), "{}", run.out);
 }
 
-fn judged(tree: &Tree) -> harness::Run {
+fn judged(tree: &Tree) -> crate::harness::Run {
     tree.run(&["gate", "--gate", "conventions", "--json"])
 }
 
 /// Every finding a run reported, as the convention and the site, sorted.
-fn sites(run: &harness::Run) -> Vec<String> {
+fn sites(run: &crate::harness::Run) -> Vec<String> {
     let report = run.json();
     let mut out: Vec<String> = report["findings"]
         .as_array()
@@ -226,7 +224,7 @@ fn sites(run: &harness::Run) -> Vec<String> {
     out
 }
 
-fn refused(conventions: &str) -> harness::Run {
+fn refused(conventions: &str) -> crate::harness::Run {
     let tree = tree(conventions);
     tree.write("src/lib.rs", "fn f() {}\n");
     let run = tree.run(&["conventions"]);
@@ -475,7 +473,7 @@ fn a_scope_path_is_read_from_the_repository_root_wherever_klin_runs_and_never_as
     tree.write("lib.rs", "FORBIDDEN\n");
 
     assert_eq!(sites(&judged(&tree)), ["c src/lib.rs:1"]);
-    let below = harness::run_from(
+    let below = crate::harness::run_from(
         &tree.path("src"),
         &["gate", "--gate", "conventions", "--json"],
     );
@@ -1088,7 +1086,7 @@ fn the_report_names_a_file_in_scope_the_grammar_could_not_read() {
 }
 
 /// The summary row of one convention, with the padding between its columns collapsed.
-fn row(run: &harness::Run, name: &str) -> String {
+fn row(run: &crate::harness::Run, name: &str) -> String {
     run.out
         .lines()
         .find(|line| line.split_whitespace().next() == Some(name))

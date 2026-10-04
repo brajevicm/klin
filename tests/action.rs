@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use std::process::Command;
 
 const ACTION: &str = include_str!("../action.yml");

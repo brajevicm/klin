@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::{Value, json};
 
 const OVER: &str = r#"{ "doc_size": {"README.md": 10} }"#;
@@ -32,7 +30,7 @@ fn with(mut event: Value, extra: Value) -> String {
 }
 
 fn run(tree: &Tree, args: &[&str], event: &str) -> Run {
-    harness::feed(tree.root(), args, event)
+    crate::harness::feed(tree.root(), args, event)
 }
 
 /// The host fires every copy of one event at once, so the copies start together.

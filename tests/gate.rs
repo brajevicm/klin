@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
@@ -56,7 +54,7 @@ fn without_source(config: &str) -> Tree {
     tree
 }
 
-fn at(run: &harness::Run, text: &str) -> usize {
+fn at(run: &crate::harness::Run, text: &str) -> usize {
     run.out
         .find(text)
         .unwrap_or_else(|| panic!("{text:?} is absent from:\n{}", run.out))
@@ -199,7 +197,7 @@ fn a_tool_error_alone_exits_two() {
 
 /// The one row per gate --list prints, without the per-key lines under each and without the
 /// state directory line that follows them all.
-fn rows(run: &harness::Run) -> String {
+fn rows(run: &crate::harness::Run) -> String {
     run.out
         .lines()
         .filter(|line| !line.starts_with("state: ") && !line.starts_with(' '))
@@ -479,8 +477,8 @@ fn changed_restricts_complexity_as_well_as_escapes() {
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 
-fn stop(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+fn stop(tree: &Tree, event: &str) -> crate::harness::Run {
+    crate::harness::feed(tree.root(), &["gate", "--hook"], event)
 }
 
 #[test]
@@ -719,7 +717,7 @@ fn the_stamp_sits_beside_the_config_rather_than_the_working_directory() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = harness::feed(&tree.path("src"), &["gate", "--hook"], A_STOP);
+    let run = crate::harness::feed(&tree.path("src"), &["gate", "--hook"], A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.path(BUILD_BLOCKED).is_file(), "{}", run.out);
 }
@@ -765,7 +763,7 @@ fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
         capped.out
     );
 
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree, A_STOP);
     assert_eq!(after.code, 2, "{}", after.out);
@@ -840,7 +838,7 @@ fn the_ladder_writes_nothing() {
     );
 }
 
-fn object(text: &str, run: &harness::Run) -> Value {
+fn object(text: &str, run: &crate::harness::Run) -> Value {
     match serde_json::from_str(text) {
         Ok(report) => report,
         Err(why) => panic!("{why} — the run printed:\n{}", run.out),
@@ -931,7 +929,7 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
     tree.write("src/work.rs", AN_ESCAPE);
     let evidence = tree.at("stop-report.json");
 
-    let hook = harness::feed_with(
+    let hook = crate::harness::feed_with(
         tree.root(),
         &[("KLIN_HOOK_REPORT", evidence.as_str())],
         &["gate", "--hook", "--changed"],
@@ -1543,7 +1541,7 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--json"], A_STOP);
+    let run = crate::harness::feed(tree.root(), &["gate", "--hook", "--json"], A_STOP);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = object(run.out.lines().last().unwrap_or_default(), &run);
     assert_eq!(
@@ -1611,7 +1609,7 @@ fn hook_with_strict_is_a_usage_error_and_runs_no_gate() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--strict"], A_STOP);
+    let run = crate::harness::feed(tree.root(), &["gate", "--hook", "--strict"], A_STOP);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("--hook"), "{}", run.out);
     assert!(run.says("--strict"), "{}", run.out);

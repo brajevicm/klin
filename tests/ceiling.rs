@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 
 const WIDE: &str = "fn wide() -> i32 {\n    let a = 1;\n    let b = 2;\n    let c = 3;\n    \
                     let d = 4;\n    a + b + c + d\n}\n";

@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
@@ -381,13 +379,13 @@ fn the_stop_hook_blocks_on_a_move_that_breaks_an_untouched_documents_citation() 
     tree.write("src/index.py", "y = 1\n");
     tree.write("README.md", "The client is `src/client.py`.\n");
     tree.base();
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     tree.remove("src/client.py");
     tree.write("src/transport/client.py", "x = 1\n");
     tree.write("src/index.py", "y = 2\n");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let run = crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("README.md:1"), "{}", run.out);
 }

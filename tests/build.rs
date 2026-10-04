@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
@@ -19,8 +17,8 @@ fn tree(build: &str) -> Tree {
     tree
 }
 
-fn stop(tree: &Tree, event: &str, args: &[&str]) -> harness::Run {
-    harness::feed(tree.root(), args, event)
+fn stop(tree: &Tree, event: &str, args: &[&str]) -> crate::harness::Run {
+    crate::harness::feed(tree.root(), args, event)
 }
 
 #[test]
@@ -313,7 +311,7 @@ fn a_new_prompt_restores_the_eight_build_blocks() {
     let spent = stop(&tree, A_STOP, &["gate", "--hook"]);
     assert_eq!(spent.code, 0, "{}", spent.out);
 
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree, A_STOP, &["gate", "--hook"]);
     assert_eq!(after.code, 2, "{}", after.out);
@@ -345,7 +343,7 @@ fn a_build_failure_writes_a_red_verdict_and_the_next_prompt_keeps_the_stamp() {
     assert_eq!(tree.field("verdict"), "red", "{}", run.out);
 
     let held = tree.field("commit");
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     assert_eq!(tree.field("commit"), held, "a red build moved the stamp");
 }
@@ -522,8 +520,8 @@ fn toolchain(tree: &Tree) -> String {
     format!("{}:/usr/bin:/bin", tree.at("toolchain"))
 }
 
-fn derived(tree: &Tree, path: &str, args: &[&str]) -> harness::Run {
-    harness::feed_with(tree.root(), &[("PATH", path)], args, A_STOP)
+fn derived(tree: &Tree, path: &str, args: &[&str]) -> crate::harness::Run {
+    crate::harness::feed_with(tree.root(), &[("PATH", path)], args, A_STOP)
 }
 
 /// With no `build` key the hook builds with the command each standard manifest derives, one per
@@ -749,7 +747,7 @@ fn a_derived_build_does_not_reach_a_compiler_above_the_root() {
     tree.base();
     tree.write("app/src/index.ts", "export const a = 2;\n");
 
-    let run = harness::feed_with(
+    let run = crate::harness::feed_with(
         &tree.path("app"),
         &[("PATH", "/usr/bin:/bin")],
         &["gate", "--hook"],
@@ -913,7 +911,7 @@ fn a_derived_build_does_not_reach_a_compiler_above_the_repository() {
     repository(&tree.path("repo"));
     tree.write("repo/src/index.ts", "export const a = 2;\n");
 
-    let run = harness::feed_with(
+    let run = crate::harness::feed_with(
         &tree.path("repo"),
         &[("PATH", "/usr/bin:/bin")],
         &["gate", "--hook"],
@@ -954,8 +952,8 @@ fn a_passing_project_local_compile_tells_no_note() {
 const LEAVES_A_DESCENDANT: &str = r#""build": "sleep 60 > /dev/null 2>&1 & echo $! > descendant","#;
 const WAITS_ON_A_DESCENDANT: &str = r#""build": "sleep 60 & echo $! > descendant; wait","#;
 
-fn limited(tree: &Tree, limit: &str) -> harness::Run {
-    harness::feed_with(
+fn limited(tree: &Tree, limit: &str) -> crate::harness::Run {
+    crate::harness::feed_with(
         tree.root(),
         &[("KLIN_COMMAND_LIMIT", limit)],
         &["gate", "--hook"],
@@ -1017,9 +1015,9 @@ fn ended_by(name: &str, number: i32) {
 
     let tree = tree(WAITS_ON_A_DESCENDANT);
     let started = std::time::Instant::now();
-    let mut klin = std::process::Command::new(harness::binary())
+    let mut klin = std::process::Command::new(crate::harness::binary())
         .args(["gate", "--hook"])
-        .env("HOME", harness::empty_home())
+        .env("HOME", crate::harness::empty_home())
         .current_dir(tree.root())
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())

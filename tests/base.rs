@@ -1,9 +1,6 @@
-mod harness;
+use crate::text;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const CLEAN: &str = "pub fn simple(a: i32) -> i32 {\n    a + 1\n}\n";
@@ -235,8 +232,8 @@ fn in_a_subdirectory() -> Tree {
     tree
 }
 
-fn in_the_project(tree: &Tree, args: &[&str]) -> harness::Run {
-    harness::run_from(&tree.path("proj"), args)
+fn in_the_project(tree: &Tree, args: &[&str]) -> crate::harness::Run {
+    crate::harness::run_from(&tree.path("proj"), args)
 }
 
 #[test]

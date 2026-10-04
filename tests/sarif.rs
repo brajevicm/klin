@@ -1,9 +1,7 @@
-mod harness;
-
 use std::fs;
 use std::time::SystemTime;
 
-use harness::Tree;
+use crate::harness::Tree;
 
 const ONE: &str = r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#;
 const DIFFERENTIAL: &str = r#"{"sarif": [

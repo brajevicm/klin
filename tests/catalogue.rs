@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 /// The two checks that run only inside a gate and have no command of their own. A check added
 /// here is a decision a person makes, so a new check that forgot its Clap command fails the

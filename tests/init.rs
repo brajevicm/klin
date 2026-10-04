@@ -1,10 +1,7 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
+use crate::text;
 
 const TANGLED: &str = r#"fn tangled(a: i32) -> i32 {
     if a > 0 && a < 10 {
@@ -261,7 +258,7 @@ fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
 /// under review. The lines name them as derived and never as a gate. #92.
 #[test]
 fn pin_writes_the_radius_values_history_derives() {
-    let tree = harness::history(43, 6);
+    let tree = crate::harness::history(43, 6);
 
     let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -285,7 +282,7 @@ fn pin_writes_the_radius_values_history_derives() {
 
 #[test]
 fn pin_writes_no_radius_section_below_fifty_commits() {
-    let tree = harness::history(42, 6);
+    let tree = crate::harness::history(42, 6);
 
     let run = tree.run(&["init", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);

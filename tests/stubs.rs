@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const CONFIG: &str = r#"{
   "stubs": { "in": "src" }

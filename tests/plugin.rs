@@ -1,10 +1,8 @@
-mod harness;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const PLUGIN: &str = "plugins/klin";

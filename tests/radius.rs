@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
@@ -29,7 +27,7 @@ fn tree() -> Tree {
 }
 
 fn radius(tree: &Tree, event: &str) -> Run {
-    harness::feed(tree.root(), &["radius"], event)
+    crate::harness::feed(tree.root(), &["radius"], event)
 }
 
 /// The tree as the stamp sees it, so what follows is one turn's work.
@@ -152,7 +150,7 @@ fn a_diff_setting_and_a_subdirectory_do_not_change_the_numbers() {
     tree.git(&["config", "diff.relative", "true"]);
     a_wide_turn(&tree);
 
-    let run = harness::feed(&tree.path("src"), &["radius"], A_PROMPT);
+    let run = crate::harness::feed(&tree.path("src"), &["radius"], A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("110 lines in 3 files, under docs/, src/."),
@@ -264,7 +262,7 @@ fn a_cursor_prompt_moves_the_stamp_of_the_workspace_the_event_names() {
         "prompt": "go on"
     });
 
-    let run = harness::feed(elsewhere.root(), &["radius"], &event.to_string());
+    let run = crate::harness::feed(elsewhere.root(), &["radius"], &event.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("wider than"), "{}", run.out);
@@ -352,7 +350,7 @@ fn outside_a_repository_the_hook_says_nothing() {
 /// The same history, with a configuration this project's checks can load. It is not committed,
 /// so it is not one of the commits the percentile reads.
 fn history(small: usize, big: usize) -> Tree {
-    let tree = harness::history(small, big);
+    let tree = crate::harness::history(small, big);
     tree.write("klin.json", "{}\n");
     tree
 }
@@ -541,7 +539,7 @@ fn cache(tree: &Tree) -> std::path::PathBuf {
 /// prop it up. The six big commits here are the oldest and fall outside it.
 #[test]
 fn the_sample_stops_at_two_hundred_commits() {
-    let tree = harness::history_from(6, 200);
+    let tree = crate::harness::history_from(6, 200);
     tree.write("klin.json", "{}\n");
 
     let run = reported(&tree);

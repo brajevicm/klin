@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const RUST: &str = r##"fn tangled(a: i32) -> i32 {
     if a > 0 && a < 10 {
@@ -1864,7 +1862,7 @@ fn a_function_marked_cfg_test_outside_a_module_is_test_code() {
     );
 }
 
-fn moved_between_test_and_production(config: &str, from: &str, to: &str) -> harness::Run {
+fn moved_between_test_and_production(config: &str, from: &str, to: &str) -> crate::harness::Run {
     let tree = Tree::new();
     tree.write("klin.json", config);
     tree.write("src/lib.rs", "fn production() -> i32 { 1 }\n");

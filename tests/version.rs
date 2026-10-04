@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 #[test]
 fn version_prints_the_version_the_release_was_built_from() {

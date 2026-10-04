@@ -1,9 +1,6 @@
-mod harness;
+use crate::text;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const CONFIG: &str = r#"{
@@ -46,7 +43,7 @@ fn two_files() -> Tree {
     tree
 }
 
-fn json(run: &harness::Run) -> Value {
+fn json(run: &crate::harness::Run) -> Value {
     match serde_json::from_str(&run.out) {
         Ok(report) => report,
         Err(why) => panic!("{why} — the run printed:\n{}", run.out),
@@ -68,7 +65,7 @@ fn named<'a>(report: &'a Value, gate: &str) -> &'a Value {
 }
 
 /// The id of a run's first finding, which every finding must carry.
-fn id(run: &harness::Run) -> String {
+fn id(run: &crate::harness::Run) -> String {
     let held = list(&json(run), "findings")[0]
         .get("id")
         .and_then(Value::as_str)

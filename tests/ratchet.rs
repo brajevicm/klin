@@ -2,12 +2,9 @@
 //! the state it measured, and the ratchet owns the reason, so a run that judged nothing claims
 //! nothing. Spec 8.6.
 
-mod harness;
+use crate::text;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 const CONFIG: &str = r#"{
   "escapes": { "in": "src" }

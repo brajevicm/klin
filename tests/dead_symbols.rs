@@ -1,8 +1,6 @@
-mod harness;
-
 use std::fmt::Write;
 
-use harness::Tree;
+use crate::harness::Tree;
 
 const RUST: &str = r#"{"dead_symbols":{"in":"src"}}"#;
 const TYPESCRIPT: &str = RUST;
@@ -900,7 +898,7 @@ fn a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge() {
 }
 
 /// A changed run of `dead-symbols` alone, which is what the Stop hook scopes.
-fn changed(tree: &Tree) -> harness::Run {
+fn changed(tree: &Tree) -> crate::harness::Run {
     tree.run(&["gate", "--changed", "--gate", "dead-symbols"])
 }
 

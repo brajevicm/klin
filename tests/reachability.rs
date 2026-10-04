@@ -1,12 +1,10 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
-fn findings(run: &harness::Run) -> Vec<String> {
+fn findings(run: &crate::harness::Run) -> Vec<String> {
     run.out
         .lines()
         .filter(|line| line.contains("src/commands/"))
@@ -967,11 +965,11 @@ fn a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing() {
 fn the_stop_hook_blocks_a_turn_that_left_a_member_unreached() {
     let tree = three_reached_commands();
     tree.base();
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     tree.write("src/main.rs", "fn main() { run_gamma(); }\n");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let run = crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/commands/alpha_command.rs"), "{}", run.out);
@@ -1031,11 +1029,11 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
     let tree = three_reached_commands();
     tree.base();
     tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     tree.write("src/other.rs", "pub fn other() { run_beta(); }\n");
 
-    let stop = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let stop = crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
 
     assert_eq!(stop.code, 0, "{}", stop.out);
     let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();

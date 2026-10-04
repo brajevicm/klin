@@ -1,8 +1,6 @@
-mod harness;
-
 use std::fs;
 
-use harness::Tree;
+use crate::harness::Tree;
 use serde_json::Value;
 
 fn schema() -> Value {

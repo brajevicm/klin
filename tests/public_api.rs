@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
@@ -36,7 +34,7 @@ fn changed(tree: &Tree) -> Run {
 }
 
 fn hook(tree: &Tree) -> Run {
-    harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
+    crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
 }
 
 #[test]
@@ -1114,7 +1112,7 @@ fn a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_
     tree.write("src/lib.rs", &LIB.replace("pub fn parse", "pub fn read"));
 
     let first = hook(&tree);
-    let second = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_SECOND_STOP);
+    let second = crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_SECOND_STOP);
 
     assert_eq!(first.code, 2, "{}", first.out);
     assert!(

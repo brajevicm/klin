@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree, feed, feed_with};
+use crate::harness::{Run, Tree, feed, feed_with};
 
 const ASK: &str = r#""permissionDecision":"ask""#;
 

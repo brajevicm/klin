@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::Tree;
+use crate::harness::Tree;
 
 fn tree_with_a_test() -> Tree {
     let tree = Tree::new();
@@ -275,9 +273,9 @@ const QUESTION: &str = "say why in your reply and stop again";
 
 /// A stop in a repository that opted in. The hook reads nothing without `klin.json`, so a tree
 /// that states no policy writes the empty one. ADR 0028.
-fn stop(tree: &Tree) -> harness::Run {
+fn stop(tree: &Tree) -> crate::harness::Run {
     opted_in(tree);
-    harness::feed(
+    crate::harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "inventory"],
         A_STOP,
@@ -334,7 +332,7 @@ fn the_stop_after_the_question_passes_and_leaves_a_green_verdict() {
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     let asked = stop(&tree);
     assert_eq!(asked.code, 2, "{}", asked.out);
-    let again = harness::feed(
+    let again = crate::harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "inventory"],
         A_SECOND_STOP,
@@ -346,9 +344,9 @@ fn the_stop_after_the_question_passes_and_leaves_a_green_verdict() {
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 
-fn second_stop(tree: &Tree) -> harness::Run {
+fn second_stop(tree: &Tree) -> crate::harness::Run {
     opted_in(tree);
-    harness::feed(
+    crate::harness::feed(
         tree.root(),
         &["gate", "--hook", "--gate", "inventory"],
         A_SECOND_STOP,
@@ -356,7 +354,7 @@ fn second_stop(tree: &Tree) -> harness::Run {
 }
 
 /// What a stop hands the person through the host's `systemMessage`, or nothing.
-fn told(run: &harness::Run) -> String {
+fn told(run: &crate::harness::Run) -> String {
     run.out
         .lines()
         .find_map(|line| {
@@ -385,7 +383,7 @@ fn a_prompt_between_two_stops_does_not_ask_about_the_same_test_again() {
     let tree = tree_with(&PATTERNS[0]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     assert_eq!(stop(&tree).code, 2);
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree);
     assert_eq!(after.code, 0, "{}", after.out);
@@ -400,7 +398,10 @@ fn a_test_deleted_after_the_question_gets_its_own_question() {
     tree.base();
     tree.remove("tests/test_one.py");
     assert_eq!(stop(&tree).code, 2);
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     tree.remove("tests/test_two.py");
     let after = stop(&tree);
     assert_eq!(after.code, 2, "{}", after.out);
@@ -468,7 +469,10 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
         third.out
     );
 
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     let later = stop(&tree);
     assert_eq!(later.code, 2, "{}", later.out);
     assert!(later.says("gate block 1 of 2"), "{}", later.out);
@@ -487,7 +491,10 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
 #[test]
 fn a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test() {
     let tree = tree_with(&PATTERNS[0]);
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_SESSION).code,
+        0
+    );
     tree.remove(".git/klin/turn");
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
@@ -740,7 +747,7 @@ fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
     let tree = tree_with(&PATTERNS[0]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     assert_eq!(stop(&tree).code, 2);
-    let after = harness::feed(tree.root(), &["gate", "--hook", "--gate", "inventory"], "");
+    let after = crate::harness::feed(tree.root(), &["gate", "--hook", "--gate", "inventory"], "");
     assert_eq!(after.code, 1, "{}", after.out);
     assert!(after.printed.is_empty(), "printed: {}", after.printed);
     assert!(after.says("went in this window"), "{}", after.out);

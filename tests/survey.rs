@@ -1,9 +1,6 @@
-mod harness;
+use crate::text;
 
-#[path = "fixtures/escape_text.rs"]
-mod text;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::Value;
 
 const SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
@@ -30,7 +27,7 @@ fn gate(tree: &Tree) -> Run {
 }
 
 fn stop(tree: &Tree) -> Run {
-    harness::feed(tree.root(), &["gate", "--hook"], STOP)
+    crate::harness::feed(tree.root(), &["gate", "--hook"], STOP)
 }
 
 #[test]
@@ -354,7 +351,10 @@ fn a_site_under_a_root_the_derivation_commit_did_not_hold_is_new_whatever_the_ba
     tree.remove("parked/risky.rs");
     tree.commit("the derivation commit holds no parked root");
     tree.write("parked/risky.rs", text::WRAPPED);
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
     tree.write("parked/risky.rs", text::WRAPPED_WITH_A_NOTE);
 
     let run = stop(&tree);
@@ -618,7 +618,10 @@ fn a_branch_run_derives_from_the_base_and_not_from_a_committed_change() {
 #[test]
 fn a_branch_run_by_hand_derives_from_the_base_and_not_from_a_turn_stamp() {
     let tree = a_change_that_would_raise_its_own_ceiling();
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
 
     derived_at_the_base(&tree, &gate(&tree));
 }
@@ -686,12 +689,15 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
     tree.write("klin.json", "{}");
     tree.commit("the configuration");
     let parent = tree.revision("HEAD")[..7].to_string();
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
     tree.write("src/more.rs", &many(TANGLED, 50));
     tree.commit("a change inside the turn that would move the percentile");
     tree.write(".git/unusable", "a file where the state directory would go");
 
-    let run = harness::feed_with(
+    let run = crate::harness::feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", &tree.at(".git/unusable"))],
         &["gate", "--hook"],
@@ -725,7 +731,10 @@ fn init_pin_with_no_turn_stamp_derives_from_head_and_not_from_the_base() {
 #[test]
 fn init_pin_derives_from_the_stamps_parent_and_not_from_the_base_or_head() {
     let tree = a_change_that_would_raise_its_own_ceiling();
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
     tree.write("src/plain.rs", &many(CLEAN, 1000));
     tree.commit("a later change that would put the percentile at the floor");
 
@@ -958,7 +967,10 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
         r#"{ "complexity": { "except": "src/big.rs" } }"#,
     );
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
     tree.write("klin.json", r#"{ "complexity": { "in": "src" } }"#);
     tree.commit("widen the recorded scope later");
 
@@ -1158,13 +1170,16 @@ fn a_stop_nothing_blocks_tells_the_person_the_recorded_scope_lags() {
         r#"{ "complexity": { "except": "src/big.rs" } }"#,
     );
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], SESSION).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], SESSION).code,
+        0
+    );
     tree.write(
         "klin.json",
         r#"{ "complexity": { "except": ["src/big.rs", "src/gone.rs"] } }"#,
     );
 
-    let run = harness::feed(
+    let run = crate::harness::feed(
         tree.root(),
         &["gate", "--hook"],
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,

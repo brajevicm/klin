@@ -1,11 +1,8 @@
-mod harness;
-
-#[path = "fixtures/escape_text.rs"]
-mod text;
+use crate::text;
 
 use std::fs::File;
 
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::Value;
 
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
@@ -22,18 +19,24 @@ fn stamped() -> Tree {
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     tree
 }
 
 fn stop(tree: &Tree) -> Run {
-    harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
+    crate::harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
 }
 
 /// One prompt of the same turn, which raises the prompt counter and so hands the next stop a
 /// fresh block budget.
 fn prompt(tree: &Tree) {
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
 }
 
 fn accepting(file: &str) -> String {
@@ -135,7 +138,10 @@ fn a_deleted_stamp_falls_back_to_head_when_no_base_resolves() {
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree.commit("the only commit, on a branch no base names");
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(
+        crate::harness::feed(tree.root(), &["radius"], A_PROMPT).code,
+        0
+    );
     tree.remove(".git/klin/turn");
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
     tree.write("src/lib.rs", text::WRAPPED);
@@ -213,7 +219,7 @@ fn a_state_directory_klin_cannot_keep_still_reads_the_stamp_from_the_ref() {
     tree.write("a-file", "");
     let held = tree.at("a-file");
 
-    let run = harness::feed_with(
+    let run = crate::harness::feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", held.as_str())],
         &["gate", "--hook", "--changed"],
@@ -230,7 +236,7 @@ fn the_json_report_names_the_window_the_stop_used() {
     let tree = stamped();
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = harness::feed(
+    let run = crate::harness::feed(
         tree.root(),
         &["gate", "--hook", "--changed", "--json"],
         A_STOP,

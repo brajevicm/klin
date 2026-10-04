@@ -1,6 +1,4 @@
-mod harness;
-
-use harness::{Run, Tree};
+use crate::harness::{Run, Tree};
 use serde_json::Value;
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
@@ -24,7 +22,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
     );
     tree.write("src/changed.rs", "fn changed() {}\n");
     tree.base();
-    let radius = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let radius = crate::harness::feed(tree.root(), &["radius"], A_PROMPT);
     assert_eq!(radius.code, 0, "{}", radius.out);
     assert!(!tree.field("commit").is_empty(), "{}", radius.out);
 
@@ -32,7 +30,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
         "src/changed.rs",
         concat!("fn changed() { let _ = Some(1).", "un", "wrap(); }\n"),
     );
-    let run = harness::feed(
+    let run = crate::harness::feed(
         tree.root(),
         &["gate", "--json", "--hook", "--changed"],
         A_STOP,
