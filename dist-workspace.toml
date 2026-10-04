@@ -15,9 +15,9 @@ targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-da
 install-path = "~/.local/bin"
 # Whether to install an updater program
 install-updater = true
-# Whether dist should create a Github Release or use an existing draft
-create-release = false
-# A pull request that touches a release input runs `dist plan` in release-plan.yml instead
+# Let cargo-dist own GitHub Release creation after the immutable tag is pushed
+create-release = true
+# Pull requests validate release inputs inside the required quality / gates job
 pr-run-mode = "skip"
 # Steps that verify the exact tag in the x86_64 Linux build before anything publishes
 github-build-setup = "../verify-tag.yml"
