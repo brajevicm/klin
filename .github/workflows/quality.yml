@@ -39,6 +39,17 @@ jobs:
           fi
           python3 docs/counterfactual-2026-10-03/probe-test.py
           python3 docs/counterfactual-2026-10-03/check-results.py --reproduce
+      - name: Lint GitHub Actions
+        env:
+          ACTIONLINT_BASE: ${{ github.event.pull_request.base.sha }}
+          ACTIONLINT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --quiet "$ACTIONLINT_BASE...$ACTIONLINT_HEAD" -- .github/workflows; then
+            echo "Workflows unchanged; skipping actionlint."
+            exit 0
+          fi
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint"
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
