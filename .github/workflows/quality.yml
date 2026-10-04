@@ -36,8 +36,10 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           mapfile -t workflows < <(find .github/workflows -maxdepth 1 -type f -name '*.yml' ! -name 'release.yml' | sort)
           "$(go env GOPATH)/bin/actionlint" "${workflows[@]}"
-      - name: Check release validator
-        run: python3 -m py_compile .github/validate-release-pr.py
+      - name: Test release validator
+        run: |
+          python3 -m py_compile .github/validate-release-pr.py .github/test-release-validator.py
+          python3 .github/test-release-validator.py
       - name: Validate exact release diff
         if: startsWith(github.event.pull_request.head.ref, 'release/v')
         env:
