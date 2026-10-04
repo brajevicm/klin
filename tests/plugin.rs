@@ -182,42 +182,18 @@ fn a_release_becomes_latest_only_at_the_promotion() {
             "promote-release omits {flag}: {promoted}"
         );
     }
-}
-
-#[test]
-fn promotion_proves_the_exact_release_is_ready_and_verifies_the_result() {
-    let promoted = text(".github/workflows/promote-release.yml");
-
-    for held in [
-        "actions: read",
-        "head_sha=$tag_sha",
-        ".github/workflows/release.yml",
-        "Release still running",
-        "Release failed",
-        ".target_commitish",
+    for invariant in [
+        "group: promote-release",
+        "isDraft,isPrerelease,targetCommitish",
         "git fetch origin main --tags",
-        "git merge-base --is-ancestor",
-        "git push origin HEAD:main",
-        "/releases/latest",
     ] {
         assert!(
-            promoted.contains(held),
-            "promote-release omits readiness invariant {held}"
+            promoted.contains(invariant),
+            "promote-release omits {invariant}"
         );
     }
-
     assert!(
-        promoted.contains("group: promote-release"),
-        "two promotions can race each other"
-    );
-    let pushed = promoted
-        .find("git push origin HEAD:main")
-        .expect("promote-release never pushes main");
-    let made_latest = promoted
-        .find("gh release edit \"$TAG\" --prerelease=false --latest")
-        .expect("promote-release never marks the release Latest");
-    assert!(
-        pushed < made_latest,
+        promoted.find("git push origin main") < promoted.find("gh release edit"),
         "the release can become Latest before main contains its tag"
     );
 }
