@@ -7,9 +7,9 @@
 > The amendment below (#338) makes the Claude Code and Codex marketplace
 > entries name the plugin at the release tag, so a plugin user gets the plugin
 > files of the release the wrapper runs. The `ref` of each entry is one more
-> place the version is written. A release now pushes its tag alone and stays a
-> prerelease, and `main` takes the tag and the release becomes Latest only
-> after the release smoke.
+> place the version is written. #470 changes the release topology: a GitHub
+> release PR writes the next version to `main`, and only the merged release
+> commit is tagged and handed to cargo-dist.
 
 klin reaches a person through several routes: the Claude Code plugin and its
 wrapper, the install script, a GitHub Action, and a release page someone
@@ -49,8 +49,9 @@ outlive every plugin update.
 ## Consequences
 
 A release is one version bump and one tag. No channel can drift from the tag,
-because none holds a version of its own. The plugin, the installer and `klin
-update` reach a new tag at its promotion, after the release smoke. The
+because none holds a version of its own. The plugin, the installer and `klin update` reach a new tag only after its
+release PR has passed the normal checks, merged to `main`, and cargo-dist has
+published that merged commit. The
 Action lives in this repository so that the same tag pins it, which reverses
 the separate `klin-action` repository issue #100 asked for.
 
@@ -101,97 +102,63 @@ release, so a moved v0.3.0 would give two installs of 0.3.0 different files.
 #336 makes the next release immutable, and the tag of an immutable release
 cannot move. v0.3.0 does not become immutable after the fact.
 
-### A release reaches its users when it is promoted
+### A release reaches its users from a merged release PR
 
-`main` now decides which release a plugin user installs, and GitHub's Latest
-release decides what the installer and `klin update` install. So a release has
-two steps:
+A release has one protected-code path:
 
-1. `cut-release` makes the release commit and the tag, and pushes the tag
-   alone, because `cargo-release` pushes nothing (`push = false`). It then
-   makes the release a draft prerelease, with the title and notes that `dist
-   plan` gives. `dist` uploads the artifacts to that draft and publishes it
-   (`create-release = false`), and the release stays a prerelease. Plugin
-   users, `releases/latest`, the installer and `klin update` stay on the last
-   release. The Action can use the new tag at once.
-2. A person runs the release smoke of `docs/HOST_COMPATIBILITY.md`
-   against that tag, through the documented commands with the tag appended.
-   When the smoke passes, `promote-release` merges the tag into `main` and
-   marks the release Latest. From then on, both marketplaces, the installer
-   and `klin update` serve the new release.
+1. A maintainer dispatches `prepare-release` in GitHub Actions with
+   `patch`, `minor`, `major` or an exact `X.Y.Z`. The workflow runs
+   `cargo-release --no-tag`, pushes the generated commit to
+   `release/vX.Y.Z` and creates or refreshes a pull request to `main`.
+2. That pull request runs the ordinary `quality / gates` check and every
+   normal rule on `main`. No release workflow can push directly to `main`.
+3. When the release PR actually merges, `publish-release` verifies the
+   version-bearing files, creates `vX.Y.Z` on the exact merged commit and
+   pushes that tag. The push uses `RELEASE_TOKEN` because a tag pushed by the
+   workflow's `GITHUB_TOKEN` would not start the tag-triggered Release
+   workflow.
+4. `publish-release` creates the draft GitHub Release that cargo-dist expects
+   because `create-release = false`. The generated `release.yml` remains
+   cargo-dist-owned; it builds the exact tag, uploads the artifacts, undrafts
+   the release and makes the stable release available through GitHub Latest.
 
-Nothing checks the smoke. A run of `promote-release` is the person's
-statement that it passed. `promote-release` pushes `main` directly, as
-`cut-release` did before. When #336 makes checks on `main` required, the
-workflow must be allowed to push, or it must promote through a pull request.
-#336 owns that.
+The release branch is generated state. Re-running `prepare-release` for an
+open version refreshes the same branch and PR from current `main`.
+A release PR closed without merging is not silently recreated. Re-running the
+publisher is safe when the tag already points to the merged commit, and it
+refuses to move an existing tag.
 
-A release from a laptop has the same steps. `cargo release` makes the commit
-and the tag. The person pushes only the tag and makes the draft as
-`cut-release` does: `gh release create vX.Y.Z --draft --prerelease
---verify-tag`, with the title and notes that `dist plan` gives. Then the
-person resets local `main` to `origin/main`, because a push of that `main`, or
-a branch cut from it, would carry the release commit into `main` before the
-smoke. The promotion merges the tag later. CLI tests fail when the release
-configuration lets `cargo-release` push, or lets a release become Latest before
-the promotion.
+The release PR is the human release boundary. A normal release requires no
+local checkout, tag command or second promotion step.
 
-When `cut-release` fails after it pushed the tag, a person makes the draft the
-same way and re-runs the failed jobs of the Release workflow. A candidate that
-became Latest by mistake goes back with `gh release edit vX.Y.Z --prerelease`,
-and `gh release edit --latest` on the last promoted tag makes that release
-Latest again.
+### Host compatibility is independent release evidence
 
-`cut-release` starts from `main`, so the next release starts after the
-promotion. A tag that fails the smoke is not promoted, and its release stays a
-prerelease that no route serves as Latest. The fix ships as the next version,
-cut with an exact `version`, because `main` still holds the version before the
-failed tag.
+The host canary and manual host checks remain evidence for the current stable
+Claude Code, Codex and Cursor surfaces, but manual smoke is not a mandatory
+step for every release. Run targeted manual verification when a release
+contains functional host-integration changes or when the compatibility
+evidence is stale, red or inconclusive. Version-only manifest/ref rewrites in a
+generated release PR do not by themselves make the release host-sensitive.
 
-### Rejected options
+This separates two questions: the release PR and deterministic tests prove the
+klin change is fit to merge; the host ledger records whether current external
+hosts still honor klin's integration.
 
-- A release branch that people add the marketplace from, such as
-  `brajevicm/klin#release`. A person who added the marketplace without the
-  ref stays on `main`, and `cargo-release` does not move a branch.
-- A `git-subdir` entry that names a release branch. The `cut-release`
-  workflow and a release from a laptop must then both push the branch, and no
-  test can check that the branch holds the tag.
-- A `sha` beside the `ref`. The release commit cannot hold its own hash, so a
-  second commit would have to write it, and the marketplace at the tag, which
-  the smoke installs from, would have none. Immutable releases give the same
-  guarantee from #336 on.
-- A smoke before the tag exists. The wrapper fetches the binary of the
-  version its manifest pins, so plugin files from before the release commit
-  run against the last binary, and the smoke would try neither release.
-- A job after `dist`'s announce step that makes the release a prerelease. The
-  release would be Latest until that job ran.
-- An edit of the generated `release.yml`. ADR 0026 leaves that file to
-  `dist`, and `create-release = false` is the setting `dist` offers for a
-  release that another step makes.
-- A release candidate version, such as `v0.4.0-rc.1`, which `dist` marks as a
-  prerelease by itself. The smoke would try the candidate, and the version
-  that users get would be a second build that nobody smoked.
+### Recovery
+
+If preparation fails before the PR exists, re-run it. If cargo-dist fails
+after the tag exists, do not move the tag: fix or retry the failed Release
+workflow against the same commit. An existing tag at any other commit is a
+hard error.
 
 ### Consequences
 
-- The host fetches the plugin with a second, sparse clone. The marketplace
-  clone supplies only the catalog.
-- Claude Code reads `plugin.json` before an install only for a relative-path
-  entry. Its plugin list therefore shows only the entry's own fields until a
-  person installs the plugin.
-- A marketplace added from a checkout installs the plugin of the tag it names
-  from GitHub, not the files of the checkout. The host canary adds one that
-  way. When the install fails, the canary checks whether the tag can be
-  fetched, and a failed fetch or a missing tag is `INFRA`, not `COMPAT`. While
-  the repository is private, the canary's clone has no credentials.
-- Claude Code fetches a plugin with a remote source only when a user, local,
-  flag or managed setting enables it. When only a repository's
-  `.claude/settings.json` enables the plugin, a teammate installs it once.
-- Cursor documents only a path source, so its entry still names the plugin
-  directory in the marketplace's own tree. The documented Cursor route
-  already copies the plugin from the release tag. A Team Marketplace import
-  reads the branch the team imports, and that route has no recorded
-  verification (spec 19.2).
-- Homebrew and npm, once enabled, would publish at the tag, before the
-  promotion, because `dist` decides from the version string and not from the
-  prerelease flag on GitHub.
+- `main` contains every release before a release tag is created.
+- Branch protection stays authoritative; release automation needs no bypass of
+  `main`.
+- The generated cargo-dist workflow is unchanged.
+- The exact tag build still runs fmt, clippy, nextest, build and
+  `klin gate --strict`. Because the tagged commit is already on `main`, the
+  release PR's required `quality / gates` run is the authoritative diff gate.
+- Homebrew, npm or other future dist publishers can use the same tag-triggered
+  model without reintroducing a separate promotion phase.
