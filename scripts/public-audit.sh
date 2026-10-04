@@ -119,6 +119,13 @@ git fetch --all --tags --prune
 
 head_sha=$(git rev-parse HEAD)
 printf '%s\n' "$head_sha" > "$out/head.txt"
+{
+  git --version
+  gh --version | head -n 1
+  jq --version
+  gitleaks version
+  trufflehog --version
+} > "$out/tool-versions.txt"
 git for-each-ref \
   --format='%(refname)%09%(objectname)' \
   refs/heads refs/remotes refs/tags \
@@ -187,16 +194,74 @@ mkdir -p "$logs_root" "$artifacts_root"
 
 echo "==> Downloading currently accessible Actions logs"
 gh api --paginate "repos/$repo/actions/runs?per_page=100" \
-  --jq '.workflow_runs[].id' \
-  > "$tmp/action-run-ids.txt"
-while IFS= read -r run_id; do
+  --jq '.workflow_runs[] | [.id, .run_attempt] | @tsv' \
+  > "$tmp/action-run-attempts.tsv"
+while IFS=
+echo "==> Downloading non-expired Actions artifacts"
+gh api --paginate "repos/$repo/actions/artifacts?per_page=100" \
+  --jq '.artifacts[] | select(.expired == false) | [.id, .workflow_run.id, .name] | @tsv' \
+  > "$out/actions-artifacts.tsv"
+while IFS=$'\t' read -r artifact_id run_id artifact_name; do
+  [[ -n "$artifact_id" ]] || continue
+  gh api "repos/$repo/actions/artifacts/$artifact_id/zip" \
+    > "$artifacts_root/${artifact_id}.zip"
+done < "$out/actions-artifacts.tsv"
+
+echo "==> Scanning Actions logs and artifacts"
+run_gitleaks_dir "$actions_root" "$out/gitleaks-actions.json"
+run_trufflehog_fs "$actions_root" "$out/trufflehog-actions.jsonl"
+
+gitleaks_history=$(jq 'length' "$out/gitleaks-history.json")
+gitleaks_releases=$(jq 'length' "$out/gitleaks-releases.json")
+gitleaks_actions=$(jq 'length' "$out/gitleaks-actions.json")
+truffle_history=$(wc -l < "$out/trufflehog-history.jsonl" | tr -d ' ')
+truffle_releases=$(wc -l < "$out/trufflehog-releases.jsonl" | tr -d ' ')
+truffle_comments=$(wc -l < "$out/trufflehog-github-comments.jsonl" | tr -d ' ')
+truffle_actions=$(wc -l < "$out/trufflehog-actions.jsonl" | tr -d ' ')
+privacy_files=$(wc -l < "$out/privacy-history-files.txt" | tr -d ' ')
+unavailable_logs=$(wc -l < "$out/actions-unavailable-logs.txt" | tr -d ' ')
+
+cat > "$out/SUMMARY.txt" <<EOF
+klin public-visibility audit
+candidate: $head_sha
+repository: $repo
+
+Gitleaks findings
+  Git history:      $gitleaks_history
+  release material: $gitleaks_releases
+  Actions material: $gitleaks_actions
+
+TruffleHog findings
+  Git history:      $truffle_history
+  release material: $truffle_releases
+  GitHub comments:  $truffle_comments
+  Actions material: $truffle_actions
+
+Manual review
+  privacy-marker files in reachable history: $privacy_files
+  Actions runs whose logs were unavailable:  $unavailable_logs
+
+Reports: $out
+
+A completed scan is not an automatic pass. Classify every scanner finding.
+The publication gate is: zero unexplained or real credentials, plus explicit
+human approval of commit identities, privacy-marker locations, and unavailable
+Actions logs before changing repository visibility.
+EOF
+
+cat "$out/SUMMARY.txt"
+\t' read -r run_id run_attempt; do
   [[ -n "$run_id" ]] || continue
-  dest="$logs_root/$run_id.zip"
-  if ! gh api "repos/$repo/actions/runs/$run_id/logs" > "$dest" 2>/dev/null; then
-    rm -f "$dest"
-    printf '%s\n' "$run_id" >> "$out/actions-unavailable-logs.txt"
-  fi
-done < "$tmp/action-run-ids.txt"
+  attempt=1
+  while ((attempt <= run_attempt)); do
+    dest="$logs_root/$run_id-$attempt.zip"
+    if ! gh api "repos/$repo/actions/runs/$run_id/attempts/$attempt/logs" > "$dest" 2>/dev/null; then
+      rm -f "$dest"
+      printf '%s\t%s\n' "$run_id" "$attempt" >> "$out/actions-unavailable-logs.txt"
+    fi
+    attempt=$((attempt + 1))
+  done
+done < "$tmp/action-run-attempts.tsv"
 
 echo "==> Downloading non-expired Actions artifacts"
 gh api --paginate "repos/$repo/actions/artifacts?per_page=100" \
