@@ -185,6 +185,39 @@ fn a_release_becomes_latest_only_at_the_promotion() {
 }
 
 #[test]
+fn promotion_proves_the_exact_release_is_ready_and_verifies_the_result() {
+    let promoted = text(".github/workflows/promote-release.yml");
+
+    for held in [
+        "actions: read",
+        "head_sha=$tag_sha",
+        ".github/workflows/release.yml",
+        "Release still running",
+        "Release failed",
+        ".target_commitish",
+        "git fetch origin main --tags",
+        "git merge-base --is-ancestor",
+        "git push origin HEAD:main",
+        "/releases/latest",
+    ] {
+        assert!(
+            promoted.contains(held),
+            "promote-release omits readiness invariant {held}"
+        );
+    }
+
+    assert!(
+        promoted.contains("group: promote-release"),
+        "two promotions can race each other"
+    );
+    assert!(
+        promoted.find("git push origin HEAD:main")
+            < promoted.find("gh release edit \"$TAG\" --prerelease=false --latest"),
+        "the release can become Latest before main contains its tag"
+    );
+}
+
+#[test]
 fn the_cursor_marketplace_entry_points_at_the_same_plugin() {
     let entry = json(CURSOR_MARKET)["plugins"][0].clone();
     let path = entry["source"].as_str().unwrap_or_default().to_string();
