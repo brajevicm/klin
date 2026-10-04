@@ -8,7 +8,7 @@
 
 <h1 align="center">Catch regressions while the agent can still fix them</h1>
 
-<p align="center"><strong>Quality control for coding agents.</strong></p>
+<p align="center"><strong>Deterministic quality control for coding agents.</strong></p>
 
 <p align="center">
   A coding agent can finish the task you asked for while making something else measurably worse.<br>
@@ -17,7 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/brajevicm/klin/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/brajevicm/klin?display_name=tag&sort=semver&style=flat-square&label=release"></a>
-  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?event=pull_request&style=flat-square&label=PR%20CI"></a>
+  <a href="https://github.com/brajevicm/klin/actions/workflows/quality.yml"><img alt="PR CI" src="https://img.shields.io/github/actions/workflow/status/brajevicm/klin/quality.yml?event=pull_request&style=flat-square&label=PR%20CI"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/brajevicm/klin?style=flat-square"></a>
   <a href="docs/HOST_COMPATIBILITY.md"><img alt="Integrations: Claude Code, Codex, Cursor" src="https://img.shields.io/badge/integrations-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-blue?style=flat-square"></a>
 </p>
@@ -38,18 +38,61 @@ FAIL  complexity
 
 ## Quick start
 
-### 1. Install for your host
+### 1. Install
 
-Claude Code, Codex, and Cursor are klin's first-class integrations. Use the native integration for your host; the standalone CLI is the fallback for managed/manual setups and other harnesses.
+From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 
-**Claude Code**
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
+source $HOME/.local/bin/env
+
+# Set up this repository. For Claude Code only, add --host claude.
+klin install
+```
+
+Then commit `klin.json` and the generated integration files.
+
+klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
+
+If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
+
+> [!NOTE]
+> **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
+
+### 2. Work normally
+
+Use your coding agent as usual. You don't need to run anything.
+
+When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened problems go back to the agent while the change is still in its context.
+
+### 3. See what happened
+
+```sh
+klin stats --session
+```
+
+```text
+Nothing needs your attention.
+
+klin caught 1 regression this session. It was fixed after klin flagged it.
+```
+
+Add `--all` for individual findings or `--json` for machine-readable output.
+
+## Native plugins
+
+Instead of the CLI setup above, you can run klin through the native plugin system of Claude Code, Codex, or Cursor.
+
+A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin stats`. If the plugin and the repository hooks are both present, only one of them handles each event.
+
+### Claude Code
 
 ```text
 /plugin marketplace add brajevicm/klin
 /plugin install klin@klin
 ```
 
-**Codex**
+### Codex
 
 ```sh
 codex plugin marketplace add brajevicm/klin
@@ -58,7 +101,7 @@ codex plugin add klin@klin
 
 Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
-**Cursor**
+### Cursor
 
 <details>
 <summary><strong>Install the local plugin</strong></summary>
@@ -79,23 +122,19 @@ Reload Cursor.
 
 </details>
 
-### 2. Activate this repository
+### Opt the repository in
 
-A native integration stays quiet until the repository opts in. At the repository root:
+A plugin does nothing until the repository has a `klin.json`. At the repository root, run:
 
 ```sh
 echo '{}' > klin.json
 ```
 
-`{}` is a complete configuration. Commit `klin.json`.
-
-### 3. Work normally
-
-Use your coding agent as usual. You don't need to run anything.
-
-When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened findings go back to the agent while the change is still in its context.
+`{}` is a complete configuration. klin derives everything else from the repository.
 
 ## Why klin
+
+A coding agent can finish the task you asked for and make something else worse.
 
 Most deterministic tools tell you what is wrong **now**. klin asks:
 
@@ -132,41 +171,19 @@ Keep your linters, type checkers, tests, security scanners, and reviews. klin ad
 
 A scanner that writes SARIF can report through a `sarif` section in `klin.json`. klin then fails when one of the scanner's results is on a line the change touched.
 
-Language support varies by check. See [full current coverage and configuration →](docs/REFERENCE.md).
+### Language support
 
-## Standalone and other agents
+| Language                  | What klin checks                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| Rust, TypeScript          | Complexity, escape hatches, unfinished work, unused code, architecture, public API, lockfiles |
+| Go, JavaScript            | Complexity, escape hatches, unfinished work, lockfiles                                        |
+| Python                    | Complexity, escape hatches, unfinished work                                                   |
+| Java, Kotlin, Ruby, Swift | Complexity, escape hatches                                                                    |
+| Shell                     | Escape hatches                                                                                |
 
-Native integrations are the recommended path for Claude Code, Codex, and Cursor. Use the standalone binary when the native plugin is unavailable on your host surface, when you need explicit project/user hook files, or for managed/manual installations.
+Documentation links, text and file conventions, and SARIF input work in any language.
 
-From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-source $HOME/.local/bin/env
-klin install
-```
-
-`klin install` reconciles the repository integration. To target one host explicitly, append `--host claude`, `--host codex`, or `--host cursor`.
-
-Other coding-agent harnesses can integrate through klin's [versioned lifecycle contract](docs/HARNESS_INTEGRATION.md).
-
-To update the standalone binary later, run `klin update`, then `klin install`. Native plugins update through their host's plugin mechanism.
-
-### Inspect a session
-
-The standalone CLI also provides local reporting:
-
-```sh
-klin stats --session
-```
-
-```text
-Nothing needs your attention.
-
-klin caught 1 regression this session. It was fixed after klin flagged it.
-```
-
-Add `--all` for individual findings or `--json` for machine-readable output.
+[Full coverage and configuration →](docs/REFERENCE.md)
 
 ## Configure
 
