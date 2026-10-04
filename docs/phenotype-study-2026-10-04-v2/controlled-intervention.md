@@ -42,6 +42,19 @@ the frozen release runtime, finish the two neutral host preflights, record the
 bindings, and only then start the family batches. The generated plan places
 OpenAI Codex first and Claude Code second and keeps each family contiguous.
 
+## Frozen agent bindings
+
+Neutral no-repository preflight produced these execution bindings before any
+controlled task was opened:
+
+- OpenAI Codex: `gpt-6-luna`, host `codex-cli 0.160.0`; observed status
+  `GPT-6-Luna (reasoning medium, summaries auto)`.
+- Claude Code: `claude-sonnet-5-5`, host `2.1.289 (Claude Code)`.
+
+Every run in a family must explicitly select that model. Codex runs keep
+reasoning at medium and summaries at auto for the entire family batch. A host or
+model drift invalidates the affected run under the protocol.
+
 ## Run contract
 
 Each Active/Shadow pair starts from the same frozen base in independent fresh
