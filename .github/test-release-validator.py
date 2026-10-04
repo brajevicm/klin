@@ -19,8 +19,8 @@ FILES = {
         "uses: brajevicm/klin@v{version}\n"
         "git clone --branch v{version} https://github.com/brajevicm/klin\n"
     ),
-    ".claude-plugin/marketplace.json": '{"plugins":[{"source":{"ref":"v{version}"}}]}\n',
-    ".agents/plugins/marketplace.json": '{"plugins":[{"source":{"ref":"v{version}"}}]}\n',
+    ".claude-plugin/marketplace.json": '{"plugins": [{"source": {"ref": "v{version}"}}]}\n',
+    ".agents/plugins/marketplace.json": '{"plugins": [{"source": {"ref": "v{version}"}}]}\n',
     "plugins/klin/.claude-plugin/plugin.json": '{"version": "{version}"}\n',
     "plugins/klin/.cursor-plugin/plugin.json": '{"version": "{version}"}\n',
 }
