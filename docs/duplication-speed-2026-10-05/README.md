@@ -9,8 +9,8 @@ Design A misses the cache limit. Design B meets the limits but can block a
 region that is not an exact copy. Section 7 is the design that replaces both:
 design C, the proven chain. It gave no false positive in any run and meets
 every #478 limit, at 1M too. Section 8 narrows design C's band from 58 to
-38 tokens with a smaller index scheme. That is now the default. Its 1M row
-waits for the owner.
+38 tokens with a smaller index scheme. That is now the default, and it meets
+every #478 limit at 1M.
 
 ## 1. Prototype
 
@@ -486,8 +486,29 @@ with them.
 
 ### 1M row (owner)
 
+The owner ran these commands on the 1M fixture:
+
 ```sh
 cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
 WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
 python3 docs/duplication-speed-2026-10-05/summary.py
 ```
+
+| #478 Stop limit | k = 41, w = 20 at 1M | Result |
+|---|---|---|
+| 20 changed: median ≤ 15 ms, max ≤ 25 ms | 3.76 ms, 4.03 ms | met |
+| 100 changed: median ≤ 50 ms | 15.89 ms (max 29.81 ms) | met |
+| Cache growth ≤ 10% of 37,301,283 bytes | 2,791,620 bytes (regions 1,879,188, functions 912,432), 7.5% | met |
+| Cold ≤ 5% slower | 1,382 ms on the 31.76 s cold hook, 4.4% | met |
+| No extra parses, no reads of unchanged source, no whole-tree walks, no external processes | the query reads the index and the changed files only | met by design |
+
+- With k = 41, the 1M fixture has no capped key, so every query is complete.
+  With k = w = 30, every 1M query was INCOMPLETE.
+- One warm-100 run took 29.81 ms. The other four took about 16 ms. The limit
+  for 100 changed files is on the median only.
+- The cold margin is small: 4.4% against 5%. The cold hook time is one
+  sample.
+- The peak RSS of about 33 MB includes the validation, which reads the whole
+  token chain. The Stop path does not read the chain.
+- There were no false positives at 1M. The fixture holds no true copy of 60
+  tokens or more, so the 1M row measures cost, not detection.
