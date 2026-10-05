@@ -701,7 +701,7 @@ The classic genealogy work traces new clone groups to ancestor groups and
 models consistent/inconsistent evolution:
 
 - Kim et al., *An Empirical Study of Code Clone Genealogies*:
-  https://homes.cs.washington.edu/~mernst/pubs/clone-genealogy-esem2005.pdf
+  https://dada.cs.washington.edu/research/tr/2005/04/UW-CSE-05-04-01.pdf
 - later work continues to use clone-group evolution/consistent-change
   terminology:
   https://doi.org/10.1016/j.jss.2017.08.045
