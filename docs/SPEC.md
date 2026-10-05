@@ -1047,7 +1047,13 @@ the `before` tree lacks measures nothing there.
 
 The turn stamp is a commit made with `git commit-tree` over a tree from a
 temporary index, with HEAD at stamping time as its parent, so both paths above
-work on it unchanged. The RECOMMENDED stamping sequence is `git add -A` with
+work on it unchanged. Each capture MUST use a fresh private index path, so a
+Git index lock left by an interrupted capture cannot keep later turns open.
+The completed index is retained in the state directory to record that a
+capture has happened; an unsuccessful capture MUST NOT erase that record.
+`a_leftover_private_index_lock_does_not_keep_a_green_turn_open` in
+`tests/turn.rs` pins recovery after a green stop.
+The RECOMMENDED stamping sequence is `git add -A` with
 `GIT_INDEX_FILE` pointing at an `index` file in the state directory, then
 `git write-tree`, then `git commit-tree -p HEAD`, then `git update-ref
 refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp,

@@ -136,9 +136,12 @@ pub fn tree(root: &Path, at: &Path) -> Option<String> {
 /// The same tree through an index the caller names, for a reader that must not leave the
 /// stamp's own index behind, because `run` reads that file's absence as a first session.
 pub fn tree_through(root: &Path, index: &Path) -> Option<String> {
-    let _ = std::fs::remove_file(index);
-    git(root, Some(index), &["add", "-A"])?;
-    git(root, Some(index), &["write-tree"])
+    let temporary = tempfile::tempdir_in(index.parent()?).ok()?;
+    let fresh = temporary.path().join(INDEX);
+    git(root, Some(&fresh), &["add", "-A"])?;
+    let tree = git(root, Some(&fresh), &["write-tree"])?;
+    std::fs::rename(fresh, index).ok()?;
+    Some(tree)
 }
 
 /// The commit a ref or object name points at, and `None` when it names no commit.

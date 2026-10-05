@@ -115,6 +115,27 @@ fn a_red_verdict_keeps_the_stamp_and_a_green_one_moves_it() {
 }
 
 #[test]
+fn a_leftover_private_index_lock_does_not_keep_a_green_turn_open() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_SESSION).code, 0);
+    let first = tree.field("commit");
+    verdict(&tree, "green");
+    tree.write(".git/klin/index.lock", "");
+    tree.write("src/lib.rs", "fn next_turn() {}\n");
+
+    for _ in 0..2 {
+        let run = radius(&tree, A_PROMPT);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(!run.says("git could not stamp"), "{}", run.out);
+        assert_ne!(tree.field("commit"), first, "a green turn stayed open");
+    }
+    assert_eq!(
+        git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
+        "fn next_turn() {}"
+    );
+}
+
+#[test]
 fn every_prompt_and_session_start_raises_the_counter() {
     let tree = tree();
 
