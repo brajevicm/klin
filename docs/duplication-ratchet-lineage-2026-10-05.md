@@ -35,8 +35,13 @@ regressions(H) = max(0, |sources(H)| + new(H) - 1)
 
 A base cohort is the set of base occurrences that had one compatible canonical
 fingerprint. Its legacy duplicate debt is internal to that cohort and may follow
-certified descendants of that cohort through edits, moves and splits. It may
-not be pooled with another cohort.
+conservatively attributed descendants of that cohort through edits, moves and
+splits. It may not be pooled with another cohort.
+
+Every base occurrence contributes one **lineage slot**. A slot may be consumed
+at most once by one current occurrence. This slot-conservation rule is what
+prevents a diverged legacy member from leaving its old allowance behind for a
+new copy to reuse.
 
 This is the selected ratchet model for #478.
 
@@ -102,12 +107,13 @@ The cohort id is conceptually:
 A cohort of size one has no legacy duplicate debt. A cohort of size `k` has
 `k - 1` units of held legacy debt.
 
-### Certified descendant
+### Conservative cohort attribution
 
-A current occurrence is a certified descendant of a base cohort only when klin
-has a conservative one-to-one ancestry rule that proves it.
+A current occurrence may be attributed to a base cohort only through a rule
+that conserves one base occurrence slot. The ratchet does not need to claim an
+exact historical site when cohort-level evidence is sufficient.
 
-There are exactly two lineage mechanisms in this model.
+There are three lineage mechanisms.
 
 1. **Version-compatible structural site identity**
 
@@ -116,22 +122,49 @@ There are exactly two lineage mechanisms in this model.
    identity is unambiguous on both sides, and the path relationship is known
    (same path or an explicit rename/move mapping).
 
-   This is the bridge needed for synchronized edits such as `H1 -> H2`.
+   This is the strongest bridge for synchronized edits such as `H1 -> H2`.
+   The rule does not admit raw line proximity or a guessed ordinal as identity.
 
 2. **Same-fingerprint replacement**
 
-   After structural pairing, an unmatched removed base occurrence of cohort
-   `H` may be consumed by one unmatched current occurrence whose fingerprint
-   is also `H`.
+   After proven site lineage is consumed, an unmatched removed base occurrence
+   of cohort `H` may be consumed by one unmatched current occurrence whose
+   fingerprint is also `H`.
 
    The exact historical site does not need to be guessed. The only fact needed
    by this ratchet is that one occurrence of the same canonical implementation
    disappeared and one appeared. This preserves #48's move/replacement
    behavior.
 
-A base occurrence can supply at most one current descendant.
+3. **Unique changed-fingerprint continuation**
 
-No other cross-fingerprint pairing is inferred.
+   After the first two mechanisms, a still-unused removed slot from base cohort
+   `C_h` may be attributed to an unmatched occurrence in a changed-fingerprint
+   successor group only when all of these hold:
+
+   - the cohort has at least one **proven** current descendant;
+   - it has no current continuation at the original fingerprint `h`;
+   - every proven current descendant of the cohort belongs to the same one
+     successor fingerprint `H'`;
+   - the slot is consumed by an occurrence in that same `H'` group.
+
+   This is cohort-level continuation, not a guessed site-to-site match. It
+   handles, for example:
+
+   ```text
+   base:  A=H1  B=H1
+   after: A=H2  C=H2
+   ```
+
+   when `A -> A` is proven and `B` was removed: the unused `B` slot may
+   follow the sole proven successor group `H2`, so the legacy pair remains
+   held.
+
+   If the cohort has multiple successor groups, or no proven successor at all,
+   no changed-fingerprint slot is assigned by this rule.
+
+A base occurrence slot can supply at most one current occurrence. No other
+cross-fingerprint attribution is inferred.
 
 ### Definitely new
 
@@ -237,26 +270,43 @@ full unchanged occurrence list is not.
 
 For each fingerprint `h`:
 
-- count unmatched removed base occurrences from cohort `C_h`;
+- count unmatched removed base slots from cohort `C_h`;
 - count unmatched current occurrences with fingerprint `h`;
 - consume up to the smaller count as replacement descendants of `C_h`.
 
 No site-to-site guess is required because every consumed base occurrence belongs
 to the same cohort and the current canonical implementation is unchanged.
 
-This is the only fallback that can carry lineage without structural identity.
+### 5. Carry unused slots only to a unique changed successor
 
-### 5. Classify remaining current occurrences
+For each base cohort with still-unused removed slots after step 4:
+
+1. collect its proven current descendants from structural lineage;
+2. if any current descendant remains at the original fingerprint, do not carry
+   a removed slot across fingerprints;
+3. if the proven changed descendants occupy exactly one non-empty successor
+   fingerprint group `H'`, consume unused removed slots one-for-one against
+   unmatched current occurrences in `H'`;
+4. if proven descendants split across multiple successor groups, do not choose a
+   branch.
+
+The third step conserves legacy multiplicity inside one continuing cohort
+without turning an unused slot into a repository-wide coupon.
+
+### 6. Classify remaining current occurrences
 
 For each unmatched current occurrence:
 
-- if the evidence positively proves it is new, classify it as definitely new;
-- if its possible cross-fingerprint ancestry is ambiguous/unsupported, classify
-  it as lineage-unknown.
+- if no still-valid base-slot attribution can supply it, classify it as
+  definitely new;
+- if an unresolved cross-fingerprint allocation could supply it, classify it
+  as lineage-unknown.
 
-Do not invent a best-effort cross-fingerprint match.
+Do not invent a best-effort cross-fingerprint match. In particular, zero proven
+successors is not a "unique successor": a fully changed-fingerprint replacement
+with no safe lineage remains UNKNOWN/INCOMPLETE when the distinction matters.
 
-### 6. Judge each current canonical group
+### 7. Judge each current canonical group
 
 If a current group has no judgement-relevant lineage-unknown occurrence:
 
@@ -274,19 +324,23 @@ under #475/#354.
 A singleton current group is not duplicate debt, so unknown lineage inside a
 singleton does not by itself create a duplication finding.
 
-### 7. Deterministic finding assignment
+### 8. Deterministic finding assignment
 
 The semantic unit is the group regression, not a claim that one historical site
 was certainly "the copier".
 
-For reporting:
+For reporting, choose the root origin deterministically with this preference:
 
-1. sort lineage bundles deterministically by:
-   - source cohort id for inherited bundles;
-   - then current `(path, start, end)`;
-2. sort definitely-new singleton bundles by current site;
-3. retain the first bundle as the free root;
-4. emit one finding for each remaining bundle.
+1. an exact-fingerprint carried base cohort;
+2. another carried base cohort rather than a brand-new singleton;
+3. the carried cohort with the most attributed current occurrences;
+4. stable cohort key and then current `(path, start, end)` as tie-breaks.
+
+Emit one finding for each remaining origin unit.
+
+This preference makes a genuinely new singleton the finding site whenever an
+inherited origin exists, while keeping merge findings stable under high
+multiplicity.
 
 When the regression is a convergence of old cohorts, wording should say that
 previously distinct implementations now converge rather than falsely accusing
@@ -305,6 +359,8 @@ natural finding anchor.
 | Two identical new functions | none -> two new `H` | 0 source + 2 new = 2 | FAIL 1 |
 | Synchronized edit of duplicate pair/group | one base cohort `H1` -> its descendants all become `H2` | 1 source + 0 new = 1 | PASS / held |
 | Synchronized edit + third new copy | old cohort `H1` -> descendants at `H2`, plus new `H2` | 1 source + 1 new = 2 | FAIL 1 |
+| Diverged member cannot leave coupon behind | `A,B:H1 -> A:H1, B:H2, C:H1(new)` with `B` lineage proven | `B` already consumes its slot at `H2`; `C` is new beside the `H1` origin | FAIL 1 |
+| Removed slot follows sole changed successor | `A,B:H1 -> A:H2, C:H2`, with `A` proven and `B` removed | one proven successor group; `C` consumes the unused `B` slot | PASS |
 | One legacy member edited to uniqueness | one old cohort splits between `H1` and `H2` | each current group has one source cohort | PASS |
 | Two unrelated unique implementations converge | `H1` + `H2` -> both `H3` | 2 source cohorts = 2 | FAIL 1 |
 | Delete + equivalent add | removed `H` occurrence replaced by new-site `H` | same-fingerprint replacement keeps one source cohort | PASS |
@@ -314,6 +370,7 @@ natural finding anchor.
 | Function rename, same fingerprint | `H` -> `H` with renamed declaration | same-fingerprint replacement | PASS |
 | Rename/move plus implementation edit | `H1` -> `H2` | PASS only with certified structural lineage; otherwise UNKNOWN/INCOMPLETE if judgement depends on it | explicit |
 | Group split | one cohort `H1` -> descendant groups `H2`, `H3`, ... | every new group contains the same single source cohort | PASS; may reduce debt |
+| Split + removed-slot allocation matters | one cohort has proven descendants in `H2` and `H3`, plus a removed slot and an unmatched occurrence on a branch | slot has multiple plausible successor branches | INCOMPLETE if allocation changes regression count |
 | Two old duplicate groups merge | cohort `H1` + cohort `H2` -> one `H3` | 2 source cohorts = 2 | FAIL 1 |
 | `m` old groups merge | `m` distinct source cohorts -> one group | `m` bundles | FAIL `m - 1` |
 | Partial survival of legacy group | any subset of one old cohort survives together | one source cohort | PASS |
@@ -456,6 +513,10 @@ cross-semantic ancestry.
 Removal of one `H` occurrence plus addition of one `H` occurrence is a
 replacement slot and retains source cohort `C_h`.
 
+This exact-fingerprint replacement is consumed only after proven divergent site
+successors have taken their own base slots, so a diverged member cannot leave a
+second allowance behind.
+
 This covers:
 
 - file move;
@@ -469,11 +530,15 @@ additional current occurrence beyond replacement supply is new.
 
 ### Changed canonical implementation
 
-When `H1 -> H2`, lineage can carry only through certified structural
-identity.
+When `H1 -> H2`, occurrence-level lineage carries through certified structural
+identity. Unused slots may additionally follow a changed fingerprint only via
+the unique-successor cohort rule above.
 
-This is what lets synchronized edits preserve old debt without turning every
-fingerprint change into a transferable allowance.
+A fully changed-fingerprint replacement with no proven successor is not assumed
+held. A split cohort does not donate its removed slots to an arbitrary branch.
+
+This preserves synchronized legacy debt without turning every fingerprint
+change into a transferable allowance.
 
 ## Persisted metadata and O(delta) warm work
 
@@ -486,6 +551,7 @@ Per base fingerprint/cohort:
 
 ```text
 measurement-basis / detector version
+structural-identity version when used for cross-fingerprint lineage
 language
 canonical fingerprint
 base occurrence count
@@ -608,42 +674,57 @@ It is the smallest model found that simultaneously gives:
 The selected model should be implemented/tests specified around these
 invariants.
 
-### I1. Same-cohort consistency
+### I1. Slot conservation
+
+Every base occurrence slot is consumed at most once.
+
+### I2. Same-cohort consistency
 
 If every current occurrence in a clone group descends from one base cohort and
 there are no new occurrences, the group creates no regression.
 
-### I2. New-copy cardinality
+### I3. New-copy cardinality
 
 Adding `q` genuinely new copies to descendants of one source cohort creates
 exactly `q` regressions.
 
-### I3. Fresh-group cardinality
+### I4. Fresh-group cardinality
 
 Creating `q >= 1` identical new implementations from no source cohort creates
 exactly `q - 1` regressions.
 
-### I4. Merge cardinality
+### I5. Merge cardinality
 
 A current group made only from `m >= 1` independent source cohorts creates
 exactly `m - 1` regressions.
 
-### I5. Split monotonicity
+### I6. Split monotonicity
 
 Splitting one source cohort across any number of current fingerprints creates
 zero regressions by itself.
 
-### I6. Replacement conservation
+### I7. Replacement conservation
 
-One removed occurrence may conserve at most one same-fingerprint current
-occurrence. Replacement supply cannot increase multiplicity.
+One removed occurrence may conserve at most one current occurrence. It may do
+so through an exact-fingerprint replacement or the unique changed-successor
+rule; it cannot be spent on multiple branches.
 
-### I7. No guessed lineage
+### I8. Origin separation
+
+Two different base cohorts never become one held allowance merely because their
+current fingerprints match.
+
+### I9. No global compensation
+
+Resolving or splitting duplicate debt elsewhere cannot pay for a new origin in
+this clone group.
+
+### I10. No guessed lineage
 
 No ambiguous/unsupported cross-fingerprint identity is converted to lineage
 merely to make the verdict pass or fail.
 
-### I8. Basis compatibility before lineage
+### I11. Basis compatibility before lineage
 
 Measurement-basis compatibility is checked before cohort or site matching.
 
@@ -656,6 +737,7 @@ The following #48 ideas survive:
 - compact persisted base fingerprint counts;
 - changed-file before/current extraction;
 - exact same-fingerprint remove/add replacement accounting;
+- one-for-one occurrence-slot conservation;
 - deterministic assignment of only new excess findings;
 - no repository duplicated-line percentage;
 - O(delta)-shaped warm work.
@@ -667,7 +749,7 @@ The eventual implementation ticket must add:
 
 - optional versioned structural occurrence identity for cross-fingerprint
   lineage;
-- source-cohort bundle accounting;
+- source-cohort bundle accounting plus the bounded unique-successor slot rule;
 - explicit UNKNOWN/INCOMPLETE handling when lineage evidence needed for the
   judgement is ambiguous;
 - basis/version compatibility for the duplication index.
