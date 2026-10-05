@@ -1077,7 +1077,11 @@ It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
 worktree share one window and one `turn` file. Session-start and prompt events
 MUST hold the same advisory state lock from before reading the stamp and counter
-through publishing the mark, refs, stamp and retained index. Distinct events
+through publishing the mark, refs, stamp and retained index. They MUST capture
+the tree and measure the radius before they take that lock, so a slow capture
+cannot make a stop lose the lock and its blocks.
+`a_slow_prompt_capture_does_not_cost_a_failing_stop_its_block` in
+`tests/copies.rs` pins this. Distinct events
 wait their turn; duplicate-event claims alone do not serialize this transaction.
 If the lock cannot be acquired within 30 seconds, the event changes no turn
 state and prints a NOTE. A manual reset holds this lock too.
@@ -4844,7 +4848,7 @@ hook(event):
     if told: tell(report)                          # systemMessage on stdout, exit 0 (9.1)
     return 0                                       # see tell() below
   write_verdict_atomic(state/turn, RED)
-  if lost_the_lock: pass_through("another stop held the state directory"); return 0
+  if lost_the_lock: pass_through("another klin event held the state directory"); return 0
   if no_state_directory: pass_through("could not record a gate block"); return 0
   if count.gate_blocks >= 2: pass_through("the gate has blocked 2 stops"); return 0
   flagged = count.builds == 0 and host.blocked_before(event)

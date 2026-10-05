@@ -272,7 +272,7 @@ fn observe_hook_report(report: Option<&Value>) {
     let _ = std::fs::write(path, report.to_string());
 }
 
-/// The verdict this stop leaves for the next prompt, or the reason it left none: another stop
+/// The verdict this stop leaves for the next prompt, or the reason it left none: another event
 /// held the lock for the whole budget, or the stamp could not be read or written. Spec 6.5.
 fn written(
     root: &Path,
@@ -283,12 +283,13 @@ fn written(
 ) {
     if lost {
         eprintln!(
-            "klin: NOTE: another stop in this worktree held the state directory for the whole \
+            "klin: NOTE: another klin event in this worktree held the state directory for the whole \
              {} ms klin waits, so this stop wrote no verdict, spent no block, and the window \
              stays as it is.",
             BUDGET.as_millis()
         );
-        log.why = Some("another stop held the state directory, so this stop wrote no verdict");
+        log.why =
+            Some("another klin event held the state directory, so this stop wrote no verdict");
         return;
     }
     let mut said = String::new();
@@ -1255,7 +1256,7 @@ const UNPROVEN: &str = "klin holds no record of the tree the last gate block saw
 /// Why a stop spends no gate block when its record would not write. ADR 0052.
 const UNRECORDED: &str = "klin could not record a gate block, so nothing would bound it";
 /// Why a stop that lost the state lock spends no gate block. Spec 6.5.
-const LOCKED: &str = "another stop held the state directory, so this stop could not count a \
+const LOCKED: &str = "another klin event held the state directory, so this stop could not count a \
     gate block";
 /// Why a stop over the tree the last gate block saw spends none. ADR 0052.
 const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";

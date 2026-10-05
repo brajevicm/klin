@@ -157,6 +157,40 @@ fn concurrent_distinct_sessions_serialize_the_prompt_counter() {
 }
 
 #[test]
+fn a_slow_prompt_capture_does_not_cost_a_failing_stop_its_block() {
+    let tree = tree();
+    tree.words("README.md", 40);
+    tree.write(".git/klin/index.captures/lock", "");
+    let capture = std::fs::File::options()
+        .write(true)
+        .open(tree.state("index.captures/lock"))
+        .expect("capture lock");
+    capture.lock().expect("hold capture lock");
+    let prompt = a_prompt("s1", "p1");
+    let stop = with(
+        claude("Stop", "s2", "p2"),
+        json!({"stop_hook_active": false, "last_assistant_message": "done"}),
+    );
+
+    std::thread::scope(|scope| {
+        let prompted = scope.spawn(|| run(&tree, &["radius"], &prompt));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while tree.state("claims").read_dir().map_or(0, Iterator::count) == 0
+            && std::time::Instant::now() < deadline
+        {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        let stopped = run(&tree, &["gate", "--hook", "--changed"], &stop);
+        capture.unlock().expect("release capture lock");
+        assert_eq!(stopped.code, 2, "{}", stopped.out);
+        assert!(stopped.says("doc_size"), "{}", stopped.out);
+        assert!(!stopped.says("held the state directory"), "{}", stopped.out);
+        assert_eq!(prompted.join().expect("prompt").code, 0);
+    });
+}
+
+#[test]
 fn two_prompts_and_two_sessions_on_one_worktree_each_move_the_counter() {
     let tree = tree();
     let before = prompts(&tree);

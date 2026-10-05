@@ -48,6 +48,13 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
         return Ok(0);
     };
     let start = named.as_path();
+    let opened = stamp::mark(start, &at);
+    let capture = stamp::capture(start, &at.join(stamp::INDEX));
+    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
+    let facts = event
+        .as_ref()
+        .is_some_and(|event| event.prompted)
+        .then(|| prompt_facts(start, &at, opened.as_deref(), tree, sections, out));
     let Some(_lock) = state::lock(&at, Duration::from_secs(30)) else {
         note(
             out,
@@ -56,16 +63,12 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
         return Ok(0);
     };
     let never = !at.join(stamp::INDEX).exists();
-    let opened = stamp::mark(start, &at);
-    let capture = stamp::capture(start, &at.join(stamp::INDEX));
-    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if let Some(event) = &event {
         handoff::clear(start, &event.session);
     }
-    if event.as_ref().is_some_and(|event| event.prompted) {
-        let (enabled, facts) = prompt_facts(start, &at, opened.as_deref(), tree, sections, out);
+    if let Some((enabled, facts)) = facts {
         journal::prompt(start, prompts, event.as_ref(), enabled, facts);
     }
     let mark = tree.and_then(|tree| marked(start, tree));
