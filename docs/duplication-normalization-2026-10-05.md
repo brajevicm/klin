@@ -6,9 +6,9 @@ handover for the agent that runs the research. It holds no results yet.
 The ratchet model is settled in `docs/duplication-ratchet-lineage-2026-10-05.md`
 (#479). This note decides only what one canonical fingerprint means.
 
-Status: design reviewed by two adversarial passes. The second pass is the PR
-#488 review. The fixes from both passes are in this design. Nothing below has
-been measured, except the three semantic checks in section 13.
+Status: design reviewed by three adversarial passes. The second and third
+passes are the PR #488 reviews. The fixes from all passes are in this design.
+Nothing below has been measured, except the semantic checks in section 13.
 
 ## 1. Scope
 
@@ -61,7 +61,8 @@ For each source file:
 1. Parse with the grammar for the file extension. Use `typescript` for `.ts`,
    `tsx` for `.tsx`. Both map to language `ts`.
 2. Find eligible units (section 4).
-3. For each unit, collect leaf tokens in source order. Skip comments.
+3. For each unit, collect leaf tokens in source order. Skip comments. For TS,
+   apply the statement terminator rule below.
 4. Classify each identifier leaf with the binding walker (section 6).
 5. Write one canonical stream per profile and variant (section 5).
 6. Hash each stream with sha256. Keep the stream text for an equality check.
@@ -72,6 +73,39 @@ For each source file:
 Use the **text** of each leaf token, never the node kind. The TS and TSX
 grammars give different node kinds for some of the same code. The text keeps
 TS and TSX as one identity. Fixture `tsx-same-as-ts` checks this.
+
+TS statement terminators. In TS, a line break can change the meaning through
+automatic semicolon insertion (ASI). tree-sitter inserts the automatic
+semicolon as a hidden token, so leaf text alone cannot show it. Section 13,
+check 4 shows four pairs of functions with different behavior and the same
+leaf text. The trees of these pairs differ. Rule:
+
+1. A **terminated kind** is a node kind whose rule in the tree-sitter
+   JavaScript or TypeScript `grammar.js` ends with `$._semicolon` (an explicit
+   `;` or an automatic one). Examples: `expression_statement`,
+   `return_statement`, `break_statement`, `continue_statement`,
+   `throw_statement`, `lexical_declaration`, `variable_declaration`,
+   `public_field_definition`. List the full set from `grammar.js` of the
+   pinned versions, and commit the list with the prototype.
+2. Inside a node of a terminated kind, drop a final `;` leaf. Then emit one
+   `;` token at the end of the node. Do this for explicit and automatic
+   semicolons alike.
+3. Keep every other `;` leaf, for example the separators in `for (;;)`.
+
+So `return⏎value;` gives `return ; value ;`, and `return value;` gives
+`return value ;`. Code with and without semicolons gives the same stream when
+ASI makes them equal. These node kinds are the same in the TS and TSX
+grammars, so the rule keeps one identity.
+
+TS block comments with a line break. Under ECMAScript, a block comment that
+contains a line break counts as a line terminator for ASI. tree-sitter 0.23.2
+does not apply this: it parses `return /*⏎*/ value;` as `return value;`
+(section 13, check 4). The tree is wrong, so no stream rule can repair it. A
+TS unit is `unclear` when it contains a block comment with a line break and
+code on the same line before or after the comment. Report the count.
+
+Rust has no ASI. Rust line breaks never change the meaning, so Rust needs no
+terminator rule.
 
 The size of a unit is the number of non-comment leaf tokens in the source,
 with punctuation included, counted before any transform. Shorthand expansion
@@ -102,8 +136,8 @@ TypeScript/TSX:
 - not overload signatures, `declare` members or `abstract` methods;
 - not anonymous callbacks, for example an arrow passed as an argument.
 
-Measure E1 and E2 separately. Admit E2 only if it adds positives without a
-blocking hard negative.
+Measure E1 and E2 separately. E1 is the candidate eligibility. E2 is a
+comparator (section 10).
 
 Nested functions:
 
@@ -181,10 +215,12 @@ Variants. Measure each one separately:
        capture does not match. Record this as a blind spot, with a count.
     4. Every other macro keeps M-strict text.
 
-  M-std may become a BLOCK candidate, because the std docs define these
-  arguments as expressions and the walker resolves them with the same rules
-  as ordinary code. Record how many units contain a local name inside a macro
-  under M-strict.
+  M-std is REVIEW only and a comparator (section 10). A local
+  `macro_rules! vec` or an import can shadow a std macro, and
+  `#[macro_use] mod m;` in a parent module makes a macro of another file
+  visible. A check inside one file cannot prove that `vec!` is the std macro.
+  Hard negative `shadowed-std-macro` shows the risk. Record how many units
+  contain a local name inside a macro under M-strict.
 - **O-none / O-type (owner).** O-type adds the enclosing `impl` type or class
   name in front of the stream. O-none does not. See the label policy in
   section 9.
@@ -196,10 +232,10 @@ Variants. Measure each one separately:
   - the format string of a macro;
   - discriminant fields such as `type:` or `kind:`.
 
-  Admit a class only if it catches a required positive that P2 misses, and
-  only if it adds no blocking hard negative. Hard negative
-  `validation-constants` will likely reject literal normalization. Record the
-  result either way.
+  P3 is a comparator (section 10). Report the groups each class adds and
+  their labels. Hard negative `validation-constants` will likely show the
+  risk of literal normalization. #478 decides whether any class is admitted
+  later.
 
 ## 6. Binding walker
 
@@ -228,6 +264,13 @@ Rust rules:
   patterns, `if let` and `while let`, and closure parameters.
 - Each block, closure, match arm and `if let` body opens a new scope.
 - A new `let` shadows the old binding with a new slot.
+- Before the pattern rule below: a macro invocation in statement position
+  can expand to an item, for example a `const`, in its block. tree-sitter
+  cannot tell an item macro from an expression macro in that position. So a
+  pattern identifier that comes after a macro invocation in statement
+  position, in the same block or an enclosing block of the unit, keeps its
+  text and the unit is `unclear`. This includes `println!(…);`. A high
+  `unclear` rate is evidence against P2 for Rust.
 - In a pattern, an `identifier` that starts with an uppercase letter keeps
   its text, for example `None`. This direction is always safe: if the name is
   in fact a binding, the cost is only lost recall.
@@ -264,9 +307,23 @@ TypeScript rules:
   - `let`, `const` and `var`;
   - `catch` parameters, `for…in` and `for…of` bindings;
   - names of nested function and class declarations.
-- Before the walk, hoist the `var` bindings and nested function declarations
-  to the top of their function scope. A `let`, `const` or `class` binding
-  belongs to its block.
+- Strict code: a file with an `import` or `export` statement (a module), the
+  body of a class, and code under a `"use strict"` directive. TS output is
+  usually a module, but the walker must check this for each file.
+- Before the walk, hoist the `var` bindings to the top of their function
+  scope. A `let`, `const` or `class` binding belongs to its block.
+- A function declaration directly in a function body is hoisted to the top
+  of that body.
+- A function declaration inside a block:
+  - in strict code, it belongs to that block, like `let`;
+  - in other code, Annex B rules apply. The walker does not model them: the
+    unit is `unclear`.
+- Parameters: when any parameter has an initializer or a destructuring
+  pattern with an initializer, the parameters get their own scope between the
+  outer scope and the body. An initializer sees only the parameters before it
+  and the outer scope, never a `var` or function declaration of the body. A
+  body `var` with the same name as a parameter is a new binding in the body
+  scope.
 - Each block, arrow and function expression opens a new scope.
 - Keep these as anchors: `this`, `super`, `property_identifier`,
   `type_identifier`, the names of generic type parameters, JSX element and
@@ -308,7 +365,7 @@ Required positives (must collide under the candidate):
 - `legacy-plus-third` (two base copies, one new third copy);
 - `tsx-same-as-ts`.
 
-Required hard negatives (must not collide under P2/P3):
+Required hard negatives (must not collide under a candidate, P1 or P2):
 
 - `same-skeleton-different-api`;
 - `crud-wrappers`;
@@ -323,7 +380,12 @@ Required hard negatives (must not collide under P2/P3):
 - `glaredb-executor` (the same executor scaffold with a different member or
   API; model it on GlareDB#3633);
 - `owner-only-differs` (the same body in two `impl` blocks or classes; result
-  depends on O-none / O-type).
+  depends on O-none / O-type);
+- `shadowed-std-macro` (Rust: a file with a local `macro_rules! vec` whose
+  arguments are not expressions);
+- ASI pairs (TS), each with the same leaf text and different behavior:
+  `asi-return`, `asi-postfix`, `asi-break-label`, `asi-async`, and
+  `asi-block-comment` (must be `unclear`, see section 3).
 
 Anchor tests (#480 AC on API/member/type preservation). Each pair differs in
 exactly one anchor. It must not collide under P1 to P3 and must collide under
@@ -336,7 +398,8 @@ Optional recall probes. They are reported but are not required, so no
 variant is forced by them:
 
 - `local-rename-macro` (Rust: renamed local passed as an argument to
-  `format!` and `assert_eq!`);
+  `format!` and `assert_eq!`; expected to match only under the M-std
+  comparator);
 - `local-rename-inline-capture` (Rust: renamed local in `"{x}"`; expected to
   miss in every variant);
 - `function-rename-recursive` (expected to match only with switch `N` on);
@@ -352,7 +415,12 @@ Binding construct tests, both languages where the construct exists:
   `unclear`), `macro-closure-arg` (Rust: `vec![|a| a + 1]`),
   `macro-struct-field` (Rust: `vec![Foo { x: y }]`), `format-named-arg`
   (Rust: `format!("{v}", v = x)`), `recovered-parse` (both: a unit with an
-  `ERROR` node).
+  `ERROR` node), `statement-macro-before-pattern` (Rust: a statement macro
+  before a `let` pattern makes the unit `unclear`), `default-param-body-var`,
+  `default-param-body-function`, `block-function-strict` and
+  `block-function-module` (TS), `block-function-sloppy` (TS: must be
+  `unclear`), `semicolon-style` (TS: the same code with and without
+  semicolons must match).
 
 ### Tier 2: existing material, before any fresh sampling
 
@@ -403,19 +471,21 @@ There is no fixed minimum number of groups. No group count proves a BLOCK
 gate. A count of n groups gives only an upper bound on the false-block rate.
 The result states that bound (section 10).
 
-- Label the union of the groups that the BLOCK-eligible candidates make,
-  not only the P2 groups. Start with the P2 groups, then label the groups that
-  each more aggressive candidate adds (M-std, N on, E2, O-none, each P3
-  class). A candidate's evidence counts only the groups it makes. Report n
-  for each candidate and threshold.
+- Label the groups of the candidates first (section 10). Then label the
+  groups that each comparator adds (M-std, N on, E2, O-none, each P3 class),
+  so that the result can report their precision. Report n for each candidate,
+  comparator and threshold.
 - Label as many groups for each language as the budget allows. Aim at about
-  150 groups for each candidate that may reach BLOCK. With zero non-copy
-  groups, 150 gives a 3/n value of 2% (rule of three).
+  150 candidate groups. With zero non-copy groups, 150 gives a 3/n value of
+  2% (rule of three).
 - Cap the share of one repository at one third of the labeled groups for a
   language. Groups from one repository are correlated, so the real bound is
   weaker than 3/n. Report the count for each repository.
 - If a language produces more groups than can be labeled, take a seeded random
-  sample inside each repository's cap. Record the seed.
+  sample inside each repository's cap. Record the seed. The frozen sample is
+  the evidence population. A random sample supports the same 3/n inference
+  about all groups as a full labeling. The strength wording must state the
+  sampled fraction, for example `0/150 sampled from 2000`.
 
 The census measures duplicates that already exist in base trees, not
 duplicates that agents add. It is a proxy for the population that matters.
@@ -466,7 +536,8 @@ Columns:
 Write `labels/protocol.md` before the first census run, and commit it before
 any label.
 
-Label each group with exactly one label:
+Label each group with exactly one label. Look at every production member of
+the group first:
 
 | Label | Meaning |
 |---|---|
@@ -476,6 +547,10 @@ Label each group with exactly one label:
 | `generated` | generated or protocol-style code |
 | `test` | test code or a test helper |
 | `distinct` | same shape, different responsibility |
+| `mixed` | some members are one copied family, and one or more members are independent of it |
+
+`copy` means that every production member belongs to one copied family. If
+any member is independent, the label is `mixed`, not `copy`.
 
 Owner policy, fixed now: the same body in two different owner types is `copy`
 when a shared helper or default method could hold it. It is `required-shape`
@@ -493,53 +568,61 @@ Blind labeling:
 
 The labels are agent-drafted. Say so in the result note.
 
+Audit packet. The result note includes a file `labels/audit.tsv` with these
+groups, for a human or an independent second judge:
+
+- every group with a label other than `copy`;
+- every `mixed` group and every group with more than three members;
+- every group that a comparator adds over the selected candidate;
+- a seeded random sample of 20 `copy` groups for each language.
+
+#480 does not do the audit. The human audit is a precondition of the BLOCK
+decision in #478. Until then, the strength wording says "agent-labeled,
+unaudited".
+
 ## 10. Frozen decision rule
 
 Commit this rule before measurement. Do not change it after you see results.
 
 A **blocking hard negative** is a collision group at or above the threshold,
-in production scope, with any label other than `copy`.
+in production scope, with any label other than `copy` (`mixed` included).
 
-A **candidate** is one combination of profile, switch `N`, eligibility,
-macro variant, owner variant, literal class and threshold. A candidate
-**passes** when both of these are true:
+Candidates and comparators. Every variant that only adds collisions to a less
+aggressive value cannot win this rule, because no required positive needs it.
+So these are **comparators**, never candidates: switch `N` on, E2, M-std,
+O-none, every P3 literal class, and P4. The result reports, for each
+comparator, the groups it adds over the selected candidate and their labels.
+#478 decides whether to widen the contract later.
+
+A **candidate** is P1 or P2, with `N` off, E1, M-strict and O-type, at one
+threshold. A candidate **passes** when both of these are true:
 
 1. it catches every required positive whose size is at or above the
    threshold, and at least one copy of each required positive case is at or
    above the threshold;
-2. it has zero blocking hard negatives in tier 1, in the census groups it
-   makes and in any holdout.
+2. it has zero blocking hard negatives in tier 1, in the labeled census sample
+   of the groups it makes, and in any holdout.
 
 Selection, for each language. The order is total, so no choice remains after
 the results:
 
-1. Thresholds: take the lowest threshold in 60, 80, 100, 150 at which some
-   candidate passes.
-2. At that threshold, take the least aggressive passing candidate. Compare
-   candidates in this order of dimensions, with the less aggressive value
-   first:
-   1. profile: P1, then P2, then P3;
-   2. switch `N`: off, then on;
-   3. eligibility: E1, then E2;
-   4. macros: M-strict, then M-std;
-   5. owner: O-type, then O-none;
-   6. literal class: none, then `num`, then `str`, then `num+str`.
+1. Take the lowest threshold in 60, 80, 100, 150 at which a candidate passes.
+2. At that threshold, take P1 if it passes, else P2.
 3. If no candidate passes at any threshold, apply the REVIEW and reject rules
-   to the P2, `N` off, E1, M-strict, O-type candidate at 100.
+   to P2 at 100.
 
 Strength:
 
 - **BLOCK candidate**: the selected candidate passes. The strength states its
   evidence: `0/n` non-copy census groups for that candidate, the number of
   repositories, the sampling scheme, and the 3/n value marked as descriptive.
-  Example: "BLOCK candidate: 0 of 152 census groups were non-copy (11
-  repositories, capped at one third each, seeded sample). 3/n = 2%, on
-  base-tree duplicates; not a bound on future agent findings."
+  Example: "BLOCK candidate: 0 of 152 labeled census groups were non-copy,
+  sampled from 2000 (11 repositories, capped at one third each, seed 7).
+  3/n = 2%, on base-tree duplicates; not a bound on future agent findings.
+  Agent-labeled, unaudited."
 - **REVIEW**: the census has more `copy` groups than other groups, and
   `glaredb-executor` does not collide.
 - **reject**: none of the above.
-
-P4 is a comparator only. It is never a candidate.
 
 Rust and TS are judged independently. They may get different profiles,
 variants and thresholds.
@@ -550,8 +633,9 @@ The result note must contain one frozen candidate for each language. Each
 candidate states:
 
 - eligible units;
-- the normalization contract (profile, switch `N`, eligibility, macro
-  variant, owner variant, literal class, threshold);
+- the normalization contract (profile and threshold; the fixed values of
+  the other dimensions);
+- the comparator results: the groups each comparator adds, with labels;
 - the semantic anchors preserved;
 - the minimum size;
 - unsupported and unclear behavior;
@@ -569,6 +653,10 @@ candidate states:
   - an item-level macro or glob import in the file, which makes Rust pattern
     units `unclear`;
   - inline format capture instead of a positional argument (Rust);
+  - a statement macro such as `println!(…);` before a pattern (Rust), which
+    makes the unit `unclear`;
+  - a block comment with a line break next to code (TS), which makes the unit
+    `unclear`;
   - adding `arguments` or `eval` (TS).
 
   Measure each evasion on the `local-rename` fixture.
@@ -624,6 +712,8 @@ candidate states:
 - Never guess a local binding for a candidate fingerprint. Keep the text.
 - Do not add a token-neighbor rule for macro arguments. Section 13, check 3
   shows that it fails on closures and struct fields.
+- Do not build a TS stream from leaf text alone. Section 13, check 4 shows
+  that ASI makes this unsound.
 
 ### Known risks
 
@@ -634,13 +724,17 @@ candidate states:
   implementations. If so, the O-type variant and the owner policy decide the
   result. Report both.
 - dify#1422 may be out of language scope.
-- The labels are agent-drafted. The user may want to review a sample before
-  the result note claims a strength.
+- The labels are agent-drafted. The audit packet (section 9) is for the human
+  audit that #478 needs before a BLOCK decision.
+- The Rust statement-macro rule may make most Rust units with patterns
+  `unclear`. Report the rate. Do not relax the rule.
 
 ## 13. Semantic checks, 2026-10-05
 
-Three checks were done before the PR #488 review fixes. Probes ran with rustc
-1.98.1 (edition 2021) and tree-sitter 0.27.0 with tree-sitter-rust 0.24.2.
+Checks 1 to 3 were done before the fixes for the first PR #488 review. Check
+4 was done before the fixes for the second review. Probes ran with rustc
+1.98.1 (edition 2021) and tree-sitter 0.27.0 with tree-sitter-rust 0.24.2 and
+tree-sitter-typescript 0.23.2.
 
 1. **Rust bare identifiers in patterns.**
    - With a lowercase `const x: i32` in scope, `let x = 5`, `fn f(x: i32)`,
@@ -670,3 +764,18 @@ Three checks were done before the PR #488 review fixes. Probes ran with rustc
    make nested `token_tree` nodes. Result: a token-neighbor rule gives a wrong
    slot for a closure parameter and erases a field anchor. M-std parses the
    arguments again as expressions instead.
+4. **TS automatic semicolon insertion.** Probe after the second PR #488
+   review, with tree-sitter-typescript 0.23.2, `typescript` and `tsx`
+   grammars, same results in both. Leaf text with comments dropped:
+
+   | Pair | Leaf text | Tree |
+   |---|---|---|
+   | `return⏎value;` / `return value;` | same | different: `return_statement` + `expression_statement` |
+   | `x⏎++y` / `x++⏎y` | same | different |
+   | `break⏎l;` / `break l;` | same | different: label is a new statement |
+   | `async⏎function f(){}` / `async function f(){}` | same | different: `async` is an expression statement |
+   | `return /*⏎*/ value;` / `return value;` | same | **same**: tree-sitter ignores the line break in the comment |
+
+   No tree has an `ERROR` node. tree-sitter does not expose the automatic
+   semicolon as a leaf. Result: section 3 adds the terminator rule for the
+   first four pairs and makes the fifth case `unclear`.
