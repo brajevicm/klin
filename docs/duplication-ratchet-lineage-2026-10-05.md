@@ -477,11 +477,14 @@ global integer.
 
 Held debt is attached to one base canonical cohort. It can follow only:
 
-- certified descendants of that cohort; or
-- same-fingerprint one-for-one replacements of removed occurrences.
+- certified cross-fingerprint descendants of that cohort; or
+- same-fingerprint one-for-one replacements of removed occurrences when no
+  unresolved competing ancestry could consume those slots.
 
 It cannot cross from cohort `H1` to cohort `H2` merely because the total
-number of duplicates in the repository stayed flat.
+number of duplicates in the repository stayed flat, because `H2` is the
+cohort's only observed successor, or because current multiplicity happens to
+equal old multiplicity.
 
 ## Ambiguity and incomplete measurement
 
@@ -719,8 +722,8 @@ It is the smallest model found that simultaneously gives:
 - one finding for two new identical functions;
 - detection of unrelated convergence;
 - explicit split/merge behavior;
-- exact same-fingerprint move/replacement semantics;
-- no global allowance transfer;
+- exact same-fingerprint move/replacement semantics with ambiguity guards;
+- no global or unique-successor allowance transfer;
 - O(delta)-shaped work.
 
 ## Invariants
@@ -877,3 +880,95 @@ otherwise the result stays unknown/incomplete.
 - Old allowance cannot be spent on unrelated code: **yes**, cohort-local debt.
 - Complexity and persisted metadata are estimated: **yes**.
 - #478 must be updated with this selected model: **required companion update**.
+
+
+## Adversarial pass, 2026-10-05
+
+A focused adversarial pass after the initial #479 discussion changed one part
+of the model.
+
+### A1. Unique-successor slot transfer is not conservative
+
+Rejected rule:
+
+```text
+base:  A=H1  B=H1
+after: A=H2(proven)  C=H2(unproven)
+```
+
+The tempting rule is to let the removed `B` slot follow `H2` because `H2`
+is the only proven successor fingerprint. That is not safe. `C` may be:
+
+- a relocation/continued edit of old `B`; or
+- a genuinely new copy of edited `A`.
+
+Those histories have different ratchet meaning and current evidence does not
+distinguish them.
+
+The failure amplifies with multiplicity:
+
+```text
+base:  100 occurrences of H1
+after: 1 proven H2 successor + 99 unproven new H2 occurrences
+```
+
+A unique-successor allowance could mark all 99 as held merely because 99 old
+slots disappeared. That is a transferable coupon inside one cohort and violates
+the acceptance criterion that legacy allowance cannot launder genuinely new
+duplication.
+
+Decision: **remove the unique-successor fallback**. Changed-fingerprint lineage
+requires certified occurrence/site lineage.
+
+### A2. Greedy exact replacement can also hide ambiguity
+
+Even exact-fingerprint replacement must run after accounting for unresolved
+claims on the same base slots.
+
+```text
+base:  A=H1  B=H1
+after: A=H2(ambiguous lineage)  C=H1  D=H1
+```
+
+If `A=H2` consumed one old slot, only one slot remains for `C,D`, so one
+`H1` occurrence is new. If it did not, both `C,D` could be replacements.
+
+Therefore an implementation must not greedily spend both old slots on `C,D`
+and then treat `A=H2` as an unrelated singleton. When unresolved
+cross-fingerprint ancestry competes for slots and allocation changes the
+duplicate verdict, the affected measurement is INCOMPLETE.
+
+### A3. Known regressions and incomplete measurement are orthogonal
+
+Ambiguity can make the **total** regression count unknown without erasing a
+regression already proven from distinct origins.
+
+For a current group `H`, define the guaranteed floor:
+
+```text
+known_origins(H) = distinct certified source cohorts
+                 + definitely-new singleton origins
+
+known_regressions(H) = max(0, |known_origins(H)| - 1)
+```
+
+If `known_regressions(H) > 0`, those regressions are valid even when additional
+lineage-unknown occurrences mean the complete count is unknown. In that case
+klin may surface the proven finding(s) **and** report
+`measurement=INCOMPLETE`; #475 already treats judgement and completeness as
+orthogonal axes and gives INCOMPLETE exit precedence.
+
+V1 does not need a max-flow/optimal ambiguity solver. It only needs to avoid
+suppressing already-proven merges/new origins while being honest that more may
+exist.
+
+### A4. Result
+
+The core lineage-unit equation survives, but with a stricter lineage boundary:
+
+- cross-fingerprint debt moves only through certified site lineage;
+- same-fingerprint replacement remains an explicit product special case;
+- replacement slots cannot be greedily spent across unresolved competing
+  ancestry;
+- a sole successor fingerprint is insufficient evidence;
+- proven regressions may coexist with incomplete total measurement.
