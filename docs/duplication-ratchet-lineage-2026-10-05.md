@@ -47,15 +47,20 @@ at most once by one current occurrence. During comparison each touched slot is
 in exactly one state:
 
 ```text
-consumed    a current descendant is proven
-free        the base occurrence is proven absent from current scope
+consumed    a current descendant is proven, whether or not it still qualifies
+free        the base occurrence is proven absent from the current tree
 unresolved  persistence/ancestry is ambiguous or unsupported
 ```
 
 Unchanged base occurrences are implicitly `consumed` by their unchanged
-current occurrence. Only `free` slots may fund a same-fingerprint
-remove/add replacement. An `unresolved` slot is never spent merely because a
-matching fingerprint needs allowance.
+current occurrence. A proven descendant that moved into test/generated/
+otherwise-excluded scope or fell below the duplication minimum size is also
+`consumed`: it does not contribute an origin to a current eligible clone group,
+but its old slot cannot be reused elsewhere.
+
+Only `free` slots may fund a same-fingerprint remove/add replacement. An
+`unresolved` slot is never spent merely because a matching fingerprint needs
+allowance.
 
 This slot-conservation rule prevents a diverged or ambiguous legacy member from
 leaving its old allowance behind for a new copy to reuse.
@@ -249,6 +254,12 @@ compatible.
 
 For changed paths, obtain before/current function occurrences from the existing
 parsed structural path.
+
+Lineage tracking must retain enough structural identity for descendants of
+**base-eligible** occurrences even when the current descendant is no longer
+eligible for duplication because it is test/generated/excluded or below the
+minimum-size rule. Eligibility controls membership in current clone groups; it
+must not erase ancestry needed for slot conservation.
 
 For every occurrence retain:
 
@@ -464,6 +475,8 @@ one side of copying the other.
 | Cross-file move plus implementation edit | `H1` -> `H2` in another path | #425 does not prove cross-file structural lineage | INCOMPLETE when ancestry affects duplication judgment |
 | Group split | one cohort `H1` -> descendant groups `H2`, `H3`, ... | every new group contains the same single source cohort | PASS; may reduce debt |
 | Split + removed-slot allocation matters | one cohort has proven descendants in `H2` and `H3`, plus a removed slot and an unmatched occurrence on a branch | slot has multiple plausible successor branches | INCOMPLETE if allocation changes regression count |
+| Descendant leaves eligible scope | `A,B:H1` -> `A:H1`, `B` proven moved/edited into test/generated/below-threshold scope, plus new `C:H1` eligible | `B` still consumes its old slot; no replacement allowance remains for `C` | FAIL 1 |
+| Scope exit lineage unavailable | same shape, but whether excluded/nonqualifying site is old `B` cannot be proven | slot cannot be declared free | INCOMPLETE if `C`'s regression depends on it |
 | Two old duplicate groups merge | cohort `H1` + cohort `H2` -> one `H3` | 2 source cohorts = 2 | FAIL 1 |
 | `m` old groups merge | `m` distinct source cohorts -> one group | `m` bundles | FAIL `m - 1` |
 | Partial survival of legacy group | any subset of one old cohort survives together | one source cohort | PASS |
@@ -669,13 +682,16 @@ verification evidence needed to rule out hash collision before BLOCK
 For changed files, the existing before/current parsed structural facts provide:
 
 ```text
-fingerprint
+fingerprint when eligible
+eligibility state / exclusion reason where relevant to a base slot
 optional structural identity
 path/range
 ```
 
-No structural identity for unchanged occurrences needs to be persisted merely
-for this ratchet.
+The current-side structural walk must still expose lineage for a descendant of
+a base-eligible occurrence when that descendant is now ineligible; this is
+changed-file work, not a whole-tree scan. No structural identity for unchanged
+occurrences needs to be persisted merely for this ratchet.
 
 ### Warm algorithmic shape
 
@@ -855,7 +871,13 @@ Every touched base slot is classified as `consumed | free | unresolved`.
 Only `free` slots are replacement supply; unresolved slots are never spent by
 a tie-break or greedy count match.
 
-### I15. Basis compatibility before lineage
+### I15. Eligibility exit does not free debt
+
+A proven descendant that becomes test/generated/excluded/below-threshold still
+consumes its base slot. Eligibility changes current clone-group membership, not
+lineage-slot ownership.
+
+### I16. Basis compatibility before lineage
 
 Measurement-basis compatibility is checked before cohort or site matching.
 
@@ -933,7 +955,7 @@ otherwise the result stays unknown/incomplete.
 - Move/replacement semantics are explicit: **yes**.
 - Group split/merge semantics are explicit: **yes**, I5/I6.
 - Ambiguous identity is never guessed: **yes**, I10/I13.
-- Detector-version mismatch cannot manufacture normal findings: **yes**, I15.
+- Detector-version mismatch cannot manufacture normal findings: **yes**, I16.
 - Old allowance cannot be spent on unrelated code: **yes**, cohort-local debt.
 - Complexity and persisted metadata are estimated: **yes**.
 - #478 must be updated with this selected model: **required companion update**.
@@ -1068,3 +1090,34 @@ Decision: keep the group-level FAIL count complete, choose/report a
 non-historical deterministic representative or group-level site, and never say
 that one physical occurrence is proven to be "the copy" unless lineage proves
 it.
+
+
+### A7. Eligibility exits must consume, not release, lineage slots
+
+A base occurrence can stop participating in current duplication grouping
+without disappearing from the tree:
+
+- it moves into test code;
+- it gains/enters a generated-code exclusion;
+- it shrinks below the minimum token threshold;
+- another product exclusion makes it non-qualifying.
+
+If that event freed the old slot, this change would launder debt:
+
+```text
+base eligible:   A=H1  B=H1
+after eligible:  A=H1  C=H1(new)
+after excluded:  B -> descendant outside duplication scope
+```
+
+Treating `B` as "removed" would let `C` consume its slot and PASS. But the
+old occurrence still has a descendant; its allowance has not become a movable
+coupon.
+
+Decision: a proven out-of-scope/nonqualifying descendant consumes its base slot
+but contributes no origin to an eligible current clone group. If lineage across
+the eligibility transition is unresolved and replacement allowance depends on
+it, measurement is INCOMPLETE.
+
+This also creates an explicit handoff to #481: moving code into excluded scope
+must not be a cheap way to refresh legacy allowance.
