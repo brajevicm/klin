@@ -4,8 +4,12 @@ This note is step 1 of #480 under #478. It measures whether a detector of
 exact copied regions can run inside the #478 Stop limits. Step 2 (threshold)
 did not start.
 
-Status: measured on the 10k, 300k and 1M fixtures and on three real trees.
-The owner ran the 1M rows. Section 6 compares them with the #478 Stop limits.
+Status: sections 1 to 6 measure designs A and B (data in `results-ab/`).
+Design A misses the cache limit. Design B meets the limits but can block a
+region that is not an exact copy. Section 7 is the design that replaces both:
+design C, the proven chain. It gave no false positive in any run and meets
+every #478 limit on the trees measured. The 1M rows of design C wait for the
+owner.
 
 ## 1. Prototype
 
@@ -47,7 +51,7 @@ test-item removal, import provenance, and the winnowing guarantee.
   each run, so each run starts cold in memory, like a hook.
 - `run.sh NAME ROOT` builds the index cold once, then runs 5 warm queries for
   20 and for 100 changed files at T = 60. `summary.py` prints medians.
-  `results/*.jsonl` holds every run. `summary.txt` holds the summary.
+  `results-ab/*.jsonl` holds every run. `results-ab/summary.txt` holds the summary.
 - The changed files are spread evenly over the sorted file list. Their content
   is the base content, so every match against other files is found.
 - "Extra" time leaves out reading and parsing. klin's single shared parse
@@ -221,3 +225,131 @@ one sample, not a median.
 
 Design A misses the cache limit at 1M, as on every other tree. Design B meets
 every #478 Stop limit.
+
+## 7. Design C: the proven chain
+
+### Idea
+
+Design B joins hits on one diagonal that are up to w tokens apart, but a
+k-gram covers only k tokens. So the tokens between two hits are not proven
+equal, and B can block a region that is not one exact copy.
+
+Design C sets w ≤ k. Winnowing selects at least one k-gram in every w
+consecutive k-grams. So two neighbor hits inside one copy are at most w ≤ k
+apart, and their k-grams overlap or touch. A chain of such hits on one
+diagonal proves that every token from the first hit to the end of the last
+k-gram is equal on both sides. The proof needs no base tokens, so the Stop
+reads no unchanged source.
+
+- **Regions (copied lines).** k = w = 30. A copy of at least
+  k + w − 1 = 59 tokens shares a fingerprint. The proven length is
+  `last − first + k`. The Stop blocks when the proven length is at least T.
+- **Whole functions.** The chain loses up to w − 1 tokens at each edge. So a
+  copied function of fewer than T + 2(w − 1) = 118 tokens may not be proven
+  as a region. A second index holds a 64-bit hash of the token stream of each
+  function from 10 to 117 tokens. The hash covers the parameters, return type
+  and body, but not the name. Equal hashes block. Functions of 118 tokens or
+  more are always proven by the region chain when they are copied whole.
+- **Storage.** Both indexes are sorted. They use blocks of 64 entries, delta
+  varint keys, and token offsets bit-packed to the width of the tree's token
+  count. A function key keeps 48 bits of the hash. Keys that occur more than
+  64 times are capped, and a hit on one makes the result INCOMPLETE.
+  `proto/src/postings.rs` holds the format.
+
+### Guarantee
+
+For a threshold T:
+
+1. **No false positive.** A blocked region is an exact copy of at least T
+   tokens, and a blocked function is an exact copy of a function of at least
+   10 tokens. The only exception is a hash collision. A false region needs a
+   32-bit key collision on the same diagonal, next to a chain. A false
+   function needs a 48-bit collision.
+2. **Every long copy is found.** Every exact copy of at least
+   T + 2(w − 1) = T + 58 tokens is blocked, unless a capped key breaks its
+   chain. That case is reported as INCOMPLETE, not as a pass.
+3. **Every whole-function copy is found.** Every function of at least 10
+   tokens that is copied whole is blocked, by the function index or by the
+   region chain.
+4. **Deterministic.** The proven length depends only on the copied tokens. So
+   the same copy always gets the same result, in both trees.
+
+A copy of T to T + 57 tokens that is not a whole function may or may not be
+blocked. That depends on where winnowing selects in it. `klin check` has no
+Stop limit, so it can read both files and find the exact edges of these
+copies.
+
+### Validation
+
+The query also reads the base token chain, for validation only. The cache
+figures below leave the chain out. For each region the Stop blocks, the
+validation finds the exact match. For each function hit, it compares the
+tokens. It also finds every exact copy of at least T tokens among the hits,
+which is the truth set. With k = w = 30, every copy of 59 tokens or more
+shares a fingerprint, so this set is complete for T = 60.
+
+| Tree | Changed | Blocked regions | False regions | Function hits | False functions | True regions ≥ 60 | Missed | Longest missed |
+|---|---|---|---|---|---|---|---|---|
+| 10k | 20 / 100 | 0 / 0 | 0 / 0 | 498 / 2,480 | 0 / 0 | 0 / 0 | 0 / 0 | — |
+| 300k | 20 / 100 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | — |
+| GlareDB | 20 / 100 | 40 / 256 | 0 / 0 | 54 / 291 | 0 / 0 | 49 / 404 | 9 / 148 | 84 / 99 |
+| karakeep | 20 / 100 | 8 / 22 | 0 / 0 | 27 / 72 | 0 / 0 | 19 / 50 | 11 / 28 | 87 / 89 |
+| klin `src/` | 20 / 80 | 6 / 8 | 0 / 0 | 19 / 36 | 0 / 0 | 13 / 21 | 7 / 13 | 78 / 78 |
+
+There were no false positives in 50 queries (5 runs of each row). Every
+missed copy is shorter than the bound of 118 tokens. The fixtures block no
+region because every query hits a capped key and is INCOMPLETE. Their
+function hits are the fixture's repeated small functions.
+
+Other values of k = w, at 20 changed files, show the trade-off between the
+band and the index size:
+
+| k = w | Band (T + …) | GlareDB missed | karakeep missed | Index / cache: 10k, 300k, GlareDB, karakeep |
+|---|---|---|---|---|
+| 30 | 58 | 9 of 49 | 11 of 19 | 3.8%, 6.2%, 5.0%, 7.7% |
+| 20 | 38 | 7 of 49 | 5 of 19 | 4.9%, 8.2%, 7.0%, 10.9% |
+| 16 | 30 | 7 of 49 | 4 of 19 | 5.0%, 9.3%, 8.5%, 13.2% |
+
+Only k = w = 30 keeps every tree under 10%, so design C uses it.
+
+### Cost
+
+Data is in `results/`, and the summary is in `summary.txt`. The time is the
+median of 5 runs (max), with reading and parsing left out.
+
+| Tree | Index (no path table) | / klin cache | Cold extra | / klin cold hook | Warm 20 | Warm 100 | Warm peak RSS |
+|---|---|---|---|---|---|---|---|
+| 10k | 112,031 | 3.8% | 105 ms | 0.9% | 0.75 (0.77) | 1.65 (1.89) | 6.9 MB |
+| 300k | 748,015 | 6.2% | 405 ms | 2.4% | 1.55 (1.59) | 5.26 (5.35) | 13.6 MB |
+| GlareDB | 195,606 | 5.0% | 139 ms | 2.7% | 3.12 (3.14) | 23.14 (23.36) | 10.9 MB |
+| karakeep | 94,463 | 7.7% | 70 ms | 3.4% | 3.08 (3.08) | 13.81 (13.91) | 9.0 MB |
+| klin `src/` | 83,901 | — | 53 ms | — | 10.62 (10.72) | 55.09 (56.19), 80 files | 13.5 MB |
+
+The index file also holds a path table. In klin, the structural cache already
+holds the file list, so the path table is not counted. With the path table,
+the 10k fixture is at 14.2%, because its 10,000 paths take 305,671 bytes.
+
+The longest postings (up to 1,788 at 300k) are on capped keys only. The
+longest posting kept is 64.
+
+### 1M rows (owner)
+
+```sh
+cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
+WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
+python3 docs/duplication-speed-2026-10-05/summary.py
+```
+
+From 300k to 1M, the token count grows 3.15 times. If the index grows the same
+way, it is about 2.4 MB, or 6.4% of 37,301,283 bytes. The warm 20 time of
+design B grew from 1.10 ms to 2.86 ms over the same step. The 1M row of
+design C is not measured yet, so these values are projections only.
+
+### Open points
+
+- The cap of 64 makes every fixture query INCOMPLETE. The real trees never
+  reach it.
+- The function index blocks short exact copies from 10 tokens. Step 2 sets
+  the minimum function size together with T.
+- Warm time follows the size of the changed files, at about 155 ns for each
+  token. 80 large klin files take 55 ms.

@@ -1,8 +1,11 @@
 mod fixture;
+mod postings;
+
+use postings::{Postings, partition};
 
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
+
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tree_sitter::{Language, Node, Parser, Tree as Syntax, TreeCursor};
@@ -75,7 +78,18 @@ struct Params {
     k: usize,
     w: usize,
     cap: usize,
+    fmin: usize,
+    fcut: usize,
 }
+
+const FUNCTIONS: &[&str] = &[
+    "function_item",
+    "function_declaration",
+    "generator_function_declaration",
+    "function_expression",
+    "arrow_function",
+    "method_definition",
+];
 
 fn fnv(seed: u64, parts: &[&[u8]]) -> u64 {
     let mut hash = 0xcbf2_9ce4_8422_2325 ^ seed;
@@ -99,6 +113,7 @@ struct Stream<'a> {
     source: &'a [u8],
     imports: HashMap<&'a [u8], String>,
     out: Vec<u64>,
+    functions: Vec<(u32, u32)>,
 }
 
 impl<'a> Stream<'a> {
@@ -136,6 +151,8 @@ impl<'a> Stream<'a> {
             return;
         }
         let terminated = self.lang != Lang::Rust && TERMINATED.contains(&node.kind());
+        let function = FUNCTIONS.contains(&node.kind());
+        let mut start = self.out.len();
         let mut trailing = None;
         let mut skip_item = false;
         loop {
@@ -151,14 +168,21 @@ impl<'a> Stream<'a> {
                 skip_item = false;
             } else if !skip_item {
                 let before = self.out.len();
+                let name = function && cursor.field_name() == Some("name");
                 self.walk(cursor);
                 trailing = (kind == ";").then_some(before);
+                if name {
+                    start = self.out.len();
+                }
             }
             if !cursor.goto_next_sibling() {
                 break;
             }
         }
         cursor.goto_parent();
+        if function {
+            self.functions.push((start as u32, self.out.len() as u32));
+        }
         if terminated {
             if let Some(before) = trailing {
                 self.out.truncate(before);
@@ -341,7 +365,23 @@ fn winnow(tokens: &[u64], params: Params) -> Vec<(u32, u32)> {
 
 struct Parsed {
     tokens: Vec<u64>,
+    functions: Vec<(u32, u32)>,
     error: bool,
+}
+
+fn function_hash(tokens: &[u64]) -> u64 {
+    tokens
+        .iter()
+        .fold(mix(tokens.len() as u64), |hash, token| mix(hash.rotate_left(17) ^ token))
+}
+
+fn indexed_functions(parsed: &Parsed, params: Params) -> Vec<(u64, u32, u32)> {
+    parsed
+        .functions
+        .iter()
+        .filter(|(start, end)| (params.fmin..params.fcut).contains(&((end - start) as usize)))
+        .map(|(start, end)| (function_hash(&parsed.tokens[*start as usize..*end as usize]), *start, end - start))
+        .collect()
 }
 
 struct Shared {
@@ -372,9 +412,11 @@ fn stream(lang: Lang, path: &str, source: &[u8], syntax: &Syntax) -> Parsed {
         source,
         imports: imports(lang, path, source, root),
         out: Vec::new(),
+        functions: Vec::new(),
     };
     stream.walk(&mut root.walk());
     Parsed {
+        functions: stream.functions,
         tokens: stream.out,
         error: root.has_error(),
     }
@@ -416,15 +458,17 @@ fn word(bytes: &[u8], at: usize) -> u32 {
 }
 
 fn build(root: &Path, index: &Path, params: Params) {
+    assert!(params.w <= params.k, "a chain proves contiguity only when w <= k");
     let started = Instant::now();
     let files = source_files(root);
     let mut shared = Shared::new();
     let mut parse_ms = 0.0;
-    let mut entries: Vec<(u32, u32, u32)> = Vec::new();
+    let mut entries: Vec<(u32, u32)> = Vec::new();
+    let mut functions: Vec<(u64, u32)> = Vec::new();
     let mut chain: Vec<u8> = Vec::new();
     let mut counts = Vec::with_capacity(files.len());
-    let (mut total_tokens, mut errors, mut lines) = (0usize, 0usize, 0usize);
-    for (id, path) in files.iter().enumerate() {
+    let (mut total_tokens, mut errors, mut lines, mut all_functions) = (0usize, 0usize, 0usize, 0usize);
+    for path in &files {
         let lang = Lang::of(path).unwrap();
         let before = Instant::now();
         let source = std::fs::read(root.join(path)).unwrap();
@@ -433,22 +477,27 @@ fn build(root: &Path, index: &Path, params: Params) {
         lines += source.iter().filter(|byte| **byte == b'\n').count();
         let parsed = stream(lang, path, &source, &syntax);
         errors += usize::from(parsed.error);
-        total_tokens += parsed.tokens.len();
-        counts.push(parsed.tokens.len() as u32);
+        let base = total_tokens as u32;
         for token in &parsed.tokens {
             put(&mut chain, (token >> 32) as u32);
         }
         for (key, position) in winnow(&parsed.tokens, params) {
-            entries.push((key, id as u32, position));
+            entries.push((key, base + position));
         }
+        all_functions += parsed.functions.len();
+        for (hash, start, _) in indexed_functions(&parsed, params) {
+            functions.push((hash, base + start));
+        }
+        total_tokens += parsed.tokens.len();
+        counts.push(parsed.tokens.len() as u32);
     }
     let fingerprints = entries.len();
     entries.sort_unstable();
+    functions.sort_unstable();
     let mut kept = Vec::with_capacity(entries.len());
     let mut capped = Vec::new();
-    let (mut longest, mut longest_kept, mut distinct) = (0usize, 0usize, 0usize);
+    let (mut longest, mut longest_kept) = (0usize, 0usize);
     for run in entries.chunk_by(|a, b| a.0 == b.0) {
-        distinct += 1;
         longest = longest.max(run.len());
         if run.len() > params.cap {
             capped.push(run[0].0);
@@ -458,7 +507,7 @@ fn build(root: &Path, index: &Path, params: Params) {
         }
     }
     let mut out = Vec::new();
-    for value in [params.k, params.w, params.cap, files.len(), kept.len(), capped.len()] {
+    for value in [params.k, params.w, params.cap, params.fmin, params.fcut, files.len(), kept.len(), capped.len(), functions.len()] {
         put(&mut out, value as u32);
     }
     for (path, count) in files.iter().zip(&counts) {
@@ -466,28 +515,27 @@ fn build(root: &Path, index: &Path, params: Params) {
         out.extend_from_slice(path.as_bytes());
         put(&mut out, *count);
     }
-    for entry in &kept {
-        put(&mut out, entry.0);
-    }
-    for entry in &kept {
-        put(&mut out, entry.1);
-    }
-    for entry in &kept {
-        put(&mut out, entry.2);
-    }
-    for key in &capped {
-        put(&mut out, *key);
-    }
+    let width = (usize::BITS - total_tokens.max(1).leading_zeros()).max(1);
+    let region_at = out.len();
+    let regions: Vec<(u64, u32)> = kept.iter().map(|(key, at)| (u64::from(*key), *at)).collect();
+    out.extend(postings::encode(&regions, width));
+    capped.iter().for_each(|key| put(&mut out, *key));
+    let function_at = out.len();
+    let functions: Vec<(u64, u32)> = functions.iter().map(|(hash, at)| (hash >> 16, *at)).collect();
+    out.extend(postings::encode(&functions, width));
+    let function_bytes = out.len() - function_at;
     std::fs::create_dir_all(index).unwrap();
     std::fs::write(index.join("index.bin"), &out).unwrap();
     std::fs::write(index.join("chain.bin"), &chain).unwrap();
     let total_ms = ms(started);
     println!(
-        "{{\"files\":{},\"lines\":{lines},\"tokens\":{total_tokens},\"error_files\":{errors},\"fingerprints\":{fingerprints},\"distinct_keys\":{distinct},\"capped_keys\":{},\"kept_entries\":{},\"longest_posting\":{longest},\"longest_kept_posting\":{longest_kept},\"index_bytes\":{},\"chain_bytes\":{},\"total_ms\":{total_ms:.1},\"read_parse_ms\":{parse_ms:.1},\"extra_ms\":{:.1}}}",
+        "{{\"files\":{},\"lines\":{lines},\"tokens\":{total_tokens},\"error_files\":{errors},\"fingerprints\":{fingerprints},\"capped_keys\":{},\"kept_entries\":{},\"longest_posting\":{longest},\"longest_kept_posting\":{longest_kept},\"functions\":{all_functions},\"indexed_functions\":{},\"index_bytes\":{},\"region_bytes\":{},\"function_bytes\":{function_bytes},\"chain_bytes\":{},\"total_ms\":{total_ms:.1},\"read_parse_ms\":{parse_ms:.1},\"extra_ms\":{:.1}}}",
         files.len(),
         capped.len(),
         kept.len(),
+        functions.len(),
         out.len(),
+        function_at - region_at,
         chain.len(),
         total_ms - parse_ms
     );
@@ -498,47 +546,52 @@ fn ms(since: Instant) -> f64 {
 }
 
 struct Index {
-    bytes: Vec<u8>,
+    bytes: &'static [u8],
     params: Params,
     paths: Vec<(usize, usize)>,
-    offsets: Vec<u64>,
-    entries: usize,
-    keys_at: usize,
+    starts: Vec<u32>,
+    regions: Postings<'static>,
     capped_at: usize,
     capped: usize,
+    functions: Postings<'static>,
 }
 
 impl Index {
     fn load(path: &Path) -> Index {
-        let bytes = std::fs::read(path).unwrap();
-        let header: Vec<usize> = (0..6).map(|i| word(&bytes, i * 4) as usize).collect();
+        let bytes: &'static [u8] = Box::leak(std::fs::read(path).unwrap().into_boxed_slice());
+        let header: Vec<usize> = (0..9).map(|i| word(bytes, i * 4) as usize).collect();
         let params = Params {
             k: header[0],
             w: header[1],
             cap: header[2],
+            fmin: header[3],
+            fcut: header[4],
         };
-        let mut at = 24;
-        let mut paths = Vec::with_capacity(header[3]);
-        let mut offsets = Vec::with_capacity(header[3] + 1);
-        let mut offset = 0u64;
-        for _ in 0..header[3] {
-            let length = word(&bytes, at) as usize;
+        let mut at = 36;
+        let mut paths = Vec::with_capacity(header[5]);
+        let mut starts = Vec::with_capacity(header[5] + 1);
+        let mut start = 0u32;
+        for _ in 0..header[5] {
+            let length = word(bytes, at) as usize;
             paths.push((at + 4, length));
             at += 4 + length;
-            offsets.push(offset);
-            offset += u64::from(word(&bytes, at)) * 4;
+            starts.push(start);
+            start += word(bytes, at);
             at += 4;
         }
-        offsets.push(offset);
+        starts.push(start);
+        let (regions, used) = Postings::read(&bytes[at..]);
+        let capped_at = at + used;
+        let (functions, _) = Postings::read(&bytes[capped_at + header[7] * 4..]);
         Index {
+            bytes,
             params,
             paths,
-            offsets,
-            entries: header[4],
-            keys_at: at,
-            capped_at: at + header[4] * 12,
-            capped: header[5],
-            bytes,
+            starts,
+            regions,
+            capped_at,
+            capped: header[7],
+            functions,
         }
     }
 
@@ -553,39 +606,26 @@ impl Index {
             .ok()
     }
 
-    fn key(&self, index: usize) -> u32 {
-        word(&self.bytes, self.keys_at + index * 4)
+    fn locate(&self, global: u32) -> (u32, u32) {
+        let file = partition(self.starts.len(), |i| self.starts[i] <= global) - 1;
+        (file as u32, global - self.starts[file])
     }
 
-    fn postings(&self, key: u32) -> std::ops::Range<usize> {
-        let start = partition(self.entries, |i| self.key(i) < key);
-        let end = partition(self.entries, |i| self.key(i) <= key);
-        start..end
-    }
-
-    fn posting(&self, index: usize) -> (u32, u32) {
-        let files = self.keys_at + self.entries * 4;
-        let positions = files + self.entries * 4;
-        (word(&self.bytes, files + index * 4), word(&self.bytes, positions + index * 4))
+    fn postings(&self, key: u32, out: &mut Vec<u32>) {
+        out.clear();
+        self.regions.find(u64::from(key), out);
     }
 
     fn is_capped(&self, key: u32) -> bool {
-        let found = partition(self.capped, |i| word(&self.bytes, self.capped_at + i * 4) < key);
-        found < self.capped && word(&self.bytes, self.capped_at + found * 4) == key
+        let found = partition(self.capped, |i| word(self.bytes, self.capped_at + i * 4) < key);
+        found < self.capped && word(self.bytes, self.capped_at + found * 4) == key
     }
-}
 
-fn partition(len: usize, below: impl Fn(usize) -> bool) -> usize {
-    let (mut low, mut high) = (0, len);
-    while low < high {
-        let middle = (low + high) / 2;
-        if below(middle) {
-            low = middle + 1;
-        } else {
-            high = middle;
-        }
+    fn function_postings(&self, hash: u64) -> Vec<(u32, u32)> {
+        let mut found = Vec::new();
+        self.functions.find(hash >> 16, &mut found);
+        found.into_iter().map(|global| self.locate(global)).collect()
     }
-    low
 }
 
 #[derive(Default)]
@@ -593,11 +633,19 @@ struct Outcome {
     hits: usize,
     capped_hits: usize,
     regions: usize,
-    approx_block: usize,
-    approx_unclear: usize,
-    exact_block: usize,
-    chain_bytes_read: usize,
-    files_read_for_chain: usize,
+    proven: usize,
+    deferred: usize,
+    function_hits: usize,
+    false_regions: usize,
+    false_functions: usize,
+    true_regions: usize,
+    missed_regions: usize,
+}
+
+struct Changed {
+    tokens: Vec<u64>,
+    prints: Vec<(u32, u32)>,
+    functions: Vec<(u64, u32, u32)>,
 }
 
 fn query(root: &Path, index_dir: &Path, changed_count: usize, t: usize) {
@@ -612,10 +660,7 @@ fn query(root: &Path, index_dir: &Path, changed_count: usize, t: usize) {
     let changed: Vec<&String> = all.iter().step_by(step).take(changed_count).collect();
     let base_files = index.paths.len() as u32;
     let mut shared = Shared::new();
-    let mut parse_ms = 0.0;
-    let mut stream_ms = 0.0;
-    let mut walk_ms = 0.0;
-    let mut changed_tokens = 0usize;
+    let (mut parse_ms, mut stream_ms, mut changed_tokens) = (0.0, 0.0, 0usize);
     let mut excluded = vec![false; index.paths.len()];
     let mut streams = Vec::with_capacity(changed.len());
     for path in &changed {
@@ -626,42 +671,42 @@ fn query(root: &Path, index_dir: &Path, changed_count: usize, t: usize) {
         parse_ms += ms(before);
         let before = Instant::now();
         let parsed = stream(lang, path, &source, &syntax);
-        walk_ms += ms(before);
         let prints = winnow(&parsed.tokens, params);
+        let functions = indexed_functions(&parsed, params);
         stream_ms += ms(before);
         changed_tokens += parsed.tokens.len();
         if let Some(id) = index.id(path) {
             excluded[id] = true;
         }
-        streams.push((parsed.tokens, prints));
+        streams.push(Changed { tokens: parsed.tokens, prints, functions });
     }
 
     let before = Instant::now();
     let mut outcome = Outcome::default();
     let mut hits: Vec<(u32, u32, i64, u32)> = Vec::new();
+    let mut found = Vec::new();
     let mut local: HashMap<u32, Vec<(u32, u32)>> = HashMap::new();
-    for (self_id, (_, prints)) in streams.iter().enumerate() {
-        for (key, position) in prints {
+    for (self_id, changed) in streams.iter().enumerate() {
+        for (key, position) in &changed.prints {
             local.entry(*key).or_default().push((self_id as u32, *position));
         }
     }
-    for (self_id, (_, prints)) in streams.iter().enumerate() {
-        for (key, position) in prints {
+    for (self_id, changed) in streams.iter().enumerate() {
+        for (key, position) in &changed.prints {
             if index.is_capped(*key) {
                 outcome.capped_hits += 1;
                 continue;
             }
-            for entry in index.postings(*key) {
-                let (other, other_position) = index.posting(entry);
-                if excluded[other as usize] {
-                    continue;
+            index.postings(*key, &mut found);
+            for global in &found {
+                let (other, other_position) = index.locate(*global);
+                if !excluded[other as usize] {
+                    hits.push((self_id as u32, other, i64::from(other_position) - i64::from(*position), *position));
                 }
-                hits.push((self_id as u32, other, i64::from(other_position) - i64::from(*position), *position));
             }
             for (other_self, other_position) in &local[key] {
-                let same = *other_self == self_id as u32;
                 let diagonal = i64::from(*other_position) - i64::from(*position);
-                if (same && diagonal > 0) || *other_self > self_id as u32 {
+                if (*other_self == self_id as u32 && diagonal > 0) || *other_self > self_id as u32 {
                     hits.push((self_id as u32, base_files + other_self, diagonal, *position));
                 }
             }
@@ -669,74 +714,102 @@ fn query(root: &Path, index_dir: &Path, changed_count: usize, t: usize) {
     }
     outcome.hits = hits.len();
     hits.sort_unstable();
+    let mut proven = Vec::new();
+    for run in hits.chunk_by(|a, b| a.0 == b.0 && a.1 == b.1 && a.2 == b.2 && b.3 - a.3 <= params.k as u32) {
+        let (self_id, other, diagonal, first) = run[0];
+        let length = (run[run.len() - 1].3 - first) as usize + params.k;
+        outcome.regions += 1;
+        if length >= t {
+            outcome.proven += 1;
+            proven.push((self_id, other, diagonal, first, length));
+        } else if length + 2 * (params.w - 1) >= t {
+            outcome.deferred += 1;
+        }
+    }
     let lookup_ms = ms(before);
 
     let before = Instant::now();
-    let mut regions = Vec::new();
-    for run in hits.chunk_by(|a, b| a.0 == b.0 && a.1 == b.1 && a.2 == b.2 && b.3 - a.3 <= params.w as u32) {
-        let (self_id, other, diagonal, first) = run[0];
-        let last = run[run.len() - 1].3;
-        let lower = (last - first) as usize + params.k;
-        outcome.regions += 1;
-        if lower >= t {
-            outcome.approx_block += 1;
-        } else if lower + 2 * (params.w - 1) >= t {
-            outcome.approx_unclear += 1;
-        } else {
-            continue;
+    let mut function_hits = Vec::new();
+    let mut local_functions: HashMap<u64, Vec<(u32, u32)>> = HashMap::new();
+    for (self_id, changed) in streams.iter().enumerate() {
+        for (hash, start, length) in &changed.functions {
+            for (other, other_start) in index.function_postings(*hash) {
+                if !excluded[other as usize] {
+                    function_hits.push((self_id as u32, other, *start, other_start, *length));
+                }
+            }
+            for (other_self, other_start) in local_functions.get(hash).into_iter().flatten() {
+                function_hits.push((self_id as u32, base_files + other_self, *start, *other_start, *length));
+            }
+            local_functions.entry(*hash).or_default().push((self_id as u32, *start));
         }
-        regions.push((self_id, other, diagonal, first, last));
     }
-    let approx_ms = ms(before);
+    outcome.function_hits = function_hits.len();
+    let function_ms = ms(before);
+    let design_ms = ms(started) - parse_ms;
 
-    let before = Instant::now();
-    let mut chains: HashMap<u32, Vec<u32>> = HashMap::new();
-    let mut file = File::open(index_dir.join("chain.bin")).unwrap();
-    let narrow: Vec<Vec<u32>> = streams.iter().map(|s| s.0.iter().map(|t| (t >> 32) as u32).collect()).collect();
-    for (self_id, other, diagonal, first, last) in regions {
-        let mine = &narrow[self_id as usize];
-        let theirs: &Vec<u32> = if other >= base_files {
-            &narrow[(other - base_files) as usize]
-        } else {
-            chains.entry(other).or_insert_with(|| {
-                let start = index.offsets[other as usize];
-                let end = index.offsets[other as usize + 1];
-                let mut buffer = vec![0u8; (end - start) as usize];
-                file.seek(SeekFrom::Start(start)).unwrap();
-                file.read_exact(&mut buffer).unwrap();
-                outcome.chain_bytes_read += buffer.len();
-                outcome.files_read_for_chain += 1;
-                buffer.chunks_exact(4).map(|c| u32::from_le_bytes(c.try_into().unwrap())).collect()
-            })
-        };
-        let length = exact(mine, theirs, first as i64, diagonal, last as usize + params.k);
-        if length >= t {
-            outcome.exact_block += 1;
+    let narrow: Vec<Vec<u32>> = streams.iter().map(|s| s.tokens.iter().map(|t| (t >> 32) as u32).collect()).collect();
+    let chain: Vec<u8> = std::fs::read(index_dir.join("chain.bin")).unwrap();
+    let base_tokens = |file: u32| -> Vec<u32> {
+        let (start, end) = (index.starts[file as usize] as usize, index.starts[file as usize + 1] as usize);
+        chain[start * 4..end * 4].chunks_exact(4).map(|c| u32::from_le_bytes(c.try_into().unwrap())).collect()
+    };
+    let tokens_of = |file: u32| -> Vec<u32> {
+        if file >= base_files { narrow[(file - base_files) as usize].clone() } else { base_tokens(file) }
+    };
+    let mut blocked = std::collections::HashSet::new();
+    for (self_id, other, diagonal, first, length) in &proven {
+        let theirs = tokens_of(*other);
+        let (exact_length, exact_start) = exact(&narrow[*self_id as usize], &theirs, *first as i64, *diagonal, *first as usize + length);
+        if exact_length < t {
+            outcome.false_regions += 1;
+        }
+        blocked.insert((*self_id, *other, *diagonal, exact_start));
+    }
+    for (self_id, other, start, other_start, length) in &function_hits {
+        let theirs = tokens_of(*other);
+        let (a, b) = (*start as usize, *other_start as usize);
+        if narrow[*self_id as usize][a..a + *length as usize] != theirs[b..b + *length as usize] {
+            outcome.false_functions += 1;
         }
     }
-    let exact_ms = ms(before);
-    let total_ms = ms(started);
+    let mut truth = HashMap::new();
+    for run in hits.chunk_by(|a, b| a.0 == b.0 && a.1 == b.1 && a.2 == b.2) {
+        let theirs = tokens_of(run[0].1);
+        for hit in run {
+            let (length, start) = exact(&narrow[hit.0 as usize], &theirs, hit.3 as i64, hit.2, hit.3 as usize + params.k);
+            if length >= t {
+                truth.insert((hit.0, hit.1, hit.2, start), length);
+            }
+        }
+    }
+    outcome.true_regions = truth.len();
+    let missed: Vec<usize> = truth.iter().filter(|(key, _)| !blocked.contains(*key)).map(|(_, length)| *length).collect();
+    outcome.missed_regions = missed.len();
+    let longest_missed = missed.iter().copied().max().unwrap_or(0);
+    let path_bytes: usize = index.paths.iter().map(|(_, length)| length + 8).sum();
+
     let mut stdout = std::io::stdout();
     writeln!(
         stdout,
-        "{{\"changed\":{},\"t\":{t},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"walk_ms\":{walk_ms:.2},\"changed_tokens\":{changed_tokens},\"lookup_ms\":{lookup_ms:.2},\"approx_ms\":{approx_ms:.2},\"exact_ms\":{exact_ms:.2},\"total_ms\":{total_ms:.2},\"design_b_ms\":{:.2},\"design_a_ms\":{:.2},\"hits\":{},\"capped_hits\":{},\"incomplete\":{},\"regions\":{},\"approx_block\":{},\"approx_unclear\":{},\"exact_block\":{},\"chain_files\":{},\"chain_bytes\":{}}}",
+        "{{\"changed\":{},\"t\":{t},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"changed_tokens\":{changed_tokens},\"lookup_ms\":{lookup_ms:.2},\"function_ms\":{function_ms:.2},\"design_c_ms\":{design_ms:.2},\"hits\":{},\"capped_hits\":{},\"incomplete\":{},\"regions\":{},\"proven\":{},\"deferred\":{},\"function_hits\":{},\"false_regions\":{},\"false_functions\":{},\"true_regions\":{},\"missed_regions\":{},\"longest_missed\":{longest_missed},\"path_bytes\":{path_bytes}}}",
         changed.len(),
-        load_ms + stream_ms + lookup_ms + approx_ms,
-        load_ms + stream_ms + lookup_ms + approx_ms + exact_ms,
         outcome.hits,
         outcome.capped_hits,
         outcome.capped_hits > 0,
         outcome.regions,
-        outcome.approx_block,
-        outcome.approx_unclear,
-        outcome.exact_block,
-        outcome.files_read_for_chain,
-        outcome.chain_bytes_read,
+        outcome.proven,
+        outcome.deferred,
+        outcome.function_hits,
+        outcome.false_regions,
+        outcome.false_functions,
+        outcome.true_regions,
+        outcome.missed_regions,
     )
     .unwrap();
 }
 
-fn exact(mine: &[u32], theirs: &[u32], first: i64, diagonal: i64, end: usize) -> usize {
+fn exact(mine: &[u32], theirs: &[u32], first: i64, diagonal: i64, end: usize) -> (usize, i64) {
     let at = |position: i64| -> Option<(u32, u32)> {
         let other = position + diagonal;
         if position < 0 || other < 0 || position as usize >= mine.len() || other as usize >= theirs.len() {
@@ -744,6 +817,9 @@ fn exact(mine: &[u32], theirs: &[u32], first: i64, diagonal: i64, end: usize) ->
         }
         Some((mine[position as usize], theirs[other as usize]))
     };
+    if (first..end as i64).any(|p| at(p).is_none_or(|(a, b)| a != b)) {
+        return (0, first);
+    }
     let mut start = first;
     while at(start - 1).is_some_and(|(a, b)| a == b) {
         start -= 1;
@@ -752,10 +828,7 @@ fn exact(mine: &[u32], theirs: &[u32], first: i64, diagonal: i64, end: usize) ->
     while at(stop).is_some_and(|(a, b)| a == b) {
         stop += 1;
     }
-    if (first..end as i64).any(|p| at(p).is_none_or(|(a, b)| a != b)) {
-        return 0;
-    }
-    (stop - start) as usize
+    ((stop - start) as usize, start)
 }
 
 fn generate(dir: &Path, name: &str) {
@@ -781,9 +854,11 @@ fn main() {
             Path::new(&args[2]),
             Path::new(&args[3]),
             Params {
-                k: number(4, 20),
-                w: number(5, 41),
+                k: number(4, 30),
+                w: number(5, 30),
                 cap: number(6, 64),
+                fmin: number(7, 10),
+                fcut: number(8, 118),
             },
         ),
         Some("walk") => {
@@ -846,7 +921,7 @@ mod tests {
 
     #[test]
     fn winnowing_finds_every_shared_run_of_k_plus_w_minus_one() {
-        let params = Params { k: 20, w: 41, cap: 64 };
+        let params = Params { k: 20, w: 41, cap: 64, fmin: 10, fcut: 118 };
         let shared: Vec<u64> = (1000..1060).collect();
         let left: Vec<u64> = (0..37).chain(shared.iter().copied()).collect();
         let right: Vec<u64> = (500..511).chain(shared.iter().copied()).chain(600..650).collect();

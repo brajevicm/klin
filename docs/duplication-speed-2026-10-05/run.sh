@@ -8,7 +8,7 @@ mkdir -p "$work" "$here/results"
 out="$here/results/$name.jsonl"
 : > "$out"
 rss() { awk '/maximum resident/ {print $1}' "$work/time"; }
-/usr/bin/time -l "$bin" build "$root" "$work/$name" ${3:-20} ${4:-41} ${5:-64} > "$work/q" 2>"$work/time"
+/usr/bin/time -l "$bin" build "$root" "$work/$name" ${3:-30} ${4:-30} ${5:-64} 10 118 > "$work/q" 2>"$work/time"
 sed "s/}\$/,\"kind\":\"build\",\"rss\":$(rss)}/" "$work/q" >> "$out"
 for n in 20 100; do
   for run in 1 2 3 4 5; do
