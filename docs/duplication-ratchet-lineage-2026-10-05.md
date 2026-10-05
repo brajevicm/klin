@@ -123,8 +123,8 @@ There are exactly two admitted lineage mechanisms.
 
    A before and current occurrence may pair across fingerprint changes only
    when both carry the same supported family-specific structural identity, that
-   identity is unambiguous on both sides, and both occurrences are in the same
-   mapped physical path.
+   identity is unambiguous on both sides, and both occurrences use the same
+   repository path string on both sides.
 
    This is the bridge needed for synchronized edits such as `H1 -> H2`.
    It deliberately does **not** extend #425's proven contract across a file
