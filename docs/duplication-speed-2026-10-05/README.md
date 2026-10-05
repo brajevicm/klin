@@ -505,7 +505,10 @@ python3 docs/duplication-speed-2026-10-05/summary.py
 - With k = 41, the 1M fixture has no capped key, so every query is complete.
   With k = w = 30, every 1M query was INCOMPLETE.
 - One warm-100 run took 29.81 ms. The other four took about 16 ms. The limit
-  for 100 changed files is on the median only.
+  for 100 changed files is on the median only. The owner ran the row a
+  second time (`results-1m-rerun/`): warm 20 was 3.67 ms (max 3.78), warm 100
+  was 14.94 ms (max 15.11), and cold extra was 1,367 ms. That run had no
+  outlier.
 - The cold margin is small: 4.4% against 5%. The cold hook time is one
   sample.
 - The peak RSS of about 33 MB includes the validation, which reads the whole
