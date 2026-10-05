@@ -43,9 +43,22 @@ conservatively attributed descendants of that cohort through edits, moves and
 splits. It may not be pooled with another cohort.
 
 Every base occurrence contributes one **lineage slot**. A slot may be consumed
-at most once by one current occurrence. This slot-conservation rule is what
-prevents a diverged legacy member from leaving its old allowance behind for a
-new copy to reuse.
+at most once by one current occurrence. During comparison each touched slot is
+in exactly one state:
+
+```text
+consumed    a current descendant is proven
+free        the base occurrence is proven absent from current scope
+unresolved  persistence/ancestry is ambiguous or unsupported
+```
+
+Unchanged base occurrences are implicitly `consumed` by their unchanged
+current occurrence. Only `free` slots may fund a same-fingerprint
+remove/add replacement. An `unresolved` slot is never spent merely because a
+matching fingerprint needs allowance.
+
+This slot-conservation rule prevents a diverged or ambiguous legacy member from
+leaving its old allowance behind for a new copy to reuse.
 
 This is the selected ratchet model for #478.
 
@@ -378,11 +391,15 @@ Therefore:
   when only cardinality is proven, a group-level finding may carry the proven
   regression-unit count rather than fabricating several historical site claims;
 - independently mark required duplication measurement INCOMPLETE when a valid
-  ancestry assignment could change the total count, attribution, or absence of
-  additional regressions;
+  ancestry assignment could change the total regression count or whether an
+  additional regression exists;
 - never convert incomplete evidence to PASS;
 - never discard a proven FAIL merely because additional regressions are
-  uncertain.
+  uncertain;
+- if only the physical site/root attribution is ambiguous but the group-level
+  regression count is invariant, keep measurement complete and report the
+  claim at group/cardinality level instead of inventing historical site
+  lineage.
 
 This follows #354 directly: a partial measurement may contain valid failing
 evidence; judgment and measurement completeness are separate axes.
@@ -440,6 +457,7 @@ one side of copying the other.
 | Delete + equivalent add | removed `H` occurrence replaced by new-site `H` | same-fingerprint replacement keeps one source cohort | PASS |
 | Delete one of pair + equivalent add | legacy cohort `H` remains size 2 | one source cohort | PASS |
 | Delete unique + add two equivalent | one base `H` -> two current `H` | one replacement source + one new = 2 | FAIL 1 |
+| Count proves growth, site does not | one base `H` -> two current `H`, but which current site is the replacement is not knowable | cardinality proves one inherited slot + one new origin; site history remains unspecified | FAIL 1 at group/cardinality level |
 | File rename/move, same fingerprint | `H` -> `H` elsewhere | structural identity or same-fingerprint replacement | PASS |
 | Function rename, same fingerprint | `H` -> `H` with renamed declaration | same-fingerprint replacement | PASS |
 | Same-file implementation edit | `H1` -> `H2` at a uniquely identified same-file site | certified structural lineage | PASS/held when appropriate |
@@ -822,7 +840,8 @@ other lineage in the same measurement is unresolved.
 
 Cardinality may prove a definitely-new count without proving which current
 physical occurrence is new. Reporting never upgrades count evidence into a
-historical-site claim.
+historical-site claim. Site-only ambiguity does not force INCOMPLETE when the
+group-level regression count is invariant.
 
 ### I13. Same-file identity boundary
 
@@ -830,7 +849,13 @@ Cross-fingerprint structural lineage uses only the scope actually proven by the
 admitted identity contract. #425 does not certify a cross-file move plus body
 edit.
 
-### I14. Basis compatibility before lineage
+### I14. Slot-state determinism
+
+Every touched base slot is classified as `consumed | free | unresolved`.
+Only `free` slots are replacement supply; unresolved slots are never spent by
+a tie-break or greedy count match.
+
+### I15. Basis compatibility before lineage
 
 Measurement-basis compatibility is checked before cohort or site matching.
 
@@ -908,7 +933,7 @@ otherwise the result stays unknown/incomplete.
 - Move/replacement semantics are explicit: **yes**.
 - Group split/merge semantics are explicit: **yes**, I5/I6.
 - Ambiguous identity is never guessed: **yes**, I10/I13.
-- Detector-version mismatch cannot manufacture normal findings: **yes**, I14.
+- Detector-version mismatch cannot manufacture normal findings: **yes**, I15.
 - Old allowance cannot be spent on unrelated code: **yes**, cohort-local debt.
 - Complexity and persisted metadata are estimated: **yes**.
 - #478 must be updated with this selected model: **required companion update**.
@@ -1004,3 +1029,42 @@ The core lineage-unit equation survives, but with a stricter lineage boundary:
   ancestry;
 - a sole successor fingerprint is insufficient evidence;
 - proven regressions may coexist with incomplete total measurement.
+
+
+### A5. Slot-state formulation removes hidden matching choices
+
+The final adversarial refinement is to classify every touched base occurrence
+slot before replacement accounting:
+
+```text
+consumed | free | unresolved
+```
+
+This avoids an implementation-dependent question such as "which unmatched base
+slot should exact fingerprint replacement take first?" Only slots proven absent
+are free replacement supply. Ambiguous persistence is quarantined as unresolved.
+
+This is deliberately more conservative than a maximum matching. It preserves
+O(delta)-shaped work, needs no pair graph, and makes the no-guess rule directly
+testable.
+
+### A6. Site ambiguity is not automatically measurement ambiguity
+
+The opposite overcorrection is also unsafe for UX: if cardinality proves one
+new regression but cannot identify which of two equivalent current sites is the
+historical replacement, that does **not** make the duplication claim incomplete.
+
+Example:
+
+```text
+base:  A=H1
+after: B=H1  C=H1
+```
+
+One old slot can justify one current occurrence; the other occurrence is new.
+The exact historical `A -> B` versus `A -> C` pairing is irrelevant.
+
+Decision: keep the group-level FAIL count complete, choose/report a
+non-historical deterministic representative or group-level site, and never say
+that one physical occurrence is proven to be "the copy" unless lineage proves
+it.
