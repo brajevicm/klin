@@ -6,8 +6,9 @@ handover for the agent that runs the research. It holds no results yet.
 The ratchet model is settled in `docs/duplication-ratchet-lineage-2026-10-05.md`
 (#479). This note decides only what one canonical fingerprint means.
 
-Status: design reviewed once by an adversarial pass. The fixes from that pass
-are already in this design. Nothing below has been measured.
+Status: design reviewed by two adversarial passes. The second pass is the PR
+#488 review. The fixes from both passes are in this design. Nothing below has
+been measured, except the three semantic checks in section 13.
 
 ## 1. Scope
 
@@ -72,10 +73,16 @@ Use the **text** of each leaf token, never the node kind. The TS and TSX
 grammars give different node kinds for some of the same code. The text keeps
 TS and TSX as one identity. Fixture `tsx-same-as-ts` checks this.
 
-The token count of a unit is the number of non-comment leaf tokens, with
-punctuation included. The count is equal across P1 to P4, because the profiles
-change only spellings. The count is not comparable between Rust and TS. Each
-language gets its own threshold.
+The size of a unit is the number of non-comment leaf tokens in the source,
+with punctuation included, counted before any transform. Shorthand expansion
+(section 5) adds tokens to a stream, so the stream length is not the size.
+The size is equal for every profile and variant of one unit. A collision group
+qualifies for a threshold when its smallest unit is at or above it. The size
+is not comparable between Rust and TS. Each language gets its own threshold.
+
+A unit whose subtree contains an `ERROR` node or a missing node is `unclear`.
+It is fingerprinted and reported, but it can never be part of a blocking
+group. Report the count for each language.
 
 ## 4. Eligible units
 
@@ -119,17 +126,23 @@ Scope exclusions:
 Every profile drops comments and whitespace. Keywords and punctuation always
 keep their text.
 
-| Profile | Locals and parameters | Own function name | Anchors | Literals |
-|---|---|---|---|---|
-| P1 exact | kept | `SELF` | kept | kept |
-| P2 alpha locals | `L0`, `L1`, … | `SELF` | kept | kept |
-| P3 alpha + literals | as P2 | `SELF` | kept | selected classes normalized |
-| P4 broad | `ID` | `ID` | `ID` | `LIT` |
+| Profile | Locals and parameters | Anchors | Literals |
+|---|---|---|---|
+| P1 exact | kept | kept | kept |
+| P2 alpha locals | `L0`, `L1`, … | kept | kept |
+| P3 alpha + literals | as P2 | kept | selected classes normalized |
+| P4 broad | `ID` | `ID` | `LIT` |
 
-The own function name is never part of the stream. Each use of the own name
-in the body becomes `SELF`, so a renamed recursive function still matches. In
-a method, only `self.name(` or `this.name(` with the same name counts as an
-own-name use. Other uses keep their text.
+The declaration name of the unit is never part of the stream, in every
+profile. The unit is its parameters, return type and body. This is a choice
+of unit boundary, not a rewrite, so P1 stays exact.
+
+Own-name switch `N` (off or on) is a separate transform, measured with every
+profile. With `N` on, a bare call of a free function's own name becomes
+`SELF`, but only when no local in scope has that name. `self.name(`,
+`this.name(` and every other member use keep their text in every profile,
+because a member name is an anchor. A renamed recursive method therefore does
+not match. Record this as a blind spot.
 
 The P2 slots number the bindings in order of first binding occurrence. These
 are de Bruijn-style indices. `price + price` gives `L0 + L0`, and
@@ -145,15 +158,33 @@ Shorthand fields: write a shorthand field in its expanded form.
 
 Variants. Measure each one separately:
 
-- **M-strict / M-aware (Rust macros).** In M-strict, all identifiers inside a
-  macro `token_tree` keep their text. In M-aware, such an identifier becomes
-  its slot only when all of these are true:
-  1. it has the same text as a local in scope at that point;
-  2. the next token is not `!` or `::`;
-  3. the previous token is not `.` or `::`.
+- **M-strict / M-std (Rust macros).** tree-sitter-rust gives a macro's
+  arguments as a flat `token_tree` of `identifier` and punctuation leaves
+  (section 13, check 3). A token-neighbor rule cannot tell a closure
+  parameter or a struct field from a local, so this design does not use one.
+  - M-strict: every identifier inside a macro `token_tree` keeps its text.
+    This is the conservative default.
+  - M-std: for a closed list of std macros whose arguments the std docs define
+    as expressions, the prototype parses the argument text again as Rust
+    expressions. The list is: `format!`, `print!`, `println!`, `eprint!`,
+    `eprintln!`, `write!`, `writeln!`, `panic!`, `assert!`, `assert_eq!`,
+    `assert_ne!`, `debug_assert!`, `debug_assert_eq!`, `debug_assert_ne!` and
+    `vec!`. The walker then classifies the parsed subtree with the enclosing
+    scope, like any other expression. Rules:
+    1. Wrap the argument text as `[ ARGS ]` for `vec!` and as `f( ARGS )` for
+       the others. If the parse has an `ERROR` or missing node, the whole
+       macro keeps M-strict text and the unit is `unclear`.
+    2. In the format family, a top-level argument of the form `name = expr`
+       is a named format argument. `name` is an anchor. `expr` is walked.
+    3. The format string keeps its text in both variants. An inline capture
+       such as `"{x}"` is not normalized, so a renamed copy that uses inline
+       capture does not match. Record this as a blind spot, with a count.
+    4. Every other macro keeps M-strict text.
 
-  M-aware may become a candidate only if it adds no blocking hard negative.
-  Record how many units contain a local name inside a macro under M-strict.
+  M-std may become a BLOCK candidate, because the std docs define these
+  arguments as expressions and the walker resolves them with the same rules
+  as ordinary code. Record how many units contain a local name inside a macro
+  under M-strict.
 - **O-none / O-type (owner).** O-type adds the enclosing `impl` type or class
   name in front of the stream. O-none does not. See the label policy in
   section 9.
@@ -187,7 +218,7 @@ Every identifier leaf gets exactly one class:
 |---|---|---|
 | binding | new slot | `let x`, parameter `a`, `catch (e)` |
 | local-ref | slot of the binding found in scope | `x + 1` |
-| own-name | `SELF` | recursive call |
+| own-name | `SELF` with switch `N` on, else original text | bare recursive call of a free function |
 | anchor | original text | field, member, type, path, macro name, global, import |
 | kept-unclear | original text | identifier inside a Rust macro (M-strict) |
 
@@ -197,10 +228,24 @@ Rust rules:
   patterns, `if let` and `while let`, and closure parameters.
 - Each block, closure, match arm and `if let` body opens a new scope.
 - A new `let` shadows the old binding with a new slot.
-- In a pattern, an `identifier` that starts with an uppercase letter is an
-  anchor: a const, a unit struct or an enum variant. Example: `None`.
-- In a pattern, a lowercase `identifier` is a binding. `ref`, `mut` and
-  `x @ pat` bind `x`.
+- In a pattern, an `identifier` that starts with an uppercase letter keeps
+  its text, for example `None`. This direction is always safe: if the name is
+  in fact a binding, the cost is only lost recall.
+- A bare lowercase `identifier` in a pattern is not certain to be a binding,
+  in any pattern position. rustc resolves it to a unit struct or a const when
+  one with that name is in scope, also in `let`, parameter, closure and `for`
+  patterns, if the pattern is irrefutable (section 13, check 1). The walker
+  treats it as a binding only when all of these are true:
+  1. no item, `use` import or function-local item anywhere in the file has
+     that name;
+  2. the file has no glob import (`use …::*`);
+  3. the file has no macro invocation at item level, which could define an
+     item with that name.
+
+  Otherwise the identifier keeps its text and the unit is `unclear`. Report
+  the `unclear` rate for each pattern position. A high rate is evidence
+  against P2 for Rust, not a reason to relax the rule. `ref`, `mut` and
+  `x @ pat` follow the same rule for `x`.
 - Keep these as anchors: `self`, `Self`, `field_identifier`,
   `type_identifier`, every segment of a `scoped_identifier`, lifetimes,
   labels, and macro names.
@@ -208,7 +253,7 @@ Rust rules:
   (global, const, function or static).
 - Nested `fn`, `struct`, `impl` and `mod` items: P1 tokens, no parent scope
   (section 4).
-- Macro token trees: see M-strict / M-aware.
+- Macro token trees: see M-strict / M-std (section 5).
 
 TypeScript rules:
 
@@ -254,12 +299,10 @@ Required positives (must collide under the candidate):
 
 - `exact-copy`;
 - `format-comment-only`;
-- `function-rename`, including `function-rename-recursive`;
+- `function-rename`;
 - `local-rename` (consistent rename of parameters and locals);
 - `local-rename-shorthand` (renamed copy that changes the shorthand `{x}` to
   `{x: a}`);
-- `local-rename-macro` (Rust: renamed local used inside `format!`; must
-  collide under M-aware, records a miss under M-strict);
 - `two-added-together`;
 - `cross-file-copy`;
 - `legacy-plus-third` (two base copies, one new third copy);
@@ -289,12 +332,27 @@ P4:
 - `anchor-method`, `anchor-field`, `anchor-type`, `anchor-enum-variant`,
   `anchor-imported-fn`, `anchor-macro` (Rust), `anchor-jsx-element` (TSX).
 
+Optional recall probes. They are reported but are not required, so no
+variant is forced by them:
+
+- `local-rename-macro` (Rust: renamed local passed as an argument to
+  `format!` and `assert_eq!`);
+- `local-rename-inline-capture` (Rust: renamed local in `"{x}"`; expected to
+  miss in every variant);
+- `function-rename-recursive` (expected to match only with switch `N` on);
+- `method-rename-recursive` (expected to miss in every variant).
+
 Binding construct tests, both languages where the construct exists:
 
 - `shadowing`, `destructuring`, `closure-capture`, `match-pattern-binding`
   (Rust), `uppercase-pattern-const` (Rust), `var-hoisting` (TS),
   `catch-binding` (TS), `bound-arrow`, `anonymous-callback`,
-  `member-vs-local-same-name` (`x.x`), `unclear-eval` (TS).
+  `member-vs-local-same-name` (`x.x`), `unclear-eval` (TS),
+  `lowercase-unit-struct-pattern` (Rust: `struct s; let s = s;` must be
+  `unclear`), `macro-closure-arg` (Rust: `vec![|a| a + 1]`),
+  `macro-struct-field` (Rust: `vec![Foo { x: y }]`), `format-named-arg`
+  (Rust: `format!("{v}", v = x)`), `recovered-parse` (both: a unit with an
+  `ERROR` node).
 
 ### Tier 2: existing material, before any fresh sampling
 
@@ -316,8 +374,14 @@ Binding construct tests, both languages where the construct exists:
    run records for copied implementations. Take only the copies that a
    reviewer or a label marked.
 
-For each tier-2 change, run the prototype on the base and the head. Report
-groups whose multiplicity at the head is higher than at the base.
+For each tier-2 change, run the prototype on the head. Report the
+co-canonical groups that contain at least one unit the change added or
+modified. Label each group like a census group (section 9).
+
+Tier 2 answers only "which units share a canonical identity, and is each
+group a real copy?". It does not claim that a change created a duplication
+regression. That question belongs to the lineage model of #479
+(`certain_bundles(H)`, `certain_regressions(H)`), which is out of scope here.
 
 ### Tier 3: collision census (precision)
 
@@ -325,7 +389,7 @@ This tier fixes the largest gap of the first design: too few natural
 negatives.
 
 Run the prototype over whole **base** trees and report every collision group
-at 60 tokens or more:
+at size 60 or more:
 
 - every repository in `docs/phenotype-pilot-2026-10-02/selection.json` that
   has Rust or TS;
@@ -339,9 +403,14 @@ There is no fixed minimum number of groups. No group count proves a BLOCK
 gate. A count of n groups gives only an upper bound on the false-block rate.
 The result states that bound (section 10).
 
-- Label as many P2 groups for each language as the budget allows. Aim at about
-  150 groups. With zero non-copy groups, 150 gives a 95% upper bound of 2%
-  (rule of three, 3/n).
+- Label the union of the groups that the BLOCK-eligible candidates make,
+  not only the P2 groups. Start with the P2 groups, then label the groups that
+  each more aggressive candidate adds (M-std, N on, E2, O-none, each P3
+  class). A candidate's evidence counts only the groups it makes. Report n
+  for each candidate and threshold.
+- Label as many groups for each language as the budget allows. Aim at about
+  150 groups for each candidate that may reach BLOCK. With zero non-copy
+  groups, 150 gives a 3/n value of 2% (rule of three).
 - Cap the share of one repository at one third of the labeled groups for a
   language. Groups from one repository are correlated, so the real bound is
   weaker than 3/n. Report the count for each repository.
@@ -350,7 +419,9 @@ The result states that bound (section 10).
 
 The census measures duplicates that already exist in base trees, not
 duplicates that agents add. It is a proxy for the population that matters.
-The result must say this.
+The sample is also capped by repository and correlated. 3/n is therefore a
+descriptive number for this sample, not a bound on the future false-block
+rate of the product. The result must say this.
 
 Sources for this rule:
 
@@ -372,7 +443,9 @@ prototype runs on it.
 `results.tsv` has one row for each combination of language, profile, variant,
 eligibility (E1/E2) and threshold.
 
-Thresholds: 40, 60, 80, 100 and 150. After a threshold is selected, add rows
+Thresholds that can be selected: 60, 80, 100 and 150. Rows at 40 are
+diagnostic only. 40 can never be selected, because the census starts at 60.
+After the threshold is selected by the rule in section 10, add diagnostic rows
 at the selected value plus and minus 10 and 20, so that a brittle cutoff
 shows.
 
@@ -382,7 +455,9 @@ Columns:
 - `hard_negatives_collided` (tier 1);
 - `census_groups`, `census_copy`, `census_noncopy`, `census_unlabeled`;
 - `units_eligible`, `units_unclear`, `units_excluded`;
-- `macro_local_units` (Rust, M-strict);
+- `macro_local_units` (Rust, M-strict), `inline_capture_units` (Rust);
+- `unclear_pattern_units` (Rust, for each pattern position);
+- `recovered_parse_units`;
 - `walker_us_p50`, `walker_us_p95`, for each unit. This is a rough cost for
   #482, not a gate.
 
@@ -425,19 +500,41 @@ Commit this rule before measurement. Do not change it after you see results.
 A **blocking hard negative** is a collision group at or above the threshold,
 in production scope, with any label other than `copy`.
 
-For each language, choose the least aggressive profile and variant, in the
-order P1 < P2 < P3, that meets the rule for its strength:
+A **candidate** is one combination of profile, switch `N`, eligibility,
+macro variant, owner variant, literal class and threshold. A candidate
+**passes** when both of these are true:
 
-- **BLOCK candidate**, when both of these are true:
-  1. it catches every required positive at or above the threshold;
-  2. it has zero blocking hard negatives in tier 1, in the census and in any
-     holdout.
+1. it catches every required positive whose size is at or above the
+   threshold, and at least one copy of each required positive case is at or
+   above the threshold;
+2. it has zero blocking hard negatives in tier 1, in the census groups it
+   makes and in any holdout.
 
-  The strength must state its evidence: the census n, the number of
-  repositories, and the 95% upper bound on the false-block rate. Use 3/n with
-  zero failures, or the Clopper-Pearson bound otherwise. Example: "BLOCK
-  candidate: 0 of 152 census groups were non-copy, so the false-block rate is
-  under 2% at 95% confidence, on base-tree duplicates."
+Selection, for each language. The order is total, so no choice remains after
+the results:
+
+1. Thresholds: take the lowest threshold in 60, 80, 100, 150 at which some
+   candidate passes.
+2. At that threshold, take the least aggressive passing candidate. Compare
+   candidates in this order of dimensions, with the less aggressive value
+   first:
+   1. profile: P1, then P2, then P3;
+   2. switch `N`: off, then on;
+   3. eligibility: E1, then E2;
+   4. macros: M-strict, then M-std;
+   5. owner: O-type, then O-none;
+   6. literal class: none, then `num`, then `str`, then `num+str`.
+3. If no candidate passes at any threshold, apply the REVIEW and reject rules
+   to the P2, `N` off, E1, M-strict, O-type candidate at 100.
+
+Strength:
+
+- **BLOCK candidate**: the selected candidate passes. The strength states its
+  evidence: `0/n` non-copy census groups for that candidate, the number of
+  repositories, the sampling scheme, and the 3/n value marked as descriptive.
+  Example: "BLOCK candidate: 0 of 152 census groups were non-copy (11
+  repositories, capped at one third each, seeded sample). 3/n = 2%, on
+  base-tree duplicates; not a bound on future agent findings."
 - **REVIEW**: the census has more `copy` groups than other groups, and
   `glaredb-executor` does not collide.
 - **reject**: none of the above.
@@ -453,7 +550,8 @@ The result note must contain one frozen candidate for each language. Each
 candidate states:
 
 - eligible units;
-- the normalization contract (profile, variant, literal classes, owner);
+- the normalization contract (profile, switch `N`, eligibility, macro
+  variant, owner variant, literal class, threshold);
 - the semantic anchors preserved;
 - the minimum size;
 - unsupported and unclear behavior;
@@ -468,6 +566,9 @@ candidate states:
   - one changed literal (when literals are kept);
   - shorthand that is not expanded (when applicable);
   - wrapping the body in a macro;
+  - an item-level macro or glob import in the file, which makes Rust pattern
+    units `unclear`;
+  - inline format capture instead of a positional argument (Rust);
   - adding `arguments` or `eval` (TS).
 
   Measure each evasion on the `local-rename` fixture.
@@ -521,6 +622,8 @@ candidate states:
 - Never change the decision rule or the labels after seeing results. If the
   rule is wrong, record the problem and ask the user.
 - Never guess a local binding for a candidate fingerprint. Keep the text.
+- Do not add a token-neighbor rule for macro arguments. Section 13, check 3
+  shows that it fails on closures and struct fields.
 
 ### Known risks
 
@@ -533,3 +636,37 @@ candidate states:
 - dify#1422 may be out of language scope.
 - The labels are agent-drafted. The user may want to review a sample before
   the result note claims a strength.
+
+## 13. Semantic checks, 2026-10-05
+
+Three checks were done before the PR #488 review fixes. Probes ran with rustc
+1.98.1 (edition 2021) and tree-sitter 0.27.0 with tree-sitter-rust 0.24.2.
+
+1. **Rust bare identifiers in patterns.**
+   - With a lowercase `const x: i32` in scope, `let x = 5`, `fn f(x: i32)`,
+     `|x: i32| x` and `for x in 0..3` each fail with E0005 (refutable
+     pattern). `match v { x => 0 }` fails with E0004. So `x` is resolved as a
+     const pattern, not a binding.
+   - With a lowercase unit struct `struct s;` in scope, `let s = s;` and
+     `fn f(s: s)` compile. With `const c: () = ();`, `let c = ();` compiles.
+     Here the pattern identifier is a path pattern, not a binding.
+   - Result: a bare lowercase identifier is not certain to be a binding in any
+     pattern position. Section 6 now requires the absence of a same-name item,
+     glob import and item-level macro.
+2. **Macro hygiene and std macros.**
+   - A `macro_rules!` macro that names a caller's local `x` without receiving
+     it as a token fails with E0425. Locals are hygienic.
+   - `format!("{v}", v = x)` compiles: `v` is a named argument, not a local.
+   - `format!("{x}")` compiles: inline capture names a local inside a string
+     literal.
+   - Result: M-std must treat `name =` as a named argument and must record
+     inline capture as a blind spot. The case for M-std rests on the
+     documented expression arguments of the listed std macros, not on
+     hygiene. The format family is built into the compiler.
+3. **tree-sitter-rust macro arguments.** The argument of every macro is a flat
+   `token_tree`. Every name is an `identifier` leaf, including closure
+   parameters (`vec![|a| a + 1]`), struct fields (`Foo { x: y }`), named
+   format arguments (`v = x`) and field access (`a.b`). Only nested brackets
+   make nested `token_tree` nodes. Result: a token-neighbor rule gives a wrong
+   slot for a closure parameter and erases a field anchor. M-std parses the
+   arguments again as expressions instead.
