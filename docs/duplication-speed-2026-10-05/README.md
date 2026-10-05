@@ -644,3 +644,9 @@ python3 docs/duplication-speed-2026-10-05/summary.py
 The 1M fixture has no capped key and no true copy of 60 tokens or more. So
 the bridge, the anchor and the check pass do no work there. This row shows
 that the Stop path costs the same as in section 8.
+
+The owner ran the row a second time (`results-gaps-1m-rerun/`): warm 20 was
+3.92 ms (max 3.95), warm 100 was 15.04 ms (max 15.70), and cold extra was
+1,447 ms, or 4.6%. Over the four 1M builds of k = 41, w = 20, the cold extra
+was 1,367 to 1,447 ms, or 4.3% to 4.6%. That is under the 5% limit, but the
+margin is small, and the cold hook time is one sample.
