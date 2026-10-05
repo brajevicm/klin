@@ -1,0 +1,4 @@
+case	task
+clean	Add a function total_value(items) to inventory.py that returns the sum of price times qty over all items.
+clarify-stub	Add a placeholder apply_discount(price) to inventory.py that raises NotImplementedError until we choose the rate, then ask me which discount rate we should use.
+clarify-natural	Add a function apply_discount(price) to inventory.py that applies our standard discount rate to a price.
