@@ -7,6 +7,6 @@ for f in sorted(glob.glob(here+'/results/*.jsonl')):
     for n in (20,100):
         q=[r for r in rows if r['kind']=='query' and r['changed']==min(n,b['files'])]
         m=lambda k: st.median(r[k] for r in q)
-        print(f"  warm{n}: design_c median={m('design_c_ms'):.2f} max={max(r['design_c_ms'] for r in q):.2f} | load={m('load_ms'):.2f} stream={m('stream_ms'):.2f} lookup={m('lookup_ms'):.2f} function={m('function_ms'):.2f} | shared read+parse={m('read_parse_ms'):.2f} | "
-              + " ".join(f"{k}={q[0][k]}" for k in ('longest_missed','path_bytes','regions','proven','deferred','function_hits','false_regions','false_functions','true_regions','missed_regions','capped_hits','incomplete'))
+        print(f"  warm{n}: design_c median={m('design_c_ms'):.2f} max={max(r['design_c_ms'] for r in q):.2f} check median={m('check_ms') if 'check_ms' in q[0] else 0:.2f} | load={m('load_ms'):.2f} stream={m('stream_ms'):.2f} lookup={m('lookup_ms'):.2f} function={m('function_ms'):.2f} | shared read+parse={m('read_parse_ms'):.2f} | "
+              + " ".join(f"{k}={q[0].get(k)}" for k in ('longest_missed','path_bytes','regions','bridged','unanchored','check_files','check_blocked','check_false','check_missed','longest_check_missed','proven','deferred','function_hits','false_regions','false_functions','true_regions','missed_regions','capped_hits','incomplete'))
               + f" rss_kb={max(r['rss'] for r in q)//1024}")

@@ -433,7 +433,7 @@ fewest and has more room under the cache limit. It is the default.
 
 ### Results
 
-Data is in `results/`, and the summary is in `summary.txt`. The time is the
+Data is in `results-c20/`, with its summary. The time is the
 median of 5 runs (max), with reading and parsing left out.
 
 | Tree | Changed | Time | Blocked regions | False | Function hits | False | True ≥ 60 | Missed | Longest missed |
@@ -515,3 +515,119 @@ python3 docs/duplication-speed-2026-10-05/summary.py
   token chain. The Stop path does not read the chain.
 - There were no false positives at 1M. The fixture holds no true copy of 60
   tokens or more, so the 1M row measures cost, not detection.
+
+## 9. Closing gaps 1 and 3
+
+Section 8 left three gaps:
+1. Copies of 60 to 97 tokens can pass Stop.
+2. Copies under 60 tokens are not found. This is left to step 2.
+3. Copies of very common code are cut by the cap, and the result is
+   INCOMPLETE.
+
+This section closes gaps 1 and 3, and keeps the Stop path as it was.
+
+### Gap 3: bridge and anchor capped keys
+
+All postings now stay in the index. The Stop still enumerates only keys
+with at most 64 postings. Capped keys are used in two ways:
+
+- **Bridge.** A chain knows the exact base position that would continue it:
+  the changed position plus the diagonal. Postings of one key are sorted by
+  offset, so one binary search answers "does the base hold this key at this
+  position?" (`Postings::contains`). A yes adds the hit to the chain. This is
+  the same exact test as for any other hit.
+- **Anchor.** A run of capped keys with no ordinary hit has nothing to
+  bridge from. For the first key of such a run, the Stop takes the first 64
+  base postings in offset order as candidate chains. The bridge then extends
+  each candidate.
+
+A capped key that is still not part of any chain after this makes the result
+INCOMPLETE.
+
+### Gap 1: an exact pass at check time
+
+The Stop already knows its deferred regions: proven length under T, but
+possibly T or more. The check pass reads the source of the other file for
+each deferred region, tokenizes it, and finds the exact edges with full
+64-bit token hashes. It blocks a region of at least T tokens. This is work
+for `klin check`, which has no Stop limits. The Stop does not run it.
+
+### Metric
+
+A copy of common code can have hundreds of partners. To block, the gate needs
+one proven partner for each copied span. So this section counts **spans**: a
+changed span that is part of a true copy of at least T tokens. A span is
+missed when no blocked region covers it. The validation enumerates capped keys
+in full, so copies made only of common code are in the truth set.
+
+### Results (cap 64)
+
+Data is in `results/`, and the summary is in `summary.txt`. The time is the
+median of 5 runs (max), with reading and parsing of changed files left out.
+The check time includes reading and parsing the base files it opens.
+
+| Tree | Changed | Stop ms | Check ms | Check files | True spans | Missed at Stop | Missed after check | False (Stop / check / functions) |
+|---|---|---|---|---|---|---|---|---|
+| 10k | 20 | 1.16 (1.22) | 0 | 0 | 2 | 0 | 0 | 0 / 0 / 0 |
+| 10k | 100 | 2.18 (2.33) | 0 | 0 | 10 | 0 | 0 | 0 / 0 / 0 |
+| 300k | 20 | 1.52 (1.57) | 0 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+| 300k | 100 | 5.31 (5.34) | 0 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+| GlareDB | 20 | 3.12 (3.27) | 13.62 (13.75) | 35 | 15 | 4 | 0 | 0 / 0 / 0 |
+| GlareDB | 100 | 22.63 (23.02) | 59.65 (60.67) | 108 | 188 | 28 | 0 | 0 / 0 / 0 |
+| karakeep | 20 | 2.93 (2.98) | 6.68 (6.79) | 11 | 16 | 7 | 0 | 0 / 0 / 0 |
+| karakeep | 100 | 13.65 (13.85) | 13.68 (77.44) | 26 | 43 | 11 | 0 | 0 / 0 / 0 |
+| klin `src/` | 20 | 10.52 (10.67) | 32.36 (33.22) | 14 | 13 | 4 | 0 | 0 / 0 / 0 |
+| klin `src/` | 80 | 54.26 (54.99) | 0.02 (0.02) | 0 | 20 | 8 | 0 | 0 / 0 / 0 |
+
+- **Gap 1 is closed at check time.** On every tree, the check pass blocks
+  every span that the Stop missed, with 0 false blocks. With all 80 klin files
+  changed, every partner is a changed file, so the check reads no base file.
+- **Gap 3 is closed at Stop on these trees.** Before the anchor, the 10k
+  fixture had 2 (20 changed) and 10 (100 changed) copied spans made only of
+  capped keys, and the Stop missed all of them. Now the Stop blocks all of
+  them, and no query is INCOMPLETE. The Stop time on 10k went from 0.73 to
+  1.16 ms (20 changed).
+- **Gap 1 is not closed at Stop.** The Stop still misses 4 to 28 spans here.
+  Exact edges need information about every base token. At 1M the cache has
+  about 0.9 MB of room left, about 0.16 bytes for each token. Design A needs
+  4 bytes for each token.
+
+The real trees never reach the cap. A stress run with cap 4 forced many
+capped keys:
+
+| Tree, changed | Capped hits | Anchors | Bridged | Unanchored | Missed after check | False |
+|---|---|---|---|---|---|---|
+| GlareDB, 20 | 19 | 27 | 46 | 0 | 0 | 0 |
+| GlareDB, 100 | 184 | 132 | 234 | 9 | 8 | 0 |
+| karakeep, 20 | 6 | 7 | 12 | 0 | 0 | 0 |
+| karakeep, 100 | 8 | 6 | 15 | 0 | 0 | 0 |
+
+At cap 4 the anchor tries only 4 candidates for each run. So 9 capped hits
+stayed unanchored on GlareDB, and 8 spans stayed missed. They are reported as
+INCOMPLETE. At cap 64 the anchor tries 64 candidates.
+
+### Cost
+
+| Tree | Index (no path table) | / klin cache | Change from section 8 |
+|---|---|---|---|
+| 10k | 109,656 | 3.7% | +27,059: the postings of 11 capped keys |
+| 300k | 756,537 | 6.3% | none |
+| GlareDB | 205,308 | 5.2% | none |
+| karakeep | 95,095 | 7.8% | none |
+
+The cold build is unchanged (300k: 413 to 425 ms in 3 builds). One 300k run
+took 544 ms.
+
+### What the check pass reads
+
+The check pass reads and parses base files. That is not allowed at Stop, and
+it is normal for `klin check`. On these trees it opened 11 to 108 files and
+took 7 to 61 ms. One karakeep run took 77 ms.
+
+### 1M row (owner)
+
+```sh
+cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
+WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
+python3 docs/duplication-speed-2026-10-05/summary.py
+```

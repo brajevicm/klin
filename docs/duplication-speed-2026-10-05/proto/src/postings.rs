@@ -118,6 +118,33 @@ impl<'a> Postings<'a> {
         }
     }
 
+    fn bucket(&self, key: u64) -> Option<(usize, usize)> {
+        let bucket = (key >> self.low_width) as usize;
+        let bit = match bucket {
+            0 => 0,
+            _ => self.select_zero(bucket - 1)? + 1,
+        };
+        Some((bit, bit - bucket))
+    }
+
+    pub fn contains(&self, key: u64, offset: u32) -> bool {
+        let Some((mut bit, first)) = self.bucket(key) else {
+            return false;
+        };
+        let low = key & mask(self.low_width);
+        let mut end = first;
+        while bit / 64 < self.highs.len() / 8 && self.high(bit / 64) >> (bit % 64) & 1 == 1 {
+            bit += 1;
+            end += 1;
+        }
+        let low_at = |i: usize| unpack(self.lows, i * self.low_width as usize, self.low_width);
+        let start = first + partition(end - first, |i| low_at(first + i) < low);
+        let stop = first + partition(end - first, |i| low_at(first + i) <= low);
+        let offset_at = |i: usize| unpack(self.offsets, i * self.width as usize, self.width) as u32;
+        let found = start + partition(stop - start, |i| offset_at(start + i) < offset);
+        found < stop && offset_at(found) == offset
+    }
+
     pub fn find(&self, key: u64, out: &mut Vec<u32>) {
         let bucket = (key >> self.low_width) as usize;
         let low = key & mask(self.low_width);
@@ -174,11 +201,14 @@ mod tests {
         entries.sort_unstable();
         let bytes = encode(&entries, 13);
         let (postings, _) = Postings::read(&bytes);
-        for key in 0..40_100 {
+        for key in (0..40_100).step_by(7) {
             let mut found = Vec::new();
             postings.find(key, &mut found);
             let expected: Vec<u32> = entries.iter().filter(|e| e.0 == key).map(|e| e.1).collect();
             assert_eq!(found, expected, "key {key}");
+            for offset in 0..1000 {
+                assert_eq!(postings.contains(key, offset), expected.contains(&offset), "key {key} offset {offset}");
+            }
         }
     }
 }
