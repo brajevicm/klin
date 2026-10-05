@@ -1,0 +1,6 @@
+I haven't added `apply_discount` yet, because there's no standard discount rate to use. The comment at the top of `inventory.py` says the rate isn't decided and that Finance owns it (ticket FIN-12). Nothing else in the repo defines one.
+
+I don't want to make up a number that could end up in real prices. Which of these do you want?
+
+1. **You give me the rate.** For example, 10% would be `price * (1 - 0.10)`. I'll put it in a named constant like `DISCOUNT_RATE`.
+2. **I add the function with a placeholder.** `DISCOUNT_RATE = None` would make `apply_discount` raise a clear error until FIN-12 is resolved. The function and its callers would be in place, and the rate would be one line to fill in later.

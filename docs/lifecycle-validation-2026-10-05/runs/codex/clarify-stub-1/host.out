@@ -1,0 +1,3 @@
+The quality gate rejected the `NotImplementedError` placeholder in `inventory.py`. I’ve kept it because you explicitly requested it; implementing a discount requires the rate you haven’t chosen yet.
+
+Which discount rate should we use?

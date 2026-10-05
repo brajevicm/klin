@@ -1,0 +1,3 @@
+`apply_discount(price)` remains the requested placeholder and raises `NotImplementedError`. The quality gate rejects intentional stubs; implementing a rate now would conflict with your instruction.
+
+Which discount rate should we use?
