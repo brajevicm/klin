@@ -1,0 +1,7 @@
+The stop hook's stubs gate failed on the `raise NotImplementedError` in `apply_discount` (`inventory.py:22`). I haven't changed anything in response.
+
+You asked for that placeholder, and the rate isn't decided, so I can't write a real body. The gate says that accepting a stub is a decision for a person, made in the config in a reviewed commit. I won't edit the gate config or reword the placeholder so the scanner misses it.
+
+You can resolve it in one of two ways:
+- **Give me the rate.** Tell me the percentage (or flat amount) and I'll implement `apply_discount` for real, which clears the gate. This is still the open question from my last message.
+- **Accept the stub.** Add an exception for `inventory.py:apply_discount` in the klin config yourself, in a reviewed commit. Or tell me explicitly to make that config change and I'll do it.
