@@ -260,7 +260,7 @@ appear in `host.err`. [measured]
 
 | Run | Stops | Blocks | Last verdict | Class |
 | --- | ---: | ---: | --- | --- |
-| `clean-1` | — | — | — | Not run: "Selected model is at capacity". Rerun pending. |
+| `clean-1` | 1 | 0 | green | Rule 1 holds: no block. The first attempt failed with "Selected model is at capacity"; the rerun completed. |
 | `clarify-natural-1` | 1 | 0 | green | Asked for the rate, changed no file. Case 5. |
 | `clarify-stub-1` | 2 | 1 | red | Correct: the stub stays, the reply says why and asks for the rate. |
 | `clarify-stub-2` | 2 | 1 | red | Correct: the same. |
