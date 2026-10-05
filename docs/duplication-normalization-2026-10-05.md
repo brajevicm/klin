@@ -4,29 +4,40 @@ This note belongs to #480 under #478. It is the research design and the
 handover for the agent that runs the research. It holds no results yet.
 
 The ratchet model is settled in `docs/duplication-ratchet-lineage-2026-10-05.md`
-(#479). This note decides only what one canonical fingerprint means.
+(#479). This note decides what one canonical token stream means, and it
+proposes a stage 0 that decides which duplication unit is worth calibrating.
 
-Status: design reviewed by four adversarial passes. The second to fourth
-passes are the PR #488 reviews. The fixes from all passes are in this design.
-Nothing below has been measured, except the semantic checks in section 13.
+Status: design reviewed by five adversarial passes. The second to fifth
+passes are the PR #488 reviews. Section 2A is a **proposed scope change**,
+pending an owner decision on #478, #480 and #483. The scope-independent fixes
+of the fifth review are in this design. Its findings on name identity (2 to 4)
+wait for that decision. Nothing below has been measured, except the semantic
+checks in section 13.
 
 ## 1. Scope
 
 In scope:
 
 - a standalone research prototype that makes canonical token streams;
-- four normalization profiles, P1 to P4, with the variants in section 5;
-- per-language calibration of Rust and TypeScript/TSX;
+- stage 0 (section 2A): how often agent changes add duplication of four kinds,
+  whole functions, exact regions, alpha-renamed regions and near-misses, and a
+  cost model for each kind;
+- four normalization profiles, P1 to P4, with the variants in section 5, as a
+  token-stream contract that every kind of unit uses;
+- per-language calibration of Rust and TypeScript/TSX, for the unit that stage
+  0 selects;
 - a labeled corpus and a frozen decision rule;
 - a frozen candidate that #481 can attack.
 
-Out of scope, from the issue:
+Out of scope:
 
 - production code in `src/`;
-- partial or block clones (#483);
+- a product detector for partial or block clones. Stage 0 measures them; #483
+  owns their product design;
 - agent repair runs;
 - a final BLOCK decision;
-- performance work (#482). The prototype records only a rough cost.
+- the 1M-line performance measurement (#482). Stage 0 builds a cost model on
+  the 10k and 300k fixtures only.
 
 ## 2. Prototype layout
 
@@ -53,6 +64,151 @@ test-range logic in `src/syntax/convention.rs` (`cfg_test_ranges`,
 
 Make all output deterministic: `LC_ALL=C`, sorted rows, no timestamps in
 result files.
+
+## 2A. Stage 0: prevalence and cost (proposed)
+
+### Why
+
+Five review rounds made the whole-function fingerprint more careful. None of
+them asked how often agents add whole-function copies. Two facts suggest that
+the whole-function unit may be the wrong target:
+
+- The reuse failures that reviewers flagged in klin's own research were
+  failures to use an existing abstraction, not copies. On GlareDB#3633 the
+  reviewer asked for `UnaryInputNumericOperation`. On karakeep#1723 the
+  reviewer asked for the existing `useUpdateUserSettings` hook. A
+  whole-function detector catches neither.
+- Mature clone tools detect duplicated **regions** (token runs, statement
+  sequences, blocks or subtrees), not whole functions: SonarQube, PMD CPD,
+  jscpd, NiCad, Code Climate and SourcererCC. A copy of the middle of a
+  function is their normal case. Whole-function matching is also cheap to
+  evade: one added statement changes the fingerprint.
+
+Those tools report duplication. None of them blocks an agent, so their choice
+of unit shows what catches copies, not what is precise enough to block.
+
+### Candidates
+
+Every candidate uses the token-stream contract of sections 3, 5 and 6. Units
+are eligible functions under E2 (section 4). Test code is excluded.
+
+| Id | Unit | Stream | Match | Intended tier |
+|---|---|---|---|---|
+| A | whole function | P2 | equal hash | Stop |
+| B | maximal token run of at least T tokens inside one function body | P1 | equal hash | Stop |
+| B-block | a whole statement block (`if`, loop, `try`, `match` arm or block body) of at least T tokens | P1 | equal hash | Stop |
+| C | as B | P2 with prev-encoding (below) | equal hash | Stop |
+| D | statement block of at least T tokens | P4 | token-bag overlap of at least 0.8 | `klin check` only |
+
+- A region does not cross a function boundary.
+- P2 numbers locals by first occurrence. In a sliding window the first
+  occurrence changes with each window, so P2 does not combine with a rolling
+  hash. C uses Baker's prev-encoding instead: each local token becomes the
+  distance to the previous occurrence of the same local inside the region, and
+  0 for the first. The prototype may compute C by brute force for each
+  candidate region. Record whether a rolling form was built. If it was not, the
+  cost model for C is a lower bound only.
+- Region matches in B and C start from winnowed k-gram hashes and extend to
+  the maximal matching run. Overlapping windows merge into one region, and
+  regions merge into one family before anything is counted.
+- D is measured for prevalence only, as the comparator for near-miss copies
+  such as GlareDB#3633. It is never a Stop candidate.
+- Each candidate is measured at T = 60, 80, 100 and 150.
+
+### Corpus
+
+Agent changes that are already recorded or already defined. None of them is a
+fresh agent change, so the cap of 30 does not apply.
+
+1. The #357 pilot agent arm in `docs/phenotype-pilot-2026-10-02/selection.json`:
+   10 Rust and 10 TypeScript pull requests, with their `base` and `head`.
+2. The Rust and TypeScript pull requests of the pilot human arm in the same
+   file, as a contrast: do agents add copies more often than people do?
+3. The two #355 natural cases: GlareDB#3633 (`8001afa4` to `44da2223`) and
+   karakeep#1723 (`f8ae9866` to `87b39726`).
+4. The `natural-agent-rust` and `natural-agent-typescript` populations of
+   `docs/phenotype-study-2026-10-04/populations.tsv`: the first 40 eligible
+   pull requests per language under that file's rule. Materialize them with
+   that rule if no earlier ticket did. Record the selection.
+
+### Measurement
+
+For each change, run every candidate over the head. Report each group or
+region family that contains code the change added or modified, and say
+whether its other members are old code or also new in the change. This is not
+a regression count; #479 owns that question.
+
+Label every reported group with the blind protocol of section 9, with one
+extra column: `flagged` is yes when the #357 pilot coded a reviewer comment on
+that code as `reuse`.
+
+Report, for each candidate, language, arm and T:
+
+- changes with one or more groups;
+- changes with one or more groups labeled `copy`;
+- the labeled groups, with the share of each label;
+- examples, one per label.
+
+### Cost model
+
+On the 10k and 300k performance fixtures, for each Stop candidate (A, B,
+B-block, C):
+
+- index entries and bytes per 1,000 lines;
+- cold index build time;
+- warm query time per changed file;
+- the largest posting list, and the work it causes;
+- whether verification needs a read of an unchanged source file;
+- the size of klin's current structural cache on the same fixture, as the
+  reference for the growth limit.
+
+Extrapolate each number to 1M lines with 20 and with 100 changed files. Show
+the extrapolation method. These are models. #482 measures the real 1M numbers
+for the candidates that pass.
+
+Region verification and #478's rule of zero unchanged-source reads: a region
+match starts as a sampled hash hit, and its exact edges need the tokens of the
+other side, which may sit in an unchanged file. Model both ways to avoid that
+read:
+
+1. store a chain of positional hashes for base files, so that extension
+   compares hashes; this costs index size;
+2. at Stop, report only "a copied region of at least T tokens" with
+   approximate edges, and compute exact edges at `klin check`.
+
+Common windows (idioms) make very long posting lists. Model a cap: a window
+whose posting list exceeds a fixed size is skipped and counted, and a query
+that hits the work cap reports INCOMPLETE. Report how many windows the cap
+skips and how many labeled `copy` groups it loses.
+
+### Frozen rules for stage 0
+
+Commit these rules before stage 0 measures anything.
+
+Elimination. A candidate stays a Stop candidate only when all of these are
+true in the 1M extrapolation:
+
+1. the modeled warm median for 20 changed files is at most 15 ms, and at
+   most 50 ms for 100 changed files;
+2. the modeled index growth is at most 10% of the structural cache;
+3. verification needs no read of an unchanged source file;
+4. its work is bounded by a cap, with INCOMPLETE reporting.
+
+A candidate that fails any of these is a `klin check` candidate at most.
+
+Selection. Stage 0 ends with a report to #478. The owner decides the next
+step. The report recommends:
+
+- the Stop candidate that remains after elimination and has the most labeled
+  `copy` groups in agent changes, for the calibration of sections 7 to 10;
+- no Stop duplication gate, if no remaining Stop candidate has any labeled
+  `copy` group in agent changes;
+- a `klin check` candidate for #483, if D or an eliminated candidate finds
+  labeled `copy` groups or flagged reuse failures that the Stop candidates
+  miss.
+
+Then sections 7 to 10 calibrate the selected unit. They use the selected
+candidate's unit wherever they say "unit", "function" or "group".
 
 ## 3. Pipeline
 
@@ -138,9 +294,11 @@ for each class:
 
 The research agent adds two more probes before measurement: an arrow
 function inside a conditional expression, and a type assertion `<T>x` in a
-`.ts` file. A new class found during the research joins the list with its
-rule. This list cannot prove that no other misparse exists. The result must
-say so.
+`.ts` file. The list and its rules freeze with the protocol (section 10).
+If a new class appears after measurement starts, write a new frozen parser
+contract and run every affected tier again. Do not add the rule in place.
+This list cannot prove that no other misparse exists. The result must say
+so.
 
 ## 4. Eligible units
 
@@ -328,12 +486,16 @@ Rust rules:
   3. the file has no macro invocation at item level, which could define an
      item with that name;
   4. no item in the file has an attribute outside this inert list: `cfg`,
-     `cfg_attr`, `allow`, `warn`, `deny`, `forbid`, `expect`, `doc`,
-     `inline`, `cold`, `must_use`, `deprecated`, `track_caller`, `repr`,
-     `non_exhaustive`, `test`, and `derive` of only these std traits:
-     `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`,
-     `Hash`, `Default`. Any other attribute may be a proc macro that adds
-     names.
+     `allow`, `warn`, `deny`, `forbid`, `expect`, `doc`, `inline`, `cold`,
+     `must_use`, `deprecated`, `track_caller`, `repr`, `non_exhaustive`,
+     `test`, and `derive` of only these std traits: `Debug`, `Clone`,
+     `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Hash`, `Default`.
+     Any other attribute may be a proc macro that adds names. Two limits:
+     - `cfg_attr(cond, a, b, …)` is inert only when every attribute it
+       carries is inert, checked recursively. It can expand to a proc macro.
+     - the std derive names count as inert only when the file imports none
+       of those names and has no glob import, because an import can make
+       `Debug` resolve to a user derive.
 
   Otherwise the identifier keeps its text (state `kept`). Report the `kept`
   rate for each pattern position. A high rate is evidence against P2 for
@@ -404,7 +566,7 @@ class, and it emits its **provenance**:
   `run@"parser-a"#parse`, so P1 stays exact. P2 and P3 emit only the
   provenance.
 - A name that resolves to an item declared in the same file keeps its
-  spelling. Hard negative `same-name-local-helper` measures the risk.
+  spelling. Probe `same-name-local-helper` measures the risk (section 7).
 
 Cross-check for TS: `tree-sitter-typescript-0.23.2/queries/locals.scm` exists.
 It covers highlighting only, so it is coarse. Use it as a second oracle on the
@@ -442,8 +604,6 @@ Required hard negatives (must not collide under a candidate, P1 or P2):
 
 - `same-skeleton-different-api` (both functions call the API through the
   same local alias, `run`, imported from different modules);
-- `same-name-local-helper` (two files, each with its own `helper` with a
-  different body, and the same caller);
 - `crud-wrappers`;
 - `serializers-different-schema`;
 - `validation-constants`;
@@ -453,8 +613,6 @@ Required hard negatives (must not collide under a candidate, P1 or P2):
 - `generated-protocol`;
 - `table-dispatch`;
 - `test-helpers`;
-- `glaredb-executor` (the same executor scaffold with a different member or
-  API; model it on GlareDB#3633);
 - `owner-only-differs` (the same body in two `impl` blocks or classes; result
   depends on O-none / O-type);
 - `shadowed-std-macro` (Rust: a file with a local `macro_rules! vec` whose
@@ -470,6 +628,17 @@ P4:
 
 - `anchor-method`, `anchor-field`, `anchor-type`, `anchor-enum-variant`,
   `anchor-imported-fn`, `anchor-macro` (Rust), `anchor-jsx-element` (TSX).
+
+Measured probes. They are reported, but they are neither required positives
+nor required hard negatives, so they cannot decide a candidate by
+construction. The census labels decide what they mean:
+
+- `same-name-local-helper` (two files, each with its own `helper` with a
+  different body, and the same caller; spelling-only names collide here by
+  design);
+- `glaredb-executor` (the same executor scaffold with a different member or
+  API, modeled on GlareDB#3633; the reviewer wanted this code changed to use
+  an existing abstraction, so it is a reuse failure, not a safe negative).
 
 Optional recall probes. They are reported but are not required, so no
 variant is forced by them:
@@ -549,8 +718,8 @@ at size 60 or more:
 These are not agent changes. They do not count against the cap of 30.
 
 There is no fixed minimum number of groups. No group count proves a BLOCK
-gate. A count of n groups gives only an upper bound on the false-block rate.
-The result states that bound (section 10).
+gate. The result states `0/n` and 3/n as descriptive calibration-sample
+evidence (section 10).
 
 - Label the groups of the candidates first (section 10). Then label the
   groups that each comparator adds (M-std, N on, E2, O-none, each P3 class),
@@ -562,8 +731,12 @@ The result states that bound (section 10).
 - Cap the share of one repository at one third of the labeled groups for a
   language. Groups from one repository are correlated, so the real bound is
   weaker than 3/n. Report the count for each repository.
-- If a language produces more groups than can be labeled, take a seeded random
-  sample inside each repository's cap. Record the seed. The frozen sample is
+- If a language produces more groups than can be labeled, take one seeded
+  random sample from the groups of size 60 or more, inside each repository's
+  cap. Record the seed. The evidence for a higher threshold is the subset of
+  this same sample, so that sampling noise cannot change which threshold
+  passes. Report n for each threshold. When the subset for a threshold has
+  fewer than 30 labeled groups, its strength wording says so. The frozen sample is
   the evidence population. The cap gives repositories unequal inclusion
   probabilities, so the sample is not a simple random sample of all groups.
   `0/n` and 3/n describe the calibration sample only. The strength wording
@@ -694,7 +867,11 @@ the file or the crate root. It relies on the warn-by-default naming lints.
 It measures how much recall a naming-convention assumption would add.
 Adopting it is a product decision for #478 and needs an ADR.
 
-A **candidate** is P1 or P2, with `N` off, E1, M-strict and O-type, at one
+P1 is the **baseline**. It cannot pass, because `local-rename` is a required
+positive and P1 keeps local names. It stays in every table as the reference
+for natural recall.
+
+A **candidate** is P2, with `N` off, E1, M-strict and O-type, at one
 threshold. A candidate **passes** when both of these are true:
 
 1. it catches every required positive whose size is at or above the
@@ -706,10 +883,10 @@ threshold. A candidate **passes** when both of these are true:
 Selection, for each language. The order is total, so no choice remains after
 the results:
 
-1. Take the lowest threshold in 60, 80, 100, 150 at which a candidate passes.
-2. At that threshold, take P1 if it passes, else P2.
-3. If no candidate passes at any threshold, apply the REVIEW and reject rules
-   to P2 at 100.
+1. Take the lowest threshold in 60, 80, 100, 150 at which the candidate
+   passes.
+2. If it passes at no threshold, apply the REVIEW and reject rules to it at
+   100.
 
 Strength:
 
@@ -731,8 +908,7 @@ caught fraction. Report it for every candidate and comparator.
   sampled from 2000 (11 repositories, capped at one third each, seed 7).
   3/n = 2%, on base-tree duplicates; not a bound on future agent findings.
   Agent-labeled, unaudited."
-- **REVIEW**: the census has more `copy` groups than other groups, and
-  `glaredb-executor` does not collide.
+- **REVIEW**: the census has more `copy` groups than other groups.
 - **reject**: none of the above.
 
 Rust and TS are judged independently. They may get different profiles,
@@ -779,8 +955,11 @@ candidate states:
 ### Start state
 
 - This note is on branch `issue-480-normalization-research`, PR #488
-  (`Refs #480`). The PR went through three review rounds. Read all PR
-  comments before step 2.
+  (`Refs #480`). The PR went through four review rounds. The fourth review's
+  findings 2 to 4 (name identity) wait for the scope decision in section 2A.
+  Read all PR comments before step 2.
+- Section 2A is a proposed scope change. Do not start until the owner has
+  decided it on #478. If the owner rejects stage 0, skip steps 2 to 4.
 - Start the research on a new branch from `main` after PR #488 merges. If
   PR #488 is not merged, ask the user which branch to use.
 - Code baseline for the census of klin's own `src/`: `b61ac917` on `main`.
@@ -789,34 +968,46 @@ candidate states:
 
 ### Steps
 
-1. Read #480, #478, `docs/duplication-ratchet-lineage-2026-10-05.md` and this
-   note.
-2. Write `labels/protocol.md` and the decision rule in section 10. Commit them
-   alone, before any measurement. The first-measurement commit must come
-   after this commit.
-3. Write the tier-1 fixtures and `expected.tsv`. Commit.
-4. Build the prototype: parse, eligibility, token streams, then the walker,
-   then the profiles and variants. Add walker unit tests over the construct
+1. Read #480, #478, #483, `docs/duplication-ratchet-lineage-2026-10-05.md`
+   and this note.
+
+Stage 0:
+
+2. Write `labels/protocol.md`, the frozen rules of section 2A, and the
+   decision rule in section 10. Commit them alone, before any measurement.
+3. Build the prototype: parse, eligibility, token streams (section 3), the
+   walker (section 6), the profiles (section 5), then the candidates A, B,
+   B-block, C and D (section 2A). Add walker unit tests over the construct
    fixtures. Run the TS `locals.scm` cross-check and explain every
    difference.
-5. Make every tier-1 row in `expected.tsv` pass, or record why a row fails.
+4. Run stage 0: prevalence over the corpus of section 2A, blind labeling, and
+   the cost model on the 10k and 300k fixtures. Write the stage 0 report
+   below a `## Stage 0 results` heading. Draft the #478 comment with the
+   recommendation, run the `humanizer` skill on it, and **ask the user before
+   posting it**. Stop until the owner decides.
+
+Calibration of the selected unit:
+
+5. Write the tier-1 fixtures and `expected.tsv` for the selected unit.
+   Commit.
+6. Make every tier-1 row in `expected.tsv` pass, or record why a row fails.
    Do not change an expected value to make a row pass without a written
    reason.
-6. Run tier 2. Export trees with `git archive` into a temp directory. Do not
+7. Run tier 2. Export trees with `git archive` into a temp directory. Do not
    commit third-party source trees. Commit only the derived TSV rows and short
    excerpts.
-7. Run the tier-3 census, then blind labeling.
-8. Fill `results.tsv`. Select thresholds. Add the rows around each selected
+8. Run the tier-3 census, then blind labeling.
+9. Fill `results.tsv`. Select thresholds. Add the rows around each selected
    threshold.
-9. Use tier 4 only if section 7 allows it.
-10. Write the result section and the frozen candidates (section 11) into this
+10. Use tier 4 only if section 7 allows it.
+11. Write the result section and the frozen candidates (section 11) into this
     note, below a `## Results` heading. Write `labels/audit.tsv`.
-11. Run `/code-review` on the branch.
-12. Open a PR with `Closes #480`. Run the `humanizer` skill on the PR body
+12. Run `/code-review` on the branch.
+13. Open a PR with `Closes #480`. Run the `humanizer` skill on the PR body
     first.
-13. Draft the #478 update comment with the winning candidates. Run the
+14. Draft the #478 update comment with the winning candidates. Run the
     `humanizer` skill on it. **Ask the user before posting it.**
-14. Tell the user that the human audit of `labels/audit.tsv` is due before
+15. Tell the user that the human audit of `labels/audit.tsv` is due before
     #481 starts.
 
 ### Rules
@@ -825,7 +1016,8 @@ candidate states:
 - Do not edit `klin.json`, the hooks, or the `accepted` list.
 - Do not edit `src/`. If the pre-commit gate blocks a docs-only commit,
   stop and ask the user.
-- Do not run the full Rust suite or benchmarks. The user runs them.
+- Do not run the full Rust suite or benchmarks. The user runs them. The
+  stage 0 cost model uses the 10k and 300k fixtures only, never 1M.
 - Keep CI runs to a minimum (CI budget).
 - Never change the decision rule or the labels after seeing results. If the
   rule is wrong, record the problem and ask the user.
@@ -844,6 +1036,11 @@ candidate states:
   implementations. If so, the O-type variant and the owner policy decide the
   result. Report both.
 - dify#1422 may be out of language scope.
+- Stage 0 may find few labeled agent copies of any kind. Then the
+  recommendation is no Stop duplication gate. That is a valid result.
+- The region index (B, C) may break the 10% growth limit, or region
+  verification may need reads of unchanged files. Then regions are a
+  `klin check` candidate at most.
 - The labels are agent-drafted. The audit packet (section 9) is for the human
   audit before #481.
 - The Rust macro and attribute rules may make most Rust units with patterns
