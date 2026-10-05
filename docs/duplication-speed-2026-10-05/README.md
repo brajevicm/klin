@@ -626,8 +626,21 @@ took 7 to 61 ms. One karakeep run took 77 ms.
 
 ### 1M row (owner)
 
+The owner ran these commands:
+
 ```sh
 cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
 WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
 python3 docs/duplication-speed-2026-10-05/summary.py
 ```
+
+| #478 Stop limit | At 1M | Result |
+|---|---|---|
+| 20 changed: median ≤ 15 ms, max ≤ 25 ms | 3.89 ms, 4.17 ms | met |
+| 100 changed: median ≤ 50 ms | 15.45 ms (max 16.18 ms) | met |
+| Cache growth ≤ 10% of 37,301,283 bytes | 2,791,620 bytes, 7.5% | met |
+| Cold ≤ 5% slower | 1,389 ms on the 31.76 s cold hook, 4.4% | met |
+
+The 1M fixture has no capped key and no true copy of 60 tokens or more. So
+the bridge, the anchor and the check pass do no work there. This row shows
+that the Stop path costs the same as in section 8.
