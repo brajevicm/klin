@@ -1,5 +1,6 @@
 use std::ffi::OsStr;
 use std::path::Path;
+use std::time::Duration;
 
 use serde_json::{Map, Value};
 
@@ -9,7 +10,7 @@ use crate::state;
 /// The stamp file in the state directory, and the name it is written under before the rename,
 /// so a hook that dies mid-write leaves the previous stamp rather than a torn one. Spec 6.5.
 pub const FILE: &str = "turn";
-/// The index the stamp is built in, apart from the one a person's `git add` writes.
+/// The completed index retained after stamp publication, apart from a person's staged index.
 pub const INDEX: &str = "index";
 /// The prompt mark, beside the stamp and under the same guarded namespace. The stamp waits
 /// for a green stop, so a report keyed to it re-measures one widening window on every prompt.
@@ -127,21 +128,60 @@ pub fn recorded(stamp: &Stamp) -> Value {
     Value::Object(fields)
 }
 
-/// A tree of the working directory, everything `.gitignore` does not exclude, written through
-/// an index of klin's own. Both the stamp and the spread report read the turn from it.
+/// A read-only tree capture for the spread report, retaining no first-session marker.
 pub fn tree(root: &Path, at: &Path) -> Option<String> {
-    tree_through(root, &at.join(INDEX))
+    Some(capture(root, &at.join(INDEX))?.tree)
+}
+
+/// A completed private index, retained only after the caller publishes the stamp it describes.
+pub struct Capture {
+    pub tree: String,
+    temporary: tempfile::TempDir,
+    _lock: state::Lock,
+}
+
+impl Capture {
+    pub fn retain(self, index: &Path) -> Option<String> {
+        std::fs::rename(self.temporary.path().join(INDEX), index).ok()?;
+        Some(self.tree)
+    }
 }
 
 /// The same tree through an index the caller names, for a reader that must not leave the
 /// stamp's own index behind, because `run` reads that file's absence as a first session.
 pub fn tree_through(root: &Path, index: &Path) -> Option<String> {
-    let temporary = tempfile::tempdir_in(index.parent()?).ok()?;
+    capture(root, index)?.retain(index)
+}
+
+pub fn capture(root: &Path, index: &Path) -> Option<Capture> {
+    let scratch = index.with_extension("captures");
+    std::fs::create_dir_all(&scratch).ok()?;
+    let lock = state::lock(&scratch, Duration::from_secs(30))?;
+    remove_orphans(&scratch)?;
+    let temporary = tempfile::Builder::new()
+        .prefix("capture-")
+        .tempdir_in(scratch)
+        .ok()?;
     let fresh = temporary.path().join(INDEX);
     git(root, Some(&fresh), &["add", "-A"])?;
     let tree = git(root, Some(&fresh), &["write-tree"])?;
-    std::fs::rename(fresh, index).ok()?;
-    Some(tree)
+    Some(Capture {
+        tree,
+        temporary,
+        _lock: lock,
+    })
+}
+
+/// Called only while holding the capture lock, so no live capture is swept.
+fn remove_orphans(scratch: &Path) -> Option<()> {
+    // The lock makes every prior capture directory an orphan, including after SIGKILL.
+    for entry in std::fs::read_dir(scratch).ok()? {
+        let entry = entry.ok()?;
+        if entry.file_name().to_str()?.starts_with("capture-") {
+            std::fs::remove_dir_all(entry.path()).ok()?;
+        }
+    }
+    Some(())
 }
 
 /// The commit a ref or object name points at, and `None` when it names no commit.

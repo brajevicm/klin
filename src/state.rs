@@ -76,9 +76,9 @@ pub fn hash(bytes: &[u8]) -> u64 {
     sum
 }
 
-/// The advisory lock one stop holds over the state directory, from before it measures until
-/// after it writes its verdict, so two stops in one worktree run in order and the last verdict
-/// describes the last tree. Dropping it unlocks. Spec 6.5.
+/// The advisory lock over a state transaction or private capture. Stops hold the state lock
+/// through their verdict; prompts hold it through publishing the turn. Dropping it unlocks.
+/// Spec 6.5.
 pub struct Lock(std::fs::File);
 
 impl Drop for Lock {
@@ -90,8 +90,7 @@ impl Drop for Lock {
 const LOCK: &str = "lock";
 const WAITED: Duration = Duration::from_millis(25);
 
-/// The lock, or `None` when another stop still held it when the budget ran out. A caller that
-/// gets `None` measures anyway and writes no verdict.
+/// The lock, or `None` when it could not be acquired within the caller's budget.
 pub fn lock(at: &Path, budget: Duration) -> Option<Lock> {
     let file = std::fs::OpenOptions::new()
         .create(true)

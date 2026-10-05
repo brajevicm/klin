@@ -1049,14 +1049,22 @@ The turn stamp is a commit made with `git commit-tree` over a tree from a
 temporary index, with HEAD at stamping time as its parent, so both paths above
 work on it unchanged. Each capture MUST use a fresh private index path, so a
 Git index lock left by an interrupted capture cannot keep later turns open.
-The completed index is retained in the state directory to record that a
-capture has happened; an unsuccessful capture MUST NOT erase that record.
+The completed turn index is retained in the state directory only after a
+usable stamp has been published. It records that a turn has been established;
+an unsuccessful capture MUST NOT erase that record. An interrupted first
+capture with no published stamp or ref MUST retry as a first session.
+Captures for each canonical index MUST serialize explicitly and remove orphaned
+capture directories before allocating a fresh one, so interrupted hooks cannot
+accumulate private indexes. A read-only radius report retains no turn index.
 `a_leftover_private_index_lock_does_not_keep_a_green_turn_open` in
-`tests/turn.rs` pins recovery after a green stop.
-The RECOMMENDED stamping sequence is `git add -A` with
-`GIT_INDEX_FILE` pointing at an `index` file in the state directory, then
-`git write-tree`, then `git commit-tree -p HEAD`, then `git update-ref
-refs/worktree/klin/turn <commit>`. The ref keeps `git gc` from pruning the stamp,
+`tests/turn.rs` pins recovery after a green stop;
+`an_interrupted_first_stamp_retries_as_a_first_session` and
+`the_next_capture_removes_an_interrupted_private_index` pin interruption recovery.
+The RECOMMENDED stamping sequence is: allocate a fresh private path under the
+state directory, `git add -A` with `GIT_INDEX_FILE` naming that path, then
+`git write-tree`, `git commit-tree -p HEAD`, `git update-ref
+refs/worktree/klin/turn <commit>`, publish the `turn` file, and atomically
+promote the completed index to the retained canonical `index`. The ref keeps `git gc` from pruning the stamp,
 makes it visible to `git log --all`, and is the copy a stop restores the
 `turn` file from when that file is gone (6.2). The ref is never pushed. The `turn` file
 in the state directory holds the time, the verdict, the prompt counter and
@@ -1067,7 +1075,15 @@ handoff records of 9.1, one file per session, so no write of the stamp can
 replace it.
 It MUST be written to a temporary name and renamed into place, so a hook that
 dies mid-write leaves the previous stamp, not a torn one. Two sessions in one
-worktree share one window and one `turn` file. A stop MUST hold an advisory
+worktree share one window and one `turn` file. Session-start and prompt events
+MUST hold the same advisory state lock from before reading the stamp and counter
+through publishing the mark, refs, stamp and retained index. Distinct events
+wait their turn; duplicate-event claims alone do not serialize this transaction.
+If the lock cannot be acquired within 30 seconds, the event changes no turn
+state and prints a NOTE. A manual reset holds this lock too.
+`concurrent_distinct_sessions_serialize_the_prompt_counter` in `tests/copies.rs`
+pins distinct sessions advancing the counter separately.
+A stop MUST hold an advisory
 lock on the state directory from before it measures until after it writes the
 verdict, so stops in one worktree run in order and the last verdict describes
 the last tree. Without the lock an old green stop that finishes after a new

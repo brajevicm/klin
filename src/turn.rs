@@ -1,6 +1,6 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 
@@ -48,29 +48,34 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
         return Ok(0);
     };
     let start = named.as_path();
+    let Some(_lock) = state::lock(&at, Duration::from_secs(30)) else {
+        note(
+            out,
+            "the state directory could not be locked, so this prompt changed no turn state",
+        );
+        return Ok(0);
+    };
     let never = !at.join(stamp::INDEX).exists();
     let opened = stamp::mark(start, &at);
-    let tree = stamp::tree(start, &at);
+    let capture = stamp::capture(start, &at.join(stamp::INDEX));
+    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
     if let Some(event) = &event {
         handoff::clear(start, &event.session);
     }
     if event.as_ref().is_some_and(|event| event.prompted) {
-        let (enabled, facts) = prompt_facts(
-            start,
-            &at,
-            opened.as_deref(),
-            tree.as_deref(),
-            sections,
-            out,
-        );
+        let (enabled, facts) = prompt_facts(start, &at, opened.as_deref(), tree, sections, out);
         journal::prompt(start, prompts, event.as_ref(), enabled, facts);
     }
-    let mark = tree.as_deref().and_then(|tree| marked(start, tree));
-    if let Some(stamp) = next(start, tree.as_deref(), never, held, prompts, out) {
+    let mark = tree.and_then(|tree| marked(start, tree));
+    if let Some(stamp) = next(start, tree, never, held, prompts, out) {
         let mark = mark.or(stamp.mark);
-        write(&at, &Stamp { mark, ..stamp }, out);
+        if write(&at, &Stamp { mark, ..stamp }, out)
+            && let Some(capture) = capture
+        {
+            let _ = capture.retain(&at.join(stamp::INDEX));
+        }
     }
     Ok(0)
 }
@@ -163,13 +168,20 @@ fn next(
 pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Which::Reset = args.which;
     let at = state::ready(start).map_err(Error)?;
+    let _lock = state::lock(&at, Duration::from_secs(30))
+        .ok_or_else(|| Error("the state directory could not be locked".to_string()))?;
     let prompts = stamp::read(&at).map_or(0, |held| held.prompts);
-    let tree = stamp::tree(start, &at);
-    let Some(stamp) = taken(start, tree.as_deref(), prompts, out) else {
+    let capture = stamp::capture(start, &at.join(stamp::INDEX));
+    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
+    let Some(stamp) = taken(start, tree, prompts, out) else {
         return Err(Error("git could not stamp this tree".to_string()));
     };
-    let mark = tree.as_deref().and_then(|tree| marked(start, tree));
-    write(&at, &Stamp { mark, ..stamp }, out);
+    let mark = tree.and_then(|tree| marked(start, tree));
+    if write(&at, &Stamp { mark, ..stamp }, out)
+        && let Some(capture) = capture
+    {
+        let _ = capture.retain(&at.join(stamp::INDEX));
+    }
     journal::reset(start, prompts);
     let _ = writeln!(
         out,

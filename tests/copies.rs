@@ -107,6 +107,56 @@ fn a_late_copy_of_a_prompt_yields_and_prints_nothing() {
 }
 
 #[test]
+fn concurrent_distinct_sessions_serialize_the_prompt_counter() {
+    let tree = tree();
+    let before = prompts(&tree);
+    tree.write(".git/klin/lock", "");
+    let lock = std::fs::File::options()
+        .write(true)
+        .open(tree.state("lock"))
+        .expect("state lock");
+    lock.lock().expect("hold state lock");
+    let events = [a_prompt("s1", "p1"), a_prompt("s2", "p2")];
+    let (sent, received) = std::sync::mpsc::channel();
+
+    std::thread::scope(|scope| {
+        for event in &events {
+            let sent = sent.clone();
+            let tree = &tree;
+            scope.spawn(move || sent.send(run(tree, &["radius"], event)).expect("result"));
+        }
+        // Both events must have arrived before we release the deliberately held lock.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let arrived =
+            || std::fs::read_dir(tree.state("claims")).map_or(0, |entries| entries.count()) == 2;
+        while !arrived() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        let both_arrived = arrived();
+        let early = received.recv_timeout(std::time::Duration::from_secs(1));
+        let held = prompts(&tree);
+        lock.unlock().expect("release state lock");
+        assert!(both_arrived, "both distinct events must arrive");
+        assert!(
+            early.is_err(),
+            "a prompt wrote while the transaction lock was held"
+        );
+        assert_eq!(held, before);
+        for _ in 0..2 {
+            let run = received
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .expect("prompt");
+            assert_eq!(run.code, 0, "{}", run.out);
+        }
+    });
+
+    assert_eq!(prompts(&tree), before + 2);
+    let lines = journal(&tree, "prompt");
+    assert_eq!(lines.len(), 2);
+    assert_ne!(lines[0]["prompt"], lines[1]["prompt"]);
+}
+
+#[test]
 fn two_prompts_and_two_sessions_on_one_worktree_each_move_the_counter() {
     let tree = tree();
     let before = prompts(&tree);
