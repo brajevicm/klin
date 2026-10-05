@@ -314,13 +314,45 @@ For each current clone group determine separately:
 
 - distinct certified source cohorts;
 - safe same-fingerprint replacement capacity;
-- a lower-bound definitely-new occurrence count established by complete
-  cardinality/identity evidence;
+- a lower-bound definitely-new occurrence count;
 - the subset of those new occurrences whose physical sites are positively
   proven;
 - lineage-unknown occurrences or counts whose ancestry remains unresolved.
 
 Do not use "no match found" as proof of newness.
+
+A conservative lower bound is mechanical and does not need guessed matching.
+After certified lineage and any independently proven-new physical sites are
+removed from the unmatched sets, let:
+
+```text
+Q_H = remaining unmatched current occurrences at fingerprint H
+S_H = unused removed base slots from the base H cohort
+U_H = unused removed base slots from other fingerprints whose
+      cross-fingerprint destination is unresolved
+
+cardinality_new_lb(H) = max(0, Q_H - S_H - U_H)
+
+definitely_new_count(H) =
+    proven_new_sites(H) + cardinality_new_lb(H)
+```
+
+`U_H` is intentionally pessimistic: for the lower-bound calculation, every
+unresolved old slot is allowed to explain one otherwise-unmatched `H`
+occurrence even when that ancestry would be unlikely. This can under-report
+while measurement is incomplete, but it cannot manufacture a BLOCK finding.
+
+The same unresolved slot may appear as possible capacity in the lower-bound
+calculation of more than one current fingerprint. That does **not** assert that
+it has multiple descendants; it only means the individual group lower bounds
+are conservative. If exact allocation matters to a complete verdict, the
+measurement remains INCOMPLETE rather than solving a heuristic global matching
+problem.
+
+When `U_H = 0`, ordinary same-fingerprint cardinality gives the familiar exact
+replacement/new-copy arithmetic. When `U_H > 0`, the lower bound can still
+preserve a certain FAIL if current multiplicity exceeds every plausible legacy
+slot.
 
 ### 6. Judge each current canonical group with a conservative lower bound
 
