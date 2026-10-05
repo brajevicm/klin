@@ -6,8 +6,6 @@ did not start.
 
 Status: measured on the 10k, 300k and 1M fixtures and on three real trees.
 The owner ran the 1M rows. Section 6 compares them with the #478 Stop limits.
-The cold limit is still open, because klin's cold hook time at 1M is not
-measured.
 
 ## 1. Prototype
 
@@ -209,7 +207,7 @@ python3 docs/duplication-speed-2026-10-05/summary.py
 | 20 changed: median ≤ 15 ms, max ≤ 25 ms | met: 2.86, 3.04 | met: 2.89, 3.07 |
 | 100 changed: median ≤ 50 ms | met: 11.73 | met: 11.83 |
 | Cache growth ≤ 10% of 37,301,283 bytes (`748d01fc`) | met: 8.5% | missed: 71.9% |
-| Cold ≤ 5% slower | not known: 1,243 ms extra; it meets the limit only if klin's 1M cold hook takes at least 24.9 s | same |
+| Cold ≤ 5% slower | met: 1,243 ms extra on a 31.76 s cold hook, 3.9% | same |
 | No extra parses, no reads of unchanged source, no whole-tree walks, no external processes | met by design: the query reads the index and the changed files only | met by design; it also reads chain slices of hit files |
 
 Every 1M query was INCOMPLETE. A capped key ends its lookup early, so these
@@ -217,5 +215,9 @@ times do not include the work that the capped postings would cost. The
 20-changed time is about one fifth of the limit, so a Stop with no capped key
 probably also fits. The prototype did not measure that.
 
+The cold hook time is one owner run of klin `c1805539`
+(`gate --hook --changed`, `{"build":[]}`, `.git/klin` removed first). It is
+one sample, not a median.
+
 Design A misses the cache limit at 1M, as on every other tree. Design B meets
-every measured limit.
+every #478 Stop limit.
