@@ -1,0 +1,7 @@
+{
+  "atuin": "https://github.com/atuinsh/atuin d5c6bee0f7bcce56d028472dcbba7fd5c6ff0a8b",
+  "documenso": "https://github.com/documenso/documenso cd0cc5febcbb76ec7e5ecb75c0b8c65ab8432198",
+  "collect": "python3 calibrate.py collect /tmp/klin480-holdout2 DIR atuin=atuin documenso=documenso",
+  "rules": "python3 holdout.py rules /tmp/klin480-holdout2 calibration-holdout2 with version 2 rules, run before any label existed",
+  "labels": "four blind model reviewers, one per blind-N shard; they saw no mapping, length, threshold or rule result"
+}

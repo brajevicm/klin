@@ -2,7 +2,10 @@
 
 Rust: imports and attributes trimmed (E2), no pair whose spans both sit in trait
 impls (E3), T = 100. TypeScript: at least half of each span inside complete
-functions, T = 60. Both were chosen on calibration/ before these labels existed.
+functions, T = 60. Both were chosen on calibration/ (version 1).
+
+Version 2, chosen after calibration-holdout/ was read: no pair whose two spans
+overlap in one file, and TypeScript also needs NON_JSX tokens outside JSX.
 
     python3 holdout.py rules CORPUS DIR    # writes DIR/rules.json, before labels
     python3 holdout.py measure DIR         # joins DIR/labels.json afterwards
@@ -18,6 +21,7 @@ import scope_exclusions
 
 HERE = Path(__file__).parent
 UNIT_SHARE = 0.5
+NON_JSX = 60
 # A pair id names its two line spans. Matches that share them are one pair, kept if any is.
 RULES = {'Rust': 100, 'TypeScript': 60}
 LABELS = ('copy', 'boilerplate', 'required-shape', 'generated', 'distinct', 'mixed')
@@ -31,26 +35,34 @@ def unit_shares(corpus, matches):
                for m in matches for s in m['spans']]
     out = subprocess.run([f'{target}/release/unitclass'], input='\n'.join(queries) + '\n', capture_output=True, text=True, check=True)
     rows = iter(json.loads(line) for line in out.stdout.splitlines())
-    shares = {}
+    shares, non_jsx = {}, {}
     for m in matches:
-        share = min(r['in_units'] / r['total'] if r['total'] else 0 for r in [next(rows) for _ in m['spans']])
-        shares[m['id']] = max(share, shares.get(m['id'], 0))
-    return shares
+        spans = [next(rows) for _ in m['spans']]
+        shares[m['id'], m['family']] = min(r['in_units'] / r['total'] if r['total'] else 0 for r in spans)
+        non_jsx[m['id'], m['family']] = m['tokens'] * min((r['total'] - r['jsx']) / r['total'] if r['total'] else 0 for r in spans)
+    return shares, non_jsx
+
+
+def overlapping(match):
+    a, b = match['spans']
+    return (a['repo'], a['path']) == (b['repo'], b['path']) and a['start_line'] <= b['end_line'] and b['start_line'] <= a['end_line']
 
 
 def kept(match, facts):
+    if overlapping(match):
+        return False
     if match['language'] == 'Rust':
         return facts['import_trim'] >= RULES['Rust'] and not facts['trait_impl']
-    return match['tokens'] >= RULES['TypeScript'] and facts['unit_share'] >= UNIT_SHARE
+    return match['tokens'] >= RULES['TypeScript'] and facts['unit_share'] >= UNIT_SHARE and facts['non_jsx'] >= NON_JSX
 
 
 def rules(corpus, directory):
     scope_exclusions.CORPUS = corpus
     matches = json.loads((directory / 'mapping.json').read_text())['matches']
-    shares = unit_shares(corpus, matches)
+    shares, non_jsx = unit_shares(corpus, matches)
     result = {}
     for m in matches:
-        facts = {**scope_exclusions.rules(m), 'unit_share': shares[m['id']], 'tokens': m['tokens']}
+        facts = {**scope_exclusions.rules(m), 'unit_share': shares[m['id'], m['family']], 'non_jsx': non_jsx[m['id'], m['family']], 'tokens': m['tokens']}
         facts['kept'] = kept(m, facts)
         if m['id'] not in result or facts['kept'] and not result[m['id']]['kept']:
             result[m['id']] = facts
