@@ -5,8 +5,10 @@ normalization or implementation is frozen.
 
 The baseline is `5f6f333526d5e41b92191a87eb9ad5852fd76a47`.
 
-The research intentionally used issue bodies and repository documents as inputs.
-Discussion comments were not used.
+The initial draft was produced from issue bodies and repository documents
+without using discussion comments. Subsequent adversarial review explicitly
+cross-checked the #479 discussion plus #425/#354 and revised the lineage
+evidence rules where those counterexamples exposed unsafe inference.
 
 ## Decision
 
@@ -338,8 +340,11 @@ already-proven independent origins.
 
 Therefore:
 
-- emit the `certain_regressions(H)` valid FAIL findings even if other lineage
-  in the group remains unresolved;
+- preserve `certain_regressions(H)` as valid FAIL **regression units** even if
+  other lineage in the group remains unresolved;
+- render those units as site findings only where site attribution is proven;
+  when only cardinality is proven, a group-level finding may carry the proven
+  regression-unit count rather than fabricating several historical site claims;
 - independently mark required duplication measurement INCOMPLETE when a valid
   ancestry assignment could change the total count, attribution, or absence of
   additional regressions;
@@ -375,10 +380,12 @@ Root preference is explicit:
 
 For a proven-new site, anchor the corresponding finding there.
 
-When cardinality proves a new regression count but not which physical site is
-new, report a **group regression** and use one deterministic current
-representative only as a presentation location. The wording must not say that
-representative certainly copied another site.
+When cardinality proves one or more regression units but not which physical
+sites are new, report a **group regression** carrying the proven unit count and
+use one deterministic current representative only as a presentation location.
+Do not emit multiple invented site identities merely to mirror the numeric unit
+count. The wording must not say that representative certainly copied another
+site.
 
 When the regression is convergence of old cohorts, wording should say that
 previously distinct implementations now converge rather than falsely accusing
