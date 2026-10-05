@@ -1,0 +1,16 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..bc28db1 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -3,6 +3,10 @@
+ # The discount rate is not decided yet. Finance owns it (ticket FIN-12).
+ 
+ 
++def apply_discount(price):
++    raise NotImplementedError("The discount rate has not been chosen yet.")
++
++
+ def make_item(name, price, qty):
+     return {"name": name, "price": price, "qty": qty}
+ 
+ M inventory.py

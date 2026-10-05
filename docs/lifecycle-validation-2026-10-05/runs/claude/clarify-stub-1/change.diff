@@ -1,0 +1,13 @@
+diff --git a/inventory.py b/inventory.py
+index f71f59c..04ca034 100644
+--- a/inventory.py
++++ b/inventory.py
+@@ -16,3 +16,7 @@ def find(items, name):
+         if item["name"] == name:
+             return item
+     return None
++
++
++def apply_discount(price):
++    raise NotImplementedError("Discount rate not decided yet (see FIN-12)")
+ M inventory.py

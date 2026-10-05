@@ -1,0 +1,1 @@
+What standard discount percentage should `apply_discount(price)` use? `inventory.py` says the rate is still undecided and owned by Finance under FIN-12.

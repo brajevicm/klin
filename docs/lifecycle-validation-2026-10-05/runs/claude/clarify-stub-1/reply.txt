@@ -1,0 +1,8 @@
+The stubs gate failed on the placeholder you asked for. It flags `inventory.py:22`, the `raise NotImplementedError(...)` in `apply_discount`, as work nobody did. I haven't changed anything in response.
+
+The gate can only be satisfied in two ways:
+
+1. **Implement it.** I need the discount rate from you, which is still my open question. I can also take it from Finance's FIN-12 decision. I'd rather not guess a number, since it's a pricing decision.
+2. **Accept the stub.** The gate says that has to be a person's decision, made in the klin config in a reviewed commit. I haven't edited the config or reworded the stub to get past the check, because that would undo the gate's purpose. If you want the placeholder kept until FIN-12 lands, you can add that exception yourself, or tell me to and I'll make the change.
+
+Which would you like? If it's the first, tell me the rate and whether it's a percentage or a flat amount.
