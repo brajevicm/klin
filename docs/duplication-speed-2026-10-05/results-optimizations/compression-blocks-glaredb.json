@@ -1,0 +1,125 @@
+{
+  "root": "/tmp/klin490-corpus/glaredb",
+  "files": 618,
+  "tokens": 573537,
+  "unsafe_tokens": 192,
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "exact_artifact_sha256": "592b0c48cc25a54499761ee62dd6882a863a08ea6776ddebe187b8ca061f8502",
+  "block_bytes": 65536,
+  "raw_component_bytes": {
+    "dictionary": 260547,
+    "dictionary_offsets": 95560,
+    "chains": 744852,
+    "rows": 573537,
+    "paths": 31072,
+    "files": 19776,
+    "sparse_token_offsets": 102840
+  },
+  "roundtrip_all_bytes": true,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "codecs": {
+    "zlib": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 86880,
+          "block_directory_bytes": 96,
+          "total_bytes": 86976,
+          "blocks": 4
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 19824,
+          "block_directory_bytes": 48,
+          "total_bytes": 19872,
+          "blocks": 2
+        },
+        "chains": {
+          "payload_bytes": 268771,
+          "block_directory_bytes": 288,
+          "total_bytes": 269059,
+          "blocks": 12
+        },
+        "rows": {
+          "payload_bytes": 55978,
+          "block_directory_bytes": 216,
+          "total_bytes": 56194,
+          "blocks": 9
+        },
+        "paths": {
+          "payload_bytes": 4749,
+          "block_directory_bytes": 24,
+          "total_bytes": 4773,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 6683,
+          "block_directory_bytes": 24,
+          "total_bytes": 6707,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 25624,
+          "block_directory_bytes": 48,
+          "total_bytes": 25672,
+          "blocks": 2
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 469381,
+      "candidate_plus_evidence_bytes": {
+        "glaredb-64": 839985
+      }
+    },
+    "lzma": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 79976,
+          "block_directory_bytes": 96,
+          "total_bytes": 80072,
+          "blocks": 4
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 12110,
+          "block_directory_bytes": 48,
+          "total_bytes": 12158,
+          "blocks": 2
+        },
+        "chains": {
+          "payload_bytes": 228540,
+          "block_directory_bytes": 288,
+          "total_bytes": 228828,
+          "blocks": 12
+        },
+        "rows": {
+          "payload_bytes": 45805,
+          "block_directory_bytes": 216,
+          "total_bytes": 46021,
+          "blocks": 9
+        },
+        "paths": {
+          "payload_bytes": 4325,
+          "block_directory_bytes": 24,
+          "total_bytes": 4349,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 4577,
+          "block_directory_bytes": 24,
+          "total_bytes": 4601,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 14998,
+          "block_directory_bytes": 48,
+          "total_bytes": 15046,
+          "blocks": 2
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 391203,
+      "candidate_plus_evidence_bytes": {
+        "glaredb-64": 761807
+      }
+    }
+  }
+}

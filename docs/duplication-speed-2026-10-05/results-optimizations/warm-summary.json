@@ -1,0 +1,273 @@
+{
+  "binary_sha256": {
+    "reference": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+    "o1": "000cf53ea473170d4dccc576e0347d8ee0b1bb1c1f83f516caa3cb12550319f0",
+    "o1_o2": "74d5c51568e03ebef84623474e4f10e54f4cb7f574aaa31b620f9ae6d8b8678a"
+  },
+  "cases": {
+    "1m-64-100": {
+      "reference": {
+        "design_c_ms": {
+          "median": 26.61,
+          "max": 27.24
+        },
+        "stream_ms": {
+          "median": 21.11,
+          "max": 21.84
+        },
+        "read_parse_ms": {
+          "median": 24.36,
+          "max": 25.71
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 17.06,
+          "max": 17.74
+        },
+        "stream_ms": {
+          "median": 12.24,
+          "max": 12.6
+        },
+        "read_parse_ms": {
+          "median": 22.51,
+          "max": 24.21
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 17.23,
+          "max": 17.33
+        },
+        "stream_ms": {
+          "median": 12.16,
+          "max": 12.47
+        },
+        "read_parse_ms": {
+          "median": 22.16,
+          "max": 22.78
+        }
+      }
+    },
+    "1m-64-20": {
+      "reference": {
+        "design_c_ms": {
+          "median": 6.14,
+          "max": 6.29
+        },
+        "stream_ms": {
+          "median": 4.3,
+          "max": 4.37
+        },
+        "read_parse_ms": {
+          "median": 4.85,
+          "max": 5.06
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 4.51,
+          "max": 9.54
+        },
+        "stream_ms": {
+          "median": 2.7,
+          "max": 5.66
+        },
+        "read_parse_ms": {
+          "median": 4.97,
+          "max": 13.62
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 4.52,
+          "max": 6.02
+        },
+        "stream_ms": {
+          "median": 2.65,
+          "max": 3.63
+        },
+        "read_parse_ms": {
+          "median": 5.05,
+          "max": 6.93
+        }
+      }
+    },
+    "changed-100k-20": {
+      "reference": {
+        "design_c_ms": {
+          "median": 36.56,
+          "max": 39.72
+        },
+        "stream_ms": {
+          "median": 31.14,
+          "max": 34.61
+        },
+        "read_parse_ms": {
+          "median": 35.77,
+          "max": 40.51
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 23.12,
+          "max": 27.39
+        },
+        "stream_ms": {
+          "median": 19.02,
+          "max": 22.3
+        },
+        "read_parse_ms": {
+          "median": 35.19,
+          "max": 40.67
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 23.9,
+          "max": 26.06
+        },
+        "stream_ms": {
+          "median": 19.56,
+          "max": 21.71
+        },
+        "read_parse_ms": {
+          "median": 35.07,
+          "max": 38.46
+        }
+      }
+    },
+    "glaredb-64-100": {
+      "reference": {
+        "design_c_ms": {
+          "median": 54.11,
+          "max": 56.43
+        },
+        "stream_ms": {
+          "median": 47.76,
+          "max": 49.58
+        },
+        "read_parse_ms": {
+          "median": 47.55,
+          "max": 50.74
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 26.07,
+          "max": 26.61
+        },
+        "stream_ms": {
+          "median": 20.02,
+          "max": 20.18
+        },
+        "read_parse_ms": {
+          "median": 46.94,
+          "max": 47.38
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 26.2,
+          "max": 26.68
+        },
+        "stream_ms": {
+          "median": 20.12,
+          "max": 20.35
+        },
+        "read_parse_ms": {
+          "median": 46.84,
+          "max": 47.96
+        }
+      }
+    },
+    "klin-largest-64-100": {
+      "reference": {
+        "design_c_ms": {
+          "median": 101.76,
+          "max": 102.53
+        },
+        "stream_ms": {
+          "median": 90.36,
+          "max": 90.83
+        },
+        "read_parse_ms": {
+          "median": 91.55,
+          "max": 92.56
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 58.03,
+          "max": 60.38
+        },
+        "stream_ms": {
+          "median": 46.8,
+          "max": 48.2
+        },
+        "read_parse_ms": {
+          "median": 91.17,
+          "max": 94.44
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 58.79,
+          "max": 58.83
+        },
+        "stream_ms": {
+          "median": 47.52,
+          "max": 47.67
+        },
+        "read_parse_ms": {
+          "median": 91.79,
+          "max": 94.1
+        }
+      }
+    },
+    "klin-largest-64-20": {
+      "reference": {
+        "design_c_ms": {
+          "median": 57.59,
+          "max": 57.85
+        },
+        "stream_ms": {
+          "median": 51.47,
+          "max": 51.61
+        },
+        "read_parse_ms": {
+          "median": 51.33,
+          "max": 51.71
+        }
+      },
+      "o1": {
+        "design_c_ms": {
+          "median": 31.94,
+          "max": 32.3
+        },
+        "stream_ms": {
+          "median": 25.98,
+          "max": 26.19
+        },
+        "read_parse_ms": {
+          "median": 50.66,
+          "max": 51.65
+        }
+      },
+      "o1_o2": {
+        "design_c_ms": {
+          "median": 32.08,
+          "max": 32.77
+        },
+        "stream_ms": {
+          "median": 26.02,
+          "max": 26.61
+        },
+        "read_parse_ms": {
+          "median": 51.13,
+          "max": 52.61
+        }
+      }
+    }
+  }
+}

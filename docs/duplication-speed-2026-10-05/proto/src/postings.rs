@@ -18,25 +18,39 @@ pub fn encode(entries: &[(u64, u32)], width: u32) -> Vec<u8> {
     let mut zeros = 0usize;
     for bit in 0..highs.len() * 64 {
         if highs[bit / 64] >> (bit % 64) & 1 == 0 {
-            if zeros % SAMPLE == 0 {
+            if zeros.is_multiple_of(SAMPLE) {
                 samples.push(bit as u32);
             }
             zeros += 1;
         }
     }
     let mut out = Vec::new();
-    for value in [entries.len(), width as usize, low_width as usize, highs.len(), samples.len()] {
+    for value in [
+        entries.len(),
+        width as usize,
+        low_width as usize,
+        highs.len(),
+        samples.len(),
+    ] {
         out.extend_from_slice(&(value as u32).to_le_bytes());
     }
     out.extend(lows);
-    highs.iter().for_each(|word| out.extend_from_slice(&word.to_le_bytes()));
-    samples.iter().for_each(|bit| out.extend_from_slice(&bit.to_le_bytes()));
+    highs
+        .iter()
+        .for_each(|word| out.extend_from_slice(&word.to_le_bytes()));
+    samples
+        .iter()
+        .for_each(|bit| out.extend_from_slice(&bit.to_le_bytes()));
     out.extend(offsets);
     out
 }
 
 fn mask(width: u32) -> u64 {
-    if width == 0 { 0 } else { u64::MAX >> (64 - width) }
+    if width == 0 {
+        0
+    } else {
+        u64::MAX >> (64 - width)
+    }
 }
 
 fn pack(buffer: &mut [u8], bit: usize, value: u64) {
@@ -74,7 +88,8 @@ pub struct Postings<'a> {
 impl<'a> Postings<'a> {
     pub fn read(bytes: &'a [u8]) -> (Postings<'a>, usize) {
         let word = |at: usize| u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap()) as usize;
-        let (len, width, low_width, high_words, samples) = (word(0), word(4), word(8), word(12), word(16));
+        let (len, width, low_width, high_words, samples) =
+            (word(0), word(4), word(8), word(12), word(16));
         let mut at = 20;
         let mut take = |size: usize| {
             let slice = &bytes[at..at + size];
@@ -85,7 +100,14 @@ impl<'a> Postings<'a> {
         let highs = take(high_words * 8);
         let samples = take(samples * 4);
         let offsets = take((len * width).div_ceil(8) + 8);
-        let postings = Postings { width: width as u32, low_width: low_width as u32, lows, highs, samples, offsets };
+        let postings = Postings {
+            width: width as u32,
+            low_width: low_width as u32,
+            lows,
+            highs,
+            samples,
+            offsets,
+        };
         (postings, at)
     }
 
@@ -98,7 +120,9 @@ impl<'a> Postings<'a> {
         if sample * 4 >= self.samples.len() {
             return None;
         }
-        let mut bit = u32::from_le_bytes(self.samples[sample * 4..sample * 4 + 4].try_into().unwrap()) as usize;
+        let mut bit =
+            u32::from_le_bytes(self.samples[sample * 4..sample * 4 + 4].try_into().unwrap())
+                as usize;
         let mut left = rank % SAMPLE;
         loop {
             if bit / 64 >= self.highs.len() / 8 {
@@ -127,44 +151,36 @@ impl<'a> Postings<'a> {
         Some((bit, bit - bucket))
     }
 
-    pub fn contains(&self, key: u64, offset: u32) -> bool {
-        let Some((mut bit, first)) = self.bucket(key) else {
-            return false;
-        };
+    fn range(&self, key: u64) -> Option<(usize, usize)> {
+        let (_, first) = self.bucket(key)?;
+        let bucket = (key >> self.low_width) as usize;
+        let end = self.select_zero(bucket)? - bucket;
         let low = key & mask(self.low_width);
-        let mut end = first;
-        while bit / 64 < self.highs.len() / 8 && self.high(bit / 64) >> (bit % 64) & 1 == 1 {
-            bit += 1;
-            end += 1;
-        }
         let low_at = |i: usize| unpack(self.lows, i * self.low_width as usize, self.low_width);
         let start = first + partition(end - first, |i| low_at(first + i) < low);
         let stop = first + partition(end - first, |i| low_at(first + i) <= low);
+        Some((start, stop))
+    }
+
+    pub fn contains(&self, key: u64, offset: u32) -> bool {
+        let Some((start, stop)) = self.range(key) else {
+            return false;
+        };
         let offset_at = |i: usize| unpack(self.offsets, i * self.width as usize, self.width) as u32;
         let found = start + partition(stop - start, |i| offset_at(start + i) < offset);
         found < stop && offset_at(found) == offset
     }
 
     pub fn find(&self, key: u64, out: &mut Vec<u32>) {
-        let bucket = (key >> self.low_width) as usize;
-        let low = key & mask(self.low_width);
-        let mut bit = match bucket {
-            0 => 0,
-            _ => match self.select_zero(bucket - 1) {
-                Some(zero) => zero + 1,
-                None => return,
-            },
+        self.find_limit(key, out, usize::MAX);
+    }
+
+    pub fn find_limit(&self, key: u64, out: &mut Vec<u32>, limit: usize) {
+        let Some((start, stop)) = self.range(key) else {
+            return;
         };
-        let mut index = bit - bucket;
-        while bit / 64 < self.highs.len() / 8 && self.high(bit / 64) >> (bit % 64) & 1 == 1 {
-            let candidate = unpack(self.lows, index * self.low_width as usize, self.low_width);
-            if candidate == low {
-                out.push(unpack(self.offsets, index * self.width as usize, self.width) as u32);
-            } else if candidate > low {
-                return;
-            }
-            bit += 1;
-            index += 1;
+        for index in (start..stop).take(limit.saturating_sub(out.len())) {
+            out.push(unpack(self.offsets, index * self.width as usize, self.width) as u32);
         }
     }
 }
@@ -175,7 +191,8 @@ mod tests {
 
     #[test]
     fn finds_every_offset_of_a_key_across_blocks() {
-        let mut entries: Vec<(u64, u32)> = (0..500u32).map(|i| (u64::from(i / 3) * 1000, i)).collect();
+        let mut entries: Vec<(u64, u32)> =
+            (0..500u32).map(|i| (u64::from(i / 3) * 1000, i)).collect();
         entries.extend((0..200u32).map(|i| (77_000, 600 + i)));
         entries.sort_unstable();
         entries.push((1 << 40, 3));
@@ -194,7 +211,9 @@ mod tests {
     fn matches_a_linear_scan_on_random_keys() {
         let mut state = 0x9e37_79b9_7f4a_7c15u64;
         let mut next = || {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             state >> 33
         };
         let mut entries: Vec<(u64, u32)> = (0..5000).map(|i| (next() % 40_000, i)).collect();
@@ -207,7 +226,11 @@ mod tests {
             let expected: Vec<u32> = entries.iter().filter(|e| e.0 == key).map(|e| e.1).collect();
             assert_eq!(found, expected, "key {key}");
             for offset in 0..1000 {
-                assert_eq!(postings.contains(key, offset), expected.contains(&offset), "key {key} offset {offset}");
+                assert_eq!(
+                    postings.contains(key, offset),
+                    expected.contains(&offset),
+                    "key {key} offset {offset}"
+                );
             }
         }
     }

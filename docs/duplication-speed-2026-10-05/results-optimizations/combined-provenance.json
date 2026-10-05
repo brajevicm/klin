@@ -1,0 +1,15 @@
+{
+  "base": "c1805539c4d2743975915ab8452d731bac47e207",
+  "basis": "O1 only + original full-input same-path reuse, no O2; callback off/on A/B",
+  "binary_sha256": "90ca1962df6a806df2bc1c79f6dbe4d11530aa17508841e8c8d59a6cbfd466e7",
+  "source_sha256": {
+    "src/main.rs": "5c214d424583811a1fc89059212402d40f41b0a685fe4282ced0ff63ceb63e4a",
+    "src/syntax/structural/mod.rs": "b50c6fd4bbf771767672caf0b90db6ae801480478e48091c3d8e110d8b627329",
+    "tests/performance.rs": "e0a0361e8c5d19d0429ad1db0b259e62fb592de669fca0f0d9075743b348aa1c",
+    "src/dup_accounting.rs": "dffc14c9ce4f40bdaa1c905fba47a44a320bdae8110000e07d28eb6fbceb9c88",
+    "src/dup_research/main.rs": "a74927cde6fb34d779bba9b2a86d0443c475032e94bbd28e119e01d3d3c68f8b",
+    "src/dup_research/postings.rs": "540fa0e093493d3d1928037b48380e4f5b156b53179e3dd837eb37ba33996a00",
+    "src/dup_research/fixture.rs": "21cd1b88d7a70b397b11ea4a2e8e9e19dad728114847ceb17df3917e002376ad"
+  },
+  "binary_preserved_at": "/tmp/klin490-opt-combined/frozen-measured-klin"
+}

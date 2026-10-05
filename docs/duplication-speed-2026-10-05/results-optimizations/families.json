@@ -1,0 +1,84 @@
+{
+  "scope": "exact current-content families; ancestry unresolved; exhaustive fallback between distinct stream classes",
+  "cases": [
+    {
+      "case": "identical",
+      "records": 3,
+      "classes": 1,
+      "representative_comparisons": 1,
+      "families": 1,
+      "occurrences": 3,
+      "oracle_equal": true
+    },
+    {
+      "case": "renamed-interior",
+      "records": 2,
+      "classes": 2,
+      "representative_comparisons": 3,
+      "families": 1,
+      "occurrences": 2,
+      "oracle_equal": true
+    },
+    {
+      "case": "unsafe-boundary",
+      "records": 2,
+      "classes": 2,
+      "representative_comparisons": 3,
+      "families": 0,
+      "occurrences": 0,
+      "oracle_equal": true
+    },
+    {
+      "case": "language-separated",
+      "records": 2,
+      "classes": 2,
+      "representative_comparisons": 3,
+      "families": 0,
+      "occurrences": 0,
+      "oracle_equal": true
+    },
+    {
+      "case": "self-overlap",
+      "records": 1,
+      "classes": 1,
+      "representative_comparisons": 1,
+      "families": 2,
+      "occurrences": 4,
+      "oracle_equal": true
+    },
+    {
+      "case": "overlap-XY-YZ",
+      "records": 3,
+      "classes": 3,
+      "representative_comparisons": 6,
+      "families": 3,
+      "occurrences": 6,
+      "oracle_equal": true
+    },
+    {
+      "case": "64-decoys-before-true-partner",
+      "records": 66,
+      "classes": 65,
+      "representative_comparisons": 2145,
+      "families": 1,
+      "occurrences": 2,
+      "oracle_equal": true
+    },
+    {
+      "case": "1000-identical-normalized-records",
+      "records": 1000,
+      "classes": 1,
+      "representative_comparisons": 1,
+      "avoided_cross_file_pairs": 499500,
+      "whole_stream_occurrences": 1000,
+      "grouping_ms": [
+        2.5820829905569553,
+        2.57854099618271,
+        2.5170830194838345,
+        2.601624990347773,
+        2.5262910057790577
+      ],
+      "normalization_timed": false
+    }
+  ]
+}

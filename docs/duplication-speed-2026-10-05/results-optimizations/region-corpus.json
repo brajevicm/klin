@@ -1,0 +1,39 @@
+{
+  "scope": "pinned normalized corpus current-content only; no corpus exhaustive oracle, lineage or production budget qualification",
+  "root": "/private/tmp/klin490-corpus/klin/src",
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "threshold": 60,
+  "records": 80,
+  "tokens": 233276,
+  "normalization_ms": 715.6439169775695,
+  "complete_maps_equal": true,
+  "process_peak_rss_bytes": 300220416,
+  "rss_scope": "combined parent Python lifetime, retains both output maps; excludes normalizer subprocess RSS; not per-algorithm",
+  "algorithms": [
+    {
+      "algorithm": "seed",
+      "index_and_report_ms": 250.2739590127021,
+      "full_map_sha256": "46394a584153d4ea8f63a1794f1e30c5722ca5d605538d2b7a42aeab324f9c7f",
+      "classes": 80,
+      "grams": 228483,
+      "seed_keys": 227963,
+      "seed_pairs": 541,
+      "maximal_starts": 21,
+      "extended_tokens": 520,
+      "families": 20,
+      "occurrences": 41
+    },
+    {
+      "algorithm": "suffix",
+      "index_and_report_ms": 1405.4740000283346,
+      "full_map_sha256": "46394a584153d4ea8f63a1794f1e30c5722ca5d605538d2b7a42aeab324f9c7f",
+      "classes": 80,
+      "suffixes": 233356,
+      "lcp_intervals": 520,
+      "interval_leaf_visits": 1061,
+      "witness_pairs_enumerated": 0,
+      "families": 20,
+      "occurrences": 41
+    }
+  ]
+}

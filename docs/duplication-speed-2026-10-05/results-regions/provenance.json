@@ -1,0 +1,34 @@
+{
+  "machine": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+  "source_sha256": {
+    "docs/duplication-speed-2026-10-05/proto/src/main.rs": "a20d286b401e1b6b29a1cfedfd4a60bed74e1b1985a86b83804e34e067fae5c0",
+    "docs/duplication-speed-2026-10-05/proto/src/postings.rs": "540fa0e093493d3d1928037b48380e4f5b156b53179e3dd837eb37ba33996a00",
+    "docs/duplication-speed-2026-10-05/proto/Cargo.lock": "1a51cd338b795e84fe4ef9209fac2cb7fcdcd857500c3f602f3dfbc9175ccb6b",
+    "docs/duplication-normalization-2026-10-05.md": "d44ff6c85db795e3ea8befa39099f014d3e94c79971f815e760a062c53c108c5"
+  },
+  "baseline": "c1805539c4d2743975915ab8452d731bac47e207",
+  "glaredb": "8001afa4cff0cecfec79f2cb292108da08aa4c35",
+  "karakeep": "f8ae986692f82efe8c1f3940907aab553e4f5a49",
+  "format": "REG2",
+  "equality": "64-bit noncryptographic token and rolling k-gram hashes; text oracle independent",
+  "phase": "Stop only; no check or validation reads",
+  "runs": 5,
+  "selection": "spread and largest using stored token counts",
+  "note": "Final standalone matrix after CLI checks; requested and actual changed counts separate; shared-tree lower-bound A/B recorded independently.",
+  "measurement_scripts_sha256": {
+    "docs/duplication-speed-2026-10-05/run.sh": "cb5b5143a9192911006248c1a5458096c52242a48bca5c0b475bce866b216e60",
+    "docs/duplication-speed-2026-10-05/measure.sh": "3345cdaa5492a38185add4bb28f1e92097465079ce0be781be063a964db13b50",
+    "docs/duplication-speed-2026-10-05/summary.py": "be43d0e8f78cb3dd4cf427705a32a243b0801c9352fb764c0a72ed5b1731bd9c",
+    "docs/duplication-speed-2026-10-05/workloads.py": "7aa6e6b94ece943e131e73201e6de8c967e6deaa54f38f7859686abcd2baf102"
+  },
+  "verification_sha256": {
+    "docs/duplication-speed-2026-10-05/verify.py": "2e4e770638381c26bc42d44bdc2c594d31fe7b3477a899724ab8dae6b5838e6a",
+    "docs/duplication-speed-2026-10-05/proto/tests/regions.rs": "1cdc14dc362de0cb988bd20d89c910817ca30a55c12b41a8bf1a4691ef52fbe4",
+    "docs/duplication-speed-2026-10-05/verification.json": "97bd5c279e51e24318a3978c56452ee38abe4f1e35389dda9e3ac817a83d2d3a",
+    "docs/duplication-speed-2026-10-05/calibrate.py": "24b287985c5de3466cf8cbd8df57358a8d0b96d1eb8662c3be53d71aa96dcf0e",
+    "docs/duplication-speed-2026-10-05/calibration/labels.json": "1f4713a1ea078f124067ef8b85356bc2d3d287877986e66118050f4d16eae680",
+    "docs/duplication-speed-2026-10-05/calibration/summary.json": "90fba6d9df4c2797ba7530251d5189985b3bdc1b66a553bc0f83a337f68a2b84"
+  }
+}

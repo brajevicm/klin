@@ -1,0 +1,30 @@
+[
+  {
+    "case": "klin-largest-64",
+    "files": {
+      "index.bin": "f17ce89b6e2d1c95e91e699363191ba102628eac9cc8d885979e8da44290061e",
+      "chain.bin": "a617c8ba525ca3d869a84ac61056a6308ece1c5bb80a53fe81543babc7ca4d0c"
+    }
+  },
+  {
+    "case": "glaredb-64",
+    "files": {
+      "index.bin": "3b522326b8914e096825bcc7105f98bf93ea6d2d8fe752223e7e5fbcd0f32cdd",
+      "chain.bin": "d2e26c0fbc78874f050f132733b7b25f5e8c1f94f77f60ea281c7bd182c9fe78"
+    }
+  },
+  {
+    "case": "karakeep-64",
+    "files": {
+      "index.bin": "927879066e67c88dd2c402ba832310404024caf2773fc8551959e8c15bb6aee3",
+      "chain.bin": "0cc8ae4177a9694a788f7db0c6387392ccd16629f84513d21f2288f0e0b53728"
+    }
+  },
+  {
+    "case": "1m-64",
+    "files": {
+      "index.bin": "20d2c4237fc085f44dab19c808ec034a7bda3e947c3f10eeef273b239ec7be54",
+      "chain.bin": "19f838710aa0ac64f9948358dc339d8c94ecee7dd583cd6578e8b32a21c69092"
+    }
+  }
+]

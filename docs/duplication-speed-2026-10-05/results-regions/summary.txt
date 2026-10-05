@@ -1,0 +1,57 @@
+## 10k-64: files=9998 lines=84093 tokens=397469 cold_extra_ms=200.1 index_bytes=371019 region_bytes=65316 longest_posting=499 capped_keys=11 build_rss_kb=12464
+  warm20: actual_changed=20 tokens=787 design_c median=1.16 max=1.20 check median=0.00 | load=0.12 stream=0.40 lookup=0.16 | shared read+parse=0.83 | proven=127 deferred=0 capped_hits=11 incomplete=True rss_kb=5232
+  warm100: actual_changed=100 tokens=3965 design_c median=3.06 max=3.15 check median=0.00 | load=0.12 stream=1.67 lookup=0.20 | shared read+parse=3.28 | proven=146 deferred=0 capped_hits=55 incomplete=True rss_kb=5568
+## 1m-32: files=9998 lines=1033627 tokens=5930008 cold_extra_ms=2242.3 index_bytes=2184542 region_bytes=1878839 longest_posting=2 capped_keys=0 build_rss_kb=109776
+  warm20: actual_changed=20 tokens=11766 design_c median=5.76 max=5.90 check median=0.00 | load=0.37 stream=4.37 lookup=0.24 | shared read+parse=4.93 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=7824
+  warm100: actual_changed=100 tokens=59223 design_c median=24.64 max=25.37 check median=0.00 | load=0.39 stream=20.31 lookup=1.21 | shared read+parse=22.84 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=9136
+## 1m-48: files=9998 lines=1033627 tokens=5930008 cold_extra_ms=2166.2 index_bytes=2965110 region_bytes=2659407 longest_posting=1 capped_keys=0 build_rss_kb=109712
+  warm20: actual_changed=20 tokens=11766 design_c median=5.71 max=5.81 check median=0.00 | load=0.46 stream=4.24 lookup=0.17 | shared read+parse=4.76 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=8560
+  warm100: actual_changed=100 tokens=59223 design_c median=24.96 max=25.24 check median=0.00 | load=0.52 stream=20.37 lookup=1.28 | shared read+parse=22.80 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=9856
+## 1m-64: files=9998 lines=1033627 tokens=5930008 cold_extra_ms=2173.7 index_bytes=3745678 region_bytes=3439975 longest_posting=1 capped_keys=0 build_rss_kb=109440
+  warm20: actual_changed=20 tokens=11766 design_c median=5.96 max=6.00 check median=0.00 | load=0.61 stream=4.31 lookup=0.18 | shared read+parse=4.90 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=9328
+  warm100: actual_changed=100 tokens=59223 design_c median=26.35 max=26.56 check median=0.00 | load=0.61 stream=21.01 lookup=1.33 | shared read+parse=23.55 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=10656
+## 1m-largest-64: files=9998 lines=1033627 tokens=5930008 cold_extra_ms=2182.0 index_bytes=3745678 region_bytes=3439975 longest_posting=1 capped_keys=0 build_rss_kb=110496
+  warm20: actual_changed=20 tokens=16129 design_c median=8.27 max=8.58 check median=0.00 | load=0.61 stream=5.94 lookup=0.38 | shared read+parse=6.78 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=9648
+  warm100: actual_changed=100 tokens=79569 design_c median=34.13 max=34.71 check median=0.00 | load=0.62 stream=28.02 lookup=1.87 | shared read+parse=30.53 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=11008
+## 300k-64: files=9998 lines=325003 tokens=1880728 cold_extra_ms=747.9 index_bytes=1183453 region_bytes=877750 longest_posting=1 capped_keys=0 build_rss_kb=27520
+  warm20: actual_changed=20 tokens=3746 design_c median=2.33 max=2.50 check median=0.00 | load=0.21 stream=1.52 lookup=0.04 | shared read+parse=1.93 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=6304
+  warm100: actual_changed=100 tokens=18803 design_c median=8.69 max=9.01 check median=0.00 | load=0.22 stream=6.90 lookup=0.24 | shared read+parse=8.51 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=6848
+## changed-100k: files=20 lines=20 tokens=100240 cold_extra_ms=35.7 index_bytes=60863 region_bytes=60511 longest_posting=1 capped_keys=0 build_rss_kb=5744
+  warm20: actual_changed=20 tokens=100240 design_c median=35.56 max=35.92 check median=0.00 | load=0.05 stream=31.17 lookup=1.12 | shared read+parse=35.27 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=6560
+  warm100: actual_changed=20 tokens=100240 design_c median=36.00 max=36.32 check median=0.00 | load=0.04 stream=31.48 lookup=1.13 | shared read+parse=35.15 | proven=0 deferred=0 capped_hits=0 incomplete=False rss_kb=6560
+## glaredb-64: files=618 lines=128763 tokens=573537 cold_extra_ms=302.4 index_bytes=370604 region_bytes=335174 longest_posting=35 capped_keys=0 build_rss_kb=19632
+  warm20: actual_changed=20 tokens=11305 design_c median=7.36 max=7.41 check median=0.00 | load=0.08 stream=6.34 lookup=0.19 | shared read+parse=6.68 | proven=43 deferred=41 capped_hits=0 incomplete=True rss_kb=5616
+  warm100: actual_changed=100 tokens=92430 design_c median=53.39 max=53.61 check median=0.00 | load=0.09 stream=47.49 lookup=1.41 | shared read+parse=46.85 | proven=320 deferred=536 capped_hits=0 incomplete=True rss_kb=8784
+## karakeep-64: files=493 lines=50612 tokens=263888 cold_extra_ms=115.8 index_bytes=171909 region_bytes=148526 longest_posting=7 capped_keys=0 build_rss_kb=12912
+  warm20: actual_changed=20 tokens=10734 design_c median=4.88 max=5.01 check median=0.00 | load=0.06 stream=4.18 lookup=0.15 | shared read+parse=5.03 | proven=11 deferred=23 capped_hits=0 incomplete=True rss_kb=5872
+  warm100: actual_changed=100 tokens=52877 design_c median=23.05 max=23.15 check median=0.00 | load=0.06 stream=20.20 lookup=0.68 | shared read+parse=22.59 | proven=36 deferred=63 capped_hits=0 incomplete=True rss_kb=8240
+## klin-largest-64: files=80 lines=37195 tokens=233276 cold_extra_ms=99.3 index_bytes=142230 region_bytes=140506 longest_posting=7 capped_keys=0 build_rss_kb=10976
+  warm20: actual_changed=20 tokens=130184 design_c median=58.43 max=58.87 check median=0.00 | load=0.05 stream=52.18 lookup=1.53 | shared read+parse=51.56 | proven=8 deferred=53 capped_hits=0 incomplete=True rss_kb=9600
+  warm100: actual_changed=80 tokens=233276 design_c median=101.70 max=102.23 check median=0.00 | load=0.06 stream=90.05 lookup=2.84 | shared read+parse=93.82 | proven=12 deferred=66 capped_hits=0 incomplete=True rss_kb=12624
+## klin-spread-64: files=80 lines=37195 tokens=233276 cold_extra_ms=101.0 index_bytes=142230 region_bytes=140506 longest_posting=7 capped_keys=0 build_rss_kb=10944
+  warm20: actual_changed=20 tokens=44224 design_c median=18.09 max=18.33 check median=0.00 | load=0.04 stream=15.98 lookup=0.54 | shared read+parse=17.25 | proven=9 deferred=27 capped_hits=0 incomplete=True rss_kb=6400
+  warm100: actual_changed=80 tokens=233276 design_c median=101.54 max=102.68 check median=0.00 | load=0.05 stream=90.15 lookup=2.87 | shared read+parse=93.50 | proven=12 deferred=66 capped_hits=0 incomplete=True rss_kb=12608
+## multiplicity-10: files=10 lines=10 tokens=1720 cold_extra_ms=1.3 index_bytes=942 region_bytes=750 longest_posting=10 capped_keys=0 build_rss_kb=2752
+  warm20: actual_changed=10 tokens=1720 design_c median=0.84 max=0.86 check median=0.00 | load=0.03 stream=0.63 lookup=0.05 | shared read+parse=0.85 | proven=45 deferred=0 capped_hits=0 incomplete=False rss_kb=2832
+  warm100: actual_changed=10 tokens=1720 design_c median=0.81 max=0.82 check median=0.00 | load=0.03 stream=0.61 lookup=0.05 | shared read+parse=0.83 | proven=45 deferred=0 capped_hits=0 incomplete=False rss_kb=2864
+## multiplicity-100: files=100 lines=100 tokens=17200 cold_extra_ms=7.1 index_bytes=8864 region_bytes=7232 longest_posting=100 capped_keys=8 build_rss_kb=3248
+  warm20: actual_changed=20 tokens=3440 design_c median=1.74 max=1.76 check median=0.00 | load=0.03 stream=1.18 lookup=0.33 | shared read+parse=1.56 | proven=241 deferred=0 capped_hits=160 incomplete=True rss_kb=3168
+  warm100: actual_changed=100 tokens=17200 design_c median=7.84 max=8.20 check median=0.00 | load=0.03 stream=5.62 lookup=1.25 | shared read+parse=7.42 | proven=2016 deferred=0 capped_hits=800 incomplete=True rss_kb=4096
+## multiplicity-1000: files=1000 lines=1000 tokens=172000 cold_extra_ms=64.6 index_bytes=87132 region_bytes=71100 longest_posting=1000 capped_keys=8 build_rss_kb=5104
+  warm20: actual_changed=20 tokens=3440 design_c median=1.88 max=1.90 check median=0.00 | load=0.06 stream=1.19 lookup=0.37 | shared read+parse=1.61 | proven=252 deferred=0 capped_hits=160 incomplete=True rss_kb=3376
+  warm100: actual_changed=100 tokens=17200 design_c median=13.71 max=13.96 check median=0.00 | load=0.06 stream=5.53 lookup=6.99 | shared read+parse=7.46 | proven=4125 deferred=0 capped_hits=800 incomplete=True rss_kb=5776
+## multiplicity-2: files=2 lines=2 tokens=344 cold_extra_ms=0.7 index_bytes=266 region_bytes=202 longest_posting=2 capped_keys=0 build_rss_kb=2512
+  warm20: actual_changed=2 tokens=344 design_c median=0.22 max=0.22 check median=0.00 | load=0.04 stream=0.13 lookup=0.01 | shared read+parse=0.23 | proven=1 deferred=0 capped_hits=0 incomplete=False rss_kb=2528
+  warm100: actual_changed=2 tokens=344 design_c median=0.20 max=0.21 check median=0.00 | load=0.02 stream=0.13 lookup=0.01 | shared read+parse=0.22 | proven=1 deferred=0 capped_hits=0 incomplete=False rss_kb=2512
+## multiplicity-40: files=40 lines=40 tokens=6880 cold_extra_ms=3.0 index_bytes=3532 region_bytes=2860 longest_posting=40 capped_keys=0 build_rss_kb=3056
+  warm20: actual_changed=20 tokens=3440 design_c median=1.86 max=1.92 check median=0.00 | load=0.03 stream=1.21 lookup=0.39 | shared read+parse=1.60 | proven=590 deferred=0 capped_hits=0 incomplete=False rss_kb=3232
+  warm100: actual_changed=40 tokens=6880 design_c median=3.35 max=3.41 check median=0.00 | load=0.04 stream=2.33 lookup=0.58 | shared read+parse=3.07 | proven=780 deferred=0 capped_hits=0 incomplete=False rss_kb=3376
+## multiplicity-63: files=63 lines=63 tokens=10836 cold_extra_ms=4.8 index_bytes=5552 region_bytes=4512 longest_posting=63 capped_keys=0 build_rss_kb=3120
+  warm20: actual_changed=20 tokens=3440 design_c median=2.18 max=2.25 check median=0.00 | load=0.03 stream=1.22 lookup=0.69 | shared read+parse=1.58 | proven=1050 deferred=0 capped_hits=0 incomplete=False rss_kb=3472
+  warm100: actual_changed=63 tokens=10836 design_c median=5.65 max=5.74 check median=0.00 | load=0.03 stream=3.60 lookup=1.42 | shared read+parse=4.71 | proven=1953 deferred=0 capped_hits=0 incomplete=False rss_kb=3984
+## multiplicity-64: files=64 lines=64 tokens=11008 cold_extra_ms=4.6 index_bytes=5636 region_bytes=4580 longest_posting=64 capped_keys=0 build_rss_kb=3168
+  warm20: actual_changed=20 tokens=3440 design_c median=2.14 max=2.22 check median=0.00 | load=0.03 stream=1.21 lookup=0.72 | shared read+parse=1.60 | proven=1070 deferred=0 capped_hits=0 incomplete=False rss_kb=3488
+  warm100: actual_changed=64 tokens=11008 design_c median=5.77 max=5.88 check median=0.00 | load=0.04 stream=3.65 lookup=1.50 | shared read+parse=4.81 | proven=2016 deferred=0 capped_hits=0 incomplete=False rss_kb=4016
+## multiplicity-65: files=65 lines=65 tokens=11180 cold_extra_ms=5.0 index_bytes=5784 region_bytes=4712 longest_posting=65 capped_keys=8 build_rss_kb=3184
+  warm20: actual_changed=20 tokens=3440 design_c median=1.70 max=1.84 check median=0.00 | load=0.03 stream=1.16 lookup=0.32 | shared read+parse=1.55 | proven=234 deferred=0 capped_hits=160 incomplete=True rss_kb=3168
+  warm100: actual_changed=65 tokens=11180 design_c median=5.61 max=5.70 check median=0.00 | load=0.03 stream=3.70 lookup=1.20 | shared read+parse=4.88 | proven=2016 deferred=0 capped_hits=520 incomplete=True rss_kb=4000

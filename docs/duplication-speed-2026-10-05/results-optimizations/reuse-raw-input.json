@@ -1,0 +1,78 @@
+{
+  "inputs": [
+    {
+      "source_hex": "636f6e73742076616c7565203d2022ff223b",
+      "lossy_source": "const value = \"\ufffd\";",
+      "normalization": {
+        "tokens": [
+          "54636f6e7374",
+          "5476616c7565",
+          "543d",
+          "5422",
+          "54ff",
+          "5422",
+          "543b"
+        ],
+        "safe": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "rows": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "positions": [],
+        "unsafe_units": 0,
+        "error": false
+      }
+    },
+    {
+      "source_hex": "636f6e73742076616c7565203d2022fe223b",
+      "lossy_source": "const value = \"\ufffd\";",
+      "normalization": {
+        "tokens": [
+          "54636f6e7374",
+          "5476616c7565",
+          "543d",
+          "5422",
+          "54fe",
+          "5422",
+          "543b"
+        ],
+        "safe": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "rows": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "positions": [],
+        "unsafe_units": 0,
+        "error": false
+      }
+    }
+  ],
+  "raw_normalizations_equal": false,
+  "callback_identity_scope": "callback receives lossy UTF-8 from structural extractor; full raw-byte forwarding is a remaining integration obligation"
+}

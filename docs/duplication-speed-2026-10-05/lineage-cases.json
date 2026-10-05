@@ -1,0 +1,86 @@
+{
+  "scope": "accounting with supplied certificates; not an identity implementation",
+  "cases": [
+    {
+      "case": "synchronized-certified-body-edit",
+      "certified_sources": [
+        "H1",
+        "H1"
+      ],
+      "new_count": 0,
+      "regressions_floor": 0,
+      "incomplete": false
+    },
+    {
+      "case": "independent-certified-convergence",
+      "certified_sources": [
+        "H1",
+        "H2"
+      ],
+      "new_count": 0,
+      "regressions_floor": 1,
+      "incomplete": false
+    },
+    {
+      "case": "third-copy-after-synchronized-extension",
+      "certified_sources": [
+        "H1",
+        "H1"
+      ],
+      "new_count": 1,
+      "regressions_floor": 1,
+      "incomplete": false
+    },
+    {
+      "case": "split-without-identity-certificate",
+      "certified_sources": [],
+      "new_count": 0,
+      "regressions_floor": 0,
+      "incomplete": true
+    },
+    {
+      "case": "eligibility-exit-consumes-slot",
+      "certified_sources": [
+        "H1"
+      ],
+      "new_count": 1,
+      "regressions_floor": 1,
+      "incomplete": false
+    },
+    {
+      "case": "competing-removed-and-edited-ancestry",
+      "certified_sources": [
+        "H1"
+      ],
+      "new_count": 0,
+      "regressions_floor": 0,
+      "incomplete": true
+    },
+    {
+      "case": "proven-origins-survive-ambiguity",
+      "certified_sources": [
+        "H1",
+        "H2"
+      ],
+      "new_count": 0,
+      "regressions_floor": 1,
+      "incomplete": true
+    },
+    {
+      "case": "exact-replacement-cardinality",
+      "certified_sources": [
+        "H1"
+      ],
+      "new_count": 1,
+      "regressions_floor": 1,
+      "incomplete": false
+    },
+    {
+      "case": "cross-file-edit-unsupported",
+      "certified_sources": [],
+      "new_count": 0,
+      "regressions_floor": 0,
+      "incomplete": true
+    }
+  ]
+}

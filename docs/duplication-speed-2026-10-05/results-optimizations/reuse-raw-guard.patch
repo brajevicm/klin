@@ -1,0 +1,79 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -158,6 +158,7 @@
+ /// The guard and the updater answer before the working directory is read, because neither needs
+ /// it. Everything else prints through `report`.
+ fn main() -> ExitCode {
++    if std::env::var_os("KLIN_DUP_RAW_PROBE").is_some() { dup_accounting::raw_probe(std::env::args().skip(1)); return ExitCode::SUCCESS; }
+     if std::env::var_os("KLIN_DUP_CLI").is_some() { dup_research::main(); return ExitCode::SUCCESS; }
+     if std::env::var_os("KLIN_DUP_REUSE_PROBE").is_some() { dup_research::reuse_probe(); return ExitCode::SUCCESS; }
+     let _dup_report = dup_accounting::Report;
+--- a/src/syntax/structural/mod.rs
++++ b/src/syntax/structural/mod.rs
+@@ -118,7 +118,13 @@
+         cost.parses += 1;
+         let outcome = {
+             let mut names = self.names.borrow_mut();
+-            of_with(file, &String::from_utf8_lossy(&bytes), &mut names)?
++            let source = String::from_utf8_lossy(&bytes);
++            if matches!(source, std::borrow::Cow::Owned(_))
++                && std::env::var("KLIN_DUP_RESEARCH").as_deref() == Ok("1")
++            {
++                crate::dup_accounting::invalid_raw(file);
++            }
++            of_with(file, &source, &mut names)?
+         };
+         cost.extracted += 1;
+         cost.time += started.elapsed();
+--- a/src/dup_accounting.rs
++++ b/src/dup_accounting.rs
+@@ -1,10 +1,11 @@
+ use crate::dup_research::{artifact_shared, SharedArtifact};
+-use std::collections::HashMap;
++use std::collections::{HashMap, HashSet};
+ use std::sync::{Mutex, OnceLock};
+ use std::time::Instant;
+ struct Version { source: Vec<u8>, artifact: SharedArtifact }
+ #[derive(Default)]
+ struct Held {
++    invalid_raw: HashSet<String>,
+     versions: HashMap<String, Vec<Version>>,
+     calls: usize, hits: usize, misses: usize, changed_paths: usize,
+     tokens: usize, prints: usize, nanos: u128, retained: usize,
+@@ -15,6 +16,7 @@
+     let started = Instant::now();
+     let reuse = std::env::var("KLIN_DUP_REUSE").as_deref() == Ok("1");
+     let mut held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
++    if held.invalid_raw.contains(path) { return; }
+     held.calls += 1;
+     let found = reuse.then(|| held.versions.get(path).and_then(|versions|
+         versions.iter().find(|v| v.source == source))).flatten();
+@@ -53,6 +55,7 @@
+         if std::env::var_os("KLIN_DUP_RESEARCH_REPORT").is_none() { return; }
+         let held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
+         eprintln!("DUP_RESEARCH {}", serde_json::json!({
++            "invalid_raw_inputs": held.invalid_raw.len(), "incomplete": !held.invalid_raw.is_empty(),
+             "shared_files": held.calls, "reuse_hits":held.hits, "derived_inputs":held.misses,
+             "changed_same_paths":held.changed_paths, "unique_paths":held.versions.len(),
+             "tokens":held.tokens, "fingerprints":held.prints,"checksum":held.checksum,
+@@ -73,3 +76,20 @@
+     assert_ne!(left, renamed, "path-dependent import provenance must differ");
+     assert_ne!(left, &held.versions["a/main.ts"][1].artifact.tokens);
+ }
++
++pub fn invalid_raw(path: &str) {
++    HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap().invalid_raw.insert(path.to_string());
++}
++pub fn raw_probe(paths: impl Iterator<Item=String>) {
++    let _report = Report;
++    let extracted = crate::syntax::structural::Extracted::default();
++    let mut cost = crate::syntax::structural::ExtractionCost::default();
++    for (i, path) in paths.enumerate() {
++        extracted.outcome(std::path::Path::new(&path), &format!("probe_{i}.ts"), &mut cost).unwrap();
++    }
++    let held = HELD.get().unwrap().lock().unwrap();
++    assert_eq!(held.invalid_raw.len(), 2);
++    assert_eq!(held.calls, 1); // Only the third, valid input reaches normalization.
++    assert_eq!(held.misses, 1);
++    assert_eq!(held.versions.len(), 1);
++}

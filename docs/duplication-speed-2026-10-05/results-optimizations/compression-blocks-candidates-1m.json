@@ -1,0 +1,80 @@
+{
+  "roundtrip_all_bytes": true,
+  "indexed_lookup_implemented": false,
+  "timing_claim": false,
+  "lineage_bytes": null,
+  "candidates": {
+    "1m-32": {
+      "raw_bytes": 2184542,
+      "sha256": "2ef01cd977a7a2e8f48c3ef5d7922517457bd5836a98c137974bd2abd0b6d450",
+      "codecs": {
+        "zlib": {
+          "payload_bytes": 1899544,
+          "block_directory_bytes": 816,
+          "total_bytes": 1900360,
+          "blocks": 34,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 1900392,
+          "candidate_plus_evidence_bytes": 5117407
+        },
+        "lzma": {
+          "payload_bytes": 1877372,
+          "block_directory_bytes": 816,
+          "total_bytes": 1878188,
+          "blocks": 34,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 1878220,
+          "candidate_plus_evidence_bytes": 3472699
+        }
+      }
+    },
+    "1m-48": {
+      "raw_bytes": 2965110,
+      "sha256": "a72697ed97077c9d961d9d32c77c69a22aa7d68c55dcf73154d24f35854a5bbb",
+      "codecs": {
+        "zlib": {
+          "payload_bytes": 2679787,
+          "block_directory_bytes": 1104,
+          "total_bytes": 2680891,
+          "blocks": 46,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 2680923,
+          "candidate_plus_evidence_bytes": 5897938
+        },
+        "lzma": {
+          "payload_bytes": 2657824,
+          "block_directory_bytes": 1104,
+          "total_bytes": 2658928,
+          "blocks": 46,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 2658960,
+          "candidate_plus_evidence_bytes": 4253439
+        }
+      }
+    },
+    "1m-64": {
+      "raw_bytes": 3745678,
+      "sha256": "20d2c4237fc085f44dab19c808ec034a7bda3e947c3f10eeef273b239ec7be54",
+      "codecs": {
+        "zlib": {
+          "payload_bytes": 3460872,
+          "block_directory_bytes": 1392,
+          "total_bytes": 3462264,
+          "blocks": 58,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 3462296,
+          "candidate_plus_evidence_bytes": 6679311
+        },
+        "lzma": {
+          "payload_bytes": 3438436,
+          "block_directory_bytes": 1392,
+          "total_bytes": 3439828,
+          "blocks": 58,
+          "header_bytes": 32,
+          "complete_candidate_bytes": 3439860,
+          "candidate_plus_evidence_bytes": 5034339
+        }
+      }
+    }
+  }
+}

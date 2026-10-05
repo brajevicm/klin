@@ -1,0 +1,129 @@
+{
+  "root": "/tmp/klin490-corpus/1m",
+  "files": 9998,
+  "tokens": 5930008,
+  "unsafe_tokens": 0,
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "exact_artifact_sha256": "4b1a0424abddee7178739c842caa4bd2b25b0c33a6a8e919d35bc97299699a75",
+  "block_bytes": 65536,
+  "raw_component_bytes": {
+    "dictionary": 3537872,
+    "dictionary_offsets": 1944168,
+    "chains": 12955809,
+    "rows": 5930008,
+    "paths": 235685,
+    "files": 319936,
+    "sparse_token_offsets": 1099840
+  },
+  "roundtrip_all_bytes": true,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "codecs": {
+    "zlib": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 638654,
+          "block_directory_bytes": 1296,
+          "total_bytes": 639950,
+          "blocks": 54
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 391067,
+          "block_directory_bytes": 720,
+          "total_bytes": 391787,
+          "blocks": 30
+        },
+        "chains": {
+          "payload_bytes": 1768761,
+          "block_directory_bytes": 4752,
+          "total_bytes": 1773513,
+          "blocks": 198
+        },
+        "rows": {
+          "payload_bytes": 56558,
+          "block_directory_bytes": 2184,
+          "total_bytes": 58742,
+          "blocks": 91
+        },
+        "paths": {
+          "payload_bytes": 25206,
+          "block_directory_bytes": 96,
+          "total_bytes": 25302,
+          "blocks": 4
+        },
+        "files": {
+          "payload_bytes": 85237,
+          "block_directory_bytes": 120,
+          "total_bytes": 85357,
+          "blocks": 5
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 241828,
+          "block_directory_bytes": 408,
+          "total_bytes": 242236,
+          "blocks": 17
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 3217015,
+      "candidate_plus_evidence_bytes": {
+        "1m-32": 5401557,
+        "1m-48": 6182125,
+        "1m-64": 6962693
+      }
+    },
+    "lzma": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 172318,
+          "block_directory_bytes": 1296,
+          "total_bytes": 173614,
+          "blocks": 54
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 216086,
+          "block_directory_bytes": 720,
+          "total_bytes": 216806,
+          "blocks": 30
+        },
+        "chains": {
+          "payload_bytes": 985014,
+          "block_directory_bytes": 4752,
+          "total_bytes": 989766,
+          "blocks": 198
+        },
+        "rows": {
+          "payload_bytes": 21947,
+          "block_directory_bytes": 2184,
+          "total_bytes": 24131,
+          "blocks": 91
+        },
+        "paths": {
+          "payload_bytes": 5744,
+          "block_directory_bytes": 96,
+          "total_bytes": 5840,
+          "blocks": 4
+        },
+        "files": {
+          "payload_bytes": 60781,
+          "block_directory_bytes": 120,
+          "total_bytes": 60901,
+          "blocks": 5
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 122885,
+          "block_directory_bytes": 408,
+          "total_bytes": 123293,
+          "blocks": 17
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 1594479,
+      "candidate_plus_evidence_bytes": {
+        "1m-32": 3779021,
+        "1m-48": 4559589,
+        "1m-64": 5340157
+      }
+    }
+  }
+}

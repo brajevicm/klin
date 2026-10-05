@@ -1,0 +1,292 @@
+{
+  "root": "/tmp/klin490-corpus/1m",
+  "files": 9998,
+  "tokens": 5930008,
+  "unsafe_tokens": 0,
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "exact_artifact_sha256": "4b1a0424abddee7178739c842caa4bd2b25b0c33a6a8e919d35bc97299699a75",
+  "block_bytes": 65536,
+  "raw_component_bytes": {
+    "dictionary": 3537872,
+    "dictionary_offsets": 1944168,
+    "chains": 12955809,
+    "rows": 5930008,
+    "paths": 235685,
+    "files": 319936,
+    "sparse_token_offsets": 1099840
+  },
+  "roundtrip_all_bytes": true,
+  "lineage_bytes": null,
+  "timing_claim": "isolated Python codec stage only, excludes normalization and production integration",
+  "codecs": {},
+  "candidate_sha256": "2ef01cd977a7a2e8f48c3ef5d7922517457bd5836a98c137974bd2abd0b6d450",
+  "codec_profiles": {
+    "zlib": {
+      "codec": "zlib",
+      "iterations": [
+        {
+          "iteration": 0,
+          "compression_ms": 399.481625,
+          "decompression_ms": 18.155167,
+          "component_stored_bytes": {
+            "candidate": 1900360,
+            "chains": 1773513,
+            "dictionary": 639950,
+            "dictionary_offsets": 391787,
+            "files": 85357,
+            "paths": 25302,
+            "rows": 58742,
+            "sparse_token_offsets": 242236
+          },
+          "complete_bytes": 5117407
+        },
+        {
+          "iteration": 1,
+          "compression_ms": 398.072042,
+          "decompression_ms": 17.819208,
+          "component_stored_bytes": {
+            "candidate": 1900360,
+            "chains": 1773513,
+            "dictionary": 639950,
+            "dictionary_offsets": 391787,
+            "files": 85357,
+            "paths": 25302,
+            "rows": 58742,
+            "sparse_token_offsets": 242236
+          },
+          "complete_bytes": 5117407
+        },
+        {
+          "iteration": 2,
+          "compression_ms": 404.715417,
+          "decompression_ms": 17.553292,
+          "component_stored_bytes": {
+            "candidate": 1900360,
+            "chains": 1773513,
+            "dictionary": 639950,
+            "dictionary_offsets": 391787,
+            "files": 85357,
+            "paths": 25302,
+            "rows": 58742,
+            "sparse_token_offsets": 242236
+          },
+          "complete_bytes": 5117407
+        },
+        {
+          "iteration": 3,
+          "compression_ms": 399.677459,
+          "decompression_ms": 16.701125,
+          "component_stored_bytes": {
+            "candidate": 1900360,
+            "chains": 1773513,
+            "dictionary": 639950,
+            "dictionary_offsets": 391787,
+            "files": 85357,
+            "paths": 25302,
+            "rows": 58742,
+            "sparse_token_offsets": 242236
+          },
+          "complete_bytes": 5117407
+        },
+        {
+          "iteration": 4,
+          "compression_ms": 406.467625,
+          "decompression_ms": 18.772042,
+          "component_stored_bytes": {
+            "candidate": 1900360,
+            "chains": 1773513,
+            "dictionary": 639950,
+            "dictionary_offsets": 391787,
+            "files": 85357,
+            "paths": 25302,
+            "rows": 58742,
+            "sparse_token_offsets": 242236
+          },
+          "complete_bytes": 5117407
+        }
+      ],
+      "peak_rss_bytes": 149782528,
+      "rss_scope": "Python worker ru_maxrss: process high-water including raw data, codec buffers, interpreter and possible inherited launch high-water; not isolated codec memory",
+      "random_access_lookup_implemented": false,
+      "all_decoded_bytes_equal": true
+    },
+    "lzma0": {
+      "codec": "lzma0",
+      "iterations": [
+        {
+          "iteration": 0,
+          "compression_ms": 451.759666,
+          "decompression_ms": 155.961084,
+          "component_stored_bytes": {
+            "candidate": 1879632,
+            "chains": 1034550,
+            "dictionary": 290430,
+            "dictionary_offsets": 216994,
+            "files": 60745,
+            "paths": 4768,
+            "rows": 369507,
+            "sparse_token_offsets": 137865
+          },
+          "complete_bytes": 3994651
+        },
+        {
+          "iteration": 1,
+          "compression_ms": 447.074167,
+          "decompression_ms": 155.95775,
+          "component_stored_bytes": {
+            "candidate": 1879632,
+            "chains": 1034550,
+            "dictionary": 290430,
+            "dictionary_offsets": 216994,
+            "files": 60745,
+            "paths": 4768,
+            "rows": 369507,
+            "sparse_token_offsets": 137865
+          },
+          "complete_bytes": 3994651
+        },
+        {
+          "iteration": 2,
+          "compression_ms": 445.607166,
+          "decompression_ms": 155.18525,
+          "component_stored_bytes": {
+            "candidate": 1879632,
+            "chains": 1034550,
+            "dictionary": 290430,
+            "dictionary_offsets": 216994,
+            "files": 60745,
+            "paths": 4768,
+            "rows": 369507,
+            "sparse_token_offsets": 137865
+          },
+          "complete_bytes": 3994651
+        },
+        {
+          "iteration": 3,
+          "compression_ms": 459.559417,
+          "decompression_ms": 156.12125,
+          "component_stored_bytes": {
+            "candidate": 1879632,
+            "chains": 1034550,
+            "dictionary": 290430,
+            "dictionary_offsets": 216994,
+            "files": 60745,
+            "paths": 4768,
+            "rows": 369507,
+            "sparse_token_offsets": 137865
+          },
+          "complete_bytes": 3994651
+        },
+        {
+          "iteration": 4,
+          "compression_ms": 444.542167,
+          "decompression_ms": 156.746375,
+          "component_stored_bytes": {
+            "candidate": 1879632,
+            "chains": 1034550,
+            "dictionary": 290430,
+            "dictionary_offsets": 216994,
+            "files": 60745,
+            "paths": 4768,
+            "rows": 369507,
+            "sparse_token_offsets": 137865
+          },
+          "complete_bytes": 3994651
+        }
+      ],
+      "peak_rss_bytes": 150290432,
+      "rss_scope": "Python worker ru_maxrss: process high-water including raw data, codec buffers, interpreter and possible inherited launch high-water; not isolated codec memory",
+      "random_access_lookup_implemented": false,
+      "all_decoded_bytes_equal": true
+    },
+    "lzma6": {
+      "codec": "lzma6",
+      "iterations": [
+        {
+          "iteration": 0,
+          "compression_ms": 3334.764375,
+          "decompression_ms": 140.658458,
+          "component_stored_bytes": {
+            "candidate": 1878188,
+            "chains": 989766,
+            "dictionary": 173614,
+            "dictionary_offsets": 216806,
+            "files": 60901,
+            "paths": 5840,
+            "rows": 24131,
+            "sparse_token_offsets": 123293
+          },
+          "complete_bytes": 3472699
+        },
+        {
+          "iteration": 1,
+          "compression_ms": 3319.769125,
+          "decompression_ms": 141.368792,
+          "component_stored_bytes": {
+            "candidate": 1878188,
+            "chains": 989766,
+            "dictionary": 173614,
+            "dictionary_offsets": 216806,
+            "files": 60901,
+            "paths": 5840,
+            "rows": 24131,
+            "sparse_token_offsets": 123293
+          },
+          "complete_bytes": 3472699
+        },
+        {
+          "iteration": 2,
+          "compression_ms": 3284.079166,
+          "decompression_ms": 140.082167,
+          "component_stored_bytes": {
+            "candidate": 1878188,
+            "chains": 989766,
+            "dictionary": 173614,
+            "dictionary_offsets": 216806,
+            "files": 60901,
+            "paths": 5840,
+            "rows": 24131,
+            "sparse_token_offsets": 123293
+          },
+          "complete_bytes": 3472699
+        },
+        {
+          "iteration": 3,
+          "compression_ms": 3308.722042,
+          "decompression_ms": 141.328917,
+          "component_stored_bytes": {
+            "candidate": 1878188,
+            "chains": 989766,
+            "dictionary": 173614,
+            "dictionary_offsets": 216806,
+            "files": 60901,
+            "paths": 5840,
+            "rows": 24131,
+            "sparse_token_offsets": 123293
+          },
+          "complete_bytes": 3472699
+        },
+        {
+          "iteration": 4,
+          "compression_ms": 3350.458042,
+          "decompression_ms": 141.698458,
+          "component_stored_bytes": {
+            "candidate": 1878188,
+            "chains": 989766,
+            "dictionary": 173614,
+            "dictionary_offsets": 216806,
+            "files": 60901,
+            "paths": 5840,
+            "rows": 24131,
+            "sparse_token_offsets": 123293
+          },
+          "complete_bytes": 3472699
+        }
+      ],
+      "peak_rss_bytes": 166592512,
+      "rss_scope": "Python worker ru_maxrss: process high-water including raw data, codec buffers, interpreter and possible inherited launch high-water; not isolated codec memory",
+      "random_access_lookup_implemented": false,
+      "all_decoded_bytes_equal": true
+    }
+  }
+}

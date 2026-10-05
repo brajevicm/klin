@@ -1,0 +1,8 @@
+{
+  "binary_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "source_sha256": {
+    "src/fixture.rs": "21cd1b88d7a70b397b11ea4a2e8e9e19dad728114847ceb17df3917e002376ad",
+    "src/postings.rs": "540fa0e093493d3d1928037b48380e4f5b156b53179e3dd837eb37ba33996a00",
+    "src/main.rs": "a20d286b401e1b6b29a1cfedfd4a60bed74e1b1985a86b83804e34e067fae5c0"
+  }
+}

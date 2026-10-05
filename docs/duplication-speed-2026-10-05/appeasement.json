@@ -1,0 +1,147 @@
+{
+  "scope": "synthetic T=60 probes; no selected product T or agent repair trial",
+  "recommendation": "ready/check REVIEW only",
+  "attacks": [
+    {
+      "attack": "local-parameter-rename",
+      "detected": false,
+      "incomplete": false,
+      "classification": "out of scope by design; routine cheap equality evasion"
+    },
+    {
+      "attack": "literal-neutral-perturbation",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement"
+    },
+    {
+      "attack": "comments-formatting",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected"
+    },
+    {
+      "attack": "dead-insertion",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement"
+    },
+    {
+      "attack": "logging-insertion",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement; adds observable telemetry"
+    },
+    {
+      "attack": "commutative-statement-reorder",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement for this commutative fixture"
+    },
+    {
+      "attack": "wrapper",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected"
+    },
+    {
+      "attack": "reuse-helper",
+      "detected": false,
+      "incomplete": false,
+      "classification": "legitimate repair if the existing f is accessible"
+    },
+    {
+      "attack": "inline-helper",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected"
+    },
+    {
+      "attack": "split-across-helpers",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement; no reuse introduced"
+    },
+    {
+      "attack": "split-below-threshold",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement"
+    },
+    {
+      "attack": "combine-small-helpers",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected"
+    },
+    {
+      "attack": "branch-reshape",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement"
+    },
+    {
+      "attack": "equivalent-expression",
+      "detected": false,
+      "incomplete": false,
+      "classification": "superficial appeasement"
+    },
+    {
+      "attack": "move-rename-function",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected"
+    },
+    {
+      "attack": "tiny-neutral-difference",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected; large copied prefix remains"
+    },
+    {
+      "attack": "test-path",
+      "detected": false,
+      "incomplete": false,
+      "classification": "out of scope by design; lineage must not release debt"
+    },
+    {
+      "attack": "generated-looking-path",
+      "detected": true,
+      "incomplete": false,
+      "classification": "still detected; no generated-code exclusion is specified"
+    }
+  ],
+  "intentional_duplicates": [
+    {
+      "case": "protocol-shape",
+      "detected": true,
+      "decision": "contextual review; no forced extraction",
+      "rationale": "Versioned wire encoders have separate compatibility obligations; extracting shared state requires protocol review."
+    },
+    {
+      "case": "independent-adapters",
+      "detected": true,
+      "decision": "contextual review; no forced extraction",
+      "rationale": "Adapters belong to independently deployed integrations; shared code would add a deployment dependency."
+    },
+    {
+      "case": "migration-coexistence",
+      "detected": true,
+      "decision": "contextual review; no forced extraction",
+      "rationale": "Old and new schema migrations coexist; historical migration behavior must remain fixed."
+    },
+    {
+      "case": "independent-evolution",
+      "detected": true,
+      "decision": "contextual review; no forced extraction",
+      "rationale": "Initially identical tenant policy implementations intentionally evolve independently."
+    },
+    {
+      "case": "generated-implementations",
+      "detected": true,
+      "decision": "contextual review; no forced extraction",
+      "rationale": "A generator owns both outputs; changes belong in its template rather than output extraction."
+    }
+  ],
+  "repair_requirement": "Feedback must offer contextual review and never demand extraction solely from token equality."
+}

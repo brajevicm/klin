@@ -1,0 +1,199 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -158,6 +158,7 @@
+ /// The guard and the updater answer before the working directory is read, because neither needs
+ /// it. Everything else prints through `report`.
+ fn main() -> ExitCode {
++    if std::env::var_os("KLIN_DUP_REUSE_PROBE").is_some() { dup_research::reuse_probe(); return ExitCode::SUCCESS; }
+     let _dup_report = dup_accounting::Report;
+     LazyLock::force(&shell::STARTED);
+     match Cli::parse().command {
+--- a/src/dup_accounting.rs
++++ b/src/dup_accounting.rs
+@@ -1,28 +1,75 @@
+-use std::sync::atomic::{AtomicU64, Ordering};
+-use std::time::Duration;
+-static FILES: AtomicU64 = AtomicU64::new(0);
+-static TOKENS: AtomicU64 = AtomicU64::new(0);
+-static PRINTS: AtomicU64 = AtomicU64::new(0);
+-static NANOS: AtomicU64 = AtomicU64::new(0);
+-pub fn record(tokens: usize, prints: usize, elapsed: Duration) {
+-    if tokens == 0 { return; }
+-    FILES.fetch_add(1, Ordering::Relaxed);
+-    TOKENS.fetch_add(tokens as u64, Ordering::Relaxed);
+-    PRINTS.fetch_add(prints as u64, Ordering::Relaxed);
+-    NANOS.fetch_add(elapsed.as_nanos() as u64, Ordering::Relaxed);
++use crate::dup_research::{artifact_shared, SharedArtifact};
++use std::collections::HashMap;
++use std::sync::{Mutex, OnceLock};
++use std::time::Instant;
++struct Version { source: Vec<u8>, artifact: SharedArtifact }
++#[derive(Default)]
++struct Held {
++    versions: HashMap<String, Vec<Version>>,
++    calls: usize, hits: usize, misses: usize, changed_paths: usize,
++    tokens: usize, prints: usize, nanos: u128, retained: usize,
++    checksum: u64,
++}
++static HELD: OnceLock<Mutex<Held>> = OnceLock::new();
++pub fn consume(path: &str, source: &[u8], root: tree_sitter::Node) {
++    let started = Instant::now();
++    let reuse = std::env::var("KLIN_DUP_REUSE").as_deref() == Ok("1");
++    let mut held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
++    held.calls += 1;
++    let found = reuse.then(|| held.versions.get(path).and_then(|versions|
++        versions.iter().find(|v| v.source == source))).flatten();
++    let (tokens, prints, checksum) = if let Some(v) = found {
++        let checksum = v.artifact.prints.iter().fold(0u64, |sum, (key,pos)| sum.wrapping_add(*key ^ *pos as u64));
++        (v.artifact.tokens.len(), v.artifact.prints.len(), checksum)
++    } else {
++        let Some(artifact) = artifact_shared(path, source, root) else {
++            held.nanos += started.elapsed().as_nanos();
++            return;
++        };
++        let checksum = artifact.prints.iter().fold(0u64, |sum, (key,pos)| sum.wrapping_add(*key ^ *pos as u64));
++        let counts = (artifact.tokens.len(), artifact.prints.len(), checksum);
++        held.misses += 1;
++        if reuse {
++            if held.versions.contains_key(path) { held.changed_paths += 1; }
++            held.retained += source.len() + artifact.bytes() + std::mem::size_of::<Version>();
++            if !held.versions.contains_key(path) { held.retained += path.len(); }
++            held.versions.entry(path.to_string()).or_default().push(Version {source:source.to_vec(), artifact});
++        }
++        held.tokens += counts.0;
++        held.prints += counts.1;
++        held.checksum = held.checksum.wrapping_add(counts.2);
++        held.nanos += started.elapsed().as_nanos();
++        return;
++    };
++    held.hits += 1;
++    held.tokens += tokens;
++    held.prints += prints;
++    held.checksum = held.checksum.wrapping_add(checksum);
++    held.nanos += started.elapsed().as_nanos();
+ }
+ pub struct Report;
+ impl Drop for Report {
+     fn drop(&mut self) {
+         if std::env::var_os("KLIN_DUP_RESEARCH_REPORT").is_none() { return; }
++        let held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
+         eprintln!("DUP_RESEARCH {}", serde_json::json!({
+-            "shared_files": FILES.load(Ordering::Relaxed),
+-            "tokens": TOKENS.load(Ordering::Relaxed),
+-            "fingerprints": PRINTS.load(Ordering::Relaxed),
+-            "normalize_ms": NANOS.load(Ordering::Relaxed) as f64 / 1e6,
+-            "extra_parses": 0, "unchanged_source_reads": 0,
+-            "whole_tree_walks": 0, "external_processes": 0,
+-            "scope": "shared normalization/fingerprinting lower bound; excludes index and lineage"
++            "shared_files": held.calls, "reuse_hits":held.hits, "derived_inputs":held.misses,
++            "changed_same_paths":held.changed_paths, "unique_paths":held.versions.len(),
++            "tokens":held.tokens, "fingerprints":held.prints,"checksum":held.checksum,
++            "normalize_ms":held.nanos as f64 / 1e6,
++            "retained_payload_bytes":held.retained,
++            "extra_parses":0,"unchanged_source_reads":0,
++            "scope":"full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage"
+         }));
+     }
+ }
++
++pub fn probe_assertions() {
++    let held = HELD.get().unwrap().lock().unwrap();
++    assert_eq!((held.calls, held.hits, held.misses, held.changed_paths, held.versions.len()), (6,2,4,1,3));
++    assert!(!held.versions["a/main.ts"][0].artifact.prints.is_empty());
++    let left = &held.versions["a/main.ts"][0].artifact.tokens;
++    let renamed = &held.versions["b/main.ts"][0].artifact.tokens;
++    assert_ne!(left, renamed, "path-dependent import provenance must differ");
++    assert_ne!(left, &held.versions["a/main.ts"][1].artifact.tokens);
++}
+--- a/src/dup_research/main.rs
++++ b/src/dup_research/main.rs
+@@ -1623,3 +1623,47 @@
+         assert!(keys(&left).intersection(&keys(&right)).next().is_some());
+     }
+ }
++
++// Research artifact retained by the per-run full-input reuse experiment.
++pub(crate) struct SharedArtifact {
++    pub tokens: Vec<u64>,
++    pub rows: Vec<u32>,
++    pub safe: Vec<bool>,
++    pub prints: Vec<(u64, u32)>,
++    pub unsafe_units: usize,
++    pub error: bool,
++}
++impl SharedArtifact {
++    pub fn bytes(&self) -> usize {
++        self.tokens.capacity() * std::mem::size_of::<u64>()
++            + self.rows.capacity() * std::mem::size_of::<u32>()
++            + self.safe.capacity() * std::mem::size_of::<bool>()
++            + self.prints.capacity() * std::mem::size_of::<(u64,u32)>()
++            + std::mem::size_of::<Self>()
++    }
++}
++pub(crate) fn artifact_shared(path: &str, source: &[u8], root: Node) -> Option<SharedArtifact> {
++    let lang = Lang::of(path)?;
++    let parsed = normalized_root(lang, path, source, root, false);
++    let prints = fingerprints(&parsed, Params {k:41,w:20,t:5,cap:64,bits:64});
++    Some(SharedArtifact {tokens: parsed.tokens,rows:parsed.rows,safe:parsed.safe,
++        prints,unsafe_units:parsed.unsafe_units,error:parsed.error})
++}
++
++pub(crate) fn reuse_probe() {
++    let _report = crate::dup_accounting::Report;
++    let mut shared = Shared::new();
++    for (path, source) in [
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value + 1;"),
++        ("b/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.tsx", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++    ] {
++        let source = source.repeat(20);
++        let tree = shared.parse(Lang::of(path).unwrap(), source.as_bytes());
++        crate::dup_accounting::consume(path, source.as_bytes(), tree.root_node());
++    }
++    crate::dup_accounting::probe_assertions();
++}
+--- a/src/syntax/structural/mod.rs
++++ b/src/syntax/structural/mod.rs
+@@ -275,9 +275,7 @@
+ 
+ fn measured(file: &ParsedFile, names: &mut Names) -> Result<Outcome, Error> {
+     if std::env::var("KLIN_DUP_RESEARCH").as_deref() == Ok("1") {
+-        let started = std::time::Instant::now();
+-        let (tokens, prints) = crate::dup_research::consume_shared(file.path, file.bytes(), file.root());
+-        crate::dup_accounting::record(tokens, prints, started.elapsed());
++        crate::dup_accounting::consume(file.path, file.bytes(), file.root());
+     }
+     Ok(match facts_with(file, names)? {
+         Some(found) => Outcome::Facts(Rc::new(found)),
+--- a/tests/performance.rs
++++ b/tests/performance.rs
+@@ -1643,7 +1643,7 @@
+ 
+ #[test]
+ #[ignore = "isolated exact-region shared-tree research"]
+-fn duplication_shared_tree_research() {
++fn duplication_shared_tree_reuse() {
+     let fixture = Fixture::with_profile(5_000, DENSE_1M);
+     fixture.prime();
+     fixture.change20();
+@@ -1657,7 +1657,7 @@
+                 }
+                 let started = Instant::now();
+                 let run = fixture.tree.run_with(
+-                    &[("KLIN_DUP_RESEARCH", mode), ("KLIN_DUP_RESEARCH_REPORT", "1")],
++                    &[("KLIN_DUP_RESEARCH", "1"), ("KLIN_DUP_REUSE", mode), ("KLIN_DUP_RESEARCH_REPORT", "1")],
+                     &["gate", "--hook", "--changed"],
+                 );
+                 let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
+@@ -1665,7 +1665,7 @@
+                 let counters: serde_json::Value = serde_json::from_str(
+                     run.out.lines().find_map(|line| line.strip_prefix("DUP_RESEARCH ")).unwrap()
+                 ).unwrap();
+-                println!("DUP_AB {}", serde_json::json!({
++                println!("DUP_REUSE_AB {}", serde_json::json!({
+                     "phase": phase, "iteration": iteration, "enabled": mode == "1",
+                     "end_to_end_ms": wall_ms, "counters": counters
+                 }));

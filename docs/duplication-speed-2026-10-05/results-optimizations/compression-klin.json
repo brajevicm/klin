@@ -1,0 +1,16 @@
+{
+  "root": "/tmp/klin490-corpus/klin/src",
+  "files": 80,
+  "tokens": 233276,
+  "unsafe_tokens": 2,
+  "unique_safe_tokens": 5468,
+  "dictionary_bytes": 107971,
+  "token_chain_bytes": 306086,
+  "row_delta_bytes": 233276,
+  "paths_bytes": 1290,
+  "equality_bytes": 414057,
+  "reporting_bytes": 648623,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "candidate_totals": {}
+}

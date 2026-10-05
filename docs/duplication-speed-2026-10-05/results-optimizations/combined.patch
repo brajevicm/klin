@@ -1,0 +1,2451 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,3 +1,7 @@
++#[allow(dead_code)]
++#[path = "dup_research/main.rs"]
++mod dup_research;
++mod dup_accounting;
+ mod base;
+ mod build;
+ mod cache;
+@@ -154,6 +158,9 @@
+ /// The guard and the updater answer before the working directory is read, because neither needs
+ /// it. Everything else prints through `report`.
+ fn main() -> ExitCode {
++    if std::env::var_os("KLIN_DUP_CLI").is_some() { dup_research::main(); return ExitCode::SUCCESS; }
++    if std::env::var_os("KLIN_DUP_REUSE_PROBE").is_some() { dup_research::reuse_probe(); return ExitCode::SUCCESS; }
++    let _dup_report = dup_accounting::Report;
+     LazyLock::force(&shell::STARTED);
+     match Cli::parse().command {
+         Command::Runner(Runner::Guard(args)) => ExitCode::from(guard::run(&args)),
+--- a/src/syntax/structural/mod.rs
++++ b/src/syntax/structural/mod.rs
+@@ -274,6 +274,9 @@
+ }
+ 
+ fn measured(file: &ParsedFile, names: &mut Names) -> Result<Outcome, Error> {
++    if std::env::var("KLIN_DUP_RESEARCH").as_deref() == Ok("1") {
++        crate::dup_accounting::consume(file.path, file.bytes(), file.root());
++    }
+     Ok(match facts_with(file, names)? {
+         Some(found) => Outcome::Facts(Rc::new(found)),
+         None => Outcome::Unsupported(file.language.name),
+--- a/tests/performance.rs
++++ b/tests/performance.rs
+@@ -1640,3 +1640,36 @@
+     })
+     .to_string()
+ }
++
++#[test]
++#[ignore = "isolated exact-region shared-tree research"]
++fn duplication_combined_research() {
++    let fixture = Fixture::with_profile(5_000, DENSE_1M);
++    fixture.prime();
++    fixture.change20();
++    for phase in ["warm20", "warm100", "cold"] {
++        if phase == "warm100" { fixture.change_delta(); }
++        for iteration in 0..5 {
++            for mode in if iteration % 2 == 0 { ["0", "1"] } else { ["1", "0"] } {
++                if phase == "cold" {
++                    let run = fixture.tree.run(&["cache", "clean"]);
++                    assert_eq!(run.code, 0, "{}", run.out);
++                }
++                let started = Instant::now();
++                let run = fixture.tree.run_with(
++                    &[("KLIN_DUP_RESEARCH", mode), ("KLIN_DUP_REUSE", "1"), ("KLIN_DUP_RESEARCH_REPORT", "1")],
++                    &["gate", "--hook", "--changed"],
++                );
++                let wall_ms = started.elapsed().as_secs_f64() * 1000.0;
++                assert_eq!(run.code, 0, "{}", run.out);
++                let counters: serde_json::Value = serde_json::from_str(
++                    run.out.lines().find_map(|line| line.strip_prefix("DUP_RESEARCH ")).unwrap()
++                ).unwrap();
++                println!("DUP_COMBINED_AB {}", serde_json::json!({
++                    "phase": phase, "iteration": iteration, "enabled": mode == "1",
++                    "end_to_end_ms": wall_ms, "counters": counters
++                }));
++            }
++        }
++    }
++}
+--- /dev/null
++++ b/src/dup_accounting.rs
+@@ -0,0 +1,75 @@
++use crate::dup_research::{artifact_shared, SharedArtifact};
++use std::collections::HashMap;
++use std::sync::{Mutex, OnceLock};
++use std::time::Instant;
++struct Version { source: Vec<u8>, artifact: SharedArtifact }
++#[derive(Default)]
++struct Held {
++    versions: HashMap<String, Vec<Version>>,
++    calls: usize, hits: usize, misses: usize, changed_paths: usize,
++    tokens: usize, prints: usize, nanos: u128, retained: usize,
++    checksum: u64,
++}
++static HELD: OnceLock<Mutex<Held>> = OnceLock::new();
++pub fn consume(path: &str, source: &[u8], root: tree_sitter::Node) {
++    let started = Instant::now();
++    let reuse = std::env::var("KLIN_DUP_REUSE").as_deref() == Ok("1");
++    let mut held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
++    held.calls += 1;
++    let found = reuse.then(|| held.versions.get(path).and_then(|versions|
++        versions.iter().find(|v| v.source == source))).flatten();
++    let (tokens, prints, checksum) = if let Some(v) = found {
++        let checksum = v.artifact.prints.iter().fold(0u64, |sum, (key,pos)| sum.wrapping_add(*key ^ *pos as u64));
++        (v.artifact.tokens.len(), v.artifact.prints.len(), checksum)
++    } else {
++        let Some(artifact) = artifact_shared(path, source, root) else {
++            held.nanos += started.elapsed().as_nanos();
++            return;
++        };
++        let checksum = artifact.prints.iter().fold(0u64, |sum, (key,pos)| sum.wrapping_add(*key ^ *pos as u64));
++        let counts = (artifact.tokens.len(), artifact.prints.len(), checksum);
++        held.misses += 1;
++        if reuse {
++            if held.versions.contains_key(path) { held.changed_paths += 1; }
++            held.retained += source.len() + artifact.bytes() + std::mem::size_of::<Version>();
++            if !held.versions.contains_key(path) { held.retained += path.len(); }
++            held.versions.entry(path.to_string()).or_default().push(Version {source:source.to_vec(), artifact});
++        }
++        held.tokens += counts.0;
++        held.prints += counts.1;
++        held.checksum = held.checksum.wrapping_add(counts.2);
++        held.nanos += started.elapsed().as_nanos();
++        return;
++    };
++    held.hits += 1;
++    held.tokens += tokens;
++    held.prints += prints;
++    held.checksum = held.checksum.wrapping_add(checksum);
++    held.nanos += started.elapsed().as_nanos();
++}
++pub struct Report;
++impl Drop for Report {
++    fn drop(&mut self) {
++        if std::env::var_os("KLIN_DUP_RESEARCH_REPORT").is_none() { return; }
++        let held = HELD.get_or_init(|| Mutex::new(Held::default())).lock().unwrap();
++        eprintln!("DUP_RESEARCH {}", serde_json::json!({
++            "shared_files": held.calls, "reuse_hits":held.hits, "derived_inputs":held.misses,
++            "changed_same_paths":held.changed_paths, "unique_paths":held.versions.len(),
++            "tokens":held.tokens, "fingerprints":held.prints,"checksum":held.checksum,
++            "normalize_ms":held.nanos as f64 / 1e6,
++            "retained_payload_bytes":held.retained,
++            "extra_parses":0,"unchanged_source_reads":0,
++            "scope":"full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage"
++        }));
++    }
++}
++
++pub fn probe_assertions() {
++    let held = HELD.get().unwrap().lock().unwrap();
++    assert_eq!((held.calls, held.hits, held.misses, held.changed_paths, held.versions.len()), (6,2,4,1,3));
++    assert!(!held.versions["a/main.ts"][0].artifact.prints.is_empty());
++    let left = &held.versions["a/main.ts"][0].artifact.tokens;
++    let renamed = &held.versions["b/main.ts"][0].artifact.tokens;
++    assert_ne!(left, renamed, "path-dependent import provenance must differ");
++    assert_ne!(left, &held.versions["a/main.ts"][1].artifact.tokens);
++}
+--- /dev/null
++++ b/src/dup_research/main.rs
+@@ -0,0 +1,1724 @@
++mod fixture;
++mod postings;
++
++use postings::{Postings, partition};
++
++use std::collections::HashMap;
++
++use std::io::Write;
++use std::path::{Path, PathBuf};
++use std::time::Instant;
++use tree_sitter::{Language, Node, Parser, Tree as Syntax, TreeCursor};
++
++const TERMINATED: &[&str] = &[
++    "ambient_declaration",
++    "break_statement",
++    "continue_statement",
++    "debugger_statement",
++    "do_statement",
++    "export_statement",
++    "expression_statement",
++    "function_signature",
++    "import_alias",
++    "import_statement",
++    "lexical_declaration",
++    "return_statement",
++    "throw_statement",
++    "type_alias_declaration",
++    "variable_declaration",
++];
++
++#[derive(Clone, Copy, PartialEq)]
++enum Lang {
++    Rust,
++    Ts,
++    Tsx,
++}
++
++impl Lang {
++    fn of(path: &str) -> Option<Lang> {
++        if is_test_path(path) {
++            return None;
++        }
++        match Path::new(path).extension()?.to_str()? {
++            "rs" => Some(Lang::Rust),
++            "ts" if !path.ends_with(".d.ts") => Some(Lang::Ts),
++            "tsx" => Some(Lang::Tsx),
++            _ => None,
++        }
++    }
++
++    fn grammar(self) -> Language {
++        match self {
++            Lang::Rust => tree_sitter_rust::LANGUAGE.into(),
++            Lang::Ts => tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into(),
++            Lang::Tsx => tree_sitter_typescript::LANGUAGE_TSX.into(),
++        }
++    }
++
++    fn seed(self) -> u64 {
++        match self {
++            Lang::Rust => 0x52,
++            Lang::Ts | Lang::Tsx => 0x54,
++        }
++    }
++}
++
++fn is_test_path(path: &str) -> bool {
++    path.split('/').any(|part| {
++        matches!(
++            part,
++            "tests" | "test" | "__tests__" | "benches" | "fixtures"
++        )
++    }) || path.contains(".test.")
++        || path.contains(".spec.")
++        || path.ends_with("_test.rs")
++        || path.ends_with("/tests.rs")
++}
++
++#[derive(Clone, Copy)]
++struct Params {
++    k: usize,
++    w: usize,
++    cap: usize,
++    t: usize,
++    bits: usize,
++}
++
++fn fnv(seed: u64, parts: &[&[u8]]) -> u64 {
++    let mut hash = 0xcbf2_9ce4_8422_2325 ^ seed;
++    for part in parts {
++        for byte in *part {
++            hash = (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3);
++        }
++        hash = (hash ^ 0xff).wrapping_mul(0x0100_0000_01b3);
++    }
++    hash
++}
++
++fn mix(mut x: u64) -> u64 {
++    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
++    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
++    x ^ (x >> 31)
++}
++
++struct Stream<'a> {
++    unsafe_rows: Vec<(u32, u32)>,
++    excluded: Vec<(usize, usize, u32)>,
++    excluded_end: usize,
++    risky_unit: bool,
++    safe: Vec<bool>,
++    raw: Option<Vec<Vec<u8>>>,
++    lang: Lang,
++    source: &'a [u8],
++    imports: HashMap<&'a [u8], String>,
++    out: Vec<u64>,
++    rows: Vec<u32>,
++}
++
++impl<'a> Stream<'a> {
++    fn text(&self, node: Node) -> &'a [u8] {
++        &self.source[node.byte_range()]
++    }
++
++    fn emit(&mut self, text: &[u8], row: usize) {
++        let hash = fnv(self.lang.seed(), &[text]);
++        self.out.push(hash);
++        self.rows.push(row as u32);
++        self.safe.push(true);
++        if let Some(raw) = &mut self.raw {
++            raw.push([vec![self.lang.seed() as u8], text.to_vec()].concat());
++        }
++    }
++
++    fn leaf(&mut self, node: Node) {
++        let text = self.text(node);
++        if text.is_empty() {
++            return;
++        }
++        let named = matches!(node.kind(), "identifier" | "type_identifier");
++        match self.imports.get(text).filter(|_| named) {
++            Some(provenance) => {
++                let hash = fnv(self.lang.seed(), &[text, b"@", provenance.as_bytes()]);
++                self.out.push(hash);
++                self.rows.push(node.start_position().row as u32);
++                self.safe.push(true);
++                if let Some(raw) = &mut self.raw {
++                    raw.push(
++                        [
++                            vec![self.lang.seed() as u8],
++                            text.to_vec(),
++                            b"@".to_vec(),
++                            provenance.as_bytes().to_vec(),
++                        ]
++                        .concat(),
++                    );
++                }
++            }
++            None => self.emit(text, node.start_position().row),
++        }
++    }
++
++    fn walk(&mut self, cursor: &mut TreeCursor<'a>, top: bool) {
++        let node = cursor.node();
++        let kind = node.kind();
++        if node.start_byte() < self.excluded_end && node.end_byte() <= self.excluded_end {
++            return;
++        }
++        if self.lang == Lang::Rust && kind == "attribute_item" {
++            let attribute: String = String::from_utf8_lossy(self.text(node))
++                .split_whitespace()
++                .collect();
++            if attribute == "#[cfg(test)]" || attribute == "#[test]" {
++                let mut item = node;
++                while let Some(next) = item.next_named_sibling() {
++                    item = next;
++                    if !matches!(
++                        item.kind(),
++                        "attribute_item" | "line_comment" | "block_comment" | "doc_comment"
++                    ) {
++                        break;
++                    }
++                }
++                self.excluded_end = item.end_byte();
++                self.excluded.push((
++                    node.start_byte(),
++                    item.end_byte(),
++                    node.start_position().row as u32,
++                ));
++                return;
++            }
++        }
++        if kind.ends_with("comment") {
++            if self.lang != Lang::Rust && risky_comment(node, self.source) {
++                self.risky_unit = true;
++            }
++            return;
++        }
++        if !cursor.goto_first_child() {
++            self.leaf(node);
++            return;
++        }
++        let mut child_cursor = node.walk();
++        let wrapped_declaration = matches!(node.kind(), "ambient_declaration" | "export_statement")
++            && node.named_children(&mut child_cursor).any(|child| {
++                child.kind().ends_with("declaration")
++                    || TERMINATED.contains(&child.kind())
++                    || matches!(
++                        child.kind(),
++                        "statement_block" | "function_declaration" | "class_declaration"
++                    )
++            });
++        let terminated =
++            self.lang != Lang::Rust && TERMINATED.contains(&node.kind()) && !wrapped_declaration;
++        let mut trailing = None;
++        let members = self.lang != Lang::Rust
++            && matches!(node.kind(), "class_body" | "object_type" | "interface_body");
++        let mut member_separator = false;
++        loop {
++            let child = cursor.node();
++            let kind = child.kind();
++            if members && matches!(kind, ";" | ",") && member_separator {
++                member_separator = false;
++            } else {
++                let before = self.out.len();
++                if top {
++                    self.risky_unit = false;
++                }
++                self.walk(cursor, false);
++                if top
++                    && child.is_named()
++                    && (child.has_error() || child.is_missing() || self.risky_unit)
++                {
++                    self.unsafe_rows.push((
++                        child.start_position().row as u32,
++                        child.end_position().row as u32,
++                    ));
++                }
++                trailing = (kind == ";").then_some(before);
++                if members
++                    && matches!(
++                        kind,
++                        "method_definition"
++                            | "public_field_definition"
++                            | "property_signature"
++                            | "method_signature"
++                            | "abstract_method_signature"
++                            | "call_signature"
++                            | "construct_signature"
++                            | "index_signature"
++                    )
++                {
++                    self.emit(b";", child.end_position().row);
++                    member_separator = true;
++                } else {
++                    member_separator = false;
++                }
++            }
++            if !cursor.goto_next_sibling() {
++                break;
++            }
++        }
++        cursor.goto_parent();
++        if terminated {
++            if let Some(before) = trailing {
++                self.out.truncate(before);
++                self.rows.truncate(before);
++                self.safe.truncate(before);
++                if let Some(raw) = &mut self.raw {
++                    raw.truncate(before);
++                }
++            }
++            self.emit(b";", node.end_position().row);
++        }
++    }
++}
++
++fn imports<'a>(lang: Lang, path: &str, source: &'a [u8], root: Node) -> HashMap<&'a [u8], String> {
++    let mut map = HashMap::new();
++    let mut cursor = root.walk();
++    for item in root.children(&mut cursor) {
++        match (lang, item.kind()) {
++            (Lang::Rust, "use_declaration") => {
++                if let Some(argument) = item.child_by_field_name("argument") {
++                    use_tree(source, argument, "", &mut map);
++                }
++            }
++            (Lang::Ts | Lang::Tsx, "import_statement") => ts_import(path, source, item, &mut map),
++            _ => {}
++        }
++    }
++    map
++}
++
++fn text<'a>(source: &'a [u8], node: Node) -> &'a [u8] {
++    &source[node.byte_range()]
++}
++
++fn joined(prefix: &str, rest: &[u8]) -> String {
++    let rest = String::from_utf8_lossy(rest);
++    if prefix.is_empty() {
++        rest.into_owned()
++    } else {
++        format!("{prefix}::{rest}")
++    }
++}
++
++fn use_tree<'a>(source: &'a [u8], node: Node, prefix: &str, map: &mut HashMap<&'a [u8], String>) {
++    match node.kind() {
++        "identifier" => {
++            map.insert(text(source, node), joined(prefix, text(source, node)));
++        }
++        "scoped_identifier" => {
++            if let Some(name) = node.child_by_field_name("name") {
++                map.insert(text(source, name), joined(prefix, text(source, node)));
++            }
++        }
++        "use_as_clause" => {
++            if let (Some(path), Some(alias)) = (
++                node.child_by_field_name("path"),
++                node.child_by_field_name("alias"),
++            ) {
++                map.insert(text(source, alias), joined(prefix, text(source, path)));
++            }
++        }
++        "scoped_use_list" => {
++            let nested = match node.child_by_field_name("path") {
++                Some(path) => joined(prefix, text(source, path)),
++                None => prefix.to_string(),
++            };
++            if let Some(list) = node.child_by_field_name("list") {
++                use_tree(source, list, &nested, map);
++            }
++        }
++        "use_list" => {
++            let mut cursor = node.walk();
++            for child in node.named_children(&mut cursor) {
++                use_tree(source, child, prefix, map);
++            }
++        }
++        _ => {}
++    }
++}
++
++fn ts_import<'a>(path: &str, source: &'a [u8], item: Node, map: &mut HashMap<&'a [u8], String>) {
++    let Some(specifier) = item.child_by_field_name("source") else {
++        return;
++    };
++    let raw = String::from_utf8_lossy(text(source, specifier));
++    let raw = raw.trim_matches(|c| c == '"' || c == '\'');
++    let specifier = if raw.starts_with("./") || raw.starts_with("../") {
++        resolve(path, raw)
++    } else {
++        raw.to_string()
++    };
++    let mut cursor = item.walk();
++    for clause in item.named_children(&mut cursor) {
++        if clause.kind() != "import_clause" {
++            continue;
++        }
++        let mut inner = clause.walk();
++        for part in clause.named_children(&mut inner) {
++            match part.kind() {
++                "identifier" => {
++                    map.insert(text(source, part), format!("\"{specifier}\"#default"));
++                }
++                "namespace_import" => {
++                    if let Some(name) = part.named_child(0) {
++                        map.insert(text(source, name), format!("\"{specifier}\"#*"));
++                    }
++                }
++                "named_imports" => {
++                    let mut names = part.walk();
++                    for spec in part.named_children(&mut names) {
++                        let Some(name) = spec.child_by_field_name("name") else {
++                            continue;
++                        };
++                        let local = spec.child_by_field_name("alias").unwrap_or(name);
++                        let imported = String::from_utf8_lossy(text(source, name));
++                        map.insert(text(source, local), format!("\"{specifier}\"#{imported}"));
++                    }
++                }
++                _ => {}
++            }
++        }
++    }
++}
++
++fn resolve(path: &str, relative: &str) -> String {
++    let mut parts: Vec<&str> = path.split('/').collect();
++    parts.pop();
++    for segment in relative.split('/') {
++        match segment {
++            "." | "" => {}
++            ".." => {
++                parts.pop();
++            }
++            other => parts.push(other),
++        }
++    }
++    parts.join("/")
++}
++
++fn key(hash: u64, bits: usize) -> u64 {
++    assert!(matches!(bits, 32 | 48 | 64));
++    hash >> (64 - bits)
++}
++
++fn kgrams(tokens: &[u64], k: usize) -> Vec<u64> {
++    if tokens.len() < k {
++        return Vec::new();
++    }
++    let base: u64 = 0x100_0000_01b3;
++    let top = (0..k - 1).fold(1u64, |power, _| power.wrapping_mul(base));
++    let mut hash = 0u64;
++    let mut out = Vec::with_capacity(tokens.len() - k + 1);
++    for (index, token) in tokens.iter().enumerate() {
++        if index >= k {
++            hash = hash.wrapping_sub(tokens[index - k].wrapping_mul(top));
++        }
++        hash = hash.wrapping_mul(base).wrapping_add(*token);
++        if index + 1 >= k {
++            out.push(mix(hash));
++        }
++    }
++    out
++}
++
++fn winnow(tokens: &[u64], params: Params) -> Vec<(u64, u32)> {
++    if params.t > 0 {
++        return mod_minimizers(tokens, params);
++    }
++    let grams = kgrams(tokens, params.k);
++    let mut out = Vec::new();
++    let mut window: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
++    let mut last = usize::MAX;
++    for (index, hash) in grams.iter().enumerate() {
++        while window.back().is_some_and(|back| grams[*back] >= *hash) {
++            window.pop_back();
++        }
++        window.push_back(index);
++        if window[0] + params.w <= index {
++            window.pop_front();
++        }
++        if (index + 1 >= params.w || index + 1 == grams.len()) && window[0] != last {
++            last = window[0];
++            out.push((key(grams[last], params.bits), last as u32));
++        }
++    }
++    out
++}
++
++fn mod_minimizers(tokens: &[u64], params: Params) -> Vec<(u64, u32)> {
++    let grams = kgrams(tokens, params.k);
++    let small = kgrams(tokens, params.t);
++    if grams.is_empty() {
++        return Vec::new();
++    }
++    let span = params.w + params.k - params.t;
++    let windows = grams.len().saturating_sub(params.w) + 1;
++    let mut out = Vec::new();
++    let mut deque: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
++    let mut next = 0;
++    let mut last = usize::MAX;
++    for start in 0..windows {
++        let end = (start + span).min(small.len());
++        while next < end {
++            while deque.back().is_some_and(|back| small[*back] > small[next]) {
++                deque.pop_back();
++            }
++            deque.push_back(next);
++            next += 1;
++        }
++        while deque[0] < start {
++            deque.pop_front();
++        }
++        let chosen = start + (deque[0] - start) % params.w.min(grams.len());
++        if chosen != last {
++            last = chosen;
++            out.push((key(grams[chosen], params.bits), chosen as u32));
++        }
++    }
++    out.sort_unstable_by_key(|entry| entry.1);
++    out.dedup_by_key(|entry| entry.1);
++    out
++}
++
++struct Parsed {
++    tokens: Vec<u64>,
++    rows: Vec<u32>,
++    error: bool,
++    safe: Vec<bool>,
++    unsafe_units: usize,
++    raw: Option<Vec<Vec<u8>>>,
++}
++
++struct Shared {
++    parsers: HashMap<u8, Parser>,
++}
++
++impl Shared {
++    fn new() -> Shared {
++        Shared {
++            parsers: HashMap::new(),
++        }
++    }
++
++    fn parse(&mut self, lang: Lang, source: &[u8]) -> Syntax {
++        let parser = self.parsers.entry(lang as u8).or_insert_with(|| {
++            let mut parser = Parser::new();
++            parser.set_language(&lang.grammar()).unwrap();
++            parser
++        });
++        parser.parse(source, None).unwrap()
++    }
++}
++
++fn stream(lang: Lang, path: &str, source: &[u8], syntax: &Syntax) -> Parsed {
++    normalized(lang, path, source, syntax, false)
++}
++
++fn normalized(lang: Lang, path: &str, source: &[u8], syntax: &Syntax, capture: bool) -> Parsed {
++    normalized_root(lang, path, source, syntax.root_node(), capture)
++}
++
++fn normalized_root(lang: Lang, path: &str, source: &[u8], root: Node, capture: bool) -> Parsed {
++    let mut stream = Stream {
++        lang,
++        source,
++        unsafe_rows: Vec::new(),
++        excluded: Vec::new(),
++        excluded_end: 0,
++        risky_unit: false,
++        safe: Vec::new(),
++        raw: capture.then(Vec::new),
++        imports: imports(lang, path, source, root),
++        out: Vec::new(),
++        rows: Vec::new(),
++    };
++    stream.walk(&mut root.walk(), true);
++    let unsafe_units = stream.unsafe_rows.len();
++    // Exclusions are discontinuities. Nested excluded ranges have the same next token.
++    for (_, end, row) in &stream.excluded {
++        let first = stream.rows.partition_point(|held| held < row);
++        if first < stream.safe.len() && *end < source.len() {
++            stream.safe[first] = false;
++        }
++    }
++    let mut ranges: Vec<(u32, u32)> = Vec::new();
++    for (start, end) in &stream.unsafe_rows {
++        if let Some(last) = ranges.last_mut().filter(|last| *start <= last.1) {
++            last.1 = last.1.max(*end);
++        } else {
++            ranges.push((*start, *end));
++        }
++    }
++    let mut range = 0;
++    for (row, safe) in stream.rows.iter().zip(&mut stream.safe) {
++        while range < ranges.len() && ranges[range].1 < *row {
++            range += 1;
++        }
++        if range < ranges.len() && ranges[range].0 <= *row {
++            *safe = false;
++        }
++    }
++    for (token, safe) in stream.out.iter_mut().zip(&stream.safe) {
++        if !safe {
++            *token = 0;
++        }
++    }
++    Parsed {
++        rows: stream.rows,
++        tokens: stream.out,
++        safe: stream.safe,
++        unsafe_units,
++        raw: stream.raw,
++        error: root.has_error(),
++    }
++}
++
++// The isolated #482 experiment consumes the exact tree structural extraction owns.
++// It measures normalization/fingerprinting as a lower bound, not a full ratchet.
++#[allow(dead_code)]
++pub(crate) fn consume_shared(path: &str, source: &[u8], root: Node) -> (usize, usize) {
++    let Some(lang) = Lang::of(path) else {
++        return (0, 0);
++    };
++    let parsed = normalized_root(lang, path, source, root, false);
++    let params = Params {
++        k: 41,
++        w: 20,
++        t: 5,
++        cap: 64,
++        bits: 64,
++    };
++    (parsed.tokens.len(), fingerprints(&parsed, params).len())
++}
++
++fn risky_comment(node: Node, source: &[u8]) -> bool {
++    if node.kind().ends_with("comment") {
++        let text = &source[node.byte_range()];
++        if text.starts_with(b"/*")
++            && (text.contains(&b'\n')
++                || text.contains(&b'\r')
++                || text
++                    .windows(3)
++                    .any(|w| w == b"\xe2\x80\xa8" || w == b"\xe2\x80\xa9"))
++        {
++            let before = source[..node.start_byte()]
++                .rsplit(|b| *b == b'\n' || *b == b'\r')
++                .next()
++                .unwrap();
++            let after = source[node.end_byte()..]
++                .split(|b| *b == b'\n' || *b == b'\r')
++                .next()
++                .unwrap();
++            return before.iter().chain(after).any(|b| !b.is_ascii_whitespace());
++        }
++    }
++    false
++}
++
++fn fingerprints(parsed: &Parsed, params: Params) -> Vec<(u64, u32)> {
++    let mut bad = vec![0usize];
++    for safe in &parsed.safe {
++        bad.push(bad.last().unwrap() + usize::from(!safe));
++    }
++    winnow(&parsed.tokens, params)
++        .into_iter()
++        .filter(|(_, position)| {
++            let at = *position as usize;
++            bad[at + params.k] == bad[at]
++        })
++        .collect()
++}
++
++fn source_files(root: &Path) -> Vec<String> {
++    let mut out = Vec::new();
++    let mut pending = vec![PathBuf::new()];
++    while let Some(relative) = pending.pop() {
++        let Ok(entries) = std::fs::read_dir(root.join(&relative)) else {
++            continue;
++        };
++        for entry in entries.flatten() {
++            let name = entry.file_name().to_string_lossy().into_owned();
++            if name.starts_with('.')
++                || matches!(name.as_str(), "node_modules" | "target" | "dist" | "build")
++            {
++                continue;
++            }
++            let path = relative.join(&name);
++            if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
++                pending.push(path);
++            } else {
++                let path = path.to_string_lossy().into_owned();
++                if Lang::of(&path).is_some() {
++                    out.push(path);
++                }
++            }
++        }
++    }
++    out.sort();
++    out
++}
++
++fn put(out: &mut Vec<u8>, value: u32) {
++    out.extend_from_slice(&value.to_le_bytes());
++}
++
++fn word(bytes: &[u8], at: usize) -> u32 {
++    u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap())
++}
++
++fn build(root: &Path, index: &Path, params: Params) {
++    assert!(
++        params.w <= params.k,
++        "a chain proves contiguity only when w <= k"
++    );
++    let started = Instant::now();
++    let files = source_files(root);
++    let mut shared = Shared::new();
++    let mut parse_ms = 0.0;
++    let mut entries: Vec<(u64, u32)> = Vec::new();
++    let mut chain: Vec<u8> = Vec::new();
++    let mut counts = Vec::with_capacity(files.len());
++    let mut unsafe_units = [0usize; 2];
++    let (mut total_tokens, mut errors, mut lines) = (0usize, 0usize, 0usize);
++    for path in &files {
++        let lang = Lang::of(path).unwrap();
++        let before = Instant::now();
++        let source = std::fs::read(root.join(path)).unwrap();
++        let syntax = shared.parse(lang, &source);
++        parse_ms += ms(before);
++        lines += source.iter().filter(|byte| **byte == b'\n').count();
++        let parsed = stream(lang, path, &source, &syntax);
++        errors += usize::from(parsed.error);
++        unsafe_units[usize::from(lang != Lang::Rust)] += parsed.unsafe_units;
++        let base = total_tokens as u32;
++        for (token, safe) in parsed.tokens.iter().zip(&parsed.safe) {
++            chain.extend_from_slice(&(if *safe { *token } else { 0 }).to_le_bytes());
++        }
++        for (key, position) in fingerprints(&parsed, params) {
++            entries.push((key, base + position));
++        }
++        total_tokens += parsed.tokens.len();
++        counts.push(parsed.tokens.len() as u32);
++    }
++    let fingerprints = entries.len();
++    entries.sort_unstable();
++    let mut kept_entries = 0;
++    let mut capped = Vec::new();
++    let (mut longest, mut longest_kept) = (0usize, 0usize);
++    for run in entries.chunk_by(|a, b| a.0 == b.0) {
++        longest = longest.max(run.len());
++        if run.len() > params.cap {
++            capped.push(run[0].0);
++        } else {
++            longest_kept = longest_kept.max(run.len());
++            kept_entries += run.len();
++        }
++    }
++    let mut out = Vec::new();
++    for value in [
++        0x52454732,
++        params.k,
++        params.w,
++        params.cap,
++        files.len(),
++        capped.len(),
++        params.t,
++        params.bits,
++    ] {
++        put(&mut out, value as u32);
++    }
++    for (path, count) in files.iter().zip(&counts) {
++        put(&mut out, path.len() as u32);
++        out.extend_from_slice(path.as_bytes());
++        put(&mut out, *count);
++    }
++    let width = (usize::BITS - total_tokens.max(1).leading_zeros()).max(1);
++    let region_at = out.len();
++    let regions: Vec<(u64, u32)> = entries.iter().map(|(key, at)| (*key, *at)).collect();
++    out.extend(postings::encode(&regions, width));
++    capped
++        .iter()
++        .for_each(|key| out.extend_from_slice(&key.to_le_bytes()));
++    std::fs::create_dir_all(index).unwrap();
++    std::fs::write(index.join("index.bin"), &out).unwrap();
++    std::fs::write(index.join("chain.bin"), &chain).unwrap();
++    let total_ms = ms(started);
++    println!(
++        "{{\"unsafe_rust_units\":{},\"unsafe_ts_units\":{},\"key_bits\":{},\"files\":{},\"lines\":{lines},\"tokens\":{total_tokens},\"error_files\":{errors},\"fingerprints\":{fingerprints},\"capped_keys\":{},\"kept_entries\":{},\"longest_posting\":{longest},\"longest_kept_posting\":{longest_kept},\"index_bytes\":{},\"region_bytes\":{},\"chain_bytes\":{},\"total_ms\":{total_ms:.1},\"read_parse_ms\":{parse_ms:.1},\"extra_ms\":{:.1}}}",
++        unsafe_units[0],
++        unsafe_units[1],
++        params.bits,
++        files.len(),
++        capped.len(),
++        kept_entries,
++        out.len(),
++        out.len() - region_at,
++        chain.len(),
++        total_ms - parse_ms
++    );
++}
++
++fn ms(since: Instant) -> f64 {
++    since.elapsed().as_secs_f64() * 1000.0
++}
++
++struct Index {
++    bytes: &'static [u8],
++    params: Params,
++    paths: Vec<(usize, usize)>,
++    starts: Vec<u32>,
++    regions: Postings<'static>,
++    capped_at: usize,
++    capped: usize,
++}
++
++impl Index {
++    fn load(path: &Path) -> Index {
++        let bytes: &'static [u8] = Box::leak(std::fs::read(path).unwrap().into_boxed_slice());
++        let header: Vec<usize> = (0..8).map(|i| word(bytes, i * 4) as usize).collect();
++        assert_eq!(
++            header[0], 0x52454732,
++            "region-only index required; rebuild the index"
++        );
++        let params = Params {
++            k: header[1],
++            w: header[2],
++            cap: header[3],
++            t: header[6],
++            bits: header[7],
++        };
++        let mut at = 32;
++        let mut paths = Vec::with_capacity(header[4]);
++        let mut starts = Vec::with_capacity(header[4] + 1);
++        let mut start = 0u32;
++        for _ in 0..header[4] {
++            let length = word(bytes, at) as usize;
++            paths.push((at + 4, length));
++            at += 4 + length;
++            starts.push(start);
++            start += word(bytes, at);
++            at += 4;
++        }
++        starts.push(start);
++        let (regions, used) = Postings::read(&bytes[at..]);
++        let capped_at = at + used;
++        Index {
++            bytes,
++            params,
++            paths,
++            starts,
++            regions,
++            capped_at,
++            capped: header[5],
++        }
++    }
++
++    fn path(&self, id: usize) -> &[u8] {
++        let (at, length) = self.paths[id];
++        &self.bytes[at..at + length]
++    }
++
++    fn id(&self, path: &str) -> Option<usize> {
++        self.paths
++            .binary_search_by(|(at, length)| self.bytes[*at..*at + *length].cmp(path.as_bytes()))
++            .ok()
++    }
++
++    fn locate(&self, global: u32) -> (u32, u32) {
++        let file = partition(self.starts.len(), |i| self.starts[i] <= global) - 1;
++        (file as u32, global - self.starts[file])
++    }
++
++    fn postings(&self, key: u64, out: &mut Vec<u32>) {
++        out.clear();
++        self.regions.find(key, out);
++    }
++
++    fn has(&self, key: u64, file: u32, position: i64) -> bool {
++        let global = i64::from(self.starts[file as usize]) + position;
++        position >= 0
++            && global < i64::from(self.starts[file as usize + 1])
++            && self.regions.contains(key, global as u32)
++    }
++
++    fn is_capped(&self, key: u64) -> bool {
++        let found = partition(self.capped, |i| {
++            u64::from_le_bytes(
++                self.bytes[self.capped_at + i * 8..self.capped_at + i * 8 + 8]
++                    .try_into()
++                    .unwrap(),
++            ) < key
++        });
++        found < self.capped
++            && u64::from_le_bytes(
++                self.bytes[self.capped_at + found * 8..self.capped_at + found * 8 + 8]
++                    .try_into()
++                    .unwrap(),
++            ) == key
++    }
++}
++
++#[derive(Default)]
++struct Outcome {
++    hits: usize,
++    capped_hits: usize,
++    bridged: usize,
++    anchors: usize,
++    unanchored: usize,
++    true_spans: usize,
++    missed_spans: usize,
++    check_missed_spans: usize,
++    regions: usize,
++    proven: usize,
++    deferred: usize,
++    false_regions: usize,
++    true_regions: usize,
++    missed_regions: usize,
++    check_files: usize,
++    check_blocked: usize,
++    check_false: usize,
++    check_missed: usize,
++}
++
++struct Changed {
++    tokens: Vec<u64>,
++    prints: Vec<(u64, u32)>,
++    capped: Vec<(u32, u64)>,
++    raw: Option<Vec<Vec<u8>>>,
++}
++
++type Hit = (u32, u32, i64, u32);
++type Chain = (u32, u32, i64, u32, u32);
++
++fn chains(hits: &[Hit], k: usize) -> Vec<Chain> {
++    hits.chunk_by(|a, b| a.0 == b.0 && a.1 == b.1 && a.2 == b.2 && b.3 - a.3 <= k as u32)
++        .map(|run| (run[0].0, run[0].1, run[0].2, run[0].3, run[run.len() - 1].3))
++        .collect()
++}
++
++const MAX_HITS: usize = 65_536;
++const MAX_BRIDGE_LOOKUPS: usize = 1_000_000;
++
++fn bridge(
++    index: &Index,
++    streams: &[Changed],
++    hits: &mut Vec<Hit>,
++    base_files: u32,
++    truncated: &mut bool,
++) -> usize {
++    let k = index.params.k as u32;
++    let mut bridged = 0;
++    let mut lookups = 0;
++    loop {
++        let mut added = Vec::new();
++        for (self_id, other, diagonal, first, last) in chains(hits, k as usize) {
++            if other >= base_files {
++                continue;
++            }
++            let capped = &streams[self_id as usize].capped;
++            let near = partition(capped.len(), |i| capped[i].0 + k < first);
++            for (position, key) in capped[near..]
++                .iter()
++                .take_while(|(position, _)| *position <= last + k)
++            {
++                lookups += 1;
++                if lookups > MAX_BRIDGE_LOOKUPS || hits.len() + added.len() >= MAX_HITS {
++                    *truncated = true;
++                    return bridged;
++                }
++                let outside = *position < first || *position > last;
++                if outside && index.has(*key, other, i64::from(*position) + diagonal) {
++                    added.push((self_id, other, diagonal, *position));
++                }
++            }
++        }
++        added.retain(|hit| hits.binary_search(hit).is_err());
++        if added.is_empty() {
++            return bridged;
++        }
++        bridged += added.len();
++        hits.extend(added);
++        hits.sort_unstable();
++        hits.dedup();
++    }
++}
++
++fn anchor(index: &Index, streams: &[Changed], hits: &mut Vec<Hit>, excluded: &[bool]) -> usize {
++    let k = index.params.k as u32;
++    let anchored: std::collections::HashSet<(u32, u32)> =
++        hits.iter().map(|hit| (hit.0, hit.3)).collect();
++    let mut found = Vec::new();
++    let mut added = 0;
++    for (self_id, changed) in streams.iter().enumerate() {
++        let loose: Vec<&(u32, u64)> = changed
++            .capped
++            .iter()
++            .filter(|(position, _)| !anchored.contains(&(self_id as u32, *position)))
++            .collect();
++        for run in loose.chunk_by(|a, b| b.0 - a.0 <= k) {
++            let (position, key) = *run[0];
++            found.clear();
++            index.regions.find_limit(key, &mut found, index.params.cap);
++            for global in &found {
++                if hits.len() >= MAX_HITS {
++                    break;
++                }
++                let (other, other_position) = index.locate(*global);
++                if !excluded[other as usize] {
++                    hits.push((
++                        self_id as u32,
++                        other,
++                        i64::from(other_position) - i64::from(position),
++                        position,
++                    ));
++                    added += 1;
++                }
++            }
++        }
++    }
++    hits.sort_unstable();
++    hits.dedup();
++    added
++}
++
++fn spans_missed(
++    truth: &HashMap<(u32, u32, i64, i64), usize>,
++    blocked: &[(u32, i64, i64)],
++) -> (usize, usize) {
++    let mut spans: Vec<(u32, i64, i64)> = truth
++        .iter()
++        .map(|((s, _, _, start), length)| (*s, *start, start + *length as i64))
++        .collect();
++    spans.sort_unstable();
++    spans.dedup();
++    let missed = spans
++        .iter()
++        .filter(|(s, start, end)| {
++            !blocked
++                .iter()
++                .any(|(bs, bstart, bend)| bs == s && bstart <= start && bend >= end)
++        })
++        .count();
++    (spans.len(), missed)
++}
++
++fn query(
++    root: &Path,
++    index_dir: &Path,
++    changed_count: usize,
++    t: usize,
++    selection: &str,
++    stop_only: bool,
++    manifest: Option<&Path>,
++) {
++    let started = Instant::now();
++    let index = Index::load(&index_dir.join("index.bin"));
++    let load_ms = ms(started);
++    let params = index.params;
++    let all: Vec<String> = (0..index.paths.len())
++        .map(|id| String::from_utf8_lossy(index.path(id)).into_owned())
++        .collect();
++    let step = (all.len() / changed_count.max(1)).max(1);
++    let mut ids: Vec<usize> = (0..all.len()).collect();
++    let mut changed: Vec<String> = if let Some(manifest) = manifest {
++        std::fs::read_to_string(manifest)
++            .unwrap()
++            .lines()
++            .map(str::to_owned)
++            .collect()
++    } else if selection == "largest" {
++        ids.sort_by_key(|id| {
++            (
++                std::cmp::Reverse(index.starts[id + 1] - index.starts[*id]),
++                *id,
++            )
++        });
++        ids.iter()
++            .take(changed_count)
++            .map(|id| all[*id].clone())
++            .collect()
++    } else {
++        assert_eq!(selection, "spread");
++        all.iter()
++            .step_by(step)
++            .take(changed_count)
++            .cloned()
++            .collect()
++    };
++    changed.sort();
++    changed.dedup();
++    let base_files = index.paths.len() as u32;
++    let mut shared = Shared::new();
++    let (mut parse_ms, mut stream_ms, mut changed_tokens) = (0.0, 0.0, 0usize);
++    let mut unsafe_units = [0usize; 2];
++    let mut excluded = vec![false; index.paths.len()];
++    let mut streams = Vec::with_capacity(changed.len());
++    for path in &changed {
++        if let Some(id) = index.id(path) {
++            excluded[id] = true;
++        }
++        let Some(lang) = Lang::of(path) else {
++            continue;
++        };
++        if !root.join(path).exists() {
++            continue;
++        }
++        let before = Instant::now();
++        let source = std::fs::read(root.join(path)).unwrap();
++        let syntax = shared.parse(lang, &source);
++        parse_ms += ms(before);
++        let before = Instant::now();
++        let mut parsed = normalized(lang, path, &source, &syntax, !stop_only);
++        if let Some(raw) = &mut parsed.raw {
++            for (text, safe) in raw.iter_mut().zip(&parsed.safe) {
++                if !safe {
++                    text.clear();
++                }
++            }
++        }
++        unsafe_units[usize::from(lang != Lang::Rust)] += parsed.unsafe_units;
++        let prints = fingerprints(&parsed, params);
++        stream_ms += ms(before);
++        changed_tokens += parsed.tokens.len();
++        if let Some(id) = index.id(path) {
++            excluded[id] = true;
++        }
++        streams.push(Changed {
++            tokens: parsed.tokens,
++            prints,
++            capped: Vec::new(),
++            raw: parsed.raw,
++        });
++    }
++
++    let before = Instant::now();
++    let mut outcome = Outcome::default();
++    let mut hit_truncated = false;
++    let mut hits: Vec<Hit> = Vec::new();
++    let mut found = Vec::new();
++    let mut local_truncated = 0;
++    let mut local: HashMap<u64, Vec<(u32, u32)>> = HashMap::new();
++    for (self_id, changed) in streams.iter().enumerate() {
++        for (key, position) in &changed.prints {
++            local
++                .entry(*key)
++                .or_default()
++                .push((self_id as u32, *position));
++        }
++    }
++    'lookup: for (self_id, changed) in streams.iter_mut().enumerate() {
++        let mut capped = Vec::new();
++        for (key, position) in &changed.prints {
++            if hits.len() + params.cap * 2 > MAX_HITS {
++                hit_truncated = true;
++                break 'lookup;
++            }
++            if local[key].len() > params.cap {
++                local_truncated += 1;
++            }
++            for (other_self, other_position) in local[key].iter().take(params.cap) {
++                let diagonal = i64::from(*other_position) - i64::from(*position);
++                if (*other_self == self_id as u32 && diagonal > 0) || *other_self > self_id as u32 {
++                    hits.push((self_id as u32, base_files + other_self, diagonal, *position));
++                }
++            }
++            if index.is_capped(*key) {
++                capped.push((*position, *key));
++                continue;
++            }
++            index.postings(*key, &mut found);
++            for global in &found {
++                let (other, other_position) = index.locate(*global);
++                if !excluded[other as usize] {
++                    hits.push((
++                        self_id as u32,
++                        other,
++                        i64::from(other_position) - i64::from(*position),
++                        *position,
++                    ));
++                }
++            }
++        }
++        outcome.capped_hits += capped.len();
++        changed.capped = capped;
++    }
++    hits.sort_unstable();
++    hits.dedup();
++    outcome.anchors = anchor(&index, &streams, &mut hits, &excluded);
++    if hits.len() >= MAX_HITS {
++        hit_truncated = true;
++    }
++    outcome.bridged = bridge(&index, &streams, &mut hits, base_files, &mut hit_truncated);
++    outcome.hits = hits.len();
++    let mut proven = Vec::new();
++    let mut deferred = Vec::new();
++    for chain in chains(&hits, params.k) {
++        let length = (chain.4 - chain.3) as usize + params.k;
++        outcome.regions += 1;
++        if length >= t {
++            proven.push(chain);
++        } else if length + 2 * (params.w - 1) >= t {
++            deferred.push(chain);
++        }
++    }
++    outcome.proven = proven.len();
++    outcome.deferred = deferred.len();
++    let anchored: std::collections::HashSet<(u32, u32)> =
++        hits.iter().map(|hit| (hit.0, hit.3)).collect();
++    outcome.unanchored = streams
++        .iter()
++        .enumerate()
++        .map(|(self_id, s)| {
++            s.capped
++                .iter()
++                .filter(|(position, _)| !anchored.contains(&(self_id as u32, *position)))
++                .count()
++        })
++        .sum();
++    let lookup_ms = ms(before);
++
++    let design_ms = ms(started) - parse_ms;
++
++    let incomplete = outcome.deferred > 0
++        || hit_truncated
++        || outcome.capped_hits > 0
++        || local_truncated > 0
++        || t < params.k + params.w - 1;
++    if stop_only {
++        println!(
++            "{{\"changed\":{},\"t\":{t},\"key_bits\":{},\"changed_tokens\":{changed_tokens},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"lookup_ms\":{lookup_ms:.2},\"design_c_ms\":{design_ms:.2},\"hits\":{},\"proven\":{},\"deferred\":{},\"capped_hits\":{},\"local_truncated\":{local_truncated},\"hit_truncated\":{hit_truncated},\"incomplete\":{incomplete},\"unsafe_rust_units\":{},\"unsafe_ts_units\":{}}}",
++            changed.len(),
++            params.bits,
++            outcome.hits,
++            outcome.proven,
++            outcome.deferred,
++            outcome.capped_hits,
++            unsafe_units[0],
++            unsafe_units[1]
++        );
++        return;
++    }
++    let before = Instant::now();
++    let mut all_hits = hits.clone();
++    for (self_id, changed) in streams.iter().enumerate() {
++        for (key, position) in &changed.prints {
++            for (other_self, other_position) in &local[key] {
++                let diagonal = i64::from(*other_position) - i64::from(*position);
++                if (*other_self == self_id as u32 && diagonal > 0) || *other_self > self_id as u32 {
++                    all_hits.push((self_id as u32, base_files + other_self, diagonal, *position));
++                }
++            }
++            index.postings(*key, &mut found);
++            for global in &found {
++                let (other, other_position) = index.locate(*global);
++                if !excluded[other as usize] {
++                    all_hits.push((
++                        self_id as u32,
++                        other,
++                        i64::from(other_position) - i64::from(*position),
++                        *position,
++                    ));
++                }
++            }
++        }
++    }
++    all_hits.sort_unstable();
++    all_hits.dedup();
++    let mut sources: HashMap<u32, Vec<Vec<u8>>> = HashMap::new();
++    let mut check_blocked = Vec::new();
++    let mut checked = std::collections::HashSet::new();
++    for (self_id, other, diagonal, first) in &all_hits {
++        let last = first;
++        let theirs: &Vec<Vec<u8>> = if *other >= base_files {
++            streams[(*other - base_files) as usize]
++                .raw
++                .as_ref()
++                .unwrap()
++        } else {
++            sources.entry(*other).or_insert_with(|| {
++                let path = String::from_utf8_lossy(index.path(*other as usize)).into_owned();
++                let lang = Lang::of(&path).unwrap();
++                let source = std::fs::read(root.join(&path)).unwrap();
++                let syntax = shared.parse(lang, &source);
++                let parsed = normalized(lang, &path, &source, &syntax, true);
++                parsed
++                    .raw
++                    .unwrap()
++                    .into_iter()
++                    .zip(parsed.safe)
++                    .map(|(token, safe)| if safe { token } else { Vec::new() })
++                    .collect()
++            })
++        };
++        let (length, start) = exact(
++            streams[*self_id as usize].raw.as_ref().unwrap(),
++            theirs,
++            i64::from(*first),
++            *diagonal,
++            *last as usize + params.k,
++        );
++        if length >= t && checked.insert((*self_id, *other, *diagonal, start)) {
++            check_blocked.push((*self_id, *other, *diagonal, start, length));
++        }
++    }
++    outcome.check_files = sources.len();
++    outcome.check_blocked = check_blocked.len();
++    let check_ms = ms(before);
++
++    let narrow: Vec<Vec<u64>> = streams.iter().map(|s| s.tokens.clone()).collect();
++    let chain: Vec<u8> = std::fs::read(index_dir.join("chain.bin")).unwrap();
++    let base_tokens = |file: u32| -> Vec<u64> {
++        let (start, end) = (
++            index.starts[file as usize] as usize,
++            index.starts[file as usize + 1] as usize,
++        );
++        chain[start * 8..end * 8]
++            .as_chunks::<8>()
++            .0
++            .iter()
++            .map(|c| u64::from_le_bytes(*c))
++            .collect()
++    };
++    let tokens_of = |file: u32| -> Vec<u64> {
++        if file >= base_files {
++            narrow[(file - base_files) as usize].clone()
++        } else {
++            base_tokens(file)
++        }
++    };
++    let mut blocked = std::collections::HashSet::new();
++    let mut stop_spans = Vec::new();
++    for (self_id, other, diagonal, first, last) in &proven {
++        let theirs = tokens_of(*other);
++        let (exact_length, exact_start) = exact(
++            &narrow[*self_id as usize],
++            &theirs,
++            i64::from(*first),
++            *diagonal,
++            *last as usize + params.k,
++        );
++        if exact_length < t {
++            outcome.false_regions += 1;
++        }
++        blocked.insert((*self_id, *other, *diagonal, exact_start));
++        stop_spans.push((*self_id, exact_start, exact_start + exact_length as i64));
++    }
++    let stop_blocked = blocked.clone();
++    let mut all_spans = stop_spans.clone();
++    for (self_id, other, diagonal, start, _) in &check_blocked {
++        let theirs = tokens_of(*other);
++        let (length, _) = exact(
++            &narrow[*self_id as usize],
++            &theirs,
++            *start,
++            *diagonal,
++            *start as usize + t,
++        );
++        if length < t {
++            outcome.check_false += 1;
++        }
++        blocked.insert((*self_id, *other, *diagonal, *start));
++        all_spans.push((*self_id, *start, *start + length as i64));
++    }
++    let mut truth = HashMap::new();
++    for run in all_hits.chunk_by(|a, b| a.0 == b.0 && a.1 == b.1 && a.2 == b.2) {
++        let theirs = tokens_of(run[0].1);
++        for hit in run {
++            let (length, start) = exact(
++                &narrow[hit.0 as usize],
++                &theirs,
++                i64::from(hit.3),
++                hit.2,
++                hit.3 as usize + params.k,
++            );
++            if length >= t {
++                truth.insert((hit.0, hit.1, hit.2, start), length);
++            }
++        }
++    }
++    outcome.true_regions = truth.len();
++    (outcome.true_spans, outcome.missed_spans) = spans_missed(&truth, &stop_spans);
++    outcome.check_missed_spans = spans_missed(&truth, &all_spans).1;
++    let missed: Vec<usize> = truth
++        .iter()
++        .filter(|(key, _)| !stop_blocked.contains(*key))
++        .map(|(_, length)| *length)
++        .collect();
++    outcome.missed_regions = missed.len();
++    let longest_missed = missed.iter().copied().max().unwrap_or(0);
++    let check_missed: Vec<usize> = truth
++        .iter()
++        .filter(|(key, _)| !blocked.contains(*key))
++        .map(|(_, length)| *length)
++        .collect();
++    outcome.check_missed = check_missed.len();
++    let longest_check_missed = check_missed.iter().copied().max().unwrap_or(0);
++    let path_bytes: usize = index.paths.iter().map(|(_, length)| length + 8).sum();
++
++    let mut stdout = std::io::stdout();
++    writeln!(
++        stdout,
++        "{{\"changed\":{},\"t\":{t},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"unsafe_rust_units\":{},\"unsafe_ts_units\":{},\"changed_tokens\":{changed_tokens},\"lookup_ms\":{lookup_ms:.2},\"design_c_ms\":{design_ms:.2},\"check_ms\":{check_ms:.2},\"hits\":{},\"hit_truncated\":{hit_truncated},\"local_truncated\":{local_truncated},\"capped_hits\":{},\"bridged\":{},\"anchors\":{},\"unanchored\":{},\"true_spans\":{},\"missed_spans\":{},\"check_missed_spans\":{},\"incomplete\":{},\"regions\":{},\"proven\":{},\"deferred\":{},\"false_regions\":{},\"true_regions\":{},\"missed_regions\":{},\"longest_missed\":{longest_missed},\"check_files\":{},\"check_blocked\":{},\"check_false\":{},\"check_missed\":{},\"longest_check_missed\":{longest_check_missed},\"path_bytes\":{path_bytes}}}",
++        changed.len(),
++        unsafe_units[0],
++        unsafe_units[1],
++        outcome.hits,
++        outcome.capped_hits,
++        outcome.bridged,
++        outcome.anchors,
++        outcome.unanchored,
++        outcome.true_spans,
++        outcome.missed_spans,
++        outcome.check_missed_spans,
++        incomplete,
++        outcome.regions,
++        outcome.proven,
++        outcome.deferred,
++        outcome.false_regions,
++        outcome.true_regions,
++        outcome.missed_regions,
++        outcome.check_files,
++        outcome.check_blocked,
++        outcome.check_false,
++        outcome.check_missed,
++    )
++    .unwrap();
++}
++
++fn exact<T: PartialEq + Default>(
++    mine: &[T],
++    theirs: &[T],
++    first: i64,
++    diagonal: i64,
++    end: usize,
++) -> (usize, i64) {
++    let at = |position: i64| -> Option<(&T, &T)> {
++        let other = position + diagonal;
++        if position < 0
++            || other < 0
++            || position as usize >= mine.len()
++            || other as usize >= theirs.len()
++        {
++            return None;
++        }
++        let (a, b) = (&mine[position as usize], &theirs[other as usize]);
++        if a == &T::default() || b == &T::default() {
++            return None;
++        }
++        Some((a, b))
++    };
++    if (first..end as i64).any(|p| at(p).is_none_or(|(a, b)| a != b)) {
++        return (0, first);
++    }
++    let mut start = first;
++    while at(start - 1).is_some_and(|(a, b)| a == b) {
++        start -= 1;
++    }
++    let mut stop = end as i64;
++    while at(stop).is_some_and(|(a, b)| a == b) {
++        stop += 1;
++    }
++    ((stop - start) as usize, start)
++}
++
++fn generate(dir: &Path, name: &str) {
++    let (files, profile) = match name {
++        "10k" => (5_000, fixture::BASE),
++        "300k" => (5_000, fixture::DENSE_300K),
++        "1m" => (5_000, fixture::DENSE_1M),
++        other => panic!("unknown fixture {other}"),
++    };
++    let generated = fixture::write_sources(
++        &fixture::Tree(dir.to_path_buf()),
++        files,
++        files / 100,
++        profile,
++    );
++    if let Some(expected) = profile.expected {
++        assert_eq!(generated, expected, "generator copy drifted");
++    }
++    println!(
++        "{} loc={} digest={}",
++        profile.name, generated.loc, generated.digest
++    );
++}
++
++pub(crate) fn main() {
++    let args: Vec<String> = std::env::args().collect();
++    let number = |i: usize, default: usize| args.get(i).map_or(default, |v| v.parse().unwrap());
++    match args.get(1).map(String::as_str) {
++        Some("normalize") => {
++            let path = &args[2];
++            let source = std::fs::read(path).unwrap();
++            let lang = Lang::of(path).unwrap();
++            let syntax = Shared::new().parse(lang, &source);
++            let parsed = normalized(lang, path, &source, &syntax, true);
++            let raw = parsed.raw.unwrap();
++            let tokens: Vec<String> = raw
++                .iter()
++                .map(|token| {
++                    format!(
++                        "\"{}\"",
++                        token.iter().map(|b| format!("{b:02x}")).collect::<String>()
++                    )
++                })
++                .collect();
++            let safe: Vec<String> = parsed.safe.iter().map(bool::to_string).collect();
++            let params = Params {
++                k: number(3, 41),
++                w: number(4, 20),
++                cap: 64,
++                t: number(5, 5),
++                bits: 64,
++            };
++            let positions: Vec<String> = winnow(&parsed.tokens, params)
++                .iter()
++                .map(|(_, p)| p.to_string())
++                .collect();
++            println!(
++                "{{\"tokens\":[{}],\"safe\":[{}],\"rows\":{:?},\"positions\":[{}],\"unsafe_units\":{},\"error\":{}}}",
++                tokens.join(","),
++                safe.join(","),
++                parsed.rows,
++                positions.join(","),
++                parsed.unsafe_units,
++                parsed.error
++            );
++        }
++        Some("gen") => generate(Path::new(&args[2]), &args[3]),
++        Some("build") => build(
++            Path::new(&args[2]),
++            Path::new(&args[3]),
++            Params {
++                k: number(4, 41),
++                w: number(5, 20),
++                cap: number(6, 64),
++                t: number(7, 5),
++                bits: number(8, 64),
++            },
++        ),
++        Some("walk") => {
++            let root = Path::new(&args[2]);
++            let mut shared = Shared::new();
++            let files: Vec<(String, Vec<u8>, Syntax)> = source_files(root)
++                .into_iter()
++                .map(|path| {
++                    let source = std::fs::read(root.join(&path)).unwrap();
++                    let syntax = shared.parse(Lang::of(&path).unwrap(), &source);
++                    (path, source, syntax)
++                })
++                .collect();
++            let started = Instant::now();
++            let mut tokens = 0;
++            for _ in 0..number(3, 20) {
++                for (path, source, syntax) in &files {
++                    tokens += stream(Lang::of(path).unwrap(), path, source, syntax)
++                        .tokens
++                        .len();
++                }
++            }
++            println!(
++                "{tokens} tokens, {:.1} ns/token",
++                ms(started) * 1e6 / tokens as f64
++            );
++        }
++        Some("lines") => {
++            let root = Path::new(&args[2]);
++            let t = number(3, 60);
++            let mut shared = Shared::new();
++            let mut spans = Vec::new();
++            for path in source_files(root) {
++                let lang = Lang::of(&path).unwrap();
++                let source = std::fs::read(root.join(&path)).unwrap();
++                let syntax = shared.parse(lang, &source);
++                let parsed = stream(lang, &path, &source, &syntax);
++                let rows = &parsed.rows;
++                for start in 0..rows.len().saturating_sub(t - 1) {
++                    spans.push(rows[start + t - 1] - rows[start] + 1);
++                }
++            }
++            let summary = |values: &mut Vec<u32>| {
++                values.sort_unstable();
++                let at = |q: f64| {
++                    values
++                        .get(((values.len() as f64 - 1.0) * q) as usize)
++                        .copied()
++                        .unwrap_or(0)
++                };
++                format!(
++                    "n={} min={} p10={} median={} p90={} max={}",
++                    values.len(),
++                    at(0.0),
++                    at(0.1),
++                    at(0.5),
++                    at(0.9),
++                    at(1.0)
++                )
++            };
++            println!("{t} tokens span lines: {}", summary(&mut spans));
++        }
++        Some("query") => query(
++            Path::new(&args[2]),
++            Path::new(&args[3]),
++            number(4, 20),
++            number(5, 60),
++            args.get(6).map_or("spread", String::as_str),
++            args.get(7).is_some_and(|phase| phase == "stop"),
++            args.get(8).map(Path::new),
++        ),
++        _ => eprintln!(
++            "usage: gen DIR 10k|300k|1m | build ROOT INDEX [K W CAP MINIMIZER_T KEY_BITS] | query ROOT INDEX [N T spread|largest stop|full]"
++        ),
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn tokens(path: &str, source: &str) -> Vec<u64> {
++        let lang = Lang::of(path).unwrap();
++        let syntax = Shared::new().parse(lang, source.as_bytes());
++        stream(lang, path, source.as_bytes(), &syntax).tokens
++    }
++
++    #[test]
++    fn automatic_semicolons_keep_return_apart() {
++        let split = tokens("a.ts", "function f() { return\nvalue }");
++        let joined = tokens("a.ts", "function f() { return value }");
++        let explicit = tokens("a.ts", "function f() { return value; }");
++        assert_ne!(split, joined);
++        assert_eq!(joined, explicit);
++    }
++
++    #[test]
++    fn comments_layout_and_test_items_leave_no_tokens() {
++        let plain = tokens("a.rs", "fn f() -> u8 { 1 }");
++        let noisy = tokens(
++            "a.rs",
++            "// c\nfn f()\n  -> u8 { /* x */ 1 }\n#[cfg(test)]\nmod t { fn g() {} }",
++        );
++        assert_eq!(plain, noisy);
++    }
++
++    #[test]
++    fn import_aliases_carry_their_source() {
++        let a = tokens("a.ts", "import { parse as run } from \"parser-a\";\nrun();");
++        let b = tokens(
++            "a.ts",
++            "import { execute as run } from \"parser-b\";\nrun();",
++        );
++        assert_ne!(a[a.len() - 4..], b[b.len() - 4..]);
++    }
++
++    #[test]
++    fn winnowing_finds_every_shared_run_of_k_plus_w_minus_one() {
++        let params = Params {
++            k: 20,
++            w: 41,
++            cap: 64,
++            t: 0,
++            bits: 64,
++        };
++        let shared: Vec<u64> = (1000..1060).collect();
++        let left: Vec<u64> = (0..37).chain(shared.iter().copied()).collect();
++        let right: Vec<u64> = (500..511)
++            .chain(shared.iter().copied())
++            .chain(600..650)
++            .collect();
++        let keys = |t: &[u64]| {
++            winnow(t, params)
++                .into_iter()
++                .map(|p| p.0)
++                .collect::<std::collections::HashSet<_>>()
++        };
++        assert!(keys(&left).intersection(&keys(&right)).next().is_some());
++    }
++
++    #[test]
++    fn mod_minimizers_keep_one_selection_in_every_window() {
++        let params = Params {
++            k: 41,
++            w: 20,
++            cap: 64,
++            t: 5,
++            bits: 64,
++        };
++        let mut state = 7u64;
++        let tokens: Vec<u64> = (0..5000)
++            .map(|_| {
++                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
++                state >> 60
++            })
++            .collect();
++        let chosen: Vec<u32> = winnow(&tokens, params).into_iter().map(|p| p.1).collect();
++        assert!(
++            chosen
++                .windows(2)
++                .all(|pair| pair[1] - pair[0] <= params.w as u32)
++        );
++        assert!(chosen[0] < params.w as u32);
++        assert!(chosen[chosen.len() - 1] as usize > tokens.len() - params.k - params.w);
++        let shared: Vec<u64> = tokens[1000..1060].to_vec();
++        let left: Vec<u64> = (100..137).chain(shared.iter().copied()).collect();
++        let right: Vec<u64> = (200..211)
++            .chain(shared.iter().copied())
++            .chain(300..350)
++            .collect();
++        let keys = |t: &[u64]| {
++            winnow(t, params)
++                .into_iter()
++                .map(|p| p.0)
++                .collect::<std::collections::HashSet<_>>()
++        };
++        assert!(keys(&left).intersection(&keys(&right)).next().is_some());
++    }
++}
++
++// Research artifact retained by the per-run full-input reuse experiment.
++pub(crate) struct SharedArtifact {
++    pub tokens: Vec<u64>,
++    pub rows: Vec<u32>,
++    pub safe: Vec<bool>,
++    pub prints: Vec<(u64, u32)>,
++    pub unsafe_units: usize,
++    pub error: bool,
++}
++impl SharedArtifact {
++    pub fn bytes(&self) -> usize {
++        self.tokens.capacity() * std::mem::size_of::<u64>()
++            + self.rows.capacity() * std::mem::size_of::<u32>()
++            + self.safe.capacity() * std::mem::size_of::<bool>()
++            + self.prints.capacity() * std::mem::size_of::<(u64,u32)>()
++            + std::mem::size_of::<Self>()
++    }
++}
++pub(crate) fn artifact_shared(path: &str, source: &[u8], root: Node) -> Option<SharedArtifact> {
++    let lang = Lang::of(path)?;
++    let parsed = normalized_root(lang, path, source, root, false);
++    let prints = fingerprints(&parsed, Params {k:41,w:20,t:5,cap:64,bits:64});
++    Some(SharedArtifact {tokens: parsed.tokens,rows:parsed.rows,safe:parsed.safe,
++        prints,unsafe_units:parsed.unsafe_units,error:parsed.error})
++}
++
++pub(crate) fn reuse_probe() {
++    let _report = crate::dup_accounting::Report;
++    let mut shared = Shared::new();
++    for (path, source) in [
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value + 1;"),
++        ("b/main.ts", "import { value } from './dep'; const x = value;"),
++        ("a/main.tsx", "import { value } from './dep'; const x = value;"),
++        ("a/main.ts", "import { value } from './dep'; const x = value;"),
++    ] {
++        let source = source.repeat(20);
++        let tree = shared.parse(Lang::of(path).unwrap(), source.as_bytes());
++        crate::dup_accounting::consume(path, source.as_bytes(), tree.root_node());
++    }
++    crate::dup_accounting::probe_assertions();
++}
+--- /dev/null
++++ b/src/dup_research/postings.rs
+@@ -0,0 +1,237 @@
++const SAMPLE: usize = 256;
++
++pub fn encode(entries: &[(u64, u32)], width: u32) -> Vec<u8> {
++    let n = entries.len().max(1) as u64;
++    let top = entries.last().map_or(0, |entry| entry.0);
++    let low_width = (top / n).checked_ilog2().unwrap_or(0).min(56);
++    let high_bits = entries.len() + (top >> low_width) as usize + 1;
++    let mut highs = vec![0u64; high_bits.div_ceil(64)];
++    let mut lows = vec![0u8; (entries.len() * low_width as usize).div_ceil(8) + 8];
++    let mut offsets = vec![0u8; (entries.len() * width as usize).div_ceil(8) + 8];
++    for (index, (key, offset)) in entries.iter().enumerate() {
++        let bit = (key >> low_width) as usize + index;
++        highs[bit / 64] |= 1 << (bit % 64);
++        pack(&mut lows, index * low_width as usize, key & mask(low_width));
++        pack(&mut offsets, index * width as usize, u64::from(*offset));
++    }
++    let mut samples = Vec::new();
++    let mut zeros = 0usize;
++    for bit in 0..highs.len() * 64 {
++        if highs[bit / 64] >> (bit % 64) & 1 == 0 {
++            if zeros.is_multiple_of(SAMPLE) {
++                samples.push(bit as u32);
++            }
++            zeros += 1;
++        }
++    }
++    let mut out = Vec::new();
++    for value in [
++        entries.len(),
++        width as usize,
++        low_width as usize,
++        highs.len(),
++        samples.len(),
++    ] {
++        out.extend_from_slice(&(value as u32).to_le_bytes());
++    }
++    out.extend(lows);
++    highs
++        .iter()
++        .for_each(|word| out.extend_from_slice(&word.to_le_bytes()));
++    samples
++        .iter()
++        .for_each(|bit| out.extend_from_slice(&bit.to_le_bytes()));
++    out.extend(offsets);
++    out
++}
++
++fn mask(width: u32) -> u64 {
++    if width == 0 {
++        0
++    } else {
++        u64::MAX >> (64 - width)
++    }
++}
++
++fn pack(buffer: &mut [u8], bit: usize, value: u64) {
++    let word = u64::from_le_bytes(buffer[bit / 8..bit / 8 + 8].try_into().unwrap());
++    buffer[bit / 8..bit / 8 + 8].copy_from_slice(&(word | (value << (bit % 8))).to_le_bytes());
++}
++
++fn unpack(buffer: &[u8], bit: usize, width: u32) -> u64 {
++    let word = u64::from_le_bytes(buffer[bit / 8..bit / 8 + 8].try_into().unwrap());
++    (word >> (bit % 8)) & mask(width)
++}
++
++pub fn partition(len: usize, below: impl Fn(usize) -> bool) -> usize {
++    let (mut low, mut high) = (0, len);
++    while low < high {
++        let middle = (low + high) / 2;
++        if below(middle) {
++            low = middle + 1;
++        } else {
++            high = middle;
++        }
++    }
++    low
++}
++
++pub struct Postings<'a> {
++    width: u32,
++    low_width: u32,
++    lows: &'a [u8],
++    highs: &'a [u8],
++    samples: &'a [u8],
++    offsets: &'a [u8],
++}
++
++impl<'a> Postings<'a> {
++    pub fn read(bytes: &'a [u8]) -> (Postings<'a>, usize) {
++        let word = |at: usize| u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap()) as usize;
++        let (len, width, low_width, high_words, samples) =
++            (word(0), word(4), word(8), word(12), word(16));
++        let mut at = 20;
++        let mut take = |size: usize| {
++            let slice = &bytes[at..at + size];
++            at += size;
++            slice
++        };
++        let lows = take((len * low_width).div_ceil(8) + 8);
++        let highs = take(high_words * 8);
++        let samples = take(samples * 4);
++        let offsets = take((len * width).div_ceil(8) + 8);
++        let postings = Postings {
++            width: width as u32,
++            low_width: low_width as u32,
++            lows,
++            highs,
++            samples,
++            offsets,
++        };
++        (postings, at)
++    }
++
++    fn high(&self, word: usize) -> u64 {
++        u64::from_le_bytes(self.highs[word * 8..word * 8 + 8].try_into().unwrap())
++    }
++
++    fn select_zero(&self, rank: usize) -> Option<usize> {
++        let sample = rank / SAMPLE;
++        if sample * 4 >= self.samples.len() {
++            return None;
++        }
++        let mut bit =
++            u32::from_le_bytes(self.samples[sample * 4..sample * 4 + 4].try_into().unwrap())
++                as usize;
++        let mut left = rank % SAMPLE;
++        loop {
++            if bit / 64 >= self.highs.len() / 8 {
++                return None;
++            }
++            let zeros = !self.high(bit / 64) >> (bit % 64);
++            let available = (zeros.count_ones() as usize).min(64 - bit % 64);
++            if left < available {
++                let mut word = zeros;
++                for _ in 0..left {
++                    word &= word - 1;
++                }
++                return Some(bit + word.trailing_zeros() as usize);
++            }
++            left -= available;
++            bit = (bit / 64 + 1) * 64;
++        }
++    }
++
++    fn bucket(&self, key: u64) -> Option<(usize, usize)> {
++        let bucket = (key >> self.low_width) as usize;
++        let bit = match bucket {
++            0 => 0,
++            _ => self.select_zero(bucket - 1)? + 1,
++        };
++        Some((bit, bit - bucket))
++    }
++
++    fn range(&self, key: u64) -> Option<(usize, usize)> {
++        let (_, first) = self.bucket(key)?;
++        let bucket = (key >> self.low_width) as usize;
++        let end = self.select_zero(bucket)? - bucket;
++        let low = key & mask(self.low_width);
++        let low_at = |i: usize| unpack(self.lows, i * self.low_width as usize, self.low_width);
++        let start = first + partition(end - first, |i| low_at(first + i) < low);
++        let stop = first + partition(end - first, |i| low_at(first + i) <= low);
++        Some((start, stop))
++    }
++
++    pub fn contains(&self, key: u64, offset: u32) -> bool {
++        let Some((start, stop)) = self.range(key) else {
++            return false;
++        };
++        let offset_at = |i: usize| unpack(self.offsets, i * self.width as usize, self.width) as u32;
++        let found = start + partition(stop - start, |i| offset_at(start + i) < offset);
++        found < stop && offset_at(found) == offset
++    }
++
++    pub fn find(&self, key: u64, out: &mut Vec<u32>) {
++        self.find_limit(key, out, usize::MAX);
++    }
++
++    pub fn find_limit(&self, key: u64, out: &mut Vec<u32>, limit: usize) {
++        let Some((start, stop)) = self.range(key) else {
++            return;
++        };
++        for index in (start..stop).take(limit.saturating_sub(out.len())) {
++            out.push(unpack(self.offsets, index * self.width as usize, self.width) as u32);
++        }
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn finds_every_offset_of_a_key_across_blocks() {
++        let mut entries: Vec<(u64, u32)> =
++            (0..500u32).map(|i| (u64::from(i / 3) * 1000, i)).collect();
++        entries.extend((0..200u32).map(|i| (77_000, 600 + i)));
++        entries.sort_unstable();
++        entries.push((1 << 40, 3));
++        let bytes = encode(&entries, 10);
++        let (postings, end) = Postings::read(&bytes);
++        assert_eq!(end, bytes.len());
++        for key in [0, 1000, 77_000, 166_000, 5, 1 << 40] {
++            let mut found = Vec::new();
++            postings.find(key, &mut found);
++            let expected: Vec<u32> = entries.iter().filter(|e| e.0 == key).map(|e| e.1).collect();
++            assert_eq!(found, expected, "key {key}");
++        }
++    }
++
++    #[test]
++    fn matches_a_linear_scan_on_random_keys() {
++        let mut state = 0x9e37_79b9_7f4a_7c15u64;
++        let mut next = || {
++            state = state
++                .wrapping_mul(6364136223846793005)
++                .wrapping_add(1442695040888963407);
++            state >> 33
++        };
++        let mut entries: Vec<(u64, u32)> = (0..5000).map(|i| (next() % 40_000, i)).collect();
++        entries.sort_unstable();
++        let bytes = encode(&entries, 13);
++        let (postings, _) = Postings::read(&bytes);
++        for key in (0..40_100).step_by(7) {
++            let mut found = Vec::new();
++            postings.find(key, &mut found);
++            let expected: Vec<u32> = entries.iter().filter(|e| e.0 == key).map(|e| e.1).collect();
++            assert_eq!(found, expected, "key {key}");
++            for offset in 0..1000 {
++                assert_eq!(
++                    postings.contains(key, offset),
++                    expected.contains(&offset),
++                    "key {key} offset {offset}"
++                );
++            }
++        }
++    }
++}
+--- /dev/null
++++ b/src/dup_research/fixture.rs
+@@ -0,0 +1,332 @@
++// Copied verbatim from tests/performance.rs at c1805539; the digests in the profiles check the copy.
++#![allow(dead_code)]
++use std::path::PathBuf;
++
++pub struct Tree(pub PathBuf);
++
++impl Tree {
++    pub fn write(&self, path: &str, source: &str) {
++        let target = self.0.join(path);
++        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
++        std::fs::write(target, source).unwrap();
++    }
++}
++
++pub const DECLARATIONS_PER_KLOC: std::ops::RangeInclusive<usize> = 270..=290;
++
++#[derive(Clone, Copy)]
++pub struct Profile {
++    pub name: &'static str,
++    pub units: Option<fn(usize) -> usize>,
++    pub expected: Option<Generated>,
++}
++
++#[derive(Clone, Copy, Debug, PartialEq)]
++pub struct Generated {
++    pub loc: usize,
++    pub declarations: usize,
++    pub digest: u64,
++}
++
++pub const BASE: Profile = Profile {
++    name: "file-count",
++    units: None,
++    expected: None,
++};
++pub const DENSE_300K: Profile = Profile {
++    name: "source-dense-300k",
++    units: Some(one_unit),
++    expected: Some(Generated {
++        loc: 325_077,
++        declarations: 90_007,
++        digest: 17_738_620_850_890_864_555,
++    }),
++};
++pub const DENSE_1M: Profile = Profile {
++    name: "source-dense-1m",
++    units: Some(three_or_four_units),
++    expected: Some(Generated {
++        loc: 1_033_827,
++        declarations: 292_507,
++        digest: 5_045_938_053_977_738_811,
++    }),
++};
++
++pub fn one_unit(_: usize) -> usize {
++    1
++}
++
++pub fn three_or_four_units(index: usize) -> usize {
++    3 + usize::from(index.is_multiple_of(4))
++}
++pub fn write_sources(
++    tree: &Tree,
++    files_per_language: usize,
++    tsx: usize,
++    profile: Profile,
++) -> Generated {
++    let mut generated = Generated {
++        loc: 0,
++        declarations: 0,
++        digest: 0xcbf2_9ce4_8422_2325,
++    };
++    for index in 0..files_per_language {
++        let source = rust_source_for(index, files_per_language, profile);
++        record(tree, &mut generated, &rust_path(index), &source);
++    }
++    for index in 0..files_per_language {
++        let source = typescript_source_for(index, tsx, files_per_language, profile);
++        record(tree, &mut generated, &typescript_path(index, tsx), &source);
++    }
++    generated
++}
++
++pub fn record(tree: &Tree, generated: &mut Generated, path: &str, source: &str) {
++    generated.loc += source.bytes().filter(|byte| *byte == b'\n').count();
++    generated.declarations += source.lines().filter(|line| declares(line)).count();
++    for byte in path.bytes().chain([0]).chain(source.bytes()).chain([0]) {
++        generated.digest = (generated.digest ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
++    }
++    tree.write(path, source);
++}
++
++pub fn declares(line: &str) -> bool {
++    [
++        "const ",
++        "struct ",
++        "type ",
++        "impl ",
++        "fn ",
++        "pub fn ",
++        "    fn ",
++        "interface ",
++        "class ",
++        "    adjust(",
++        "function ",
++        "export function ",
++    ]
++    .iter()
++    .any(|start| line.starts_with(start))
++}
++
++pub fn rust_path(index: usize) -> String {
++    match index {
++        0 => "rust/src/lib.rs".to_string(),
++        1 => "rust/src/held_escape.rs".to_string(),
++        2 => "rust/src/held_stub.rs".to_string(),
++        3 => "rust/tests/fixture_test.rs".to_string(),
++        _ => format!("rust/src/module_{index:04}.rs"),
++    }
++}
++
++pub fn typescript_path(index: usize, tsx: usize) -> String {
++    match index {
++        0 => "web/src/index.ts".to_string(),
++        1 => "web/src/held_escape.ts".to_string(),
++        2 => "web/src/held_stub.ts".to_string(),
++        3 => "web/src/fixture.test.ts".to_string(),
++        index if index < tsx + 4 => {
++            format!("web/src/components/component_{:04}.tsx", index - 4)
++        }
++        _ => format!("web/src/module_{index:04}.ts"),
++    }
++}
++
++pub fn rust_source(index: usize, total: usize) -> String {
++    match index {
++        0 => {
++            "pub mod held_escape;\npub mod held_stub;\npub mod module_0004;\npub mod module_0005;\n"
++                .to_string()
++        }
++        1 => {
++            "pub fn held_escape(input: usize) -> usize {\n    Some(input).unwrap()\n}\n".to_string()
++        }
++        2 => "pub fn held_stub() -> usize {\n    todo!()\n}\n".to_string(),
++        3 => "#[test]\nfn test_fixture_contract() {\n    assert_eq!(2 + 2, 4);\n}\n".to_string(),
++        _ if index.is_multiple_of(10) => rust_complex(index, total),
++        _ => rust_simple(index, total),
++    }
++}
++
++pub fn rust_source_for(index: usize, total: usize, profile: Profile) -> String {
++    match profile.units {
++        Some(units) => dense_rust_source(index, total, units(index)),
++        None => rust_source(index, total),
++    }
++}
++
++pub fn dense_rust_source(index: usize, total: usize, units: usize) -> String {
++    let body = dense_rust_body(index, total, units);
++    match index {
++        0 => format!(
++            "pub mod held_escape;\npub mod held_stub;\npub mod module_0004;\npub mod module_0005;\nfn main() {{ value_0000(1); }}\n{body}"
++        ),
++        1 => format!(
++            "pub fn held_escape(input: usize) -> usize {{\n    Some(input).{}\n}}\n{body}",
++            "unwrap()"
++        ),
++        2 => format!("pub fn held_stub() -> usize {{\n    todo!()\n}}\n{body}"),
++        3 => {
++            format!("#[test]\nfn test_fixture_contract() {{\n    assert_eq!(2 + 2, 4);\n}}\n{body}")
++        }
++        _ => body,
++    }
++}
++
++pub fn dense_rust_body(index: usize, total: usize, units: usize) -> String {
++    let dependency = if index == 0 || index == 4 {
++        total - 1
++    } else {
++        index - 1
++    };
++    let bucket = index % 256;
++    let mut source = format!("use crate::module_{dependency:04}::value_{dependency:04};\n");
++    for unit in 0..units {
++        let id = unit_id(index, unit);
++        let calls = unit_calls(index, unit, units, dependency);
++        source.push_str(&format!(
++            "const SLOT_{id}: usize = {index};\nconst PHASE_{id}: &str = \"base\";\nstruct Record_{id} {{\n    value: usize,\n}}\ntype Alias_{id} = Record_{id};\nfn shared_{bucket:02}_{unit}(input: usize) -> usize {{\n    input + SLOT_{id} + PHASE_{id}.len()\n}}\nimpl Record_{id} {{\n    fn adjust(&self) -> usize {{\n        self.value + SLOT_{id}\n    }}\n}}\npub fn value_{id}(input: usize) -> usize {{\n    let record: Alias_{id} = Record_{id} {{ value: input }};\n    shared_{bucket:02}_{unit}(record.adjust()) + branch_{id}(input){calls}\n}}\nfn branch_{id}(mut value: usize) -> usize {{\n    if value % 2 == 0 {{\n        value += SLOT_{id};\n    }} else {{\n        value += 1;\n    }}\n    match value % 3 {{\n        0 => value,\n        1 => value + 1,\n        _ => value + 2,\n    }}\n}}\n"
++        ));
++    }
++    source
++}
++
++pub fn unit_id(index: usize, unit: usize) -> String {
++    match unit {
++        0 => format!("{index:04}"),
++        _ => format!("{index:04}_{unit}"),
++    }
++}
++
++pub fn unit_calls(index: usize, unit: usize, units: usize, dependency: usize) -> String {
++    let mut calls = String::new();
++    if unit == 0 {
++        calls.push_str(&format!(" + value_{dependency:04}(input)"));
++    }
++    if unit + 1 < units {
++        calls.push_str(&format!(" + value_{}(input)", unit_id(index, unit + 1)));
++    }
++    calls
++}
++
++pub fn rust_simple(index: usize, total: usize) -> String {
++    let dependency = if index == 4 { total - 1 } else { index - 1 };
++    format!(
++        "use crate::module_{dependency:04}::value_{dependency};\n\npub fn value_{index}(input: usize) -> usize {{\n    input + value_{dependency}(input) + {index}\n}}\n// base\n"
++    )
++}
++
++pub fn rust_complex(index: usize, total: usize) -> String {
++    let dependency = if index == 4 { total - 1 } else { index - 1 };
++    format!(
++        "use crate::module_{dependency:04}::value_{dependency};\n\npub fn value_{index}(input: usize) -> usize {{\n    input + value_{dependency}(input) + {index}\n}}\n\npub fn branch_{index}(mut value: usize) -> usize {{\n    if value % 2 == 0 {{\n        value += 1;\n    }} else {{\n        value += 2;\n    }}\n    for step in 0..3 {{\n        if step == 1 {{\n            value += step;\n        }}\n    }}\n    if value % 5 == 0 {{\n        value += 5;\n    }}\n    if value % 7 == 0 {{\n        value += 7;\n    }}\n    match value % 3 {{\n        0 => value,\n        1 => value + 1,\n        _ => value + 2,\n    }}\n}}\n// base\n"
++    )
++}
++
++pub fn typescript_source_for(index: usize, tsx: usize, total: usize, profile: Profile) -> String {
++    match profile.units {
++        Some(units) => dense_typescript_source(index, tsx, total, units(index)),
++        None => typescript_source(index, tsx),
++    }
++}
++
++pub fn dense_typescript_source(index: usize, tsx: usize, total: usize, units: usize) -> String {
++    let body = dense_typescript_body(index, tsx, total, units);
++    let first = tsx + 4;
++    let component = if (4..first).contains(&index) {
++        format!(
++            "export const Component_{:04} = (input: number) => <span>{{input}}</span>;\n",
++            index - 4
++        )
++    } else {
++        String::new()
++    };
++    match index {
++        0 => format!("export {{ value_{first:04} }} from \"./module_{first:04}\";\n{body}"),
++        1 => format!(
++            "export function heldEscape(input: unknown): unknown {{\n    return input as any;\n}}\n{body}"
++        ),
++        2 => format!(
++            "export function heldStub(): never {{\n    throw new Error(\"not implemented\");\n}}\n{body}"
++        ),
++        3 => format!(
++            "import {{ value_{first:04} }} from \"./module_{first:04}\";\nexport function test_fixture(): number {{\n    return value_{first:04}(1);\n}}\nit(\"keeps the fixture\", () => value_{first:04}(1));\n{body}"
++        ),
++        _ => component + &body,
++    }
++}
++
++pub fn dense_typescript_body(index: usize, tsx: usize, total: usize, units: usize) -> String {
++    let dependency = if index == 0 || index == tsx + 4 {
++        total - 1
++    } else {
++        index - 1
++    };
++    let bucket = index % 256;
++    let mut source =
++        format!("import {{ value_{dependency:04} }} from \"./module_{dependency:04}\";\n");
++    for unit in 0..units {
++        let id = unit_id(index, unit);
++        let calls = unit_calls(index, unit, units, dependency);
++        source.push_str(&format!(
++            "const SLOT_{id}: number = {index};\nconst PHASE_{id} = \"base\";\ninterface Record_{id} {{\n    value: number;\n}}\ntype Alias_{id} = Record_{id};\nclass Holder_{id} {{\n    constructor(private value: number) {{}}\n    adjust(): number {{\n        return this.value + SLOT_{id};\n    }}\n}}\nfunction shared_{bucket:02}_{unit}(input: number): number {{\n    return input + SLOT_{id} + PHASE_{id}.length;\n}}\nexport function value_{id}(input: number): number {{\n    const record: Alias_{id} = {{ value: input }};\n    const holder = new Holder_{id}(record.value);\n    return shared_{bucket:02}_{unit}(holder.adjust()) + branch_{id}(input){calls};\n}}\nfunction branch_{id}(value: number): number {{\n    let result = value;\n    if (result % 2 === 0) {{\n        result += SLOT_{id};\n    }} else {{\n        result += 1;\n    }}\n    switch (result % 3) {{\n        case 0: return result;\n        case 1: return result + 1;\n        default: return result + 2;\n    }}\n}}\n"
++        ));
++    }
++    source
++}
++
++pub fn typescript_source(index: usize, tsx: usize) -> String {
++    match index {
++        0 => format!(
++            "export {{ value_{first:04} }} from \"./module_{first:04}\";\n",
++            first = tsx + 4
++        ),
++        1 => "export function heldEscape(input: unknown): unknown {\n    return input as any;\n}\n"
++            .to_string(),
++        2 => "export function heldStub(): never {\n    throw new Error(\"not implemented\");\n}\n"
++            .to_string(),
++        3 => format!(
++            "import {{ value_{first:04} }} from \"./module_{first:04}\";\nexport function test_fixture(): number {{\n    return value_{first}(1);\n}}\nit(\"keeps the fixture\", () => value_{first}(1));\n",
++            first = tsx + 4
++        ),
++        index if index < tsx + 4 => format!(
++            "export const Component_{index:04} = (input: number) => <span>{{input}}</span>;\n// base\n"
++        ),
++        _ if index.is_multiple_of(10) => typescript_complex(index, tsx),
++        _ => typescript_simple(index, tsx),
++    }
++}
++
++pub fn typescript_simple(index: usize, tsx: usize) -> String {
++    let first = tsx + 4;
++    if index == first {
++        format!(
++            "export function value_{index}(input: number): number {{\n    return input + {index};\n}}\n// base\n"
++        )
++    } else {
++        let dependency = index - 1;
++        format!(
++            "import {{ value_{dependency:04} }} from \"./module_{dependency:04}\";\n\nexport function value_{index}(input: number): number {{\n    return input + value_{dependency}(input) + {index};\n}}\n// base\n"
++        )
++    }
++}
++
++pub fn typescript_complex(index: usize, tsx: usize) -> String {
++    let first = tsx + 4;
++    let import_line = if index == first {
++        String::new()
++    } else {
++        format!(
++            "import {{ value_{dependency:04} }} from \"./module_{dependency:04}\";\n\n",
++            dependency = index - 1
++        )
++    };
++    let value = if index == first {
++        format!("    return input + {index};")
++    } else {
++        format!("    return input + value_{}(input) + {index};", index - 1)
++    };
++    format!(
++        "{import_line}export function value_{index}(input: number): number {{\n{value}\n}}\n\nexport function branch_{index}(value: number): number {{\n    let result = value;\n    if (result % 2 === 0) {{\n        result += 1;\n    }} else {{\n        result += 2;\n    }}\n    for (const step of [0, 1, 2]) {{\n        if (step === 1) {{\n            result += step;\n        }}\n    }}\n    if (result % 5 === 0) {{\n        result += 5;\n    }}\n    if (result % 7 === 0) {{\n        result += 7;\n    }}\n    switch (result % 3) {{\n        case 0: return result;\n        case 1: return result + 1;\n        default: return result + 2;\n    }}\n}}\n// base\n"
++    )
++}

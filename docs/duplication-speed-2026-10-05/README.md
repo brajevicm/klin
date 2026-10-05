@@ -1,16 +1,48 @@
 # Exact copied regions: speed prototype, 2026-10-05
 
-This note is step 1 of #480 under #478. It measures whether a detector of
-exact copied regions can run inside the #478 Stop limits. Step 2 (threshold)
-did not start.
+**Baseline verdict: reject this candidate for production integration.** Read
+[FINAL.md](FINAL.md) for corrected evidence and [CHECKLIST.md](CHECKLIST.md) for
+the plan and outcomes. Stop budgets fail on large changes and shared-tree cold
+work; blind check-only calibration selects no T in either language.
 
-Status: sections 1 to 6 measure designs A and B (data in `results-ab/`).
-Design A misses the cache limit. Design B meets the limits but can block a
-region that is not an exact copy. Section 7 is the design that replaces both:
-design C, the proven chain. It gave no false positive in any run and meets
-every #478 limit, at 1M too. Section 8 narrows design C's band from 58 to
-38 tokens with a smaller index scheme. That is now the default, and it meets
-every #478 limit at 1M.
+The PR update is in [PR-REPORT.md](PR-REPORT.md).
+
+Optimization work is tracked in [OPTIMIZATIONS.md](OPTIMIZATIONS.md). New
+measurements live in `results-optimizations/`; the corrected baseline in
+`results-regions/` is frozen and predates O1/O2. The changes do not establish
+production feasibility or a usable threshold.
+
+The current prototype is region-only, with names retained and one threshold T.
+Sorted minimizers, bounded/incomplete Stop processing, conservative normalization
+safety and an independent exhaustive text oracle replace the historical gaps.
+64-bit hashes select candidates; full check confirms normalized token text.
+Generic region lineage and bounded production full-check reporting remain
+unimplemented. This standalone research crate does not change shipped klin.
+
+Commands:
+
+```sh
+cargo test --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
+cargo clippy --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml --all-targets -- -D warnings
+# Prepared roots must match the pinned revisions in results-regions/provenance.json.
+WORK=/tmp/klin490-rerun docs/duplication-speed-2026-10-05/measure.sh /tmp/klin490-corpus
+```
+
+`dup-speed build ROOT INDEX [K W CAP MINIMIZER_T KEY_BITS]` writes REG2 indexes;
+older formats require rebuilding. `query ROOT INDEX [N T spread|largest stop|full
+MANIFEST]` optionally takes changed paths, including additions/deletions. Stop
+reads no validation chain; full mode includes deliberately expensive research
+verification. `normalize PATH` supplies text/safety/position diagnostics.
+`lines ROOT [T]` reports region line spans. `run.sh` and `measure.sh` now write
+to `results-rerun/`; `RESULTS` selects another output directory. The command above
+uses fresh index storage and preserves the frozen baseline.
+`summary.py` accepts an alternate results directory.
+
+The sections below describe **historical implementations and measurements**,
+including the removed short-function detector. They establish no performance,
+precision or complete recall claim for the corrected candidate.
+
+## Historical measurements
 
 ## 1. Prototype
 
