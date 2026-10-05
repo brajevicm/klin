@@ -8,8 +8,7 @@ Status: sections 1 to 6 measure designs A and B (data in `results-ab/`).
 Design A misses the cache limit. Design B meets the limits but can block a
 region that is not an exact copy. Section 7 is the design that replaces both:
 design C, the proven chain. It gave no false positive in any run and meets
-every #478 limit on the trees measured. The 1M rows of design C wait for the
-owner.
+every #478 limit, at 1M too.
 
 ## 1. Prototype
 
@@ -340,10 +339,26 @@ WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
 python3 docs/duplication-speed-2026-10-05/summary.py
 ```
 
-From 300k to 1M, the token count grows 3.15 times. If the index grows the same
-way, it is about 2.4 MB, or 6.4% of 37,301,283 bytes. The warm 20 time of
-design B grew from 1.10 ms to 2.86 ms over the same step. The 1M row of
-design C is not measured yet, so these values are projections only.
+The owner ran these commands on the fixture from section 6.
+
+| #478 Stop limit | Design C at 1M | Result |
+|---|---|---|
+| 20 changed: median ≤ 15 ms, max ≤ 25 ms | 4.02 ms, 4.06 ms | met |
+| 100 changed: median ≤ 50 ms | 15.81 ms | met |
+| Cache growth ≤ 10% of 37,301,283 bytes | 2,710,514 bytes (regions 1,687,707, functions 1,022,795, capped keys 12), 7.3% | met |
+| Cold ≤ 5% slower | 1,352 ms on the 31.76 s cold hook, 4.3% | met |
+| No extra parses, no reads of unchanged source, no whole-tree walks, no external processes | the query reads the index and the changed files only | met by design |
+
+- The path table adds 305,671 bytes. klin would use its own file list, so it
+  is not counted. With it, the index is 8.1%.
+- The 1M index holds 130,030 of 146,278 functions.
+- Every query was INCOMPLETE (19 and 128 capped hits), as at 10k and 300k.
+  So these times leave out the work for capped postings.
+- The warm peak RSS of about 32 MB includes the validation, which reads the
+  whole 23.6 MB token chain. The Stop path does not read the chain.
+- There were no false positives and no missed copies at 1M. There were also
+  no true regions of 60 tokens or more, because the capped keys hide the
+  fixture's repeated bodies.
 
 ### Open points
 
