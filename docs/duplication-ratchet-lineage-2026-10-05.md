@@ -109,79 +109,87 @@ A cohort of size one has no legacy duplicate debt. A cohort of size `k` has
 
 ### Conservative cohort attribution
 
-A current occurrence may be attributed to a base cohort only through a rule
-that conserves one base occurrence slot. The ratchet does not need to claim an
-exact historical site when cohort-level evidence is sufficient.
+A current occurrence may be attributed to a base cohort only through evidence
+that conserves one base occurrence slot. The ratchet never invents ancestry to
+make a current multiplicity convenient.
 
-There are three lineage mechanisms.
+There are exactly two admitted lineage mechanisms.
 
-1. **Version-compatible structural site identity**
+1. **Version-compatible same-file structural site identity**
 
-   A before and current occurrence may pair across fingerprint changes when
-   both carry the same supported family-specific structural identity, that
-   identity is unambiguous on both sides, and the path relationship is known
-   (same path or an explicit rename/move mapping).
+   A before and current occurrence may pair across fingerprint changes only
+   when both carry the same supported family-specific structural identity, that
+   identity is unambiguous on both sides, and both occurrences are in the same
+   mapped physical path.
 
-   This is the strongest bridge for synchronized edits such as `H1 -> H2`.
-   The rule does not admit raw line proximity or a guessed ordinal as identity.
+   This is the bridge needed for synchronized edits such as `H1 -> H2`.
+   It deliberately does **not** extend #425's proven contract across a file
+   rename/move. #425's admitted identity is file-scoped; a cross-file move plus
+   implementation change therefore remains lineage-unknown until a separate
+   identity contract proves that case.
 
-2. **Same-fingerprint replacement**
+2. **Same-fingerprint replacement, only when competing ancestry is resolved**
 
    After proven site lineage is consumed, an unmatched removed base occurrence
-   of cohort `H` may be consumed by one unmatched current occurrence whose
-   fingerprint is also `H`.
+   of cohort `H` may conserve one unmatched current occurrence whose fingerprint
+   is also `H` **only when no unresolved cross-fingerprint ancestry could make
+   that current occurrence a descendant of another base cohort**.
 
-   The exact historical site does not need to be guessed. The only fact needed
-   by this ratchet is that one occurrence of the same canonical implementation
-   disappeared and one appeared. This preserves #48's move/replacement
-   behavior.
-
-3. **Unique changed-fingerprint continuation**
-
-   After the first two mechanisms, a still-unused removed slot from base cohort
-   `C_h` may be attributed to an unmatched occurrence in a changed-fingerprint
-   successor group only when all of these hold:
-
-   - the cohort has at least one **proven** current descendant;
-   - it has no current continuation at the original fingerprint `h`;
-   - every proven current descendant of the cohort belongs to the same one
-     successor fingerprint `H'`;
-   - the slot is consumed by an occurrence in that same `H'` group.
-
-   This is cohort-level continuation, not a guessed site-to-site match. It
-   handles, for example:
+   The useful case is a semantically unchanged relocation/replacement:
 
    ```text
-   base:  A=H1  B=H1
-   after: A=H2  C=H2
+   base:   one H occurrence disappears
+   after:  one H occurrence appears
    ```
 
-   when `A -> A` is proven and `B` was removed: the unused `B` slot may
-   follow the sole proven successor group `H2`, so the legacy pair remains
-   held.
+   When lineage coverage is complete enough to rule out a competing origin, no
+   exact historical site needs to be guessed; one `H` slot disappeared and one
+   `H` occurrence appeared.
 
-   If the cohort has multiple successor groups, or no proven successor at all,
-   no changed-fingerprint slot is assigned by this rule.
+   This fallback is **not** safe merely because the fingerprints match. For
+   example:
 
-A base occurrence slot can supply at most one current occurrence. No other
-cross-fingerprint attribution is inferred.
+   ```text
+   base:   A=H1  C=H1     B=H2
+   after:          C=H1   B=H1
+           A removed
+   ```
 
-### Definitely new
+   If `B: H2 -> H1` is unresolved, the removed `A:H1` slot must not be assigned
+   to `B` as an exact replacement. Doing so would hide a real convergence of
+   independent cohorts. The `H1` group is incomplete unless other evidence
+   resolves B's ancestry.
 
-A current occurrence is definitely new when, after certified structural
-pairing and same-fingerprint replacement accounting, no compatible base
-occurrence can supply it and its creation is positively established by the
-available identity/cardinality evidence.
+A base occurrence slot can supply at most one current occurrence. No
+cross-fingerprint cohort continuation is inferred from "sole successor",
+cardinality, line proximity, rename similarity, or another heuristic.
 
-For same-fingerprint multiplicity growth, cardinality itself can prove how many
-current occurrences are new even if several equivalent sites are otherwise
-indistinguishable.
+### Definitely-new count versus definitely-new site
+
+The ratchet distinguishes two claims:
+
+- **definitely-new count**: evidence proves that at least `q` occurrences in
+  a current clone group cannot be supplied by any compatible base cohort;
+- **proven-new site**: evidence additionally proves which physical current
+  occurrence is one of those new occurrences.
+
+Absence of a certified ancestor is **not** positive evidence of newness when
+the applicable identity is unsupported, ambiguous, incompatible, or otherwise
+unable to exclude a predecessor.
+
+Cardinality may prove a definitely-new **count** without proving a definitely-new
+**site**. For example, a complete comparable base/current count can establish
+that one extra `H` occurrence exists even when two equivalent current sites
+cannot be ordered historically. The product may fail the clone group while
+using a deterministic representative for presentation, but it must not claim
+that representative is certainly "the copy".
 
 ### Lineage-unknown
 
 A current occurrence is lineage-unknown when deciding whether it descended
 from an old cohort would require guessing an ambiguous, unsupported or
-incompatible identity.
+incompatible identity, or when a nominal same-fingerprint replacement has a
+competing unresolved cross-fingerprint ancestry.
 
 Unknown lineage is not silently treated as either new or held.
 
@@ -240,7 +248,7 @@ read or parsed.
 
 ### 2. Establish structural lineage first
 
-Within each mapped before/current path pair:
+Within each same-path before/current file pair:
 
 1. consider only identities whose version is known and equal;
 2. an identity participates only when it is uniquely identified on both sides;
@@ -248,9 +256,13 @@ Within each mapped before/current path pair:
 4. record the current occurrence's source cohort as the base occurrence's
    canonical fingerprint cohort.
 
-This pairing runs before same-fingerprint replacement so a newly converged
+This pairing runs before replacement accounting so a newly converged
 implementation cannot steal an old same-fingerprint occurrence from its real
 site.
+
+A Git rename/similarity mapping is not sufficient to carry cross-fingerprint
+structural lineage. A cross-file `H1 -> H2` transition is lineage-unknown
+unless a future separately admitted identity rule proves it.
 
 ### 3. Account for implicit unchanged survivors
 
@@ -266,32 +278,45 @@ the same source cohort.
 Only presence of the source cohort is needed for the regression equation; its
 full unchanged occurrence list is not.
 
-### 4. Apply same-fingerprint replacement accounting
+### 4. Apply safe same-fingerprint replacement accounting
 
-For each fingerprint `h`:
+For each fingerprint `h`, first identify the unmatched removed slots from base
+cohort `C_h` and unmatched current `h` occurrences.
 
-- count unmatched removed base slots from cohort `C_h`;
-- count unmatched current occurrences with fingerprint `h`;
-- consume up to the smaller count as replacement descendants of `C_h`.
+A removed `C_h` slot may conserve a current `h` occurrence only when the
+available lineage evidence is complete enough to rule out that occurrence being
+an unresolved descendant of another base cohort.
 
-No site-to-site guess is required because every consumed base occurrence belongs
-to the same cohort and the current canonical implementation is unchanged.
+When that condition holds, consume replacement capacity one-for-one:
 
-### 5. Carry unused slots only to a unique changed successor
+```text
+safe_replacements(h) =
+    min(unused_removed_slots(C_h), replacement-safe current h occurrences)
+```
 
-For each base cohort with still-unused removed slots after step 4:
+No site-to-site historical claim is required for those safe replacements.
 
-1. collect its proven current descendants from structural lineage;
-2. if any current descendant remains at the original fingerprint, do not carry
-   a removed slot across fingerprints;
-3. if the proven changed descendants occupy exactly one non-empty successor
-   fingerprint group `H'`, consume unused removed slots one-for-one against
-   unmatched current occurrences in `H'`;
-4. if proven descendants split across multiple successor groups, do not choose a
-   branch.
+When the condition does not hold, do not greedily spend `C_h` slots. Preserve
+the known source cohorts/new-count evidence and mark the unresolved part of the
+group incomplete.
 
-The third step conserves legacy multiplicity inside one continuing cohort
-without turning an unused slot into a repository-wide coupon.
+There is **no unique-changed-successor fallback**. A removed `H1` slot does not
+follow an `H2` group merely because `H2` is the only observed successor.
+That would turn legacy multiplicity into a transferable coupon.
+
+### 5. Classify certain new count, certain sites, and unknown lineage
+
+For each current clone group determine separately:
+
+- distinct certified source cohorts;
+- safe same-fingerprint replacement capacity;
+- a lower-bound definitely-new occurrence count established by complete
+  cardinality/identity evidence;
+- the subset of those new occurrences whose physical sites are positively
+  proven;
+- lineage-unknown occurrences or counts whose ancestry remains unresolved.
+
+Do not use "no match found" as proof of newness.
 
 ### 6. Classify remaining current occurrences
 
@@ -306,48 +331,69 @@ Do not invent a best-effort cross-fingerprint match. In particular, zero proven
 successors is not a "unique successor": a fully changed-fingerprint replacement
 with no safe lineage remains UNKNOWN/INCOMPLETE when the distinction matters.
 
-### 7. Judge each current canonical group
+### 6. Judge each current canonical group with a conservative lower bound
 
-If a current group has no judgement-relevant lineage-unknown occurrence:
+Let:
 
 ```text
-R(H) = max(0, |distinct source cohorts| + |definitely new occurrences| - 1)
+certain_bundles(H) =
+    |certified source cohorts represented in H|
+    + definitely_new_count(H)
+
+certain_regressions(H) =
+    max(0, certain_bundles(H) - 1)
 ```
 
-Emit exactly `R(H)` regression units.
+Unknown lineage can increase the final bundle count, but it cannot erase
+already-proven independent origins.
 
-If a group contains lineage-unknown occurrences and a different valid ancestry
-assignment could change whether or how many regressions exist, that group's
-measurement is UNKNOWN and required duplication measurement is INCOMPLETE
-under #475/#354.
+Therefore:
 
-A singleton current group is not duplicate debt, so unknown lineage inside a
-singleton does not by itself create a duplication finding.
+- emit the `certain_regressions(H)` valid FAIL findings even if other lineage
+  in the group remains unresolved;
+- independently mark required duplication measurement INCOMPLETE when a valid
+  ancestry assignment could change the total count, attribution, or absence of
+  additional regressions;
+- never convert incomplete evidence to PASS;
+- never discard a proven FAIL merely because additional regressions are
+  uncertain.
 
-### 8. Deterministic finding assignment
+This follows #354 directly: a partial measurement may contain valid failing
+evidence; judgment and measurement completeness are separate axes.
 
-The semantic unit is the group regression, not a claim that one historical site
-was certainly "the copier".
+If `certain_regressions(H) == 0` and unresolved lineage could create a
+regression, the group has no code-quality FAIL yet and required measurement is
+INCOMPLETE.
 
-For reporting, choose the root origin deterministically with this preference:
+A singleton current group cannot itself contain duplicate debt, though an
+unresolved extraction hole may still make the overall measurement incomplete.
 
-1. an exact-fingerprint carried base cohort;
-2. another carried base cohort rather than a brand-new singleton;
-3. the carried cohort with the most attributed current occurrences;
-4. stable cohort key and then current `(path, start, end)` as tie-breaks.
+### 7. Deterministic finding assignment
 
-Emit one finding for each remaining origin unit.
+The semantic unit is the clone-group regression, not a claim that one
+historical site was certainly "the copier".
 
-This preference makes a genuinely new singleton the finding site whenever an
-inherited origin exists, while keeping merge findings stable under high
-multiplicity.
+Root preference is explicit:
 
-When the regression is a convergence of old cohorts, wording should say that
+1. if any inherited certified source cohort exists, choose an inherited cohort
+   as the free root;
+2. prefer an exact-fingerprint inherited cohort;
+3. then prefer the inherited cohort with the most attributed current
+   occurrences;
+4. use stable cohort key and current `(path, start, end)` only as tie-breaks;
+5. only when no inherited source exists may a new singleton/count supply the
+   free root.
+
+For a proven-new site, anchor the corresponding finding there.
+
+When cardinality proves a new regression count but not which physical site is
+new, report a **group regression** and use one deterministic current
+representative only as a presentation location. The wording must not say that
+representative certainly copied another site.
+
+When the regression is convergence of old cohorts, wording should say that
 previously distinct implementations now converge rather than falsely accusing
-one site of having copied the other.
-
-For a genuinely new occurrence over one inherited cohort, the new site is the
-natural finding anchor.
+one side of copying the other.
 
 ## Truth table
 
@@ -360,7 +406,7 @@ natural finding anchor.
 | Synchronized edit of duplicate pair/group | one base cohort `H1` -> its descendants all become `H2` | 1 source + 0 new = 1 | PASS / held |
 | Synchronized edit + third new copy | old cohort `H1` -> descendants at `H2`, plus new `H2` | 1 source + 1 new = 2 | FAIL 1 |
 | Diverged member cannot leave coupon behind | `A,B:H1 -> A:H1, B:H2, C:H1(new)` with `B` lineage proven | `B` already consumes its slot at `H2`; `C` is new beside the `H1` origin | FAIL 1 |
-| Removed slot follows sole changed successor | `A,B:H1 -> A:H2, C:H2`, with `A` proven and `B` removed | one proven successor group; `C` consumes the unused `B` slot | PASS |
+| Removed slot and sole changed successor | `A,B:H1 -> A:H2, C:H2`, with `A` proven and `B` removed but no lineage for `C` | sole-successor shape is not ancestry proof | INCOMPLETE unless `C` lineage/newness is independently resolved |
 | One legacy member edited to uniqueness | one old cohort splits between `H1` and `H2` | each current group has one source cohort | PASS |
 | Two unrelated unique implementations converge | `H1` + `H2` -> both `H3` | 2 source cohorts = 2 | FAIL 1 |
 | Delete + equivalent add | removed `H` occurrence replaced by new-site `H` | same-fingerprint replacement keeps one source cohort | PASS |
@@ -368,15 +414,18 @@ natural finding anchor.
 | Delete unique + add two equivalent | one base `H` -> two current `H` | one replacement source + one new = 2 | FAIL 1 |
 | File rename/move, same fingerprint | `H` -> `H` elsewhere | structural identity or same-fingerprint replacement | PASS |
 | Function rename, same fingerprint | `H` -> `H` with renamed declaration | same-fingerprint replacement | PASS |
-| Rename/move plus implementation edit | `H1` -> `H2` | PASS with certified site lineage, or via an unused slot only when `H2` is the sole proven successor group; otherwise UNKNOWN/INCOMPLETE if judgement depends on it | explicit |
+| Same-file implementation edit | `H1` -> `H2` at a uniquely identified same-file site | certified structural lineage | PASS/held when appropriate |
+| Cross-file move plus implementation edit | `H1` -> `H2` in another path | #425 does not prove cross-file structural lineage | INCOMPLETE when ancestry affects duplication judgment |
 | Group split | one cohort `H1` -> descendant groups `H2`, `H3`, ... | every new group contains the same single source cohort | PASS; may reduce debt |
 | Split + removed-slot allocation matters | one cohort has proven descendants in `H2` and `H3`, plus a removed slot and an unmatched occurrence on a branch | slot has multiple plausible successor branches | INCOMPLETE if allocation changes regression count |
 | Two old duplicate groups merge | cohort `H1` + cohort `H2` -> one `H3` | 2 source cohorts = 2 | FAIL 1 |
 | `m` old groups merge | `m` distinct source cohorts -> one group | `m` bundles | FAIL `m - 1` |
 | Partial survival of legacy group | any subset of one old cohort survives together | one source cohort | PASS |
 | Partial survival + genuinely new member | one old cohort + one new member | 1 source + 1 new = 2 | FAIL 1 |
-| Ambiguous site identity, unchanged fingerprint | same-fingerprint cardinality/replacement may still decide | no cross-fingerprint guess needed | decide if cardinality suffices |
+| Ambiguous site identity, unchanged fingerprint | same-fingerprint cardinality may prove a count only if competing ancestry is ruled out | do not spend a replacement slot through ambiguity | FAIL lower bound and/or INCOMPLETE as evidence permits |
 | Ambiguous site identity, changed fingerprint | ancestry could change bundle count | unknown lineage | INCOMPLETE, not normal PASS/FAIL |
+| Replacement-laundering attack | `A,C:H1; B:H2 -> C:H1; B:H1`, with `A` removed and `B` ancestry unresolved | removed `A` slot cannot be assigned to `B` | INCOMPLETE, or FAIL 1 if `B:H2 -> H1` is certified |
+| Proven FAIL plus unknown extra lineage | one certified old cohort + one definitely-new origin + one unknown origin in current `H` | at least 2 certain bundles | FAIL at least 1 **and** measurement INCOMPLETE |
 | Detector/normalization version mismatch | base/current basis incompatible | no legal cohorts to compare | rederive base under current basis or INCOMPLETE; never manufacture new/resolved |
 | Unsupported/incomplete extraction | required occurrences may be missing | measurement hole | INCOMPLETE; never clean |
 
@@ -530,15 +579,19 @@ additional current occurrence beyond replacement supply is new.
 
 ### Changed canonical implementation
 
-When `H1 -> H2`, occurrence-level lineage carries through certified structural
-identity. Unused slots may additionally follow a changed fingerprint only via
-the unique-successor cohort rule above.
+When `H1 -> H2` inside the same physical file, lineage may carry only through
+the admitted unique version-compatible structural identity.
 
-A fully changed-fingerprint replacement with no proven successor is not assumed
-held. A split cohort does not donate its removed slots to an arbitrary branch.
+A cross-file move plus implementation change is not certified by #425's
+file-scoped identity and remains lineage-unknown when ancestry affects the
+duplication judgment.
 
-This preserves synchronized legacy debt without turning every fingerprint
-change into a transferable allowance.
+A removed `H1` slot never follows `H2` merely because `H2` is the only
+observed successor group.
+
+This is intentionally more conservative than retrospective clone genealogy:
+for a blocker, uncertain ancestry becomes incomplete evidence rather than
+portable legacy allowance.
 
 ## Persisted metadata and O(delta) warm work
 
@@ -705,9 +758,9 @@ zero regressions by itself.
 
 ### I7. Replacement conservation
 
-One removed occurrence may conserve at most one current occurrence. It may do
-so through an exact-fingerprint replacement or the unique changed-successor
-rule; it cannot be spent on multiple branches.
+One removed occurrence may conserve at most one current occurrence. A same-
+fingerprint replacement is legal only when competing cross-fingerprint ancestry
+has been ruled out; no changed-successor heuristic may spend the slot.
 
 ### I8. Origin separation
 
@@ -724,7 +777,24 @@ this clone group.
 No ambiguous/unsupported cross-fingerprint identity is converted to lineage
 merely to make the verdict pass or fail.
 
-### I11. Basis compatibility before lineage
+### I11. Positive evidence survives incompleteness
+
+Proven independent origin bundles produce their lower-bound FAILs even when
+other lineage in the same measurement is unresolved.
+
+### I12. Count is not site identity
+
+Cardinality may prove a definitely-new count without proving which current
+physical occurrence is new. Reporting never upgrades count evidence into a
+historical-site claim.
+
+### I13. Same-file identity boundary
+
+Cross-fingerprint structural lineage uses only the scope actually proven by the
+admitted identity contract. #425 does not certify a cross-file move plus body
+edit.
+
+### I14. Basis compatibility before lineage
 
 Measurement-basis compatibility is checked before cohort or site matching.
 
@@ -749,7 +819,7 @@ The eventual implementation ticket must add:
 
 - optional versioned structural occurrence identity for cross-fingerprint
   lineage;
-- source-cohort bundle accounting plus the bounded unique-successor slot rule;
+- source-cohort bundle accounting with replacement safety against competing ancestry;
 - explicit UNKNOWN/INCOMPLETE handling when lineage evidence needed for the
   judgement is ambiguous;
 - basis/version compatibility for the duplication index.
@@ -796,13 +866,13 @@ otherwise the result stays unknown/incomplete.
 ## Acceptance-criteria mapping
 
 - Truth table covers every required case: **yes**, above.
-- Synchronized edits remain held: **yes**, I1.
-- Unrelated convergence is detected: **yes**, I4.
-- Third copy over legacy debt is detected exactly once: **yes**, I2.
+- Synchronized edits remain held: **yes**, I2.
+- Unrelated convergence is detected: **yes**, I5.
+- Third copy over legacy debt is detected exactly once: **yes**, I3.
 - Move/replacement semantics are explicit: **yes**.
-- Group split/merge semantics are explicit: **yes**, I4/I5.
-- Ambiguous identity is never guessed: **yes**, I7.
-- Detector-version mismatch cannot manufacture normal findings: **yes**, I8.
+- Group split/merge semantics are explicit: **yes**, I5/I6.
+- Ambiguous identity is never guessed: **yes**, I10/I13.
+- Detector-version mismatch cannot manufacture normal findings: **yes**, I14.
 - Old allowance cannot be spent on unrelated code: **yes**, cohort-local debt.
 - Complexity and persisted metadata are estimated: **yes**.
 - #478 must be updated with this selected model: **required companion update**.
