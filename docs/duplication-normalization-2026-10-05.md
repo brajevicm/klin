@@ -335,13 +335,31 @@ at 60 tokens or more:
 
 These are not agent changes. They do not count against the cap of 30.
 
-Before the census, fix in `labels/protocol.md` a minimum number of labeled
-P2 groups for each language. Suggested minimum: 50 groups. If a language has
-fewer groups, its strength can be at most "BLOCK candidate, insufficient
-evidence".
+There is no fixed minimum number of groups. No group count proves a BLOCK
+gate. A count of n groups gives only an upper bound on the false-block rate.
+The result states that bound (section 10).
 
-If a language produces more groups than can be labeled, take a seeded random
-sample. Record the seed.
+- Label as many P2 groups for each language as the budget allows. Aim at about
+  150 groups. With zero non-copy groups, 150 gives a 95% upper bound of 2%
+  (rule of three, 3/n).
+- Cap the share of one repository at one third of the labeled groups for a
+  language. Groups from one repository are correlated, so the real bound is
+  weaker than 3/n. Report the count for each repository.
+- If a language produces more groups than can be labeled, take a seeded random
+  sample inside each repository's cap. Record the seed.
+
+The census measures duplicates that already exist in base trees, not
+duplicates that agents add. It is a proxy for the population that matters.
+The result must say this.
+
+Sources for this rule:
+
+- Rule of three: Hanley and Lippman-Hand, "If nothing goes wrong, is
+  everything alright?", JAMA 249(13), 1983.
+- Clone-detector precision studies usually sample about 400 pairs for a 95%
+  level with a ±5% interval. SourcererCC used 390 pairs and three judges
+  (https://arxiv.org/pdf/1512.06448). See also
+  https://arxiv.org/pdf/1812.05195.
 
 ### Tier 4: fresh holdout, only if needed
 
@@ -410,13 +428,16 @@ in production scope, with any label other than `copy`.
 For each language, choose the least aggressive profile and variant, in the
 order P1 < P2 < P3, that meets the rule for its strength:
 
-- **BLOCK candidate**, when all of these are true:
+- **BLOCK candidate**, when both of these are true:
   1. it catches every required positive at or above the threshold;
   2. it has zero blocking hard negatives in tier 1, in the census and in any
-     holdout;
-  3. the census for that language meets the minimum group count.
-- **BLOCK candidate, insufficient evidence**: conditions 1 and 2 hold, but
-  condition 3 does not.
+     holdout.
+
+  The strength must state its evidence: the census n, the number of
+  repositories, and the 95% upper bound on the false-block rate. Use 3/n with
+  zero failures, or the Clopper-Pearson bound otherwise. Example: "BLOCK
+  candidate: 0 of 152 census groups were non-copy, so the false-block rate is
+  under 2% at 95% confidence, on base-tree duplicates."
 - **REVIEW**: the census has more `copy` groups than other groups, and
   `glaredb-executor` does not collide.
 - **reject**: none of the above.
