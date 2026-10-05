@@ -4,9 +4,10 @@ This note is step 1 of #480 under #478. It measures whether a detector of
 exact copied regions can run inside the #478 Stop limits. Step 2 (threshold)
 did not start.
 
-Status: measured on the 10k and 300k fixtures and on three real trees. The
-1M rows are not measured. The owner runs them (commands below). So this note
-does not yet say whether the prototype meets the #478 Stop limits.
+Status: measured on the 10k, 300k and 1M fixtures and on three real trees.
+The owner ran the 1M rows. Section 6 compares them with the #478 Stop limits.
+The cold limit is still open, because klin's cold hook time at 1M is not
+measured.
 
 ## 1. Prototype
 
@@ -180,6 +181,9 @@ new, so they are not a measure of findings.
 
 ## 6. 1M rows (owner)
 
+The owner ran these commands. The generator gave 1,033,827 lines and digest
+`5045938053977738811`, the values in `tests/performance.rs`.
+
 ```sh
 cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
 docs/duplication-speed-2026-10-05/proto/target/release/dup-speed gen /tmp/dup-1m 1m
@@ -187,13 +191,31 @@ WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
 python3 docs/duplication-speed-2026-10-05/summary.py
 ```
 
-Compare the `1m` rows with the #478 Stop limits:
+| Measure | Value |
+|---|---|
+| Files, tokens | 9,998, 5,913,813 |
+| Cold extra ms (read + parse apart) | 1,243 (read + parse 2,458) |
+| Index (B) | 3,152,763 bytes |
+| Token chain (A only) | 23,655,252 bytes |
+| Longest posting, capped keys | 15,485, 5 |
+| Build peak RSS | 60.5 MB |
+| Warm 20: B median (max), A median (max) | 2.86 (3.04), 2.89 (3.07) ms |
+| Warm 100: B median (max), A median (max) | 11.73 (11.87), 11.83 (11.94) ms |
+| Warm peak RSS | 8.3 MB (20), 9.5 MB (100) |
+| INCOMPLETE | yes, every query (43 and 252 capped hits) |
 
-| Limit | Value | Row |
+| #478 Stop limit | Design B | Design A |
 |---|---|---|
-| 20 changed files | median ≤ 15 ms, max ≤ 25 ms | `warm20` design B and design A |
-| 100 changed files | median ≤ 50 ms | `warm100` |
-| Cache growth | ≤ 10% of 37,301,283 bytes (structural cache at 1M, `748d01fc`) | `index_bytes`, plus `chain_bytes` for A |
-| Cold | ≤ 5% slower | `cold_extra_ms` against the 1M cold hook |
+| 20 changed: median ≤ 15 ms, max ≤ 25 ms | met: 2.86, 3.04 | met: 2.89, 3.07 |
+| 100 changed: median ≤ 50 ms | met: 11.73 | met: 11.83 |
+| Cache growth ≤ 10% of 37,301,283 bytes (`748d01fc`) | met: 8.5% | missed: 71.9% |
+| Cold ≤ 5% slower | not known: 1,243 ms extra; it meets the limit only if klin's 1M cold hook takes at least 24.9 s | same |
+| No extra parses, no reads of unchanged source, no whole-tree walks, no external processes | met by design: the query reads the index and the changed files only | met by design; it also reads chain slices of hit files |
 
-The design A cache row already fails on every tree in this note.
+Every 1M query was INCOMPLETE. A capped key ends its lookup early, so these
+times do not include the work that the capped postings would cost. The
+20-changed time is about one fifth of the limit, so a Stop with no capped key
+probably also fits. The prototype did not measure that.
+
+Design A misses the cache limit at 1M, as on every other tree. Design B meets
+every measured limit.
