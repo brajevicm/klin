@@ -6,7 +6,7 @@ handover for the agent that runs the research. It holds no results yet.
 The ratchet model is settled in `docs/duplication-ratchet-lineage-2026-10-05.md`
 (#479). This note decides only what one canonical fingerprint means.
 
-Status: design reviewed by three adversarial passes. The second and third
+Status: design reviewed by four adversarial passes. The second to fourth
 passes are the PR #488 reviews. The fixes from all passes are in this design.
 Nothing below has been measured, except the semantic checks in section 13.
 
@@ -101,8 +101,9 @@ TS block comments with a line break. Under ECMAScript, a block comment that
 contains a line break counts as a line terminator for ASI. tree-sitter 0.23.2
 does not apply this: it parses `return /*⏎*/ value;` as `return value;`
 (section 13, check 4). The tree is wrong, so no stream rule can repair it. A
-TS unit is `unclear` when it contains a block comment with a line break and
-code on the same line before or after the comment. Report the count.
+TS unit is `unsafe` (section 6) when it contains a block comment with a line
+break and code on the same line before or after the comment. Report the
+count.
 
 Rust has no ASI. Rust line breaks never change the meaning, so Rust needs no
 terminator rule.
@@ -114,9 +115,32 @@ The size is equal for every profile and variant of one unit. A collision group
 qualifies for a threshold when its smallest unit is at or above it. The size
 is not comparable between Rust and TS. Each language gets its own threshold.
 
-A unit whose subtree contains an `ERROR` node or a missing node is `unclear`.
-It is fingerprinted and reported, but it can never be part of a blocking
-group. Report the count for each language.
+A unit whose subtree contains an `ERROR` node or a missing node is `unsafe`
+(section 6). Report the count for each language.
+
+Parser-risk suite. A wrong tree that tree-sitter accepts without an error node
+matters only when it can make two different units give the same stream. The
+stream is leaf text, terminators and identifier classes. Leaf text does not
+depend on the tree, so only two things can go wrong: terminator emission and
+identifier classification. The prototype keeps a fixed list of known silent
+misparse classes for the pinned grammars, with one fixture each, and a rule
+for each class:
+
+| Class | Pinned-grammar result (section 13) | Rule |
+|---|---|---|
+| ASI pairs (`return`, postfix `++`/`--`, `break`/`continue` label, `async`) | tree differs, correct | terminator rule (above) |
+| block comment with a line break next to code | tree wrong | `unsafe` |
+| `await` as an identifier outside an `async` function | `ERROR` node | `unsafe` |
+| `yield` as an identifier outside a generator | silent `yield_expression` | `unsafe` |
+| regex versus division | correct | none |
+| `let` as an identifier | correct | none |
+| `f<T>(x)` versus `(f < T) > (x)` | correct | none |
+
+The research agent adds two more probes before measurement: an arrow
+function inside a conditional expression, and a type assertion `<T>x` in a
+`.ts` file. A new class found during the research joins the list with its
+rule. This list cannot prove that no other misparse exists. The result must
+say so.
 
 ## 4. Eligible units
 
@@ -207,7 +231,7 @@ Variants. Measure each one separately:
     scope, like any other expression. Rules:
     1. Wrap the argument text as `[ ARGS ]` for `vec!` and as `f( ARGS )` for
        the others. If the parse has an `ERROR` or missing node, the whole
-       macro keeps M-strict text and the unit is `unclear`.
+       macro keeps M-strict text (state `kept`).
     2. In the format family, a top-level argument of the form `name = expr`
        is a named format argument. `name` is an anchor. `expr` is walked.
     3. The format string keeps its text in both variants. An inline capture
@@ -243,10 +267,26 @@ This walker covers one function at a time and uses only lexical scope. It
 is not a name resolver. If correct output needs compiler-scale resolution,
 record that as evidence against P2 and fall back toward P1 (see #480).
 
-Rule for unclear cases: **keep the original text**. Exclude a unit only when
-keeping the text would still give a wrong stream. Exclusion is a way for an
-agent to avoid the gate (section 11), so use it as little as possible. Record
-each exclusion with its reason.
+Every unit has exactly one state:
+
+| State | Meaning | Can block |
+|---|---|---|
+| `clear` | the walker classified every identifier | yes |
+| `kept` | one or more identifiers kept their original text because the walker could not classify them safely | yes |
+| `unsafe` | the tree or the terminators may be wrong | no |
+
+Keeping the original text never makes two different units equal, so a `kept`
+unit is safe to block. The cost of `kept` is recall: a renamed copy of it
+does not match. `unsafe` units are fingerprinted and reported, but they are
+never part of a blocking group.
+
+Because `kept` costs recall, a candidate cannot buy precision by keeping text.
+Its cost shows up as lower natural recall (section 10).
+
+Rule for unclear identifiers: **keep the original text**. Exclude a unit only
+when keeping the text would still give a wrong stream. Exclusion is a way for
+an agent to avoid the gate (section 11), so use it as little as possible.
+Record each exclusion with its reason.
 
 Every identifier leaf gets exactly one class:
 
@@ -255,8 +295,9 @@ Every identifier leaf gets exactly one class:
 | binding | new slot | `let x`, parameter `a`, `catch (e)` |
 | local-ref | slot of the binding found in scope | `x + 1` |
 | own-name | `SELF` with switch `N` on, else original text | bare recursive call of a free function |
-| anchor | original text | field, member, type, path, macro name, global, import |
-| kept-unclear | original text | identifier inside a Rust macro (M-strict) |
+| anchor | original text | field, member, type, path, macro name, global |
+| import | provenance (see below) | a name bound by a `use` or `import` in the file |
+| kept | original text | identifier inside a Rust macro (M-strict), a pattern identifier the walker cannot prove to be a binding |
 
 Rust rules:
 
@@ -264,13 +305,15 @@ Rust rules:
   patterns, `if let` and `while let`, and closure parameters.
 - Each block, closure, match arm and `if let` body opens a new scope.
 - A new `let` shadows the old binding with a new slot.
-- Before the pattern rule below: a macro invocation in statement position
-  can expand to an item, for example a `const`, in its block. tree-sitter
-  cannot tell an item macro from an expression macro in that position. So a
-  pattern identifier that comes after a macro invocation in statement
-  position, in the same block or an enclosing block of the unit, keeps its
-  text and the unit is `unclear`. This includes `println!(…);`. A high
-  `unclear` rate is evidence against P2 for Rust.
+- Before the pattern rule below: an item declared in a block is in scope in
+  the whole block, also before its declaration. A macro invocation in
+  statement position can expand to such an item, for example a `const`, and
+  a macro invoked later in the block still changes an earlier pattern
+  (section 13, check 5). tree-sitter cannot tell an item macro from an
+  expression macro in statement position. So a bare lowercase pattern
+  identifier keeps its text (state `kept`) when the unit's block or any
+  enclosing block contains, anywhere, a macro invocation in statement
+  position. This includes `println!(…);`.
 - In a pattern, an `identifier` that starts with an uppercase letter keeps
   its text, for example `None`. This direction is always safe: if the name is
   in fact a binding, the cost is only lost recall.
@@ -283,12 +326,19 @@ Rust rules:
      that name;
   2. the file has no glob import (`use …::*`);
   3. the file has no macro invocation at item level, which could define an
-     item with that name.
+     item with that name;
+  4. no item in the file has an attribute outside this inert list: `cfg`,
+     `cfg_attr`, `allow`, `warn`, `deny`, `forbid`, `expect`, `doc`,
+     `inline`, `cold`, `must_use`, `deprecated`, `track_caller`, `repr`,
+     `non_exhaustive`, `test`, and `derive` of only these std traits:
+     `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq`, `PartialOrd`, `Ord`,
+     `Hash`, `Default`. Any other attribute may be a proc macro that adds
+     names.
 
-  Otherwise the identifier keeps its text and the unit is `unclear`. Report
-  the `unclear` rate for each pattern position. A high rate is evidence
-  against P2 for Rust, not a reason to relax the rule. `ref`, `mut` and
-  `x @ pat` follow the same rule for `x`.
+  Otherwise the identifier keeps its text (state `kept`). Report the `kept`
+  rate for each pattern position. A high rate is evidence against P2 for
+  Rust, not a reason to relax the rule. `ref`, `mut` and `x @ pat` follow the
+  same rule for `x`.
 - Keep these as anchors: `self`, `Self`, `field_identifier`,
   `type_identifier`, every segment of a `scoped_identifier`, lifetimes,
   labels, and macro names.
@@ -316,8 +366,8 @@ TypeScript rules:
   of that body.
 - A function declaration inside a block:
   - in strict code, it belongs to that block, like `let`;
-  - in other code, Annex B rules apply. The walker does not model them: the
-    unit is `unclear`.
+  - in other code, Annex B rules apply. The walker does not model them: every
+    identifier in the unit keeps its text (state `kept`).
 - Parameters: when any parameter has an initializer or a destructuring
   pattern with an initializer, the parameters get their own scope between the
   outer scope and the body. An initializer sees only the parameters before it
@@ -331,7 +381,30 @@ TypeScript rules:
   in scope.
 - `typeof x` inside a type position: keep the text.
 - `eval(`, `with`, and `arguments`: keep every token in the unit as P1 text
-  and mark the unit `unclear`. Do not exclude the unit.
+  (state `kept`). Do not exclude the unit.
+
+Imports, both languages. A local import alias hides which API a name means:
+`import { parse as run } from "parser-a"` and
+`import { execute as run } from "parser-b"` give the same text `run`. So an
+identifier that resolves to an import binding in the file is an `import`
+class, and it emits its **provenance**:
+
+- TS named import: `"<specifier>"#<imported name>`. Default import:
+  `"<specifier>"#default`. Namespace import `* as ns`: `"<specifier>"#*`.
+- TS relative specifier (`./`, `../`): resolve it against the file's
+  directory to a repository-relative path, by path arithmetic only. Do not
+  add an extension or read `tsconfig.json`. Any other specifier keeps its
+  text.
+- Rust: the full written `use` path with the alias replaced by the original
+  last segment. `use parser_a::parse as run;` makes `run` emit
+  `parser_a::parse`. `crate::`, `super::` and `self::` paths keep their
+  written text. A name from a glob import cannot be resolved: it keeps its
+  text.
+- P1 emits the alias and the provenance, for example
+  `run@"parser-a"#parse`, so P1 stays exact. P2 and P3 emit only the
+  provenance.
+- A name that resolves to an item declared in the same file keeps its
+  spelling. Hard negative `same-name-local-helper` measures the risk.
 
 Cross-check for TS: `tree-sitter-typescript-0.23.2/queries/locals.scm` exists.
 It covers highlighting only, so it is coarse. Use it as a second oracle on the
@@ -367,7 +440,10 @@ Required positives (must collide under the candidate):
 
 Required hard negatives (must not collide under a candidate, P1 or P2):
 
-- `same-skeleton-different-api`;
+- `same-skeleton-different-api` (both functions call the API through the
+  same local alias, `run`, imported from different modules);
+- `same-name-local-helper` (two files, each with its own `helper` with a
+  different body, and the same caller);
 - `crud-wrappers`;
 - `serializers-different-schema`;
 - `validation-constants`;
@@ -385,7 +461,8 @@ Required hard negatives (must not collide under a candidate, P1 or P2):
   arguments are not expressions);
 - ASI pairs (TS), each with the same leaf text and different behavior:
   `asi-return`, `asi-postfix`, `asi-break-label`, `asi-async`, and
-  `asi-block-comment` (must be `unclear`, see section 3).
+  `asi-block-comment` (must be `unsafe`, see section 3);
+- one fixture for each class of the parser-risk suite (section 3).
 
 Anchor tests (#480 AC on API/member/type preservation). Each pair differs in
 exactly one anchor. It must not collide under P1 to P3 and must collide under
@@ -410,17 +487,21 @@ Binding construct tests, both languages where the construct exists:
 - `shadowing`, `destructuring`, `closure-capture`, `match-pattern-binding`
   (Rust), `uppercase-pattern-const` (Rust), `var-hoisting` (TS),
   `catch-binding` (TS), `bound-arrow`, `anonymous-callback`,
-  `member-vs-local-same-name` (`x.x`), `unclear-eval` (TS),
+  `member-vs-local-same-name` (`x.x`), `kept-eval` (TS),
   `lowercase-unit-struct-pattern` (Rust: `struct s; let s = s;` must be
-  `unclear`), `macro-closure-arg` (Rust: `vec![|a| a + 1]`),
+  `kept`), `macro-closure-arg` (Rust: `vec![|a| a + 1]`),
   `macro-struct-field` (Rust: `vec![Foo { x: y }]`), `format-named-arg`
   (Rust: `format!("{v}", v = x)`), `recovered-parse` (both: a unit with an
-  `ERROR` node), `statement-macro-before-pattern` (Rust: a statement macro
-  before a `let` pattern makes the unit `unclear`), `default-param-body-var`,
+  `ERROR` node, must be `unsafe`), `statement-macro-before-pattern` and
+  `statement-macro-after-pattern` (Rust: a statement macro before or after a
+  `let` pattern in the same block keeps the pattern text), `proc-macro-attribute`
+  (Rust: an item with a non-inert attribute keeps lowercase pattern text),
+  `default-param-body-var`,
   `default-param-body-function`, `block-function-strict` and
   `block-function-module` (TS), `block-function-sloppy` (TS: must be
-  `unclear`), `semicolon-style` (TS: the same code with and without
-  semicolons must match).
+  `kept`), `semicolon-style` (TS: the same code with and without
+  semicolons must match), `import-alias-same-provenance` (both: two aliases
+  of the same import must match under P2).
 
 ### Tier 2: existing material, before any fresh sampling
 
@@ -483,9 +564,10 @@ The result states that bound (section 10).
   weaker than 3/n. Report the count for each repository.
 - If a language produces more groups than can be labeled, take a seeded random
   sample inside each repository's cap. Record the seed. The frozen sample is
-  the evidence population. A random sample supports the same 3/n inference
-  about all groups as a full labeling. The strength wording must state the
-  sampled fraction, for example `0/150 sampled from 2000`.
+  the evidence population. The cap gives repositories unequal inclusion
+  probabilities, so the sample is not a simple random sample of all groups.
+  `0/n` and 3/n describe the calibration sample only. The strength wording
+  must state the sampled fraction, for example `0/150 sampled from 2000`.
 
 The census measures duplicates that already exist in base trees, not
 duplicates that agents add. It is a proxy for the population that matters.
@@ -524,9 +606,12 @@ Columns:
 - `positives_caught`, `positives_required`;
 - `hard_negatives_collided` (tier 1);
 - `census_groups`, `census_copy`, `census_noncopy`, `census_unlabeled`;
-- `units_eligible`, `units_unclear`, `units_excluded`;
+- `units_eligible`, `units_clear`, `units_kept`, `units_unsafe`,
+  `units_excluded`, and `clear_pct`;
+- `units_in_groups` (clear or kept units that are in a collision group);
+- `natural_copy_groups`, `natural_caught`, `natural_recall` (section 10);
 - `macro_local_units` (Rust, M-strict), `inline_capture_units` (Rust);
-- `unclear_pattern_units` (Rust, for each pattern position);
+- `kept_pattern_units` (Rust, for each pattern position);
 - `recovered_parse_units`;
 - `walker_us_p50`, `walker_us_p95`, for each unit. This is a rough cost for
   #482, not a gate.
@@ -576,9 +661,12 @@ groups, for a human or an independent second judge:
 - every group that a comparator adds over the selected candidate;
 - a seeded random sample of 20 `copy` groups for each language.
 
-#480 does not do the audit. The human audit is a precondition of the BLOCK
-decision in #478. Until then, the strength wording says "agent-labeled,
-unaudited".
+#480 does not do the audit. The human audit happens after #480 freezes its
+candidate and before #481 starts, because #481 attacks the frozen candidate
+and a rejected label set would waste that work. #482 measures the
+representation and the index, which do not depend on the labels, so #482
+may run in parallel. Until the audit, the strength wording says
+"agent-labeled, unaudited".
 
 ## 10. Frozen decision rule
 
@@ -590,9 +678,21 @@ in production scope, with any label other than `copy` (`mixed` included).
 Candidates and comparators. Every variant that only adds collisions to a less
 aggressive value cannot win this rule, because no required positive needs it.
 So these are **comparators**, never candidates: switch `N` on, E2, M-std,
-O-none, every P3 literal class, and P4. The result reports, for each
-comparator, the groups it adds over the selected candidate and their labels.
-#478 decides whether to widen the contract later.
+O-none, every P3 literal class, P4, and `R-lint` (below). The result reports,
+for each comparator, the groups it adds over the selected candidate and their
+labels, and its natural recall.
+
+#478 may later promote a comparator. A promoted comparator is a new frozen
+candidate. It must go through #481 again, and through #482 when it changes
+the representation, the index or the work done.
+
+`R-lint` (Rust): treat a bare lowercase pattern identifier as a binding when
+the conditions 1 to 4 of section 6 fail only because of macros or
+attributes, and no `#![allow(non_upper_case_globals)]` or
+`#![allow(non_camel_case_types)]` (or an item-level `allow` of these) is in
+the file or the crate root. It relies on the warn-by-default naming lints.
+It measures how much recall a naming-convention assumption would add.
+Adopting it is a product decision for #478 and needs an ADR.
 
 A **candidate** is P1 or P2, with `N` off, E1, M-strict and O-type, at one
 threshold. A candidate **passes** when both of these are true:
@@ -613,9 +713,20 @@ the results:
 
 Strength:
 
-- **BLOCK candidate**: the selected candidate passes. The strength states its
-  evidence: `0/n` non-copy census groups for that candidate, the number of
-  repositories, the sampling scheme, and the 3/n value marked as descriptive.
+Natural recall. A **natural copy group** is a census group labeled `copy`,
+from the union of the groups of every candidate and comparator, P4
+included. A candidate **catches** a natural copy group when it puts two or
+more of its members into one of its own groups. `natural_recall` is the
+caught fraction. Report it for every candidate and comparator.
+
+- **BLOCK candidate**: the selected candidate passes, and, if it is P2, its
+  natural recall is greater than the natural recall of P1 at the same
+  threshold. P2 exists to add rename recall. A P2 that adds none, for example
+  because most units are `kept`, has not earned BLOCK and gets REVIEW. The
+  strength states its evidence: `0/n` non-copy census groups for that
+  candidate, the number of repositories, the sampling scheme, the 3/n value
+  marked as descriptive, `clear_pct`, `units_kept`, `units_unsafe`, and the
+  natural recall of the candidate and of P1.
   Example: "BLOCK candidate: 0 of 152 labeled census groups were non-copy,
   sampled from 2000 (11 repositories, capped at one third each, seed 7).
   3/n = 2%, on base-tree duplicates; not a bound on future agent findings.
@@ -638,7 +749,8 @@ candidate states:
 - the comparator results: the groups each comparator adds, with labels;
 - the semantic anchors preserved;
 - the minimum size;
-- unsupported and unclear behavior;
+- unsupported behavior, and the `clear`, `kept` and `unsafe` counts;
+- the natural recall of the candidate, of P1 and of each comparator;
 - positive catches and hard-negative results;
 - natural examples from tiers 2 and 3;
 - known blind spots;
@@ -650,13 +762,14 @@ candidate states:
   - one changed literal (when literals are kept);
   - shorthand that is not expanded (when applicable);
   - wrapping the body in a macro;
-  - an item-level macro or glob import in the file, which makes Rust pattern
-    units `unclear`;
+  - an item-level macro, a glob import or a non-inert attribute in the file,
+    which keeps Rust pattern text (`kept`);
   - inline format capture instead of a positional argument (Rust);
-  - a statement macro such as `println!(…);` before a pattern (Rust), which
-    makes the unit `unclear`;
+  - a statement macro such as `println!(…);` anywhere in the block of a
+    pattern (Rust), which keeps the pattern text (`kept`);
   - a block comment with a line break next to code (TS), which makes the unit
-    `unclear`;
+    `unsafe`;
+  - an import alias with a glob or unresolved provenance;
   - adding `arguments` or `eval` (TS).
 
   Measure each evasion on the `local-rename` fixture.
@@ -665,9 +778,14 @@ candidate states:
 
 ### Start state
 
-- Branch: `issue-480-normalization-research`. It holds only this note.
-- Baseline: `b61ac917` on `main`.
-- Nothing is measured. No issue comment has been posted.
+- This note is on branch `issue-480-normalization-research`, PR #488
+  (`Refs #480`). The PR went through three review rounds. Read all PR
+  comments before step 2.
+- Start the research on a new branch from `main` after PR #488 merges. If
+  PR #488 is not merged, ask the user which branch to use.
+- Code baseline for the census of klin's own `src/`: `b61ac917` on `main`.
+- Only the probes in section 13 ran. Nothing in the corpus is measured. No
+  comment on #478 or #480 has been posted.
 
 ### Steps
 
@@ -692,12 +810,14 @@ candidate states:
    threshold.
 9. Use tier 4 only if section 7 allows it.
 10. Write the result section and the frozen candidates (section 11) into this
-    note, below a `## Results` heading.
+    note, below a `## Results` heading. Write `labels/audit.tsv`.
 11. Run `/code-review` on the branch.
 12. Open a PR with `Closes #480`. Run the `humanizer` skill on the PR body
     first.
 13. Draft the #478 update comment with the winning candidates. Run the
     `humanizer` skill on it. **Ask the user before posting it.**
+14. Tell the user that the human audit of `labels/audit.tsv` is due before
+    #481 starts.
 
 ### Rules
 
@@ -725,14 +845,17 @@ candidate states:
   result. Report both.
 - dify#1422 may be out of language scope.
 - The labels are agent-drafted. The audit packet (section 9) is for the human
-  audit that #478 needs before a BLOCK decision.
-- The Rust statement-macro rule may make most Rust units with patterns
-  `unclear`. Report the rate. Do not relax the rule.
+  audit before #481.
+- The Rust macro and attribute rules may make most Rust units with patterns
+  `kept`. Then P2 may not beat P1 on natural recall, and Rust gets REVIEW.
+  That is a valid result. Report the rate and `R-lint`. Do not relax the
+  rule.
 
 ## 13. Semantic checks, 2026-10-05
 
 Checks 1 to 3 were done before the fixes for the first PR #488 review. Check
-4 was done before the fixes for the second review. Probes ran with rustc
+4 was done before the fixes for the second review, and check 5 before the
+fixes for the third. Probes ran with rustc
 1.98.1 (edition 2021) and tree-sitter 0.27.0 with tree-sitter-rust 0.24.2 and
 tree-sitter-typescript 0.23.2.
 
@@ -778,4 +901,15 @@ tree-sitter-typescript 0.23.2.
 
    No tree has an `ERROR` node. tree-sitter does not expose the automatic
    semicolon as a leaf. Result: section 3 adds the terminator rule for the
-   first four pairs and makes the fifth case `unclear`.
+   first four pairs and makes the fifth case `unsafe`.
+5. **Third review probes.** rustc 1.98.1 and tree-sitter-typescript 0.23.2.
+   - Rust: with `macro_rules! m { () => { const x: i32 = 1; } }`, the body
+     `let r = match v { x => 0 }; m!(); r` fails with E0004. A macro invoked
+     **after** the pattern in the same block makes `x` a const pattern. A
+     later `const x` in an enclosing scope does the same. Result: section 6
+     looks at every statement macro in the block, before and after.
+   - TS: `var await = 1; return await;` outside an `async` function gives an
+     `ERROR` node. `var yield = 1; return yield;` outside a generator parses
+     silently as a `yield_expression`. Regex versus division,
+     `let` as an identifier and `f<T>(x)` parse correctly. Result: the
+     parser-risk suite in section 3.
