@@ -11,9 +11,12 @@ from pathlib import Path
 from verify import normalized
 
 
-def collect(corpus, output):
+ROOTS = [('klin', 'klin/src'), ('glaredb', 'glaredb'), ('karakeep', 'karakeep')]
+
+
+def collect(corpus, output, roots=ROOTS):
     streams, origins, texts, counts = [], [], [], {}
-    for repo, root in [('klin', corpus / 'klin/src'), ('glaredb', corpus / 'glaredb'), ('karakeep', corpus / 'karakeep')]:
+    for repo, root in [(repo, corpus / relative) for repo, relative in roots]:
         count = {'files': 0, 'tokens': 0, 'unsafe_units': 0}
         for path in sorted(root.rglob('*')):
             relative = path.relative_to(root)
@@ -92,6 +95,7 @@ def summarize(output):
 
 if __name__ == '__main__':
     if sys.argv[1] == 'collect':
-        collect(Path(sys.argv[2]), Path(sys.argv[3]))
+        roots = [tuple(pair.split('=', 1)) for pair in sys.argv[4:]] or ROOTS
+        collect(Path(sys.argv[2]), Path(sys.argv[3]), roots)
     else:
         summarize(Path(sys.argv[2]))
