@@ -18,6 +18,7 @@ import scope_exclusions
 
 HERE = Path(__file__).parent
 UNIT_SHARE = 0.5
+# A pair id names its two line spans. Matches that share them are one pair, kept if any is.
 RULES = {'Rust': 100, 'TypeScript': 60}
 LABELS = ('copy', 'boilerplate', 'required-shape', 'generated', 'distinct', 'mixed')
 
@@ -30,7 +31,11 @@ def unit_shares(corpus, matches):
                for m in matches for s in m['spans']]
     out = subprocess.run([f'{target}/release/unitclass'], input='\n'.join(queries) + '\n', capture_output=True, text=True, check=True)
     rows = iter(json.loads(line) for line in out.stdout.splitlines())
-    return {m['id']: min(r['in_units'] / r['total'] if r['total'] else 0 for r in [next(rows) for _ in m['spans']]) for m in matches}
+    shares = {}
+    for m in matches:
+        share = min(r['in_units'] / r['total'] if r['total'] else 0 for r in [next(rows) for _ in m['spans']])
+        shares[m['id']] = max(share, shares.get(m['id'], 0))
+    return shares
 
 
 def kept(match, facts):
@@ -43,14 +48,18 @@ def rules(corpus, directory):
     scope_exclusions.CORPUS = corpus
     matches = json.loads((directory / 'mapping.json').read_text())['matches']
     shares = unit_shares(corpus, matches)
-    facts = {m['id']: {**scope_exclusions.rules(m), 'unit_share': shares[m['id']]} for m in matches}
-    result = {m['id']: {**facts[m['id']], 'kept': kept(m, facts[m['id']])} for m in matches}
+    result = {}
+    for m in matches:
+        facts = {**scope_exclusions.rules(m), 'unit_share': shares[m['id']], 'tokens': m['tokens']}
+        facts['kept'] = kept(m, facts)
+        if m['id'] not in result or facts['kept'] and not result[m['id']]['kept']:
+            result[m['id']] = facts
     (directory / 'rules.json').write_text(json.dumps(result, indent=1, sort_keys=True) + '\n')
     print(collections.Counter((m['language'], result[m['id']]['kept']) for m in matches))
 
 
 def measure(directory):
-    matches = json.loads((directory / 'mapping.json').read_text())['matches']
+    matches = list({m['id']: m for m in json.loads((directory / 'mapping.json').read_text())['matches']}.values())
     facts = json.loads((directory / 'rules.json').read_text())
     labels = json.loads((directory / 'labels.json').read_text())
     assert set(labels) == {m['id'] for m in matches}, 'every pair must be labeled'
@@ -59,6 +68,7 @@ def measure(directory):
     result = {}
     for language, threshold in RULES.items():
         rows = [m for m in matches if m['language'] == language]
+        at_threshold = [m for m in rows if facts[m['id']]['tokens'] >= threshold]
         repos = sorted({m['spans'][0]['repo'] for m in rows})
         def score(selected):
             copies = sum(map(is_copy, selected))
@@ -68,7 +78,7 @@ def measure(directory):
             'rule': score(keep),
             'passes_80': bool(keep) and sum(map(is_copy, keep)) / len(keep) >= 0.8,
             'recall': {'copies_kept': sum(map(is_copy, keep)), 'copies_all': sum(map(is_copy, rows))},
-            'baseline_at_T': score([m for m in rows if m['tokens'] >= threshold]),
+            'baseline_at_T': score(at_threshold),
             'by_repo': {r: score([m for m in keep if m['spans'][0]['repo'] == r]) for r in repos},
             'non_copy_kept': collections.Counter(labels[m['id']]['label'] for m in keep if not is_copy(m)),
             'labels_all': collections.Counter(labels[m['id']]['label'] for m in rows),
