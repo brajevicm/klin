@@ -10,7 +10,7 @@ Discussion comments were not used.
 
 ## Decision
 
-Use **lineage-bundle multiplicity**.
+Use **lineage-bundle multiplicity** (the same semantic unit the issue discussion calls a **lineage unit / origin component**).
 
 A current canonical clone group is not judged only by its current fingerprint
 multiplicity. Instead, every current occurrence is classified as one of:
