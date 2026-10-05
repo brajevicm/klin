@@ -13,24 +13,26 @@ Discussion comments were not used.
 Use **lineage-bundle multiplicity** (the same semantic unit the issue discussion calls a **lineage unit / origin component**).
 
 A current canonical clone group is not judged only by its current fingerprint
-multiplicity. Instead, every current occurrence is classified as one of:
+multiplicity. Its accounting separates:
 
-- a certified descendant of one base canonical cohort;
-- definitely new;
-- lineage-unknown.
+- certified descendants of base canonical cohorts;
+- a definitely-new **count**;
+- lineage-unknown evidence;
+- and, where available, proven-new physical sites.
 
 Within one current canonical group, all descendants of the **same** base cohort
-form one lineage bundle. Every definitely-new occurrence is its own bundle.
-The first bundle is allowed. Every additional bundle is one new duplication
-regression.
+form one lineage bundle. Each definitely-new occurrence contributes one
+additional bundle whether or not its exact physical site is historically
+provable. The first bundle is allowed. Every additional bundle is one new
+duplication regression.
 
 For one current canonical fingerprint `H`, when lineage is complete:
 
 ```text
-sources(H) = distinct base cohorts with >=1 certified descendant in H
-new(H)     = definitely-new current occurrences in H
+sources(H)   = distinct base cohorts with >=1 certified descendant in H
+new_count(H) = definitely-new occurrence count in H
 
-regressions(H) = max(0, |sources(H)| + new(H) - 1)
+regressions(H) = max(0, |sources(H)| + new_count(H) - 1)
 ```
 
 A base cohort is the set of base occurrences that had one compatible canonical
@@ -199,12 +201,12 @@ Let a current clone group for fingerprint `H` contain:
 
 - `S_H`: the set of distinct base cohorts represented by certified
   descendants in the group;
-- `N_H`: the multiset of definitely-new occurrences in the group.
+- `new_count(H)`: the definitely-new occurrence count in the group.
 
 When there are no lineage-unknown occurrences that can affect the judgement:
 
 ```text
-bundle_count(H) = |S_H| + |N_H|
+bundle_count(H) = |S_H| + new_count(H)
 
 regressions(H) = max(0, bundle_count(H) - 1)
 ```
@@ -317,19 +319,6 @@ For each current clone group determine separately:
 - lineage-unknown occurrences or counts whose ancestry remains unresolved.
 
 Do not use "no match found" as proof of newness.
-
-### 6. Classify remaining current occurrences
-
-For each unmatched current occurrence:
-
-- if no still-valid base-slot attribution can supply it, classify it as
-  definitely new;
-- if an unresolved cross-fingerprint allocation could supply it, classify it
-  as lineage-unknown.
-
-Do not invent a best-effort cross-fingerprint match. In particular, zero proven
-successors is not a "unique successor": a fully changed-fingerprint replacement
-with no safe lineage remains UNKNOWN/INCOMPLETE when the distinction matters.
 
 ### 6. Judge each current canonical group with a conservative lower bound
 
@@ -496,15 +485,17 @@ The ratchet must not guess occurrence ancestry.
 Examples include duplicate structural keys, anonymous/computed sites or a
 family/language with no admitted identity rule.
 
-Ambiguity is handled in two layers:
+Ambiguity is handled in three layers:
 
-1. same-fingerprint replacement/cardinality remains usable because it does not
-   require choosing one historical site;
-2. cross-fingerprint lineage is not inferred.
+1. certified same-file structural lineage is consumed first;
+2. same-fingerprint cardinality may still prove a lower-bound new count, but a
+   replacement slot is spent only when competing cross-fingerprint ancestry has
+   been ruled out;
+3. unresolved cross-fingerprint lineage is never inferred.
 
-If unresolved cross-fingerprint lineage could change the bundle count of a
-current duplicate group, that claim is UNKNOWN and required duplication
-measurement is INCOMPLETE.
+If unresolved lineage could add regressions, required duplication measurement
+is INCOMPLETE. Any regressions already proved by independent origin bundles
+remain valid FAIL evidence at the same time.
 
 This follows #475's product rule:
 
@@ -559,12 +550,15 @@ cross-semantic ancestry.
 
 ### Same canonical implementation
 
-Removal of one `H` occurrence plus addition of one `H` occurrence is a
-replacement slot and retains source cohort `C_h`.
+Removal of one `H` occurrence plus addition of one `H` occurrence may be
+treated as a replacement slot retaining source cohort `C_h` **only when
+competing cross-fingerprint ancestry for the current `H` occurrence has been
+ruled out**.
 
-This exact-fingerprint replacement is consumed only after proven divergent site
-successors have taken their own base slots, so a diverged member cannot leave a
-second allowance behind.
+Replacement accounting runs only after proven divergent site successors have
+taken their own base slots, so a diverged member cannot leave a second allowance
+behind. If competing ancestry remains unresolved, the slot is not spent and the
+affected group remains incomplete.
 
 This covers:
 
@@ -806,7 +800,7 @@ The following #48 ideas survive:
 - language-separated matching;
 - compact persisted base fingerprint counts;
 - changed-file before/current extraction;
-- exact same-fingerprint remove/add replacement accounting;
+- safe same-fingerprint remove/add replacement accounting after competing ancestry is resolved;
 - one-for-one occurrence-slot conservation;
 - deterministic assignment of only new excess findings;
 - no repository duplicated-line percentage;
