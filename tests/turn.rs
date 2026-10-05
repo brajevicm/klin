@@ -40,6 +40,93 @@ fn git_out(cwd: &Path, args: &[&str]) -> String {
     }
 }
 
+#[cfg(unix)]
+fn interrupt_capture(tree: &Tree, phase: &str) -> std::path::PathBuf {
+    use std::io::Write;
+    use std::os::unix::{fs::PermissionsExt, process::ExitStatusExt};
+    use std::process::Stdio;
+
+    let bin = tempfile::tempdir().expect("wrapper directory");
+    let real = Command::new("sh")
+        .args(["-c", "command -v git"])
+        .output()
+        .expect("git path");
+    let wrapper = bin.path().join("git");
+    std::fs::write(
+        &wrapper,
+        r#"#!/bin/sh
+case " $* " in
+  *" add "*) printf '%s' "$GIT_INDEX_FILE" > "$KLIN_TEST_INDEX" ;;
+esac
+case " $* " in
+  *" $KLIN_TEST_PHASE "*) kill -KILL "$PPID"; exit 1 ;;
+esac
+exec "$KLIN_TEST_GIT" "$@"
+"#,
+    )
+    .expect("wrapper");
+    std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).expect("executable");
+    let mut child = Command::new(harness::binary())
+        .arg("radius")
+        .current_dir(tree.root())
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                bin.path().display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .env(
+            "KLIN_TEST_GIT",
+            String::from_utf8_lossy(&real.stdout).trim(),
+        )
+        .env("KLIN_TEST_PHASE", phase)
+        .env("KLIN_TEST_INDEX", tree.state("interrupted-index"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("klin");
+    child
+        .stdin
+        .take()
+        .expect("stdin")
+        .write_all(A_SESSION.as_bytes())
+        .expect("event");
+    assert_eq!(child.wait().expect("killed capture").signal(), Some(9));
+    std::path::PathBuf::from(
+        std::fs::read_to_string(tree.state("interrupted-index")).expect("index path"),
+    )
+}
+
+#[cfg(unix)]
+#[test]
+fn an_interrupted_first_stamp_retries_as_a_first_session() {
+    let tree = tree();
+    interrupt_capture(&tree, "commit-tree");
+    let run = radius(&tree, A_SESSION);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("both gone"), "{}", run.out);
+    assert!(!tree.field("commit").is_empty(), "{}", run.out);
+}
+
+#[test]
+#[cfg(unix)]
+fn the_next_capture_removes_an_interrupted_private_index() {
+    let tree = tree();
+    for _ in 0..2 {
+        let index = interrupt_capture(&tree, "write-tree");
+        assert!(index.is_file(), "the interruption left no index");
+        let run = radius(&tree, A_SESSION);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(
+            !index.parent().expect("capture directory").exists(),
+            "orphaned index survived"
+        );
+    }
+}
+
 #[test]
 fn a_first_session_stamps_the_working_tree_over_head() {
     let tree = tree();
@@ -111,6 +198,27 @@ fn a_red_verdict_keeps_the_stamp_and_a_green_one_moves_it() {
     assert_eq!(
         git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
         "fn two() {}"
+    );
+}
+
+#[test]
+fn a_leftover_private_index_lock_does_not_keep_a_green_turn_open() {
+    let tree = tree();
+    assert_eq!(radius(&tree, A_SESSION).code, 0);
+    let first = tree.field("commit");
+    verdict(&tree, "green");
+    tree.write(".git/klin/index.lock", "");
+    tree.write("src/lib.rs", "fn next_turn() {}\n");
+
+    for _ in 0..2 {
+        let run = radius(&tree, A_PROMPT);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(!run.says("git could not stamp"), "{}", run.out);
+        assert_ne!(tree.field("commit"), first, "a green turn stayed open");
+    }
+    assert_eq!(
+        git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
+        "fn next_turn() {}"
     );
 }
 
