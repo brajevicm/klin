@@ -3,8 +3,8 @@
 Research for #484, under #358. Written 2026-10-05 on `main` at `5f6f3335`.
 
 This note changes no shipped behavior, no CLI contract, no hook contract and
-no SPEC semantics. It ends in one recommendation for a person to review.
-#452, #475, #358 and #478 are not updated until a person accepts it.
+no SPEC semantics. It ends in one recommendation. A person accepted it on
+2026-10-05, and #452, #475, #358 and #478 carry comments that record it.
 
 The corpus is `docs/lifecycle-validation-2026-10-05/`. `probe.sh`, `cases.tsv`
 and `fixture/` are the targeted host probe of section 7.
@@ -428,9 +428,9 @@ A future ticket re-admits readiness only with all of:
 
 Speculative infrastructure does not meet the bar.
 
-## 13. After a person decides
+## 13. Follow-up after acceptance
 
-Only after acceptance:
+Done on 2026-10-05 as issue comments:
 
 - #475: amend sections 3, 7, 8, 9 and 17 to the B model, and record the
   rejected readiness parts as deferred;
