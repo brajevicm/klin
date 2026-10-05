@@ -1,6 +1,17 @@
 // Copied verbatim from tests/performance.rs at c1805539; the digests in the profiles check the copy.
 #![allow(dead_code)]
-use crate::Tree;
+use std::path::PathBuf;
+
+pub struct Tree(pub PathBuf);
+
+impl Tree {
+    pub fn write(&self, path: &str, source: &str) {
+        let target = self.0.join(path);
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::fs::write(target, source).unwrap();
+    }
+}
+
 pub const DECLARATIONS_PER_KLOC: std::ops::RangeInclusive<usize> = 270..=290;
 
 #[derive(Clone, Copy)]

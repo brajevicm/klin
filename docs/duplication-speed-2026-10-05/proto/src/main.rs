@@ -7,16 +7,6 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tree_sitter::{Language, Node, Parser, Tree as Syntax, TreeCursor};
 
-pub struct Tree(PathBuf);
-
-impl Tree {
-    pub fn write(&self, path: &str, source: &str) {
-        let target = self.0.join(path);
-        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
-        std::fs::write(target, source).unwrap();
-    }
-}
-
 const TERMINATED: &[&str] = &[
     "ambient_declaration",
     "break_statement",
@@ -775,7 +765,7 @@ fn generate(dir: &Path, name: &str) {
         "1m" => (5_000, fixture::DENSE_1M),
         other => panic!("unknown fixture {other}"),
     };
-    let generated = fixture::write_sources(&Tree(dir.to_path_buf()), files, files / 100, profile);
+    let generated = fixture::write_sources(&fixture::Tree(dir.to_path_buf()), files, files / 100, profile);
     if let Some(expected) = profile.expected {
         assert_eq!(generated, expected, "generator copy drifted");
     }
