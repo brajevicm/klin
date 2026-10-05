@@ -80,6 +80,7 @@ struct Params {
     cap: usize,
     fmin: usize,
     fcut: usize,
+    t: usize,
 }
 
 const FUNCTIONS: &[&str] = &[
@@ -113,6 +114,7 @@ struct Stream<'a> {
     source: &'a [u8],
     imports: HashMap<&'a [u8], String>,
     out: Vec<u64>,
+    rows: Vec<u32>,
     functions: Vec<(u32, u32)>,
 }
 
@@ -121,9 +123,10 @@ impl<'a> Stream<'a> {
         &self.source[node.byte_range()]
     }
 
-    fn emit(&mut self, text: &[u8]) {
+    fn emit(&mut self, text: &[u8], row: usize) {
         let hash = fnv(self.lang.seed(), &[text]);
         self.out.push(hash);
+        self.rows.push(row as u32);
     }
 
     fn leaf(&mut self, node: Node) {
@@ -136,8 +139,9 @@ impl<'a> Stream<'a> {
             Some(provenance) => {
                 let hash = fnv(self.lang.seed(), &[text, b"@", provenance.as_bytes()]);
                 self.out.push(hash);
+                self.rows.push(node.start_position().row as u32);
             }
-            None => self.emit(text),
+            None => self.emit(text, node.start_position().row),
         }
     }
 
@@ -186,8 +190,9 @@ impl<'a> Stream<'a> {
         if terminated {
             if let Some(before) = trailing {
                 self.out.truncate(before);
+                self.rows.truncate(before);
             }
-            self.emit(b";");
+            self.emit(b";", node.end_position().row);
         }
     }
 }
@@ -343,6 +348,9 @@ fn kgrams(tokens: &[u64], k: usize) -> Vec<u64> {
 }
 
 fn winnow(tokens: &[u64], params: Params) -> Vec<(u32, u32)> {
+    if params.t > 0 {
+        return mod_minimizers(tokens, params);
+    }
     let grams = kgrams(tokens, params.k);
     let mut out = Vec::new();
     let mut window: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
@@ -363,8 +371,42 @@ fn winnow(tokens: &[u64], params: Params) -> Vec<(u32, u32)> {
     out
 }
 
+fn mod_minimizers(tokens: &[u64], params: Params) -> Vec<(u32, u32)> {
+    let grams = kgrams(tokens, params.k);
+    let small = kgrams(tokens, params.t);
+    if grams.is_empty() {
+        return Vec::new();
+    }
+    let span = params.w + params.k - params.t;
+    let windows = grams.len().saturating_sub(params.w) + 1;
+    let mut out = Vec::new();
+    let mut deque: std::collections::VecDeque<usize> = std::collections::VecDeque::new();
+    let mut next = 0;
+    let mut last = usize::MAX;
+    for start in 0..windows {
+        let end = (start + span).min(small.len());
+        while next < end {
+            while deque.back().is_some_and(|back| small[*back] > small[next]) {
+                deque.pop_back();
+            }
+            deque.push_back(next);
+            next += 1;
+        }
+        while deque[0] < start {
+            deque.pop_front();
+        }
+        let chosen = start + (deque[0] - start) % params.w.min(grams.len());
+        if chosen != last {
+            last = chosen;
+            out.push(((grams[chosen] >> 32) as u32, chosen as u32));
+        }
+    }
+    out
+}
+
 struct Parsed {
     tokens: Vec<u64>,
+    rows: Vec<u32>,
     functions: Vec<(u32, u32)>,
     error: bool,
 }
@@ -412,11 +454,13 @@ fn stream(lang: Lang, path: &str, source: &[u8], syntax: &Syntax) -> Parsed {
         source,
         imports: imports(lang, path, source, root),
         out: Vec::new(),
+        rows: Vec::new(),
         functions: Vec::new(),
     };
     stream.walk(&mut root.walk());
     Parsed {
         functions: stream.functions,
+        rows: stream.rows,
         tokens: stream.out,
         error: root.has_error(),
     }
@@ -507,7 +551,7 @@ fn build(root: &Path, index: &Path, params: Params) {
         }
     }
     let mut out = Vec::new();
-    for value in [params.k, params.w, params.cap, params.fmin, params.fcut, files.len(), kept.len(), capped.len(), functions.len()] {
+    for value in [params.k, params.w, params.cap, params.fmin, params.fcut, files.len(), kept.len(), capped.len(), functions.len(), params.t] {
         put(&mut out, value as u32);
     }
     for (path, count) in files.iter().zip(&counts) {
@@ -559,15 +603,16 @@ struct Index {
 impl Index {
     fn load(path: &Path) -> Index {
         let bytes: &'static [u8] = Box::leak(std::fs::read(path).unwrap().into_boxed_slice());
-        let header: Vec<usize> = (0..9).map(|i| word(bytes, i * 4) as usize).collect();
+        let header: Vec<usize> = (0..10).map(|i| word(bytes, i * 4) as usize).collect();
         let params = Params {
             k: header[0],
             w: header[1],
             cap: header[2],
             fmin: header[3],
             fcut: header[4],
+            t: header[9],
         };
-        let mut at = 36;
+        let mut at = 40;
         let mut paths = Vec::with_capacity(header[5]);
         let mut starts = Vec::with_capacity(header[5] + 1);
         let mut start = 0u32;
@@ -854,11 +899,12 @@ fn main() {
             Path::new(&args[2]),
             Path::new(&args[3]),
             Params {
-                k: number(4, 30),
-                w: number(5, 30),
+                k: number(4, 41),
+                w: number(5, 20),
                 cap: number(6, 64),
                 fmin: number(7, 10),
-                fcut: number(8, 118),
+                fcut: number(8, 98),
+                t: number(9, 5),
             },
         ),
         Some("walk") => {
@@ -880,6 +926,37 @@ fn main() {
                 }
             }
             println!("{tokens} tokens, {:.1} ns/token", ms(started) * 1e6 / tokens as f64);
+        }
+        Some("lines") => {
+            let root = Path::new(&args[2]);
+            let t = number(3, 60);
+            let fmin = number(4, 10);
+            let mut shared = Shared::new();
+            let (mut spans, mut functions, mut one_line) = (Vec::new(), Vec::new(), 0usize);
+            for path in source_files(root) {
+                let lang = Lang::of(&path).unwrap();
+                let source = std::fs::read(root.join(&path)).unwrap();
+                let syntax = shared.parse(lang, &source);
+                let parsed = stream(lang, &path, &source, &syntax);
+                let rows = &parsed.rows;
+                for start in 0..rows.len().saturating_sub(t - 1) {
+                    spans.push(rows[start + t - 1] - rows[start] + 1);
+                }
+                for (start, end) in &parsed.functions {
+                    if (*end - *start) as usize >= fmin {
+                        let lines = rows[*end as usize - 1] - rows[*start as usize] + 1;
+                        one_line += usize::from(lines == 1);
+                        functions.push(lines);
+                    }
+                }
+            }
+            let summary = |values: &mut Vec<u32>| {
+                values.sort_unstable();
+                let at = |q: f64| values.get(((values.len() as f64 - 1.0) * q) as usize).copied().unwrap_or(0);
+                format!("n={} min={} p10={} median={} p90={} max={}", values.len(), at(0.0), at(0.1), at(0.5), at(0.9), at(1.0))
+            };
+            println!("{t} tokens span lines: {}", summary(&mut spans));
+            println!("functions of {fmin}+ tokens span lines (name excluded): {} one_line={one_line}", summary(&mut functions));
         }
         Some("query") => query(Path::new(&args[2]), Path::new(&args[3]), number(4, 20), number(5, 60)),
         _ => eprintln!("usage: gen DIR 10k|300k|1m | build ROOT INDEX [K W CAP] | query ROOT INDEX [N T]"),
@@ -921,10 +998,31 @@ mod tests {
 
     #[test]
     fn winnowing_finds_every_shared_run_of_k_plus_w_minus_one() {
-        let params = Params { k: 20, w: 41, cap: 64, fmin: 10, fcut: 118 };
+        let params = Params { k: 20, w: 41, cap: 64, fmin: 10, fcut: 118, t: 0 };
         let shared: Vec<u64> = (1000..1060).collect();
         let left: Vec<u64> = (0..37).chain(shared.iter().copied()).collect();
         let right: Vec<u64> = (500..511).chain(shared.iter().copied()).chain(600..650).collect();
+        let keys = |t: &[u64]| winnow(t, params).into_iter().map(|p| p.0).collect::<std::collections::HashSet<_>>();
+        assert!(keys(&left).intersection(&keys(&right)).next().is_some());
+    }
+
+    #[test]
+    fn mod_minimizers_keep_one_selection_in_every_window() {
+        let params = Params { k: 41, w: 20, cap: 64, fmin: 10, fcut: 98, t: 21 };
+        let mut state = 7u64;
+        let tokens: Vec<u64> = (0..5000)
+            .map(|_| {
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                state >> 60
+            })
+            .collect();
+        let chosen: Vec<u32> = winnow(&tokens, params).into_iter().map(|p| p.1).collect();
+        assert!(chosen.windows(2).all(|pair| pair[1] - pair[0] <= params.w as u32));
+        assert!(chosen[0] < params.w as u32);
+        assert!(chosen[chosen.len() - 1] as usize >= tokens.len() - params.k - params.w + 1);
+        let shared: Vec<u64> = tokens[1000..1060].to_vec();
+        let left: Vec<u64> = (100..137).chain(shared.iter().copied()).collect();
+        let right: Vec<u64> = (200..211).chain(shared.iter().copied()).chain(300..350).collect();
         let keys = |t: &[u64]| winnow(t, params).into_iter().map(|p| p.0).collect::<std::collections::HashSet<_>>();
         assert!(keys(&left).intersection(&keys(&right)).next().is_some());
     }

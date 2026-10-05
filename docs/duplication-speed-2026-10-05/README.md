@@ -8,7 +8,9 @@ Status: sections 1 to 6 measure designs A and B (data in `results-ab/`).
 Design A misses the cache limit. Design B meets the limits but can block a
 region that is not an exact copy. Section 7 is the design that replaces both:
 design C, the proven chain. It gave no false positive in any run and meets
-every #478 limit, at 1M too.
+every #478 limit, at 1M too. Section 8 narrows design C's band from 58 to
+38 tokens with a smaller index scheme. That is now the default. Its 1M row
+waits for the owner.
 
 ## 1. Prototype
 
@@ -313,7 +315,7 @@ Only k = w = 30 keeps every tree under 10%, so design C uses it.
 
 ### Cost
 
-Data is in `results/`, and the summary is in `summary.txt`. The time is the
+Data is in `results-c30/`, with its summary. The time is the
 median of 5 runs (max), with reading and parsing left out.
 
 | Tree | Index (no path table) | / klin cache | Cold extra | / klin cold hook | Warm 20 | Warm 100 | Warm peak RSS |
@@ -368,3 +370,124 @@ The owner ran these commands on the fixture from section 6.
   the minimum function size together with T.
 - Warm time follows the size of the changed files, at about 155 ns for each
   token. 80 large klin files take 55 ms.
+
+## 8. Design C with mod-minimizers (k = 41, w = 20)
+
+### Change
+
+Section 7 used k = w = 30. Its band was 58 tokens, and it missed 11 of 19
+true copies on karakeep. A smaller w narrows the band, but with winnowing
+k = w = 20 put karakeep at 10.4% of the cache.
+
+Two changes make the index smaller:
+
+1. **Elias-Fano keys.** The sorted keys are stored as fixed low bits plus
+   unary high bits, with a select sample every 256 zeros
+   (`proto/src/postings.rs`). This saved only about 4%. A random 32-bit key
+   costs about log2(U/n) + 2 bits, and the token offset costs about
+   log2(tokens) bits. Neither can get much smaller.
+2. **Fewer entries.** The edge loss depends only on w, and the chain proof
+   needs only k ≥ w. So k can grow until k + w − 1 = T. The mod-minimizer
+   (Groot Koerkamp and Pibiri, 2024) uses a large k to select fewer k-grams,
+   and it keeps one selection in every window of w k-grams. It finds the
+   smallest t-mer in the window and selects the k-gram at that position
+   mod w. With k = 41, w = 20 and t = 5, it selects 0.063 of the karakeep
+   positions, against 0.091 for winnowing with k = w = 20. A unit test checks
+   the window property and the shared-fingerprint guarantee.
+
+The guarantee from section 7 holds with w = 20:
+- every copy of k + w − 1 = 60 tokens shares a fingerprint;
+- the band is T + 2(w − 1) = T + 38;
+- the function index covers 10 to 97 tokens.
+
+### Choosing k, w and t
+
+Index size, with the path table left out, as a share of klin's structural
+cache:
+
+| k | w | t | Band | 10k | 300k | GlareDB | karakeep |
+|---|---|---|---|---|---|---|---|
+| 30 | 30 | winnowing | 58 | 3.5% | 5.8% | 4.7% | 7.4% |
+| 20 | 20 | winnowing | 38 | 4.5% | 7.7% | 7.0% | 10.4% |
+| 41 | 20 | 21 | 38 | 2.9% | 6.4% | 5.5% | 8.1% |
+| **41** | **20** | **5** | **38** | **2.8%** | **6.3%** | **5.2%** | **7.8%** |
+| 45 | 16 | 13 | 30 | 2.8% | 7.0% | 6.0% | 8.9% |
+| 45 | 16 | 5 | 30 | 2.9% | 7.1% | 6.3% | 9.3% |
+| 49 | 12 | 5 | 22 | 3.0% | 7.8% | 7.3% | 10.8% |
+| 51 | 10 | 5 | 18 | 3.1% | 8.8% | 8.4% | 12.3% |
+
+The first row includes the Elias-Fano change, so it is smaller than in
+section 7. Two settings fit on every tree with a band under 58: w = 20 and
+w = 16. Their misses over the 6 real-tree queries:
+
+| Setting | Total missed (of 556 true copies) |
+|---|---|
+| k = w = 30, winnowing (section 7) | 216 |
+| k = 41, w = 20, t = 5 | 125 |
+| k = 45, w = 16, t = 13 | 165 |
+
+w = 16 has the narrower band, but it missed more copies here. A copy is
+missed when its two edge losses add up to more than L − T, so the count
+depends on where the selections fall. k = 41, w = 20, t = 5 missed the
+fewest and has more room under the cache limit. It is the default.
+
+### Results
+
+Data is in `results/`, and the summary is in `summary.txt`. The time is the
+median of 5 runs (max), with reading and parsing left out.
+
+| Tree | Changed | Time | Blocked regions | False | Function hits | False | True ≥ 60 | Missed | Longest missed |
+|---|---|---|---|---|---|---|---|---|---|
+| 10k | 20 | 0.73 (0.74) | 0 | 0 | 498 | 0 | 0 | 0 | — |
+| 10k | 100 | 1.61 (1.62) | 0 | 0 | 2,480 | 0 | 0 | 0 | — |
+| 300k | 20 | 1.51 (1.54) | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| 300k | 100 | 5.00 (5.02) | 0 | 0 | 0 | 0 | 0 | 0 | — |
+| GlareDB | 20 | 3.04 (3.13) | 43 | 0 | 54 | 0 | 49 | 6 | 66 |
+| GlareDB | 100 | 22.09 (22.62) | 320 | 0 | 290 | 0 | 404 | 84 | 79 |
+| karakeep | 20 | 2.90 (3.18) | 11 | 0 | 23 | 0 | 19 | 8 | 87 |
+| karakeep | 100 | 13.34 (13.67) | 36 | 0 | 68 | 0 | 50 | 14 | 74 |
+| klin `src/` | 20 | 10.04 (10.15) | 9 | 0 | 19 | 0 | 13 | 4 | 63 |
+| klin `src/` | 80 | 52.25 (52.57) | 12 | 0 | 36 | 0 | 21 | 9 | 74 |
+
+- There were no false positives in 50 queries.
+- Every missed copy is under the bound of 98 tokens.
+- With k = 41, the 300k fixture has no capped key, and its queries are
+  complete. The 10k fixture still hits 11 capped keys.
+
+| Tree | Index (no path table) | / klin cache | Cold extra | / klin cold hook |
+|---|---|---|---|---|
+| 10k | 82,597 | 2.8% | 110 ms | 1.0% |
+| 300k | 756,537 | 6.3% | 414 ms | 2.5% |
+| GlareDB | 205,308 | 5.2% | 139 ms | 2.7% |
+| karakeep | 95,095 | 7.8% | 71 ms | 3.5% |
+
+### Lines
+
+klin counts tokens, not lines. `dup-speed lines ROOT T FMIN` reports how many
+source lines a run of T tokens spans, at every start position, and how many
+lines each function of at least FMIN tokens spans:
+
+| Tree | 60 tokens: min / p10 / median / p90 | 98 tokens: min / p10 / median / p90 | Functions ≥ 10 tokens: min / median, on one line |
+|---|---|---|---|
+| GlareDB | 1 / 7 / 11 / 18 | 1 / 11 / 18 / 27 | 3 / 7, none |
+| karakeep | 3 / 8 / 12 / 16 | 6 / 14 / 19 / 25 | 1 / 8, 251 of 2,410 |
+| klin `src/` | 1 / 5 / 9 / 15 | 2 / 10 / 15 / 22 | 3 / 10, none |
+
+So at T = 60:
+- A copied block can block when it is a single long line, but most blocked
+  copies span about 9 to 12 lines.
+- Every copy of 98 tokens or more blocks. That is about 15 to 19 lines in
+  the median, and one or two lines when the lines are very long.
+- A copied whole function blocks from 10 tokens. In karakeep that includes
+  one-line arrow functions.
+
+T and the minimum function size come from step 2, so these line counts change
+with them.
+
+### 1M row (owner)
+
+```sh
+cargo build --release --manifest-path docs/duplication-speed-2026-10-05/proto/Cargo.toml
+WORK=/tmp/dup-speed docs/duplication-speed-2026-10-05/run.sh 1m /tmp/dup-1m
+python3 docs/duplication-speed-2026-10-05/summary.py
+```
