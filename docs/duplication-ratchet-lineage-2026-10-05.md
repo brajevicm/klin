@@ -368,7 +368,7 @@ natural finding anchor.
 | Delete unique + add two equivalent | one base `H` -> two current `H` | one replacement source + one new = 2 | FAIL 1 |
 | File rename/move, same fingerprint | `H` -> `H` elsewhere | structural identity or same-fingerprint replacement | PASS |
 | Function rename, same fingerprint | `H` -> `H` with renamed declaration | same-fingerprint replacement | PASS |
-| Rename/move plus implementation edit | `H1` -> `H2` | PASS only with certified structural lineage; otherwise UNKNOWN/INCOMPLETE if judgement depends on it | explicit |
+| Rename/move plus implementation edit | `H1` -> `H2` | PASS with certified site lineage, or via an unused slot only when `H2` is the sole proven successor group; otherwise UNKNOWN/INCOMPLETE if judgement depends on it | explicit |
 | Group split | one cohort `H1` -> descendant groups `H2`, `H3`, ... | every new group contains the same single source cohort | PASS; may reduce debt |
 | Split + removed-slot allocation matters | one cohort has proven descendants in `H2` and `H3`, plus a removed slot and an unmatched occurrence on a branch | slot has multiple plausible successor branches | INCOMPLETE if allocation changes regression count |
 | Two old duplicate groups merge | cohort `H1` + cohort `H2` -> one `H3` | 2 source cohorts = 2 | FAIL 1 |
