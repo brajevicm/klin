@@ -477,7 +477,12 @@ It MUST:
 
 - be safe and idempotent to rerun;
 - reconcile first-class host integration artifacts that klin owns;
-- create or preserve a minimal policy configuration as needed for repository opt-in;
+- create `klin.json` containing `{}` when no policy file exists, preserving current
+  repository opt-in semantics;
+- preserve an existing person-owned policy rather than rewriting it merely to reinstall
+  hooks;
+- when the repository proves no first-class host, install/reconcile repository artifacts
+  for Claude Code, Codex CLI, and Cursor rather than refusing to guess;
 - report what it changed and what remains unsupported;
 - avoid running repository quality measurement as a side effect.
 
@@ -607,8 +612,8 @@ integration reconciliation remains `klin setup`.
 The repository policy file remains `klin.json`.
 
 For an explicit `klin check`, a missing `klin.json` MUST behave as the empty derived
-policy. `klin setup` creates/reconciles the repository opt-in artifacts required by
-supported hosts and MAY create an explicit `{}` as the repository's integration marker.
+policy. `klin setup` MUST create an explicit `{}` when the file is absent because the
+file remains the repository opt-in marker for automatic host feedback.
 
 `{}` is a complete meaningful policy. A user does not need to copy derived topology into
 configuration merely to activate klin.
