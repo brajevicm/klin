@@ -1,0 +1,12 @@
+{
+  "purpose": "G1: exact regions that a commit introduces, judged by the frozen version 2 rules",
+  "klin": "/Users/brajevicm/Workspace/klin src/, newest 400 non-merge commits that touch src/ (all of them), HEAD 7d2077d8 era",
+  "atuin": "https://github.com/atuinsh/atuin, 200 newest non-merge commits before d5c6bee0f7bcce56d028472dcbba7fd5c6ff0a8b",
+  "yazi": "https://github.com/sxyazi/yazi, 200 newest non-merge commits before be8dc1b158b610254a67ee421900e8d3e6f2903b",
+  "documenso": "https://github.com/documenso/documenso, 200 newest non-merge commits before cd0cc5febcbb76ec7e5ecb75c0b8c65ab8432198",
+  "actual": "https://github.com/actualbudget/actual, 200 newest non-merge commits before 6245a46417c9488c2d416443e909827e1c2788e6",
+  "scan": "python3 introduced.py OUT klin=KLIN:src:400 atuin=ATUIN:.:200 yazi=YAZI:.:200 documenso=DOCUMENSO:.:200 actual=ACTUAL:.:200",
+  "introduced": "one side has at least half of its lines added by the commit; the other side is anywhere in the tree at that commit; k = 41, T = 60, calibrate.py test filter",
+  "rules": "python3 holdout.py rules OUT/corpus calibration-introduced, version 2, run before any label existed",
+  "labels": "two blind model reviewers, one per blind-N shard"
+}
