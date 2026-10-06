@@ -1,0 +1,117 @@
+{
+  "purpose": "G4 v3 blind confirmation population; 200-commit windows are disjoint from G1 where G1 covered the repository.",
+  "atuin_old": {
+    "source_head": "d5c6bee0f7bcce56d028472dcbba7fd5c6ff0a8b",
+    "g1_window_newest": "d5c6bee0f7bcce56d028472dcbba7fd5c6ff0a8b",
+    "g1_window_oldest": "e34b9dd1b7e7213cd27c9b4b882cc8bc550a5b22",
+    "blind_window_newest": "5a6a4f231f17d65a26ef279b476568c6b51cd3b5",
+    "blind_window_oldest": "d260a1d7d57d4b6363babbc5b04259d258f1e83b",
+    "commits": 200,
+    "scan_head": "5a6a4f231f17d65a26ef279b476568c6b51cd3b5",
+    "verified_g1_commit_overlap": 0
+  },
+  "yazi_old": {
+    "source_head": "be8dc1b158b610254a67ee421900e8d3e6f2903b",
+    "g1_window_newest": "be8dc1b158b610254a67ee421900e8d3e6f2903b",
+    "g1_window_oldest": "9648d8a43b340e972122a88e525f15d1d0f89a01",
+    "blind_window_newest": "b92b576ce17c6e475e2c231c2ae9cbaf70de41bd",
+    "blind_window_oldest": "da97e5a8b4580add8f5eb2f97f0fe80886becf06",
+    "commits": 200,
+    "scan_head": "b92b576ce17c6e475e2c231c2ae9cbaf70de41bd",
+    "verified_g1_commit_overlap": 0
+  },
+  "actual_old": {
+    "source_head": "6245a46417c9488c2d416443e909827e1c2788e6",
+    "g1_window_newest": "6245a46417c9488c2d416443e909827e1c2788e6",
+    "g1_window_oldest": "6aee7eee58c923b70a15a4864a7a6f396deb8a5b",
+    "blind_window_newest": "fd4dea21ae90e870096ecd4b3ac1947f7a51ea70",
+    "blind_window_oldest": "cd58c7564d328cb8eb0d54bdb420343595cd5395",
+    "commits": 200,
+    "scan_head": "fd4dea21ae90e870096ecd4b3ac1947f7a51ea70",
+    "verified_g1_commit_overlap": 0
+  },
+  "documenso_old": {
+    "source_head": "cd0cc5febcbb76ec7e5ecb75c0b8c65ab8432198",
+    "g1_window_newest": "cd0cc5febcbb76ec7e5ecb75c0b8c65ab8432198",
+    "g1_window_oldest": "743d31651f06b6cede876ad0bbc26e04eed4d38c",
+    "blind_window_newest": "ce96238464d9687efa38661499e54eb5433d86d6",
+    "blind_window_oldest": "8b0231825f04a03331b97589f11419ce4901557d",
+    "commits": 200,
+    "scan_head": "ce96238464d9687efa38661499e54eb5433d86d6",
+    "verified_g1_commit_overlap": 0
+  },
+  "gitui_old": {
+    "source_head": "f004ef080907d28b7e71d15f9a7da7b60d0351b9",
+    "blind_window_newest": "4afcd6675428b0936f38a54108a6920453580525",
+    "blind_window_oldest": "21491bcbcaa69e3a0cc44bf6da8b1a031653ae6c",
+    "commits": 200,
+    "not_in_g1": "gitui was not included in G1 introduction scan",
+    "scan_head": "4afcd6675428b0936f38a54108a6920453580525",
+    "verified_g1_commit_overlap": "not applicable: repository was not scanned in G1"
+  },
+  "glaredb_old": {
+    "source_snapshot": "8001afa4cff0cecfec79f2cb292108da08aa4c35",
+    "blind_window_newest": "2b1bf54dcb5590917cfad7a6b936e779d21985e4",
+    "blind_window_oldest": "b75a739024db92635822c0de21657e77f6131867",
+    "commits": 200,
+    "not_in_g1": "glaredb was not included in G1 introduction scan",
+    "scan_head": "2b1bf54dcb5590917cfad7a6b936e779d21985e4",
+    "verified_g1_commit_overlap": "not applicable: repository was not scanned in G1"
+  },
+  "candidate_method": "Introduced regions: at least half of one span's lines were added by the commit; counterpart occurs in the post-commit tree. This does not prove the counterpart existed in the parent tree.",
+  "scanner_equivalence": "Glaredb used an incremental index implementation for speed; it matched the original introduced.py scan exactly on all 57 GitUI pair IDs, families, and span line ranges. The original script is unchanged.",
+  "population": {
+    "unique_pairs": 3085,
+    "rust_v3_kept": 59,
+    "typescript_v3_kept": 130,
+    "repositories": [
+      "actual",
+      "atuin",
+      "documenso",
+      "gitui",
+      "glaredb",
+      "yazi"
+    ],
+    "v3_kept_by_language_and_repository": {
+      "Rust": {
+        "atuin": 8,
+        "gitui": 14,
+        "glaredb": 26,
+        "yazi": 11
+      },
+      "TypeScript": {
+        "actual": 5,
+        "documenso": 125
+      }
+    },
+    "source_urls": {
+      "atuin": "https://github.com/atuinsh/atuin",
+      "yazi": "https://github.com/sxyazi/yazi",
+      "actual": "https://github.com/actualbudget/actual",
+      "documenso": "https://github.com/documenso/documenso",
+      "gitui": "https://github.com/gitui-org/gitui",
+      "glaredb": "https://github.com/glaredb/glaredb"
+    }
+  },
+  "freeze": {
+    "version": "TypeScript v3; Rust unchanged from v2",
+    "frozen_before_labels": true,
+    "dependencies_sha256": {
+      "docs/duplication-speed-2026-10-05/introduced.py": "2bd998fd3c9a14c7864ff47e9ffa97350444091f8916e917f2a095d3044a82d6",
+      "docs/duplication-speed-2026-10-05/calibrate.py": "44e8a0a5f0ce55094e39018cb194b7bc836050c8ef5e6947d33651711c8c81f3",
+      "docs/duplication-speed-2026-10-05/verify.py": "2e4e770638381c26bc42d44bdc2c594d31fe7b3477a899724ab8dae6b5838e6a",
+      "docs/duplication-speed-2026-10-05/holdout.py": "fc13b0759efc57a5ecd92673e93f9542f71f2dd15aa56cd28adef3140a4ddd77",
+      "docs/duplication-speed-2026-10-05/scope_exclusions.py": "efd5bcfd229ecc4e243cb9579aa7a713839de75e327c0785bd513eff539d94aa",
+      "docs/duplication-speed-2026-10-05/unitclass/src/main.rs": "05aada31e0a75a699f5486054660f2c47a41ff566247cc64a391457d90bce502"
+    },
+    "population_mapping_sha256": "c96e827558c66efa52a8c11ce3172b8d82fd908ff28c880e3685f547db5216dd",
+    "rules_sha256": "2174fd219df1864f5c799b7fa542d159fd1012a378ea7066e0ec06c6bf939cc2",
+    "selection_sha256": "d5cac5ad1968adb640379bae29d99c5144839f2bd6139007203df5e153665d40",
+    "measurement_script_sha256": "0dc21fc7eadda2f8d046e1149a11ec1e103b92958d49cf5a2805ab2707bf0507",
+    "review_packet_sha256": "18319ff040030e9021113ece28dbd10bdbb6d69f82245ea6332c7e5e0f16ffc7",
+    "review_prompt_sha256": "2548c8d799d84078a11968c22f575b37b6d05e6a0a5833e3150a1fe8ec8a241f"
+  },
+  "sample_family_overlap": 93,
+  "sample_size": 200,
+  "sample_fresh_rust_kept_families": 28
+}

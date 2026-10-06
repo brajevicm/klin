@@ -1,0 +1,669 @@
+{
+  "rows": [
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1542.475792,
+      "iteration": 0,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 20,
+        "checksum": 5060600842999344303,
+        "derived_inputs": 40,
+        "extra_parses": 0,
+        "fingerprints": 1577,
+        "normalize_ms": 6.485584,
+        "retained_payload_bytes": 594998,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 40,
+        "tokens": 23688,
+        "unchanged_source_reads": 0,
+        "unique_paths": 20
+      },
+      "enabled": true,
+      "end_to_end_ms": 1444.099042,
+      "iteration": 0,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 20,
+        "checksum": 5060600842999344303,
+        "derived_inputs": 40,
+        "extra_parses": 0,
+        "fingerprints": 1577,
+        "normalize_ms": 5.677498,
+        "retained_payload_bytes": 594998,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 40,
+        "tokens": 23688,
+        "unchanged_source_reads": 0,
+        "unique_paths": 20
+      },
+      "enabled": true,
+      "end_to_end_ms": 1417.314666,
+      "iteration": 1,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1669.0830829999998,
+      "iteration": 1,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1454.101542,
+      "iteration": 2,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 20,
+        "checksum": 5060600842999344303,
+        "derived_inputs": 40,
+        "extra_parses": 0,
+        "fingerprints": 1577,
+        "normalize_ms": 5.780418,
+        "retained_payload_bytes": 594998,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 40,
+        "tokens": 23688,
+        "unchanged_source_reads": 0,
+        "unique_paths": 20
+      },
+      "enabled": true,
+      "end_to_end_ms": 1403.833292,
+      "iteration": 2,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 20,
+        "checksum": 5060600842999344303,
+        "derived_inputs": 40,
+        "extra_parses": 0,
+        "fingerprints": 1577,
+        "normalize_ms": 7.248743,
+        "retained_payload_bytes": 594998,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 40,
+        "tokens": 23688,
+        "unchanged_source_reads": 0,
+        "unique_paths": 20
+      },
+      "enabled": true,
+      "end_to_end_ms": 1621.118584,
+      "iteration": 3,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1404.049667,
+      "iteration": 3,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1393.296667,
+      "iteration": 4,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 20,
+        "checksum": 5060600842999344303,
+        "derived_inputs": 40,
+        "extra_parses": 0,
+        "fingerprints": 1577,
+        "normalize_ms": 6.142794,
+        "retained_payload_bytes": 594998,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 40,
+        "tokens": 23688,
+        "unchanged_source_reads": 0,
+        "unique_paths": 20
+      },
+      "enabled": true,
+      "end_to_end_ms": 1404.55325,
+      "iteration": 4,
+      "phase": "warm20"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1755.131459,
+      "iteration": 0,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1734374758171314037,
+        "derived_inputs": 200,
+        "extra_parses": 0,
+        "fingerprints": 7855,
+        "normalize_ms": 28.024126,
+        "retained_payload_bytes": 2944728,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 200,
+        "tokens": 118568,
+        "unchanged_source_reads": 0,
+        "unique_paths": 100
+      },
+      "enabled": true,
+      "end_to_end_ms": 1766.888667,
+      "iteration": 0,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1734374758171314037,
+        "derived_inputs": 200,
+        "extra_parses": 0,
+        "fingerprints": 7855,
+        "normalize_ms": 29.225534,
+        "retained_payload_bytes": 2944728,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 200,
+        "tokens": 118568,
+        "unchanged_source_reads": 0,
+        "unique_paths": 100
+      },
+      "enabled": true,
+      "end_to_end_ms": 1943.110209,
+      "iteration": 1,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1870.449,
+      "iteration": 1,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1762.721875,
+      "iteration": 2,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1734374758171314037,
+        "derived_inputs": 200,
+        "extra_parses": 0,
+        "fingerprints": 7855,
+        "normalize_ms": 27.14163,
+        "retained_payload_bytes": 2944728,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 200,
+        "tokens": 118568,
+        "unchanged_source_reads": 0,
+        "unique_paths": 100
+      },
+      "enabled": true,
+      "end_to_end_ms": 1758.332958,
+      "iteration": 2,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1734374758171314037,
+        "derived_inputs": 200,
+        "extra_parses": 0,
+        "fingerprints": 7855,
+        "normalize_ms": 27.360208,
+        "retained_payload_bytes": 2944728,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 200,
+        "tokens": 118568,
+        "unchanged_source_reads": 0,
+        "unique_paths": 100
+      },
+      "enabled": true,
+      "end_to_end_ms": 1802.476792,
+      "iteration": 3,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1758.020166,
+      "iteration": 3,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 1797.9407090000002,
+      "iteration": 4,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1734374758171314037,
+        "derived_inputs": 200,
+        "extra_parses": 0,
+        "fingerprints": 7855,
+        "normalize_ms": 27.702964,
+        "retained_payload_bytes": 2944728,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 200,
+        "tokens": 118568,
+        "unchanged_source_reads": 0,
+        "unique_paths": 100
+      },
+      "enabled": true,
+      "end_to_end_ms": 1774.1902920000002,
+      "iteration": 4,
+      "phase": "warm100"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 34155.614542,
+      "iteration": 0,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1116218705834015690,
+        "derived_inputs": 10098,
+        "extra_parses": 0,
+        "fingerprints": 784494,
+        "normalize_ms": 1405.150591,
+        "retained_payload_bytes": 148456596,
+        "reuse_hits": 9998,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 20099,
+        "tokens": 11919300,
+        "unchanged_source_reads": 0,
+        "unique_paths": 9998
+      },
+      "enabled": true,
+      "end_to_end_ms": 34731.499375,
+      "iteration": 0,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1116218705834015690,
+        "derived_inputs": 10098,
+        "extra_parses": 0,
+        "fingerprints": 784494,
+        "normalize_ms": 1405.012064,
+        "retained_payload_bytes": 148456596,
+        "reuse_hits": 9998,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 20099,
+        "tokens": 11919300,
+        "unchanged_source_reads": 0,
+        "unique_paths": 9998
+      },
+      "enabled": true,
+      "end_to_end_ms": 34554.253375,
+      "iteration": 1,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 32618.060416,
+      "iteration": 1,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 34028.555083,
+      "iteration": 2,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1116218705834015690,
+        "derived_inputs": 10098,
+        "extra_parses": 0,
+        "fingerprints": 784494,
+        "normalize_ms": 1522.046572,
+        "retained_payload_bytes": 148456596,
+        "reuse_hits": 9998,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 20099,
+        "tokens": 11919300,
+        "unchanged_source_reads": 0,
+        "unique_paths": 9998
+      },
+      "enabled": true,
+      "end_to_end_ms": 35850.334875,
+      "iteration": 2,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1116218705834015690,
+        "derived_inputs": 10098,
+        "extra_parses": 0,
+        "fingerprints": 784494,
+        "normalize_ms": 1463.73716,
+        "retained_payload_bytes": 148456596,
+        "reuse_hits": 9998,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 20099,
+        "tokens": 11919300,
+        "unchanged_source_reads": 0,
+        "unique_paths": 9998
+      },
+      "enabled": true,
+      "end_to_end_ms": 35072.911833,
+      "iteration": 3,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 34030.985584,
+      "iteration": 3,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 0,
+        "checksum": 0,
+        "derived_inputs": 0,
+        "extra_parses": 0,
+        "fingerprints": 0,
+        "normalize_ms": 0.0,
+        "retained_payload_bytes": 0,
+        "reuse_hits": 0,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 0,
+        "tokens": 0,
+        "unchanged_source_reads": 0,
+        "unique_paths": 0
+      },
+      "enabled": false,
+      "end_to_end_ms": 33101.0735,
+      "iteration": 4,
+      "phase": "cold"
+    },
+    {
+      "counters": {
+        "changed_same_paths": 100,
+        "checksum": 1116218705834015690,
+        "derived_inputs": 10098,
+        "extra_parses": 0,
+        "fingerprints": 784494,
+        "normalize_ms": 1447.182298,
+        "retained_payload_bytes": 148456596,
+        "reuse_hits": 9998,
+        "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+        "shared_files": 20099,
+        "tokens": 11919300,
+        "unchanged_source_reads": 0,
+        "unique_paths": 9998
+      },
+      "enabled": true,
+      "end_to_end_ms": 34217.413834,
+      "iteration": 4,
+      "phase": "cold"
+    }
+  ],
+  "summary": {
+    "warm20": {
+      "off_median_ms": 1454.101542,
+      "on_median_ms": 1417.314666,
+      "paired_median_delta_ms": -50.26825000000008,
+      "paired_median_delta_percent": -3.4569972280519057,
+      "paired_max_delta_percent": 15.460202163916769,
+      "pairs_over_5_percent": 1,
+      "normalize_median_ms": 6.142794,
+      "retained_payload_bytes": 594998,
+      "reuse_hits": 0
+    },
+    "warm100": {
+      "off_median_ms": 1762.721875,
+      "on_median_ms": 1774.1902920000002,
+      "paired_median_delta_ms": 11.757207999999991,
+      "paired_median_delta_percent": 0.6698762044125672,
+      "paired_max_delta_percent": 3.8846934078395012,
+      "pairs_over_5_percent": 0,
+      "normalize_median_ms": 27.702964,
+      "retained_payload_bytes": 2944728,
+      "reuse_hits": 0
+    },
+    "cold": {
+      "off_median_ms": 34028.555083,
+      "on_median_ms": 34731.499375,
+      "paired_median_delta_ms": 1116.3403340000004,
+      "paired_median_delta_percent": 3.3725200302038516,
+      "paired_max_delta_percent": 5.935953684267026,
+      "pairs_over_5_percent": 2,
+      "normalize_median_ms": 1447.182298,
+      "retained_payload_bytes": 148456596,
+      "reuse_hits": 9998
+    }
+  }
+}

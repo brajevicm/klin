@@ -1,0 +1,11 @@
+{
+  "status": "compiled; identity probe passed; 30 A/B rows complete; paired semantic counters agree",
+  "basis": "frozen /tmp/klin490-opt-reference normalization k41/w20/t5/cap64/bits64",
+  "files": {
+    "src/main.rs": "423fd1f747004f2323c4d87260f6810d39c05ad37349fc798e6628dc06d3ce3a",
+    "src/dup_accounting.rs": "dffc14c9ce4f40bdaa1c905fba47a44a320bdae8110000e07d28eb6fbceb9c88",
+    "src/dup_research/main.rs": "546eafc55a171e6271fc4ef38f14f37fcadb1ec20c1e83b80d6229bb4e87c72e",
+    "src/syntax/structural/mod.rs": "b50c6fd4bbf771767672caf0b90db6ae801480478e48091c3d8e110d8b627329",
+    "tests/performance.rs": "034351c8bfffd90564202888f0855fbff6f663c5daf7ba01a2549cb6177bcec9"
+  }
+}

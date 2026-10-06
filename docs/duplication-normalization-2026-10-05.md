@@ -187,3 +187,41 @@ tree-sitter-typescript 0.23.2.
      silently as a `yield_expression`. Regex versus division,
      `let` as an identifier and `f<T>(x)` parse correctly. Result: the
      table in section 2.
+
+## 4. Frozen region-prototype safety, 2026-10-05
+
+`docs/duplication-speed-2026-10-05/verification.json` records the remaining
+conditional-arrow and `.ts` type-assertion probes with the pinned grammars.
+Both parse without errors and retain their written token text. The other
+pinned parser-risk classes are exercised by `verify.py`; the multiline
+block-comment case is ineligible even when tree-sitter accepts it; LF, CR
+and Unicode line separators are covered.
+
+The direct terminated-kind list is committed as `TERMINATED` in the prototype.
+The pinned grammar stores member separators in `class_body` and `object_type`
+(the latter is aliased to `interface_body` in interfaces). The prototype emits
+one terminator after public fields, property/method/abstract-method/call/
+construct/index signatures and method definitions, and consumes their
+parent-owned `;` or `,`. Static blocks do not acquire a required terminator. Wrapper
+exports and ambient declarations do not add a second terminator when their
+child declaration already owns one. Standalone empty member separators remain.
+
+Rust exclusion mirrors `cfg_test_ranges`: whitespace is removed from the
+attribute before matching `#[cfg(test)]`, and comments/attributes are skipped
+to find the marked item. `#[test]` items are excluded too. A discontinuity
+invalidates the first retained token after an excluded range so no fingerprint
+or exact extension can join code across an omitted test item.
+
+Safety is conservative: an unsafe top-level parse unit invalidates all tokens
+in its line range, including synthetic terminators. This covers its enclosing
+functions and statements but may exclude additional valid members of that unit
+or another statement on the same line. Such lost recall is reported as a
+prototype limitation, not as complete detection of unsafe code. Unsafe-unit
+counts are reported separately for Rust and TS/TSX. Unsafe tokens are reserved
+boundaries in the validation chain, never equality evidence. The boundary
+encoding and safety rules are part of the new region index basis (`REG2`); old
+indexes must be rebuilt.
+
+The frozen list can change only with new probes and a rerun of affected
+measurements. This is a research implementation and does not change shipped
+klin normalization.

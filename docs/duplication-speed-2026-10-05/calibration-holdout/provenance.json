@@ -1,0 +1,9 @@
+{
+  "gitui": "https://github.com/gitui-org/gitui f004ef080907d28b7e71d15f9a7da7b60d0351b9",
+  "yazi": "https://github.com/sxyazi/yazi be8dc1b158b610254a67ee421900e8d3e6f2903b",
+  "actual": "https://github.com/actualbudget/actual 6245a46417c9488c2d416443e909827e1c2788e6",
+  "linkwarden": "https://github.com/linkwarden/linkwarden 952ac4540657cae3a67c3ca59433899d2fda8374",
+  "collect": "python3 calibrate.py collect /tmp/klin480-holdout DIR gitui=gitui yazi=yazi actual=actual linkwarden=linkwarden",
+  "rules": "python3 holdout.py rules /tmp/klin480-holdout calibration-holdout, run before any label existed",
+  "labels": "three blind model reviewers, one per blind-N shard; they saw no mapping, length, threshold or rule result"
+}

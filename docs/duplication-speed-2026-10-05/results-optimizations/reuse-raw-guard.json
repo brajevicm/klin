@@ -1,0 +1,17 @@
+{
+  "changed_same_paths": 0,
+  "checksum": 0,
+  "derived_inputs": 1,
+  "extra_parses": 0,
+  "fingerprints": 0,
+  "incomplete": true,
+  "invalid_raw_inputs": 2,
+  "normalize_ms": 0.114416,
+  "retained_payload_bytes": 382,
+  "reuse_hits": 0,
+  "scope": "full-input same-path per-run reuse; retains tokens/rows/safety/actual selected prints; excludes index/lineage",
+  "shared_files": 1,
+  "tokens": 7,
+  "unchanged_source_reads": 0,
+  "unique_paths": 1
+}

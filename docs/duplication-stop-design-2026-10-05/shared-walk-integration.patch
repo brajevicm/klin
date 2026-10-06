@@ -1,0 +1,39 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -11,6 +11,9 @@
+ mod dead_symbols;
+ mod doc_citations;
+ mod doc_size;
++#[allow(dead_code)]
++#[path = "dup_research/main.rs"]
++mod dup_research;
+ mod error;
+ mod escapes;
+ mod files;
+--- a/src/syntax/structural/mod.rs
++++ b/src/syntax/structural/mod.rs
+@@ -663,7 +663,9 @@
+                 .or_default()
+                 .push(&module.nesting);
+         }
+-        walk(root, &mut |node| {
++        let path = self.path;
++        let source = self.source;
++        let mut visit = |node: Node| {
+             if self.adapter.identifiers.contains(&node.kind())
+                 && !self.declared.contains(&node.start_byte())
+                 && !self.claimed(node)
+@@ -688,7 +690,12 @@
+                     });
+                 }
+             }
+-        });
++        };
++        if std::env::var("KLIN_DUP_SHARED_WALK").as_deref() == Ok("1") {
++            crate::dup_research::consume_shared_visit(path, source, root, &mut visit);
++        } else {
++            walk(root, &mut visit);
++        }
+         self.modules = declarations;
+         (references, paths)
+     }

@@ -1,0 +1,365 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,7 +1,7 @@
+ mod fixture;
+ mod postings;
+ 
+-use postings::{partition, Postings};
++use postings::{Postings, partition};
+ 
+ use std::collections::HashMap;
+ 
+@@ -103,8 +103,10 @@
+ }
+ 
+ struct Stream<'a> {
+-    unsafe_ranges: Vec<(usize, usize)>,
+-    excluded: Vec<(usize, usize)>,
++    unsafe_rows: Vec<(u32, u32)>,
++    excluded: Vec<(usize, usize, u32)>,
++    excluded_end: usize,
++    risky_unit: bool,
+     safe: Vec<bool>,
+     raw: Option<Vec<Vec<u8>>>,
+     lang: Lang,
+@@ -157,27 +159,44 @@
+         }
+     }
+ 
+-    fn walk(&mut self, cursor: &mut TreeCursor<'a>) {
++    fn walk(&mut self, cursor: &mut TreeCursor<'a>, top: bool) {
+         let node = cursor.node();
+-        if self
+-            .excluded
+-            .iter()
+-            .any(|(start, end)| node.start_byte() >= *start && node.end_byte() <= *end)
+-        {
++        let kind = node.kind();
++        if node.start_byte() < self.excluded_end && node.end_byte() <= self.excluded_end {
+             return;
+         }
+-        if node.kind().ends_with("comment") {
++        if self.lang == Lang::Rust && kind == "attribute_item" {
++            let attribute: String = String::from_utf8_lossy(self.text(node))
++                .split_whitespace()
++                .collect();
++            if attribute == "#[cfg(test)]" || attribute == "#[test]" {
++                let mut item = node;
++                while let Some(next) = item.next_named_sibling() {
++                    item = next;
++                    if !matches!(
++                        item.kind(),
++                        "attribute_item" | "line_comment" | "block_comment" | "doc_comment"
++                    ) {
++                        break;
++                    }
++                }
++                self.excluded_end = item.end_byte();
++                self.excluded.push((
++                    node.start_byte(),
++                    item.end_byte(),
++                    node.start_position().row as u32,
++                ));
++                return;
++            }
++        }
++        if kind.ends_with("comment") {
++            if self.lang != Lang::Rust && risky_comment(node, self.source) {
++                self.risky_unit = true;
++            }
+             return;
+         }
+         if !cursor.goto_first_child() {
+             self.leaf(node);
+-            if let Some(safe) = self.safe.last_mut().filter(|_| {
+-                self.unsafe_ranges
+-                    .iter()
+-                    .any(|(start, end)| node.start_byte() < *end && node.end_byte() > *start)
+-            }) {
+-                *safe = false;
+-            }
+             return;
+         }
+         let mut child_cursor = node.walk();
+@@ -203,7 +222,19 @@
+                 member_separator = false;
+             } else {
+                 let before = self.out.len();
+-                self.walk(cursor);
++                if top {
++                    self.risky_unit = false;
++                }
++                self.walk(cursor, false);
++                if top
++                    && child.is_named()
++                    && (child.has_error() || child.is_missing() || self.risky_unit)
++                {
++                    self.unsafe_rows.push((
++                        child.start_position().row as u32,
++                        child.end_position().row as u32,
++                    ));
++                }
+                 trailing = (kind == ";").then_some(before);
+                 if members
+                     && matches!(
+@@ -239,13 +270,6 @@
+                 }
+             }
+             self.emit(b";", node.end_position().row);
+-            if self
+-                .unsafe_ranges
+-                .iter()
+-                .any(|(start, end)| node.start_byte() < *end && node.end_byte() > *start)
+-            {
+-                *self.safe.last_mut().unwrap() = false;
+-            }
+         }
+     }
+ }
+@@ -499,49 +523,43 @@
+ }
+ 
+ fn normalized_root(lang: Lang, path: &str, source: &[u8], root: Node, capture: bool) -> Parsed {
+-    let mut unsafe_ranges = Vec::new();
+-    let mut cursor = root.walk();
+-    for unit in root.named_children(&mut cursor) {
+-        if unit.has_error()
+-            || unit.is_missing()
+-            || (lang != Lang::Rust && risky_comment(unit, source))
+-        {
+-            unsafe_ranges.push((unit.start_byte(), unit.end_byte()));
+-        }
+-    }
+-    let unsafe_units = unsafe_ranges.len();
+-    let mut excluded = Vec::new();
+-    if lang == Lang::Rust {
+-        test_ranges(root, source, &mut excluded);
+-    }
+     let mut stream = Stream {
+         lang,
+         source,
+-        unsafe_ranges,
+-        excluded,
++        unsafe_rows: Vec::new(),
++        excluded: Vec::new(),
++        excluded_end: 0,
++        risky_unit: false,
+         safe: Vec::new(),
+         raw: capture.then(Vec::new),
+         imports: imports(lang, path, source, root),
+         out: Vec::new(),
+         rows: Vec::new(),
+     };
+-    stream.walk(&mut root.walk());
+-    // Excluded ranges are discontinuities, not permission to join their neighbors.
+-    for (start, end) in &stream.excluded {
+-        let first = stream.rows.partition_point(|row| {
+-            *row < source[..*start].iter().filter(|b| **b == b'\n').count() as u32
+-        });
++    stream.walk(&mut root.walk(), true);
++    let unsafe_units = stream.unsafe_rows.len();
++    // Exclusions are discontinuities. Nested excluded ranges have the same next token.
++    for (_, end, row) in &stream.excluded {
++        let first = stream.rows.partition_point(|held| held < row);
+         if first < stream.safe.len() && *end < source.len() {
+             stream.safe[first] = false;
+         }
+     }
+-    for (start, end) in &stream.unsafe_ranges {
+-        let first_row = source[..*start].iter().filter(|b| **b == b'\n').count() as u32;
+-        let last_row = source[..*end].iter().filter(|b| **b == b'\n').count() as u32;
+-        for (row, safe) in stream.rows.iter().zip(&mut stream.safe) {
+-            if *row >= first_row && *row <= last_row {
+-                *safe = false;
+-            }
++    let mut ranges: Vec<(u32, u32)> = Vec::new();
++    for (start, end) in &stream.unsafe_rows {
++        if let Some(last) = ranges.last_mut().filter(|last| *start <= last.1) {
++            last.1 = last.1.max(*end);
++        } else {
++            ranges.push((*start, *end));
++        }
++    }
++    let mut range = 0;
++    for (row, safe) in stream.rows.iter().zip(&mut stream.safe) {
++        while range < ranges.len() && ranges[range].1 < *row {
++            range += 1;
++        }
++        if range < ranges.len() && ranges[range].0 <= *row {
++            *safe = false;
+         }
+     }
+     for (token, safe) in stream.out.iter_mut().zip(&stream.safe) {
+@@ -598,35 +616,7 @@
+             return before.iter().chain(after).any(|b| !b.is_ascii_whitespace());
+         }
+     }
+-    let mut cursor = node.walk();
+-    node.children(&mut cursor)
+-        .any(|child| risky_comment(child, source))
+-}
+-
+-fn test_ranges(node: Node, source: &[u8], out: &mut Vec<(usize, usize)>) {
+-    let mut cursor = node.walk();
+-    for child in node.children(&mut cursor) {
+-        if child.kind() == "attribute_item" {
+-            let text: String = String::from_utf8_lossy(&source[child.byte_range()])
+-                .split_whitespace()
+-                .collect();
+-            if text == "#[cfg(test)]" || text == "#[test]" {
+-                let mut item = child;
+-                while let Some(next) = item.next_named_sibling() {
+-                    item = next;
+-                    if !matches!(
+-                        item.kind(),
+-                        "attribute_item" | "line_comment" | "block_comment" | "doc_comment"
+-                    ) {
+-                        break;
+-                    }
+-                }
+-                out.push((child.start_byte(), item.end_byte()));
+-                continue;
+-            }
+-        }
+-        test_ranges(child, source, out);
+-    }
++    false
+ }
+ 
+ fn fingerprints(parsed: &Parsed, params: Params) -> Vec<(u64, u32)> {
+@@ -1199,7 +1189,17 @@
+         || local_truncated > 0
+         || t < params.k + params.w - 1;
+     if stop_only {
+-        println!("{{\"changed\":{},\"t\":{t},\"key_bits\":{},\"changed_tokens\":{changed_tokens},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"lookup_ms\":{lookup_ms:.2},\"design_c_ms\":{design_ms:.2},\"hits\":{},\"proven\":{},\"deferred\":{},\"capped_hits\":{},\"local_truncated\":{local_truncated},\"hit_truncated\":{hit_truncated},\"incomplete\":{incomplete},\"unsafe_rust_units\":{},\"unsafe_ts_units\":{}}}", changed.len(), params.bits, outcome.hits, outcome.proven, outcome.deferred, outcome.capped_hits, unsafe_units[0], unsafe_units[1]);
++        println!(
++            "{{\"changed\":{},\"t\":{t},\"key_bits\":{},\"changed_tokens\":{changed_tokens},\"load_ms\":{load_ms:.2},\"read_parse_ms\":{parse_ms:.2},\"stream_ms\":{stream_ms:.2},\"lookup_ms\":{lookup_ms:.2},\"design_c_ms\":{design_ms:.2},\"hits\":{},\"proven\":{},\"deferred\":{},\"capped_hits\":{},\"local_truncated\":{local_truncated},\"hit_truncated\":{hit_truncated},\"incomplete\":{incomplete},\"unsafe_rust_units\":{},\"unsafe_ts_units\":{}}}",
++            changed.len(),
++            params.bits,
++            outcome.hits,
++            outcome.proven,
++            outcome.deferred,
++            outcome.capped_hits,
++            unsafe_units[0],
++            unsafe_units[1]
++        );
+         return;
+     }
+     let before = Instant::now();
+@@ -1458,11 +1458,36 @@
+             let syntax = Shared::new().parse(lang, &source);
+             let parsed = normalized(lang, path, &source, &syntax, true);
+             let raw = parsed.raw.unwrap();
+-            let tokens: Vec<String> = raw.iter().map(|token| format!("\"{}\"", token.iter().map(|b| format!("{b:02x}")).collect::<String>())).collect();
++            let tokens: Vec<String> = raw
++                .iter()
++                .map(|token| {
++                    format!(
++                        "\"{}\"",
++                        token.iter().map(|b| format!("{b:02x}")).collect::<String>()
++                    )
++                })
++                .collect();
+             let safe: Vec<String> = parsed.safe.iter().map(bool::to_string).collect();
+-            let params = Params { k: number(3, 41), w: number(4, 20), cap: 64, t: number(5, 5), bits: 64 };
+-            let positions: Vec<String> = winnow(&parsed.tokens, params).iter().map(|(_, p)| p.to_string()).collect();
+-            println!("{{\"tokens\":[{}],\"safe\":[{}],\"rows\":{:?},\"positions\":[{}],\"unsafe_units\":{},\"error\":{}}}", tokens.join(","), safe.join(","), parsed.rows, positions.join(","), parsed.unsafe_units, parsed.error);
++            let params = Params {
++                k: number(3, 41),
++                w: number(4, 20),
++                cap: 64,
++                t: number(5, 5),
++                bits: 64,
++            };
++            let positions: Vec<String> = winnow(&parsed.tokens, params)
++                .iter()
++                .map(|(_, p)| p.to_string())
++                .collect();
++            println!(
++                "{{\"tokens\":[{}],\"safe\":[{}],\"rows\":{:?},\"positions\":[{}],\"unsafe_units\":{},\"error\":{}}}",
++                tokens.join(","),
++                safe.join(","),
++                parsed.rows,
++                positions.join(","),
++                parsed.unsafe_units,
++                parsed.error
++            );
+         }
+         Some("gen") => generate(Path::new(&args[2]), &args[3]),
+         Some("build") => build(
+@@ -1491,10 +1516,15 @@
+             let mut tokens = 0;
+             for _ in 0..number(3, 20) {
+                 for (path, source, syntax) in &files {
+-                    tokens += stream(Lang::of(path).unwrap(), path, source, syntax).tokens.len();
+-                }
+-            }
+-            println!("{tokens} tokens, {:.1} ns/token", ms(started) * 1e6 / tokens as f64);
++                    tokens += stream(Lang::of(path).unwrap(), path, source, syntax)
++                        .tokens
++                        .len();
++                }
++            }
++            println!(
++                "{tokens} tokens, {:.1} ns/token",
++                ms(started) * 1e6 / tokens as f64
++            );
+         }
+         Some("lines") => {
+             let root = Path::new(&args[2]);
+@@ -1513,13 +1543,36 @@
+             }
+             let summary = |values: &mut Vec<u32>| {
+                 values.sort_unstable();
+-                let at = |q: f64| values.get(((values.len() as f64 - 1.0) * q) as usize).copied().unwrap_or(0);
+-                format!("n={} min={} p10={} median={} p90={} max={}", values.len(), at(0.0), at(0.1), at(0.5), at(0.9), at(1.0))
++                let at = |q: f64| {
++                    values
++                        .get(((values.len() as f64 - 1.0) * q) as usize)
++                        .copied()
++                        .unwrap_or(0)
++                };
++                format!(
++                    "n={} min={} p10={} median={} p90={} max={}",
++                    values.len(),
++                    at(0.0),
++                    at(0.1),
++                    at(0.5),
++                    at(0.9),
++                    at(1.0)
++                )
+             };
+             println!("{t} tokens span lines: {}", summary(&mut spans));
+         }
+-        Some("query") => query(Path::new(&args[2]), Path::new(&args[3]), number(4, 20), number(5, 60), args.get(6).map_or("spread", String::as_str), args.get(7).is_some_and(|phase| phase == "stop"), args.get(8).map(Path::new)),
+-        _ => eprintln!("usage: gen DIR 10k|300k|1m | build ROOT INDEX [K W CAP MINIMIZER_T KEY_BITS] | query ROOT INDEX [N T spread|largest stop|full]"),
++        Some("query") => query(
++            Path::new(&args[2]),
++            Path::new(&args[3]),
++            number(4, 20),
++            number(5, 60),
++            args.get(6).map_or("spread", String::as_str),
++            args.get(7).is_some_and(|phase| phase == "stop"),
++            args.get(8).map(Path::new),
++        ),
++        _ => eprintln!(
++            "usage: gen DIR 10k|300k|1m | build ROOT INDEX [K W CAP MINIMIZER_T KEY_BITS] | query ROOT INDEX [N T spread|largest stop|full]"
++        ),
+     }
+ }
+ 
+@@ -1603,9 +1656,11 @@
+             })
+             .collect();
+         let chosen: Vec<u32> = winnow(&tokens, params).into_iter().map(|p| p.1).collect();
+-        assert!(chosen
+-            .windows(2)
+-            .all(|pair| pair[1] - pair[0] <= params.w as u32));
++        assert!(
++            chosen
++                .windows(2)
++                .all(|pair| pair[1] - pair[0] <= params.w as u32)
++        );
+         assert!(chosen[0] < params.w as u32);
+         assert!(chosen[chosen.len() - 1] as usize > tokens.len() - params.k - params.w);
+         let shared: Vec<u64> = tokens[1000..1060].to_vec();

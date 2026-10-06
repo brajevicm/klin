@@ -1,0 +1,16 @@
+{
+  "root": "/tmp/klin490-corpus/glaredb",
+  "files": 618,
+  "tokens": 573537,
+  "unsafe_tokens": 192,
+  "unique_safe_tokens": 11945,
+  "dictionary_bytes": 260547,
+  "token_chain_bytes": 744852,
+  "row_delta_bytes": 573537,
+  "paths_bytes": 32220,
+  "equality_bytes": 1005399,
+  "reporting_bytes": 1611156,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "candidate_totals": {}
+}

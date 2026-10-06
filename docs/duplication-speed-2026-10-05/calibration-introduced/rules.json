@@ -1,0 +1,7283 @@
+{
+ "00452206933b37b8": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "00909d0031e6aee5": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.2682926829268293
+ },
+ "00cf85e07b6a2202": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": false,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.07236842105263158
+ },
+ "023ff887eb067ea4": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.7721518987341772
+ },
+ "03a26439ff03a32e": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": false,
+  "unit_share": 0.17142857142857143
+ },
+ "0418d1af714c0530": {
+  "generated": false,
+  "import_trim": 6.290322580645161,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "047db613c416e8c2": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 82.0,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "048c81bc620727a8": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "050b0b947acbfb16": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "051f428010976039": {
+  "generated": false,
+  "import_trim": 6.857142857142857,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "05555f81332be74d": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.10752688172043011
+ },
+ "0592d0547dc9082d": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "059d26ef35e2b316": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.1134020618556701
+ },
+ "05a33cdb5bb5bbc8": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "05f6c0121dd42300": {
+  "generated": false,
+  "import_trim": 52.64285714285714,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "06085fb14bfa19c8": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0660008b07cd39fe": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "06ae2ac7208bb276": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "077c3493894dd153": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "08645c4364aa306d": {
+  "generated": false,
+  "import_trim": 5.197368421052631,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "088b11fc88df793e": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 47.38823529411765,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.23529411764705882
+ },
+ "08a621b0abf75cc1": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "08be3e5c24c51e58": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": false,
+  "unit_share": 0.07368421052631578
+ },
+ "08d2c78f2a9ecca5": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "09867447cac7b4f1": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.13636363636363635
+ },
+ "0a57cc7951f52f27": {
+  "generated": false,
+  "import_trim": 47.44444444444444,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.28378378378378377
+ },
+ "0a720343abcc4791": {
+  "generated": false,
+  "import_trim": 106.0,
+  "kept": true,
+  "non_jsx": 106.0,
+  "tokens": 106,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0b3fda7c12deb02c": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": true,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.7631578947368421
+ },
+ "0b7400b8146a2788": {
+  "generated": false,
+  "import_trim": 168.0,
+  "kept": false,
+  "non_jsx": 92.91620111731844,
+  "tokens": 168,
+  "trait_impl": false,
+  "unit_share": 0.049723756906077346
+ },
+ "0b7ae9dac241ed42": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.5245901639344263
+ },
+ "0c5a09cfd2aba220": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 73.0,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0c99ed897c5d78ef": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "0ccf2a78c2eead38": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0cd8f6011b637ff2": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.34615384615384615
+ },
+ "0d3350b69055b168": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.6
+ },
+ "0d3c9131452f16b1": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.08823529411764706
+ },
+ "0d51423b80cb1d5b": {
+  "generated": false,
+  "import_trim": 147.0,
+  "kept": false,
+  "non_jsx": 147.0,
+  "tokens": 147,
+  "trait_impl": true,
+  "unit_share": 0.8104575163398693
+ },
+ "0da2c19edccaf464": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0dca29c6745f68d7": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 19.11764705882353,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0e9613aa5253ce33": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "0fe6729cc310d81d": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1046895f6176035a": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "10f86a849e98b3d2": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.07228915662650602
+ },
+ "111c00bada67940d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "11284b5028829f5a": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": false,
+  "unit_share": 0.05384615384615385
+ },
+ "1143aa6ab8f7fe57": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "121f22554a5eac83": {
+  "generated": false,
+  "import_trim": 161.0,
+  "kept": false,
+  "non_jsx": 151.0505617977528,
+  "tokens": 161,
+  "trait_impl": false,
+  "unit_share": 0.47191011235955055
+ },
+ "126fa19e80dcc6fa": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "12a041733314ca05": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "12db268389e97445": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.7019230769230769
+ },
+ "131c8b5c949cdfc3": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 56.25974025974026,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "13a2ef3a2b8ecf33": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "13b20c38a9d325a9": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "13d659151b2bc99a": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 73.0,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.4266666666666667
+ },
+ "156498a02597bf02": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "159e43308ce86748": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": true,
+  "unit_share": 0.7204301075268817
+ },
+ "15ad77f45b67403f": {
+  "generated": false,
+  "import_trim": 136.0,
+  "kept": false,
+  "non_jsx": 136.0,
+  "tokens": 136,
+  "trait_impl": true,
+  "unit_share": 0.34269662921348315
+ },
+ "15bd6da4ed6ae72b": {
+  "generated": false,
+  "import_trim": 163.0,
+  "kept": true,
+  "non_jsx": 163.0,
+  "tokens": 163,
+  "trait_impl": false,
+  "unit_share": 0.8571428571428571
+ },
+ "15f110cb73c8139f": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "165a95271cb0aa4a": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "16cde56279734a17": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "172740024f516feb": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "17351a85d8645354": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "177614a46c7245fc": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1818ae024fff8b02": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.7721518987341772
+ },
+ "181d1d0bff195651": {
+  "generated": false,
+  "import_trim": 119.0,
+  "kept": false,
+  "non_jsx": 119.0,
+  "tokens": 119,
+  "trait_impl": true,
+  "unit_share": 0.096
+ },
+ "189cd5438b90cbdf": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1934a1ea61c4e89f": {
+  "generated": false,
+  "import_trim": 110.0,
+  "kept": false,
+  "non_jsx": 110.0,
+  "tokens": 110,
+  "trait_impl": false,
+  "unit_share": 0.29365079365079366
+ },
+ "198287fe562348d9": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 41.292307692307695,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "19844fe4327ea1ba": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.07228915662650602
+ },
+ "19b19f56db177284": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 110.0,
+  "tokens": 110,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "19b98a71d3a93371": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1a2a6e2ebd342025": {
+  "generated": false,
+  "import_trim": 97.0,
+  "kept": false,
+  "non_jsx": 38.415841584158414,
+  "tokens": 97,
+  "trait_impl": false,
+  "unit_share": 0.900990099009901
+ },
+ "1a6d2c20bd44b09f": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 49.411764705882355,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.10227272727272728
+ },
+ "1b3ae65f02870362": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1bc19134490395f0": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1c89241750dddf75": {
+  "generated": false,
+  "import_trim": 257.0,
+  "kept": true,
+  "non_jsx": 257.0,
+  "tokens": 257,
+  "trait_impl": false,
+  "unit_share": 0.707641196013289
+ },
+ "1cf42c660172a7c0": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 42.179487179487175,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1cfd963b20b8d32c": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 45.120000000000005,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1d39f32e7d0b5a62": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 67.47058823529412,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.20588235294117646
+ },
+ "1e6ed88c25c4d559": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1ebb7947236d9cad": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "1f79792b9b11a5f8": {
+  "generated": false,
+  "import_trim": 115.0,
+  "kept": false,
+  "non_jsx": 115.0,
+  "tokens": 115,
+  "trait_impl": false,
+  "unit_share": 0.11764705882352941
+ },
+ "2092c487f3797e0d": {
+  "generated": false,
+  "import_trim": 153.0,
+  "kept": true,
+  "non_jsx": 153.0,
+  "tokens": 153,
+  "trait_impl": false,
+  "unit_share": 0.6309523809523809
+ },
+ "20b7194bf4fb7617": {
+  "generated": false,
+  "import_trim": 105.0,
+  "kept": false,
+  "non_jsx": 105.0,
+  "tokens": 105,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "20ebe1136b55857e": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": false,
+  "unit_share": 0.040983606557377046
+ },
+ "2211eb136bd54294": {
+  "generated": false,
+  "import_trim": 161.0,
+  "kept": true,
+  "non_jsx": 161.0,
+  "tokens": 161,
+  "trait_impl": false,
+  "unit_share": 0.6822916666666666
+ },
+ "221736ecba654740": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 24.954545454545457,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.125
+ },
+ "226150b16a7f63c8": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "22a0b9471afa8493": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "22d05699e27b8bc6": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 82.0,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "232e3eefdd7eb898": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2335c0f09ed725ea": {
+  "generated": false,
+  "import_trim": 110.0,
+  "kept": false,
+  "non_jsx": 110.0,
+  "tokens": 110,
+  "trait_impl": false,
+  "unit_share": 0.29365079365079366
+ },
+ "236ef2272e05c31c": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 45.41772151898734,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.11392405063291139
+ },
+ "239dfe6623fa69d7": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 42.65217391304348,
+  "tokens": 109,
+  "trait_impl": false,
+  "unit_share": 0.7913043478260869
+ },
+ "23f0ec74c0e1d6a5": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "247d7d3832612c2c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "249d8610e504476c": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "249de5bce5ba2cfd": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "24e452f32826924b": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "261681b8081764b0": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "264befef9388e786": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.4782608695652174
+ },
+ "26554fa11fa0dced": {
+  "generated": false,
+  "import_trim": 77.96610169491525,
+  "kept": false,
+  "non_jsx": 100.0,
+  "tokens": 100,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2658390278a53ce1": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 16.828571428571426,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.1
+ },
+ "27461eaefa8c6525": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.7903225806451613
+ },
+ "27edc7fba7bfd0ee": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2804c4ae6ad087d5": {
+  "generated": false,
+  "import_trim": 254.0,
+  "kept": false,
+  "non_jsx": 254.0,
+  "tokens": 254,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2815f9640f99a844": {
+  "generated": false,
+  "import_trim": 156.0,
+  "kept": false,
+  "non_jsx": 146.35955056179773,
+  "tokens": 156,
+  "trait_impl": false,
+  "unit_share": 0.47191011235955055
+ },
+ "287724f51cb49954": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "288654b86376efba": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "28c6716e72e08452": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 16.925373134328357,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.1044776119402985
+ },
+ "29526687eb51c598": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "297c1a5fd54d0735": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "299642e5da19f830": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.4782608695652174
+ },
+ "29c5c5243e6c866d": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "29d48da03ba6398b": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 27.82608695652174,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.09333333333333334
+ },
+ "2a708b9c1304edf4": {
+  "generated": false,
+  "import_trim": 97.0,
+  "kept": false,
+  "non_jsx": 97.0,
+  "tokens": 97,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2aabeba01a00bb06": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 35.875,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.18055555555555555
+ },
+ "2aaff4b681368636": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2ae5e784c4286677": {
+  "generated": false,
+  "import_trim": 133.0,
+  "kept": true,
+  "non_jsx": 133.0,
+  "tokens": 133,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2b003042697180b0": {
+  "generated": false,
+  "import_trim": 90.0,
+  "kept": false,
+  "non_jsx": 44.13461538461538,
+  "tokens": 90,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2b40124080e670bd": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2b4638518bfb0d38": {
+  "generated": false,
+  "import_trim": 158.0,
+  "kept": false,
+  "non_jsx": 147.83625730994152,
+  "tokens": 158,
+  "trait_impl": false,
+  "unit_share": 0.49122807017543857
+ },
+ "2bbaf31816819a54": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2bbb03e01664ed09": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "2bc48a27be79be79": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": true,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.21621621621621623
+ },
+ "2c7c9f013357bfde": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2c9652879ed14d94": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 82.0,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2cbbe2cfb32d269f": {
+  "generated": false,
+  "import_trim": 166.0,
+  "kept": false,
+  "non_jsx": 166.0,
+  "tokens": 166,
+  "trait_impl": true,
+  "unit_share": 0.7048192771084337
+ },
+ "2d3e90aeaf80230a": {
+  "generated": false,
+  "import_trim": 106.0,
+  "kept": true,
+  "non_jsx": 106.0,
+  "tokens": 106,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2d49013b9e766262": {
+  "generated": false,
+  "import_trim": 120.0,
+  "kept": true,
+  "non_jsx": 120.0,
+  "tokens": 120,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2d64634aea003470": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2d8dc5422e018409": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2e0d8c7f04d7c76c": {
+  "generated": false,
+  "import_trim": 110.0,
+  "kept": true,
+  "non_jsx": 110.0,
+  "tokens": 110,
+  "trait_impl": false,
+  "unit_share": 0.26993865030674846
+ },
+ "2e463ff2083e668b": {
+  "generated": false,
+  "import_trim": 126.0,
+  "kept": false,
+  "non_jsx": 126.0,
+  "tokens": 126,
+  "trait_impl": true,
+  "unit_share": 0.7761194029850746
+ },
+ "2e90c0c01364f49f": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2ef20e0745617127": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": true,
+  "unit_share": 0.7204301075268817
+ },
+ "2ef855f7a8909eca": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2f11d4c8aedab8be": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.34615384615384615
+ },
+ "2f6907741c1af7fa": {
+  "generated": false,
+  "import_trim": 125.0,
+  "kept": false,
+  "non_jsx": 46.05263157894736,
+  "tokens": 125,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "2f954415663fee04": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3000657eb2972f1b": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "30a31d5abfe0a409": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 35.875,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.18055555555555555
+ },
+ "30fcf170775974f0": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "311e0c048b11b0eb": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.1134020618556701
+ },
+ "316ff71db799dc2c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "31c8a79fcb265680": {
+  "generated": false,
+  "import_trim": 125.0,
+  "kept": false,
+  "non_jsx": 125.0,
+  "tokens": 125,
+  "trait_impl": false,
+  "unit_share": 0.3880597014925373
+ },
+ "31ed4ec6a7f99bba": {
+  "generated": false,
+  "import_trim": 264.0,
+  "kept": false,
+  "non_jsx": 264.0,
+  "tokens": 264,
+  "trait_impl": false,
+  "unit_share": 0.4172661870503597
+ },
+ "321625e94c7cbe1e": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "32580b364354e97d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 80.0,
+  "tokens": 80,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "326b4b4826bfad0a": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "328560f291353879": {
+  "generated": false,
+  "import_trim": 98.0,
+  "kept": false,
+  "non_jsx": 98.0,
+  "tokens": 98,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "32a95910147c9824": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "335ffaed850d44c8": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "33fd82f51116233c": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "343ea312ee41d389": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": true,
+  "non_jsx": 84.25641025641026,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.5147058823529411
+ },
+ "34c1bdd684aa285d": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "34dd7f8f5f58c378": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "35248cd44044f231": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3531353d7826861b": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "35c0f97e8f389620": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "368c94289822bdf3": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "36af4b318c7a2ea5": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": true,
+  "unit_share": 0.7204301075268817
+ },
+ "36e028a1386080ff": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "370f9955cdadcffd": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 17.914285714285715,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.1
+ },
+ "372f9aa394a4f0f7": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 47.12658227848101,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.3291139240506329
+ },
+ "37417346faa295fd": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "37b62d93af489d9c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "383d3d9c60691319": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.4444444444444444
+ },
+ "3845603ce8eebb8d": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 42.65217391304348,
+  "tokens": 109,
+  "trait_impl": false,
+  "unit_share": 0.7913043478260869
+ },
+ "384bfe3d846a9f0c": {
+  "generated": false,
+  "import_trim": 97.22689075630252,
+  "kept": false,
+  "non_jsx": 130.0,
+  "tokens": 130,
+  "trait_impl": false,
+  "unit_share": 0.1388888888888889
+ },
+ "386a505f1031d1c2": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.42045454545454547
+ },
+ "3aae4567b9fbfce5": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3ae66de475983c4d": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.08823529411764706
+ },
+ "3b5dc08e6cae944f": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3bbd484c79f56348": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3bc1d3ef836335be": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.75
+ },
+ "3bcb218989a01e91": {
+  "generated": false,
+  "import_trim": 96.0,
+  "kept": false,
+  "non_jsx": 96.0,
+  "tokens": 96,
+  "trait_impl": false,
+  "unit_share": 0.6979166666666666
+ },
+ "3d6b70e03488d5fa": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3da221f23e112d2d": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 45.41772151898734,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.11392405063291139
+ },
+ "3dbe158aef315871": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "3df999018ec90793": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "3e83a81bf47ec41f": {
+  "generated": false,
+  "import_trim": 135.0,
+  "kept": false,
+  "non_jsx": 135.0,
+  "tokens": 135,
+  "trait_impl": true,
+  "unit_share": 0.08391608391608392
+ },
+ "3ea36676269a7684": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 49.5,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.38235294117647056
+ },
+ "3f0d162a093843bd": {
+  "generated": false,
+  "import_trim": 160.0,
+  "kept": false,
+  "non_jsx": 160.0,
+  "tokens": 160,
+  "trait_impl": true,
+  "unit_share": 0.7378048780487805
+ },
+ "3f1cfc07c9235c5a": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "3fa33a8047068701": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 55.06849315068493,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "3fcb7a402aa26ce5": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4032ed8bceb91e64": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "40a45ff92792558c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "40addab2528dc2a6": {
+  "generated": false,
+  "import_trim": 120.0,
+  "kept": true,
+  "non_jsx": 120.0,
+  "tokens": 120,
+  "trait_impl": false,
+  "unit_share": 0.6666666666666666
+ },
+ "4103ca89f6f840c8": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.4507042253521127
+ },
+ "419d6b9621ea7f68": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "41bb9f35ad8b4ee3": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "41bf743f0157d0fc": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": true,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.5072463768115942
+ },
+ "41e26305cd99d60d": {
+  "generated": false,
+  "import_trim": 111.0,
+  "kept": false,
+  "non_jsx": 103.34482758620689,
+  "tokens": 111,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "42788d06b59376d5": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "42a33e322f4038c4": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": false,
+  "unit_share": 0.17142857142857143
+ },
+ "431f8cee73b24e7c": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "43226eed334b544e": {
+  "generated": false,
+  "import_trim": 105.0,
+  "kept": false,
+  "non_jsx": 105.0,
+  "tokens": 105,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "4378314ed2990ca5": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": true,
+  "unit_share": 0.43023255813953487
+ },
+ "438acf67d83900dd": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4390742d9896225c": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "439ffb6379c4ebce": {
+  "generated": false,
+  "import_trim": 197.0,
+  "kept": false,
+  "non_jsx": 197.0,
+  "tokens": 197,
+  "trait_impl": true,
+  "unit_share": 0.4444444444444444
+ },
+ "442ecf5e05f5751b": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "444ecca16dcebba1": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": true,
+  "unit_share": 0.7722772277227723
+ },
+ "44c00c7b7fe0e4b2": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "45272e15ef372479": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "452c0f936a5fc504": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 46.81481481481481,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.10714285714285714
+ },
+ "4594b55a9b378abe": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.06741573033707865
+ },
+ "45b4b5431ac536da": {
+  "generated": false,
+  "import_trim": 134.0,
+  "kept": true,
+  "non_jsx": 134.0,
+  "tokens": 134,
+  "trait_impl": false,
+  "unit_share": 0.33766233766233766
+ },
+ "46474e23ce7dcfee": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4651a2dd6bc6bbab": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.34615384615384615
+ },
+ "4663adf98eb21937": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "46d64293bd9c1244": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": false,
+  "unit_share": 0.040983606557377046
+ },
+ "4742c46379830496": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "478d4c1f014652e4": {
+  "generated": false,
+  "import_trim": 173.0,
+  "kept": true,
+  "non_jsx": 173.0,
+  "tokens": 173,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "47c4f307c986e067": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "487e40644cf8852d": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "4882b8f1ce6fa0b6": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 38.97142857142857,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4902b88a2bc143fa": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "49583432551f5f27": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.2682926829268293
+ },
+ "49d6426b6fffd215": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4aa12427d119c446": {
+  "generated": false,
+  "import_trim": 98.0,
+  "kept": false,
+  "non_jsx": 98.0,
+  "tokens": 98,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4ac409ef81de9435": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 67.47058823529412,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.20588235294117646
+ },
+ "4bba6ca88173e73c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "4be20038e644f84a": {
+  "generated": false,
+  "import_trim": 145.0,
+  "kept": false,
+  "non_jsx": 145.0,
+  "tokens": 145,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "4c93654b8c3b3d3f": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4c9938815c060bb8": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4d41cd58213ca59a": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4d9257019429da91": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "4daf092d462e415b": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4dca2c8ebbfe78a3": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "4e47d05a77802fc1": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": true,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.8055555555555556
+ },
+ "4e9e9965c585efc3": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "4ea32c1171ebe86d": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": true,
+  "unit_share": 0.14634146341463414
+ },
+ "4eb46bb10e23e854": {
+  "generated": false,
+  "import_trim": 135.5909090909091,
+  "kept": false,
+  "non_jsx": 152.0,
+  "tokens": 152,
+  "trait_impl": true,
+  "unit_share": 0.8113207547169812
+ },
+ "50a455e609bd7ad3": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 45.120000000000005,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "50a88dd3afe2da48": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "51394ec967997f90": {
+  "generated": false,
+  "import_trim": 80.0,
+  "kept": false,
+  "non_jsx": 45.30120481927711,
+  "tokens": 80,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "51a2b8d653098c47": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 54.24657534246575,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.3783783783783784
+ },
+ "51aa4c61609ad473": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": true,
+  "unit_share": 0.6634615384615384
+ },
+ "51b28c7dca74fb1d": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "525aa12e1faaca53": {
+  "generated": false,
+  "import_trim": 70.27956989247312,
+  "kept": false,
+  "non_jsx": 86.0,
+  "tokens": 86,
+  "trait_impl": false,
+  "unit_share": 0.7191011235955056
+ },
+ "52603bd80c39f4d6": {
+  "generated": false,
+  "import_trim": 5.197368421052631,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "527f154cee41519b": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "52888365635f8ab7": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": true,
+  "unit_share": 0.4158415841584158
+ },
+ "52e25ca47bd45233": {
+  "generated": false,
+  "import_trim": 110.0,
+  "kept": true,
+  "non_jsx": 110.0,
+  "tokens": 110,
+  "trait_impl": false,
+  "unit_share": 0.26993865030674846
+ },
+ "531f5279f6afbc41": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5341612469c8cf40": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.4507042253521127
+ },
+ "537437d2403b4f0a": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5454430801ac84db": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "547a367113189451": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "55321cc25cfd5b28": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.45714285714285713
+ },
+ "554d5cd28399f163": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "557ecf89f9385280": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "55b05d1a2d3f1873": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "55b137dcbaebe4ad": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "56319eaddf7579e3": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "565e02aa0a68bdf2": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "56610ef5f6d9f2fc": {
+  "generated": false,
+  "import_trim": 51.61764705882353,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "566aae9b13cfa830": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 17.044117647058822,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "567eddd789fb754a": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "57705ef5eac2319a": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 21.711340206185568,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.07142857142857142
+ },
+ "577be7fc4ceb55b0": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.693069306930693
+ },
+ "57c39786984dbfd6": {
+  "generated": false,
+  "import_trim": 104.0,
+  "kept": true,
+  "non_jsx": 104.0,
+  "tokens": 104,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "57c72fa5fc0b7b5d": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.8842105263157894
+ },
+ "57f551c0d26005e8": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5807299e4d91eeee": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 62.98947368421052,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.29473684210526313
+ },
+ "585ab749f1cb9560": {
+  "generated": false,
+  "import_trim": 133.0,
+  "kept": true,
+  "non_jsx": 133.0,
+  "tokens": 133,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "589f9d066f437699": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5928aed2224473bc": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "59705ed91e166428": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "59a0bf65e2dcccbc": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "5a50558376c2843c": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": true,
+  "unit_share": 0.425531914893617
+ },
+ "5a761b44799c3eae": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.175
+ },
+ "5aacfe5763b7f83f": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5b1bfab311adb35b": {
+  "generated": false,
+  "import_trim": 171.0,
+  "kept": false,
+  "non_jsx": 171.0,
+  "tokens": 171,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5b39894f67942421": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.6741573033707865
+ },
+ "5bc9f90c4473251e": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "5c8ee99f6f6e95b2": {
+  "generated": false,
+  "import_trim": 136.0,
+  "kept": false,
+  "non_jsx": 136.0,
+  "tokens": 136,
+  "trait_impl": true,
+  "unit_share": 0.34269662921348315
+ },
+ "5d19193e11854fbd": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5d944d3cad738344": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": true,
+  "non_jsx": 103.0,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.8828828828828829
+ },
+ "5e17d2c4b79ec625": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "5e1923a4e504b061": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "5e3340dab623b707": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "5e708f70bf3b0cf5": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5eaaa8c1c6260e96": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 15.712121212121211,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5f85244dd0dae287": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5f8a9ce3a8a18552": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "5fa848a3b82d7596": {
+  "generated": false,
+  "import_trim": 108.0,
+  "kept": true,
+  "non_jsx": 108.0,
+  "tokens": 108,
+  "trait_impl": false,
+  "unit_share": 0.9454545454545454
+ },
+ "6024439726542b09": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": true,
+  "non_jsx": 103.0,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.037383177570093455
+ },
+ "6085cc87573e7930": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.34782608695652173
+ },
+ "60981b8f7b3e4def": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 109.0,
+  "tokens": 109,
+  "trait_impl": true,
+  "unit_share": 0.36363636363636365
+ },
+ "6119217a1ba63c8c": {
+  "generated": false,
+  "import_trim": 114.0,
+  "kept": false,
+  "non_jsx": 114.0,
+  "tokens": 114,
+  "trait_impl": true,
+  "unit_share": 0.7846153846153846
+ },
+ "614828e0781aa034": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.7407407407407407
+ },
+ "616dbc8ffd5fd3f9": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.37142857142857144
+ },
+ "617881c96c762a1f": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.3548387096774194
+ },
+ "61bb6ef90723c682": {
+  "generated": false,
+  "import_trim": 40.43283582089552,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6278bb6f90510f7b": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 15.583333333333332,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.2361111111111111
+ },
+ "62d23d041d9b9e18": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6307204570a237ed": {
+  "generated": false,
+  "import_trim": 264.0,
+  "kept": false,
+  "non_jsx": 264.0,
+  "tokens": 264,
+  "trait_impl": false,
+  "unit_share": 0.4172661870503597
+ },
+ "64f939679592b324": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 17.044117647058822,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "65390fcffef07506": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 45.120000000000005,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "654d58f2ffb99556": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "65b5786f3f9886ab": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": true,
+  "non_jsx": 66.24,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.52
+ },
+ "65e68d59dc21f654": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "65e9730cb042ebd4": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "661a71749f9dadea": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.45714285714285713
+ },
+ "66a237c87b8830da": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "66bd976a4d790029": {
+  "generated": false,
+  "import_trim": 60.839506172839506,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.6951219512195121
+ },
+ "675f5c03b184c335": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "6789c4a3fe71b97c": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.27906976744186046
+ },
+ "67f94169fa1bfc8a": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "68699d9f4a1f10c4": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "68b1a6045fc5bb70": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "68edb9cbcf88857f": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "694427b9f23c2402": {
+  "generated": false,
+  "import_trim": 134.0,
+  "kept": false,
+  "non_jsx": 134.0,
+  "tokens": 134,
+  "trait_impl": true,
+  "unit_share": 0.6025641025641025
+ },
+ "6968a696a334206e": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "69863d956821d567": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": true,
+  "unit_share": 0.7722772277227723
+ },
+ "698cbaef3ecda41b": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "6a7e0b031a9da2a1": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6b109f2474efb407": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "6c1248bfce114dbf": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6c793bcecc4536eb": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": true,
+  "unit_share": 0.7211538461538461
+ },
+ "6d1a8e0f2dd9a0d1": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "6db25b22a9dc0a7d": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6ed480d4cd9d0efa": {
+  "generated": false,
+  "import_trim": 128.0,
+  "kept": true,
+  "non_jsx": 128.0,
+  "tokens": 128,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "6ee5abb0188d0ac7": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.6555555555555556
+ },
+ "6f3ec4e4c76cca5e": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 46.81481481481481,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.10714285714285714
+ },
+ "6fef43ae016d301a": {
+  "generated": false,
+  "import_trim": 114.0,
+  "kept": false,
+  "non_jsx": 114.0,
+  "tokens": 114,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "706fc10846ce7812": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7095104a4cb5b413": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": true,
+  "unit_share": 0.8301886792452831
+ },
+ "70a72913da33f062": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "70d50bd011386802": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "70fa63dadc70ace6": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "71889e9cb22110b4": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "71c962f2b35c44da": {
+  "generated": false,
+  "import_trim": 87.9349593495935,
+  "kept": false,
+  "non_jsx": 104.0,
+  "tokens": 104,
+  "trait_impl": true,
+  "unit_share": 0.7297297297297297
+ },
+ "720eed15bb2d3155": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "723343df301819fa": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": false,
+  "non_jsx": 91.31428571428572,
+  "tokens": 102,
+  "trait_impl": false,
+  "unit_share": 0.4380952380952381
+ },
+ "729fbe70ba439462": {
+  "generated": false,
+  "import_trim": 475.0,
+  "kept": true,
+  "non_jsx": 475.0,
+  "tokens": 475,
+  "trait_impl": false,
+  "unit_share": 0.8937007874015748
+ },
+ "72acefc0979c90ad": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "738045c7b2d9bc47": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "73dd343d09075913": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.25
+ },
+ "7443f4d9e775a79f": {
+  "generated": false,
+  "import_trim": 80.0,
+  "kept": false,
+  "non_jsx": 80.0,
+  "tokens": 80,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "74945723fef353ec": {
+  "generated": false,
+  "import_trim": 89.0,
+  "kept": false,
+  "non_jsx": 89.0,
+  "tokens": 89,
+  "trait_impl": false,
+  "unit_share": 0.08181818181818182
+ },
+ "74bbd4a9433e5f41": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "755749081f673f5e": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 73.0,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "75988cf1d55b3d5a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 98.0,
+  "tokens": 98,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "75a286b3aa371334": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "75e0e3a478ebf4c6": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "75e0fd8ebc304e76": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": true,
+  "unit_share": 0.09574468085106383
+ },
+ "760f204decaeab00": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "767842d158bd0488": {
+  "generated": false,
+  "import_trim": 239.0,
+  "kept": false,
+  "non_jsx": 239.0,
+  "tokens": 239,
+  "trait_impl": false,
+  "unit_share": 0.035856573705179286
+ },
+ "768c27bc6f0cb012": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 17.013698630136986,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0958904109589041
+ },
+ "76950b2a227a7217": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "76ba24db5b626453": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "76dfccf881b09f6b": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7782d4d1f5398901": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "77c57c877debc757": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.06666666666666667
+ },
+ "78307b7a562f0e28": {
+  "generated": false,
+  "import_trim": 475.0,
+  "kept": true,
+  "non_jsx": 475.0,
+  "tokens": 475,
+  "trait_impl": false,
+  "unit_share": 0.8937007874015748
+ },
+ "7870a84b9eeb3268": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.5679012345679012
+ },
+ "78b6b3eb69c494cd": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "78cbc1026068b961": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7981d82123935352": {
+  "generated": false,
+  "import_trim": 89.0,
+  "kept": true,
+  "non_jsx": 89.0,
+  "tokens": 89,
+  "trait_impl": false,
+  "unit_share": 0.7232142857142857
+ },
+ "79a06440aeb8b30f": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7a2842d5768c045b": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "7acc09dd378ad461": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": true,
+  "unit_share": 0.6741573033707865
+ },
+ "7b167cf708e55774": {
+  "generated": false,
+  "import_trim": 91.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7ca8d18c5f51c56f": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.25
+ },
+ "7cd6308a26f23fe4": {
+  "generated": false,
+  "import_trim": 91.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "7d302270056c57d5": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7d745e42566b0047": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7d916db4218b965e": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7dac1a042c1b0ed8": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 82.0,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7dec5442b5281aaa": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 17.914285714285715,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.1
+ },
+ "7df58bee7ffe8cf8": {
+  "generated": false,
+  "import_trim": 117.27131782945736,
+  "kept": true,
+  "non_jsx": 124.0,
+  "tokens": 124,
+  "trait_impl": false,
+  "unit_share": 0.5158730158730159
+ },
+ "7e1da22da50610cb": {
+  "generated": false,
+  "import_trim": 86.0,
+  "kept": false,
+  "non_jsx": 86.0,
+  "tokens": 86,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7e96454f97e4f85d": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.4782608695652174
+ },
+ "7ec43cca5ca5c983": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7f12663cbc7d6612": {
+  "generated": false,
+  "import_trim": 11.391304347826086,
+  "kept": false,
+  "non_jsx": 131.0,
+  "tokens": 131,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "7f9ba182469f8365": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "8105b323762309da": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "8162e7913c633c24": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": true,
+  "unit_share": 0.8666666666666667
+ },
+ "81ccefb9fbac5e64": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "81d6b2556376bdde": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8214d384a38b2338": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "830a3370532df974": {
+  "generated": false,
+  "import_trim": 67.16981132075472,
+  "kept": false,
+  "non_jsx": 80.0,
+  "tokens": 80,
+  "trait_impl": false,
+  "unit_share": 0.5643564356435643
+ },
+ "8378a2f936b877de": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.4444444444444444
+ },
+ "846055c500353dcb": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 26.470588235294116,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.3088235294117647
+ },
+ "84d70c01cc6d7b61": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "84e47112af8595c2": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "852851f9c008b32a": {
+  "generated": false,
+  "import_trim": 260.0,
+  "kept": true,
+  "non_jsx": 260.0,
+  "tokens": 260,
+  "trait_impl": false,
+  "unit_share": 0.6776556776556777
+ },
+ "85436ac022e40418": {
+  "generated": false,
+  "import_trim": 18.553846153846155,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "85752357838342da": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.25
+ },
+ "85abc214355e7390": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.2676056338028169
+ },
+ "85c7898224ab72c0": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "85ec3df86990e1b8": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "86f132a91b615dc5": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "871ddfd97e9d4f0d": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "87470ed3e98d7c26": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "878fb697031d2d2e": {
+  "generated": false,
+  "import_trim": 86.0,
+  "kept": false,
+  "non_jsx": 86.0,
+  "tokens": 86,
+  "trait_impl": false,
+  "unit_share": 0.45454545454545453
+ },
+ "87d071860a88e0ad": {
+  "generated": false,
+  "import_trim": 47.44444444444444,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.28378378378378377
+ },
+ "87e1bbf0585cc594": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "88001fc0c1236309": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "883b885ba61229c5": {
+  "generated": false,
+  "import_trim": 97.0,
+  "kept": false,
+  "non_jsx": 94.20192307692308,
+  "tokens": 97,
+  "trait_impl": false,
+  "unit_share": 0.4230769230769231
+ },
+ "8866cb04d2890e83": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 45.41772151898734,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.11392405063291139
+ },
+ "8876751adefd4f87": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8990ae350fc7638a": {
+  "generated": false,
+  "import_trim": 123.0,
+  "kept": false,
+  "non_jsx": 123.0,
+  "tokens": 123,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "89983b1a3e307b60": {
+  "generated": false,
+  "import_trim": 134.0,
+  "kept": true,
+  "non_jsx": 134.0,
+  "tokens": 134,
+  "trait_impl": false,
+  "unit_share": 0.33766233766233766
+ },
+ "89d578f37337e816": {
+  "generated": false,
+  "import_trim": 239.0,
+  "kept": false,
+  "non_jsx": 239.0,
+  "tokens": 239,
+  "trait_impl": false,
+  "unit_share": 0.035856573705179286
+ },
+ "89d94392f6b2e51e": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 51.17460317460317,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.5238095238095238
+ },
+ "8a4cdc370109ea10": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 17.044117647058822,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8a665f9a9dc4e39c": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8ac443520de02ca0": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "8b07bdd9eb7966ac": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "8b0f8a6d50c5f4fc": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.3472222222222222
+ },
+ "8b4d8b397d2808f5": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "8b6af8192e65a5f5": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8c3ceb10e6eae48a": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "8caa83a3abb4a33e": {
+  "generated": false,
+  "import_trim": 152.0,
+  "kept": false,
+  "non_jsx": 72.2,
+  "tokens": 152,
+  "trait_impl": false,
+  "unit_share": 0.29375
+ },
+ "8d1bd0b2a2121e45": {
+  "generated": false,
+  "import_trim": 11.391304347826086,
+  "kept": false,
+  "non_jsx": 131.0,
+  "tokens": 131,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8d2f91d0e8ab0080": {
+  "generated": false,
+  "import_trim": 126.0,
+  "kept": false,
+  "non_jsx": 126.0,
+  "tokens": 126,
+  "trait_impl": true,
+  "unit_share": 0.7647058823529411
+ },
+ "8d6ed619a5609d2a": {
+  "generated": false,
+  "import_trim": 91.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8dc81eec83d378fd": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 24.954545454545457,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.125
+ },
+ "8e46a5bff302900c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "8e5085dd842ec715": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8f81b56dc954a9eb": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8f8be5cc23b565e6": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "8f900718d0b9a407": {
+  "generated": false,
+  "import_trim": 119.0,
+  "kept": true,
+  "non_jsx": 119.0,
+  "tokens": 119,
+  "trait_impl": false,
+  "unit_share": 0.2708333333333333
+ },
+ "8fde1b89d3845ef0": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "8ff44d2a514b40e6": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 44.81395348837209,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "902bc61d4b5c28c4": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "905daf8a04571a3d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "906a4738872ac001": {
+  "generated": false,
+  "import_trim": 204.7751937984496,
+  "kept": true,
+  "non_jsx": 208.0,
+  "tokens": 208,
+  "trait_impl": false,
+  "unit_share": 0.9398148148148148
+ },
+ "90966b263d15d433": {
+  "generated": false,
+  "import_trim": 160.0,
+  "kept": false,
+  "non_jsx": 160.0,
+  "tokens": 160,
+  "trait_impl": true,
+  "unit_share": 0.7378048780487805
+ },
+ "90dbfe40a9448373": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "910ec07c01e16ead": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "9152c1e23b47baff": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 39.97183098591549,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.3076923076923077
+ },
+ "915a8ce73c4a4a57": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "92aeb3db711e7bd7": {
+  "generated": false,
+  "import_trim": 50.76296296296296,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9381d4d75ac163b9": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 10.223529411764707,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9396334e20758f2e": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "93ea96a82cd47af1": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 41.724489795918366,
+  "tokens": 87,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "940a121bd8d39598": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "955f1d74873954b1": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": true,
+  "unit_share": 0.4111111111111111
+ },
+ "95ae0a5cbcdf1578": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": false,
+  "non_jsx": 102.0,
+  "tokens": 102,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "95cd35a47960b9e8": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "95f7ef81c5b6c192": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 17.044117647058822,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "95fbd20cf0b56703": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": true,
+  "unit_share": 0.9310344827586207
+ },
+ "964b5a503c43d8f2": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "967df26e31da2e84": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "967f31449a5cef43": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.4266666666666667
+ },
+ "970180a6cc5a1cba": {
+  "generated": false,
+  "import_trim": 161.0,
+  "kept": true,
+  "non_jsx": 161.0,
+  "tokens": 161,
+  "trait_impl": false,
+  "unit_share": 0.6822916666666666
+ },
+ "972b1b84dfeb4c0e": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "975c95fe32681a17": {
+  "generated": false,
+  "import_trim": 125.0,
+  "kept": true,
+  "non_jsx": 125.0,
+  "tokens": 125,
+  "trait_impl": false,
+  "unit_share": 0.7615384615384615
+ },
+ "97bfd5437b809ac0": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "97d942fadd5e91b6": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 45.93103448275862,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "985798944919789e": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": false,
+  "non_jsx": 102.0,
+  "tokens": 102,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "9871de7ae2a6935a": {
+  "generated": false,
+  "import_trim": 260.0,
+  "kept": true,
+  "non_jsx": 260.0,
+  "tokens": 260,
+  "trait_impl": false,
+  "unit_share": 0.6776556776556777
+ },
+ "98a7ed9162898e3c": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9a51614e51227873": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": true,
+  "non_jsx": 103.0,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9ae5d6750b67728d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9aeaa0454c99ee36": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.09210526315789473
+ },
+ "9b1186e5d9dcbfbb": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": false,
+  "non_jsx": 20.596153846153847,
+  "tokens": 102,
+  "trait_impl": false,
+  "unit_share": 0.0673076923076923
+ },
+ "9b4b8dde39c91d5d": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "9ba7a7f2df91190d": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.1827956989247312
+ },
+ "9bbc2c4974389b52": {
+  "generated": false,
+  "import_trim": 97.0,
+  "kept": false,
+  "non_jsx": 94.20192307692308,
+  "tokens": 97,
+  "trait_impl": false,
+  "unit_share": 0.4230769230769231
+ },
+ "9c2509fa582acc36": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9c655eb7286855d8": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9c9741fccadfbbe9": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 29.629629629629626,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9c9c083d7f5b0557": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9dcac8590cd58a37": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9dcc9acbab018b9c": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "9e03a816080db43c": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "9e49715a0c45d173": {
+  "generated": false,
+  "import_trim": 135.0,
+  "kept": false,
+  "non_jsx": 135.0,
+  "tokens": 135,
+  "trait_impl": true,
+  "unit_share": 0.08391608391608392
+ },
+ "9e9badac0b84a259": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.3548387096774194
+ },
+ "9ea1dcb77ace0876": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 50.59090909090909,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.08108108108108109
+ },
+ "9f6e8e7e9049a42b": {
+  "generated": false,
+  "import_trim": 68.21929824561403,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.5892857142857143
+ },
+ "9fb8f5322d6fe3ff": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 98.0,
+  "tokens": 98,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "9fe28b7230a9718a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a04480e969a29349": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "a04fd4b0eef15567": {
+  "generated": false,
+  "import_trim": 221.0,
+  "kept": false,
+  "non_jsx": 81.71428571428572,
+  "tokens": 221,
+  "trait_impl": false,
+  "unit_share": 0.2581967213114754
+ },
+ "a0eb13886dfc37b8": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "a14304628b8766dc": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a3289ebc73f36b44": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a372940f1e693ef7": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.8714285714285714
+ },
+ "a40701c6cd3a1d3c": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a43df40b3cc3cd0c": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 19.393939393939394,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a488015c98b6a07c": {
+  "generated": false,
+  "import_trim": 106.0,
+  "kept": false,
+  "non_jsx": 106.0,
+  "tokens": 106,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a4b83c95360d14c2": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.8842105263157894
+ },
+ "a4be2fbfc2a07eac": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 26.470588235294116,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.3088235294117647
+ },
+ "a4d3a855bdec5afb": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": true,
+  "unit_share": 0.6741573033707865
+ },
+ "a5357566b0ff7995": {
+  "generated": false,
+  "import_trim": 51.810218978102185,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a588aaa065d4713d": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "a67f24d7cb68f97a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a6ca8ef6f9f7866b": {
+  "generated": false,
+  "import_trim": 125.0,
+  "kept": false,
+  "non_jsx": 125.0,
+  "tokens": 125,
+  "trait_impl": true,
+  "unit_share": 0.30656934306569344
+ },
+ "a6f47b51057b81ef": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.75
+ },
+ "a6f64d6cdd1e1c2f": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "a716b5cb95e1a34e": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a7a988ebd0fa3e22": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 10.408602150537636,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a87ca44c2a9e4550": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.13636363636363635
+ },
+ "a8ce34de5d5454cf": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.8536585365853658
+ },
+ "a9463e673268ba71": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.34615384615384615
+ },
+ "a9680df9260fc2c7": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "a9b2a6b2cccc26dd": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "a9f2916e5b607100": {
+  "generated": false,
+  "import_trim": 245.0,
+  "kept": false,
+  "non_jsx": 245.0,
+  "tokens": 245,
+  "trait_impl": true,
+  "unit_share": 0.7209302325581395
+ },
+ "aa11d9feee881d45": {
+  "generated": false,
+  "import_trim": 192.0,
+  "kept": false,
+  "non_jsx": 192.0,
+  "tokens": 192,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "aa2a270803641793": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "aa7af4299abf30d6": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "aaf3a6d1db9ebc1e": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": false,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.4605263157894737
+ },
+ "aaf56b16b77b7287": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ab23a0b66d9d6385": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "abaa40cb15ad5413": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "acc3aae150946b3a": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 42.78205128205128,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "acf4d42a084c70d6": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "acfaa5d079cab477": {
+  "generated": false,
+  "import_trim": 131.0,
+  "kept": false,
+  "non_jsx": 131.0,
+  "tokens": 131,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ad3010351020a89f": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": true,
+  "non_jsx": 102.0,
+  "tokens": 102,
+  "trait_impl": false,
+  "unit_share": 0.03773584905660377
+ },
+ "add029cabc984b17": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "ae1e1d6a65f57d9e": {
+  "generated": false,
+  "import_trim": 185.0,
+  "kept": false,
+  "non_jsx": 185.0,
+  "tokens": 185,
+  "trait_impl": false,
+  "unit_share": 0.26570048309178745
+ },
+ "ae42a8a36c3545b3": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": false,
+  "non_jsx": 102.0,
+  "tokens": 102,
+  "trait_impl": true,
+  "unit_share": 0.8921568627450981
+ },
+ "aed1d3c090923de5": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.27906976744186046
+ },
+ "aefd584db4a5fbea": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.7971014492753623
+ },
+ "af2a3f735c4f2545": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.38095238095238093
+ },
+ "af9f0429978020e2": {
+  "generated": false,
+  "import_trim": 96.0,
+  "kept": false,
+  "non_jsx": 96.0,
+  "tokens": 96,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "afa5d0de27e28256": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 62.98947368421052,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.29473684210526313
+ },
+ "b1030d767cf29fb3": {
+  "generated": false,
+  "import_trim": 105.0,
+  "kept": false,
+  "non_jsx": 105.0,
+  "tokens": 105,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "b10f04ce5b8bfc54": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": true,
+  "non_jsx": 103.0,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.037383177570093455
+ },
+ "b1fdcd3dc1f2ee26": {
+  "generated": false,
+  "import_trim": 123.0,
+  "kept": false,
+  "non_jsx": 123.0,
+  "tokens": 123,
+  "trait_impl": true,
+  "unit_share": 0.8175182481751825
+ },
+ "b330516ebd320ae7": {
+  "generated": false,
+  "import_trim": 110.08264462809917,
+  "kept": true,
+  "non_jsx": 120.0,
+  "tokens": 120,
+  "trait_impl": false,
+  "unit_share": 0.52
+ },
+ "b363e12ae573eb6a": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "b3b412aeab4f7691": {
+  "generated": false,
+  "import_trim": 152.0,
+  "kept": false,
+  "non_jsx": 72.2,
+  "tokens": 152,
+  "trait_impl": false,
+  "unit_share": 0.29375
+ },
+ "b3ed7ce9001a2a90": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 54.24657534246575,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.3783783783783784
+ },
+ "b3ee1718eb6190dd": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b4241c99cd90e4d4": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "b5153039eafec20a": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.4189189189189189
+ },
+ "b5a3e6470c6282c7": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "b5cfbd6ce4aea1d9": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b5e4249c97976efd": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "b5eff624263eebf0": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "b62268aa92f2f613": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 46.21621621621622,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.3625
+ },
+ "b632bfa76c6e1cc3": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b6cf48b9df1e9f07": {
+  "generated": false,
+  "import_trim": 5.614035087719298,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b7ae6916c7391e37": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b7c821a4236b4618": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b7e1a4f7c731a53d": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 18.700000000000003,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.6
+ },
+ "b81aa6570615bc02": {
+  "generated": false,
+  "import_trim": 134.0,
+  "kept": true,
+  "non_jsx": 134.0,
+  "tokens": 134,
+  "trait_impl": false,
+  "unit_share": 0.9705882352941176
+ },
+ "b84f5d15d4cdfe7f": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b86190d5fa0c87cb": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "b8ae465c32d6acbf": {
+  "generated": false,
+  "import_trim": 216.0,
+  "kept": false,
+  "non_jsx": 216.0,
+  "tokens": 216,
+  "trait_impl": false,
+  "unit_share": 0.17982456140350878
+ },
+ "b8c64c4d0712a6e9": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b8c9ab0c5c13db24": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b8f0faeecbd253e8": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": true,
+  "unit_share": 0.5238095238095238
+ },
+ "b9f7a1019e1b0f6d": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "b9fee58b41a93a62": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ba1ba010bbbbde9c": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ba532796e11deabc": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "ba545fdd313dded5": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ba59793934f17bf0": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.7903225806451613
+ },
+ "ba7f26982dfab470": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "bb0e39c391c15896": {
+  "generated": false,
+  "import_trim": 97.22689075630252,
+  "kept": false,
+  "non_jsx": 130.0,
+  "tokens": 130,
+  "trait_impl": false,
+  "unit_share": 0.1388888888888889
+ },
+ "bb2b980776bd69e0": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "bb98f69e5c39ed8d": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "bba44528f99c1fc3": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.47761194029850745
+ },
+ "bbc04fb01051a9e2": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "bc171ad7b6756db9": {
+  "generated": false,
+  "import_trim": 26.666666666666664,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "bc34407c880db74f": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "bcbf5fd4112d6bc8": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "bce8ee25b6c0e357": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "be0d013b1049f3b1": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "be66b43bc93d7902": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "be8a71088c29d5b6": {
+  "generated": false,
+  "import_trim": 204.7751937984496,
+  "kept": true,
+  "non_jsx": 208.0,
+  "tokens": 208,
+  "trait_impl": false,
+  "unit_share": 0.9398148148148148
+ },
+ "bee0a67999453312": {
+  "generated": false,
+  "import_trim": 216.0,
+  "kept": false,
+  "non_jsx": 216.0,
+  "tokens": 216,
+  "trait_impl": false,
+  "unit_share": 0.17982456140350878
+ },
+ "bee356a701f392aa": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 47.96428571428571,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.09782608695652174
+ },
+ "bfafd1320e06f0de": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "bfb969725f4ded64": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c010d49060b46636": {
+  "generated": false,
+  "import_trim": 83.0,
+  "kept": false,
+  "non_jsx": 83.0,
+  "tokens": 83,
+  "trait_impl": true,
+  "unit_share": 0.9310344827586207
+ },
+ "c051f26fcadc1290": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c0af18eed992e4b8": {
+  "generated": false,
+  "import_trim": 90.0,
+  "kept": true,
+  "non_jsx": 90.0,
+  "tokens": 90,
+  "trait_impl": false,
+  "unit_share": 0.6864406779661016
+ },
+ "c111c01856a21cdc": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.8714285714285714
+ },
+ "c14ab1a124475c4d": {
+  "generated": false,
+  "import_trim": 121.0,
+  "kept": false,
+  "non_jsx": 121.0,
+  "tokens": 121,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c26e54efb4a7c3c7": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c2e4dd21e5fda0ab": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c2e8de5e1831e209": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c300b25040b663f0": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c41a403aaee924d7": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c43c2b406f4d8c6c": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.6
+ },
+ "c442e03ea3c1e752": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c4d204d057474488": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c51ae5f1d81544de": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": true,
+  "unit_share": 0.8666666666666667
+ },
+ "c544b94342c387c1": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 73.0,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.4266666666666667
+ },
+ "c5acb2126affe311": {
+  "generated": false,
+  "import_trim": 101.0,
+  "kept": true,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.6435643564356436
+ },
+ "c6060276a06984ec": {
+  "generated": false,
+  "import_trim": 26.666666666666664,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c67a47e35d29c1ea": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": true,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.7631578947368421
+ },
+ "c6d6a21a50a2b501": {
+  "generated": false,
+  "import_trim": 144.0,
+  "kept": true,
+  "non_jsx": 144.0,
+  "tokens": 144,
+  "trait_impl": false,
+  "unit_share": 0.031446540880503145
+ },
+ "c6e3a15cb7fc1ae4": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 109.0,
+  "tokens": 109,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c6ecfd246fb8600b": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "c705343a84e45835": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c716efd7d10b2d78": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 38.97142857142857,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c72f90ca6d24ac78": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.5679012345679012
+ },
+ "c732240b25d1161f": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.6741573033707865
+ },
+ "c7a9aa8caa57068b": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c83130eb48268bc2": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c83d654889a674f2": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "c8fcc52d393c37d7": {
+  "generated": false,
+  "import_trim": 224.0,
+  "kept": false,
+  "non_jsx": 224.0,
+  "tokens": 224,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "c9648cb3c8e25bc1": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ca1b06180cdc2371": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ca36c365d7708ba4": {
+  "generated": false,
+  "import_trim": 153.0,
+  "kept": true,
+  "non_jsx": 153.0,
+  "tokens": 153,
+  "trait_impl": false,
+  "unit_share": 0.6309523809523809
+ },
+ "ca426d99b64ab881": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 109.0,
+  "tokens": 109,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cb6b561698b1311e": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cb99bdbeb65f0671": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.37
+ },
+ "cb9f98ff5be97d23": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.1827956989247312
+ },
+ "cbbe1c24df7d6b45": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cc1fb79caeb45f0a": {
+  "generated": false,
+  "import_trim": 173.0,
+  "kept": true,
+  "non_jsx": 173.0,
+  "tokens": 173,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cc93788ad630fa59": {
+  "generated": false,
+  "import_trim": 101.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ccb0e14b95cb158b": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "cce379690434909a": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cd0163e70b6eb321": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cd3c15e6d4db0611": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cdaf7846399f1a41": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 51.17460317460317,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.5238095238095238
+ },
+ "cdc966c277791872": {
+  "generated": false,
+  "import_trim": 3.1111111111111107,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ce165f7199259d71": {
+  "generated": false,
+  "import_trim": 119.0,
+  "kept": true,
+  "non_jsx": 119.0,
+  "tokens": 119,
+  "trait_impl": false,
+  "unit_share": 0.2708333333333333
+ },
+ "ce55e8b39c12d3af": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.4782608695652174
+ },
+ "ceb0ba3a7f2c3218": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cebd87cb6f034087": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": true,
+  "unit_share": 0.12745098039215685
+ },
+ "cee27271704dea00": {
+  "generated": false,
+  "import_trim": 160.0,
+  "kept": false,
+  "non_jsx": 160.0,
+  "tokens": 160,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "cef1debda05575e2": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d0aacf45b6a56eca": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d0f3848e9a370fc5": {
+  "generated": false,
+  "import_trim": 94.0,
+  "kept": false,
+  "non_jsx": 94.0,
+  "tokens": 94,
+  "trait_impl": false,
+  "unit_share": 0.25
+ },
+ "d0f60924f7d9a3f3": {
+  "generated": false,
+  "import_trim": 129.0,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d0fa298c0957cf7b": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d142e2a46940d46a": {
+  "generated": false,
+  "import_trim": 108.0,
+  "kept": false,
+  "non_jsx": 108.0,
+  "tokens": 108,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d147ed738680b65f": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d17a7728ad68a9c6": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d1973ae996a5ed57": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d1b2cf19357856f0": {
+  "generated": false,
+  "import_trim": 40.44186046511628,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d1bdc8a57bdef972": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 61.34939759036144,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d1da0c41e8d41de5": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.2894736842105263
+ },
+ "d27692762ed4f017": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d28d3c9eeeba6d91": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d29872e2ab9865b9": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 38.01449275362319,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d2aae71917197adf": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d2ca1004e15dabde": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": true,
+  "unit_share": 0.425531914893617
+ },
+ "d37b21bf6778ed42": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d3d6d27ca1832057": {
+  "generated": false,
+  "import_trim": 86.0,
+  "kept": false,
+  "non_jsx": 86.0,
+  "tokens": 86,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d4552c6439ac2110": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.7903225806451613
+ },
+ "d489a59b8813a270": {
+  "generated": false,
+  "import_trim": 96.0,
+  "kept": false,
+  "non_jsx": 96.0,
+  "tokens": 96,
+  "trait_impl": false,
+  "unit_share": 0.23931623931623933
+ },
+ "d50a4d0fd5262a4c": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d5209c7d5d7df3a7": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d537f831adf2d03b": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.3595505617977528
+ },
+ "d5626306d15d15a4": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d614c54168dc0649": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "d66bb74475035ff0": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 37.955555555555556,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.3
+ },
+ "d6d3b363fcf922c0": {
+  "generated": false,
+  "import_trim": 81.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d76746cc951730a1": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.09210526315789473
+ },
+ "d7681d92fa7e0403": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d78e9b218441eb0c": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d802763a767485a1": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d8180e4531465385": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "d834fa0b5d65dc77": {
+  "generated": false,
+  "import_trim": 131.0,
+  "kept": false,
+  "non_jsx": 131.0,
+  "tokens": 131,
+  "trait_impl": true,
+  "unit_share": 0.9555555555555556
+ },
+ "d837edada7a3fbed": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "d8380dbfddc543ca": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d89369a5e8573be6": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d8b447b4d82bdc0f": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 43.24,
+  "tokens": 69,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d90e48589d4a0aa1": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "d919f38c4af6a617": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.2682926829268293
+ },
+ "d983c66455fc0b2a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "da29f731c089cfd5": {
+  "generated": false,
+  "import_trim": 99.0,
+  "kept": false,
+  "non_jsx": 99.0,
+  "tokens": 99,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "da64f40f1ce8f2d9": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dbba048cadead98c": {
+  "generated": false,
+  "import_trim": 107.0,
+  "kept": false,
+  "non_jsx": 85.2212389380531,
+  "tokens": 107,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dc28e064db1392f3": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": true,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.7631578947368421
+ },
+ "dcbc2dddec12abcf": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 78.0,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dcc8dd4d00a002b2": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dd6a33a0142d59f2": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dd8876fc2762764f": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.17525773195876287
+ },
+ "dda91c4d67cd3480": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.19718309859154928
+ },
+ "de191e5dcb4b07c6": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dee7fae55d66de5f": {
+  "generated": false,
+  "import_trim": 88.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": true,
+  "unit_share": 0.12745098039215685
+ },
+ "defe62fa4057a292": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": true,
+  "unit_share": 0.6555555555555556
+ },
+ "df0c75640b74bea9": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "df1a0b63ff61f9c7": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": false,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.4605263157894737
+ },
+ "df2b027829942049": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "df619d05ffe775f3": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "df84094287e79c99": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "dfd1a9c080938a86": {
+  "generated": false,
+  "import_trim": 156.0,
+  "kept": false,
+  "non_jsx": 156.0,
+  "tokens": 156,
+  "trait_impl": true,
+  "unit_share": 0.07602339181286549
+ },
+ "e05dc4ee8b0cb664": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.24193548387096775
+ },
+ "e06028b39048881c": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e0772c4ee277dc58": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e08e17a5776d39a9": {
+  "generated": false,
+  "import_trim": 82.0,
+  "kept": false,
+  "non_jsx": 48.62790697674419,
+  "tokens": 82,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e091a5ce3d263d4f": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "e0a71b6711b82c2d": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.6206896551724138
+ },
+ "e0b85eaebc1757be": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.12658227848101267
+ },
+ "e0bfeb090b40d653": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": true,
+  "unit_share": 0.7211538461538461
+ },
+ "e146006f78a4fa34": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e155de8bb229cdea": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e2479aa0620ac57b": {
+  "generated": false,
+  "import_trim": 73.0,
+  "kept": false,
+  "non_jsx": 46.537499999999994,
+  "tokens": 73,
+  "trait_impl": false,
+  "unit_share": 0.325
+ },
+ "e27b555846ce6d99": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "e286791d093993b1": {
+  "generated": false,
+  "import_trim": 18.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e3441af1d0899b1a": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 72.0,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e36885c9df868dc4": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 45.41772151898734,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.11392405063291139
+ },
+ "e41679e06bb54c6e": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 16.52054794520548,
+  "tokens": 67,
+  "trait_impl": false,
+  "unit_share": 0.0958904109589041
+ },
+ "e4aba213c43a8b4c": {
+  "generated": false,
+  "import_trim": 105.0,
+  "kept": false,
+  "non_jsx": 105.0,
+  "tokens": 105,
+  "trait_impl": true,
+  "unit_share": 0.9009009009009009
+ },
+ "e4be697b00e4a58b": {
+  "generated": false,
+  "import_trim": 96.0,
+  "kept": false,
+  "non_jsx": 96.0,
+  "tokens": 96,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e4fa607c895f1aff": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": false,
+  "non_jsx": 94.57272727272728,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.3181818181818182
+ },
+ "e4fec8d58e2c98e8": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": true,
+  "unit_share": 0.8108108108108109
+ },
+ "e57ee3a712104238": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.4444444444444444
+ },
+ "e58b01ee9bb0ad81": {
+  "generated": false,
+  "import_trim": 78.0,
+  "kept": false,
+  "non_jsx": 48.51219512195122,
+  "tokens": 78,
+  "trait_impl": false,
+  "unit_share": 0.0989010989010989
+ },
+ "e5f1ad86395e77aa": {
+  "generated": false,
+  "import_trim": 103.0,
+  "kept": false,
+  "non_jsx": 103.0,
+  "tokens": 103,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e6c51b861a6d95b5": {
+  "generated": false,
+  "import_trim": 125.0,
+  "kept": true,
+  "non_jsx": 125.0,
+  "tokens": 125,
+  "trait_impl": false,
+  "unit_share": 0.7615384615384615
+ },
+ "e70769deb60f5b82": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 32.8421052631579,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.11842105263157894
+ },
+ "e7096e597baa5c5d": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.18681318681318682
+ },
+ "e73cacf171e37d16": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "e7ac71f6456a40eb": {
+  "generated": false,
+  "import_trim": 65.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e7c0c1c837f0cf5d": {
+  "generated": false,
+  "import_trim": 150.0,
+  "kept": false,
+  "non_jsx": 150.0,
+  "tokens": 150,
+  "trait_impl": true,
+  "unit_share": 0.3502824858757062
+ },
+ "e858a22e61b4fb0d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e866a85498c4b8b9": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.8536585365853658
+ },
+ "e89419fcb4d498c6": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 88.0,
+  "tokens": 88,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e89b70da8928ad7e": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e8f309388e8c7d4f": {
+  "generated": false,
+  "import_trim": 101.0,
+  "kept": false,
+  "non_jsx": 101.0,
+  "tokens": 101,
+  "trait_impl": true,
+  "unit_share": 0.7154471544715447
+ },
+ "e915048ff07a24d0": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "e9f74f0a060d26c0": {
+  "generated": false,
+  "import_trim": 90.0,
+  "kept": false,
+  "non_jsx": 90.0,
+  "tokens": 90,
+  "trait_impl": false,
+  "unit_share": 0.07692307692307693
+ },
+ "ea492dcd07ec76f9": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ea815de975044108": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 37.955555555555556,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.3
+ },
+ "eadbe62a3cbeddb1": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": true,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.21621621621621623
+ },
+ "eadca8175ed65b09": {
+  "generated": false,
+  "import_trim": 148.0,
+  "kept": false,
+  "non_jsx": 148.0,
+  "tokens": 148,
+  "trait_impl": false,
+  "unit_share": 0.07236842105263158
+ },
+ "eb2ebf64d3495908": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 16.828571428571426,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.1
+ },
+ "eb60036818f7bee8": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "eb912044d8d2789a": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ebc8231fbda45e7a": {
+  "generated": false,
+  "import_trim": 108.0,
+  "kept": false,
+  "non_jsx": 108.0,
+  "tokens": 108,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ebe6dd7880598b30": {
+  "generated": false,
+  "import_trim": 89.0,
+  "kept": false,
+  "non_jsx": 89.0,
+  "tokens": 89,
+  "trait_impl": false,
+  "unit_share": 0.09375
+ },
+ "ec0839d2c29b3487": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ec4dce22179c90ed": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "ec4f6a243ea41596": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 45.11111111111111,
+  "tokens": 87,
+  "trait_impl": false,
+  "unit_share": 0.5833333333333334
+ },
+ "eca7375051a058a9": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "eca8c19ccb007753": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 56.44776119402985,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ece45506775c8741": {
+  "generated": false,
+  "import_trim": 137.0,
+  "kept": false,
+  "non_jsx": 137.0,
+  "tokens": 137,
+  "trait_impl": true,
+  "unit_share": 0.8516129032258064
+ },
+ "ecfc4b590e02d162": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 70.0,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ed37915e1555652d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ed3f7ffd25fb2a4c": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": true,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.7608695652173914
+ },
+ "edade7e03b52800f": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ededfc988fa950bc": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "edeed464d2931990": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ee3c6d1b2a7cd25a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ee91b4ac1dda647a": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "eed82a706f4b1858": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "eee28869763a8295": {
+  "generated": false,
+  "import_trim": 85.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "ef5e937188f886f9": {
+  "generated": false,
+  "import_trim": 144.0,
+  "kept": true,
+  "non_jsx": 144.0,
+  "tokens": 144,
+  "trait_impl": false,
+  "unit_share": 0.031446540880503145
+ },
+ "ef695f735f99bb52": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.7407407407407407
+ },
+ "ef8660fd2900fceb": {
+  "generated": false,
+  "import_trim": 107.0,
+  "kept": false,
+  "non_jsx": 107.0,
+  "tokens": 107,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "efec73db116ab12a": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.20238095238095238
+ },
+ "f01503c9a00b8264": {
+  "generated": false,
+  "import_trim": 114.0,
+  "kept": false,
+  "non_jsx": 114.0,
+  "tokens": 114,
+  "trait_impl": true,
+  "unit_share": 0.7846153846153846
+ },
+ "f01d0741cdd21c75": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f08ec00b71d09895": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "f107b9bcd29554e0": {
+  "generated": false,
+  "import_trim": 76.0,
+  "kept": false,
+  "non_jsx": 76.0,
+  "tokens": 76,
+  "trait_impl": true,
+  "unit_share": 0.6804123711340206
+ },
+ "f18bad689b2565a0": {
+  "generated": false,
+  "import_trim": 130.92307692307693,
+  "kept": true,
+  "non_jsx": 185.0,
+  "tokens": 185,
+  "trait_impl": false,
+  "unit_share": 0.5081081081081081
+ },
+ "f1af24035eae0541": {
+  "generated": false,
+  "import_trim": 84.0,
+  "kept": false,
+  "non_jsx": 84.0,
+  "tokens": 84,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f1bbfa67cfe47947": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "f2cea265986ac26e": {
+  "generated": false,
+  "import_trim": 69.0,
+  "kept": false,
+  "non_jsx": 69.0,
+  "tokens": 69,
+  "trait_impl": true,
+  "unit_share": 0.9178082191780822
+ },
+ "f325b5faf525f46a": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 65.0,
+  "tokens": 65,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f405cfc04801f45e": {
+  "generated": false,
+  "import_trim": 57.58888888888889,
+  "kept": false,
+  "non_jsx": 73.0,
+  "tokens": 73,
+  "trait_impl": true,
+  "unit_share": 0.625
+ },
+ "f4073254546a7909": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f4396cdc96d207b6": {
+  "generated": false,
+  "import_trim": 72.0,
+  "kept": false,
+  "non_jsx": 45.120000000000005,
+  "tokens": 72,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f48646f13acf84b4": {
+  "generated": false,
+  "import_trim": 91.0,
+  "kept": false,
+  "non_jsx": 91.0,
+  "tokens": 91,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f4e77f4cc4d91717": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 51.17460317460317,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.5238095238095238
+ },
+ "f4f634e204d67c4c": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f54608c659c8807f": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f55e24f758d3b8e2": {
+  "generated": false,
+  "import_trim": 109.0,
+  "kept": false,
+  "non_jsx": 42.65217391304348,
+  "tokens": 109,
+  "trait_impl": false,
+  "unit_share": 0.7913043478260869
+ },
+ "f575cf30a5d6aa6b": {
+  "generated": false,
+  "import_trim": 70.0,
+  "kept": false,
+  "non_jsx": 47.6,
+  "tokens": 70,
+  "trait_impl": false,
+  "unit_share": 0.3466666666666667
+ },
+ "f65cf6f10cd6e074": {
+  "generated": false,
+  "import_trim": 60.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": true,
+  "unit_share": 0.7215189873417721
+ },
+ "f6f57b258b0b8179": {
+  "generated": false,
+  "import_trim": 107.0,
+  "kept": false,
+  "non_jsx": 85.2212389380531,
+  "tokens": 107,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f749122a2fc4bece": {
+  "generated": false,
+  "import_trim": 121.36184210526315,
+  "kept": false,
+  "non_jsx": 129.0,
+  "tokens": 129,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "f7da4f0958f25327": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f7ecf8f47d87c564": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 81.0,
+  "tokens": 81,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f7fa2e9ddf6e1089": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f83767b56853ee3c": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f851ee1037010906": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f8dfc72300f29efc": {
+  "generated": false,
+  "import_trim": 80.0,
+  "kept": false,
+  "non_jsx": 80.0,
+  "tokens": 80,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "f942086b113266ac": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 10.060975609756099,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "f9bf038718c317b2": {
+  "generated": false,
+  "import_trim": 67.0,
+  "kept": false,
+  "non_jsx": 67.0,
+  "tokens": 67,
+  "trait_impl": true,
+  "unit_share": 0.9154929577464789
+ },
+ "f9fa6e094ed4cb69": {
+  "generated": false,
+  "import_trim": 62.08588957055215,
+  "kept": false,
+  "non_jsx": 92.0,
+  "tokens": 92,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fa28f23c9cc26c34": {
+  "generated": false,
+  "import_trim": 61.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fa4c45d0dc43e747": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fa60aee3a669dec6": {
+  "generated": false,
+  "import_trim": 93.0,
+  "kept": false,
+  "non_jsx": 93.0,
+  "tokens": 93,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fa83e46ba386f098": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 85.0,
+  "tokens": 85,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "faceb4706149a376": {
+  "generated": false,
+  "import_trim": 44.20289855072464,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fb463fe422d22c29": {
+  "generated": false,
+  "import_trim": 102.0,
+  "kept": true,
+  "non_jsx": 102.0,
+  "tokens": 102,
+  "trait_impl": false,
+  "unit_share": 0.03773584905660377
+ },
+ "fb75833cd6968e0c": {
+  "generated": false,
+  "import_trim": 75.0,
+  "kept": false,
+  "non_jsx": 75.0,
+  "tokens": 75,
+  "trait_impl": false,
+  "unit_share": 0.7019230769230769
+ },
+ "fbb40082a424fc1d": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 60.0,
+  "tokens": 60,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fbdc9bddaeb14c9a": {
+  "generated": false,
+  "import_trim": 68.21929824561403,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.5892857142857143
+ },
+ "fc09921750d4dac0": {
+  "generated": false,
+  "import_trim": 100.0,
+  "kept": false,
+  "non_jsx": 25.925925925925924,
+  "tokens": 100,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fc68ea81656cded8": {
+  "generated": false,
+  "import_trim": 68.21929824561403,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.5892857142857143
+ },
+ "fc72fe3f5a73bb06": {
+  "generated": false,
+  "import_trim": 66.0,
+  "kept": false,
+  "non_jsx": 66.0,
+  "tokens": 66,
+  "trait_impl": true,
+  "unit_share": 0.72
+ },
+ "fc8ab29fbadc01f4": {
+  "generated": false,
+  "import_trim": 166.0,
+  "kept": true,
+  "non_jsx": 166.0,
+  "tokens": 166,
+  "trait_impl": false,
+  "unit_share": 0.8526315789473684
+ },
+ "fd6547ac5c91d331": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 62.0,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fd69824cbcff7bbf": {
+  "generated": false,
+  "import_trim": 64.0,
+  "kept": false,
+  "non_jsx": 64.0,
+  "tokens": 64,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "fdb20f146308a035": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 86.0,
+  "tokens": 86,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fdccfb7158c8579b": {
+  "generated": false,
+  "import_trim": 3.536231884057971,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fdde88a47eb62832": {
+  "generated": false,
+  "import_trim": 0.0,
+  "kept": false,
+  "non_jsx": 61.0,
+  "tokens": 61,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "fdfca387c9ec6d81": {
+  "generated": false,
+  "import_trim": 185.0,
+  "kept": false,
+  "non_jsx": 185.0,
+  "tokens": 185,
+  "trait_impl": false,
+  "unit_share": 0.26570048309178745
+ },
+ "fe30048fea59988a": {
+  "generated": false,
+  "import_trim": 77.0,
+  "kept": false,
+  "non_jsx": 77.0,
+  "tokens": 77,
+  "trait_impl": false,
+  "unit_share": 0.37142857142857144
+ },
+ "fe363ac77be0251e": {
+  "generated": false,
+  "import_trim": 74.0,
+  "kept": false,
+  "non_jsx": 74.0,
+  "tokens": 74,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "feb75a0cf6a7a3f3": {
+  "generated": false,
+  "import_trim": 80.0,
+  "kept": false,
+  "non_jsx": 80.0,
+  "tokens": 80,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "feceafc1a8ee4941": {
+  "generated": false,
+  "import_trim": 79.0,
+  "kept": false,
+  "non_jsx": 79.0,
+  "tokens": 79,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "fed8a57858787ccc": {
+  "generated": false,
+  "import_trim": 87.0,
+  "kept": false,
+  "non_jsx": 87.0,
+  "tokens": 87,
+  "trait_impl": true,
+  "unit_share": 0.0
+ },
+ "fef1fde0c704f143": {
+  "generated": false,
+  "import_trim": 68.0,
+  "kept": false,
+  "non_jsx": 68.0,
+  "tokens": 68,
+  "trait_impl": false,
+  "unit_share": 0.20238095238095238
+ },
+ "ff4011f8fbf49fa6": {
+  "generated": false,
+  "import_trim": 89.0,
+  "kept": false,
+  "non_jsx": 22.010752688172044,
+  "tokens": 89,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ff92ee6d47852e21": {
+  "generated": false,
+  "import_trim": 62.0,
+  "kept": false,
+  "non_jsx": 51.17460317460317,
+  "tokens": 62,
+  "trait_impl": false,
+  "unit_share": 0.5238095238095238
+ },
+ "ffa6b0d03cbaf9ee": {
+  "generated": false,
+  "import_trim": 71.0,
+  "kept": false,
+  "non_jsx": 71.0,
+  "tokens": 71,
+  "trait_impl": false,
+  "unit_share": 0.0
+ },
+ "ffc33ef47bcd29a3": {
+  "generated": false,
+  "import_trim": 63.0,
+  "kept": false,
+  "non_jsx": 63.0,
+  "tokens": 63,
+  "trait_impl": true,
+  "unit_share": 0.0
+ }
+}

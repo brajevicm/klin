@@ -1,0 +1,46 @@
+{
+  "binary_sha256": "9d89762049fec722d95845efb853a6e479df0a0baee847758ccc96dedd680eca",
+  "rows": [
+    {
+      "case": "klin",
+      "root": "/tmp/klin490-corpus/klin/src",
+      "wall_including_normalization_seconds": 0.5513570419861935,
+      "raw_map_bytes": 14672,
+      "files": 80,
+      "tokens": 233276,
+      "threshold": 60,
+      "families": 20,
+      "occurrences": 41,
+      "matcher_ms": 126.800458,
+      "normalization_timed": false,
+      "full_rebuild": true,
+      "lineage_included": false,
+      "full_map_sha256": "46394a584153d4ea8f63a1794f1e30c5722ca5d605538d2b7a42aeab324f9c7f",
+      "full_map_digest_format": "JSON compact sorted (hex canonical token sequence, sorted path/start/end occurrence triples)",
+      "prior_python_full_map_equal": true
+    },
+    {
+      "case": "1m",
+      "root": "/tmp/klin490-corpus/1m",
+      "wall_including_normalization_seconds": 9.88699920795625,
+      "raw_map_bytes": 2,
+      "files": 9998,
+      "tokens": 5930008,
+      "threshold": 60,
+      "families": 0,
+      "occurrences": 0,
+      "matcher_ms": 4838.763833,
+      "normalization_timed": false,
+      "full_rebuild": true,
+      "lineage_included": false,
+      "full_map_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "full_map_digest_format": "JSON compact sorted (hex canonical token sequence, sorted path/start/end occurrence triples)"
+    }
+  ],
+  "scope": "full rebuild matching; normalization excluded from matcher_ms; no lineage",
+  "source_sha256": {
+    "docs/duplication-stop-design-2026-10-05/proto/src/cohorts.rs": "badb42252c4b7f9c9ac45c8397370057e13fe9e9d2c15b883558b8abf6f123b2",
+    "docs/duplication-stop-design-2026-10-05/proto/src/main.rs": "95d29bd5a0fbc9baa69e5b08f4d4345ac4305f78790f30e3a89f060b80afcfec"
+  },
+  "rss": "not measured; normalization retains canonical token buffers, no incremental warm budget claim"
+}

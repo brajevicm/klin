@@ -1,0 +1,82 @@
+{
+  "Rust": {
+    "candidates": [
+      {
+        "threshold": 60,
+        "non_copy": 1677,
+        "total": 1777,
+        "repositories": [
+          "glaredb",
+          "klin"
+        ]
+      },
+      {
+        "threshold": 80,
+        "non_copy": 891,
+        "total": 948,
+        "repositories": [
+          "glaredb",
+          "klin"
+        ]
+      },
+      {
+        "threshold": 100,
+        "non_copy": 378,
+        "total": 417,
+        "repositories": [
+          "glaredb",
+          "klin"
+        ]
+      },
+      {
+        "threshold": 150,
+        "non_copy": 28,
+        "total": 42,
+        "repositories": [
+          "glaredb",
+          "klin"
+        ]
+      }
+    ],
+    "selected": null,
+    "sensitivity": []
+  },
+  "TypeScript": {
+    "candidates": [
+      {
+        "threshold": 60,
+        "non_copy": 88,
+        "total": 146,
+        "repositories": [
+          "karakeep"
+        ]
+      },
+      {
+        "threshold": 80,
+        "non_copy": 45,
+        "total": 79,
+        "repositories": [
+          "karakeep"
+        ]
+      },
+      {
+        "threshold": 100,
+        "non_copy": 25,
+        "total": 51,
+        "repositories": [
+          "karakeep"
+        ]
+      },
+      {
+        "threshold": 150,
+        "non_copy": 12,
+        "total": 13,
+        "repositories": [
+          "karakeep"
+        ]
+      }
+    ],
+    "selected": null,
+    "sensitivity": []
+  }
+}

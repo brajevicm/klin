@@ -1,0 +1,125 @@
+{
+  "root": "/tmp/klin490-corpus/karakeep",
+  "files": 493,
+  "tokens": 263888,
+  "unsafe_tokens": 629,
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "exact_artifact_sha256": "08839963755bd149fabea05f2b9e7680506fd78d5f7477f5e8154b8080aa6f8d",
+  "block_bytes": 65536,
+  "raw_component_bytes": {
+    "dictionary": 274001,
+    "dictionary_offsets": 80328,
+    "chains": 345025,
+    "rows": 263888,
+    "paths": 19900,
+    "files": 15776,
+    "sparse_token_offsets": 52080
+  },
+  "roundtrip_all_bytes": true,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "codecs": {
+    "zlib": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 91041,
+          "block_directory_bytes": 120,
+          "total_bytes": 91161,
+          "blocks": 5
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 16953,
+          "block_directory_bytes": 48,
+          "total_bytes": 17001,
+          "blocks": 2
+        },
+        "chains": {
+          "payload_bytes": 135734,
+          "block_directory_bytes": 144,
+          "total_bytes": 135878,
+          "blocks": 6
+        },
+        "rows": {
+          "payload_bytes": 27668,
+          "block_directory_bytes": 120,
+          "total_bytes": 27788,
+          "blocks": 5
+        },
+        "paths": {
+          "payload_bytes": 4230,
+          "block_directory_bytes": 24,
+          "total_bytes": 4254,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 5211,
+          "block_directory_bytes": 24,
+          "total_bytes": 5235,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 12767,
+          "block_directory_bytes": 24,
+          "total_bytes": 12791,
+          "blocks": 1
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 294236,
+      "candidate_plus_evidence_bytes": {
+        "karakeep-64": 466145
+      }
+    },
+    "lzma": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 83509,
+          "block_directory_bytes": 120,
+          "total_bytes": 83629,
+          "blocks": 5
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 10722,
+          "block_directory_bytes": 48,
+          "total_bytes": 10770,
+          "blocks": 2
+        },
+        "chains": {
+          "payload_bytes": 116762,
+          "block_directory_bytes": 144,
+          "total_bytes": 116906,
+          "blocks": 6
+        },
+        "rows": {
+          "payload_bytes": 22553,
+          "block_directory_bytes": 120,
+          "total_bytes": 22673,
+          "blocks": 5
+        },
+        "paths": {
+          "payload_bytes": 3977,
+          "block_directory_bytes": 24,
+          "total_bytes": 4001,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 3577,
+          "block_directory_bytes": 24,
+          "total_bytes": 3601,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 7525,
+          "block_directory_bytes": 24,
+          "total_bytes": 7549,
+          "blocks": 1
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 249257,
+      "candidate_plus_evidence_bytes": {
+        "karakeep-64": 421166
+      }
+    }
+  }
+}

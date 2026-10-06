@@ -1,0 +1,502 @@
+{
+  "7990250270a75f3c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both permission methods apply the same wildcard-or-path scope policy; a shared scope predicate can own that behavior independently of which tool names are allowed."
+  },
+  "af013827fac1f061": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Left and Lower provide the ScalarFunction state and bind methods, declaring a stateless UTF-8 result while preserving their inputs. Their actual string operations differ outside this adapter prelude."
+  },
+  "069a2e81a1f4afa0": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The TaskOut variant list is repeated as the input to impl_from_out!, which supplies conversions for those variants. These are an enum declaration and its conversion table, rather than two implementations of behavior."
+  },
+  "11e0ed48320b407c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both download handlers log errors, convert AppError to the same REST response, and fall back to the same 500 response. One error-response helper can own this policy."
+  },
+  "8c320e6fcb194cfc": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "PowerShell and fish repeat the cache-hit, build-on-miss, build-error, and cached-read sequence for aliases. The shell-specific filename does not change that cache policy."
+  },
+  "6e2e486beb960274": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The exp and cbrt modules repeat imports for numeric scalar execution and the opening of their function declarations. The region contains no shared numeric algorithm."
+  },
+  "29251ea58ac6ad32": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The trunc and sqrt regions are import preludes for the same array, executor, and function infrastructure. Sharing imports would not consolidate their mathematical behavior."
+  },
+  "109381735a3a5f2d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Push and pull repeat session connection, key binding, diff retrieval, and the force-sensitive remote-key validation gate. This sync preparation and safety policy can be shared before direction-specific operation filtering."
+  },
+  "9d10cdf7a1635a1b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Text and checkbox handlers repeat the payload check, spinner insertion, signing call, and unconditional spinner destruction. A shared signing completion handler can own this lifecycle."
+  },
+  "c4fc2b626bc0a2fd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both table cells handle missing user agents, parse the agent, and return the browser name with the same fallback. A browser-name helper would remove this repeated interpretation policy."
+  },
+  "a571ad3316f0c657": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The two modal modules repeat React, translation, and UI primitive imports. These are local dependency declarations rather than repeated modal behavior."
+  },
+  "f5477ea4b0210c1d": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The popup implementations repeat the visibility getter and show/hide methods required by their component interface, alongside event-consumption returns. Each adapter exposes its own visible field."
+  },
+  "e0ad0dc11e44198c": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The two client types repeat platform-gated from_settings constructors that forward the appropriate address to their own new method. This is local construction scaffolding for separate service clients."
+  },
+  "4ff76c6c54f40ad3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Document and template branches repeat the field-coordinate conversion from page/position/size names to pageNumber/pageX/pageY/pageWidth/pageHeight. A shared mapper can own this conversion before either setter is called."
+  },
+  "24f7f68a3d73fa0e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "CREATE TABLE and CREATE VIEW resolution repeat qualification of temporary names with temp schema and catalog components. One name-qualification helper can own this rule despite different unsupported-operation messages."
+  },
+  "beff3062f6d00f8b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both field editors initialize all recipient-role buckets and distribute recipients into them. This recipient grouping algorithm can be one shared function."
+  },
+  "8bd45001dc31af2a": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "LogicalLimit and LogicalCreateTable implement the required immutable and mutable expression visitor methods as no-ops because they expose no expressions here. The repetition is a trait obligation."
+  },
+  "da7febdd85245f6a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Move and copy reducers repeat file/byte accounting, failure logging, and collection success/failure updates. Those progress transitions can be shared independently of cleanup differences."
+  },
+  "957a9b8f3dd0537d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both history paths open the configured databases, obtain an encryption key and host id, and construct a HistoryStore. A shared history-resource initializer can own that setup and error handling."
+  },
+  "a72ec2c42dee2040": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Login and registration repeat the already-Hub-authenticated guard, user messages, and early successful return. This is a shared account-authentication policy rather than a declaration requirement."
+  },
+  "d002714d152b1d27": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Previewer and Fetcher repeat imports for Lua conversion, deserialization, file references, and identifiers. Their plugin-specific declarations and behavior are separate."
+  },
+  "51ac36949b04826d": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Pick and confirm each define a submit-only CloseForm with ActionCow/bool conversions and unsupported Lua conversion adapters. The repeated region describes the typed command shape and its conversion obligations."
+  },
+  "5e3563fd43eb5ed4": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Download and copy repeat the complete reducer policy for new files, malformed entries, collection outcomes, logging, and successful cleanup. One shared progress reducer can own those transitions."
+  },
+  "96d992338ca4f1ec": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "AtanOp and AsinOp repeat the generic execute_float signature, storage bounds, and executor call prelude required by UnaryInputNumericOperation. The actual mathematical callbacks are different."
+  },
+  "cb697d4598507364": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both routers project field properties into the input object expected by their respective field setters. This is a typed adapter shape with direct property forwarding, rather than a duplicated computation."
+  },
+  "40108c0eeceeabf5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "TagPill and MergeTagModal repeat BAD_REQUEST handling, flattening of validation errors, message fallback, and generic destructive toast fallback. One error-toast helper can own that policy."
+  },
+  "15780cf23387bcc1": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The pi and Claude Code adapters implement locate and rehydrate by forwarding to their own provider-specific session and rehydration modules. Identical syntax invokes different implementations through the required adapter methods."
+  },
+  "d321f90513d9d898": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both endpoints format the first validation issue and its path into the same HTTP 400 response. A shared validation-error formatter can own that response policy regardless of the schema."
+  },
+  "455d5a3262852b8d": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The foreground and background registrations repeat imports, userdata borrowing, and the opening of a value match. Their reversed-color and field-access behavior differs after this local macro scaffolding."
+  },
+  "725155f72c4e251c": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both graph tooltips build the same data-key-to-display-name map from legend entries. A shared legend lookup helper can own this transformation while tooltip ordering remains separate."
+  },
+  "4bf290f23e8bb5da": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two filesystem providers repeat flat-path component validation, directory rejection, and OS-string conversion. A shared path parser can own this behavior despite different provider wording."
+  },
+  "c12e82ac4f44253f": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The balance modals repeat carryover-indicator and value-text render markup with local styles. This is presentation scaffolding around an already shared BalanceWithCarryover component."
+  },
+  "12548e356c87e44d": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The numeric scalar and division adapters repeat stateless ScalarFunction binding that forwards inputs and clones the declared return type. Their execution arities and operations differ outside the required binding shape."
+  },
+  "da51091fc8daa633": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both growth routes emit JSON with the same public cache durations and apply the same CORS response policy. The repeated OPTIONS handler accompanies a shareable response-policy kernel."
+  },
+  "261fc670525b13e9": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "StringPtr and StringView expose corresponding union-layout accessors and conversions to and from 16-byte representations. These are type-specific representation adapters whose unsafe operations depend on Self and each union layout."
+  },
+  "17d6bd6258893578": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both optimizer branches derive left/right table references and classify drained filters against those sides, including the LeftMark special case. That join-side analysis can be shared before branch-specific pushdown decisions."
+  },
+  "dcf7fdb1dae3d181": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The pick and confirm ShowForm adapters repeat TryFrom error typing and extraction of their typed cfg argument. The subsequent required fields differ, making this the common prefix of two command parsers."
+  },
+  "e86c30c136afed7e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The gzip and xz branches repeat directory-to-tar writing and translation of tar/compression failures. A shared tar-writing helper can own the behavior while encoder construction and finishing remain format-specific."
+  },
+  "99f9dbf1b408c227": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The create and update prompt forms repeat standard text and select FormField markup, wiring field values and validation messages. There is no repeated validation or prompt-processing algorithm in this region."
+  },
+  "324ab0e2aa6d4465": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "LogicalSingleRow and LogicalDetachDatabase repeat empty output references and no-op expression visitors required by LogicalNode. These are the adapters for nodes with no output tables or expressions."
+  },
+  "2dd2eea7679fae25": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Serde tuple and struct serializers repeat field forwarding and successful end methods. Their trait signatures differ by the struct key parameter, and each must satisfy its serialization interface."
+  },
+  "8c690833ffd934c4": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The signing-name and account-deletion dialogs repeat imports of UI primitives, translation helpers, toast support, and React state. This is conventional module scaffolding."
+  },
+  "06cb72b59cdaa297": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The mobile list and bookmark creation pages repeat React Native, router, and UI imports. The creation hooks immediately following the region are different."
+  },
+  "3c575351e2fa49bd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Mutable and immutable slice access repeat the same alignment, element-size divisibility, and capacity consistency checks. One internal layout-check helper can own those invariants before either slice constructor."
+  },
+  "25943a90c052c48b": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The theme and runtime composers repeat the unknown-key fallback, an identity setter, and Composer construction. This is local glue around distinct property getters rather than a shared domain algorithm."
+  },
+  "19ffc2cbdbad8edb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Substring and right repeat array, batch, datatype, and executor imports. The declarations establish dependencies for different string functions."
+  },
+  "4fc3c39408a7471c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Envelope deletion and claim creation repeat dialog, toast, translation, and state imports. These imports do not duplicate the dialogs' domain actions."
+  },
+  "1661e095d0183e78": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both recipient forms parse recipient auth options and combine existing access/action authentication with unsaved signer action-auth settings. One predicate can own the rule for showing advanced settings."
+  },
+  "785b5aa501818dc4": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "NetWorth and AgeOfMoney repeat the save-widget button and styled report containers. This is shared-looking presentation scaffolding, while the report data and visual content differ."
+  },
+  "c7c4c74236c471a3": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Feed and AI settings repeat the standard hidden FormField wrapper and hidden input binding. The field identifiers differ and there is no duplicated domain behavior."
+  },
+  "c49a29f84bd27fdb": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Script and key-value deserializers repeat the debug-to-eyre error conversion helper within their decoding prelude. That error mapping can have one owner without combining the distinct record decoders."
+  },
+  "b029392a11d04be0": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both session listeners resolve and check a root, clone a pool, and open an asynchronous stream before provider-specific scanning. This short startup prelude is conventional local scaffolding; Codex adds separate archive handling."
+  },
+  "3cd22695e5421e96": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both field editors repeat selected-field mouse listener management and PDF-page observation that resets field bounds. One shared editor hook can own this lifecycle and bounds policy."
+  },
+  "27cd5973b9fcd2b3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Upload and download reducers repeat file and byte accounting, failure logging, collection state, and successful cleanup transitions. This is the same progress state-management kernel."
+  },
+  "ee76920837865623": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Push and push-tags requests repeat suppression of pending work, request registration, progress reset, and worker-state capture. A shared request-launch preparation helper can own that coordination policy."
+  },
+  "fe920d150e5dd355": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Branch rename and commit popups repeat the saturating geometry calculation that places a danger message at the input's bottom-right edge. One rendering helper can own that placement algorithm."
+  },
+  "27b14e64b80f3dbb": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The theme composer and runtime path composer repeat the nil fallback, identity setter, and Composer assembly. Their property getters differ, leaving only conventional adapter construction in the match."
+  },
+  "df393e8f6a0b13ec": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "The folder page and folder grid repeat selection of move/settings/delete targets and opening of the corresponding UI state. Shared folder action callbacks can own these transitions independently of the surrounding grid markup."
+  },
+  "2a4d88bfceba2504": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Settings and admin sidebars repeat the item-array type declaration and a back-to-app navigation entry. This is conventional navigation declaration scaffolding rather than duplicated runtime behavior."
+  },
+  "6f92172ed2fc6814": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "EditToolCall and ReadToolCall repeat the TryFrom JSON adapter signature and required file_path extraction. Their additional fields, defaults, and error messages belong to separate typed request shapes."
+  },
+  "e54138266a7eaf1b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two modules contain the same lowercase hexadecimal encoder, including nibble lookup and writing. One encoding utility can own the algorithm."
+  },
+  "981692e53e98072e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Old and new Kitty drivers repeat base64 encoding, 4096-byte chunking, payload sizing, and continuation detection. Protocol header differences do not prevent sharing the chunk-preparation kernel."
+  },
+  "fc7f055bc2fe7752": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Pi and Claude Code session readers repeat checkpoint-line verification and fallback to offset zero on mismatch or read failure, with the same logging. One checkpoint validator can own this recovery policy."
+  },
+  "0252e833fbbc79b8": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "CheckNull and Or repeat stateless ScalarFunction binding with a Boolean return type and input forwarding. Their null and boolean computations are different outside the required adapter methods."
+  },
+  "863dbb0065871479": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Fetch and push credential lookup repeat remote-URL extraction, credential-helper configuration, execution, and URL fallback. The selected remote can be an input to one credential-resolution helper."
+  },
+  "d55eab4115139742": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Adding and removing list membership invalidate the same bookmark-list, bookmark-membership, and list-stat caches before forwarding onSuccess. One invalidation helper can own that consistency policy."
+  },
+  "450b24f9e9ba76b5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Zsh and xonsh repeat alias cache lookup, build-on-miss, build-error reporting, and cached retrieval. A shared alias-config helper can take the shell's cache path."
+  },
+  "3e358893c31afa3b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both subquery planning paths construct typed equality conditions between correlated columns and their remapped right-side references. One condition builder can own the lookup, error handling, and expression construction."
+  },
+  "069fda3556fc54f8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both authentication success paths compute the post-auth route, persist token and instance, update authenticated state, mark onboarding information seen, and navigate. One session-establishment helper can own these coordinated effects."
+  },
+  "9841bc7192abca88": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "The two ReadInto implementations repeat initialization, progress reporting, and resumption of the same buffered-read state. A shared ReadInto type can own this state-management API rather than maintaining parallel implementations."
+  },
+  "a1840e080c02c3cd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Zsh and fish repeat the alias cache-hit/build-on-miss sequence and the same build failure response. The different cache filenames are parameters to a shared policy."
+  },
+  "d256446d35da23c2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "MergeListModal and EditListModal repeat validation-error flattening, server-message fallback, and the generic error toast. This is one reusable mutation-error presentation policy."
+  },
+  "d845a6d5d878d32b": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The two theme property composers repeat a nil fallback, identity setter, and Composer construction. Their preceding property maps differ, and the matched tail is conventional local adapter glue."
+  },
+  "2ee29dffca894d86": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both report spreadsheets exclude custom-name conditions before requesting filters and translate the condition operator into the same query operator key. A shared report-filter preparation helper can own this rule."
+  },
+  "8424ff52ab590395": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Xonsh and fish repeat cached-variable file reading and fallback generation with combined read/generation error reporting. The shell generator can be supplied to one shared cache-read helper."
+  },
+  "d92b97fcf447809c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two bank adapters repeat remittance selection, additional-information concatenation, creditor-name precedence, and starting-balance reconstruction. These transaction normalization and balance algorithms can be shared while institution ids remain local."
+  },
+  "86f3005b7d4eabf2": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both member-deletion dialogs repeat the same unknown-error toast text, destructive variant, and duration, along with success-driven closing. A shared member-removal feedback helper can own the identical error policy."
+  },
+  "199986c593248d2c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Karlsruhe and sandbox bank adapters repeat selection of interimAvailable balance and subtraction of all transaction amounts. One starting-balance calculator can own this algorithm."
+  },
+  "2f5a2aecb49303fa": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Deduplication and pruning repeat the dry-run display versus encrypted deletion workflow, including key/store setup and per-entry logging. One deletion executor can own that behavior after either path selects its matches."
+  },
+  "5733531d88942562": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Notify and confirm repeat execution-context creation and the beginning of local action-dispatch macros. Each macro dispatches into its own action namespace and lists different supported actions."
+  },
+  "61822e01c06dab8c": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The two tables repeat a page/perPage forwarding callback and a conventional empty paginated-result default. This is local table wiring around different queries, without duplicated query or pagination computation."
+  },
+  "2604abbaf032cc86": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Nullable and all-valid row-writing branches repeat copying non-inline string bytes into the heap, writing the row pointer, advancing the heap, and writing inline strings. One per-value writer can own this kernel while null handling stays outside."
+  },
+  "0e47189125df8aa0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both provider execution paths convert a job to a Lua table, reject non-table jobs, and attach service args and opts. One job-preparation helper can own this validation and enrichment before different result-consumption paths."
+  },
+  "5bb46256595f71da": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two archive endpoints repeat per-owner link-limit enforcement and uploaded-file MIME/size validation. These complete validation helpers should have one shared owner."
+  },
+  "6b8159ac6be8aed3": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The credentials and invite forms repeat conventional password FormField, label, control, and input markup. The surrounding fields and password prompts differ without introducing duplicated authentication logic here."
+  },
+  "7c6993a030950425": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Account deletion and password changes repeat rejection of unauthenticated users before constructing the authentication client. One authenticated-client helper can own that gate; the adjacent CLI field declarations remain local."
+  },
+  "b55242daf4e52d5f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Text and number signing branches repeat payload gating, spinner attachment, field signing, and spinner destruction in finally. A shared completion routine can own that signing lifecycle."
+  },
+  "6a3de2d3d7590a9a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both S3 modules repeat credential redaction in Debug and payload hashing for request authorization, alongside identical credential/authorizer types. One authorization implementation can own these security-sensitive behaviors."
+  },
+  "8a69ee92e3d278c7": {
+    "label": "generated",
+    "confidence": "high",
+    "rationale": "Both empty-struct Thrift readers are generated: format.rs line 2 says Autogenerated by Thrift Compiler (0.20.0). Evidence: [pinned file header](https://github.com/glaredb/glaredb/blob/8001afa4cff0cecfec79f2cb292108da08aa4c35/crates/ext_parquet/src/format.rs#L1-L3)."
+  },
+  "be52710f58c1d3c9": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Pi and Claude Code rehydration repeat write-new transcript persistence and translation of AlreadyExists into a path-bearing RehydrateError. A shared persistence helper can own this non-overwriting write policy after each provider chooses its path."
+  },
+  "402ed788288c95c8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Left and remainder repeat imports of batch, datatypes, executors, expressions, and function definitions. This region is module dependency scaffolding."
+  },
+  "7a10135e5373a75d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Variable set and delete repeat serialization, next series-index lookup, encrypted record construction and push, and shell-config rebuilding. One append-and-rebuild helper can own this mutation workflow."
+  },
+  "5046fdf8b26e819c": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Pinned and unpinned folder cards repeat move/settings/delete target selection and modal-state transitions. Shared action handlers can own those behaviors even though the surrounding list and slice rules differ."
+  },
+  "c3d27c32c2875f6e": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Rmdir and Realpath repeat constructors for id-plus-path request objects and the encoded-length calculation for that SFTP request layout. These are protocol-specific typed request adapters rather than independent filesystem algorithms."
+  },
+  "bd5eedabc9eba384": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Download and move reducers repeat new-file accounting, malformed-file failure accounting, logging, and collection outcome state. A shared progress kernel can own these transitions while cleanup variants remain separate."
+  },
+  "d2fb5f9bac0341fb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Tracking and envelope budgets repeat live-category lookup for a group, creation of that group in each month's sheet, and dependency registration. One category-group materialization helper can own the common workflow despite the envelope income guard."
+  },
+  "da64536c80fb4a4c": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Comparison and And implement the same stateless Boolean ScalarFunction binding and input forwarding. Their actual comparison and conjunction execution differs beyond this required adapter shape."
+  },
+  "2faea11ba9802aff": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Off-budget and regular account views repeat transaction navigation and the scheduled-preview menu with post, skip, complete, and modal-collapse actions. One transaction-opening hook can own this workflow."
+  },
+  "4c6ae5cfd7b077b7": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Bookmark update and delete repeat invalidation of bookmark collections, search, the specific bookmark, and list statistics before invoking the supplied success callback. One helper can own this cache-consistency policy."
+  },
+  "4be07bc1c2a6491f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Budget and account-group mutations repeat the complete dispatchErrorNotification helper, including unique id, error type, message, and optional error detail. One notification helper can own this behavior."
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "root": "/tmp/klin490-corpus/klin/src",
+  "files": 80,
+  "tokens": 233276,
+  "unsafe_tokens": 2,
+  "normalizer_sha256": "05fe159f9f245bf75057fc3c084ee16bd3efbb210b19742cc10559a8d990d572",
+  "exact_artifact_sha256": "1cbffcc30886dd20e9affead0dc6b3cc4ba93fc6ef2730ec70ca05412c48068b",
+  "block_bytes": 65536,
+  "raw_component_bytes": {
+    "dictionary": 107971,
+    "dictionary_offsets": 43744,
+    "chains": 306086,
+    "rows": 233276,
+    "paths": 1132,
+    "files": 2560,
+    "sparse_token_offsets": 38200
+  },
+  "roundtrip_all_bytes": true,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "codecs": {
+    "zlib": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 44940,
+          "block_directory_bytes": 48,
+          "total_bytes": 44988,
+          "blocks": 2
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 9006,
+          "block_directory_bytes": 24,
+          "total_bytes": 9030,
+          "blocks": 1
+        },
+        "chains": {
+          "payload_bytes": 144181,
+          "block_directory_bytes": 120,
+          "total_bytes": 144301,
+          "blocks": 5
+        },
+        "rows": {
+          "payload_bytes": 25287,
+          "block_directory_bytes": 96,
+          "total_bytes": 25383,
+          "blocks": 4
+        },
+        "paths": {
+          "payload_bytes": 517,
+          "block_directory_bytes": 24,
+          "total_bytes": 541,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 962,
+          "block_directory_bytes": 24,
+          "total_bytes": 986,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 9655,
+          "block_directory_bytes": 24,
+          "total_bytes": 9679,
+          "blocks": 1
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 235036,
+      "candidate_plus_evidence_bytes": {
+        "klin-largest-64": 377266
+      }
+    },
+    "lzma": {
+      "components": {
+        "dictionary": {
+          "payload_bytes": 41478,
+          "block_directory_bytes": 48,
+          "total_bytes": 41526,
+          "blocks": 2
+        },
+        "dictionary_offsets": {
+          "payload_bytes": 5381,
+          "block_directory_bytes": 24,
+          "total_bytes": 5405,
+          "blocks": 1
+        },
+        "chains": {
+          "payload_bytes": 127821,
+          "block_directory_bytes": 120,
+          "total_bytes": 127941,
+          "blocks": 5
+        },
+        "rows": {
+          "payload_bytes": 20628,
+          "block_directory_bytes": 96,
+          "total_bytes": 20724,
+          "blocks": 4
+        },
+        "paths": {
+          "payload_bytes": 597,
+          "block_directory_bytes": 24,
+          "total_bytes": 621,
+          "blocks": 1
+        },
+        "files": {
+          "payload_bytes": 729,
+          "block_directory_bytes": 24,
+          "total_bytes": 753,
+          "blocks": 1
+        },
+        "sparse_token_offsets": {
+          "payload_bytes": 5505,
+          "block_directory_bytes": 24,
+          "total_bytes": 5529,
+          "blocks": 1
+        }
+      },
+      "header_bytes": 128,
+      "complete_evidence_bytes": 202627,
+      "candidate_plus_evidence_bytes": {
+        "klin-largest-64": 344857
+      }
+    }
+  }
+}

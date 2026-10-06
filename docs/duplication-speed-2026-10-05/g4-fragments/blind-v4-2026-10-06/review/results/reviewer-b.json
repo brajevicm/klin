@@ -1,0 +1,502 @@
+{
+  "3dee293e086170ed": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both envelope creation paths normalize PDFs with the template flattening exception, extract placeholders, store the cleaned PDF, and return its metadata. One PDF preparation helper could own this sequence."
+  },
+  "a54f0e6802801f4c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and summary cards repeat the rename/remove menu policy, delegate copy actions first, and reject unknown selections. A shared report-card menu controller could own those actions."
+  },
+  "9a53519a4b2895ab": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The full forecast and its card repeat the active-payload guard and date/financial-value tooltip rendering. A forecast tooltip component could own the entire behavior."
+  },
+  "db4b7c1e3ddd8d84": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Expired-recipient and password-reset emails repeat the branded email shell, including custom-logo eligibility and fallback asset resolution. A shared shell can accept the preview and email body without a contrived abstraction."
+  },
+  "dd3c20a1fba1e14f": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both PDF renderers attach branding, serialize the canvas to PDF bytes, collect pages, and destroy the stage. Shared PDF page finalization can own that sequence with the vertical position supplied by each renderer."
+  },
+  "f369ebabdc3a4786": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both layouts destructure the same already-shared useBudgetAutomationsEditor result and pass their inputs to it. The editor behavior is already extracted; these bindings are local component wiring."
+  },
+  "40db290f9cfe41aa": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Plan and justification scripts duplicate argument validation, argv-versus-stdin content selection, trimming, and empty-content failure. A common CLI input reader could own the policy."
+  },
+  "4506430f8db96ba7": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both error modules validate the nested metadata shape and identify missing-table or missing-column errors with the same regular expression. The schema-mismatch predicate is independent of localized error text and can be shared."
+  },
+  "b409e775ff114edc": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and calendar cards duplicate rename/remove dispatch and copy-action precedence. Their different destinations and body layout do not require separate copies of the menu behavior."
+  },
+  "d5ec2e639d17bd24": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Scratch and plan scripts both read content from remaining arguments or stdin and reject missing content with the same error handling. Only the usage text and destination differ."
+  },
+  "a82a044ac4bb129c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and budget-analysis cards repeat the report menu actions and editing-state transition for rename. A shared report-card wrapper or hook could own that interaction while retaining their report-specific bodies."
+  },
+  "3531716900faea8f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two account-linking paths invoke initial synchronization, handle its response, and publish success. The differing table notification list can remain an input to one completion helper."
+  },
+  "509e2c686e47fbeb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both forecast presentations use the same payload validity check and render the first date and formatted financial value in an identical tooltip. This is shared forecast presentation behavior."
+  },
+  "ef7fc63c7a688412": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Recipient-expired and administrative-deletion emails duplicate asset URL resolution and the custom-branding versus Documenso-logo decision inside the same shell. A common branded email shell could own this."
+  },
+  "f89af3e892780679": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Single and multiple envelope lookups repeat the final authorization invariant over OR clauses, user/team presence, and team identity. A shared query validator could enforce it in both paths."
+  },
+  "7ae3d3dbcdb5d4d1": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The repeated region closes the folder form and renders ordinary no-results, Cancel, and submit controls. Submission eligibility differs, and the excerpt mostly wires local form state into conventional dialog scaffolding."
+  },
+  "da5a18b55d2a5dd4": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The all-tags and any-tag branches duplicate regex escaping, the AQL dollar-sign workaround, and tag-boundary construction. A shared tag-pattern mapper can serve both AND and OR aggregation."
+  },
+  "80f024844f358c53": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The sweep and admin listing independently encode the same ready-to-seal predicate: pending undeleted documents with recipients, all signed/CC or any rejected. That domain query policy can be shared."
+  },
+  "e572024c99b73d77": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both list pages declare selection/dialog state and derive selected keys from the table selection map. This is thin local table wiring, with no bulk-move or delete operation duplicated in the excerpt."
+  },
+  "e6080ba2fd82801d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Desktop and mobile bind the same values and callbacks returned by useBudgetAutomationsEditor. The repeated block consumes an existing abstraction rather than reimplementing its state-management behavior."
+  },
+  "8a2d4540865ffcb5": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The two branches instantiate different report cards with the same parent values and forwarding callbacks. These are ordinary component prop bindings; the actual widget operations are already shared."
+  },
+  "55161de9f10b930b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Scratch and justification creation duplicate CLI input validation, stdin fallback, whitespace trimming, and failure on empty content. One input helper could own that complete sequence."
+  },
+  "38cf2d1aad9fe587": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both admin pages pass result pagination fields and a pagination child into the existing DataTable. The excerpt is conventional component configuration rather than duplicated domain processing."
+  },
+  "41c45857130016af": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both feature-flag forms enforce the same license rule: restricted features may be disabled but cannot be enabled, and receive a footnote marker. A shared feature-flag control could own that behavior despite differing field paths."
+  },
+  "7e1865ff27190024": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both preference controls encode nullable booleans as select strings and decode true/false/other back to boolean/null. A tri-state preference select can own that conversion for AI and branding settings."
+  },
+  "8442d5e1bb86d21d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap consists of React, input, select, layout, and money utility imports used by separate editors. Imports do not constitute independent copies of the imported behavior."
+  },
+  "b51d5ca5358878e5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both Sankey views provide an empty-graph fallback and preserve the last available base graph in a ref while fresh data is absent. A shared hook could own this display continuity policy."
+  },
+  "49e3f6a6f48ab0c2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The Sankey card and full report duplicate the fallback graph callback and last-good-graph caching effect. This is substantive state retention rather than mere hook invocation syntax."
+  },
+  "893812ec817b324a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and age-of-money cards duplicate menu dispatch, rename state, and hover-driven card presentation. The common report-card interaction can be owned once with the report name supplied separately."
+  },
+  "4d22e15ccbef92f6": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The download endpoints save a PDF, encode the bytes as base64, and place them in the API response fields. This short serialization-and-return sequence is conventional endpoint glue around different PDF generation operations."
+  },
+  "c615d2ecc421f8c9": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Akahu and Pluggy transaction downloads repeat authenticated POST construction, timeout policy, bank error translation, and normalization of balances and transactions. A shared bank-server transaction downloader could own the sequence."
+  },
+  "30b980f3a7a2ee49": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Scratch and plan scripts duplicate ID-based naming, slug-to-title conversion, ISO date frontmatter, directory creation, and writing the content. A Markdown document writer can own this behavior with a destination parameter."
+  },
+  "e3102848a5ea69ec": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both pages read page and perPage from search parameters and coerce present strings to numbers. This is small conventional route-input wiring, without a duplicated validation or pagination algorithm."
+  },
+  "f660777e6972376e": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The overlap combines a simple case-insensitive folder-name filter with ordinary dialog opening markup and local toast handling. The supplied region contains little beyond conventional list/dialog glue."
+  },
+  "44e5f045e193940f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both inputs forward change and blur to their existing form field and signing-order handler. The actual signing-order behavior is already delegated, while disabled conditions and field presentation differ locally."
+  },
+  "5769c755e326b9b0": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Audit-log and certificate download routes share routine PDF save/base64 conversion and the required response fields. Their substantive document generation is outside this repeated endpoint tail."
+  },
+  "b86851b65553f52c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both AI clients duplicate non-OK response parsing, schema validation, preservation of AiApiError, and fallback error creation. One request/error helper can own that policy with the endpoint and fallback message as inputs."
+  },
+  "6d1d00ba65bc728c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The two linking paths repeat syncAccount, response handling, and the transactions-success event. This common account-link completion sequence can be shared independently of provider-specific account setup."
+  },
+  "c38b20bed9f6c6eb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both envelope paths flatten only non-template PDFs, extract placeholders, persist cleaned bytes, and return identical item metadata. That repeated preparation pipeline has a natural shared helper."
+  },
+  "ac874bb1cb6248aa": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both admin routes fetch a document envelope through the same identifier query and throw the same not-found error. A shared document lookup helper could own this existence-check policy."
+  },
+  "6616997e2e575fd1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The full forecast and card retain the committed date range while placeholder data is displayed and update it only when real forecast data arrives. A shared hook could own that consistency policy."
+  },
+  "e3ac409a9eba083b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Plan and scratch scripts independently implement argument-versus-stdin input selection, trimming, and missing-content errors. These are two copies of the same CLI content-reading behavior."
+  },
+  "5f536073871d942b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Plan and scratch creation repeat filename generation, title normalization, date frontmatter, directory creation, and writing. The destination directory is a straightforward input to a shared writer."
+  },
+  "a242654763e0e005": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and crossover cards repeat copy-first menu dispatch, rename/remove actions, hover bindings, and name-editing presentation. One report-card interaction wrapper could own the common behavior."
+  },
+  "e7ed91788af2d756": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The middleware and rateLimitResponse independently compute a minimum-one-second Retry-After and return the same JSON 429 response. The existing response helper could own the middleware's repeated rejection logic."
+  },
+  "211e0b6f492c2b5c": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both envelope queries use ordinary paginated findMany options and select user identity fields, while their filters and recipient inclusion differ. This fragment is query construction scaffolding rather than a complete shared domain query policy."
+  },
+  "ce7ce0ddf2bb3229": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The admin pages repeat imports of table, pagination, badge, button, and query hooks. Those declarations expose existing shared components and contain no duplicated implementation."
+  },
+  "e69a0956a90b690d": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both download-error functions special-case invalid-schema metadata before mapping network failures to the same message. Localization differs, but the error classification and message-selection policy are duplicated."
+  },
+  "ff9e560b97f7650f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Justification and scratch scripts duplicate content acquisition from argv or stdin and identical validation/error exits. A shared CLI reader would remove the repeated behavior."
+  },
+  "e0836fa1d37f1244": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Forecast and budget-analysis components destructure an existing shared filter hook and declare local month-list state. The filter behavior itself is already owned by useRuleConditionFilters."
+  },
+  "722e98e036bd5968": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Admin listing and the background sweep repeat the pending-document, nondeleted, recipient-exists, signed/CC-or-rejected readiness rule. One base query can express that business predicate for both consumers."
+  },
+  "99897d5fa822011d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and net-worth cards duplicate menu actions, rename editing state, hover bindings, and the name-control shell. These implement the same report-card interaction with different report identity."
+  },
+  "2cadd81cd8fb2065": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and spending cards repeat copy delegation followed by rename/remove dispatch and unknown-selection rejection. Their distinct report destinations do not change that shared interaction policy."
+  },
+  "31cd3bc747da2687": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "The admin and user audit-log tables repeat timestamp and user identity rendering, including conditional name/email display and N/A fallback. Shared audit-log columns can own this presentation behavior alongside the ordinary pagination wiring."
+  },
+  "4a6f2fea7d03f774": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both queries declare the same relation projection: user identity fields, recipients ordered by ID, and team ID/URL. This is the selected envelope result shape rather than two implementations of a processing algorithm."
+  },
+  "bff6444f4bf23f44": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Email and name autocomplete inputs pass the same suggestions, loading state, and forwarding callbacks into an existing shared control. Field-specific type, value binding, and length constraints remain local form wiring."
+  },
+  "21cefd2f0c284507": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Forecast and age-of-money reports share a conditional Save widget button and the same scrollable content container styling. The save action is only referenced, not independently implemented in this region."
+  },
+  "7358a3c5cfe40392": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The desktop and mobile automation layouts repeat imports of existing row, pane, warning, and formatting components. There is no duplicated runtime behavior in the import block."
+  },
+  "5f3aaa81f6dde010": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both move dialogs repeat a folder-selection UI with search input, loading state, and null-valued Home selection. A shared folder picker could own those interactions while accepting each dialog's Home-disabled state."
+  },
+  "769529303a1096d1": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Expired-recipient and cancellation emails repeat URL resolution, branding eligibility, and the default-logo fallback within an identical email shell. A common branded shell could own that policy while each supplies its message."
+  },
+  "9cea298fe2eb2e20": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and cash-flow cards repeat the rename/remove/copy menu and hover/name-editing shell. A shared report-card controller or wrapper could own those interactions."
+  },
+  "fc39766d725e85a5": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both detection dialogs render the same waiting note, message-position dots, and transition into a review heading. This is presentation scaffolding around separately supplied progress and state, with no detection logic repeated here."
+  },
+  "30b1853cfe12ddb1": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both recipient adapters stringify form IDs, default missing signing order to index plus one, and parse action authentication with the same fallback. A shared recipient-to-form conversion can own those transformation rules despite id versus nativeId naming."
+  },
+  "d27876ec3c1006c9": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Expired and rejected loaders repeat token validation, document lookup without access authentication, and conversion of lookup failure into 404. A shared signing-status document loader could own that policy."
+  },
+  "e22ff8851456715d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Bulk and document move dialogs independently implement selectable destination folders, disabling the current folder and showing a search-empty result. A shared destination picker naturally owns that behavior, with the Home-state difference supplied separately."
+  },
+  "c4a4584a68afcb9f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Field and recipient detection dialogs repeat a scanner, current status message, and optional progress text under different titles. They render provided state through conventional dialog scaffolding rather than duplicating detection behavior."
+  },
+  "ec783641cb2cf7f0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Forecast and Sankey cards independently implement copy-action delegation and rename/remove dispatch with unknown-selection errors. A shared report-card menu helper could own these actions."
+  },
+  "e596a70a20deaff9": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both subscription screens show the same license restriction footnote and documentation link under the same feature-restriction condition. A shared license-warning component can own this domain-specific notice."
+  },
+  "95f97d0c1f3a2c9d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The mobile layout maps two different entry collections to an already-shared AutomationListRow with the same local props. The row behavior is extracted; these are repeated collection-rendering bindings."
+  },
+  "0f4cd325ef5734e0": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The admin page and inbox table read optional page/perPage numbers from URL parameters. This short route-state setup is conventional wiring and does not duplicate a substantive pagination implementation."
+  },
+  "eb6386a30d0fcac2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Signing and cancellation jobs render the same template in HTML and plain text with identical language and branding inputs before sending. A shared multipart-email renderer can own that coordinated rendering policy."
+  },
+  "ad4e9f4bfbfa06c1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Subscription claims and organisation administration repeat the restricted-flag rule that permits disabling but prevents enabling, plus its footnote presentation. A shared licensed-feature checkbox can own that behavior."
+  },
+  "e840fa70380a23c8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The card and full forecast duplicate the zero-crossing gradient rule: one sign-dependent color without a crossing, or adjacent positive/negative stops at the crossing. A shared forecast gradient component can own this visualization logic."
+  },
+  "4b2186d75f8a32e3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both forecast views choose a committed range for placeholder data and advance it only for a real normalized response. This repeated state-management policy can live in one hook."
+  },
+  "764211435fab1949": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Akahu and SimpleFin linking repeat transfer-payee creation followed by initial sync, response handling, and a success notification. The provider source and notification table list are simple parameters around the same workflow."
+  },
+  "ac0c68cfeac6687a": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both PDF renderers register the same Caveat and Inter font files from the public/fonts directory. A shared PDF-font initialization helper can own that application-specific resource setup."
+  },
+  "38093302d466baca": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both bank modals show setup recovery text and conditionally render a loading message or the existing bank Autocomplete. Different provider callbacks and selected values are local UI wiring; bank discovery itself is not duplicated here."
+  },
+  "5acb5d407c526cb9": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "The two API branches construct category-group response objects, deliberately naming the same underlying metric received for income and spent for expense. The overlap is an API result declaration with category mapping fields."
+  },
+  "30a11dc0b8a2477f": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Forecast and custom-report cards repeat rename/remove menu entries and copy-first dispatch. Their report identity differs, but the common menu policy can be owned by the report-card layer."
+  },
+  "4499a5fed2378cd5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Admin and envelope audit-log endpoints duplicate the complete paginated query/count, audit-data parsing, and page metadata calculation. A shared audit-log retrieval helper can own this after each caller performs its access checks."
+  },
+  "bf104308a0e7e848": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Justification and plan scripts duplicate argv validation, stdin fallback, trimming, and rejection of empty content. Their command names are straightforward inputs to one CLI reader."
+  },
+  "bb4e665e59c13cc7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Forecast and net-worth reports repeat the conditional Save widget button and styled scroll container. The excerpt only binds an existing callback and supplies layout, without repeating save logic."
+  },
+  "3cc2a2666290d75e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both Sankey views maintain card height with a memoized debounced setter that suppresses unchanged updates. The maxWait difference is a normal timing parameter for a shared height hook."
+  },
+  "e7eb77368f0fd14f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Bulk and template move dialogs repeat no-results text and conventional Cancel/Move footer controls. These are ordinary form-state bindings, with a loading indicator differing between callers."
+  },
+  "0b7095842d765ccf": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Certificate and audit-log rendering repeat canvas PDF serialization, page-byte collection, and stage cleanup after placing branding. A shared rendering finalizer can own this behavior despite the different top margin."
+  },
+  "1cf93cae7af26352": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Bulk-move and folder-delete dialogs repeat imports of dialog and form primitives. These declarations bring shared building blocks into scope rather than copy their implementations."
+  },
+  "3e2e195b2baae59d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Bulk-move and initials dialogs repeat imports of the same dialog/form components and Input. This is conventional dependency scaffolding with no repeated domain behavior."
+  },
+  "cf853419ae547b0e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The desktop automation layout renders constraint and contribution collections through the same AutomationListRow component. It repeats local prop wiring while delegating row behavior to the existing component."
+  },
+  "42ddc8009172aa2c": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Re-registering and deleting an email domain both fetch the domain, fail if absent, obtain SES, and issue DeleteEmailIdentityCommand. A shared domain/identity removal operation could own the repeated steps while preserving caller-specific error handling."
+  },
+  "f92b99d7614087b8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The full forecast and card duplicate positive/negative line coloring around the zero-crossing offset. The SVG declarations implement the same forecast color policy and can be shared as a component."
+  },
+  "ebba86fa6c4b6bd8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Bulk and template move dialogs repeat folder button selection, current-folder exclusion, and empty-search feedback. A common destination-folder picker can own these behaviors with the Home-disabled state supplied by each caller."
+  },
+  "12ffa2921c101911": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The two bank-provider modals declare local waiting, selected-bank, country, and error state. No transitions or error-handling algorithm are duplicated in these state declarations."
+  },
+  "eb95463992e9b01b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Expired-recipient and completed-document emails both choose the custom logo only when branding is enabled and available, otherwise using the Documenso asset. A shared email-branding component can own that exact fallback policy."
+  },
+  "71d6f3caedeb64c0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Justification and scratch scripts repeat slug title conversion, date frontmatter, filename construction, directory creation, and file writing. One Markdown creation helper could own the sequence."
+  },
+  "74a3fa8cc5a17434": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Akahu and SimpleFin linking both normalize the institution name, find/create its bank, validate an upgrading account, and update external account linkage. A shared linking helper can own these rules with the sync source supplied separately."
+  },
+  "f4d9b8a176ebee98": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Signing and recipient-signed jobs both render HTML and plain-text variants concurrently with the same language and branding. A shared email rendering helper could own the paired output generation."
+  },
+  "fa319737affb2015": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Forecast and formula cards duplicate copy-first dispatch and rename/remove actions. Their unknown-selection behavior differs, but the substantive shared menu actions can still be owned once."
+  },
+  "63c6c21b095df37a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Recipient and field detection clients duplicate response-error decoding, preservation of structured AiApiError, and fallback errors carrying the HTTP status. A shared AI request helper can own this error policy."
+  },
+  "991311806738d881": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both audit tables parse user-agent strings and return the browser name with N/A for missing or unrecognized values. A shared audit-log browser formatter or column could own that behavior."
+  },
+  "d941e939b7ad69ee": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Single and bulk envelope access repeat team membership validation and the owner/team-role/team-email OR permission policy. One permission-query builder can own that security logic for both identifier shapes."
+  }
+}

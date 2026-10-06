@@ -1,0 +1,16 @@
+{
+  "root": "/tmp/klin490-corpus/karakeep",
+  "files": 493,
+  "tokens": 263888,
+  "unsafe_tokens": 629,
+  "unique_safe_tokens": 10041,
+  "dictionary_bytes": 274001,
+  "token_chain_bytes": 345025,
+  "row_delta_bytes": 263888,
+  "paths_bytes": 20754,
+  "equality_bytes": 619026,
+  "reporting_bytes": 903668,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "candidate_totals": {}
+}

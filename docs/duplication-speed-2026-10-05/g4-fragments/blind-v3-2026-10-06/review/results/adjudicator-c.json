@@ -1,0 +1,62 @@
+{
+  "0533c8c5d132a2b3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both locations repeat the same folder action state transitions: selecting a folder and opening the move, settings, or delete dialog. A shared FolderCard wiring helper or component boundary could own this behavior directly."
+  },
+  "1e4c2b23f98c7b81": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "The locations independently define identical recipient-existence and sender-email query policies. These Kysely helpers could be shared without additional configuration or abstraction."
+  },
+  "265b5a8050b232a3": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The duplicated region is the conventional shell around distinct email-template content: preview metadata, body/container markup, and branded-logo fallback. Extracting it would require passing each template's preview and content as configuration."
+  },
+  "592e1d39e0c12165": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These templates repeat the standard email document, container, preview, and branding scaffolding while delegating their actual message behavior to different inner templates."
+  },
+  "599513aef77e8276": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both search implementations repeat the same pagination caps, Kysely type aliases, and recipient/sender access-query helpers. The query policy is substantive shared behavior and could live in one document-query helper module."
+  },
+  "6ab8030a49851de3": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "The context object fields satisfy the common job-adapter shape, while their values also repeat substantive trigger delegation, prefixed logging, and unsupported-wait behavior. The required adapter structure and copied behavior occur together in the selected regions."
+  },
+  "90104c8d9f15a56b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The shared code is the standard email wrapper and branded-logo fallback surrounding distinct cancellation and reminder content. A common layout would need per-email preview text and children."
+  },
+  "d59ea109d28f59ca": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The reminder and confirmation emails repeat conventional rendering scaffolding and branding markup, while their actual messages and inner components are different."
+  },
+  "dbc87bd0fc29bd83": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both files use the same email document shell, asset URL helper, container styling, and branding fallback around unrelated template-specific content."
+  },
+  "03d49768979fb27e": {
+    "label": "mixed",
+    "confidence": "high",
+    "rationale": "The regions combine standard email and branding scaffolding with repeated deletion-notification behavior: the deletion image, title and description block, and highlighted deleted entity. Those parts form one contiguous template region."
+  },
+  "96552d2ce6331f54": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated portion is the conventional email shell and branding header; the templates diverge as soon as their message-specific content begins. Sharing it would require configurable preview text and children."
+  },
+  "e8ce9bfb91960573": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The organisation emails repeat the standard document, container, branding, and content-section scaffolding, while using different preview text and message-specific imagery."
+  }
+}

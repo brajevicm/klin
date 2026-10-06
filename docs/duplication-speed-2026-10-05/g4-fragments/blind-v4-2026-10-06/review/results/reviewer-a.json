@@ -1,0 +1,502 @@
+{
+  "3dee293e086170ed": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-envelope-items.ts and create-envelope.ts: Envelope and item creation both normalize PDFs with template-sensitive flattening, extract placeholders, store the cleaned PDF, and return its metadata. One upload-preparation helper could own this sequence."
+  },
+  "a54f0e6802801f4c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and SummaryCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "9a53519a4b2895ab": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and BalanceForecast.tsx: The forecast view and card both suppress inactive/empty tooltips and display the first payload date and financially formatted balance in the same themed container. A forecast-tooltip component could own that behavior."
+  },
+  "db4b7c1e3ddd8d84": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "recipient-expired.tsx and reset-password.tsx: These email templates repeat the custom-branding-enabled/logo decision with a Documenso asset fallback. A shared branded email header could own that policy and presentation despite different template content."
+  },
+  "dd3c20a1fba1e14f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "render-audit-logs.ts and render-certificate.ts: Audit-log and certificate rendering both attach branding, export the page canvas as PDF bytes, collect the bytes, and destroy the stage. A shared export/finalization helper could own this resource-management sequence."
+  },
+  "f369ebabdc3a4786": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BudgetAutomationsBodyMobile.tsx and BudgetAutomationsBody.tsx: Desktop and mobile bodies call the already shared useBudgetAutomationsEditor and destructure its returned state and actions. They consume the common editor rather than independently implement its behavior."
+  },
+  "40db290f9cfe41aa": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-plan.ts and create-justification.ts: These document-creation scripts both validate the slug argument, read content from arguments or trimmed stdin, handle read failures, and reject empty content. A shared script-input helper could own those checks with a local usage name."
+  },
+  "4506430f8db96ba7": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "error.ts and errors.ts: Client and core independently inspect nested unknown error metadata and detect SQLite missing-table/column messages with the same regexp. A shared schema-mismatch predicate could own that validation independently of translated messages."
+  },
+  "b409e775ff114edc": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and CalendarCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "d5ec2e639d17bd24": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-scratch.ts and create-plan.ts: These document-creation scripts both validate the slug argument, read content from arguments or trimmed stdin, handle read failures, and reject empty content. A shared script-input helper could own those checks with a local usage name."
+  },
+  "a82a044ac4bb129c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and BudgetAnalysisCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "3531716900faea8f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "app.ts and app.ts: Separate bank-linking flows call syncAccount with the same initial-sync arguments, process its response, announce success, and return ok. A shared initial-sync helper could own the sequence while callers choose which tables to announce."
+  },
+  "509e2c686e47fbeb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and BalanceForecastCard.tsx: The forecast view and card both suppress inactive/empty tooltips and display the first payload date and financially formatted balance in the same themed container. A forecast-tooltip component could own that behavior."
+  },
+  "ef7fc63c7a688412": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "recipient-expired.tsx and document-super-delete.tsx: These email templates repeat the custom-branding-enabled/logo decision with a Documenso asset fallback. A shared branded email header could own that policy and presentation despite different template content."
+  },
+  "f89af3e892780679": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "get-envelopes-by-ids.ts and get-envelope-by-id.ts: Single- and multiple-envelope query builders repeat the authorization guard over OR length, user/team presence, and team identity. A shared validator could enforce this safety invariant for both query shapes."
+  },
+  "7ae3d3dbcdb5d4d1": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "envelopes-bulk-move-dialog.tsx and document-move-to-folder-dialog.tsx: The move dialogs repeat a no-results message and conventional cancel/submit footer with loading/submitting flags. The actual move policy is elsewhere; extracting this fragment would chiefly configure local UI scaffolding."
+  },
+  "da5a18b55d2a5dd4": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "transaction-rules.ts and transaction-rules.ts: The all-tags and any-tag branches independently escape regexp metacharacters, protect dollar signs from AQL unescaping, and build the same tag-boundary pattern. A tag-predicate helper could own that algorithm while AND/OR stays local."
+  },
+  "80f024844f358c53": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "seal-document-sweep.handler.ts and admin-find-unsealed-documents.ts: The sweep and admin search repeat eligibility for pending undeleted documents with recipients and either all signed/CC or any rejected. A shared ready-to-seal query builder could own these domain predicates."
+  },
+  "e572024c99b73d77": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "templates._index.tsx and documents._index.tsx: Document and template pages independently maintain bulk selection and derive selected envelope IDs by filtering truthy rowSelection entries. A shared envelope-selection hook could own the state and derivation."
+  },
+  "e6080ba2fd82801d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BudgetAutomationsBody.tsx and BudgetAutomationsBodyMobile.tsx: Desktop and mobile bodies call the already shared useBudgetAutomationsEditor and destructure its returned state and actions. They consume the common editor rather than independently implement its behavior."
+  },
+  "8a2d4540865ffcb5": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Overview.tsx and Overview.tsx: Separate widget branches pass standard card props and bind item IDs to existing metadata/remove/copy callbacks. This is local component wiring and does not implement the underlying widget operations."
+  },
+  "55161de9f10b930b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-scratch.ts and create-justification.ts: These document-creation scripts both validate the slug argument, read content from arguments or trimmed stdin, handle read failures, and reject empty content. A shared script-input helper could own those checks with a local usage name."
+  },
+  "38cf2d1aad9fe587": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "email-domains._index.tsx and documents._index.tsx: Email-domain and document pages wire result values and default pagination props into existing DataTable components. Extraction would chiefly parameterize table configuration rather than share domain behavior."
+  },
+  "41c45857130016af": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "organisations.$id.tsx and subscription-claim-form.tsx: Organisation and subscription forms both allow disabling an enabled restricted feature while prohibiting enabling a disabled one, and mark restricted features with a footnote. A shared feature-flag control could own this licensing policy despite different form paths."
+  },
+  "7e1865ff27190024": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "document-preferences-form.tsx and branding-preferences-form.tsx: AI and branding preferences both encode nullable booleans as select strings and decode true/false/other into true/false/null. A shared nullable-boolean control or conversion helper could own the same round trip."
+  },
+  "8442d5e1bb86d21d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "AmountAdjustment.tsx and FixedAutomation.tsx: AmountAdjustment and FixedAutomation repeat imports of React hooks, input/select primitives, and amount converters. These are conventional dependency declarations with no independent repeated implementation."
+  },
+  "b51d5ca5358878e5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Sankey.tsx and SankeyCard.tsx: Sankey view and card both provide an empty base-graph fallback and retain the most recent real graph with a ref/effect. A shared graph hook could own this loading-state continuity policy."
+  },
+  "49e3f6a6f48ab0c2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "SankeyCard.tsx and Sankey.tsx: Sankey view and card both provide an empty base-graph fallback and retain the most recent real graph with a ref/effect. A shared graph hook could own this loading-state continuity policy."
+  },
+  "893812ec817b324a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and AgeOfMoneyCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "4d22e15ccbef92f6": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "download-document-certificate.ts and download-document-audit-logs.ts: Audit-log and certificate download routes both save a PDF, base64-encode the bytes, and pair them with the envelope title. A shared PDF-download serializer could own this repeated sequence."
+  },
+  "c615d2ecc421f8c9": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "sync.ts and sync.ts: Akahu and Pluggy downloads repeat an authenticated transaction POST, timeout, provider-error translation, and response normalization into transactions/balances. A shared transaction-download helper could own this handling with a server URL."
+  },
+  "30b980f3a7a2ee49": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-scratch.ts and create-plan.ts: These document scripts build ID/slug filenames, title-case the slug, add ISO-date frontmatter, ensure a destination directory, and write Markdown. A shared document-writing helper could own the sequence with a local destination."
+  },
+  "e3102848a5ea69ec": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "unsealed-documents._index.tsx and documents._index.tsx: Both locations obtain search-param hooks and decode optional page/perPage numbers for their local queries. This is conventional URL-pagination wiring without a substantive duplicated domain policy."
+  },
+  "f660777e6972376e": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "envelopes-bulk-move-dialog.tsx and document-move-to-folder-dialog.tsx: Bulk and single-document move dialogs both filter folders by case-insensitive substring matching of searchTerm. A shared folder-search helper could own that selection behavior while local errors and dialog titles remain separate."
+  },
+  "44e5f045e193940f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "envelope-editor-recipient-form.tsx and add-template-placeholder-recipients.tsx: Signing-order controls wire form change/blur to an existing handleSigningOrderChange helper and configure styling and disabled props. The order-update algorithm is absent from this repeated region."
+  },
+  "5769c755e326b9b0": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "download-document-audit-logs.ts and download-document-certificate.ts: Audit-log and certificate download routes both save a PDF, base64-encode the bytes, and pair them with the envelope title. A shared PDF-download serializer could own this repeated sequence."
+  },
+  "b86851b65553f52c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "detect-fields.client.ts and detect-recipients.client.ts: Field and recipient clients both POST JSON with cancellation and parse unsuccessful response text into typed AiApiError, preserving typed errors and falling back on malformed bodies. A shared AI request/error helper could own this handling."
+  },
+  "6d1d00ba65bc728c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "app.ts and app.ts: Separate bank-linking flows call syncAccount with the same initial-sync arguments, process its response, announce success, and return ok. A shared initial-sync helper could own the sequence while callers choose which tables to announce."
+  },
+  "c38b20bed9f6c6eb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-envelope.ts and create-envelope-items.ts: Envelope and item creation both normalize PDFs with template-sensitive flattening, extract placeholders, store the cleaned PDF, and return its metadata. One upload-preparation helper could own this sequence."
+  },
+  "ac874bb1cb6248aa": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "find-document-audit-logs.ts and find-document-jobs.ts: Audit-log and job admin routes both resolve an envelope ID as a DOCUMENT and raise the same NOT_FOUND error when absent. A shared document lookup could own that validation."
+  },
+  "6616997e2e575fd1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and BalanceForecastCard.tsx: Forecast view and card retain the committed date range while placeholder data is displayed and update it only with real normalized data. A shared forecast-chart hook could own this state-consistency policy and chart construction."
+  },
+  "e3ac409a9eba083b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-plan.ts and create-scratch.ts: These document-creation scripts both validate the slug argument, read content from arguments or trimmed stdin, handle read failures, and reject empty content. A shared script-input helper could own those checks with a local usage name."
+  },
+  "5f536073871d942b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-plan.ts and create-scratch.ts: These document scripts build ID/slug filenames, title-case the slug, add ISO-date frontmatter, ensure a destination directory, and write Markdown. A shared document-writing helper could own the sequence with a local destination."
+  },
+  "a242654763e0e005": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and CrossoverCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "e7ed91788af2d756": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "rate-limit-middleware.ts and rate-limit-middleware.ts: Middleware and rateLimitResponse repeat rounded-up Retry-After calculation clamped to one second and the same 429 JSON response. The middleware could reuse the existing response helper to own that policy once."
+  },
+  "211e0b6f492c2b5c": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "find-envelopes.ts and find-documents.ts: The listing functions repeat conventional Prisma pagination and user projections but have different filters and recipient includes. Sharing this fragment would require query configuration rather than remove their domain filtering."
+  },
+  "ce7ce0ddf2bb3229": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "unsealed-documents._index.tsx and email-domains._index.tsx: Unsealed-document and email-domain pages repeat imports for shared router, table, and UI primitives. These dependency declarations do not implement repeated behavior."
+  },
+  "e69a0956a90b690d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "error.ts and errors.ts: Client and core download-error functions both special-case schema mismatches and group network/download failures into equivalent messages. Shared classification could own that decision policy while translation remains local."
+  },
+  "ff9e560b97f7650f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-justification.ts and create-scratch.ts: Justification and scratch scripts validate slug presence, select argument or stdin content, handle read errors, and reject empty content. One script-input helper could own these checks."
+  },
+  "e0836fa1d37f1244": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and BudgetAnalysis.tsx: Forecast and budget-analysis views destructure an existing useRuleConditionFilters hook and declare month state. They consume shared filtering rather than reproduce its implementation."
+  },
+  "722e98e036bd5968": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "admin-find-unsealed-documents.ts and seal-document-sweep.handler.ts: The sweep and admin search repeat eligibility for pending undeleted documents with recipients and either all signed/CC or any rejected. A shared ready-to-seal query builder could own these domain predicates."
+  },
+  "99897d5fa822011d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and NetWorthCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "2cadd81cd8fb2065": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and SpendingCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "31cd3bc747da2687": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "admin-document-logs-table.tsx and document-logs-table.tsx: Admin and user audit-log tables repeat timestamp and name/email-fallback cells plus pagination defaults. A shared audit-log presentation could own these domain-specific cells while queries and action formatting remain caller-specific."
+  },
+  "4a6f2fea7d03f774": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "get-documents-by-ids.ts and find-envelopes.ts: The include declarations request user, ordered recipient, and team fields needed for envelope listing/mapping. The similarity follows their data-projection shapes rather than two independent algorithms."
+  },
+  "bff6444f4bf23f44": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "envelope-editor-recipient-form.tsx and envelope-editor-recipient-form.tsx: Email and name autocomplete controls wire form changes to existing search state and an existing selection callback with distinct type/length props. They configure two fields rather than implement autocomplete behavior twice."
+  },
+  "21cefd2f0c284507": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and AgeOfMoney.tsx: The report views conditionally bind a Save widget button to an existing callback and declare matching scroll-container styles. This is local report layout, with no duplicated save implementation."
+  },
+  "7358a3c5cfe40392": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BudgetAutomationsBodyMobile.tsx and BudgetAutomationsBody.tsx: Desktop and mobile automation bodies repeat imports of existing row components, formatters, and hooks. Shared behavior already resides in those imported modules."
+  },
+  "5f3aaa81f6dde010": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "envelopes-bulk-move-dialog.tsx and document-move-to-folder-dialog.tsx: Bulk and single-document dialogs repeat a searchable folder picker with loading state and selectable Home destination. A shared destination-picker component could own this concrete interaction with a caller-supplied current-folder restriction."
+  },
+  "769529303a1096d1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "recipient-expired.tsx and document-cancel.tsx: These email templates repeat the custom-branding-enabled/logo decision with a Documenso asset fallback. A shared branded email header could own that policy and presentation despite different template content."
+  },
+  "9cea298fe2eb2e20": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and CashFlowCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "fc39766d725e85a5": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "ai-recipient-detection-dialog.tsx and ai-field-detection-dialog.tsx: Field and recipient detection dialogs repeat the processing presentation, including scanner/messages, page progress, or message-position dots. A shared detection-progress component could own this workflow UI with local detected-item wording."
+  },
+  "30b1853cfe12ddb1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "use-editor-recipients.ts and add-signers.tsx: Recipient initialization paths independently derive string form IDs, default signing order to index plus one, and parse authentication options into actionAuth. A shared recipient-to-form mapping could own those defaults despite id/nativeId naming differences."
+  },
+  "d27876ec3c1006c9": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "expired.tsx and rejected.tsx: Expired and rejected signing loaders both obtain optional session data, require a token, fetch its document without access authentication, and translate missing/failing lookup into 404. A shared signing-document lookup could own these validation and error rules."
+  },
+  "e22ff8851456715d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "envelopes-bulk-move-dialog.tsx and document-move-to-folder-dialog.tsx: The move dialogs repeat folder buttons that highlight selection, update folderId, disable the current destination, and show empty search results. A shared folder-destination picker could own these rules with Home availability supplied."
+  },
+  "c4a4584a68afcb9f": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "ai-field-detection-dialog.tsx and ai-recipient-detection-dialog.tsx: Field and recipient detection dialogs repeat the processing presentation, including scanner/messages, page progress, or message-position dots. A shared detection-progress component could own this workflow UI with local detected-item wording."
+  },
+  "ec783641cb2cf7f0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and SankeyCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "e596a70a20deaff9": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "subscription-claim-form.tsx and organisations.$id.tsx: Organisation and subscription forms show the same enterprise-license restriction footnote, notice, and documentation link under the same condition. A shared restriction notice could own this domain-specific presentation."
+  },
+  "95f97d0c1f3a2c9d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BudgetAutomationsBodyMobile.tsx and BudgetAutomationsBodyMobile.tsx: Two disjoint mobile lists map their entries to the existing AutomationListRow with the same indexed props and selection callback. Row behavior is already shared; only local list wiring repeats."
+  },
+  "0f4cd325ef5734e0": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "unsealed-documents._index.tsx and inbox-table.tsx: Both locations obtain search-param hooks and decode optional page/perPage numbers for their local queries. This is conventional URL-pagination wiring without a substantive duplicated domain policy."
+  },
+  "eb6386a30d0fcac2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "send-signing-email.handler.ts and send-document-cancelled-emails.handler.ts: Signing and cancellation jobs both render branded localized HTML/plain-text bodies concurrently and send them with the same recipient/from/reply-to structure. A shared body renderer could own the repeated rendering independently of the distinct subjects."
+  },
+  "ad4e9f4bfbfa06c1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "subscription-claim-form.tsx and organisations.$id.tsx: Organisation and subscription forms both allow disabling an enabled restricted feature while prohibiting enabling a disabled one, and mark restricted features with a footnote. A shared feature-flag control could own this licensing policy despite different form paths."
+  },
+  "e840fa70380a23c8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and BalanceForecast.tsx: Forecast card and full chart choose colors from balance sign and create coincident positive/negative gradient stops at the zero crossing. A shared forecast-gradient component could own that balance-visualization rule."
+  },
+  "4b2186d75f8a32e3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and BalanceForecast.tsx: Forecast view and card retain the committed date range while placeholder data is displayed and update it only with real normalized data. A shared forecast-chart hook could own this state-consistency policy and chart construction."
+  },
+  "764211435fab1949": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "app.ts and app.ts: Separate bank-linking flows call syncAccount with the same initial-sync arguments, process its response, announce success, and return ok. A shared initial-sync helper could own the sequence while callers choose which tables to announce."
+  },
+  "ac0c68cfeac6687a": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "render-certificate.ts and render-audit-logs.ts: Both PDF renderers register the same public fonts and declare a minimum margin before their own layout calculations. This is conventional renderer setup rather than repeated certificate/audit-log content behavior."
+  },
+  "38093302d466baca": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "EnableBankingExternalMsgModal.tsx and GoCardlessExternalMsgModal.tsx: EnableBanking and GoCardless modals repeat a country-dependent loading/bank-picker flow and setup-recovery link. A shared bank-selection presentation could own that interaction with provider-specific initialization/selection callbacks."
+  },
+  "5acb5d407c526cb9": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "api.ts and api.ts: The return objects map group/category budget values into external fields, using received in one branch and spent in the other. Similarity follows response schemas and field projections rather than a repeated algorithm."
+  },
+  "30a11dc0b8a2477f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and CustomReportListCards.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "4499a5fed2378cd5": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "find-document-audit-logs.ts and find-envelope-audit-logs.ts: Admin and envelope audit-log routes repeat query/count, page clamping, ordering, data parsing, and pagination calculations. A shared audit-log retrieval helper could own that policy after route-specific authorization."
+  },
+  "bf104308a0e7e848": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-justification.ts and create-plan.ts: These document-creation scripts both validate the slug argument, read content from arguments or trimmed stdin, handle read failures, and reject empty content. A shared script-input helper could own those checks with a local usage name."
+  },
+  "bb4e665e59c13cc7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and NetWorth.tsx: The report views conditionally bind a Save widget button to an existing callback and declare matching scroll-container styles. This is local report layout, with no duplicated save implementation."
+  },
+  "3cc2a2666290d75e": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Sankey.tsx and SankeyCard.tsx: Sankey card and view debounce height updates, suppress unchanged values, and use leading/trailing calls with bounded waiting. A shared measured-height hook could own that update policy with differing maxWait supplied."
+  },
+  "e7eb77368f0fd14f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "envelopes-bulk-move-dialog.tsx and template-move-to-folder-dialog.tsx: The move dialogs repeat a no-results message and conventional cancel/submit footer with loading/submitting flags. The actual move policy is elsewhere; extracting this fragment would chiefly configure local UI scaffolding."
+  },
+  "0b7095842d765ccf": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "render-certificate.ts and render-audit-logs.ts: Audit-log and certificate rendering both attach branding, export the page canvas as PDF bytes, collect the bytes, and destroy the stage. A shared export/finalization helper could own this resource-management sequence."
+  },
+  "1cf93cae7af26352": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "envelopes-bulk-move-dialog.tsx and folder-delete-dialog.tsx: Bulk move and folder delete dialogs repeat imports of form/dialog/UI primitives. These local dependency declarations contain no duplicated behavior or generation evidence."
+  },
+  "3e2e195b2baae59d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "envelopes-bulk-move-dialog.tsx and sign-field-initials-dialog.tsx: Bulk move and initials dialogs repeat imports of form/dialog primitives and input/button components. The duplication is local scaffolding, not the distinct form behavior."
+  },
+  "cf853419ae547b0e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "BudgetAutomationsBody.tsx and BudgetAutomationsBody.tsx: Two disjoint desktop lists map entries into an existing AutomationListRow with per-index state and common selection wiring. The row behavior already lives in the component."
+  },
+  "42ddc8009172aa2c": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "reregister-email-domain.ts and delete-email-domain.ts: Re-register and delete email-domain flows both look up the domain, throw NOT_FOUND if absent, obtain SES, and request identity deletion. Shared lookup/deletion behavior is visible even though logging and subsequent operations differ."
+  },
+  "f92b99d7614087b8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecast.tsx and BalanceForecastCard.tsx: Forecast card and full chart choose colors from balance sign and create coincident positive/negative gradient stops at the zero crossing. A shared forecast-gradient component could own that balance-visualization rule."
+  },
+  "ebba86fa6c4b6bd8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "envelopes-bulk-move-dialog.tsx and template-move-to-folder-dialog.tsx: The move dialogs repeat folder buttons that highlight selection, update folderId, disable the current destination, and show empty search results. A shared folder-destination picker could own these rules with Home availability supplied."
+  },
+  "12ffa2921c101911": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "EnableBankingExternalMsgModal.tsx and GoCardlessExternalMsgModal.tsx: Both provider modals declare similar local waiting/country/error/setup state. No state transitions or provider operations occur in the paired region; extraction would mainly parameterize declarations."
+  },
+  "eb95463992e9b01b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "recipient-expired.tsx and document-completed.tsx: These email templates repeat the custom-branding-enabled/logo decision with a Documenso asset fallback. A shared branded email header could own that policy and presentation despite different template content."
+  },
+  "71d6f3caedeb64c0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "create-justification.ts and create-scratch.ts: These document scripts build ID/slug filenames, title-case the slug, add ISO-date frontmatter, ensure a destination directory, and write Markdown. A shared document-writing helper could own the sequence with a local destination."
+  },
+  "74a3fa8cc5a17434": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "app.ts and app.ts: Akahu and SimpleFin linking both normalize missing institution names, find/create a bank, validate an upgrading account, and attach external IDs and bank/source fields. One account-linking helper could own this repeated persistence and validation sequence."
+  },
+  "f4d9b8a176ebee98": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "send-signing-email.handler.ts and send-recipient-signed-email.handler.ts: Signing and recipient-signed jobs both concurrently render the same template into branded localized HTML and plain text. A shared email-body renderer could own this pair of renders independently of recipients and job boundaries."
+  },
+  "fa319737affb2015": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "BalanceForecastCard.tsx and FormulaCard.tsx: These report cards repeat menu construction and dispatch to copy, rename state, and removal. A shared card-menu helper could own these actions with local callbacks; differences in destination or unknown-item handling can remain caller-specific."
+  },
+  "63c6c21b095df37a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "detect-recipients.client.ts and detect-fields.client.ts: Field and recipient clients both POST JSON with cancellation and parse unsuccessful response text into typed AiApiError, preserving typed errors and falling back on malformed bodies. A shared AI request/error helper could own this handling."
+  },
+  "991311806738d881": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "admin-document-logs-table.tsx and document-logs-table.tsx: Admin and user audit-log cells both return N/A for missing user agents, parse present agents, and fall back to N/A if browser name is absent. A shared browser-name formatter could own that parsing/fallback policy."
+  },
+  "d941e939b7ad69ee": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "get-envelopes-by-ids.ts and get-envelope-by-id.ts: Single- and multiple-envelope builders validate team membership and construct matching owner, team-visibility, and team-email access alternatives. A shared authorization-filter helper could own this security policy."
+  }
+}

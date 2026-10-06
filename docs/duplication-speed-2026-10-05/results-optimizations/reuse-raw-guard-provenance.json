@@ -1,0 +1,10 @@
+{
+  "basis": "combined.patch plus raw guard; no timing claims for guarded variant",
+  "binary_sha256": "0f541792044622e9e63190999f809a6e6cb6ea88b850c088b427bb283dde7879",
+  "source_sha256": {
+    "src/main.rs": "f3f0b55b2dc4ac96f5eaf2a583dcd511a022726fa4a391f48222ee9ee447344c",
+    "src/syntax/structural/mod.rs": "cc982ac3ddce7e4ecf6733389bd57710737a9a729d7c73cd5f9f336b484ac5a3",
+    "src/dup_accounting.rs": "c3b11ee18250d45498cfd9e7489d1f2f7b3c7a97a1e1f5a746beb1ccbfc2ad3b"
+  },
+  "measured_combined_binary_preserved_at": "/tmp/klin490-opt-combined/frozen-measured-klin"
+}

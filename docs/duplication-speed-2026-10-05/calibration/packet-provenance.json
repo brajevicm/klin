@@ -1,0 +1,18 @@
+{
+  "blind.jsonl": {
+    "sha256": "3e2f0c63dccda1cc61efffc80032c45b78da2dab9dfedda0d8c2df6421b4dc1e",
+    "bytes": 3194550
+  },
+  "blind-0.json": {
+    "sha256": "ed470ce6e62d7366a80d5bfd40e5bc298ebce2f8dd87356cc546a2869fc671d4",
+    "bytes": 986432
+  },
+  "blind-1.json": {
+    "sha256": "6b5fe3387c5411c25711997df04ba744ef30e3544c27028d62fd5f5a57c0ed12",
+    "bytes": 798629
+  },
+  "blind-2.json": {
+    "sha256": "8339e7336e87ea75aa93a639786bf36f3153d13f94b62473b148afcf52fa1837",
+    "bytes": 802622
+  }
+}

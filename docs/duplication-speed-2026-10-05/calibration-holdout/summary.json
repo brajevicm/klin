@@ -1,0 +1,82 @@
+{
+  "Rust": {
+    "rule": {
+      "copy": 53,
+      "kept": 65,
+      "precision": 0.815
+    },
+    "passes_80": true,
+    "recall": {
+      "copies_kept": 53,
+      "copies_all": 233
+    },
+    "baseline_at_T": {
+      "copy": 92,
+      "kept": 131,
+      "precision": 0.702
+    },
+    "by_repo": {
+      "gitui": {
+        "copy": 29,
+        "kept": 31,
+        "precision": 0.935
+      },
+      "yazi": {
+        "copy": 24,
+        "kept": 34,
+        "precision": 0.706
+      }
+    },
+    "non_copy_kept": {
+      "required-shape": 4,
+      "distinct": 7,
+      "boilerplate": 1
+    },
+    "labels_all": {
+      "required-shape": 298,
+      "copy": 233,
+      "boilerplate": 198,
+      "distinct": 22
+    }
+  },
+  "TypeScript": {
+    "rule": {
+      "copy": 89,
+      "kept": 126,
+      "precision": 0.706
+    },
+    "passes_80": false,
+    "recall": {
+      "copies_kept": 89,
+      "copies_all": 517
+    },
+    "baseline_at_T": {
+      "copy": 517,
+      "kept": 1042,
+      "precision": 0.496
+    },
+    "by_repo": {
+      "actual": {
+        "copy": 72,
+        "kept": 109,
+        "precision": 0.661
+      },
+      "linkwarden": {
+        "copy": 17,
+        "kept": 17,
+        "precision": 1.0
+      }
+    },
+    "non_copy_kept": {
+      "generated": 27,
+      "boilerplate": 10
+    },
+    "labels_all": {
+      "boilerplate": 484,
+      "copy": 517,
+      "generated": 36,
+      "required-shape": 4,
+      "distinct": 1
+    }
+  }
+}

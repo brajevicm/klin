@@ -1,0 +1,189 @@
+{
+  "purpose": "Fresh-family blind confirmation for a TypeScript fragment candidate with a 70-token non-JSX floor.",
+  "candidate_rule": "Keep all v2 whole-unit TypeScript pairs; additionally keep v3 pairs whose minimum non-JSX token count across the two spans is at least 70.",
+  "candidate_frozen_before_fresh_labels": true,
+  "design_screen_note": "The 70 cutoff was chosen from design-set sensitivity results before this scan. It did not improve pooled design precision over 60 and reduced recall; this blind review tests it without claiming a design-set win.",
+  "windows": {
+    "actual": {
+      "repository": "https://github.com/actualbudget/actual",
+      "commits": 200,
+      "scan_head": "73063ee779a8f3b5f04ebd7717061bf585c8c1a4",
+      "window_newest": "73063ee779a8f3b5f04ebd7717061bf585c8c1a4",
+      "window_oldest": "6fb73786d53a24a4ca31064f5c4e2c7a98216e33",
+      "previous_v3_window_oldest": "cd58c7564d328cb8eb0d54bdb420343595cd5395",
+      "selected_head_is_parent_of_previous_v3_window": true,
+      "verified_commit_overlap_with_v3": 0
+    },
+    "documenso": {
+      "repository": "https://github.com/documenso/documenso",
+      "commits": 200,
+      "scan_head": "03e2e4f171b3d35f7464294d149724aa19456379",
+      "window_newest": "03e2e4f171b3d35f7464294d149724aa19456379",
+      "window_oldest": "df0c03816ec156e83bac5934f99b37adf4da7b93",
+      "previous_v3_window_oldest": "8b0231825f04a03331b97589f11419ce4901557d",
+      "selected_head_is_parent_of_previous_v3_window": true,
+      "verified_commit_overlap_with_v3": 0
+    }
+  },
+  "scan": {
+    "commit_limit_per_repository": 200,
+    "language": "TypeScript",
+    "raw_pairs": 276,
+    "raw_candidate_kept": 73,
+    "raw_candidate_dropped": 203,
+    "fresh_family_population": 139,
+    "fresh_family_strata": {
+      "documenso:dropped": 69,
+      "documenso:kept": 29,
+      "actual:dropped": 19,
+      "actual:kept": 22
+    },
+    "prior_family_exclusions_by_repo_and_status": {
+      "actual:dropped": 31,
+      "actual:kept": 5,
+      "all": 137,
+      "documenso:dropped": 84,
+      "documenso:kept": 17
+    },
+    "method": "A pair qualifies when at least half of one span\u2019s lines were added by its commit and the counterpart is present in the post-commit tree. The scanner does not verify that the counterpart existed in the parent tree."
+  },
+  "family_exclusion": {
+    "key": "(canonical repository, family hash)",
+    "labeled_sets": {
+      "calibration": {
+        "labeled_pairs": 1923,
+        "repo_family_keys": 542
+      },
+      "calibration-holdout": {
+        "labeled_pairs": 1793,
+        "repo_family_keys": 1148
+      },
+      "calibration-holdout2": {
+        "labeled_pairs": 2374,
+        "repo_family_keys": 1330
+      },
+      "calibration-introduced": {
+        "labeled_pairs": 809,
+        "repo_family_keys": 577
+      },
+      "g4-v3-reviewed": {
+        "labeled_pairs": 200,
+        "repo_family_keys": 163
+      }
+    },
+    "unique_repo_family_keys": 3360,
+    "sampled_pairs_overlapping_prior_pair_ids": 0,
+    "sampled_pairs_overlapping_prior_families": 0
+  },
+  "sample": {
+    "size": 100,
+    "strata": {
+      "actual:kept": {
+        "population_n": 22,
+        "sample_n": 22,
+        "weight": 1.0
+      },
+      "documenso:kept": {
+        "population_n": 29,
+        "sample_n": 29,
+        "weight": 1.0
+      },
+      "actual:dropped": {
+        "population_n": 19,
+        "sample_n": 19,
+        "weight": 1.0
+      },
+      "documenso:dropped": {
+        "population_n": 69,
+        "sample_n": 30,
+        "weight": 2.3
+      }
+    },
+    "seed": 202610064
+  },
+  "source_sha256": {
+    "introduced.py": "2bd998fd3c9a14c7864ff47e9ffa97350444091f8916e917f2a095d3044a82d6",
+    "verify.py": "2e4e770638381c26bc42d44bdc2c594d31fe7b3477a899724ab8dae6b5838e6a",
+    "holdout.py": "fc13b0759efc57a5ecd92673e93f9542f71f2dd15aa56cd28adef3140a4ddd77",
+    "scope_exclusions.py": "efd5bcfd229ecc4e243cb9579aa7a713839de75e327c0785bd513eff539d94aa",
+    "unitclass/src/main.rs": "05aada31e0a75a699f5486054660f2c47a41ff566247cc64a391457d90bce502"
+  },
+  "artifact_sha256": {
+    "population-mapping.json": "ad4975386bbcec269a1632cd48d1227e7e6eb381c4dd13f5acbd5110847c7914",
+    "rules.json": "706d050c1e734a71a9245aabf095894233813092d3a08c750e8568e8f9596669",
+    "sampling.json": "3301b0f4491c77c3e28156a874bd94efcba4dcb09865fc1230cae3a346232e2c",
+    "review/review-packet.json": "0e1908f3fa4ccbf5d9fdbfd88a1087ab0bb9ee9c284e238b4f1d7cf9ba53d15b",
+    "review/REVIEW-PROMPT.md": "28635e8d834876b291fc2efba5b9455ade6dbf4f29a8157b38efc1370e32541e",
+    "score_sample.py": "fec25f69e64da3c5dffbd86d44379936e977bb58df5045932e920961ef306194",
+    "README.md": "916e5f8a0914421d533a55230af518387762e255cb9237d6471abfd77c106356"
+  },
+  "packet_source_verification": {
+    "spans": 200,
+    "method": "Compare each context source file against git cat-file for its pinned commit:path object.",
+    "result": "all packet span blobs match exactly."
+  },
+  "review": {
+    "reviewers": {
+      "A": {
+        "model": "gpt-6.1-sol",
+        "label_count": 100,
+        "packet_id_coverage_exact": true,
+        "prior_context": "none"
+      },
+      "B": {
+        "model": "gpt-6-astra",
+        "label_count": 100,
+        "packet_id_coverage_exact": true,
+        "prior_context": "none"
+      }
+    },
+    "decision": "Both independent TypeScript estimates pass: precision >= 0.80 and recall > 0.30.",
+    "scores": {
+      "reviewer-a": {
+        "Rust": {
+          "kept_population": 0,
+          "estimated_kept_copies": 0.0,
+          "estimated_all_copies": 0.0,
+          "precision": null,
+          "recall": null
+        },
+        "TypeScript": {
+          "kept_population": 51,
+          "estimated_kept_copies": 49.0,
+          "estimated_all_copies": 99.7,
+          "precision": 0.9607843137254902,
+          "recall": 0.4914744232698094,
+          "passes_g4": true
+        }
+      },
+      "reviewer-b": {
+        "Rust": {
+          "kept_population": 0,
+          "estimated_kept_copies": 0.0,
+          "estimated_all_copies": 0.0,
+          "precision": null,
+          "recall": null
+        },
+        "TypeScript": {
+          "kept_population": 51,
+          "estimated_kept_copies": 49.0,
+          "estimated_all_copies": 87.2,
+          "precision": 0.9607843137254902,
+          "recall": 0.5619266055045872,
+          "passes_g4": true
+        }
+      },
+      "agreement": {
+        "pairs": 100,
+        "same_label": 0.92,
+        "same_copy_decision": 0.92,
+        "copy_kappa": 0.8024691358024693
+      }
+    },
+    "result_sha256": {
+      "reviewer-a": "dd0ec19c756147e21fe16cec4ca0a121400cd414e2c6a7adaf63f90f8f1288c5",
+      "reviewer-b": "dae344f251bdbed3ffab24f202256a229d1ca95b54af9ac0e0bd9dde01e0fb03",
+      "scores": "d6d8c7421de1311b06962bd232543c6ffaec9126d4632dd11803db33b6c84da4"
+    }
+  }
+}

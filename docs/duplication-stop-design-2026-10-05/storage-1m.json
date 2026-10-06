@@ -1,0 +1,40 @@
+{
+  "files": 9998,
+  "tokens": 5930008,
+  "packed_bytes": 9329778,
+  "candidate32_plus_evidence_bytes": 11514320,
+  "roundtrip_equal": true,
+  "lineage_included": false,
+  "normalization_timed": false,
+  "disk_io_timed": false,
+  "iterations": [
+    {
+      "iteration": 0,
+      "pack_ms": 1431.534083,
+      "unpack_ms": 165.207417
+    },
+    {
+      "iteration": 1,
+      "pack_ms": 1413.4153330000001,
+      "unpack_ms": 154.313959
+    },
+    {
+      "iteration": 2,
+      "pack_ms": 1429.6970410000001,
+      "unpack_ms": 155.951333
+    },
+    {
+      "iteration": 3,
+      "pack_ms": 1722.765084,
+      "unpack_ms": 256.669
+    },
+    {
+      "iteration": 4,
+      "pack_ms": 3248.612,
+      "unpack_ms": 207.091
+    }
+  ],
+  "root": "/tmp/klin490-corpus/1m",
+  "pack_median_ms": 1431.534083,
+  "unpack_median_ms": 165.207417
+}

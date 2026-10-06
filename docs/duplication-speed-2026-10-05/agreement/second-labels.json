@@ -1,0 +1,1002 @@
+{
+ "455d5a3262852b8d": {
+  "label": "copy",
+  "rationale": "Two arms of the same style macro repeat the fg/bg getter body with the REVERSED-modifier swap; a shared helper inside the macro could own the get-color logic.",
+  "confidence": "medium"
+ },
+ "be52710f58c1d3c9": {
+  "label": "copy",
+  "rationale": "pi and ccode rehydrate both create the dir, write the transcript with write_new and map AlreadyExists to RehydrateError identically; the file-writing kernel can be one helper.",
+  "confidence": "high"
+ },
+ "99f9dbf1b408c227": {
+  "label": "boilerplate",
+  "rationale": "Two FormField/FormItem/Input blocks in AISettings forms; standard react-hook-form JSX markup.",
+  "confidence": "high"
+ },
+ "5bb46256595f71da": {
+  "label": "copy",
+  "rationale": "verifyLinkLimit and validateFile are defined verbatim in two API route files; the link-limit and file validation logic belongs in one shared module.",
+  "confidence": "high"
+ },
+ "d92b97fcf447809c": {
+  "label": "copy",
+  "rationale": "Two GoCardless bank adapters carry the same normalizeTransaction remittance-concatenation logic; the bank-specific file only differs by institution id.",
+  "confidence": "high"
+ },
+ "da51091fc8daa633": {
+  "label": "boilerplate",
+  "rationale": "Tail of two openpage growth routes: cors-wrapped JSON response with cache headers plus an OPTIONS handler; route-handler scaffolding per endpoint.",
+  "confidence": "medium"
+ },
+ "2ee29dffca894d86": {
+  "label": "copy",
+  "rationale": "Net-worth and cash-flow spreadsheet builders open with the same filter-building and conditionsOp mapping; the shared query-prep step could be a helper.",
+  "confidence": "medium"
+ },
+ "da64536c80fb4a4c": {
+  "label": "required-shape",
+  "rationale": "ScalarFunction impls for comparison and boolean ops: bind returning Boolean and execute fetching two input arrays are the trait obligation each function provides.",
+  "confidence": "high"
+ },
+ "15780cf23387bcc1": {
+  "label": "required-shape",
+  "rationale": "pi and ccode harness impls of the same trait: locate and rehydrate delegate to per-module functions as the trait requires.",
+  "confidence": "high"
+ },
+ "1661e095d0183e78": {
+  "label": "copy",
+  "rationale": "The alwaysShowAdvancedSettings memo (parse recipient auth options, check form action auth) is repeated in add-signers and the envelope recipient form; one hook could own it.",
+  "confidence": "high"
+ },
+ "2dd2eea7679fae25": {
+  "label": "required-shape",
+  "rationale": "serde SerializeTuple/SerializeTupleVariant impls on the SFTP serializer; each serde trait must be implemented separately.",
+  "confidence": "high"
+ },
+ "fe920d150e5dd355": {
+  "label": "copy",
+  "rationale": "Rename-branch and commit popups repeat the invalid-name message placement: computing the bottom-right rect and rendering a danger paragraph; a shared draw helper fits.",
+  "confidence": "high"
+ },
+ "df393e8f6a0b13ec": {
+  "label": "copy",
+  "rationale": "Same FolderCard grid with move/settings/delete state setters in the folders route and the FolderGrid component; the route duplicates the component's rendering.",
+  "confidence": "medium"
+ },
+ "da7febdd85245f6a": {
+  "label": "copy",
+  "rationale": "FileOutMove and FileOutCopy reduce progress the same way (totals, failures, collected, cleaned); a shared progress-reduction helper could own it.",
+  "confidence": "medium"
+ },
+ "4ff76c6c54f40ad3": {
+  "label": "copy",
+  "rationale": "Document and template branches of the same match both remap field positions (page, positionX...) identically; the field mapping can be hoisted once.",
+  "confidence": "high"
+ },
+ "ee76920837865623": {
+  "label": "copy",
+  "rationale": "push_tags and push request() repeat the pending check, progress reset, Arc clones and receiver thread spawn; the async remote-job runner is a shared kernel.",
+  "confidence": "high"
+ },
+ "d845a6d5d878d32b": {
+  "label": "required-shape",
+  "rationale": "Per-section theme Composer getters with the same set/Composer::new tail; each section's key table is a declaration of its fields.",
+  "confidence": "medium"
+ },
+ "8424ff52ab590395": {
+  "label": "copy",
+  "rationale": "xonsh and fish cached_vars read the cache file and fall back to regenerating with the same error message; the cache-read fallback is one helper.",
+  "confidence": "high"
+ },
+ "4c6ae5cfd7b077b7": {
+  "label": "copy",
+  "rationale": "Two bookmark mutation hooks with the same onSuccess invalidation set (getBookmarks, searchBookmarks, getBookmark, stats); the cache invalidation policy is repeated.",
+  "confidence": "medium"
+ },
+ "957a9b8f3dd0537d": {
+  "label": "copy",
+  "rationale": "Two history subcommands open the sqlite db, record store, encryption key, host id and HistoryStore identically; the store setup could be one function.",
+  "confidence": "medium"
+ },
+ "24f7f68a3d73fa0e": {
+  "label": "copy",
+  "rationale": "CREATE VIEW and another create resolver repeat the temp-schema name qualification and the persistent-not-supported error; a shared name-resolution helper fits.",
+  "confidence": "high"
+ },
+ "3cd22695e5421e96": {
+  "label": "copy",
+  "rationale": "Template and document add-fields editors repeat the mouse listener effect and MutationObserver field-bounds logic; the field-placement editor behavior is copied.",
+  "confidence": "high"
+ },
+ "11e0ed48320b407c": {
+  "label": "copy",
+  "rationale": "Two download handlers share the catch block mapping AppError to a REST error and 500 otherwise; the error-to-response mapping is a reusable helper.",
+  "confidence": "medium"
+ },
+ "a1840e080c02c3cd": {
+  "label": "copy",
+  "rationale": "zsh and fish alias_config/var_config read the cache or build and fall back with the same message; only the file extension differs.",
+  "confidence": "high"
+ },
+ "17d6bd6258893578": {
+  "label": "copy",
+  "rationale": "Two join arms in filter pushdown repeat splitting filters by join side over left/right table refs; the side-partition loop is a shared kernel.",
+  "confidence": "medium"
+ },
+ "c4fc2b626bc0a2fd": {
+  "label": "copy",
+  "rationale": "Browser and IP column definitions using UAParser are repeated in two audit-log tables; the user-agent column logic could be shared.",
+  "confidence": "medium"
+ },
+ "2a4d88bfceba2504": {
+  "label": "boilerplate",
+  "rationale": "Settings and admin layouts each declare a sidebar items list of name/icon/path entries; navigation declaration data.",
+  "confidence": "medium"
+ },
+ "8c320e6fcb194cfc": {
+  "label": "copy",
+  "rationale": "powershell and fish alias_config/var_config repeat the cache-then-build fallback logic; only the extension differs.",
+  "confidence": "high"
+ },
+ "6e2e486beb960274": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two numeric scalar function files (exp, cbrt).",
+  "confidence": "high"
+ },
+ "b029392a11d04be0": {
+  "label": "copy",
+  "rationale": "pi and codex listeners repeat existing(): root check, NotFound error and pooled scan_sessions stream; the scan stream could be shared generically.",
+  "confidence": "medium"
+ },
+ "12548e356c87e44d": {
+  "label": "required-shape",
+  "rationale": "ScalarFunction impl bind/execute for unary numeric and div; trait methods each function type must provide.",
+  "confidence": "high"
+ },
+ "0252e833fbbc79b8": {
+  "label": "required-shape",
+  "rationale": "ScalarFunction bind/execute openings for CheckNull and a boolean function; trait implementation shape.",
+  "confidence": "high"
+ },
+ "86f3005b7d4eabf2": {
+  "label": "boilerplate",
+  "rationale": "Team and organisation member delete dialogs with toast success/error handlers and Dialog markup; conventional dialog scaffolding with different messages.",
+  "confidence": "medium"
+ },
+ "c12e82ac4f44253f": {
+  "label": "boilerplate",
+  "rationale": "BalanceWithCarryover JSX with CarryoverIndicator and CellValueText styling in two balance menu modals; presentational markup.",
+  "confidence": "medium"
+ },
+ "863dbb0065871479": {
+  "label": "copy",
+  "rationale": "Two credential functions in cred.rs repeat the remote URL lookup and CredentialHelper execution with URL fallback; only the remote selection differs.",
+  "confidence": "high"
+ },
+ "725155f72c4e251c": {
+  "label": "copy",
+  "rationale": "Stacked bar and line graph tooltips repeat the dataKeyToName map and payload sum/items reduction; the tooltip aggregation is shared logic.",
+  "confidence": "medium"
+ },
+ "9841bc7192abca88": {
+  "label": "copy",
+  "rationale": "ReadInto future exists in rayexec_io and glaredb_core with identical constructors and poll logic; the old crate copy duplicates the I/O primitive.",
+  "confidence": "high"
+ },
+ "e0ad0dc11e44198c": {
+  "label": "boilerplate",
+  "rationale": "cfg(unix)/cfg(not unix) from_settings constructors on two daemon clients; one-line per-client constructor scaffolding.",
+  "confidence": "medium"
+ },
+ "7c6993a030950425": {
+  "label": "copy",
+  "rationale": "delete and change_password commands repeat the logged-in check, auth client and password prompt/empty validation; the auth preamble could be shared.",
+  "confidence": "medium"
+ },
+ "8c690833ffd934c4": {
+  "label": "boilerplate",
+  "rationale": "Import block of two dialog components.",
+  "confidence": "high"
+ },
+ "b55242daf4e52d5f": {
+  "label": "copy",
+  "rationale": "Text and email field branches repeat the click-handler then spinner/sign/destroy promise chain; the sign-with-spinner flow could be one helper.",
+  "confidence": "medium"
+ },
+ "e54138266a7eaf1b": {
+  "label": "copy",
+  "rationale": "hex.rs is duplicated verbatim between rayexec_io and glaredb_http (encode plus WriteHex); one shared hex utility suffices.",
+  "confidence": "high"
+ },
+ "d256446d35da23c2": {
+  "label": "copy",
+  "rationale": "Merge and edit list modals repeat the onError zodError/BAD_REQUEST toast logic; the tRPC error toast is one helper.",
+  "confidence": "high"
+ },
+ "a72ec2c42dee2040": {
+  "label": "copy",
+  "rationale": "register and login both match resolve_sync_auth and print already-authenticated messages for Hub/Legacy; the guard is repeated behavior.",
+  "confidence": "medium"
+ },
+ "199986c593248d2c": {
+  "label": "copy",
+  "rationale": "calculateStartingBalance via interimAvailable balance minus transactions is repeated across bank adapters; a shared balance helper fits.",
+  "confidence": "high"
+ },
+ "4fc3c39408a7471c": {
+  "label": "boilerplate",
+  "rationale": "Dialog-component import preludes.",
+  "confidence": "high"
+ },
+ "96d992338ca4f1ec": {
+  "label": "required-shape",
+  "rationale": "UnaryInputNumericOperation impls for atan and asin; each op type must implement execute_float, differing only in the math call.",
+  "confidence": "high"
+ },
+ "3c575351e2fa49bd": {
+  "label": "copy",
+  "rationale": "as_slice_mut repeats as_slice's alignment/size debug assertions; the assertion block could be one private check.",
+  "confidence": "medium"
+ },
+ "beff3062f6d00f8b": {
+  "label": "copy",
+  "rationale": "recipientsByRole memo and signer selection effect repeated in template and document add-fields; shared recipient grouping logic.",
+  "confidence": "high"
+ },
+ "cb697d4598507364": {
+  "label": "copy",
+  "rationale": "Two field-router procedures map fields to the same id/recipient/position shape; the field projection is repeated.",
+  "confidence": "medium"
+ },
+ "61822e01c06dab8c": {
+  "label": "boilerplate",
+  "rationale": "Pagination change handler and default results object in two table components; conventional data-table setup.",
+  "confidence": "medium"
+ },
+ "9d10cdf7a1635a1b": {
+  "label": "copy",
+  "rationale": "Field-type branches in the signer page renderer repeat the handle-click, spinner, signField chain; one helper could own it.",
+  "confidence": "medium"
+ },
+ "5046fdf8b26e819c": {
+  "label": "copy",
+  "rationale": "FolderGrid renders the same FolderCard mapping with move/settings/delete setters for two folder lists; the card wiring is repeated in one file.",
+  "confidence": "medium"
+ },
+ "450b24f9e9ba76b5": {
+  "label": "copy",
+  "rationale": "zsh and xonsh config builders repeat cache-or-build fallback logic.",
+  "confidence": "high"
+ },
+ "19ffc2cbdbad8edb": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of substring and right string functions.",
+  "confidence": "high"
+ },
+ "069a2e81a1f4afa0": {
+  "label": "required-shape",
+  "rationale": "The TaskOut enum and its impl_from_out! list both enumerate every variant; the macro list is mandated by the enum.",
+  "confidence": "medium"
+ },
+ "069fda3556fc54f8": {
+  "label": "copy",
+  "rationale": "Two auth flows in the mobile store repeat storing the token/instance, setting authenticated state and routing; the post-login session commit is one helper.",
+  "confidence": "high"
+ },
+ "5e3563fd43eb5ed4": {
+  "label": "copy",
+  "rationale": "FileOutDownload and FileOutCopy reduce progress identically; shared progress reduction.",
+  "confidence": "medium"
+ },
+ "8a69ee92e3d278c7": {
+  "label": "generated",
+  "rationale": "format.rs carries 'Autogenerated by Thrift Compiler (0.20.0)'; empty-struct TSerializable impls.",
+  "confidence": "high"
+ },
+ "c7c4c74236c471a3": {
+  "label": "boilerplate",
+  "rationale": "Hidden-id and name FormFields in feed and AI settings forms; standard form markup.",
+  "confidence": "high"
+ },
+ "25943a90c052c48b": {
+  "label": "required-shape",
+  "rationale": "Composer getter tail for theme and runtime sections; per-section key tables plus fixed set/Composer::new.",
+  "confidence": "medium"
+ },
+ "785b5aa501818dc4": {
+  "label": "boilerplate",
+  "rationale": "Report page header with selectors, save button and styled View wrappers in NetWorth and AgeOfMoney; layout markup.",
+  "confidence": "medium"
+ },
+ "d321f90513d9d898": {
+  "label": "copy",
+  "rationale": "Two API routes repeat the zod safeParse failure response formatting the first issue message and path; a validation-response helper fits.",
+  "confidence": "medium"
+ },
+ "2faea11ba9802aff": {
+  "label": "copy",
+  "rationale": "onOpenTransaction with preview schedule post/skip modal is repeated in off-budget and all-account transaction screens.",
+  "confidence": "high"
+ },
+ "fc7f055bc2fe7752": {
+  "label": "copy",
+  "rationale": "pi and ccode session start() repeat the checkpoint-line verification and fallback logging; same resume kernel.",
+  "confidence": "high"
+ },
+ "6b8159ac6be8aed3": {
+  "label": "boilerplate",
+  "rationale": "Email and password FormFields in signin and invite forms; standard form markup.",
+  "confidence": "high"
+ },
+ "27cd5973b9fcd2b3": {
+  "label": "copy",
+  "rationale": "FileOutUpload and FileOutDownload reduce progress identically.",
+  "confidence": "medium"
+ },
+ "109381735a3a5f2d": {
+  "label": "copy",
+  "rationale": "push and pull build the same SyncSession, compute diff and validate the key against the remote index; shared sync setup.",
+  "confidence": "high"
+ },
+ "d55eab4115139742": {
+  "label": "copy",
+  "rationale": "Two list mutation hooks invalidate the same list/bookmark queries in onSuccess; repeated cache invalidation policy.",
+  "confidence": "medium"
+ },
+ "06cb72b59cdaa297": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two mobile 'new' pages.",
+  "confidence": "high"
+ },
+ "261fc670525b13e9": {
+  "label": "copy",
+  "rationale": "is_inline/is_reference/data_len/to_bytes are repeated on two string view types in string.rs; the union accessors duplicate behavior.",
+  "confidence": "medium"
+ },
+ "5733531d88942562": {
+  "label": "boilerplate",
+  "rationale": "Executor dispatch functions each define the same local on! macro and Ctx setup; dispatcher scaffolding per layer.",
+  "confidence": "medium"
+ },
+ "40108c0eeceeabf5": {
+  "label": "copy",
+  "rationale": "TagPill and MergeTagModal repeat the tag-merge mutation onError zod/BAD_REQUEST toast logic.",
+  "confidence": "high"
+ },
+ "c3d27c32c2875f6e": {
+  "label": "required-shape",
+  "rationale": "SFTP Rmdir and Realpath request structs share a new/len constructor shape per packet type.",
+  "confidence": "high"
+ },
+ "8bd45001dc31af2a": {
+  "label": "required-shape",
+  "rationale": "LogicalNode impls for LogicalLimit and LogicalCreate with empty for_each_expr methods; trait obligation.",
+  "confidence": "high"
+ },
+ "6a3de2d3d7590a9a": {
+  "label": "copy",
+  "rationale": "AWS credential and SigV4 authorizer duplicated between rayexec_io and glaredb_http; the signing algorithm is one module.",
+  "confidence": "high"
+ },
+ "3e358893c31afa3b": {
+  "label": "copy",
+  "rationale": "Two subquery planning paths build correlated-column comparison conditions from the column map identically.",
+  "confidence": "high"
+ },
+ "51ac36949b04826d": {
+  "label": "copy",
+  "rationale": "pick and confirm CloseForm are identical types with identical conversions; one shared form type would remove the duplicate.",
+  "confidence": "medium"
+ },
+ "4be07bc1c2a6491f": {
+  "label": "copy",
+  "rationale": "invalidateQueries and dispatchErrorNotification helpers are redefined in budget and account-groups mutations; shared notification helper.",
+  "confidence": "high"
+ },
+ "d2fb5f9bac0341fb": {
+  "label": "copy",
+  "rationale": "Tracking and envelope budget handlers repeat the category-group sheet creation loop with the same query; shared budget logic.",
+  "confidence": "high"
+ },
+ "7a10135e5373a75d": {
+  "label": "copy",
+  "rationale": "VarStore delete repeats set's record build, idx lookup, encrypt, push and rebuild; a shared push-record helper fits.",
+  "confidence": "high"
+ },
+ "dcf7fdb1dae3d181": {
+  "label": "required-shape",
+  "rationale": "ShowForm TryFrom<ActionCow> for pick and confirm, each extracting cfg and tx; per-form conversion with different cfg types.",
+  "confidence": "medium"
+ },
+ "d002714d152b1d27": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of previewer and fetcher config modules.",
+  "confidence": "high"
+ },
+ "2604abbaf032cc86": {
+  "label": "copy",
+  "rationale": "Two branches in row_layout write non-inline strings to heap and rewrite the view; the heap-copy kernel is repeated.",
+  "confidence": "medium"
+ },
+ "bd5eedabc9eba384": {
+  "label": "copy",
+  "rationale": "FileOutDownload and FileOutMove reduce progress identically.",
+  "confidence": "medium"
+ },
+ "981692e53e98072e": {
+  "label": "copy",
+  "rationale": "kgp_old and kgp share the Kitty graphics shm/b64 payload encoding; same protocol writer.",
+  "confidence": "high"
+ },
+ "29251ea58ac6ad32": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of trunc and sqrt.",
+  "confidence": "high"
+ },
+ "0e47189125df8aa0": {
+  "label": "copy",
+  "rationale": "Two provider calls spawn a Lua runtime, set args/opts and drive the coroutine identically; shared provider-run kernel.",
+  "confidence": "high"
+ },
+ "6f92172ed2fc6814": {
+  "label": "required-shape",
+  "rationale": "TryFrom<&Value> parsers for Edit and another tool call extracting file_path; per-tool schema adapter.",
+  "confidence": "medium"
+ },
+ "7990250270a75f3c": {
+  "label": "required-shape",
+  "rationale": "matches_rule for Write and another tool: tool name check plus scope match; per-tool trait method.",
+  "confidence": "medium"
+ },
+ "4bf290f23e8bb5da": {
+  "label": "copy",
+  "rationale": "WASM in-memory fs path-to-name parsing duplicated between rayexec_io and glaredb_core.",
+  "confidence": "high"
+ },
+ "402ed788288c95c8": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of left and rem functions.",
+  "confidence": "high"
+ },
+ "324ab0e2aa6d4465": {
+  "label": "required-shape",
+  "rationale": "LogicalNode impls with no expressions for SingleRow and Attach; trait obligation.",
+  "confidence": "high"
+ },
+ "e86c30c136afed7e": {
+  "label": "copy",
+  "rationale": "Xz and gzip branches of tar_dir repeat the tar build/finish/error handling; the tar-into-encoder kernel can be generic over the encoder.",
+  "confidence": "high"
+ },
+ "c49a29f84bd27fdb": {
+  "label": "copy",
+  "rationale": "scripts and kv record deserialize share the rmp version/type decoding prelude; the decoding scaffold is repeated.",
+  "confidence": "medium"
+ },
+ "27b14e64b80f3dbb": {
+  "label": "required-shape",
+  "rationale": "Composer get/set tails for theme and runtime sections.",
+  "confidence": "medium"
+ },
+ "f5477ea4b0210c1d": {
+  "label": "required-shape",
+  "rationale": "is_visible/hide/show of the Component trait on reset and options popups.",
+  "confidence": "high"
+ },
+ "2f5a2aecb49303fa": {
+  "label": "copy",
+  "rationale": "Two dedup/prune paths print matches on dry run else load key, build HistoryStore and delete entries; shared delete flow.",
+  "confidence": "high"
+ },
+ "a571ad3316f0c657": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two menu modals.",
+  "confidence": "high"
+ },
+ "b4e084a48f04516d": {
+  "label": "copy",
+  "rationale": "On- and off-budget transaction screens repeat preview transactions, search and onOpenTransaction modal logic.",
+  "confidence": "high"
+ },
+ "af013827fac1f061": {
+  "label": "required-shape",
+  "rationale": "ScalarFunction bind returning Utf8 for left and case functions.",
+  "confidence": "high"
+ },
+ "fd9f771337d89db4": {
+  "label": "boilerplate",
+  "rationale": "Form/fieldset wrapper opening in two profile forms.",
+  "confidence": "high"
+ },
+ "0a0914bcc8b28c00": {
+  "label": "required-shape",
+  "rationale": "TryFrom<Table> matchers for preloader and fetcher reading id/file/mime; per-type Lua adapter.",
+  "confidence": "medium"
+ },
+ "38363f148ea206cd": {
+  "label": "copy",
+  "rationale": "alwaysShowAdvancedSettings memo repeated in placeholder recipients and add-signers.",
+  "confidence": "high"
+ },
+ "730af5a2f4a610b9": {
+  "label": "copy",
+  "rationale": "Rule editor update and merge-list onError repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "84636c981ca5b757": {
+  "label": "copy",
+  "rationale": "Non-unix TCP connection to the daemon is repeated per client type; the channel construction could be one function.",
+  "confidence": "medium"
+ },
+ "131dc65d604d0105": {
+  "label": "generated",
+  "rationale": "Icon components produced by the package's 'generate:icons' svgr command in component-library package.json.",
+  "confidence": "high"
+ },
+ "6216d7018b3386e7": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of tags and collections screens.",
+  "confidence": "high"
+ },
+ "c66739b394e1f0af": {
+  "label": "copy",
+  "rationale": "Rename-remote and create-branch repeat the invalid-name message rect placement and render.",
+  "confidence": "high"
+ },
+ "4f3db0c5217c962a": {
+  "label": "copy",
+  "rationale": "move_selection duplicated in submodules and remotelist; the source even has a TODO to dedup it with BranchListComponent.",
+  "confidence": "high"
+ },
+ "c00fbee8b8f6c947": {
+  "label": "boilerplate",
+  "rationale": "shadcn badge component copied into web and browser-extension; vendored UI primitive scaffolding.",
+  "confidence": "high"
+ },
+ "f00a732af624923d": {
+  "label": "required-shape",
+  "rationale": "parent_session/parent_kind accessors on opencode and codex row types fulfilling the same row trait.",
+  "confidence": "medium"
+ },
+ "261a0e54833e454b": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two create dialogs.",
+  "confidence": "high"
+ },
+ "d1d523f093452b48": {
+  "label": "copy",
+  "rationale": "ShareListModal and MergeListModal repeat the controlled/uncontrolled open validation and state fallback; a useControllableOpen hook would own it.",
+  "confidence": "medium"
+ },
+ "dd06a95b636fcd64": {
+  "label": "copy",
+  "rationale": "Two signing-volume queries repeat the org/team name search kysely clause and select.",
+  "confidence": "high"
+ },
+ "6b35e8297a7bb2de": {
+  "label": "boilerplate",
+  "rationale": "Import block of two report pages.",
+  "confidence": "high"
+ },
+ "e67712f4cf2e5a4d": {
+  "label": "boilerplate",
+  "rationale": "Dialog trigger markup with default button in two update dialogs.",
+  "confidence": "high"
+ },
+ "1929248726e88706": {
+  "label": "copy",
+  "rationale": "scripts record and dotfiles var deserialize share the rmp decoding prelude.",
+  "confidence": "medium"
+ },
+ "1da7bcfec6fdca27": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of category and account selectors.",
+  "confidence": "high"
+ },
+ "f45d91f4698e3a60": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two delete dialogs.",
+  "confidence": "high"
+ },
+ "c2939acc76258212": {
+  "label": "copy",
+  "rationale": "kgp and iip image_erase share the clear-area loop with background fill; only the trailing escape differs.",
+  "confidence": "medium"
+ },
+ "48facd8142db9401": {
+  "label": "copy",
+  "rationale": "Envelope and document delete-attachment routes have the same handler body calling deleteAttachment; one route could serve both.",
+  "confidence": "medium"
+ },
+ "fe8757bcbbd1a592": {
+  "label": "copy",
+  "rationale": "Rule-create and merge-list onError repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "931f466f7f32ba60": {
+  "label": "copy",
+  "rationale": "COALESCE and GROUPING binding repeat the arg-unwrapping map with named/wildcard rejection.",
+  "confidence": "medium"
+ },
+ "e99e17d4d489e782": {
+  "label": "copy",
+  "rationale": "find_files recursive walk duplicated verbatim in glaredb_slt and glaredb_bench.",
+  "confidence": "high"
+ },
+ "1da563b428023421": {
+  "label": "copy",
+  "rationale": "onLinkTransactions/onUnlinkTransactions duplicated in desktop and mobile schedule editors.",
+  "confidence": "high"
+ },
+ "174e2d69638da877": {
+  "label": "copy",
+  "rationale": "Zstd and xz branches repeat the tar build/finish error handling.",
+  "confidence": "high"
+ },
+ "9de8895c2817b86d": {
+  "label": "boilerplate",
+  "rationale": "shadcn command component vendored in web and browser-extension.",
+  "confidence": "high"
+ },
+ "e5fb196729fdb7db": {
+  "label": "copy",
+  "rationale": "Two materialization arms in explain walk repeat the visited check and get_materialization recursion.",
+  "confidence": "medium"
+ },
+ "cb9e782d6b26e45c": {
+  "label": "boilerplate",
+  "rationale": "Skeleton loading row markup in two tables.",
+  "confidence": "high"
+ },
+ "2296be695ad2699d": {
+  "label": "boilerplate",
+  "rationale": "CellValue/AutoTextSize amount cell markup repeated for budget columns.",
+  "confidence": "medium"
+ },
+ "c4a2241f1683e73a": {
+  "label": "copy",
+  "rationale": "Archive button and bulk manage lists repeat the BAD_REQUEST/else toast error handler.",
+  "confidence": "medium"
+ },
+ "fa99ff174f56c2a7": {
+  "label": "copy",
+  "rationale": "Rule-create and edit-list onError repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "dd14638c4ac68f9b": {
+  "label": "copy",
+  "rationale": "calculateStartingBalance repeated in NBG and Berliner Sparkasse adapters.",
+  "confidence": "high"
+ },
+ "b47ddaf78d5f020f": {
+  "label": "required-shape",
+  "rationale": "TaskIn impls (id/set_id/title) for hook hardlink and another hook type.",
+  "confidence": "high"
+ },
+ "22a18129bbf56c15": {
+  "label": "copy",
+  "rationale": "detach and attach asset hooks repeat the bookmark/asset invalidation set.",
+  "confidence": "medium"
+ },
+ "556a7703872be93f": {
+  "label": "copy",
+  "rationale": "CategorySelector and AccountSelector share the show/hide unchecked and select-all toolbar logic.",
+  "confidence": "high"
+ },
+ "beac7ac644bb8cec": {
+  "label": "copy",
+  "rationale": "Two forms define the same onError handler joining validation messages into a toast; small but behavioral.",
+  "confidence": "low"
+ },
+ "07ef1c7fa5227896": {
+  "label": "copy",
+  "rationale": "onFieldResize/onFieldMove repeated in add-fields and embed configure-fields view.",
+  "confidence": "high"
+ },
+ "de2f209a9918abd9": {
+  "label": "copy",
+  "rationale": "user_blocks content conversion duplicated in pi and ccode rehydrate.",
+  "confidence": "high"
+ },
+ "aa8c99a316374dae": {
+  "label": "copy",
+  "rationale": "TagPill and rule editor repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "f532a5cc56737b3b": {
+  "label": "copy",
+  "rationale": "Two ugly-format functions repeat the batch/row/column tab-joined writer loop.",
+  "confidence": "high"
+ },
+ "0d3d4c697a74822f": {
+  "label": "copy",
+  "rationale": "scripts record and dotfiles alias deserialize share the rmp decoding prelude.",
+  "confidence": "medium"
+ },
+ "927f793cbb26037c": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two dialogs.",
+  "confidence": "high"
+ },
+ "786c7a12657d4b75": {
+  "label": "required-shape",
+  "rationale": "Theme Composer getter tails for two sections.",
+  "confidence": "medium"
+ },
+ "afa7d5e1a219116d": {
+  "label": "copy",
+  "rationale": "Rename-remote and commit popups repeat the invalid-message rect placement and render.",
+  "confidence": "high"
+ },
+ "4197b83577dac837": {
+  "label": "generated",
+  "rationale": "Thrift Compiler autogenerated header in format.rs; empty-struct serializer impls.",
+  "confidence": "high"
+ },
+ "3d919d47900708c6": {
+  "label": "copy",
+  "rationale": "getBreakpointConfig is defined in both public and dashboard bookmark grids.",
+  "confidence": "high"
+ },
+ "ddcc3600a2ef87e8": {
+  "label": "copy",
+  "rationale": "dispatchErrorNotification and invalidateQueries redefined in reports and budget mutations.",
+  "confidence": "high"
+ },
+ "2706a8780b3de189": {
+  "label": "generated",
+  "rationale": "Thrift Compiler autogenerated union read/write code in format.rs.",
+  "confidence": "high"
+ },
+ "99591a994642880b": {
+  "label": "copy",
+  "rationale": "getField sort-field mapping duplicated in Calendar report and Account.",
+  "confidence": "high"
+ },
+ "97b47ddc586d1128": {
+  "label": "boilerplate",
+  "rationale": "klin check modules each have run() loading Project and calling gate with a by-hand context; per-check entry-point scaffolding.",
+  "confidence": "medium"
+ },
+ "c0b1e0fc0519cefe": {
+  "label": "generated",
+  "rationale": "Thrift Compiler autogenerated enum serializer impls in format.rs.",
+  "confidence": "high"
+ },
+ "c1c3e40b1f45d6c5": {
+  "label": "required-shape",
+  "rationale": "Theme Composer getter tails for which/help and tabs sections.",
+  "confidence": "medium"
+ },
+ "8b1f3ea64c9408e0": {
+  "label": "copy",
+  "rationale": "verify and create email domain routes repeat the billing check and organisation permission lookup.",
+  "confidence": "high"
+ },
+ "0fa5532340bbe4a6": {
+  "label": "boilerplate",
+  "rationale": "Back-to-sign-in button and card closing markup in two password forms.",
+  "confidence": "high"
+ },
+ "788bfa36847f8ca3": {
+  "label": "copy",
+  "rationale": "Unix socket daemon connection repeated per client type; channel construction could be shared.",
+  "confidence": "medium"
+ },
+ "551b2ceff1b5938b": {
+  "label": "copy",
+  "rationale": "Two highlight mutations repeat the user-scoped update returning NOT_FOUND on empty result.",
+  "confidence": "medium"
+ },
+ "da09fe562662301d": {
+  "label": "boilerplate",
+  "rationale": "DataTable invocation props in two table components.",
+  "confidence": "medium"
+ },
+ "f7915d34f3d53256": {
+  "label": "generated",
+  "rationale": "API sidebar produced by 'docusaurus gen-api-docs' (package.json gen-api script); versioned docs snapshot of it.",
+  "confidence": "high"
+ },
+ "09809bae30f3141f": {
+  "label": "copy",
+  "rationale": "Monthly growth and signer conversion queries map rows to month/count/cume_count identically.",
+  "confidence": "medium"
+ },
+ "bcb75c85ebb65b41": {
+  "label": "copy",
+  "rationale": "Two link mutations repeat removing ids from infinite-query pages and invalidating the same keys.",
+  "confidence": "high"
+ },
+ "452b092d711859a2": {
+  "label": "copy",
+  "rationale": "Rule update and edit-list onError repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "076c1c1a75960d1d": {
+  "label": "copy",
+  "rationale": "zsh and fish cached_aliases/cached_vars repeat cache read with regenerate fallback.",
+  "confidence": "high"
+ },
+ "f388d0343e092fc8": {
+  "label": "copy",
+  "rationale": "Manage and bulk-manage lists repeat the BAD_REQUEST/else toast error handler.",
+  "confidence": "medium"
+ },
+ "31c3f3807c285fcf": {
+  "label": "copy",
+  "rationale": "replace and attach asset hooks repeat the invalidation set.",
+  "confidence": "medium"
+ },
+ "7cd1e6443e01b2ce": {
+  "label": "boilerplate",
+  "rationale": "Snapshot and graph buttons are the same tooltip-wrapped bare Button markup.",
+  "confidence": "medium"
+ },
+ "79a51ff9a615b746": {
+  "label": "copy",
+  "rationale": "Delete-bookmark confirmation alert duplicated in card and detail screen.",
+  "confidence": "medium"
+ },
+ "1f5a2b63e1d30513": {
+  "label": "copy",
+  "rationale": "onSaveWidget with the missing-widget guard and meta mutation repeated in NetWorth and CashFlow.",
+  "confidence": "medium"
+ },
+ "6aa03e07e31db53f": {
+  "label": "copy",
+  "rationale": "push and pull request() repeat the async remote job runner.",
+  "confidence": "high"
+ },
+ "3f5def65509028bf": {
+  "label": "boilerplate",
+  "rationale": "DataTable props and skeleton markup in two tables.",
+  "confidence": "high"
+ },
+ "b909b478552fc144": {
+  "label": "boilerplate",
+  "rationale": "Tooltip container styling markup in two graph tooltips.",
+  "confidence": "medium"
+ },
+ "a0dac8ee3c2f276f": {
+  "label": "copy",
+  "rationale": "doc_size and doc_citations run() repeat the named-file existence check and project load before evaluate.",
+  "confidence": "medium"
+ },
+ "bc5df3edda7fcc2e": {
+  "label": "required-shape",
+  "rationale": "FromLua/IntoLua unsupported impls for ShowForm types; trait stubs each form provides.",
+  "confidence": "medium"
+ },
+ "1cc4eb09c31a6123": {
+  "label": "boilerplate",
+  "rationale": "Form with error alert and password FormField markup in two password forms.",
+  "confidence": "high"
+ },
+ "9f913756d42f298b": {
+  "label": "boilerplate",
+  "rationale": "BalanceWithCarryover JSX markup in two balance menu modals.",
+  "confidence": "medium"
+ },
+ "80b4336890fd5809": {
+  "label": "required-shape",
+  "rationale": "ScalarFunction bind returning Utf8 for trim and substring.",
+  "confidence": "high"
+ },
+ "5cc11450a08c3a00": {
+  "label": "copy",
+  "rationale": "Key-to-scroll mapping in submodules and branchlist event handlers repeated.",
+  "confidence": "high"
+ },
+ "7e226ba2d3e4f14c": {
+  "label": "boilerplate",
+  "rationale": "CORS JSON response and OPTIONS handler tail of two growth routes.",
+  "confidence": "medium"
+ },
+ "3d0198ee00af1a9d": {
+  "label": "copy",
+  "rationale": "AliasStore delete repeats set's record push and rebuild.",
+  "confidence": "high"
+ },
+ "c4f1611ec864fba8": {
+  "label": "copy",
+  "rationale": "Envelope set-fields and embedding update repeat the field position remap.",
+  "confidence": "high"
+ },
+ "f0084605d5c372a8": {
+  "label": "copy",
+  "rationale": "TagPill and edit-list repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "315ec0762c36e0cd": {
+  "label": "boilerplate",
+  "rationale": "Import prelude of two aggregate functions.",
+  "confidence": "high"
+ },
+ "020ffb1b1a780827": {
+  "label": "boilerplate",
+  "rationale": "Notes view markup in two menu modals.",
+  "confidence": "medium"
+ },
+ "b0ffca2b1ed64caa": {
+  "label": "copy",
+  "rationale": "move_selection duplicated in remotelist and branchlist.",
+  "confidence": "high"
+ },
+ "120f3c74d9a6423a": {
+  "label": "boilerplate",
+  "rationale": "Hidden-id and token FormFields in two webhook forms.",
+  "confidence": "high"
+ },
+ "10e093c4c49f1398": {
+  "label": "copy",
+  "rationale": "Rule-create and edit-list onError repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "30f9cefdb93a51ba": {
+  "label": "boilerplate",
+  "rationale": "Import block of line and bar graphs.",
+  "confidence": "high"
+ },
+ "70c23ad348b7a8e1": {
+  "label": "copy",
+  "rationale": "Unix daemon channel construction repeated for AiClient and SearchClient.",
+  "confidence": "medium"
+ },
+ "a584159dbeae97fa": {
+  "label": "copy",
+  "rationale": "calculateStartingBalance with interimBooked repeated in SEB and ING adapters.",
+  "confidence": "high"
+ },
+ "84bec3f79fd5e3bb": {
+  "label": "copy",
+  "rationale": "Two history update statements bind the same column list; the binding of a history row is repeated.",
+  "confidence": "medium"
+ },
+ "155a226ac5902ea3": {
+  "label": "copy",
+  "rationale": "pi and codex session start() repeat checkpoint validation.",
+  "confidence": "high"
+ },
+ "2594d44b19da90d4": {
+  "label": "generated",
+  "rationale": "Generated by 'docusaurus gen-api-docs' per docs/package.json; versioned snapshot.",
+  "confidence": "high"
+ },
+ "1e8fcae90a5367a2": {
+  "label": "copy",
+  "rationale": "NetWorthCard and CashFlowCard repeat fetching the latest transaction date and time range.",
+  "confidence": "medium"
+ },
+ "f9720b10a0f9359e": {
+  "label": "copy",
+  "rationale": "Two mutations in EditListModal repeat the zodError toast logic.",
+  "confidence": "high"
+ },
+ "39f3fe6283f4d6a1": {
+  "label": "required-shape",
+  "rationale": "Runtime Composer getter tails for two config sections.",
+  "confidence": "medium"
+ },
+ "a73587212bc9ce68": {
+  "label": "copy",
+  "rationale": "Non-unix TCP daemon channel repeated for AiClient and SearchClient.",
+  "confidence": "medium"
+ },
+ "2d801892d57fdd4b": {
+  "label": "copy",
+  "rationale": "Two table-function arg branches resolve and bind literal arguments identically.",
+  "confidence": "medium"
+ },
+ "bb3c0f6856a8b8ac": {
+  "label": "boilerplate",
+  "rationale": "Seed fixtures creating envelope rows with the same field list; test-data scaffolding.",
+  "confidence": "medium"
+ },
+ "fd1399b9a12c8cc8": {
+  "label": "boilerplate",
+  "rationale": "tar_zstd_dir and another tar wrapper each delegate to compression::tar_dir with a different enum; thin API wrappers.",
+  "confidence": "medium"
+ }
+}

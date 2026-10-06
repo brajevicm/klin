@@ -1,0 +1,32 @@
+{
+  "root": "/tmp/klin490-corpus/1m",
+  "files": 9998,
+  "tokens": 5930008,
+  "unsafe_tokens": 0,
+  "unique_safe_tokens": 243021,
+  "dictionary_bytes": 3652826,
+  "token_chain_bytes": 12955809,
+  "row_delta_bytes": 5930008,
+  "paths_bytes": 255681,
+  "equality_bytes": 16608635,
+  "reporting_bytes": 22794324,
+  "lineage_bytes": null,
+  "timing_claim": false,
+  "candidate_totals": {
+    "1m-32": {
+      "candidate_with_paths_bytes": 2184542,
+      "candidate_plus_equality_bytes": 18793177,
+      "candidate_plus_reporting_bytes": 24723185
+    },
+    "1m-48": {
+      "candidate_with_paths_bytes": 2965110,
+      "candidate_plus_equality_bytes": 19573745,
+      "candidate_plus_reporting_bytes": 25503753
+    },
+    "1m-64": {
+      "candidate_with_paths_bytes": 3745678,
+      "candidate_plus_equality_bytes": 20354313,
+      "candidate_plus_reporting_bytes": 26284321
+    }
+  }
+}

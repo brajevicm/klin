@@ -1,0 +1,42 @@
+{
+  "reviewer-a": {
+    "Rust": {
+      "kept_population": 0,
+      "estimated_kept_copies": 0.0,
+      "estimated_all_copies": 0.0,
+      "precision": null,
+      "recall": null
+    },
+    "TypeScript": {
+      "kept_population": 51,
+      "estimated_kept_copies": 49.0,
+      "estimated_all_copies": 99.7,
+      "precision": 0.9607843137254902,
+      "recall": 0.4914744232698094,
+      "passes_g4": true
+    }
+  },
+  "reviewer-b": {
+    "Rust": {
+      "kept_population": 0,
+      "estimated_kept_copies": 0.0,
+      "estimated_all_copies": 0.0,
+      "precision": null,
+      "recall": null
+    },
+    "TypeScript": {
+      "kept_population": 51,
+      "estimated_kept_copies": 49.0,
+      "estimated_all_copies": 87.2,
+      "precision": 0.9607843137254902,
+      "recall": 0.5619266055045872,
+      "passes_g4": true
+    }
+  },
+  "agreement": {
+    "pairs": 100,
+    "same_label": 0.92,
+    "same_copy_decision": 0.92,
+    "copy_kappa": 0.8024691358024693
+  }
+}
