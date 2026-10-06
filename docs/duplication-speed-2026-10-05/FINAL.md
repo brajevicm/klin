@@ -1,11 +1,12 @@
 # Corrected exact-region research verdict
 
-**Baseline recommendation: reject the corrected candidate for production integration.**
-It does not meet Stop's speed/cold budgets, and no proposed threshold meets the
-committed precision rule. Contextual check REVIEW remains a possible follow-up,
-with a revised scope/selection policy; it is not a ready blocking ratchet.
-This is a negative feasibility result, not evidence that klin should abandon
-its already decided goal of detecting duplication.
+**Final #480 recommendation: reject this blocking Stop design and advance
+TypeScript v3 only as the leading candidate for a future check-only REVIEW
+detector.** Rust remains unqualified because its blind recall is below the
+owner's 40% target. The current Stop architecture remains unqualified on cache
+size, integrated performance and generic introduced-only lineage. This is a
+negative Stop-feasibility result, not evidence that klin should abandon its
+already decided goal of detecting duplication.
 
 The [checklist](CHECKLIST.md) records the work. Historical results in README
 remain historical. Current evidence is in `results-regions/`, `verification.json`,
@@ -14,6 +15,32 @@ remain historical. Current evidence is in `results-regions/`, `verification.json
 This report freezes the pre-optimization candidate. Subsequent implementation
 and measurements are tracked separately in [OPTIMIZATIONS.md](OPTIMIZATIONS.md);
 they do not replace these archived measurements or the calibration verdict.
+
+## Final policy decision after the fresh-family review
+
+The later TypeScript v4 review supplies a fresh-family population of 139 pairs
+with no pair/family overlap with earlier labels. V4 itself scores 96.1%
+precision with 49.1% / 56.2% recall under the two model reviewers.
+
+The already-frozen v3 rule can also be evaluated on those committed labels.
+That secondary cross-score is reproducible from the v4 `sampling.json`,
+`rules.json` and raw reviewer labels: reviewer A gives 97.7% precision /
+64.7% recall and reviewer B gives 90.8% / 68.7%. It was not the preregistered
+candidate for that packet, so it does not rewrite v3's earlier failed blind
+confirmation. However, 61 of the 66 v3-kept pairs in the full fresh-family
+population were directly labeled. Even if all five unlabeled v3 keeps are
+non-copies, precision remains at least 87.9% for A and 84.8% for B. Even if
+every unlabeled v3 drop is a copy, recall remains at least 53.2% / 54.4%.
+
+For a non-blocking REVIEW signal, that materially higher recall at still-strong
+precision makes v3 the policy to advance. V4 remains the more conservative
+TypeScript candidate if a future blocking design needs extra precision margin.
+Neither policy is admitted as a Stop blocker by this research.
+
+Rust is unchanged by v3/v4. Its blind result is 93.9% / 35.8% for reviewer A
+and 91.9% / 35.3% for reviewer B (precision / recall), so it does not meet the
+owner's >=40% per-language recall gate. The next policy experiment should
+therefore be Rust-only, fresh-family and parent-provenance-verified.
 
 ## Correctness and safety
 
