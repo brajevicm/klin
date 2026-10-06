@@ -325,3 +325,27 @@ Pairs that touch a test path, by definition, over the three sets:
   code, and adds `e2e`, `__mocks__`, `playwright`, `cypress`, `fixtures` and
   folders that end in `-tests`, `_tests` or `-test`. Sets collected before
   this change used the older filter. Their survey stays as it was.
+
+## G9 result: reviewer agreement (2026-10-06)
+
+A second blind reviewer labeled the 200 pairs in `agreement/sample.json`
+(`agreement/second-labels.json`). It wrote a rationale for each pair. The
+sample holds 101 pairs that version 2 keeps and 99 that it drops, from all
+three sets and both languages.
+
+| Slice | Pairs | Same label | Same copy or not copy |
+|---|---:|---:|---:|
+| All | 200 | 89% | 94% |
+| Kept by version 2 | 101 | 94% | 94% |
+| Dropped by version 2 | 99 | 84% | 94% |
+| Rust | 101 | 90% | 97% |
+| TypeScript | 99 | 88% | 91% |
+
+- Cohen's kappa for copy or not copy is 0.87.
+- On the kept pairs, both reviewers find 94 copies of 101. The precision of
+  version 2 does not depend on which reviewer labels.
+- Most disagreements are between boilerplate and required-shape (7) or
+  between copy and boilerplate (7 one way, 2 the other).
+- Agreement between models passes the 85% limit. The human audit
+  (`agreement/audit.html`, 100 of these pairs) is still open. G9 passes only
+  when the owner's labels also agree at 85% or more.
