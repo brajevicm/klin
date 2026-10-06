@@ -349,3 +349,30 @@ three sets and both languages.
 - Agreement between models passes the 85% limit. The human audit
   (`agreement/audit.html`, 100 of these pairs) is still open. G9 passes only
   when the owner's labels also agree at 85% or more.
+
+## G9 result: audit (2026-10-06)
+
+The owner supplied `agreement/audit-labels.json` for the 100 audit pairs. Its
+format (label, confidence, rationale) matches `AUDIT-PROMPT.md`. Whether a
+person or another model wrote it decides the role of this result: owner
+agreement or a cross-model check.
+
+| Slice | Pairs | Audit vs first labels: same label / same copy decision | Audit vs second reviewer: same label / same copy decision |
+|---|---:|---:|---:|
+| All | 100 | 89% / 91% (kappa 0.81) | 88% / 92% (kappa 0.83) |
+| Kept by version 2 | 50 | 86% / 86% | 92% / 92% |
+| Dropped by version 2 | 50 | 92% / 96% | 84% / 92% |
+| Rust | 62 | 89% / 92% | 85% / 92% |
+| TypeScript | 38 | 89% / 89% | 92% / 92% |
+
+- Every slice agrees on the copy decision at 86% or more, so the 85% limit is
+  met.
+- On the 50 kept pairs, the audit finds 44 copies (88%): 24 of 27 Rust and
+  20 of 23 TypeScript. The first labels find 47 and the second reviewer 46.
+  Version 2 stays above 80% precision under all three label sources.
+- Kappa is low on the kept slice (0.15 and 0.56) because almost every kept
+  pair is a copy. With so few non-copies, kappa says little there. The share
+  of agreement is the useful number.
+- The audit calls copies non-copies more often than the reverse: 7 pairs that
+  the first labels call copy are boilerplate or required-shape in the audit,
+  and 1 pair goes the other way.
