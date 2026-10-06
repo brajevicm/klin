@@ -1,11 +1,12 @@
 # PR #490: corrected research and optimization qualification
 
-**Verdict: do not promote this candidate to a production blocking ratchet.**
-Correctness defects have concrete fixes and regression coverage, and several
-optimizations help, but the combined design remains unqualified. Large-file Stop
-cost, artifact memory, compressed-cache runtime, generic lineage and actionable
-precision remain unresolved. No original #480 acceptance criterion is claimed
-complete merely because the research checklist records a negative result.
+**Final verdict: merge the research, but do not promote this design to a
+production blocking ratchet.** TypeScript v3 is the leading policy candidate
+for a future check-only REVIEW detector; Rust remains below the owner's recall
+gate. Large-file Stop cost, artifact memory, integrated cold/warm qualification
+and generic introduced-only lineage remain unresolved. No original #480
+acceptance criterion is claimed complete merely because the research records a
+negative Stop result.
 
 ## Findings and correctness
 
@@ -103,17 +104,35 @@ No complete cache/runtime feasibility claim follows.
 
 ## Precision and next decision
 
-The owner authorized check-only calibration after Stop failed. The rule was committed
-as `13655f91` before labels. Blind model review covers **1,923 pairs / 542 families**
-with pinned-source evidence; these are model judgments, not human calibration.
-**No T=60/80/100/150 qualifies in either language.** Even at T150, non-copy labels
-are Rust **28/42** across two repositories and TS **12/13** across one.
-Faster exact matching does not make benign equality actionable copying.
+The owner-authorized calibration and later blind work use model judgments, not
+human labels. The original v3 blind confirmation was contradictory: TypeScript
+reviewer A measured 77.9% precision / 64.9% recall and reviewer B 88.5% /
+58.7%; the secondary three-model consensus was exactly 80.0% / 65.5%. That
+formal v3 confirmation therefore failed.
 
-Recommendation: validate a contextual check-only REVIEW report with human review
-before further Stop integration. Read source when needed rather than assume the
-synchronous lossless cache is viable. Require conservative inherited/new/ambiguous
-lineage and explicit incomplete handling; do not claim a blocking threshold.
+A later preregistered fresh-family v4 TypeScript sample has no pair/family
+overlap with prior labels. V4 measures 96.1% precision with 49.1% / 56.2%
+recall. The frozen v3 rule can be cross-scored from the same committed labels:
+97.7% / 64.7% for reviewer A and 90.8% / 68.7% for reviewer B. This cross-score
+is secondary evidence, not a rewrite of the earlier v3 gate.
+
+The fresh packet labeled 61 of 66 v3-kept pairs in its full 139-pair
+population. Worst-case completion still leaves v3 at >=87.9% / >=84.8%
+precision for A/B and >=53.2% / >=54.4% recall. For REVIEW, where false
+positives do not stop the workflow and recall has product value, v3 is therefore
+the TypeScript policy to advance. V4 remains the conservative alternative for
+any future blocker.
+
+Rust is unchanged and still misses the owner's per-language recall target:
+93.9% precision / 35.8% recall for reviewer A and 91.9% / 35.3% for reviewer B.
+The next policy experiment is a frozen revised Rust rule on a fresh-family,
+parent-provenance-verified blind population, requiring both reviewers to reach
+>=80% precision and >=40% recall.
+
+Recommendation: preserve this PR as the completed #480 research record, reject
+the current blocking Stop architecture, and move duplication toward a bounded
+check-only REVIEW design. Do not reopen Stop work unless a materially different
+storage + lineage design can meet the unchanged #478 limits.
 
 ## Reports and reproducibility
 
