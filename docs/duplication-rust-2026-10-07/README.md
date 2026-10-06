@@ -33,7 +33,10 @@ The rule is `v5` in [`design.py`](design.py). A pair is kept when:
   `while`, `loop`, `?` or `.await`).
 
 The first three conditions and the 100-token branch are v2. The fragment
-branch is new. `unitclass` gained the Rust node kinds that it needs.
+branch is new. `unitclass` gained the Rust node kinds that it needs. The
+new kinds (`macro_invocation`, `let_declaration` and the Rust control-flow
+expressions) do not occur in the TypeScript grammar. The #480 TypeScript
+counts therefore do not change.
 
 ## Design screen
 
@@ -79,7 +82,10 @@ The rule did not change.
 [`scan.py`](scan.py) finds regions that a commit introduces: at least half of
 one span's lines are added by the commit. It keeps a pair only when the
 counterpart's exact normalized tokens occur in the same path in the parent
-commit. It counts the pairs that fail this check.
+commit. It counts the pairs that fail this check. The check finds the same
+tokens anywhere in the parent version of that path, not at the span's own
+position. A counterpart in a file that the commit renamed fails the check,
+so it is excluded. The cause of the 277 nushell exclusions was not examined.
 
 The sample takes every v5-kept pair, up to 60 per repository, and a seeded
 random sample of the dropped pairs, stratified by repository, for a total of
@@ -138,7 +144,8 @@ python3 docs/duplication-rust-2026-10-07/score_sample.py \
   docs/duplication-rust-2026-10-07/review/results/reviewer-b.json
 ```
 
-`rules.json` holds the frozen v5 facts and decision for each scanned pair.
+`sampling.json`, committed in d56e3182 before any label, records the v5
+decision of each sampled pair through its stratum. `rules.json` holds the frozen v5 facts and decision for each scanned pair.
 `population-mapping.json` holds every pair with its introducing commit.
 The scan reproduces with `scan.py` at the pinned heads, then
 `design.py rules` and `sample.py`.
