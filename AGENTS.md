@@ -5,9 +5,11 @@ for the vocabulary and `docs/adr/` for decisions that are already made.
 
 ## Behavioural specification
 
-Before changing a check, read its contract in `docs/SPEC.md`, the applicable
-decisions in `docs/adr/`, and its CLI tests under `tests/`. These are klin's
-authority; ADR 0025 records the scope of that authority.
+Before changing a check, read its contract in `docs/SPEC-0.x.md`, the
+applicable decisions in `docs/adr/`, and its CLI tests under `tests/`. These
+are klin's authority for the shipped binary; ADR 0025 records the scope of
+that authority. `docs/SPEC.md` is the vNext target. A vNext roadmap ticket
+implements a section of it. ADR 0066 records the split.
 
 When behaviour is unspecified or a test conflicts with the contract, resolve
 it against klin's requirements and record the intended result in the spec and
