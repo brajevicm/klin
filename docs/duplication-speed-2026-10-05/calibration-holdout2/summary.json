@@ -1,0 +1,66 @@
+{
+  "Rust": {
+    "rule": {
+      "copy": 26,
+      "kept": 26,
+      "precision": 1.0
+    },
+    "passes_80": true,
+    "recall": {
+      "copies_kept": 26,
+      "copies_all": 105
+    },
+    "baseline_at_T": {
+      "copy": 27,
+      "kept": 28,
+      "precision": 0.964
+    },
+    "by_repo": {
+      "atuin": {
+        "copy": 26,
+        "kept": 26,
+        "precision": 1.0
+      }
+    },
+    "non_copy_kept": {},
+    "labels_all": {
+      "boilerplate": 24,
+      "required-shape": 15,
+      "copy": 105
+    }
+  },
+  "TypeScript": {
+    "rule": {
+      "copy": 128,
+      "kept": 140,
+      "precision": 0.914
+    },
+    "passes_80": true,
+    "recall": {
+      "copies_kept": 128,
+      "copies_all": 880
+    },
+    "baseline_at_T": {
+      "copy": 880,
+      "kept": 2230,
+      "precision": 0.395
+    },
+    "by_repo": {
+      "documenso": {
+        "copy": 128,
+        "kept": 140,
+        "precision": 0.914
+      }
+    },
+    "non_copy_kept": {
+      "boilerplate": 10,
+      "required-shape": 2
+    },
+    "labels_all": {
+      "copy": 880,
+      "boilerplate": 1242,
+      "required-shape": 106,
+      "distinct": 2
+    }
+  }
+}
