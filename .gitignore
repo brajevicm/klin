@@ -15,3 +15,4 @@ benchmark/**/sentinel.txt
 # source, so it is attached to the release that cites it. Only the note stays.
 benchmark/runs/*
 !benchmark/runs/README.md
+__pycache__/

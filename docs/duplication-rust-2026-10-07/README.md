@@ -63,8 +63,14 @@ The repositories are new to the #480 work:
 
 | Repository | Pinned head | Window |
 |---|---|---|
-| starship | `d4d0459c5c24ba8f64663af8714f7858d7fb357b` | 200 newest non-merge commits |
-| helix | `ba40e547426b0f9896c8bdc699a4ab11f2b37dbc` | 200 newest non-merge commits |
+| starship | `d4d0459c5c24ba8f64663af8714f7858d7fb357b` | 1,000 newest non-merge commits |
+| helix | `ba40e547426b0f9896c8bdc699a4ab11f2b37dbc` | 1,000 newest non-merge commits |
+| nushell | `88bf737d8df2f3aab12cdf4c2b3c676dd7abf58f` | 300 newest non-merge commits |
+
+The first plan used 200 commits each from starship and helix. That scan found
+57 pairs in starship and 1 pair in helix, so one repository could not supply a
+sample. The windows were widened and nushell was added before any label existed.
+The rule did not change.
 
 [`scan.py`](scan.py) finds regions that a commit introduces: at least half of
 one span's lines are added by the commit. It keeps a pair only when the
@@ -76,3 +82,17 @@ random sample of the dropped pairs, stratified by repository, for a total of
 at most 150 pairs. `sampling.json` records each stratum's population and
 weight. Two model reviewers label the packet independently with the #480
 review prompt. They see no rule, stratum, or token count.
+
+## Population and sample
+
+| Repository | Pairs | v5 kept | Counterparts not in parent (excluded) |
+|---|---:|---:|---:|
+| starship | 645 | 14 | 6 |
+| helix | 22 | 4 | 29 |
+| nushell | 41 | 2 | 277 |
+
+starship supplies 91% of the population, so the recall estimate depends
+mostly on starship. `sample.py` drew the packet with seed 20261007: all 20
+kept pairs and 129 dropped pairs (starship 119 of 631, nushell 7 of 39,
+helix 3 of 18). Its context lines come from the stored corpus with the
+#480 window of three lines before and after each span.

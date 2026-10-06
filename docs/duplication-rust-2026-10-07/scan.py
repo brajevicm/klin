@@ -175,7 +175,7 @@ def main():
         counts[name] = {"commit_limit": int(limit), "root": root, "pairs": len(found), "unverified_dropped": scan.unverified[name]}
         regions += found
     regions.sort(key=lambda row: row["id"])
-    blind = [{"id": row["id"], "spans": row["spans"]} for row in regions]
+    blind = [{"id": row["id"], "spans": [dict(span) for span in row["spans"]]} for row in regions]
     for row in regions:
         for span in row["spans"]:
             span.pop("context")
