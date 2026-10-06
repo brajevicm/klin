@@ -11,6 +11,21 @@ from pathlib import Path
 from verify import normalized
 
 
+TEST_DIRS = {'tests', 'test', '__tests__', 'benches', 'fixtures', 'e2e', '__mocks__', 'playwright', 'cypress'}
+TEST_PREFIXES = ('test_', 'spec_')
+TEST_SUFFIXES = ('_test', '_spec', '.test', '.spec', 'Test', 'Tests')
+
+
+def test_path(relative):
+    """klin's test conventions (src/survey.rs), plus monorepo test folders. A Rust spec/ is production."""
+    stem = relative.name.removesuffix(relative.suffix)
+    folders = relative.parts[:-1]
+    spec = relative.suffix != '.rs' and 'spec' in folders
+    suffixed = any(part.endswith(('-tests', '_tests', '-test')) for part in folders)
+    return (spec or suffixed or bool(TEST_DIRS & set(folders)) or stem.startswith(TEST_PREFIXES)
+            or stem.endswith(TEST_SUFFIXES) or relative.name == 'tests.rs' or '.e2e.' in relative.name)
+
+
 ROOTS = [('klin', 'klin/src'), ('glaredb', 'glaredb'), ('karakeep', 'karakeep')]
 
 
@@ -20,9 +35,7 @@ def collect(corpus, output, roots=ROOTS):
         count = {'files': 0, 'tokens': 0, 'unsafe_units': 0}
         for path in sorted(root.rglob('*')):
             relative = path.relative_to(root)
-            if not path.is_file() or path.suffix not in ('.rs', '.ts', '.tsx') or path.name.endswith(('.d.ts', '_test.rs')) or path.name == 'tests.rs':
-                continue
-            if any(part in ('tests', 'test', '__tests__', 'benches', 'fixtures') for part in relative.parts) or '.test.' in path.name or '.spec.' in path.name:
+            if not path.is_file() or path.suffix not in ('.rs', '.ts', '.tsx') or path.name.endswith('.d.ts') or test_path(relative):
                 continue
             n = normalized(path)
             count['files'] += 1

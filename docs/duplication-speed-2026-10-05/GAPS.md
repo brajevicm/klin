@@ -8,12 +8,13 @@ klin's duplication gate works well when all of these hold:
 
 1. **Precision.** At least 80% of reported regions are real copies (owner
    decision, 2026-10-06).
-2. **Recall.** The gate reports most real copies that an agent introduces in
-   a turn. The owner has not set a recall limit yet. This plan proposes one.
+2. **Recall.** The gate reports at least 40% of labeled copies of 60 tokens or
+   more for each language, on a blind set, at 80% precision (owner decision,
+   2026-10-06).
 3. **Ratchet.** The gate reports only duplication that the turn introduced. A
    copy that existed at the base never blocks.
-4. **Cost.** The gate fits the #478 Stop limits, or the owner relaxes them
-   with a stated reason.
+4. **Cost.** The gate fits the #478 Stop limits. The owner keeps these limits
+   unchanged (2026-10-06).
 5. **Feedback.** An agent that receives a finding removes the copy. It does
    not evade the detector or make a harmful abstraction.
 
@@ -180,14 +181,14 @@ syntax facts. Its cost is not measured.
 - Use T = 100 for Rust to try a larger k and a smaller Rust index.
 - Keep exact confirmation and lineage at `klin check`, and report INCOMPLETE
   at Stop when a budget runs out.
-- If the limits still fail, give the owner the numbers for a limit per
-  changed token, which the owner asked about on 2026-10-06.
+- The owner keeps the #478 limits unchanged, so a design that misses them
+  does not ship.
 
 **Test.**
 
 1. Run `measure.sh` rows with version 2 on the pinned corpora, 10k and 300k.
 2. The owner runs the 1M rows.
-3. Pass: every #478 limit, or an owner decision that changes a limit.
+3. Pass: every #478 limit.
 
 ### G8. Ratchet and lineage
 
@@ -296,8 +297,31 @@ reproducible from their commits.
 | 6 | G6 tier 2, G11 feedback | After tier 1 works, test evasion and agent behavior. |
 | 7 | G5 short copies | Lowest expected value. It may end as a stated limit. |
 
-## Proposed recall goal
+## Recall goal
 
-Set a recall goal so that the work has a target: at least 40% of labeled
-copies of 60 tokens or more, for each language, on the blind set, at 80%
-precision. Version 2 is at 15% to 25%. The owner decides the number.
+The owner set it on 2026-10-06: at least 40% of labeled copies of 60 tokens or
+more, for each language, on the blind set, at 80% precision. Version 2 is at
+15% to 25%.
+
+## G10 result (2026-10-06)
+
+Pairs that touch a test path, by definition, over the three sets:
+
+| Set | klin's rules (`src/survey.rs`) | klin's rules plus monorepo folders | Kept by version 2 |
+|---|---:|---:|---:|
+| `calibration/` | 0 | 0 | 0 |
+| `calibration-holdout/` | 2 (both copy) | 7 (5 copy, 2 boilerplate) | 2 (1 copy, 1 boilerplate) |
+| `calibration-holdout2/` | 0 | 33 (all boilerplate) | 0 |
+
+- The leaks change version 2 precision by at most one pair. G10 is not a
+  precision problem for version 2.
+- klin's own rule treats any `spec/` directory as test code. yazi's
+  `yazi-shared/src/spec/` is a production module with 2 labeled copies, so klin
+  would skip production code there. This affects every klin check that uses
+  the test convention.
+- klin's rule misses monorepo test folders: `e2e/`, `__mocks__/` and
+  documenso's `packages/app-tests/`.
+- `calibrate.py` now uses klin's rules, does not treat a Rust `spec/` as test
+  code, and adds `e2e`, `__mocks__`, `playwright`, `cypress`, `fixtures` and
+  folders that end in `-tests`, `_tests` or `-test`. Sets collected before
+  this change used the older filter. Their survey stays as it was.
