@@ -1,0 +1,77 @@
+{
+  "reviewer": "C (gpt-5.6-sol)",
+  "scope": "12 TypeScript pairs where reviewers A and B disagreed on copy versus non-copy",
+  "method": "Three-model majority on these 12 statuses; retain A/B agreed copy status on other TypeScript pairs",
+  "adjudicated_pairs": {
+    "0533c8c5d132a2b3": {
+      "copy_votes": 2,
+      "total_votes": 3,
+      "resolved": "copy"
+    },
+    "1e4c2b23f98c7b81": {
+      "copy_votes": 2,
+      "total_votes": 3,
+      "resolved": "copy"
+    },
+    "265b5a8050b232a3": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "592e1d39e0c12165": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "599513aef77e8276": {
+      "copy_votes": 2,
+      "total_votes": 3,
+      "resolved": "copy"
+    },
+    "6ab8030a49851de3": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "90104c8d9f15a56b": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "d59ea109d28f59ca": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "dbc87bd0fc29bd83": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "03d49768979fb27e": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "96552d2ce6331f54": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    },
+    "e8ce9bfb91960573": {
+      "copy_votes": 1,
+      "total_votes": 3,
+      "resolved": "non-copy"
+    }
+  },
+  "resolved_copy": 3,
+  "resolved_non_copy": 9,
+  "weighted_typescript_estimate": {
+    "kept_population": 130,
+    "estimated_kept_copies": 104.0,
+    "estimated_all_copies": 158.66666666666666,
+    "precision": 0.8,
+    "recall": 0.6554621848739496
+  },
+  "formal_gate_status": "not_met_under_two_independent_estimate_rule: reviewer A precision remains below 0.80"
+}

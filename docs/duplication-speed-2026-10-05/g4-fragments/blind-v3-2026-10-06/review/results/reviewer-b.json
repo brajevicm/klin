@@ -1,0 +1,1002 @@
+{
+  "6921d24e9a733fd1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both calculate and render the same bottom-right warning rectangle."
+  },
+  "1e0cb5dbf093929a": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement the numeric-operation trait by forwarding to the existing unary executor; tan and floor are distinct operations."
+  },
+  "7d2df0d23d3bbc98": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are conventional form controls and Cancel/Enter dialog footers."
+  },
+  "d6bc8ad1c3574904": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both map the same upload and conversion error codes to user-facing messages."
+  },
+  "f4b0e6dd52901d13": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Each local macro connects command names to a different action namespace; the repeated shell is dispatch wiring."
+  },
+  "265cfa7ecc2b8ebd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both reject blank searches and load the same user and team access context before constructing search filters."
+  },
+  "bc3b020dfaa6c7ce": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same team ownership, team-email access, deletion, and visibility policy for completed envelopes."
+  },
+  "96552d2ce6331f54": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both implement the same branded email wrapper and custom-logo fallback policy."
+  },
+  "6ab8030a49851de3": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "The job adapter shape includes both required callbacks and repeated job-prefixed logging behavior."
+  },
+  "42f21d14e32300ce": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "These trait adapters invoke the shared unary executor with different rounding operations."
+  },
+  "d6ff095eddac8d87": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both calculate completion state and capped byte-based progress using identical rules."
+  },
+  "0dd03f55d4487cdc": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both draw invalid-name warnings with the same placement and clipping calculation."
+  },
+  "87abe1f76567f077": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated region is imports for conventional form and localization dependencies."
+  },
+  "5e76113d33494037": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both validate remote names and render the same warning geometry and styling."
+  },
+  "d51a8191cbb431f5": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both fulfill scalar-function bind and execute interfaces; subtraction and L2 reduction are distinct operations."
+  },
+  "ffb847c0add7382d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both render localized branded HTML and plain-text email before sending it."
+  },
+  "628a9c618c11eaf4": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both extract a Bearer presign token and reject missing tokens before verification."
+  },
+  "03993f56b31ce94b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are repeated form, dialog, and localization imports."
+  },
+  "a95862ff4a857f15": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both render a member identity with the same admin link and name/email fallback rules."
+  },
+  "1e8b4738e77b79a8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both sort recipients null-last by signing order, break ties by ID, and locate the next recipient."
+  },
+  "dbc87bd0fc29bd83": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both select a branding logo or default logo inside the same email wrapper."
+  },
+  "37fd668e0e6f020b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are shared UI and form dependency imports."
+  },
+  "f942885982208534": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The duplicated region consists of conventional control and localization imports."
+  },
+  "ac735fe686625338": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both recognize Prisma URL uniqueness failures and translate them to an already-exists application error."
+  },
+  "b0f535e49b4dad0a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both forward a mouse event with the same coordinate, button, and modifier preservation."
+  },
+  "d4aa00e55fda5cfe": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same title/external-ID search and capped recipient subquery."
+  },
+  "7e9eef8eee59496d": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both build the same Unix-socket daemon channel with identical connection diagnostics."
+  },
+  "b7072c5ec2dd3dbb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both repeat the alignment, element-size, and capacity safety checks before exposing a slice."
+  },
+  "f0c7e431fea8575f": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap is imports for numeric functions and the conventional registration prefix."
+  },
+  "9a22bc89338ea20f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both scan directory entries by inode/device and resolve unique case-insensitive names."
+  },
+  "557b8206ac3d1253": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat inline-length discrimination and sixteen-byte conversion logic for string unions."
+  },
+  "0aac5258cc9a9b61": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both append a directory to a tar stream, finalize it, and translate compression errors identically."
+  },
+  "16457e6df52481ad": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both provide the scalar-function trait's unit state and UTF-8 binding declarations."
+  },
+  "265b5a8050b232a3": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both implement the same branded email shell and fallback logo selection."
+  },
+  "03d49768979fb27e": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both render the same deletion-email layout and branding fallback with entity-specific content."
+  },
+  "0b9c735fa8dcfb29": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both target the first pending field's PDF page and display its insertion tooltip."
+  },
+  "7044ceace9efd45e": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both fetch an envelope item and its document data by the same envelope/item IDs."
+  },
+  "75a33af05e95fb40": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both filter signers with fields and render the same selectable signer cards, identity marker, and field counts."
+  },
+  "b7f595c66bcf3971": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap consists of form and localization imports."
+  },
+  "24aebb2bee5ffa34": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "These are adjacent financial legend rows using an existing aligned-text component with different values and colors."
+  },
+  "f37be3fd39f33073": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both wrap a write operator in the same aggregate to sum partition counts."
+  },
+  "90104c8d9f15a56b": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both implement the same email branding fallback and common wrapper."
+  },
+  "c3f914b336fc93f3": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The packet enum variants are repeated in the conversion macro to define matching packet conversions."
+  },
+  "56029754aa21c649": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are imports and the common function registration prefix for separate numeric operations."
+  },
+  "2ff07988085b294b": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both use conventional destructive-dialog footer controls wired to different member deletion actions."
+  },
+  "2c970a9557ab0029": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both validate flat filesystem paths with the same component and string-conversion rules."
+  },
+  "d3e5f9fe04dd9a36": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both map envelopes and their fields/recipients to the same legacy template response."
+  },
+  "1666ca12423910aa": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repetition is dialog, form, and localization imports."
+  },
+  "685f497407cab410": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement the numeric-operation interface by invoking the shared executor with distinct scalar operations."
+  },
+  "fe8384f45d755433": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both execute a task callback and persist its completed status, JSON-null result, and completion timestamp."
+  },
+  "52e85b122e5a252e": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The numeric-operation trait adapters call the shared executor with logarithm and degree-conversion operations."
+  },
+  "2cfcbc562a83ec9a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both exclude native autocomplete targets and locate the completion item under the pointer with identical hit-testing rules."
+  },
+  "8b0d3f2900eb6407": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both extract and validate presence of a Bearer presign token before verification."
+  },
+  "592e1d39e0c12165": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both render the same branded email wrapper and custom/default logo policy."
+  },
+  "fca71f639c327515": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same retry signal, attempt limit, and exponential-backoff algorithm."
+  },
+  "c24d011c811bc1ff": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated portion is editor-form imports and the prefix of separate metadata schemas."
+  },
+  "fd9ec1851c7bfbbd": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The regions consist of straightforward constructors, a count accessor, and a resume constructor for corresponding future types."
+  },
+  "b98f6f2e91e9df47": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Conventional form wiring is interleaved with the shared CFR21 feature gate for signer authentication settings."
+  },
+  "f883fb375dbf49cb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are arithmetic-function imports and nominal function declarations."
+  },
+  "5a49685a2c7910f9": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are aggregate-function imports and nominal type declarations."
+  },
+  "ea638981c3d8d388": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The matching region is imports needed by separate table-format adapters."
+  },
+  "6cd595603b62fa94": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both enumerate supported arithmetic overload signatures in the function API."
+  },
+  "309526351e6a6c7d": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "The aggregate planning interface dispatches to different sum and average implementations with different output types."
+  },
+  "5c600cec0512ef3c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated code is form, dialog, and localization imports."
+  },
+  "f083f31a2de5c1e7": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both build document base queries with the same folder, period, and sender filtering policy."
+  },
+  "c244a9983cdf92d0": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement identical transfer-state predicates and capped progress percentage calculations."
+  },
+  "000e42e859c33135": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "These scalar-function adapters share required binding/executor structure while defining byte versus bit length."
+  },
+  "a215c6f9980b6dc2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both parse a Bearer token, reject its absence, and verify a resource-scoped embedding token."
+  },
+  "35a76bca3afec886": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both read and verify the URL embedding token and convert missing/invalid tokens into a 404."
+  },
+  "f26a95e32fb07715": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both translate correlated columns into equality join conditions using the same mapping and missing-column error."
+  },
+  "d59ea109d28f59ca": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat the common email shell and branding/default-logo selection."
+  },
+  "eb9e17bed2f2bb4b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The matching region is dependency imports for dialogs and forms."
+  },
+  "7e49922fc04dfc5e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both run the credential helper with repository configuration and fall back to URL credentials."
+  },
+  "9953126053416cee": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are conventional form-control and localization imports."
+  },
+  "e404de9a969e2110": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both map navigation keys to the same scrolling actions and event-consumption results."
+  },
+  "7b76610d8d966710": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Repeated deletion-result notifications and page refresh are combined with conventional dialog scaffolding."
+  },
+  "143eb42996c4454c": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same windowed/exact count strategy, parallel execution, and empty-page metadata."
+  },
+  "f0b4b7271357e43a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap is numeric-function imports and registration scaffolding."
+  },
+  "3cba13c394409996": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The common planning prelude collects argument datatypes; the subsequent validation and operations differ."
+  },
+  "76fa222e960ea293": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The matching portion is conventional UI, form, and localization imports."
+  },
+  "94da579be39ef219": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both repeat raw-buffer alignment, divisibility, and capacity assertions before constructing slices."
+  },
+  "7fcaf2e273c0cc03": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement identical S3 signing header setup and canonical-request hashing."
+  },
+  "ea37c70ef346b1fd": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement Hash by visiting their corresponding name, return-type, and input fields."
+  },
+  "f745d59ce9d92f92": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement identical retry signaling, bounded attempts, and exponential backoff."
+  },
+  "1377a815f029becb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are numeric-function imports and registration prefixes."
+  },
+  "c23ce38387f3a95e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are ordinary form controls and Cancel/Submit dialog footers with different labels."
+  },
+  "cce6867238f5f09e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The region contains aggregate support imports and function registration declarations."
+  },
+  "7586650410b96108": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both map their respective datatype enum variants to required textual names."
+  },
+  "30e85668c8defe5f": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "These numeric-operation trait implementations delegate to the shared executor with different scalar functions."
+  },
+  "8f48bb8080fcce25": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both regions contain planner dependency imports."
+  },
+  "2aa70cacc4f968cf": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Popup interface forwarding is interleaved with the repeated Enter-key consumption policy."
+  },
+  "e036b91b0a211122": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The trait adapters use the existing unary executor for distinct logarithm and radians operations."
+  },
+  "c14a6b8741ae3f58": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are repeated form and localization dependency imports."
+  },
+  "6e2eb2f86a80c661": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both group input URLs by parent before applying a selection operation."
+  },
+  "f17c29e86e7cc805": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "These are conventional error-toast, reset-on-close, and pending-dialog control patterns."
+  },
+  "5aab753cd67e5003": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both use routine button/popover state wiring around report-specific menus."
+  },
+  "3f8bf0479f44ef6a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both decode and validate embedded configuration, disable dark mode, and conditionally inject whitelabel CSS."
+  },
+  "3233a339e7092633": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated region consists of authentication-form dependencies."
+  },
+  "0933a416acd59da5": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Form markup repeats alongside recipient-limit semantics and enterprise-license feature restrictions."
+  },
+  "fbe7ace416c008dd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both walk directory entries, inspect metadata, reject orphan symlinks, and queue subdirectories."
+  },
+  "e9513b712227af69": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both package a directory into a compressed tar and repeat the same finalization and error translation."
+  },
+  "f05ea9306ffb373a": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both convert field coordinates to the template setter's page-coordinate representation and invoke it with an envelope ID."
+  },
+  "49e593a8c561b53d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap is execution-operator imports and declaration prelude."
+  },
+  "0533c8c5d132a2b3": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both render existing FolderCard components with conventional local dialog-state callbacks."
+  },
+  "4d67a785eb612f92": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both search envelope titles/external IDs and cap a recipient-name/email subquery."
+  },
+  "5ef594933d2b8a64": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both sort recipients by null-last signing order and ID to find the next signer."
+  },
+  "426f1f4bd77d0339": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat the selected-list traversal and reducer initialization algorithm in validity branches."
+  },
+  "f8e4bc65fa0dd817": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both update an envelope item's document-data reference in local state after PDF replacement."
+  },
+  "1f270ce1c2ca684c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are editor-form imports and schema declaration prefixes."
+  },
+  "6fbd5398682ac74a": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both route handlers log their envelope ID and call the existing shared access-policy helper."
+  },
+  "4514d94e7570e135": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both embed PDF field overlays and compute identical translations for rotated pages."
+  },
+  "c01faaf8a6bf1e41": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are repeated form, select-control, and localization imports."
+  },
+  "2d13913f3031aa7f": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated portion is imports and numeric-function registration scaffolding."
+  },
+  "defdb90be05c2008": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both group fields by page and reject missing PDF pages before creating overlays."
+  },
+  "599513aef77e8276": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both define the same capped search/count policy and recipient/sender EXISTS query helpers."
+  },
+  "752bdeff05c8c512": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both extract a Bearer presign token and apply the same missing-token rejection."
+  },
+  "18d07bedbb3a943e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both calculate the next recipient using identical null-last signing-order sorting and ID tie-breaking."
+  },
+  "314da79a767cbe79": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The common region consists of dialog and form dependency imports."
+  },
+  "72e5cfd4a7cb4567": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both generate upload keys using the same slug length fallback, random prefix, and optional user prefix."
+  },
+  "ef85ec4ed9ce33b9": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The matching code is scalar-function imports and nominal declarations."
+  },
+  "834387dc2391ce69": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both traverse an unvisited materialization plan with the same visited-set and lookup-error handling."
+  },
+  "92217547525eec26": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are numeric-function imports and registration prefixes."
+  },
+  "a7417b4b07287b50": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The local macros wire action names into separate action namespaces."
+  },
+  "9b690434b9d36618": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both scalar-function adapters allocate through the existing buffer/executor interfaces and supply distinct arithmetic operators."
+  },
+  "ef7a8a3ab8163ded": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated region is dialog, form, and localization imports."
+  },
+  "c4a2bce830cad031": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both map the same navigation keys to scrolling commands and event results."
+  },
+  "33e186bbc7d0b8d3": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement the unary numeric trait using the shared executor with distinct inverse-trigonometric operations."
+  },
+  "b606a256dda97f39": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement S3 credential scope, query encoding, and canonical/signed-header construction."
+  },
+  "395553f6a287ac5e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both calculate and draw the same invalid-name warning rectangle."
+  },
+  "8da24456c96a5ba1": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both initialize the sync engine, obtain its diff, and enforce the same encryption-key check unless forced."
+  },
+  "8e1f0c233f4d97d6": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both report branding sanitization warnings with identical pluralization, durations, and error messaging."
+  },
+  "ea80bf2840b6b9d7": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both load the session user's two-factor fields, reject missing users, and return verified backup codes."
+  },
+  "02b7c00a69b50b5d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The common region is form and organization-role imports."
+  },
+  "d7e81aecff45c10b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repeated code is form, dialog, and localization imports."
+  },
+  "f13cdd5f2d250a33": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both use conventional deletion-error toasts and pending-dialog trigger scaffolding."
+  },
+  "63aaa776e9b95390": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are form-control and localization imports."
+  },
+  "3a8ffbebe3f5ab71": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same SigV4 string-to-sign, chained HMAC derivation, and authorization header."
+  },
+  "f20a70045ee8322f": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both map recipient roles to the same localized signing-page action title."
+  },
+  "d8f1407d80c5dd90": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both declare catalog metadata for distinct financial functions with matching parameter schemas."
+  },
+  "3478b8f0931ba32f": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both fulfill aggregate binding/state-construction interfaces for distinct aggregation states."
+  },
+  "7849cfd646ac67df": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both decode the same terminal dimensions and cursor coordinates from an eight-byte header."
+  },
+  "e66c2cb13dcaa78b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are dependency imports for conventional authentication forms."
+  },
+  "24947555107433a8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same team/sender/recipient deletion-visibility filter."
+  },
+  "22de99646d2936a8": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat team-ownership and sender-email access branches while extending recipient access for different statuses."
+  },
+  "ab0cde07c6492545": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same team and email-specific deletion filter."
+  },
+  "1e4c2b23f98c7b81": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both define identical recipient-existence and sender-email query helpers."
+  },
+  "a16e59f8337f046b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both evaluate category/group conditions with the same identity and membership operators."
+  },
+  "f13433a7051851b2": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The region contains imports and numeric-operation type declarations."
+  },
+  "1c170cf709576eae": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both validate remote names and draw warnings with identical layout calculations."
+  },
+  "3de0746586a00bc3": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both detect S3 locations and extract key, secret, and region into the same access configuration."
+  },
+  "65002b77cb71f15f": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "These execute-method preludes access the two inputs before forwarding to the shared binary executor."
+  },
+  "8bd8e23104800914": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both advance a listing offset and choose exhausted versus has-more from the remaining entries."
+  },
+  "07935d4a29179696": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repetition is imports for dialog and form components."
+  },
+  "dc9897951b262b5f": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both serialize inline or heap-backed string values into row storage with identical pointer updates."
+  },
+  "9f8e2f6ac684e163": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the inbox policy: visible non-draft envelopes with an undeleted, unsigned, non-CC team-email recipient."
+  },
+  "6a6e72e98dca73e2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both validate and bind function arguments, rejecting empty, named, and wildcard forms with the same traversal."
+  },
+  "38ff2b0b52069493": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are numeric-operation imports and type aliases."
+  },
+  "a30673640c836101": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement the same Unicode normalization function and lookup tables; no generation evidence is shown."
+  },
+  "7ef5e62dd4726a7e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both render branded localized HTML/plain-text variants and initialize localization before sending email."
+  },
+  "f9ac3dd31fbfc33b": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both choose local or compatible-scheme providers using the same copy-routing policy."
+  },
+  "0ea0aaace2995287": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement table-generation and projected-row scanning interfaces for different TPC-H row schemas."
+  },
+  "79392f629034b6b3": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both arithmetic adapters use the shared binary executor and supply different operators."
+  },
+  "20f594cda21ca388": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "These are API overload signatures for distinct arithmetic functions."
+  },
+  "e1afeb622c28f7e9": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The common region consists of scalar-function and execution imports."
+  },
+  "116abb877db463cd": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both provide scalar-function binding and execution interfaces with different output types."
+  },
+  "af5368ebfd4e5f13": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are form, localization, and role-type imports."
+  },
+  "51893fbe37dfc572": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both read revision-log batches, update shared results, notify, and throttle based on background state."
+  },
+  "fcdb0530fb0dbea2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both extract and require a Bearer token before resource-scoped presign verification."
+  },
+  "a15e2a6f416031eb": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The regions declare the create and edit embedding payload schemas and their common optional fields."
+  },
+  "9c0494c732db0774": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "These are conventional attachment-popover triggers with a conditional item count."
+  },
+  "54e0eb5980f1f469": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Both use standard Cancel and submitting-state button footers."
+  },
+  "035cf99d1b3a6f6b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both select a cast candidate and rewrite inputs into casts with identical error handling."
+  },
+  "e8ce9bfb91960573": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat the branded email wrapper and custom-logo fallback."
+  },
+  "f4f62709f63d89a2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both construct the same Unix-socket daemon channel with the same connection error context."
+  },
+  "a381ecb051314c32": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The overlap is imports for dialog, form, and localization dependencies."
+  },
+  "7c35a57d6ce27709": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both calculate selection indices with identical saturating single-line, page, home, and end navigation."
+  },
+  "bc9437150b448153": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both derive transfer completion/failure and capped byte progress with identical rules."
+  },
+  "302663b3d451bd61": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Repeated Header property wiring includes the same substantive forecast-date fallback calculation."
+  },
+  "c4fbccbf5e864b90": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are numeric-function imports and registration declarations."
+  },
+  "ad24b175b0bc3179": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both declare which document metadata fields belong to their API schemas."
+  },
+  "4508463da2077653": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "These thin copy wrappers preserve the source basename and delegate to different existing file/directory operations."
+  },
+  "81bab23e27780ea2": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both execute the same template projection, descending pagination, count, and page metadata construction."
+  },
+  "9898ad53cfbffef4": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "These are simple local state accessors for corresponding progress types, with no percentage calculation."
+  },
+  "b877267230d9b0ab": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The repetition is form-control and localization imports."
+  },
+  "8fd659e5ec00d442": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "These are conventional dialog, form, and localization imports."
+  },
+  "73dc3788e4c42875": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement scalar-function binding declarations for boolean-returning operations."
+  },
+  "2062313d9bc0b052": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement ScanPlanner by boxing their format-specific planning future."
+  },
+  "b4335f1e7b382dcd": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement identical lowercase hexadecimal encoding by emitting each byte's two nibbles."
+  },
+  "6310f1e482125e54": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both construct unique candidate names using the same stem, extension, and numeric-suffix algorithm."
+  },
+  "36803ceb9151b746": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Both implement numeric-operation adapters using the shared executor for different scalar functions."
+  },
+  "b6cd848117c969b8": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both write inline or referenced strings into rows and advance heap pointers identically."
+  },
+  "694c8da8156ba734": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both reduce transfer events into file/byte counters, collection state, and task logs."
+  },
+  "8246afb77eb7219b": {
+    "label": "copy",
+    "confidence": "medium",
+    "rationale": "Both repeat ternary-array validity checks and synchronized selection traversal."
+  },
+  "86b56ccb38e9f865": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both construct path-based SFTP requests and calculate their protocol-defined payload lengths."
+  },
+  "edfce87992ab01d5": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The regions contain straightforward constructors, a count getter, and a resume constructor for corresponding future types."
+  },
+  "b641ebf95f78b2fb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both format function descriptions and parameter documentation into the same completion-info text."
+  },
+  "5da3dcf127a11ee6": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both implement identical saturating selection movement and page/home/end behavior."
+  },
+  "9b7d854b38cfe86b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both render invalid-name warnings with identical rectangle placement and clipping."
+  },
+  "2fdeb5fc81d7b9eb": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both validate materialization existence and initialize the same client-local scan pipeline state."
+  },
+  "a88895b7456f46c6": {
+    "label": "required-shape",
+    "confidence": "medium",
+    "rationale": "Both implement multiplication bind/execute interfaces and forward typed input arrays to the shared binary executor."
+  }
+}

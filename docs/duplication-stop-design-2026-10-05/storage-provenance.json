@@ -1,0 +1,23 @@
+{
+  "command": "cargo build --release --manifest-path docs/duplication-stop-design-2026-10-05/proto/Cargo.toml --target-dir /tmp/klin-stop-storage-target; /tmp/klin-stop-storage-target/release/dup-speed storage ROOT",
+  "iterations": 5,
+  "source_and_binary_sha256": {
+    "docs/duplication-stop-design-2026-10-05/proto/src/main.rs": "95d29bd5a0fbc9baa69e5b08f4d4345ac4305f78790f30e3a89f060b80afcfec",
+    "docs/duplication-stop-design-2026-10-05/proto/src/storage.rs": "fdb618a5173efb94753e513451d5d69d2598aac0d86af9799cad1a2da852beba",
+    "docs/duplication-speed-2026-10-05/proto/src/main.rs": "1ef73688866b5a8b42f016f293f3175422a8c331434f0c5ad48cb5a416f25eeb",
+    "/tmp/klin-stop-storage-target/release/dup-speed": "9d89762049fec722d95845efb853a6e479df0a0baee847758ccc96dedd680eca"
+  },
+  "corpora": "same frozen klin/src and synthetic 1m as #490 research",
+  "timing_excludes": [
+    "normalization",
+    "disk IO",
+    "candidate index",
+    "lineage"
+  ],
+  "rss_measured": false,
+  "source_formatting_after_build": false,
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "storage_check_command": "/tmp/klin-stop-storage-target/release/dup-speed storage-check",
+  "historical_measurement_binary_sha256": "ee3210c5b477700ae4c99e16cfe1ec973ff89d9cb9d8eea9be1f8fd9792662d4",
+  "historical_source_limitation": "Exact original measured main source bytes were not archived before formatting and later CLI additions. Original executable SHA retained; current source/executable hashes do not identify historical timed source. Initial results retain numeric measurements but were reformatted with added medians/root fields and a null klin candidate total to correct misleading 1m reference."
+}

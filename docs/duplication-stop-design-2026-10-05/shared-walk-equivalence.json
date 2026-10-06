@@ -1,0 +1,7 @@
+{
+  "cases": 1319,
+  "comparison": "exact JSON token text, rows, safe flags, error/unsafe counts, selected positions",
+  "output_sha256": "c1fdafa17f385577a1e3cd358a53b292e1c85477552d7710ba5123abeccfacb4",
+  "reference_binary_sha256": "000cf53ea473170d4dccc576e0347d8ee0b1bb1c1f83f516caa3cb12550319f0",
+  "candidate_binary_sha256": "dc50de2b674482bd81a82c993597fa9110d1e6241ac42c98d30086a7ad7f8c73"
+}

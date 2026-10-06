@@ -1,0 +1,137 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -159,10 +159,12 @@
+         }
+     }
+ 
+-    fn walk(&mut self, cursor: &mut TreeCursor<'a>, top: bool) {
++    fn walk(&mut self, cursor: &mut TreeCursor<'a>, top: bool, visit: &mut impl FnMut(Node<'a>)) {
+         let node = cursor.node();
++        visit(node);
+         let kind = node.kind();
+         if node.start_byte() < self.excluded_end && node.end_byte() <= self.excluded_end {
++            visit_descendants(node, visit);
+             return;
+         }
+         if self.lang == Lang::Rust && kind == "attribute_item" {
+@@ -186,6 +188,7 @@
+                     item.end_byte(),
+                     node.start_position().row as u32,
+                 ));
++                visit_descendants(node, visit);
+                 return;
+             }
+         }
+@@ -193,6 +196,7 @@
+             if self.lang != Lang::Rust && risky_comment(node, self.source) {
+                 self.risky_unit = true;
+             }
++            visit_descendants(node, visit);
+             return;
+         }
+         if !cursor.goto_first_child() {
+@@ -219,13 +223,15 @@
+             let child = cursor.node();
+             let kind = child.kind();
+             if members && matches!(kind, ";" | ",") && member_separator {
++                visit(child);
++                visit_descendants(child, visit);
+                 member_separator = false;
+             } else {
+                 let before = self.out.len();
+                 if top {
+                     self.risky_unit = false;
+                 }
+-                self.walk(cursor, false);
++                self.walk(cursor, false, visit);
+                 if top
+                     && child.is_named()
+                     && (child.has_error() || child.is_missing() || self.risky_unit)
+@@ -274,6 +280,28 @@
+     }
+ }
+ 
++// Walk only branches canonical capture skips; reference extraction must still see them.
++fn visit_descendants<'tree>(node: Node<'tree>, visit: &mut impl FnMut(Node<'tree>)) {
++    let mut cursor = node.walk();
++    if !cursor.goto_first_child() {
++        return;
++    }
++    loop {
++        visit(cursor.node());
++        if cursor.goto_first_child() {
++            continue;
++        }
++        loop {
++            if cursor.goto_next_sibling() {
++                break;
++            }
++            if !cursor.goto_parent() || cursor.node() == node {
++                return;
++            }
++        }
++    }
++}
++
+ fn imports<'a>(lang: Lang, path: &str, source: &'a [u8], root: Node) -> HashMap<&'a [u8], String> {
+     let mut map = HashMap::new();
+     let mut cursor = root.walk();
+@@ -543,6 +571,26 @@
+ }
+ 
+ fn normalized_root(lang: Lang, path: &str, source: &[u8], root: Node, capture: bool) -> Parsed {
++    let mut visited = Vec::new();
++    let parsed = normalized_root_with(lang, path, source, root, capture, &mut |node| {
++        visited.push((node.id(), node.start_byte(), node.end_byte()));
++    });
++    let mut expected = vec![(root.id(), root.start_byte(), root.end_byte())];
++    visit_descendants(root, &mut |node| {
++        expected.push((node.id(), node.start_byte(), node.end_byte()));
++    });
++    assert_eq!(visited, expected, "shared reference preorder changed");
++    parsed
++}
++
++fn normalized_root_with<'tree>(
++    lang: Lang,
++    path: &str,
++    source: &'tree [u8],
++    root: Node<'tree>,
++    capture: bool,
++    visit: &mut impl FnMut(Node<'tree>),
++) -> Parsed {
+     let mut stream = Stream {
+         lang,
+         source,
+@@ -556,7 +604,7 @@
+         out: Vec::new(),
+         rows: Vec::new(),
+     };
+-    stream.walk(&mut root.walk(), true);
++    stream.walk(&mut root.walk(), true, visit);
+     let unsafe_units = stream.unsafe_rows.len();
+     // Exclusions are discontinuities. Nested excluded ranges have the same next token.
+     for (_, end, row) in &stream.excluded {
+@@ -595,6 +643,22 @@
+         raw: stream.raw,
+         error: root.has_error(),
+     }
++}
++
++#[allow(dead_code)]
++pub(crate) fn consume_shared_visit<'tree>(
++    path: &str,
++    source: &'tree [u8],
++    root: Node<'tree>,
++    visit: &mut impl FnMut(Node<'tree>),
++) {
++    let Some(lang) = Lang::of(path) else {
++        visit(root);
++        visit_descendants(root, visit);
++        return;
++    };
++    let parsed = normalized_root_with(lang, path, source, root, true, visit);
++    std::hint::black_box(parsed);
+ }
+ 
+ // The isolated #482 experiment consumes the exact tree structural extraction owns.

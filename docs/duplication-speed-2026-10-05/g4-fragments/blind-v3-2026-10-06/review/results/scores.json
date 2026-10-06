@@ -1,0 +1,42 @@
+{
+  "reviewer-a": {
+    "Rust": {
+      "kept_population": 59,
+      "estimated_kept_copies": 55.41414141414142,
+      "estimated_all_copies": 154.95367629786236,
+      "precision": 0.9392227358329054,
+      "recall": 0.3576174682530322
+    },
+    "TypeScript": {
+      "kept_population": 130,
+      "estimated_kept_copies": 101.22222222222223,
+      "estimated_all_copies": 155.88888888888889,
+      "precision": 0.7786324786324786,
+      "recall": 0.6493228795438347,
+      "passes_g4": false
+    }
+  },
+  "reviewer-b": {
+    "Rust": {
+      "kept_population": 59,
+      "estimated_kept_copies": 54.23232323232323,
+      "estimated_all_copies": 153.77185811604417,
+      "precision": 0.9191919191919192,
+      "recall": 0.35268041822969143
+    },
+    "TypeScript": {
+      "kept_population": 130,
+      "estimated_kept_copies": 115.11111111111111,
+      "estimated_all_copies": 196.11111111111111,
+      "precision": 0.8854700854700855,
+      "recall": 0.5869688385269122,
+      "passes_g4": true
+    }
+  },
+  "agreement": {
+    "pairs": 200,
+    "same_label": 0.91,
+    "same_copy_decision": 0.915,
+    "copy_kappa": 0.830203755493408
+  }
+}

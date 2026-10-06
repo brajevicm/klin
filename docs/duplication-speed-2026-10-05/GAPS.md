@@ -20,13 +20,15 @@ klin's duplication gate works well when all of these hold:
 
 ## Where we are
 
-Version 2 rules (`holdout.py`) on three label sets:
+Version 2 baseline rules (`holdout.py`) on the label sets; the G4 version 3
+design screen is reported below:
 
 | Set | Rust precision | TypeScript precision | Rust recall | TypeScript recall |
 |---|---:|---:|---:|---:|
 | `calibration/` (design) | 22/26 = 84.6% | 23/23 = 100% | 22/100 | 23/58 |
 | `calibration-holdout/` (version 2 design) | 53/59 = 89.8% | 89/93 = 95.7% | 53/233 | 89/517 |
 | `calibration-holdout2/` (blind) | 26/26 = 100% | 128/140 = 91.4% | 26/105 | 128/880 |
+| `calibration-introduced/` (G1; introduced-region candidates) | 27/40 = 67.5% | 15/17 = 88.2% | 27/227 = 11.9% | 15/155 = 9.7% |
 
 Recall here is the share of labeled copies of 60 tokens or more that the rule
 reports. Why version 2 misses copies, counted over all three sets:
@@ -73,6 +75,18 @@ number at the gate.
 3. Pass: precision at least 80% on introduced copies. If the numbers differ
    from the survey by more than 10 points, the survey stops being the design
    set and the introduced corpus replaces it.
+
+**Result (2026-10-06).** Two blind model reviewers labeled 809 unique
+introduced-region candidates; their 10 overlapping pair IDs agree exactly.
+The scanner requires at least half of one span's lines to be added by the
+commit, then finds its counterpart in the post-commit tree. It does not verify
+that the counterpart existed in the parent commit, so the historical
+parent-provenance part of G1 remains open. Version 2 misses the 80% precision
+criterion in Rust and reaches 88.2% in TypeScript; recall is below 40% in both
+languages. Rust precision differs by more than 10 points from the previous
+blind survey, triggering use of this candidate corpus for further rule work
+while parent provenance is verified. See
+[G1 results](calibration-introduced/RESULTS.md).
 
 ### G2. Rust recall: copies from 60 to 99 tokens
 
@@ -128,10 +142,45 @@ enough and it holds behavior. Candidates:
   element, plus control flow or an `await`;
 - a higher non-JSX threshold for fragments only, for example 80 or 100.
 
-**Test.** Same loop as G2. The design sets hold 463 fragment copies in
-`calibration/` and `calibration-holdout/`, which is enough to compare the
-candidates. Pass on the blind set: precision at least 80% and TypeScript
-recall above 30%.
+**Test.** Compare candidates on the labeled design sets. The four current
+sets hold 1,610 TypeScript copies of 60 tokens or more. Pass on a new blind
+set: precision at least 80% and TypeScript recall above 30%.
+
+**Design screen (2026-10-06; not blind confirmation).** Version 3 preserves
+the version 2 whole-unit rule. It also keeps a fragment when both spans have
+at least 60 non-JSX tokens, a call, either control flow or `await`, and two
+complete executable statements. It clears 80% precision on all four labeled design
+sets and improves TypeScript recall. Rust results are unchanged. See
+[G4 results](g4-fragments/RESULTS.md). The v3 candidate remained open after
+the design screen pending blind confirmation; the v3 result below does not
+meet the criterion.
+
+**Blind confirmation (2026-10-06; two-model review complete).** Two independent
+models labeled all 200 sampled pairs with exact ID coverage. They agree on 91%
+of full labels and 91.5% of copy/non-copy decisions (κ = 0.83). Weighted
+TypeScript estimates differ across the precision gate: reviewer A reports
+77.9% precision and 64.9% recall; reviewer B reports 88.5% precision and
+58.7% recall. Since both estimates must meet the criterion, G4 is not
+confirmed. A third blind model labeled the 12 TypeScript pairs where A and B
+disagree on copy/non-copy status. Three-model majority resolves three as copies
+and nine as non-copies; applied to those 12 pairs and the other A/B-agreed
+statuses, the weighted estimate is 80.0% precision and 65.5% recall. This
+secondary consensus estimate does not replace either independent estimate, so
+the v3 candidate did not meet the two-review criterion. The known family-overlap
+and parent-provenance caveats are recorded in the
+[v3 packet](g4-fragments/blind-v3-2026-10-06/README.md).
+
+**Blind v4 fresh-family confirmation (2026-10-06).** V4 preserves the v2
+whole-unit rule and raises the fragment-only non-JSX floor to 70. On the
+pre-registered fresh-family TypeScript population, two independent reviewers
+both report 96.1% precision; recall is 49.1% for A and 56.2% for B. Their
+copy/non-copy agreement is 92% (κ = 0.80). Both clear the 80% precision and
+above-30% recall criteria, so G4 passes for this candidate on this test. The
+fresh-family population has 51 kept and 88 dropped pairs across `actual` and
+`documenso`; the sample covers all 51 keeps and 49 drops, with no family overlap
+with prior labeled sets. The parent-provenance
+limitation remains open. See the
+[v4 packet and results](g4-fragments/blind-v4-2026-10-06/README.md).
 
 ### G5. Copies under 60 tokens
 
@@ -289,19 +338,21 @@ reproducible from their commits.
 
 | Step | Gaps | Why this order |
 |---:|---|---|
-| 1 | G9 agreement and human audit, G10 test leaks | The other measurements depend on labels and a clean survey. Both steps are cheap. |
-| 2 | G1 introduced-copy corpus | It decides which corpus the recall work tunes against. |
-| 3 | G4, then G2 and G3 | Largest recall gaps first. G4 alone is 1,213 missed copies. |
-| 4 | G7 cost | Measure the final rule set, not each step. The 1M rows need the owner. |
-| 5 | G8 lineage | Needed before any ratchet, and independent of the rules. |
-| 6 | G6 tier 2, G11 feedback | After tier 1 works, test evasion and agent behavior. |
-| 7 | G5 short copies | Lowest expected value. It may end as a stated limit. |
+| 1 | G9 cross-model agreement, G10 test leaks (complete) | The other measurements depend on label reliability and a clean survey. Both steps are cheap. |
+| 2 | G1 candidate corpus (measured; parent provenance open) | It decides which corpus the recall work tunes against; parent verification will settle the strict historical definition. |
+| 3 | G4: improve v3 precision and run a fresh blind set | Reviewer A falls below the floor; the adjudicated estimate is exactly 80%, with no margin. |
+| 4 | G2, then G3 | Improve Rust recall after the TypeScript candidate is confirmed. |
+| 5 | G7 cost | Measure the final rule set, not each step. The 1M rows need the owner. |
+| 6 | G8 lineage | Needed before any ratchet, and independent of the rules. |
+| 7 | G6 tier 2, G11 feedback | After tier 1 works, test evasion and agent behavior. |
+| 8 | G5 short copies | Lowest expected value. It may end as a stated limit. |
 
 ## Recall goal
 
 The owner set it on 2026-10-06: at least 40% of labeled copies of 60 tokens or
-more, for each language, on the blind set, at 80% precision. Version 2 is at
-15% to 25%.
+more, for each language, on the blind set, at 80% precision. On the
+introduced-region candidate set, version 2 recall is 11.9% for Rust and 9.7%
+for TypeScript; parent-tree provenance is not yet verified.
 
 ## G10 result (2026-10-06)
 
@@ -346,16 +397,15 @@ three sets and both languages.
   version 2 does not depend on which reviewer labels.
 - Most disagreements are between boilerplate and required-shape (7) or
   between copy and boilerplate (7 one way, 2 the other).
-- Agreement between models passes the 85% limit. The human audit
-  (`agreement/audit.html`, 100 of these pairs) is still open. G9 passes only
-  when the owner's labels also agree at 85% or more.
+- Agreement between models passes the 85% limit. The 100-pair cross-model
+  audit below provides the final G9 labeling evidence.
 
 ## G9 result: audit (2026-10-06)
 
-The owner supplied `agreement/audit-labels.json` for the 100 audit pairs. Its
-format (label, confidence, rationale) matches `AUDIT-PROMPT.md`. Whether a
-person or another model wrote it decides the role of this result: owner
-agreement or a cross-model check.
+Another model reviewer supplied `agreement/audit-labels.json` for the 100 audit
+pairs. Its format (label, confidence, rationale) matches `AUDIT-PROMPT.md`. By
+the owner's decision on 2026-10-06, this cross-model result is the final G9
+labeling evidence; no human audit is required.
 
 | Slice | Pairs | Audit vs first labels: same label / same copy decision | Audit vs second reviewer: same label / same copy decision |
 |---|---:|---:|---:|
@@ -376,3 +426,5 @@ agreement or a cross-model check.
 - The audit calls copies non-copies more often than the reverse: 7 pairs that
   the first labels call copy are boilerplate or required-shape in the audit,
   and 1 pair goes the other way.
+- G9 is closed on cross-model evidence. These are model judgments, not human
+  labels or evidence of developer intent.

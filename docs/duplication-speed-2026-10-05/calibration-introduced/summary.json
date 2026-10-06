@@ -1,0 +1,653 @@
+{
+  "Rust": {
+    "rule": {
+      "copy": 27,
+      "kept": 40,
+      "precision": 0.675
+    },
+    "passes_80": false,
+    "recall": {
+      "copies_kept": 27,
+      "copies_all": 227
+    },
+    "baseline_at_T": {
+      "copy": 47,
+      "kept": 93,
+      "precision": 0.505
+    },
+    "by_repo": {
+      "atuin@2221b09fac": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@25cb843312": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@2f0c0c5bd6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@4dbd306df1": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@6557b4e59c": {
+        "copy": 9,
+        "kept": 9,
+        "precision": 1.0
+      },
+      "atuin@6610ac4dbe": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@67f1e2c75d": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@6a2f44956d": {
+        "copy": 2,
+        "kept": 2,
+        "precision": 1.0
+      },
+      "atuin@900007c480": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@97fab728a4": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@e7f8a8c553": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@f71911b8fe": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "atuin@ff9d71f27e": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@07b9e450f5": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@2687b19ce6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@3d4ba68197": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "klin@47cdb1ef53": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@4f87ec7a82": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@54838fa758": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@7bdb53845b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@9479cc5b4f": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "klin@97db67c470": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@9ea1984f45": {
+        "copy": 2,
+        "kept": 2,
+        "precision": 1.0
+      },
+      "klin@af5548b174": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@c460481e0a": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@c551460366": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@c8f5570bba": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@cd2e1782fa": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@dc0f355c03": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "klin@dc1f0f5505": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@e3a39414c0": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "klin@e5cec4e5ee": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "klin@eacfdf6f5a": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@ed4c67a1fc": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "klin@f22c67fb30": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@2c3f174eb5": {
+        "copy": 0,
+        "kept": 2,
+        "precision": 0.0
+      },
+      "yazi@354cdef907": {
+        "copy": 0,
+        "kept": 1,
+        "precision": 0.0
+      },
+      "yazi@369c47539c": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@446a5721bf": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@463150848d": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@4857d46918": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@4bb4f37555": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "yazi@581886a355": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "yazi@58f1013348": {
+        "copy": 4,
+        "kept": 4,
+        "precision": 1.0
+      },
+      "yazi@5c05350d52": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "yazi@5d9004952a": {
+        "copy": 0,
+        "kept": 2,
+        "precision": 0.0
+      },
+      "yazi@607bc0dd2b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@6a1ddb71e0": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@6d84921e70": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@741f84e22b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@74d903a49a": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@7595a1c573": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@7a51626505": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@8c2b5f8cad": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@8e80798984": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@8ff0b0b75a": {
+        "copy": 0,
+        "kept": 1,
+        "precision": 0.0
+      },
+      "yazi@9bdd6777e4": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@9cfeb67db7": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@a190600208": {
+        "copy": 2,
+        "kept": 4,
+        "precision": 0.5
+      },
+      "yazi@b37be0529a": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@b73e55ca59": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@b8ceaea940": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@c037855c4f": {
+        "copy": 0,
+        "kept": 1,
+        "precision": 0.0
+      },
+      "yazi@c92c4aba88": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@cc2414728c": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@cf8b54179e": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@d84da330bc": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@dbb0cc0d55": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@ec178fdb52": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@f42a0df4df": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@f585b9b94c": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@fa1ee46edc": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "yazi@faa20dfb9b": {
+        "copy": 0,
+        "kept": 4,
+        "precision": 0.0
+      },
+      "yazi@fde563380b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      }
+    },
+    "non_copy_kept": {
+      "mixed": 10,
+      "distinct": 1,
+      "required-shape": 2
+    },
+    "labels_all": {
+      "boilerplate": 83,
+      "copy": 227,
+      "required-shape": 99,
+      "mixed": 38,
+      "distinct": 16
+    }
+  },
+  "TypeScript": {
+    "rule": {
+      "copy": 15,
+      "kept": 17,
+      "precision": 0.882
+    },
+    "passes_80": true,
+    "recall": {
+      "copies_kept": 15,
+      "copies_all": 155
+    },
+    "baseline_at_T": {
+      "copy": 155,
+      "kept": 346,
+      "precision": 0.448
+    },
+    "by_repo": {
+      "actual@13db5123ee": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@2ff97090d6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@355206128c": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@59bde67ba6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@6c73bbb1d4": {
+        "copy": 4,
+        "kept": 4,
+        "precision": 1.0
+      },
+      "actual@749fa26457": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@766cc8a724": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@8867158f0a": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@8e165c0eb6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@993a35c4ed": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@bf5bcf54fc": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@c274f08a1f": {
+        "copy": 0,
+        "kept": 1,
+        "precision": 0.0
+      },
+      "actual@ca442c88cb": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "actual@dc006aa192": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "actual@df0cfe3489": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@0bf58ca66e": {
+        "copy": 0,
+        "kept": 1,
+        "precision": 0.0
+      },
+      "documenso@15549a6758": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@241929bb97": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@283c6d274b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@3887aa67c8": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@3ff7f70a7d": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@4ee789ea37": {
+        "copy": 3,
+        "kept": 3,
+        "precision": 1.0
+      },
+      "documenso@4f346d3c2d": {
+        "copy": 2,
+        "kept": 2,
+        "precision": 1.0
+      },
+      "documenso@50f272be87": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@562d78e2d7": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@573c928a0e": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@638e92d534": {
+        "copy": 2,
+        "kept": 2,
+        "precision": 1.0
+      },
+      "documenso@6a99b40cba": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@6ec67d1c4d": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@797f5c0e79": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@80823ede73": {
+        "copy": 1,
+        "kept": 1,
+        "precision": 1.0
+      },
+      "documenso@8f68393241": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@9c5eb43a26": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@a70b0702c3": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@ae4b56dd88": {
+        "copy": 2,
+        "kept": 2,
+        "precision": 1.0
+      },
+      "documenso@b37529a1cf": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@cc5ef3df16": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@cf326f825d": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@d35d13db23": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@d448e3f8f6": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@d5ce222482": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@d6cf3fec4b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@dee3259088": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      },
+      "documenso@f2525ae95b": {
+        "copy": 0,
+        "kept": 0,
+        "precision": null
+      }
+    },
+    "non_copy_kept": {
+      "mixed": 1,
+      "required-shape": 1
+    },
+    "labels_all": {
+      "copy": 155,
+      "boilerplate": 172,
+      "mixed": 5,
+      "distinct": 1,
+      "required-shape": 13
+    }
+  }
+}

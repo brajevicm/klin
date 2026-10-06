@@ -1,0 +1,9 @@
+{
+  "search_candidates": 16,
+  "archive_sha256": "53485516a36d28c755e8c9a2c8261df36e98b9206f1101cc067525b3fe7090a3",
+  "binary_sha256": "e5aa363e87f64357fd4a832c4471afc49679493e1fbd6547c54279aa70339532",
+  "included_normalizer_sha256": "1ef73688866b5a8b42f016f293f3175422a8c331434f0c5ad48cb5a416f25eeb",
+  "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "command": "/tmp/klin-stop-storage-target/release/dup-speed storage /tmp/klin490-corpus/1m",
+  "source_archive_requires_existing_normalizer": true
+}
