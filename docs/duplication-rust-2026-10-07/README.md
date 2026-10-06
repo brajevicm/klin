@@ -1,5 +1,9 @@
 # Rust duplication policy for check REVIEW (#494)
 
+**Result: Rust v5 fails. Rust stays out of the review signal.** Both
+independent reviews estimate 30% precision and 50% recall on the fresh
+sample. The criterion is at least 80% precision and at least 40% recall.
+
 This research follows #480 under #478. It asks whether a Rust rule can
 qualify for a future non-blocking `klin check` REVIEW signal. If it fails,
 Rust stays out of the review signal.
@@ -96,3 +100,45 @@ mostly on starship. `sample.py` drew the packet with seed 20261007: all 20
 kept pairs and 129 dropped pairs (starship 119 of 631, nushell 7 of 39,
 helix 3 of 18). Its context lines come from the stored corpus with the
 #480 window of three lines before and after each span.
+
+## Result
+
+Reviewer A (`gpt-6.1-sol`) and reviewer B (`gpt-6-astra`) each ran through
+`codex exec` in a read-only sandbox. Each directory held only
+`REVIEW-PROMPT.md` and `review-packet.json`. Both returned all 149 labels.
+The log headers in `review/results/` record the model and the session id.
+
+| Reviewer | Precision | Recall | Passes |
+|---|---:|---:|---|
+| A | 6 / 20 = 30.0% | 6.0 / 12.0 = 50.0% | no |
+| B | 6 / 20 = 30.0% | 6.0 / 12.0 = 50.0% | no |
+
+The reviewers agree on 98.7% of full labels and on every copy decision
+(κ = 1.0). The labels are model judgments, not human labels.
+
+Twelve of the 14 starship pairs that v5 keeps are module scaffolding: a
+project-availability guard followed by formatter symbol and style wiring.
+The token count is 96 in most of them, so they pass the 100-token branch
+only after the trim. Both reviewers labeled them `boilerplate`.
+
+As a secondary figure only, v2 keeps 3 pairs in this sample, all copies:
+100% precision and 3 / 12.0 = 25% recall for each reviewer. v2 was not the
+frozen candidate, and its recall is also below 40%.
+
+The population depends mostly on one repository (starship, 91% of pairs),
+and it has an estimated 12 copies. These estimates therefore have wide
+uncertainty. The precision failure is not marginal: 14 of the 20 kept pairs
+are non-copies for both reviewers.
+
+To reproduce the scores:
+
+```sh
+python3 docs/duplication-rust-2026-10-07/score_sample.py \
+  docs/duplication-rust-2026-10-07/review/results/reviewer-a.json \
+  docs/duplication-rust-2026-10-07/review/results/reviewer-b.json
+```
+
+`rules.json` holds the frozen v5 facts and decision for each scanned pair.
+`population-mapping.json` holds every pair with its introducing commit.
+The scan reproduces with `scan.py` at the pinned heads, then
+`design.py rules` and `sample.py`.
