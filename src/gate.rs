@@ -2012,6 +2012,11 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, V
         }
     };
     let rendered = render::json(&told);
+    debug_assert!(
+        records.findings.is_empty() && records.notes.is_empty() && records.derived.is_empty(),
+        "{} wrote JSON records past its typed result",
+        gate.name
+    );
     records.findings = rendered.findings;
     records.notes = rendered.notes;
     records.derived = rendered.derived;

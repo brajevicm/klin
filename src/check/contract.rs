@@ -2,9 +2,9 @@
 //! gate it judges under, what base it compares against, what scope it may look at — and it
 //! writes to an explicit `Sink`: the typed `Told` items the renderers turn into the report a
 //! person reads and into the findings, notes and derived entries of the 11.2 object, and the
-//! `Records` of what the run cost and covered, which the runner adds to that object. Nothing about a run
-//! reaches a check any other way, so the runner keeps no side channel into it and a check keeps
-//! no state of its own. This module names no check, so every check and the catalogue that
+//! `Records` of what the run cost and covered, which the runner adds to that object. Nothing
+//! about a run reaches a check any other way, so the runner keeps no side channel into it and a
+//! check keeps no state of its own. This module names no check, so every check and the catalogue that
 //! registers them depend on it one way.
 
 use std::path::Path;

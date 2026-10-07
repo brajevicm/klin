@@ -606,7 +606,7 @@ fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Eva
         Some(entry) if is_accepted(entry) => Matched::Accepted(entry_of(entry)),
         Some(entry) => Matched::Base(entry_of(entry)),
     };
-    let values = entry.map_or_else(
+    let risen = entry.map_or_else(
         || finding.values.clone(),
         |entry| risen(finding, entry, evaluator.metrics),
     );
@@ -621,7 +621,7 @@ fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Eva
             at: came_from(finding, entry),
         }),
         text: finding.text.clone(),
-        fix_advice: evaluator.fix_advice.text(&[&values]),
+        fix_advice: evaluator.fix_advice.text(&[&risen]),
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),
         lead: None,
