@@ -23,7 +23,7 @@ const DECLARATIVE: &[&str] = &[
     "object_type",
 ];
 const JSX: &[&str] = &["jsx_element", "jsx_self_closing_element", "jsx_fragment"];
-const CALLS: &[&str] = &["call_expression", "new_expression"];
+const CALLS: &[&str] = &["call_expression", "new_expression", "macro_invocation"];
 const CONTROL_OR_AWAIT: &[&str] = &[
     "if_statement",
     "switch_statement",
@@ -34,6 +34,12 @@ const CONTROL_OR_AWAIT: &[&str] = &[
     "try_statement",
     "ternary_expression",
     "await_expression",
+    "if_expression",
+    "match_expression",
+    "for_expression",
+    "while_expression",
+    "loop_expression",
+    "try_expression",
 ];
 const STATEMENTS: &[&str] = &[
     "expression_statement",
@@ -53,6 +59,7 @@ const STATEMENTS: &[&str] = &[
     "with_statement",
     "debugger_statement",
     "empty_statement",
+    "let_declaration",
 ];
 
 #[derive(Default)]
@@ -204,5 +211,20 @@ mod tests {
         assert_eq!(count.calls, 3);
         assert_eq!(count.control_or_await, 3);
         assert_eq!(count.statements, 5);
+    }
+
+    #[test]
+    fn rust_fragment_counts_calls_control_flow_and_complete_statements() {
+        let source = "fn route(ctx: &Ctx) -> Result<Item> {\n    let item = load(ctx)?;\n    if item.empty() {\n        bail!(\"empty\");\n    }\n    match item.kind {\n        Kind::A => save(&item),\n        _ => {}\n    }\n    Ok(item)\n}\n";
+        let mut parser = Parser::new();
+        let language = tree_sitter_rust::LANGUAGE.into();
+        parser.set_language(&language).unwrap();
+        let tree = parser.parse(source, None).unwrap();
+        let mut count = Count::default();
+        count_g4(tree.root_node(), 1, 9, &mut count);
+
+        assert_eq!(count.calls, 5);
+        assert_eq!(count.control_or_await, 3);
+        assert_eq!(count.statements, 4);
     }
 }

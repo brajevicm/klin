@@ -1,0 +1,747 @@
+{
+  "01442e4f6c8cfde1": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "The regions cross example-result scaffolding and the required command run signature, then repeat taking pipeline metadata and converting the input into a value. That combines declaration scaffolding with input-state handling."
+  },
+  "028ab452cb3c74b8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Helm both register symbol and style callbacks on StringFormatter. These are local formatter wiring; compiler identification and Helm version retrieval remain separate."
+  },
+  "03504c9e8dfd1888": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Singularity repeat formatter construction and symbol/style callback registration. Their version and environment substitutions are module-specific, so extracting this setup would require configurable callbacks."
+  },
+  "037473305c0c2ade": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both paths open a directory with an overlaid file picker or open a file and report the same failure. One path-opening helper could own this shared branching and error policy."
+  },
+  "04a36d0b90d070e4": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The matching fields declare the serialized Mojo and OCaml configuration schemas, including symbol, style, disabled, and detection settings. They are type declarations rather than duplicated executable behavior."
+  },
+  "077ed860814ca518": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Dart share symbol/style formatter registration. The surrounding version logic reads wrapper properties for Maven and executes Dart, so the common region is callback scaffolding."
+  },
+  "088eae2153495257": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and Deno each declare configuration fields for prompt rendering and project detection. These repeated field names belong to their serde configuration schemas."
+  },
+  "0c42a2d63a07c13e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Deno modules register the same symbol and style formatter hooks. Compiler command selection and Deno version parsing are outside this shared wiring."
+  },
+  "0c54357a503a6beb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Azure repeat the StringFormatter setup for symbol and style. Their environment/version and subscription substitutions use different module data and would have to remain configurable."
+  },
+  "0d1d928c7641783a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Fortran repeat local formatter symbol/style registration. Rust toolchain substitutions and Fortran compiler identification are distinct behavior in the surrounding code."
+  },
+  "0f1eb63e83a2f632": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Typst share the formatter symbol and style callbacks. Their version sources differ, leaving conventional callback wiring as the repeated region."
+  },
+  "0f5706c948a91289": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Ruby repeat fields in their serialized configuration structs. Format, symbol, style, disabled, and detection fields describe each module's schema."
+  },
+  "131920eb9852e15b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Gradle register the same symbol/style formatting hooks. Mojo's cached version and Gradle's wrapper-property version are separate module logic."
+  },
+  "140ba03d430217d0": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Pijul channel repeat StringFormatter initialization and symbol/style hooks. Version substitution and truncated channel substitution remain different callbacks."
+  },
+  "1515adfbc6ac2dc1": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Singularity repeat formatter setup and symbol/style registration. Pixi environment/version values and Singularity's environment value are supplied by different module callbacks."
+  },
+  "1596af87487011d7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Haskell share symbol/style callback registration on StringFormatter. Xmake version execution and Haskell's version, GHC, and snapshot substitutions are separate module behavior."
+  },
+  "166b9142a49a639a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude cost and Odin repeat formatter construction and symbol registration. Their style callbacks select different sources, so the common structure is configurable rendering scaffolding."
+  },
+  "16a894f639d75b02": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and DenoConfig repeat serde/schema annotations and configuration field declarations. These define the modules' external configuration shapes rather than an algorithm."
+  },
+  "17a933383e00ff90": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Elm repeat the symbol/style formatter callbacks. Cached Mojo version lookup and executing Elm for its version are distinct surrounding operations."
+  },
+  "1805727dd1308d76": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Typst use the same formatter initialization and symbol/style hooks. Rust tooling information and Typst version lookup remain separate substitutions."
+  },
+  "181ce66d1ca8cd0a": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Daml repeat typed fields for style, disabled state, and project-detection configuration. The selected regions are configuration schema declarations."
+  },
+  "199e7cf0dd6665a9": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and PureScript both return when their own project predicate fails and then wire symbol/style formatter callbacks. The predicates and version providers differ, leaving conventional module-entry scaffolding."
+  },
+  "1a90b66d2c47c4e4": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Solidity repeat a project-availability guard followed by formatter symbol/style registration. Each module supplies its own detection settings and version provider."
+  },
+  "1d2c62b387bcfa75": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and Elm repeat fields in their serde configuration structs, including style, disabled, and project-detection lists. These are schema obligations rather than shared executable behavior."
+  },
+  "22d00ea0a2566cad": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Java share the StringFormatter symbol/style hooks. Their version retrieval callbacks use different module-specific sources."
+  },
+  "22e91cd38b85b9a6": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and CMake repeat formatter construction and symbol/style callback registration. Mojo's lazy version cache and CMake command parsing are distinct surrounding logic."
+  },
+  "2403c51a2c94084a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Typst modules repeat symbol/style formatter registration. Compiler discovery and Typst version retrieval are separate module-specific callbacks."
+  },
+  "25bd0320de2f3234": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and Swift repeat the format, version format, symbol, style, disabled, and detection fields of their configuration structs. These fields define serialized configuration shapes."
+  },
+  "2835ab2a202e38b6": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and sudo share a return-on-unavailability guard and symbol/style formatter wiring. Their availability checks concern project detection and cached sudo credentials respectively, so no common domain operation is duplicated."
+  },
+  "28608e4908110a50": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Both contexts create a working set and define a local macro that boxes and registers supplied commands. The macro is command-list registration scaffolding; the TUI and CLI declarations themselves differ."
+  },
+  "29baeb6e5f1bbc5b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Gleam modules register the same symbol/style formatter callbacks. Their compiler discovery and Gleam version parsing remain separate surrounding operations."
+  },
+  "2af13598a5ce78dd": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and container modules wire symbol, style, and name substitutions into StringFormatter. The actual name discovery differs, so extraction would parameterize the rendering values rather than remove duplicated discovery logic."
+  },
+  "2c3350b5893c98f5": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Terraform repeat an unavailable-project guard and formatter symbol/style setup. The project predicates and version commands belong to different modules."
+  },
+  "2d06847d78d98585": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Deno repeat symbol/style callback registration. Maven wrapper-property parsing and Deno command parsing are separate version providers."
+  },
+  "2da2b5873dd45700": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Both regions combine example-result construction and a required command run declaration with metadata extraction. Rolling then consumes pipeline input while aggregate reads expression arguments, so the region mixes scaffolding with input-state behavior."
+  },
+  "2e9a003330264257": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and R repeat formatter symbol/style hooks. Mojo's cached version value and parsing R command output are distinct callbacks beyond the shared setup."
+  },
+  "2ef5b3e8311e191a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both sites configure filesystem traversal from the same file-picker hidden, parent, ignore, symlink, and Git-ignore settings. A shared walker-configuration helper could own that search policy while callers add their own sorting or ignore filenames."
+  },
+  "3190fe36097c0002": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Mercurial branch modules repeat formatter construction and symbol/style callbacks. Their environment/version and branch/topic substitutions are different module-specific rendering data."
+  },
+  "32a8fcb5d33229e6": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and COBOL register identical symbol/style formatter hooks. Executing and parsing their respective version commands is separate from this common wiring."
+  },
+  "336eede574745cee": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and PHP repeat the formatter symbol and style registration. Wrapper-property lookup and PHP execution are distinct version acquisition paths."
+  },
+  "33801404feffd8ac": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Crystal share local symbol/style formatter callbacks. Maven properties and Crystal command output supply different version logic."
+  },
+  "34c0ec9d78f46f23": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and Guix shell modules repeat StringFormatter symbol/style setup. Namespace-name substitution and Guix shell rendering require different local data."
+  },
+  "35c15bfdb2502b5a": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both commands read the optional time-unit and time-zone flags, convert spanned strings through the same parsers, and propagate conversion errors with transpose. A shared temporal-options parser could own this validation."
+  },
+  "363b1acdce39d4c9": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Julia repeat symbol/style formatter registration. Rust tooling substitutions and Julia command-version parsing are distinct surrounding behavior."
+  },
+  "3f4ba0d99c45415d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Pulumi repeat formatter construction and symbol/style hooks. Mojo's lazy version lookup and Pulumi's project-file and CLI operations are separate module logic."
+  },
+  "4071a3b5cf68a167": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and V repeat typed configuration fields for rendering and project detection. These declarations form each module's serialized configuration schema."
+  },
+  "41ea3baa07dfb0f9": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and Erlang repeat symbol, style, disabled, and detection fields in their configuration structs. The repetition is schema shape rather than domain execution."
+  },
+  "42ebcea962c9adce": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude context and Buf repeat formatter construction and symbol callback registration. Their style sources differ, confirming local configurable formatter wiring."
+  },
+  "44a745f57ad49ad6": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Daml repeat StringFormatter symbol/style callbacks. CLI parsing for Xmake and Daml SDK version lookup are distinct module operations."
+  },
+  "4c06c23b5a87070b": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Raku share formatter initialization and symbol/style registration. Wrapper-property lookup and lazy Raku version retrieval are separate providers."
+  },
+  "4ccffb3db51a9c4e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Scala modules repeat symbol/style formatter hooks. Their compiler information and Scala version callbacks provide distinct behavior."
+  },
+  "4f2cff5107265b2e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude context and OpenStack share formatter construction and symbol registration. The selected style comes from display_style for Claude and module configuration for OpenStack."
+  },
+  "4f46f4cc246400ff": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and PHP repeat a project guard and symbol/style formatter setup. Their detection inputs and CLI version operations differ, so the common structure is module scaffolding."
+  },
+  "50c42922d221f023": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and AWS repeat StringFormatter construction and symbol/style callbacks. Pixi environment/version values and AWS profile/region/duration values are separate substitutions."
+  },
+  "50db82f620f4ab22": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Terraform share symbol/style formatter registration. Cached Mojo version lookup and Terraform command parsing are distinct surrounding logic."
+  },
+  "54b13dd3b8851fe7": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and DartConfig repeat schema attributes and typed configuration field declarations. The selected regions specify configuration structure rather than executable policy."
+  },
+  "55a9d9aa17ff3151": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Pulumi repeat formatter construction and symbol/style callbacks. Pixi environment/version retrieval and Pulumi project/CLI lookup remain different module logic."
+  },
+  "59004f87324e9ea7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude cost and Solidity repeat formatter initialization and symbol registration. Their style callbacks use display_style and config.style respectively, requiring parameterization of any shared setup."
+  },
+  "5c8d81b45c42a766": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both filesystem-search callbacks ignore failed directory entries and skip everything except regular files. One entry-filtering helper could own this repeated error and file-type policy."
+  },
+  "5f19aa6124bf9ca0": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Red repeat formatter symbol/style callbacks. Rust tooling values and Red command-version output are supplied through different module-specific callbacks."
+  },
+  "5f836e1836bd60e9": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Daml modules share symbol/style formatter registration. Compiler identification and Daml SDK version retrieval remain different module callbacks."
+  },
+  "65b265502575bad8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and Erlang repeat StringFormatter initialization and symbol/style hooks. Namespace-name lookup and Erlang version lookup are distinct sources."
+  },
+  "69440112d5852747": {
+    "label": "mixed",
+    "confidence": "medium",
+    "rationale": "Both regions lazily execute the first available configured compiler command and retrieve its stdout, interleaved with symbol/style formatter callbacks. This combines shared compiler-command caching behavior with rendering scaffolding."
+  },
+  "69c3f622b5b592f2": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Perl repeat formatter symbol/style registration. Their respective version command execution and parsing occur in different module callbacks."
+  },
+  "6a6d56d085587595": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Fossil branch share StringFormatter symbol/style setup. Pixi environment/version substitution and Fossil's truncated branch substitution use different local data."
+  },
+  "6ab12c2dd6ef9916": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Datetime range and string-to-datetime conversion both parse optional spanned time-unit and time-zone flags through the same conversion functions and propagate their errors. A shared temporal-options parser could own this repeated validation."
+  },
+  "6b0f1546816c2fd8": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and OCaml repeat typed symbol, style, disabled, and detection settings in their serialized configuration structs. These are configuration schema declarations."
+  },
+  "6c028d689b074563": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Fortran and Gleam repeat serde/schema annotations and common rendering configuration fields. The selected code declares each module's configuration shape."
+  },
+  "6da28de812ebf07e": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Erlang repeat a project-availability guard followed by formatter symbol/style registration. Their detection predicates and version suppliers differ."
+  },
+  "708f7b8b0a2cf7e9": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and HaxeConfig repeat schema attributes and field declarations for rendering and detection. The selected regions define external configuration structure."
+  },
+  "72e7e4ee469e0a74": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Elm repeat configuration fields for symbol, style, disabled, and project-detection lists. Their declarations describe each module's serde schema."
+  },
+  "736ab22346347958": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mise and command duration share an early-return guard and formatter style callback. The guards test project applicability and elapsed-time thresholds respectively, while the value substitutions are unrelated."
+  },
+  "77050e8964ded87e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and PureScript share formatter symbol/style callbacks. Reading Maven wrapper properties and running the PureScript CLI are separate version providers."
+  },
+  "77a8e7b6aa4cb7c3": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Erlang repeat the StringFormatter symbol/style setup. Wrapper-property parsing and Erlang version lookup remain different callbacks."
+  },
+  "7aef4f80ca3aa1d2": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and CMake repeat formatter symbol/style registration. Maven wrapper properties and CMake command output provide separate version logic."
+  },
+  "7b1add0a48042a50": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and OPA repeat the formatter symbol/style hooks. Maven wrapper properties and OPA version lookup remain distinct providers."
+  },
+  "7e4af5c6103ef553": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The two From implementations translate SHIFT, CONTROL, ALT, and SUPER into two different terminal libraries' modifier types. This is explicit adapter mapping required by the separate target APIs."
+  },
+  "839210ea439d1916": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and QuartoConfig repeat schema annotations and configuration field declarations. These specify serialized module configuration shapes."
+  },
+  "865e8495472e90c8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Quarto share symbol/style formatter registration. Fortran compiler discovery and Quarto version execution are different surrounding operations."
+  },
+  "8880294b303e11b9": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Fortran and Swift repeat schema annotations and typed format, version-format, symbol, style, and disabled fields. The selected regions declare configuration shapes."
+  },
+  "8ce3205cdbb38e0c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mise and direnv repeat formatter initialization and the style callback. Their symbol, health, path, and authorization substitutions use different local values."
+  },
+  "8e18e5df8a31bd2c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Mojo repeat formatter construction and symbol/style hooks. Pixi environment/version lookup and Mojo's lazy cached version are separate providers."
+  },
+  "90c6497b62f3552d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Fennel share symbol/style callback registration. Wrapper-property parsing and Fennel command-output parsing are separate module logic."
+  },
+  "919d8acc59785a46": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Red repeat formatter symbol/style callbacks. Fortran's compiler information and Red's version output are supplied by distinct operations."
+  },
+  "91b6845ca471df93": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and OpaConfig repeat schema attributes and fields for module rendering and project detection. These are configuration declarations rather than duplicated runtime behavior."
+  },
+  "922e8c073cd86951": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Zig repeat a project guard followed by symbol/style formatter registration. Their project predicates and version commands differ."
+  },
+  "93ef40de44ce9d12": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Lua modules repeat symbol/style formatter wiring. Compiler selection and Lua version parsing are separate callbacks."
+  },
+  "9584ee366200cc8d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Kotlin repeat formatter symbol/style registration. Cached Mojo version lookup and Kotlin binary version lookup remain distinct module operations."
+  },
+  "97c271d2d4ac8e38": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Helm repeat symbol, style, disabled, and detection fields in their serialized configuration structs. These declarations form each module's schema."
+  },
+  "9952912d92d93122": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Docker context share conditional module suppression and symbol/style formatter wiring. The suppression predicates concern project presence and default Docker contexts respectively, so the repeated structure is local scaffolding."
+  },
+  "9a793ec35fb7be8f": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and CMake repeat a project guard and formatter symbol/style callbacks. Each supplies its own project detection and version parser, so the common region is configurable module scaffolding."
+  },
+  "9c4f9576a0de5c2c": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Haxe repeat configuration field declarations for style, disabled, and project detection. These belong to each module's serialized schema."
+  },
+  "9c76a6aee0654762": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Fennel share symbol/style formatter registration. Compiler discovery and Fennel version parsing remain different surrounding operations."
+  },
+  "9e8ab3e787596ca8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Meson repeat formatter construction and symbol/style hooks. Pixi environment/version substitution and Meson's truncated project substitution use different local data."
+  },
+  "a017ed17c76e744b": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Crystal share a project-availability guard and symbol/style formatter setup. Their project predicates and version command parsing remain module-specific."
+  },
+  "a2bf2ff25f01a19e": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "The From implementations explicitly map editor key codes into crossterm and termina key-code enums. Separate target API variants require separate adapter declarations, including F versus Function and Esc versus Escape."
+  },
+  "a57ceec15b709285": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Go repeat formatter initialization and symbol registration. Their tooling data and style selection differ, with Go's compatibility check appearing in its own callback."
+  },
+  "a711459aba3cee85": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Ruby repeat symbol/style formatter registration. Compiler information and Ruby version formatting are distinct module operations."
+  },
+  "a72e0519fc36b445": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude model and Meson repeat StringFormatter initialization and symbol/style hooks. Model aliases and truncated project names are different substitution data."
+  },
+  "a8484019f5d5ded9": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and VConfig repeat schema attributes and typed rendering/detection fields. The selected code defines module configuration shapes."
+  },
+  "a91ee1145652b2f4": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and AWS repeat formatter construction and symbol/style registration. Mojo version values and AWS profile, region, and duration values are supplied by separate callbacks."
+  },
+  "a99ce8ee1278245e": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both asynchronous code-action paths turn missing responses into empty lists and retain commands plus only code actions whose disabled field is absent. A shared response-filtering helper could own this repeated availability policy."
+  },
+  "aab5e1e040305fb7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and Pulumi share formatter construction and symbol/style hooks. Namespace names and Pulumi version/project values come from different module logic."
+  },
+  "aeceefaaeccbae57": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and Ruby repeat typed format, version-format, symbol, style, disabled, and detection fields. These are serialized configuration declarations."
+  },
+  "b0860638aa4f4e2e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude context and Mercurial branch repeat formatter construction and symbol registration. Claude's selected display style and the branch module's configured style remain different callback inputs."
+  },
+  "b16a32ebdceaf9d6": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and Pijul channel repeat formatter construction and symbol/style registration. Pixi environment/version values and the truncated Pijul channel are distinct substitutions."
+  },
+  "b75fdc3c8c86ece1": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Fortran and PureScript repeat schema annotations and common rendering configuration fields. These declarations specify serialized configuration shapes."
+  },
+  "b7b71293e8489aec": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and Buf repeat the StringFormatter symbol/style hooks. Namespace-name lookup and Buf version parsing remain different module callbacks."
+  },
+  "bfd94e530bc35beb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Mojo repeat formatter construction and symbol/style registration. Xmake CLI version parsing and Mojo's lazy version cache are separate providers."
+  },
+  "c0de6bd03d3906b3": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "TakeUntil and SkipWhile declare Command names and signature input/output types for tables and arbitrary lists. These are command API declarations, while their actual filtering behavior is outside the regions."
+  },
+  "c28eaec6c14dd349": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude context and Terraform repeat formatter construction and symbol registration. Their style callbacks draw from display_style and config.style respectively."
+  },
+  "c2e93c3d09670fdd": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and JuliaConfig repeat schema attributes and rendering/detection field declarations. The selected code specifies serialized module configuration structure."
+  },
+  "c5d10ddf46d7896c": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Floor and mode enumerate supported list input/output types for durations and file sizes in command signatures. These are API type declarations rather than duplicated numerical algorithms."
+  },
+  "c62974baa4dbca15": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and PHP repeat typed rendering and project-detection fields in their configuration structs. These declarations define each module's serde configuration schema."
+  },
+  "c84b6cf223144d4d": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and Terraform repeat format, version-format, symbol, style, disabled, and detection fields. These are configuration schema declarations, with different defaults outside the common field block."
+  },
+  "ca1a05640c29886a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude model and OpenStack repeat formatter construction and symbol/style callbacks. Model display/id values and cloud/project values are different substitution data."
+  },
+  "cd6dabd1b39fd097": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude cost and network namespace share formatter construction and symbol registration. Their style sources and cost/name substitutions remain module-specific."
+  },
+  "d0fec9bf56ce011b": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Odin repeat a project guard and symbol/style formatter setup. Their project predicates and version parsing, including Odin commit handling, are distinct module logic."
+  },
+  "d168fc8f968472d1": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Mercurial branch repeat formatter symbol/style registration. Xmake version output and Mercurial branch/topic values are distinct substitutions."
+  },
+  "d31add383e2bdfe7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Pixi and OpenStack repeat StringFormatter construction and symbol/style hooks. Pixi environment/version and OpenStack cloud/project values require different local callbacks."
+  },
+  "d3247fc5516100fb": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Azure repeat formatter construction and symbol/style registration. Xmake version parsing and Azure subscription alias substitution are separate callbacks."
+  },
+  "d394a34704090d1b": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Fortran and Xmake repeat schema attributes and rendering configuration fields. The selected regions declare each module's serialized configuration shape."
+  },
+  "d428910b3ab37d25": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Kotlin repeat symbol/style formatter hooks. Compiler information and Kotlin version lookup are distinct module-specific operations."
+  },
+  "d9dd13e5a5fe683e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Claude model and Mojo repeat formatter construction and symbol/style callbacks. Model alias/id substitution and cached Mojo version substitution remain different behavior."
+  },
+  "da518259872a54e1": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and Haxe repeat typed symbol, style, disabled, and detection fields. These declarations form each module's configuration schema."
+  },
+  "dba71ed8c6bbad98": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Xmake and Pixi repeat rendering and detection field declarations in their configuration structs. Pixi's additional fields and differing defaults do not make this field block executable duplication."
+  },
+  "dba74fa56121d9b2": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and OpenStack repeat StringFormatter initialization and symbol/style registration. Mojo's version cache and OpenStack cloud/project values are distinct callback inputs."
+  },
+  "def48717ec919591": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mise and Zig repeat symbol, style, disabled, and project-detection declarations in serde configuration structs. The common region is schema shape."
+  },
+  "df932521bb3a2ea0": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Mojo and Perl repeat configuration fields for style, disabled state, and detection lists. These are declarations of each module's serialized schema."
+  },
+  "dfd33018e7949f80": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Julia repeat symbol/style formatter registration. Maven wrapper-property parsing and Julia version-command parsing are separate providers."
+  },
+  "e08473fcc03791b8": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Go share formatter construction and symbol registration. Maven property lookup and Go's lazy version/module-range calculations are distinct surrounding behavior."
+  },
+  "e095c3271edc3e79": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "XMakeConfig and CMakeConfig repeat schema annotations and typed rendering/detection fields. The selected regions define external configuration structure."
+  },
+  "e1130ccfe80db569": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "TakeUntil and SkipUntil declare command names and table/list input-output signatures. These are Command API declarations; their predicate-processing behavior is outside the selected regions."
+  },
+  "e196fb7ce52ca9b5": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "The common structure finishes expected-dataframe examples and introduces the required command run signature. Rolling's metadata capture and join's flag reads differ, so the shared portion is fixture and command scaffolding."
+  },
+  "e1e9604ce5cff9cf": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Fortran and Typst repeat symbol/style formatter registration. Fortran compiler discovery and Typst version lookup remain separate module behavior."
+  },
+  "e413462bd8ec208a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Nim modules share symbol/style formatter registration. Compiler selection and Nim version-output processing are separate module callbacks."
+  },
+  "e6bf9b8faa7e9d4e": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Network namespace and OpenStack repeat StringFormatter symbol/style setup. Namespace-name substitution and cloud/project substitution use different local data."
+  },
+  "e76b73736e45b868": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Red repeat formatter symbol/style callbacks. Mojo's cached version value and Red's command output are distinct providers."
+  },
+  "e91c878991dd98f7": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Xmake and Rust repeat symbol/style formatter registration. Xmake CLI version parsing and Rust version/toolchain substitutions remain separate module logic."
+  },
+  "e934d14c7bc71934": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and CMake repeat typed rendering and detection fields in configuration structs. These declarations define serialized configuration schemas."
+  },
+  "e9e17c5f5046845b": {
+    "label": "copy",
+    "confidence": "high",
+    "rationale": "Both commands choose the current buffer's parent directory, fall back to the working directory, and reject a missing fallback with the same error. A shared directory-resolution helper could own this selection and validation policy while callers supply their UI-specific notice."
+  },
+  "ec3e898aa0be0a5d": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and vcsh repeat formatter construction and symbol/style hooks. Maven's parsed wrapper version and vcsh's repository value are separate substitutions."
+  },
+  "ec7bee1adee94e3a": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Azure repeat formatter initialization and symbol/style registration. Cached Mojo version lookup and Azure subscription alias lookup are distinct operations."
+  },
+  "f0cc4daa97aed15e": {
+    "label": "required-shape",
+    "confidence": "high",
+    "rationale": "Pixi and Typst repeat format, version-format, symbol, style, disabled, and detection declarations. These fields belong to each module's serialized configuration schema."
+  },
+  "f50d63739ac26dec": {
+    "label": "boilerplate",
+    "confidence": "medium",
+    "rationale": "Xmake and Buf repeat a project guard and formatter symbol/style callbacks. Their project predicates and CLI version parsers differ, so the common region is module scaffolding."
+  },
+  "f5f27b2c84f4dbe3": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Maven and Pulumi repeat formatter symbol/style registration. Wrapper-property version parsing and Pulumi CLI version parsing are different providers."
+  },
+  "f684393ea2dfd020": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "The C compiler and Python modules share symbol/style formatter registration. Compiler selection and Python's pyenv/version handling remain separate surrounding behavior."
+  },
+  "f77c7f4a95ee2a7c": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Mojo and Julia repeat StringFormatter symbol/style callbacks. Cached Mojo version lookup and Julia CLI output parsing are distinct module logic."
+  },
+  "f80acb6805d8ccca": {
+    "label": "boilerplate",
+    "confidence": "high",
+    "rationale": "Rust and Quarto repeat formatter symbol/style registration. Rust tooling values and Quarto command-version output are different substitution sources."
+  }
+}

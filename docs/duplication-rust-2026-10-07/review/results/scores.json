@@ -1,0 +1,28 @@
+{
+  "reviewer-a": {
+    "Rust": {
+      "kept_population": 20,
+      "estimated_kept_copies": 6.0,
+      "estimated_all_copies": 12.0,
+      "precision": 0.3,
+      "recall": 0.5,
+      "passes_494": false
+    }
+  },
+  "reviewer-b": {
+    "Rust": {
+      "kept_population": 20,
+      "estimated_kept_copies": 6.0,
+      "estimated_all_copies": 12.0,
+      "precision": 0.3,
+      "recall": 0.5,
+      "passes_494": false
+    }
+  },
+  "agreement": {
+    "pairs": 149,
+    "same_label": 0.9865771812080537,
+    "same_copy_decision": 1.0,
+    "copy_kappa": 1.0
+  }
+}

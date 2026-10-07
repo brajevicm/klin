@@ -1,0 +1,12 @@
+Reading additional input from stdin...
+OpenAI Codex v0.160.1
+--------
+workdir: /tmp/klin494/review-b
+model: gpt-6-astra
+provider: openai
+approval: on-request
+sandbox: read-only
+reasoning effort: max
+reasoning summaries: none
+session id: 01a1138e-886f-7530-963a-85f06e2e4acd
+--------
