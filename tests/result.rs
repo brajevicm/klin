@@ -358,3 +358,24 @@ fn policy_prints_each_capability_s_placement() {
         .unwrap_or_default();
     assert_eq!(scan["placement"], serde_json::json!(["check"]), "{json}");
 }
+
+/// A base tree klin cannot lay out fails only the gates that read it. A temporary directory that
+/// does not exist is the failure here. Spec 7.3.
+#[test]
+fn a_base_tree_klin_cannot_lay_out_is_a_git_error_of_its_gates_and_the_others_still_report() {
+    let tree = tree(r#"{"doc_size": {"README.md": 10}}"#);
+    tree.words("README.md", 30);
+
+    let run = tree.run_with(
+        &[("TMPDIR", "/nonexistent/klin-tmp")],
+        &["check", "--json", "doc-size", "escapes"],
+    );
+    let report = run.json();
+
+    assert_eq!(run.code, 2, "{report}");
+    assert_eq!(report["judgement"], "fail", "{report}");
+    assert_eq!(row(&report, "doc-size")["judgement"], "fail", "{report}");
+    assert_eq!(row(&report, "escapes")["execution"], "error", "{report}");
+    assert_eq!(report["errors"][0]["kind"], "git", "{report}");
+    assert_eq!(report["errors"][0]["check"], "escapes", "{report}");
+}

@@ -920,7 +920,7 @@ fn judge(
         .into_iter()
         .filter(|gate| gate.check.placement.at_stop())
         .collect();
-    let against = against(args, &wanted, project, window, out)?;
+    let against = against_or_stop(args, &wanted, project, window, out)?;
     said(args, built, out);
     if let (Some(unbuilt), false) = (unbuilt, args.json) {
         let _ = writeln!(out, "  {unbuilt}");
@@ -954,6 +954,25 @@ struct Against<'a> {
     changes: Option<Cow<'a, [Change]>>,
     scope: Option<Vec<String>>,
     prior: Option<Prior>,
+    /// Why the base tree could not be laid out, which fails only the gates that read it.
+    /// Spec 7.3.
+    unlaid: Option<String>,
+}
+
+/// The run as the Stop and `klin policy` take it, where a base tree klin could not lay out stops
+/// the run.
+fn against_or_stop<'a>(
+    args: &Args,
+    wanted: &[&Gate],
+    project: &'a Project,
+    window: Option<&Window>,
+    out: &mut String,
+) -> Result<Against<'a>, Error> {
+    let against = against(args, wanted, project, window, out)?;
+    match against.unlaid {
+        Some(why) => Err(Error(why)),
+        None => Ok(against),
+    }
 }
 
 fn against<'a>(
@@ -968,13 +987,16 @@ fn against<'a>(
     let scope = changes
         .as_ref()
         .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
-    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted)
-        .map_err(fault(ErrorKind::Base))?;
+    let (prior, unlaid) = match prior(project, base.as_ref(), changes.as_deref(), wanted) {
+        Ok(prior) => (prior, None),
+        Err(why) => (None, Some(why.to_string())),
+    };
     Ok(Against {
         scope,
         changes,
         prior,
         base,
+        unlaid,
     })
 }
 
@@ -1103,7 +1125,7 @@ fn active(
         .copied()
         .filter(|gate| gate.check.explain.is_none())
         .collect();
-    let against = against(&quiet, &run, project, window, &mut String::new())?;
+    let against = against_or_stop(&quiet, &run, project, window, &mut String::new())?;
     let mut capabilities = Vec::new();
     for gate in &wanted {
         capabilities.push(match gate.check.explain {
@@ -2151,6 +2173,7 @@ enum ErrorKind {
     Invocation,
     Configuration,
     Base,
+    Git,
     Internal,
 }
 
@@ -2160,6 +2183,7 @@ impl ErrorKind {
             ErrorKind::Invocation => "invocation",
             ErrorKind::Configuration => "configuration",
             ErrorKind::Base => "base",
+            ErrorKind::Git => "git",
             ErrorKind::Internal => "internal",
         }
     }
@@ -2437,6 +2461,9 @@ impl Report {
         against: &Against,
         out: &mut String,
     ) {
+        if let (Some(why), true) = (&against.unlaid, gate.check.needs.the_tree()) {
+            return self.unlaid(args, gate, why, out);
+        }
         let ((code, told, records, recorded), ms) =
             journal::timed(|| one(args, gate, project, against));
         let axes = axes(code, &recorded);
@@ -2448,19 +2475,7 @@ impl Report {
             out,
         );
         self.gates.push(row(gate, code, (&records, &recorded), ms));
-        self.capabilities.push(json!({
-            "name": gate.name,
-            "kind": gate.check.kind(),
-            "placement": gate.check.placement.names(),
-            "state": "active",
-            "judgement": axes.judgement.name(),
-            "measurement": axes.measurement(),
-            "execution": axes.execution(),
-            "coverage": records.coverage,
-            "coverage_claim": coverage_claim(gate.check),
-            "held": records.held,
-            "accepted": records.accepted,
-        }));
+        self.capabilities.push(active_row(gate, axes, &records));
         self.measurements.push(measurement(
             &gate.name,
             gate.check,
@@ -2469,6 +2484,30 @@ impl Report {
         ));
         self.errors.extend(gate_errors(&gate.name, code, &told));
         self.gathered(&gate.name, recorded);
+    }
+
+    /// The row of a gate that reads the base tree klin could not lay out. The other gates still
+    /// run. Spec 7.3.
+    fn unlaid(&mut self, args: &Args, gate: &Gate, why: &str, out: &mut String) {
+        let message = format!("the base tree could not be laid out for this gate: {why}");
+        let told = [Told::Plain(Plain::Error(message.clone()))];
+        let axes = Axes {
+            error: true,
+            ..Axes::default()
+        };
+        self.axes = self.axes.and(axes);
+        printed(
+            args,
+            (&gate.name, axes.state()),
+            (&told, &render::text(&told)),
+            out,
+        );
+        self.capabilities
+            .push(active_row(gate, axes, &Records::default()));
+        self.measurements
+            .push(measurement(&gate.name, gate.check, axes, (&[], &[])));
+        self.errors
+            .push(error_record(ErrorKind::Git, Some(&gate.name), &message));
     }
 
     /// The findings and notes of one gate, under the names the check document gives them.
@@ -2611,6 +2650,23 @@ impl Report {
             "diagnostics": { "gates": self.gates },
         })
     }
+}
+
+/// The row of a gate the run selected, with its axes and what its run recorded. Spec 11.7.
+fn active_row(gate: &Gate, axes: Axes, records: &Records) -> Value {
+    json!({
+        "name": gate.name,
+        "kind": gate.check.kind(),
+        "placement": gate.check.placement.names(),
+        "state": "active",
+        "judgement": axes.judgement.name(),
+        "measurement": axes.measurement(),
+        "execution": axes.execution(),
+        "coverage": records.coverage,
+        "coverage_claim": coverage_claim(gate.check),
+        "held": records.held,
+        "accepted": records.accepted,
+    })
 }
 
 fn hole_record(hole: &Incomplete) -> Value {

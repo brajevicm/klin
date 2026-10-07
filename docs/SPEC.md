@@ -907,7 +907,7 @@ Error kinds:
 | `configuration` | run | An unknown key, a malformed section, a schedule with no due step, an empty `doc_size` map, a duplicate `sarif` entry name. |
 | `configuration` | capability | An explicit `in` that selects no applicable file, a pinned document that is missing, a convention whose `in` measures nothing, a convention that cannot run. |
 | `base` | run | Section 6.5 rules 1 and 2. |
-| `git` | capability | A base read that git could not finish. |
+| `git` | capability | A base read that git could not finish, or a base tree klin could not lay out for a capability that reads it. The capabilities that do not read the base tree still measure and report. |
 | `internal` | run or capability | A klin failure that prevents a trustworthy result. |
 
 Rules:
