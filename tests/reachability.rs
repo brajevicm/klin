@@ -76,9 +76,7 @@ fn json_exposes_the_derived_family_topology() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let derived = report["derived"]
-        .as_array()
-        .unwrap_or_else(|| panic!("no derived list in {report}"));
+    let derived = &harness::derived(&report);
     let family = &derived[0]["value"][0];
     assert_eq!(derived[0]["section"], "reachability", "{}", run.out);
     assert_eq!(
@@ -989,7 +987,7 @@ fn a_changed_run_reports_one_surface_the_whole_run_reports_too() {
         let mut args = vec!["check", "--json", "reachability"];
         args.extend_from_slice(flags);
         let report = tree.run(&args).json();
-        let mut row = report["gates"][0].clone();
+        let mut row = harness::gate_rows(&report)[0].clone();
         if let Some(fields) = row.as_object_mut() {
             fields.remove("ms");
             fields.remove("facts");

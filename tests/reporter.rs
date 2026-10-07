@@ -61,8 +61,10 @@ fn list<'a>(report: &'a Value, key: &str) -> &'a [Value] {
 }
 
 fn named<'a>(report: &'a Value, gate: &str) -> &'a Value {
-    list(report, "gates")
-        .iter()
+    harness::gate_rows(report)
+        .as_array()
+        .into_iter()
+        .flatten()
         .find(|row| row.get("name").and_then(Value::as_str) == Some(gate))
         .unwrap_or_else(|| panic!("no {gate} row in {report}"))
 }

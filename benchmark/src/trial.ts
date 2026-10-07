@@ -103,7 +103,7 @@ function verdictOf(
   if (ran.error || ran.status === null) throw commandFailure(label, ran);
   let report: GateReport;
   try {
-    const parsed: unknown = JSON.parse(text);
+    const parsed: unknown = session.wholeRunReport(JSON.parse(text));
     if (!isGateReport(parsed)) throw new Error("the report is not a production gate verdict");
     report = parsed;
   } catch (why) {

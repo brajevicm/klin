@@ -410,3 +410,26 @@ fn spawn_binary(
         printed,
     }
 }
+
+/// The per-gate rows of a report: the check document's diagnostics, or the Stop hook's report.
+pub fn gate_rows(report: &serde_json::Value) -> &serde_json::Value {
+    match report["diagnostics"]["gates"].is_array() {
+        true => &report["diagnostics"]["gates"],
+        false => &report["gates"],
+    }
+}
+
+/// The derived values a check document records in each measurement's basis.
+pub fn derived(report: &serde_json::Value) -> Vec<serde_json::Value> {
+    report["measurements"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|record| {
+            record["basis"]["policy"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+        })
+        .collect()
+}

@@ -40,7 +40,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
     assert_eq!(run.code, 2, "{}", run.out);
     let report = report(&run);
     assert_eq!(report["window"]["kind"], "turn", "{report}");
-    let row = &report["gates"][0];
+    let row = &harness::gate_rows(&report)[0];
     assert_eq!(row["work"]["reads"], Value::from(2), "{report}");
     assert_eq!(row["work"]["parses"], Value::from(2), "{report}");
     assert!(
@@ -62,7 +62,7 @@ fn assert_changed_failures(tree: &Tree) {
     assert_eq!(run.code, 2, "{}", run.out);
     let report = report(&run);
     for gate in GATES {
-        let row = report["gates"]
+        let row = harness::gate_rows(&report)
             .as_array()
             .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
             .unwrap_or_else(|| panic!("no {gate} row in {report}"));
@@ -85,7 +85,7 @@ fn assert_whole_tree_passes(tree: &Tree) {
         let run = tree.run(&["check", "--json", gate]);
         assert_eq!(run.code, 0, "{gate}: {}", run.out);
         let report = run.json();
-        let row = &report["gates"][0];
+        let row = &harness::gate_rows(&report)[0];
         assert_eq!(row["coverage"]["found"], Value::from(2), "{gate}: {report}");
         assert_eq!(
             row["coverage"]["measured"],
@@ -102,7 +102,7 @@ fn assert_strict_changed_passes(tree: &Tree) {
         let run = tree.run(&["check", "--json", "--changed", gate]);
         assert_eq!(run.code, 0, "{gate}: {}", run.out);
         let report = run.json();
-        let row = &report["gates"][0];
+        let row = &harness::gate_rows(&report)[0];
         assert_eq!(row["coverage"]["found"], Value::from(1), "{gate}: {report}");
         assert_eq!(row["work"]["reads"], Value::from(3), "{gate}: {report}");
         assert_eq!(row["work"]["parses"], Value::from(3), "{gate}: {report}");

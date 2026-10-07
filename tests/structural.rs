@@ -61,13 +61,13 @@ fn entries(report: &Value, list: &str, gate: &str) -> Vec<Value> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|entry| entry["gate"] == gate)
+        .filter(|entry| entry["check"] == gate)
         .cloned()
         .collect()
 }
 
 fn row<'a>(report: &'a Value, gate: &str) -> &'a Value {
-    report["gates"]
+    harness::gate_rows(report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
         .unwrap_or_else(|| panic!("no {gate} row in {report}"))

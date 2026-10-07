@@ -23,13 +23,13 @@ fn subcommands() -> Vec<String> {
         .collect()
 }
 
-/// Every check the catalogue holds, read off the error the runner prints when a written
+/// Every check the catalogue holds, read off the hole the runner prints when a written
 /// configuration names no gate over a tree the survey finds nothing in.
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
         panic!("no check list in: {}", run.out);
     };
@@ -216,7 +216,7 @@ fn executed(tree: &Tree) -> Vec<String> {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let Some(gates) = report.get("gates").and_then(serde_json::Value::as_array) else {
+    let Some(gates) = harness::gate_rows(&report).as_array() else {
         panic!("no gate list in: {}", run.out);
     };
     gates

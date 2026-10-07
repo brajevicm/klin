@@ -385,6 +385,37 @@ export function wholeRun(klinBin: string): string[] {
   return knowsCheck(klinBin) ? ["check"] : ["gate"];
 }
 
+type Fields = Record<string, unknown>;
+
+function records(value: unknown): Fields[] {
+  return Array.isArray(value) ? value.filter((one): one is Fields => typeof one === "object" && one !== null) : [];
+}
+
+/** The report shape this harness reads, from the `klin check` document of #499, or the report as
+ * it is from a binary built before it. The status words are the row words a Stop report prints. */
+export function wholeRunReport(parsed: unknown): unknown {
+  if (typeof parsed !== "object" || parsed === null || (parsed as Fields).command !== "check") return parsed;
+  const document = parsed as Fields;
+  const diagnostics = records((document.diagnostics as Fields | undefined)?.gates);
+  const gates = records(document.capabilities)
+    .filter((row) => row.state === "active")
+    .map((row) => ({
+      ...diagnostics.find((one) => one.name === row.name),
+      name: row.name,
+      status: row.execution === "error" ? "ERR" : row.judgement === "fail" ? "FAIL" : "ok",
+    }));
+  return {
+    status: document.execution === "error" ? "ERROR" : document.judgement === "fail" ? "FAIL" : "PASS",
+    summary: "",
+    window: document.window,
+    exit: document.exit,
+    derived: records(document.measurements).flatMap((one) => records((one.basis as Fields | undefined)?.policy)),
+    gates,
+    findings: records(document.findings).map(({ check, remedy, ...finding }) => ({ ...finding, gate: check, fix_advice: remedy })),
+    notes: records(document.notes).map(({ check, kind, message, ...note }) => ({ ...note, gate: check, outcome: kind, text: message })),
+  };
+}
+
 /** What klin reports about the trial, through the command line and never through the journal
  * file. `--session` is the default scope of `klin report`, so it is dropped there. */
 export function stats(repo: string, state: string, klinBin: string, scope: string[]): unknown {

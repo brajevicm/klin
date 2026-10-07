@@ -8,8 +8,8 @@ use serde_json::{Map, Value, json};
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::contract::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Plain, Records, Sink,
-    Told, UNBUILT, UNPARSED, UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, Hole, Incomplete, LOST, NOT_MEASURED,
+    Plain, Reason, Records, Sink, Told, UNBUILT, UNPARSED, UNRESOLVED,
 };
 use crate::check::{catalogue, holes, render};
 use crate::config;
@@ -199,6 +199,9 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Ok(0);
     };
     let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
+    if !args.hook && !args.list {
+        return Ok(checked(args, start, loaded, out));
+    }
     if !args.hook {
         let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
         return refused(args, judged, out).map(|tally| code(&tally));
@@ -913,7 +916,10 @@ fn judge(
     if args.list {
         return listed(args, project, &plan, window, out);
     }
-    let wanted = select(&args.gates, &plan, project)?;
+    let wanted: Vec<&Gate> = select(&args.gates, &plan, project)?
+        .into_iter()
+        .filter(|gate| gate.check.placement.at_stop())
+        .collect();
     let against = against(args, &wanted, project, window, out)?;
     said(args, built, out);
     if let (Some(unbuilt), false) = (unbuilt, args.json) {
@@ -956,13 +962,13 @@ fn against<'a>(
     project: &'a Project,
     window: Option<&Window>,
     out: &mut String,
-) -> Result<Against<'a>, Error> {
-    let base = base(args, wanted, project, window, out)?;
-    let changes = changes(args, project, base.as_ref(), out)?;
+) -> Result<Against<'a>, Fault> {
+    let base = base(args, wanted, project, window, out).map_err(fault(BASE))?;
+    let changes = changes(args, project, base.as_ref(), out).map_err(fault(GIT))?;
     let scope = changes
         .as_ref()
         .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
-    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted)?;
+    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted).map_err(fault(GIT))?;
     Ok(Against {
         scope,
         changes,
@@ -1039,12 +1045,26 @@ fn inactive(args: &Args, plan: &Plan) -> Vec<Value> {
         .excluded
         .iter()
         .filter(|name| named(args, name))
-        .map(|name| json!({ "name": name, "state": "excluded" }));
+        .map(|name| {
+            let placement = catalogue::CATALOGUE
+                .iter()
+                .find(|check| check.name == name)
+                .map(|check| check.placement.names());
+            json!({ "name": name, "placement": placement, "state": "excluded" })
+        });
     let needed = plan
         .needs_a_section
         .iter()
         .filter(|check| named(args, check.name))
-        .map(|check| json!({ "name": check.name, "section": check.section, "state": "needs-policy" }));
+        .map(|check| {
+            json!({
+                "name": check.name,
+                "section": check.section,
+                "kind": check.kind(),
+                "placement": check.placement.names(),
+                "state": "needs-policy",
+            })
+        });
     excluded.chain(needed).collect()
 }
 
@@ -1114,6 +1134,8 @@ fn capability(project: &Project, gate: &Gate, lines: Vec<String>, derived: Vec<V
     json!({
         "name": gate.name,
         "section": gate.check.section,
+        "kind": gate.check.kind(),
+        "placement": gate.check.placement.names(),
         "state": "active",
         "values": values(project, gate, derived),
         "lines": lines,
@@ -1151,6 +1173,15 @@ fn policy_text(capabilities: &[Value], state: Option<&Path>, out: &mut String) {
             _ => "needs a section a person writes",
         };
         let _ = writeln!(out, "{name} — {said}");
+        let placement: Vec<&str> = capability["placement"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .collect();
+        if !placement.is_empty() {
+            let _ = writeln!(out, "{UNDER}placement: {}", placement.join(", "));
+        }
         for line in capability["lines"].as_array().into_iter().flatten() {
             let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
         }
@@ -1226,18 +1257,10 @@ fn no_source_root(
     project: &Project,
     out: &mut String,
 ) -> Result<Option<Value>, Error> {
-    let unselected =
-        args.gates.is_empty() && plan.needs_a_section.iter().any(|check| check.reads_code());
-    let dropped = wanted.iter().any(|gate| gate.check.reads_code()) || unselected;
-    if !dropped || !project.found_no_source_root() {
+    if !rootless(args, plan, wanted, project) {
         return Ok(None);
     }
-    let said = format!(
-        "the survey of {} found no source root — a source root is a directory that holds \
-         nothing but source files, so no gate that reads code ran here at all; run klin from \
-         the tree you mean to gate, or set those gates to false to exclude them",
-        project.root().display()
-    );
+    let said = no_source_root_said(project);
     if args.strict {
         return Err(Error(said));
     }
@@ -1245,6 +1268,34 @@ fn no_source_root(
         let _ = writeln!(out, "  NOTE: {said}");
     }
     Ok(Some(record("note", &said)))
+}
+
+fn no_source_root_said(project: &Project) -> String {
+    format!(
+        "the survey of {} found no source root — a source root is a directory that holds \
+         nothing but source files, so no gate that reads code ran here at all; run klin from \
+         the tree you mean to gate, or set those gates to false to exclude them",
+        project.root().display()
+    )
+}
+
+/// Whether the run selected a check that reads code in a tree with no source root, where the
+/// check would measure nothing. Only the checks a run selects count, so `klin check lockfile`
+/// is not this hole. A gate whose section pins `in` measures what the pin names, and one a
+/// person excluded measures nothing on purpose, so neither is this hole. ADR 0016, spec 7.2,
+/// 11.3.
+fn rootless(args: &Args, plan: &Plan, wanted: &[&Gate], project: &Project) -> bool {
+    let derives = |check: &catalogue::Row| check.reads_code() && !pins_in(project, check);
+    let unselected =
+        args.gates.is_empty() && plan.needs_a_section.iter().any(|check| derives(check));
+    project.found_no_source_root() && (unselected || wanted.iter().any(|gate| derives(gate.check)))
+}
+
+fn pins_in(project: &Project, check: &catalogue::Row) -> bool {
+    project
+        .config
+        .pinned(check.section)
+        .is_some_and(|section| section.get("in").is_some())
 }
 
 fn finish(
@@ -1345,6 +1396,7 @@ struct Recorded {
     findings: Vec<Value>,
     notes: Vec<Value>,
     derived: Vec<Value>,
+    holes: Vec<Value>,
     gates: Vec<Value>,
 }
 
@@ -1354,6 +1406,7 @@ impl From<render::Json> for Recorded {
             findings: rendered.findings,
             notes: rendered.notes,
             derived: rendered.derived,
+            holes: rendered.holes,
             gates: Vec::new(),
         }
     }
@@ -1724,7 +1777,9 @@ fn each(
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        printed(args, (gate, code), (&told, &text), &recorded, out);
+        if rendered(args, code, &recorded) {
+            printed(args, (&gate.name, status(code)), (&told, &text), out);
+        }
         totals
             .gates
             .push(row(gate, code, (&records, &recorded), ms));
@@ -1742,18 +1797,17 @@ fn each(
 /// One gate's block of the text report: its provenance, its status row, and its rendered result.
 fn printed(
     args: &Args,
-    (gate, code): (&Gate, u8),
+    (gate, state): (&str, &str),
     (told, text): (&[Told], &str),
-    recorded: &Recorded,
     out: &mut String,
 ) {
-    if !rendered(args, code, recorded) {
+    if args.json {
         return;
     }
     for line in render::provenance(told) {
         let _ = writeln!(out, "  {line}");
     }
-    let _ = writeln!(out, "  {}  {}", status(code), gate.name);
+    let _ = writeln!(out, "  {state}  {gate}");
     for line in text.lines() {
         let _ = writeln!(out, "        {line}");
     }
@@ -2075,5 +2129,633 @@ fn summary(failed: usize, errored: usize) -> String {
     match parts.is_empty() {
         true => "all passed.".to_string(),
         false => parts.join(", ") + ".",
+    }
+}
+
+/// One error of spec 7.3: its kind, and what went wrong.
+struct Fault {
+    kind: &'static str,
+    error: Error,
+}
+
+impl From<Fault> for Error {
+    fn from(fault: Fault) -> Error {
+        fault.error
+    }
+}
+
+/// The error kinds of spec 7.3 the runner tells apart.
+const INVOCATION: &str = "invocation";
+const CONFIGURATION: &str = "configuration";
+const BASE: &str = "base";
+const GIT: &str = "git";
+const INTERNAL: &str = "internal";
+
+fn fault(kind: &'static str) -> impl Fn(Error) -> Fault {
+    move |error| Fault { kind, error }
+}
+
+/// A judgement of spec 7.1, in the order aggregation takes the worst of. No capability makes a
+/// review item yet, so `review` is not here yet.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
+enum Judgement {
+    #[default]
+    Pass,
+    Fail,
+}
+
+impl Judgement {
+    fn name(self) -> &'static str {
+        match self {
+            Judgement::Pass => "pass",
+            Judgement::Fail => "fail",
+        }
+    }
+}
+
+/// The three axes of one gate, or of a whole run. Spec 4.5, 7.5.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+struct Axes {
+    judgement: Judgement,
+    incomplete: bool,
+    error: bool,
+}
+
+impl Axes {
+    fn and(self, other: Axes) -> Axes {
+        Axes {
+            judgement: self.judgement.max(other.judgement),
+            incomplete: self.incomplete || other.incomplete,
+            error: self.error || other.error,
+        }
+    }
+
+    /// ERROR 2 > FAIL 1 > INCOMPLETE 3 > success 0. Spec 7.4.
+    fn exit(self) -> u8 {
+        match self {
+            Axes { error: true, .. } => 2,
+            Axes {
+                judgement: Judgement::Fail,
+                ..
+            } => 1,
+            Axes {
+                incomplete: true, ..
+            } => 3,
+            _ => 0,
+        }
+    }
+
+    /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `ok`. Spec 11.3.
+    fn state(self) -> &'static str {
+        match self {
+            Axes { error: true, .. } => "ERR ",
+            Axes {
+                judgement: Judgement::Fail,
+                ..
+            } => "FAIL",
+            Axes {
+                incomplete: true, ..
+            } => "INCOMPLETE",
+            _ => "ok  ",
+        }
+    }
+
+    fn measurement(self) -> &'static str {
+        match self.incomplete {
+            true => "incomplete",
+            false => "complete",
+        }
+    }
+
+    fn execution(self) -> &'static str {
+        match self.error {
+            true => "error",
+            false => "ok",
+        }
+    }
+}
+
+/// One gate's axes from its exit code and its result. A gate that erred still carries the
+/// findings it validated, so they still fail it. Spec 7.5.
+fn axes(code: u8, recorded: &Recorded) -> Axes {
+    let fails = code == 1 || recorded.findings.iter().any(failing);
+    Axes {
+        judgement: match fails {
+            true => Judgement::Fail,
+            false => Judgement::Pass,
+        },
+        incomplete: !recorded.holes.is_empty(),
+        error: code == 2,
+    }
+}
+
+fn failing(finding: &Value) -> bool {
+    matches!(
+        finding.get("outcome").and_then(Value::as_str),
+        Some("new" | "worsened")
+    )
+}
+
+/// What one `klin check` came to, gathered for the check document and its text. Spec 11.7.
+#[derive(Default)]
+struct Report {
+    config: Value,
+    window: Option<Value>,
+    axes: Axes,
+    /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
+    stopped: bool,
+    capabilities: Vec<Value>,
+    findings: Vec<Value>,
+    notes: Vec<Value>,
+    measurements: Vec<Value>,
+    holes: Vec<Incomplete>,
+    not_measured: std::collections::BTreeSet<String>,
+    errors: Vec<Value>,
+    gates: Vec<Value>,
+}
+
+/// One `klin check`: each run-scope step under the kind of error it can raise, every selected
+/// gate, and the check document or its text. Spec 7, 11.3, 11.7.
+fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut String) -> u8 {
+    let named_nothing = args
+        .config
+        .as_ref()
+        .is_some_and(|path| !start.join(path).exists());
+    let mut report = Report::default();
+    let measured = loaded
+        .map_err(fault(match named_nothing {
+            true => INVOCATION,
+            false => CONFIGURATION,
+        }))
+        .and_then(|mut project| {
+            report.config = json!({
+                "path": project.config.file.display().to_string(),
+                "present": project.config.written(),
+            });
+            measured(args, &mut project, &mut report, out)
+        });
+    if let Err(fault) = measured {
+        report.stop(args, fault, out);
+    }
+    report.finish(args, out)
+}
+
+fn measured(
+    args: &Args,
+    project: &mut Project,
+    report: &mut Report,
+    out: &mut String,
+) -> Result<(), Fault> {
+    let window = base::choose(project.root(), args.strict).ok();
+    if let Some(window) = &window {
+        project.bind(window);
+    }
+    let project = &*project;
+    let plan = plan(project).map_err(fault(CONFIGURATION))?;
+    let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
+    let against = against(args, &wanted, project, window.as_ref(), out)?;
+    report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
+    Ok(())
+}
+
+/// The gates a run selects, and the capabilities a selector named that do not apply to this
+/// tree or need a section the configuration does not hold. A name klin does not know, and a gate
+/// a person set to `false`, is an invocation error. Spec 7.2, 7.3.
+fn chosen_gates<'a>(
+    named: &[String],
+    plan: &'a Plan,
+    project: &Project,
+) -> Result<(Vec<&'a Gate>, Vec<&'static catalogue::Row>), Fault> {
+    if named.is_empty() && plan.gates.is_empty() && !plan.excluded.is_empty() {
+        return Err(Fault {
+            kind: CONFIGURATION,
+            error: no_gate(project, plan),
+        });
+    }
+    let mut unsupported = Vec::new();
+    for name in named {
+        let missing = plan.needs_a_section.iter().find(|check| check.name == name);
+        match missing {
+            Some(check) if !plan.gates.iter().any(|gate| &gate.name == name) => {
+                unsupported.push(*check)
+            }
+            _ => known(name, plan, project).map_err(fault(INVOCATION))?,
+        }
+    }
+    let wanted = plan
+        .gates
+        .iter()
+        .filter(|gate| named.is_empty() || named.contains(&gate.name))
+        .collect();
+    Ok((wanted, unsupported))
+}
+
+/// The hole of a whole-tree run in which the checks that read code measured nothing, because
+/// the survey found no source root. Spec 7.2.
+fn nothing_measured(project: &Project, nothing_ran: bool) -> Incomplete {
+    let text = match nothing_ran {
+        true => format!(
+            "the repository holds no language or document klin measures: {} — write klin.json \
+             naming one of: {}",
+            no_source_root_said(project),
+            every_check()
+        ),
+        false => no_source_root_said(project),
+    };
+    Incomplete {
+        reason: Reason::NothingMeasured,
+        detail: None,
+        text,
+    }
+}
+
+impl Report {
+    /// Every selected gate, the rows of what a selector named that does not apply, and the hole
+    /// of a whole run that measured nothing. Spec 7.2, 11.7.
+    fn ran(
+        &mut self,
+        args: &Args,
+        project: &Project,
+        (plan, wanted, unsupported): (&Plan, &[&Gate], Vec<&'static catalogue::Row>),
+        against: &Against,
+        out: &mut String,
+    ) {
+        self.window = against.base.as_ref().map(Window::record);
+        if !args.changed && rootless(args, plan, wanted, project) {
+            self.holes
+                .push(nothing_measured(project, wanted.is_empty()));
+        }
+        for gate in wanted {
+            self.gate(args, gate, project, against, out);
+        }
+        for check in unsupported {
+            self.unsupported(args, check, out);
+        }
+        if args.gates.is_empty() {
+            self.not_applicable(plan);
+        }
+    }
+
+    fn gate(
+        &mut self,
+        args: &Args,
+        gate: &Gate,
+        project: &Project,
+        against: &Against,
+        out: &mut String,
+    ) {
+        let ((code, told, records, recorded), ms) =
+            journal::timed(|| one(args, gate, project, against));
+        let axes = axes(code, &recorded);
+        self.axes = self.axes.and(axes);
+        printed(
+            args,
+            (&gate.name, axes.state()),
+            (&told, &render::text(&told)),
+            out,
+        );
+        self.gates.push(row(gate, code, (&records, &recorded), ms));
+        self.capabilities.push(json!({
+            "name": gate.name,
+            "kind": gate.check.kind(),
+            "placement": gate.check.placement.names(),
+            "state": "active",
+            "judgement": axes.judgement.name(),
+            "measurement": axes.measurement(),
+            "execution": axes.execution(),
+            "coverage": records.coverage,
+            "coverage_claim": coverage_claim(gate.check),
+            "held": records.held,
+            "accepted": records.accepted,
+        }));
+        self.measurements.push(measurement(
+            &gate.name,
+            gate.check,
+            axes,
+            (&recorded.holes, &recorded.derived),
+        ));
+        self.errors.extend(gate_errors(&gate.name, code, &told));
+        self.gathered(&gate.name, recorded);
+    }
+
+    /// The findings and notes of one gate, under the names the check document gives them.
+    fn gathered(&mut self, gate: &str, recorded: Recorded) {
+        let unmeasured = recorded
+            .findings
+            .iter()
+            .chain(&recorded.notes)
+            .filter(|record| {
+                matches!(
+                    record.get("outcome").and_then(Value::as_str),
+                    Some(UNPARSED | NOT_MEASURED | LOST)
+                )
+            });
+        self.not_measured.extend(
+            unmeasured.filter_map(|record| Some(record.get("file")?.as_str()?.to_string())),
+        );
+        self.findings.extend(
+            recorded
+                .findings
+                .iter()
+                .filter(|finding| failing(finding))
+                .map(|finding| finding_record(gate, finding)),
+        );
+        self.notes
+            .extend(recorded.notes.iter().map(|note| note_record(gate, note)));
+    }
+
+    /// The row of a capability a selector named that does not apply to this tree. Spec 7.2.
+    fn unsupported(&mut self, args: &Args, check: &'static catalogue::Row, out: &mut String) {
+        let told = [Told::Incomplete(Incomplete {
+            reason: Reason::Unsupported,
+            detail: None,
+            text: format!(
+                "{} does not apply to this tree, or needs a \"{}\" section klin.json does not \
+                 hold, so it measured nothing",
+                check.name, check.section
+            ),
+        })];
+        let axes = Axes {
+            incomplete: true,
+            ..Axes::default()
+        };
+        self.axes = self.axes.and(axes);
+        printed(
+            args,
+            (check.name, axes.state()),
+            (&told, &render::text(&told)),
+            out,
+        );
+        let holes = render::json(&told).holes;
+        self.capabilities.push(inapplicable(check, Some(axes)));
+        self.measurements
+            .push(measurement(check.name, check, axes, (&holes, &[])));
+    }
+
+    /// The rows of the capabilities that do not apply, which a whole run lists. Spec 11.7.
+    fn not_applicable(&mut self, plan: &Plan) {
+        self.capabilities.extend(
+            plan.needs_a_section
+                .iter()
+                .map(|check| inapplicable(check, None)),
+        );
+    }
+
+    /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
+    fn stop(&mut self, args: &Args, fault: Fault, out: &mut String) {
+        if self.config.is_null() {
+            self.config = json!({
+                "path": args.config.as_ref().map(|path| path.display().to_string()),
+                "present": true,
+            });
+        }
+        self.stopped = true;
+        self.axes.error = true;
+        if !args.json {
+            let _ = writeln!(out, "ERR: {}", fault.error);
+        }
+        self.errors
+            .push(error_record(fault.kind, None, &fault.error.to_string()));
+    }
+
+    fn finish(mut self, args: &Args, out: &mut String) -> u8 {
+        self.axes.incomplete |= !self.holes.is_empty();
+        let exit = self.axes.exit();
+        let (judgement, measurement) = match self.stopped {
+            true => ("none", "none"),
+            false => (self.axes.judgement.name(), self.axes.measurement()),
+        };
+        if !args.json {
+            for hole in &self.holes {
+                let mut said = String::new();
+                render::incomplete(hole, &mut said);
+                let _ = write!(out, "  {said}");
+            }
+            let _ = writeln!(
+                out,
+                "judgement: {judgement}, measurement: {measurement}, execution: {}, exit {exit}",
+                self.axes.execution()
+            );
+            return exit;
+        }
+        out.clear();
+        let _ = writeln!(out, "{}", self.document(exit));
+        exit
+    }
+
+    /// The check document of spec 11.7.
+    fn document(self, exit: u8) -> Value {
+        let ran = !self.stopped;
+        let mut measurements = self.measurements;
+        if ran {
+            let holes: Vec<Value> = self.holes.iter().map(hole_record).collect();
+            measurements.insert(
+                0,
+                json!({
+                    "check": null,
+                    "basis": {},
+                    "state": if holes.is_empty() { "complete" } else { "incomplete" },
+                    "holes": holes,
+                }),
+            );
+        }
+        json!({
+            "schema_version": 1,
+            "command": "check",
+            "klin": { "version": env!("CARGO_PKG_VERSION") },
+            "config": self.config,
+            "window": self.window,
+            "tree": null,
+            "judgement": ran.then(|| self.axes.judgement.name()),
+            "measurement": ran.then(|| self.axes.measurement()),
+            "execution": self.axes.execution(),
+            "exit": exit,
+            "capabilities": self.capabilities,
+            "findings": self.findings,
+            "reviews": [],
+            "notes": self.notes,
+            "measurements": measurements,
+            "not_measured": self.not_measured.len(),
+            "errors": self.errors,
+            "diagnostics": { "gates": self.gates },
+        })
+    }
+}
+
+fn hole_record(hole: &Incomplete) -> Value {
+    json!({ "reason": hole.reason.name(), "detail": hole.detail, "text": hole.text })
+}
+
+/// An integration claims only the results its report states, never that a file it did not
+/// report on is clean. Spec 9.4.
+fn coverage_claim(check: &catalogue::Row) -> &'static str {
+    match check.activation {
+        Activation::Integration => "unverified",
+        Activation::Automatic | Activation::Policy => "verified",
+    }
+}
+
+/// The row of a capability that does not apply to this tree, with the axes of a selector that
+/// named it. Spec 11.7.
+fn inapplicable(check: &catalogue::Row, named: Option<Axes>) -> Value {
+    json!({
+        "name": check.name,
+        "kind": check.kind(),
+        "placement": check.placement.names(),
+        "state": "not-applicable",
+        "judgement": null,
+        "measurement": named.map(Axes::measurement),
+        "execution": "ok",
+        "coverage": null,
+        "coverage_claim": coverage_claim(check),
+        "held": null,
+        "accepted": null,
+    })
+}
+
+/// One measurement record: what produced it, the policy it used, and its holes. Spec 8.1, 11.7.
+fn measurement(
+    name: &str,
+    check: &catalogue::Row,
+    axes: Axes,
+    (holes, policy): (&[Value], &[Value]),
+) -> Value {
+    json!({
+        "check": name,
+        "basis": {
+            "producer": { "capability": check.name, "semantics_version": check.semantics },
+            "policy": policy,
+        },
+        "state": axes.measurement(),
+        "holes": holes,
+    })
+}
+
+/// The capability-scope errors of a gate that is exit 2, each under its kind. A gate that
+/// could not read its own configuration is a configuration error. A file or form klin could not
+/// measure is klin's own limit until spec 7.2 sorts it into its class. Spec 7.3.
+fn gate_errors(gate: &str, code: u8, told: &[Told]) -> Vec<Value> {
+    if code != 2 {
+        return Vec::new();
+    }
+    let mut errors: Vec<Value> = told.iter().flat_map(|item| erred(gate, item)).collect();
+    if errors.is_empty() {
+        errors.push(error_record(
+            INTERNAL,
+            Some(gate),
+            "the gate stopped before it finished its measurement",
+        ));
+    }
+    errors
+}
+
+/// The errors one item of a gate's result names: one per site for a file or form klin could
+/// not measure, with its site and its 0.x outcome as the reason, so no site is lost.
+fn erred(gate: &str, item: &Told) -> Vec<Value> {
+    let rendered = || {
+        let text = render::text(std::slice::from_ref(item));
+        let text = text.trim_end();
+        text.strip_prefix("FAIL: ").unwrap_or(text).to_string()
+    };
+    match item {
+        Told::Plain(Plain::Error(problem)) => {
+            vec![error_record(CONFIGURATION, Some(gate), problem)]
+        }
+        Told::Plain(Plain::PathMissing(_)) => {
+            vec![error_record(CONFIGURATION, Some(gate), &rendered())]
+        }
+        Told::Hole(Hole::LeftScrutiny(_)) => vec![error_record(INTERNAL, Some(gate), &rendered())],
+        Told::Hole(
+            Hole::NotMeasured { fail: true, .. }
+            | Hole::Unresolved { fail: true, .. }
+            | Hole::Unparsed { fail: true, .. },
+        ) => render::json(std::slice::from_ref(item))
+            .findings
+            .iter()
+            .map(|site| sited_error(gate, site))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn sited_error(gate: &str, site: &Value) -> Value {
+    let mut fields = site.as_object().cloned().unwrap_or_default();
+    let reason = fields.remove("outcome").unwrap_or(Value::Null);
+    let message = fields.remove("text").unwrap_or(Value::Null);
+    fields.insert("kind".into(), INTERNAL.into());
+    fields.insert("check".into(), gate.into());
+    fields.insert("reason".into(), reason);
+    fields.insert("message".into(), message);
+    Value::Object(fields)
+}
+
+fn error_record(kind: &str, check: Option<&str>, message: &str) -> Value {
+    json!({ "kind": kind, "check": check, "message": message })
+}
+
+/// A failing finding as the check document names it. Spec 11.7.
+fn finding_record(gate: &str, finding: &Value) -> Value {
+    let mut fields = finding.as_object().cloned().unwrap_or_default();
+    fields.insert("check".into(), gate.into());
+    fields.insert("kind".into(), "metric".into());
+    if let Some(remedy) = fields.remove("fix_advice") {
+        fields.insert("remedy".into(), remedy);
+    }
+    Value::Object(fields)
+}
+
+/// A note as the check document names it: its kind, and the words a person reads. Spec 11.7.
+fn note_record(gate: &str, note: &Value) -> Value {
+    let mut fields = note.as_object().cloned().unwrap_or_default();
+    let kind = fields.remove("outcome").unwrap_or(Value::Null);
+    let message = fields.remove("text").unwrap_or_else(|| kind.clone());
+    if fields.get("file").and_then(Value::as_str) == Some("") {
+        fields.remove("file");
+    }
+    fields.insert("check".into(), gate.into());
+    fields.insert("kind".into(), kind);
+    fields.insert("coverage".into(), false.into());
+    fields.insert("message".into(), message);
+    Value::Object(fields)
+}
+
+/// The aggregation of spec 7.5 over in-memory results, for the holes no shipped capability can
+/// reach yet. `work-limit` is one: no shipped capability has a work bound. AGENTS.md.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn work_limited() -> Recorded {
+        Recorded::from(render::json(&[Told::Incomplete(Incomplete {
+            reason: Reason::WorkLimit,
+            detail: None,
+            text: "stopped at its bound".to_string(),
+        })]))
+    }
+
+    #[test]
+    fn a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3() {
+        let gate = axes(0, &work_limited());
+
+        assert_eq!(gate.state(), "INCOMPLETE");
+        assert_eq!(gate.measurement(), "incomplete");
+        assert_eq!(Axes::default().and(gate).exit(), 3);
+        assert_eq!(work_limited().holes[0]["reason"], "work-limit");
+    }
+
+    #[test]
+    fn a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2() {
+        let hole = axes(0, &work_limited());
+        let failed = Axes {
+            judgement: Judgement::Fail,
+            ..Axes::default()
+        };
+        let erred = Axes {
+            error: true,
+            ..Axes::default()
+        };
+
+        assert_eq!(hole.and(failed).exit(), 1);
+        assert_eq!(hole.and(failed).and(erred).exit(), 2);
     }
 }

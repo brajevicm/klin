@@ -7,6 +7,11 @@ const CONFIG: &str = r#"{"dead_symbols":{"in":["src","web"]}}"#;
 const REACHABILITY_CONFIG: &str = r#"{"reachability":{"in":"src"}}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
+/// The error line of the check document for one file the grammar rejected.
+fn unparsed(file: &str, grammar: &str) -> String {
+    format!("error internal {file} the {grammar} grammar rejected it")
+}
+
 /// Every caller's view of one before and after pair. With `KLIN_DIFF_BIN` naming an earlier
 /// build, that build judges a second copy of the same trees, and the two views must match.
 fn views(scenario: fn(&Tree)) -> Value {
@@ -92,11 +97,19 @@ fn report(run: &Run) -> Value {
 /// The row of one gate in a run's report.
 fn row(run: &Run, gate_name: &str) -> Value {
     let report = report(run);
-    report["gates"]
+    gate_rows(&report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == gate_name))
         .cloned()
         .unwrap_or_else(|| panic!("no {gate_name} row in {report}"))
+}
+
+/// The gate rows of the check document's diagnostics, or of the hook's report.
+fn gate_rows(report: &Value) -> &Value {
+    match report["diagnostics"]["gates"].is_array() {
+        true => &report["diagnostics"]["gates"],
+        false => &report["gates"],
+    }
 }
 
 /// A repeated stop takes from the structural cache every base outcome the first stop extracted
@@ -121,26 +134,38 @@ fn normalized(run: &Run, gate_name: &str) -> Value {
     if let Some(window) = report["window"].as_object_mut() {
         window.remove("before");
     }
-    for list in ["findings", "notes", "gates"] {
+    for list in ["findings", "notes", "errors", "gates"] {
         if let Some(held) = report[list].as_array_mut() {
-            held.retain(|item| item["gate"] == gate_name || item["name"] == gate_name);
+            held.retain(|item| {
+                ["check", "gate", "name"]
+                    .iter()
+                    .any(|key| item[*key] == gate_name)
+            });
         }
     }
-    for row in report["gates"].as_array_mut().into_iter().flatten() {
-        if let Some(fields) = row.as_object_mut() {
-            fields.remove("ms");
-            fields.remove("facts");
-            fields.remove("names");
-            fields.remove("footprint");
-        }
-    }
+    let rows = match report["diagnostics"]["gates"].is_array() {
+        true => &mut report["diagnostics"]["gates"],
+        false => &mut report["gates"],
+    };
+    untimed(rows);
     json!({"code": run.code, "report": report})
+}
+
+/// Gate rows without what a run may vary.
+fn untimed(rows: &mut Value) {
+    for row in rows.as_array_mut().into_iter().flatten() {
+        if let Some(fields) = row.as_object_mut() {
+            for varies in ["ms", "facts", "names", "footprint"] {
+                fields.remove(varies);
+            }
+        }
+    }
 }
 
 /// One caller's verdict, findings and notes, one line each.
 fn lines(view: &Value) -> Vec<String> {
     let report = &view["report"];
-    let mut out = vec![format!("{} {}", report["status"], view["code"])];
+    let mut out = vec![format!("{} {}", verdict(report), view["code"])];
     for finding in report["findings"].as_array().into_iter().flatten() {
         out.push(format!(
             "{} {}:{} {} {}",
@@ -152,13 +177,30 @@ fn lines(view: &Value) -> Vec<String> {
         ));
     }
     for note in report["notes"].as_array().into_iter().flatten() {
+        let said = match &note["text"] {
+            Value::Null => &note["message"],
+            said => said,
+        };
+        out.push(format!("note {} {}", text(&note["file"]), text(said)));
+    }
+    for error in report["errors"].as_array().into_iter().flatten() {
         out.push(format!(
-            "note {} {}",
-            text(&note["file"]),
-            text(&note["text"])
+            "error {} {} {}",
+            text(&error["kind"]),
+            text(&error["file"]),
+            text(&error["message"])
         ));
     }
     out
+}
+
+/// The hook's status row, or the same word for the check document's axes.
+fn verdict(report: &Value) -> Value {
+    match (&report["status"], text(&report["execution"])) {
+        (Value::Null, "error") => json!("ERROR"),
+        (Value::Null, _) => json!(text(&report["judgement"]).to_uppercase()),
+        (status, _) => status.clone(),
+    }
 }
 
 fn text(value: &Value) -> &str {
@@ -323,7 +365,7 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
     );
     assert_eq!(
         ["whole", "changed", "hook"].map(|view| {
-            seen[view]["report"]["gates"][0]["coverage"]["not_measured"]
+            gate_rows(&seen[view]["report"])[0]["coverage"]["not_measured"]
                 .as_u64()
                 .unwrap_or(u64::MAX)
         }),
@@ -472,10 +514,10 @@ fn an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar() {
         tree.git(&["mv", "web/view.ts", "web/view.tsx"]);
     });
 
-    let unparsed = "unparsed web/cast.tsx:null the TSX grammar rejected it null";
+    let unparsed = unparsed("web/cast.tsx", "TSX");
     let held = "note  1 dead symbol(s) the base already held:\n  web/view.tsx:1  function old() {}";
-    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, unparsed, held]);
-    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, unparsed, held]);
+    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, held, &unparsed]);
+    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, held, &unparsed]);
     assert_eq!(
         lines(&seen["hook"])[1..],
         ["note web/cast.tsx the TSX grammar rejected it", held]
@@ -526,7 +568,7 @@ fn an_unsupported_language_stays_outside_dead_symbol_coverage() {
         tree.write("src/tool.py", "def tool():\n    return 1\n");
     });
 
-    let coverage = &seen["whole"]["report"]["gates"][0]["coverage"];
+    let coverage = &seen["whole"]["report"]["diagnostics"]["gates"][0]["coverage"];
     assert_eq!(coverage["found"], 1, "{seen}");
     assert_eq!(coverage["not_measured"], 0, "{seen}");
     assert_eq!(lines(&seen["changed"]), [r#""PASS" 0"#]);
@@ -541,10 +583,10 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
         tree.write("src/new_broken.rs", "fn new( {\n");
     });
 
-    let new = "unparsed src/new_broken.rs:null the Rust grammar rejected it null";
+    let new = unparsed("src/new_broken.rs", "Rust");
     let old = "note src/old_broken.rs the Rust grammar rejected it";
-    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, new, old]);
-    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, new]);
+    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, old, &new]);
+    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, &new]);
     assert_eq!(
         lines(&seen["hook"]),
         [

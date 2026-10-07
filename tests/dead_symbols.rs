@@ -796,7 +796,7 @@ fn unsupported_structural_files_are_outside_dead_symbol_coverage() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let gate = report["gates"]
+    let gate = harness::gate_rows(&report)
         .as_array()
         .and_then(|gates| gates.iter().find(|gate| gate["name"] == "dead-symbols"))
         .unwrap_or_else(|| panic!("dead-symbols gate: {report}"));
@@ -911,7 +911,7 @@ fn changed_report(tree: &Tree) -> Value {
 }
 
 fn dead_symbols_row(report: &Value) -> &Value {
-    report["gates"]
+    harness::gate_rows(report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == "dead-symbols"))
         .unwrap_or_else(|| panic!("no dead-symbols row in {report}"))

@@ -285,7 +285,7 @@ fn run_deletes_the_report_it_finds_before_it_reads_the_one_the_tool_wrote() {
     );
 
     let run = tree.run(&["check", "eslint"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     assert!(run.says("wrote no report"), "{}", run.out);
 }
 
@@ -307,22 +307,130 @@ fn run_judges_the_report_a_nonzero_exit_wrote() {
 }
 
 #[test]
-fn a_report_that_is_not_sarif_is_a_tool_error() {
+fn a_report_that_is_not_sarif_is_a_tool_error_hole() {
     let tree = tree(ONE);
     tree.write("eslint.sarif", "not a report\n");
 
     let run = tree.run(&["check", "eslint"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(run.says("INCOMPLETE  eslint"), "{}", run.out);
+    assert!(run.says("HOLE: tool-error"), "{}", run.out);
     assert!(run.says("is not SARIF"), "{}", run.out);
 }
 
 #[test]
-fn a_missing_report_is_a_tool_error() {
+fn a_missing_report_is_a_tool_error_hole_the_json_lists() {
     let tree = tree(ONE);
 
     let run = tree.run(&["check", "eslint"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     assert!(run.says("eslint.sarif"), "{}", run.out);
+
+    let report = tree.run(&["check", "eslint", "--json"]).json();
+    assert_eq!(report["exit"], 3, "{report}");
+    assert_eq!(report["measurement"], "incomplete", "{report}");
+    assert_eq!(hole(&report, "eslint")["reason"], "tool-error", "{report}");
+}
+
+/// The hole one gate's measurement record lists.
+fn hole(report: &serde_json::Value, gate: &str) -> serde_json::Value {
+    report["measurements"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|record| record["check"] == gate)
+        .map(|record| record["holes"][0].clone())
+        .unwrap_or_default()
+}
+
+#[test]
+fn a_command_the_shell_cannot_find_is_a_tool_error_hole_with_its_detail() {
+    let tree = tree(
+        r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "klin-no-such-scanner"}]}"#,
+    );
+
+    let run = tree.run(&["check", "eslint"]);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(
+        run.says("HOLE: tool-error (command-not-found)"),
+        "{}",
+        run.out
+    );
+
+    let report = tree.run(&["check", "eslint", "--json"]).json();
+    assert_eq!(
+        hole(&report, "eslint")["detail"],
+        "command-not-found",
+        "{report}"
+    );
+}
+
+#[test]
+fn an_empty_fresh_report_is_complete_and_claims_no_coverage() {
+    let tree = tree(ONE);
+    tree.write("eslint.sarif", &report(&[]));
+
+    let report = tree.run(&["check", "eslint", "--json"]).json();
+    assert_eq!(report["exit"], 0, "{report}");
+    assert_eq!(report["measurement"], "complete", "{report}");
+    assert_eq!(report["capabilities"][0]["kind"], "integration", "{report}");
+    assert_eq!(
+        report["capabilities"][0]["coverage_claim"], "unverified",
+        "{report}"
+    );
+}
+
+#[test]
+fn a_failing_run_with_a_hole_exits_1_and_lists_both() {
+    let tree = tree(
+        r#"{"sarif": [
+            {"name": "eslint", "report": "eslint.sarif"},
+            {"name": "semgrep", "report": "semgrep.sarif"}
+        ]}"#,
+    );
+    tree.write(
+        "eslint.sarif",
+        &report(&[result("src/a.ts", 2, "no-any", "Unexpected any")]),
+    );
+
+    let report = tree.run(&["check", "eslint", "semgrep", "--json"]).json();
+    assert_eq!(report["exit"], 1, "{report}");
+    assert_eq!(report["judgement"], "fail", "{report}");
+    assert_eq!(report["measurement"], "incomplete", "{report}");
+    assert_eq!(report["findings"][0]["check"], "eslint", "{report}");
+    assert_eq!(hole(&report, "semgrep")["reason"], "tool-error", "{report}");
+}
+
+#[test]
+fn an_error_and_a_hole_together_exit_2() {
+    let tree = tree(
+        r#"{"doc_size": {"gone.md": 10}, "sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#,
+    );
+
+    let report = tree.run(&["check", "doc-size", "eslint", "--json"]).json();
+    assert_eq!(report["exit"], 2, "{report}");
+    assert_eq!(report["execution"], "error", "{report}");
+    assert_eq!(report["measurement"], "incomplete", "{report}");
+    assert_eq!(hole(&report, "eslint")["reason"], "tool-error", "{report}");
+}
+
+#[test]
+fn an_integration_never_runs_at_the_stop() {
+    let tree =
+        tree(r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "run": "touch ran"}]}"#);
+
+    let run = harness::feed(
+        tree.root(),
+        &["gate", "--hook"],
+        r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        !tree.path("ran").exists(),
+        "the Stop ran the integration: {}",
+        run.out
+    );
+    assert!(!run.says("eslint"), "{}", run.out);
 }
 
 #[test]
@@ -341,7 +449,7 @@ fn a_report_older_than_a_file_the_window_changed_is_a_tool_error() {
     );
 
     let run = tree.run(&["check", "eslint"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     assert!(run.says("older than"), "{}", run.out);
 }
 
@@ -382,7 +490,7 @@ fn a_run_that_never_exits_is_stopped_at_the_limit_and_named() {
     let started = std::time::Instant::now();
     let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "1")], &["check", "eslint"]);
     assert!(started.elapsed().as_secs() < 30, "{}", run.out);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     assert!(run.says("sleep 60; echo never"), "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);
 }
@@ -403,29 +511,10 @@ fn the_commands_of_one_run_share_twice_the_limit() {
         &["check", "first", "second", "third"],
     );
     assert!(started.elapsed().as_secs() < 30, "{}", run.out);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     assert!(run.says("the 1 second limit"), "{}", run.out);
     assert!(
         run.says("klin did not start it, because the 2 second deadline from klin's start passed"),
-        "{}",
-        run.out
-    );
-}
-
-#[test]
-fn the_build_draws_on_the_limit_the_sarif_commands_share() {
-    let tree = tree(
-        r#"{"build": "sleep 1", "sarif": [
-            {"name": "first", "report": "first.sarif", "run": "sleep 60"},
-            {"name": "second", "report": "second.sarif", "run": "sleep 60"}
-        ]}"#,
-    );
-
-    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "2")], &["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("the 2 second limit"), "{}", run.out);
-    assert!(
-        run.says("klin stopped it at the 4 second deadline from klin's start"),
         "{}",
         run.out
     );

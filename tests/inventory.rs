@@ -742,9 +742,9 @@ fn an_oversized_test_source_preserves_the_named_resource_error() {
     let run = tree.run(&["check", "inventory", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
-    assert!(report["findings"].as_array().expect("findings").iter().any(|finding| {
-        finding["gate"] == "inventory" && finding["outcome"] == "error"
-            && finding["text"].as_str().is_some_and(|text| text.contains(
+    assert!(report["errors"].as_array().expect("errors").iter().any(|error| {
+        error["check"] == "inventory"
+            && error["message"].as_str().is_some_and(|text| text.contains(
                 "tests/test_bundle.js:1: source-line resource ceiling exceeded (84000 bytes; ceiling 65536 bytes)"
             ))
     }), "{}", run.out);

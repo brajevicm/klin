@@ -92,7 +92,11 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     assert!(run.says("ok    stubs"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
     assert!(!run.says("derived: escapes"), "{}", run.out);
-    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
+    assert!(
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -105,7 +109,11 @@ fn a_status_row_per_gate_and_a_summary_line() {
     assert!(run.says("ok    doc-citations"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("8 gate(s), all passed."), "{}", run.out);
+    assert!(
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -137,7 +145,11 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
         "{}",
         run.out
     );
-    assert!(run.says("8 gate(s), 1 failed."), "{}", run.out);
+    assert!(
+        run.says("judgement: fail, measurement: complete, execution: ok, exit 1"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -152,7 +164,11 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
     assert!(run.says("ok    complexity"), "{}", run.out);
-    assert!(run.says("8 gate(s), 2 failed."), "{}", run.out);
+    assert!(
+        run.says("judgement: fail, measurement: complete, execution: ok, exit 1"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -165,7 +181,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("7 gate(s), 1 excluded, 1 failed, 1 tool error."),
+        run.says("judgement: fail, measurement: complete, execution: error, exit 2"),
         "{}",
         run.out
     );
@@ -179,7 +195,7 @@ fn a_tool_error_alone_exits_two() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
-        run.says("7 gate(s), 1 excluded, 1 tool error."),
+        run.says("judgement: pass, measurement: complete, execution: error, exit 2"),
         "{}",
         run.out
     );
@@ -262,7 +278,11 @@ fn gate_by_name_runs_only_that_gate() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(!run.says("doc-size"), "{}", run.out);
-    assert!(run.says("1 gate(s), all passed."), "{}", run.out);
+    assert!(
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -273,26 +293,35 @@ fn gate_by_name_is_repeatable_and_keeps_ladder_order() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(at(&run, "doc-size") < at(&run, "complexity"), "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
-    assert!(run.says("2 gate(s), all passed."), "{}", run.out);
+    assert!(
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
-fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
+fn a_gate_name_the_config_does_not_configure_is_an_unsupported_hole() {
     let tree = without_source(r#"{ "doc_size": {"README.md": 10} }"#);
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no gate named escapes"), "{}", run.out);
-    assert!(run.says("doc-size"), "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(run.says("INCOMPLETE  escapes"), "{}", run.out);
+    assert!(run.says("HOLE: unsupported"), "{}", run.out);
 }
 
 #[test]
-fn a_config_that_configures_no_gate_is_a_tool_error() {
+fn a_config_that_configures_no_gate_is_a_nothing_measured_hole() {
     let tree = nothing_to_survey(r#"{}"#);
 
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("configures no gate"), "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(run.says("HOLE: nothing-measured"), "{}", run.out);
+    assert!(
+        run.says("holds no language or document klin measures"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -659,9 +688,9 @@ fn gate_by_hand_in_a_tree_that_holds_no_config_still_names_what_is_missing() {
     let tree = Tree::new();
 
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("klin.json does not exist"), "{}", run.out);
-    assert!(run.says("nothing to gate"), "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(run.says("HOLE: nothing-measured"), "{}", run.out);
+    assert!(run.says("naming one of: doc-size"), "{}", run.out);
 }
 
 const BUILD_BLOCKED: &str = ".git/klin/build-blocked";
@@ -825,10 +854,22 @@ fn list<'a>(report: &'a Value, key: &str) -> &'a [Value] {
     }
 }
 
+/// The check and the kind of each record: a finding's outcome, a note's kind, an error's reason.
 fn outcomes(records: &[Value]) -> Vec<(&str, &str)> {
     records
         .iter()
-        .map(|record| (field(record, "gate"), field(record, "outcome")))
+        .map(|record| {
+            let said = ["outcome", "reason", "kind"]
+                .into_iter()
+                .map(|key| field(record, key))
+                .find(|said| !said.is_empty())
+                .unwrap_or_default();
+            let check = match field(record, "check") {
+                "" => field(record, "gate"),
+                check => check,
+            };
+            (check, said)
+        })
         .collect()
 }
 
@@ -841,13 +882,8 @@ fn json_prints_one_object_holding_every_failing_finding() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
+    assert_eq!(field(&report, "judgement"), "fail", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(1)), "{}", run.out);
-    assert!(
-        field(&report, "summary").contains("2 failed"),
-        "{}",
-        run.out
-    );
     let findings = list(&report, "findings");
     assert_eq!(
         outcomes(findings),
@@ -882,11 +918,7 @@ fn a_json_finding_carries_the_site_the_values_and_the_advice() {
         "{}",
         run.out
     );
-    assert!(
-        field(finding, "fix_advice").contains("escape"),
-        "{}",
-        run.out
-    );
+    assert!(field(finding, "remedy").contains("escape"), "{}", run.out);
 }
 
 #[test]
@@ -930,7 +962,7 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
             .as_array()
             .unwrap_or(&Vec::new())
             .iter()
-            .any(|finding| finding["gate"] == "escapes")
+            .any(|finding| finding["check"] == "escapes")
     );
 }
 
@@ -963,7 +995,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
+    assert_eq!(field(&report, "judgement"), "fail", "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert_eq!(
         outcomes(list(&report, "notes")),
@@ -974,18 +1006,18 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
 }
 
 #[test]
-fn a_gate_that_could_not_run_is_a_json_finding_too() {
+fn a_gate_that_could_not_run_is_a_json_error() {
     let tree = tree(A_BROKEN_GATE);
 
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
-    let finding = &list(&report, "findings")[0];
-    assert_eq!(field(finding, "gate"), "escapes", "{}", run.out);
-    assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
+    assert_eq!(field(&report, "execution"), "error", "{}", run.out);
+    let error = &list(&report, "errors")[0];
+    assert_eq!(field(error, "check"), "escapes", "{}", run.out);
+    assert_eq!(field(error, "kind"), "configuration", "{}", run.out);
     assert!(
-        field(finding, "text").contains("no applicable file"),
+        field(error, "message").contains("no applicable file"),
         "{}",
         run.out
     );
@@ -998,7 +1030,7 @@ fn a_passing_json_run_holds_no_findings() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "PASS", "{}", run.out);
+    assert_eq!(field(&report, "judgement"), "pass", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(0)), "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert!(list(&report, "notes").is_empty(), "{}", run.out);
@@ -1016,7 +1048,7 @@ fn a_json_run_with_pinned_policy_invents_no_derived_entries() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let derived = list(&report, "derived");
+    let derived = harness::derived(&report);
     assert!(derived.is_empty(), "{}", run.out);
 }
 
@@ -1027,19 +1059,19 @@ fn a_config_the_run_cannot_read_is_a_json_object_too() {
     let run = tree.run(&["check", "--json", "--config", "absent.json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    assert_eq!(field(&report, "execution"), "error", "{}", run.out);
     assert_eq!(report.get("exit"), Some(&Value::from(2)), "{}", run.out);
-    let finding = &list(&report, "findings")[0];
-    assert_eq!(field(finding, "outcome"), "error", "{}", run.out);
+    let error = &list(&report, "errors")[0];
+    assert_eq!(field(error, "kind"), "invocation", "{}", run.out);
     assert!(
-        field(finding, "text").contains("could not be read"),
+        field(error, "message").contains("could not be read"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
+fn a_file_the_grammar_rejected_is_a_json_error_at_its_own_file() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
@@ -1047,13 +1079,13 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert_eq!(
-        outcomes(list(&report, "findings")),
+        outcomes(list(&report, "errors")),
         [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
         "{}",
         run.out
     );
     assert_eq!(
-        field(&list(&report, "findings")[0], "file"),
+        field(&list(&report, "errors")[0], "file"),
         "src/broken.rs",
         "{}",
         run.out
@@ -1205,7 +1237,11 @@ fn a_named_gate_runs_alone_when_the_command_line_names_it() {
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  complexity"), "{}", run.out);
     assert!(!run.says("doc-size"), "{}", run.out);
-    assert!(run.says("1 gate(s), 1 excluded, 1 failed."), "{}", run.out);
+    assert!(
+        run.says("judgement: fail, measurement: complete, execution: ok, exit 1"),
+        "{}",
+        run.out
+    );
 }
 
 /// The top-level `gates` list is gone: a gate's multiplicity belongs to its own section, as the
@@ -1240,7 +1276,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
-        run.says("7 gate(s), 1 excluded, all passed."),
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
         "{}",
         run.out
     );
@@ -1325,11 +1361,12 @@ fn strict_accepts_a_config_that_omits_a_derivable_gate() {
 }
 
 #[test]
-fn strict_refuses_a_tree_the_survey_finds_no_source_root_in() {
+fn a_tree_the_survey_finds_no_source_root_in_is_a_nothing_measured_hole() {
     let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
     let strict = tree.run(&["check"]);
-    assert_eq!(strict.code, 2, "{}", strict.out);
+    assert_eq!(strict.code, 3, "{}", strict.out);
+    assert!(strict.says("HOLE: nothing-measured"), "{}", strict.out);
     let named = tree
         .root()
         .file_name()
@@ -1448,7 +1485,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("1 gate(s), 7 excluded, all passed."),
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
         "{}",
         run.out
     );
@@ -1658,7 +1695,10 @@ fn a_coverage_loss_is_a_note_under_the_gate_in_the_json() {
     );
     let note = &list(&report, "notes")[0];
     assert_eq!(field(note, "file"), "src/gone.rs", "{}", run.out);
-    let gates = list(&report, "gates");
+    let gates = harness::gate_rows(&report)
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     let gate = gates
         .iter()
         .find(|gate| field(gate, "name") == "complexity")
@@ -1697,12 +1737,10 @@ fn a_minified_bundle_reports_a_resource_error_in_json() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
+    assert_eq!(field(&report, "execution"), "error", "{}", run.out);
     assert!(
-        list(&report, "findings").iter().any(|finding| {
-            field(finding, "outcome") == "error"
-                && field(finding, "text")
-                    .contains("bundle.js:1: source-line resource ceiling exceeded")
+        list(&report, "errors").iter().any(|error| {
+            field(error, "message").contains("bundle.js:1: source-line resource ceiling exceeded")
         }),
         "{}",
         run.out

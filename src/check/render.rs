@@ -9,10 +9,10 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole, Judged,
-    LOST, Layering, Line, Listed, Located, Matched, Measured, NOT_MEASURED, Plain, Provenance,
-    PublicApi, Ratchet, Site, Standing, Told, UNPARSED, UNRESOLVED, Unmatched, Unresolvable,
-    Wording,
+    self, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete,
+    Judged, LOST, Layering, Line, Listed, Located, Matched, Measured, NOT_MEASURED, Plain,
+    Provenance, PublicApi, Ratchet, Site, Standing, Told, UNPARSED, UNRESOLVED, Unmatched,
+    Unresolvable, Wording,
 };
 use crate::coverage::Coverage;
 
@@ -68,6 +68,7 @@ fn said(told: &Told, out: &mut String) {
         Told::Hole(hole) => holed(hole, out),
         Told::Listed(listed) => sites(listed, out),
         Told::Ratchet(said) => ratchet(said, out),
+        Told::Incomplete(hole) => incomplete(hole, out),
         Told::Judged { .. } | Told::Document { .. } | Told::Provenance(_) => (),
     }
 }
@@ -80,8 +81,17 @@ fn plain(said: &Plain, out: &mut String) {
             out,
             "FAIL: {named} — correct the path, or take it out of \"in\"."
         ),
-        Plain::Error(problem) => writeln!(out, "FAIL: {problem}"),
+        Plain::Error(problem) => writeln!(out, "ERR: {problem}"),
     };
+}
+
+/// The `HOLE:` line of a measurement that is not complete: its reason, its detail, its words.
+pub fn incomplete(hole: &Incomplete, out: &mut String) {
+    let detail = hole
+        .detail
+        .map(|detail| format!(" ({detail})"))
+        .unwrap_or_default();
+    let _ = writeln!(out, "HOLE: {}{detail} — {}", hole.reason.name(), hole.text);
 }
 
 fn holed(hole: &Hole, out: &mut String) {
@@ -653,6 +663,8 @@ pub struct Json {
     pub findings: Vec<Value>,
     pub notes: Vec<Value>,
     pub derived: Vec<Value>,
+    /// The `{reason, detail, text}` of each hole the gate told. Spec 7.2, 11.7.
+    pub holes: Vec<Value>,
 }
 
 /// The findings, notes and derived entries of one gate's result, in the order the result says
@@ -667,7 +679,6 @@ pub fn json(told: &[Told]) -> Json {
 
 fn json_one(told: &Told, out: &mut Json) {
     match told {
-        Told::Judged { .. } => (),
         Told::Document {
             name,
             words,
@@ -676,9 +687,22 @@ fn json_one(told: &Told, out: &mut Json) {
         } => document_json((name, *words, ceiling.value), standing, out),
         Told::Provenance(said) => out.derived.extend(derived_json(said)),
         Told::Plain(said) => out.notes.extend(note_json(said)),
+        other => found_json(other, out),
+    }
+}
+
+/// What a gate found beyond its own documents, policy and plain lines.
+fn found_json(told: &Told, out: &mut Json) {
+    match told {
         Told::Hole(hole) => hole_json(hole, out),
         Told::Listed(listed) => listed_json(listed, out),
         Told::Ratchet(said) => ratchet_json(said, out),
+        Told::Incomplete(hole) => out.holes.push(serde_json::json!({
+            "reason": hole.reason.name(),
+            "detail": hole.detail,
+            "text": hole.text,
+        })),
+        Told::Judged { .. } | Told::Document { .. } | Told::Provenance(_) | Told::Plain(_) => (),
     }
 }
 

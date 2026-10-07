@@ -638,14 +638,13 @@ fn an_oversized_source_preserves_the_named_resource_error_in_stubs() {
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert!(
-        report["findings"]
+        report["errors"]
             .as_array()
-            .expect("findings")
+            .expect("errors")
             .iter()
-            .any(|finding| {
-                finding["gate"] == "stubs"
-                    && finding["outcome"] == "error"
-                    && finding["text"]
+            .any(|error| {
+                error["check"] == "stubs"
+                    && error["message"]
                         .as_str()
                         .is_some_and(|text| text.contains(message))
             }),

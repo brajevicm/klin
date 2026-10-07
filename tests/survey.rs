@@ -48,7 +48,11 @@ fn a_tree_with_no_configuration_runs_every_derivable_gate() {
     assert!(run.says("ok    dead-symbols"), "{}", run.out);
     assert!(run.says("ok    lockfile"), "{}", run.out);
     assert!(run.says("ok    public-api"), "{}", run.out);
-    assert!(run.says("10 gate(s), all passed."), "{}", run.out);
+    assert!(
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -100,7 +104,7 @@ fn the_json_derived_list_is_as_long_as_the_reports_derived_lines() {
     assert!(said > 0, "{}", text.out);
     let report = run.json();
     assert_eq!(
-        report["derived"].as_array().map(Vec::len),
+        Some(harness::derived(&report).len()),
         Some(said),
         "{report}\n{}",
         text.out
@@ -114,9 +118,7 @@ fn every_derived_line_has_a_matching_json_entry() {
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let derived = report["derived"]
-        .as_array()
-        .unwrap_or_else(|| panic!("no derived array in {report}"));
+    let derived = &harness::derived(&report);
 
     let cc = find(derived, |e| {
         e["section"] == "complexity" && e["key"] == "cc"
@@ -168,7 +170,7 @@ fn a_section_set_to_false_excludes_its_gate_with_nothing_else_configured() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
     assert!(
-        run.says("9 gate(s), 1 excluded, all passed."),
+        run.says("judgement: pass, measurement: complete, execution: ok, exit 0"),
         "{}",
         run.out
     );
@@ -926,9 +928,7 @@ fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
 
     let json = tree.run(&["check", "--json"]);
     let report = json.json();
-    let derived = report["derived"]
-        .as_array()
-        .unwrap_or_else(|| panic!("no derived values in {report}"));
+    let derived = &harness::derived(&report);
     let cc = find(derived, |entry| {
         entry["section"] == "complexity" && entry["key"] == "cc"
     });
@@ -941,7 +941,7 @@ fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
     assert!(
         report["notes"]
             .as_array()
-            .is_some_and(|notes| notes.iter().any(|note| note["text"]
+            .is_some_and(|notes| notes.iter().any(|note| note["message"]
                 .as_str()
                 .is_some_and(|text| text.contains("today's complexity scope")))),
         "{report}"
