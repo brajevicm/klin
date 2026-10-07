@@ -1,14 +1,15 @@
 //! The engine every ratcheting gate judges through. It exposes `Section` and `section`,
-//! `Finding`, `accepted`, `noted`, `scoped`, `identity`, `Line`, and
+//! `Finding`, `accepted`, `noted`, `scoped`, `identity`, and
 //! `Evaluator` with its `evaluate` call. Everything else here, the matcher and the reporter
 //! included, is private.
 
 use std::collections::BTreeMap;
-use std::fmt::Write;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{Context, Records, Sink};
+use crate::check::contract::{
+    Context, Failed, Held, Line, Matched, Plain, Ratchet, Records, Sink, Site, Told, Unmatched, Was,
+};
 use crate::config::{self, Config};
 use crate::error::Error;
 use crate::record::Values;
@@ -158,7 +159,7 @@ pub fn noted(notes: &[(String, String)], out: &mut Sink) {
 
 pub fn noted_as(outcome: &str, notes: &[(String, String)], out: &mut Sink) {
     for (_, why) in notes {
-        let _ = writeln!(out.text, "NOTE: {why}");
+        out.tell(Plain::Note(why.clone()));
     }
     out.record(|records| {
         for (at, why) in notes {
@@ -203,35 +204,15 @@ impl Comparison {
     }
 
     /// The held findings an accepted entry holds, and the ones a base site holds.
-    fn reasons(&self) -> (usize, usize) {
+    fn reasons(&self) -> Held {
         let accepted = self
             .held
             .iter()
             .filter(|(_, entry)| is_accepted(entry))
             .count();
-        (accepted, self.held.len() - accepted)
-    }
-}
-
-/// What a check says of the state it measured, and what follows the qualifier the ratchet adds.
-/// A check owns its own vocabulary and its counts. It never writes why its findings pass,
-/// because only the comparison knows that, so no check can claim a base comparison that did not
-/// happen. Spec 8.6.
-pub struct Line<'a> {
-    pub state: &'a str,
-    pub tail: &'a str,
-}
-
-/// Why every current finding passed, in the words the comparison proved. A run that judged no
-/// finding claims nothing: there was nothing for the base or the accepted list to hold.
-/// Spec 8.6.
-fn qualifier(comparison: &Comparison) -> String {
-    match comparison.reasons() {
-        (0, 0) => String::new(),
-        (0, _) => ", all held at the base".to_string(),
-        (_, 0) => ", all on the accepted list".to_string(),
-        (accepted, base) => {
-            format!(", {base} held at the base and {accepted} on the accepted list")
+        Held {
+            accepted,
+            base: self.held.len() - accepted,
         }
     }
 }
@@ -551,99 +532,99 @@ fn report(
     at: &Context,
     out: &mut Sink,
 ) -> u8 {
-    let (accepted, _) = comparison.reasons();
+    let accepted = comparison.reasons().accepted;
     out.record(|records| {
         records.held = Some(records.held.unwrap_or(0) + comparison.held.len() as u64);
         records.accepted = Some(records.accepted.unwrap_or(0) + accepted as u64);
         collect(comparison, evaluator, at.gate, records);
     });
     if comparison.failed() {
-        failures(comparison, evaluator, held, out.text);
-        notes(comparison, evaluator, at.gate, out.text);
+        failures(comparison, evaluator, held, out);
+        notes(comparison, evaluator, at.gate, out);
         return 1;
     }
-    let _ = writeln!(
-        out.text,
-        "OK: {}{}{}",
-        line.state,
-        qualifier(comparison),
-        line.tail
-    );
-    notes(comparison, evaluator, at.gate, out.text);
+    out.tell(Told::Judged {
+        line,
+        held: comparison.reasons(),
+    });
+    notes(comparison, evaluator, at.gate, out);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
-        let heading = format!(
-            "FAIL: the accepted list holds {} entr{} that matched nothing — an entry that no longer describes the code is a failure. Delete the line.",
-            comparison.unmatched_accepted.len(),
-            match comparison.unmatched_accepted.len() {
-                1 => "y",
-                _ => "ies",
-            }
-        );
-        listed(
-            out.text,
-            &heading,
-            comparison
+        out.tell(Ratchet::AcceptedStale {
+            count: comparison.unmatched_accepted.len(),
+            rows: comparison
                 .unmatched_accepted
                 .iter()
                 .filter_map(|entry| {
-                    retired_row(at.gate, entry)
-                        .map(|went| format!("{}: {went}", text(entry, "file")))
+                    retired_row(at.gate, entry).map(|went| Site {
+                        file: text(entry, "file"),
+                        text: went,
+                    })
                 })
                 .collect(),
-        );
+        });
         return 1;
     }
     0
 }
 
-fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &mut String) {
+fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &mut Sink) {
     if !comparison.unmatched_findings.is_empty() {
-        let _ = writeln!(
-            out,
-            "FAIL: {} new {} {}, beyond the {} the base holds:",
-            comparison.unmatched_findings.len(),
-            evaluator.unit,
-            evaluator.condition,
-            held
-        );
         let found = &comparison.unmatched_findings;
-        for (lead, inside) in grouped(found, evaluator.nested) {
-            let members = inside.into_iter().map(|at| ("  ", &found[at]));
-            for (indent, finding) in std::iter::once(("", &found[lead])).chain(members) {
-                let _ = writeln!(
-                    out,
-                    "  {indent}{}:{}  {}  {}{}",
-                    finding.file,
-                    finding.line,
-                    (evaluator.format_metrics)(&finding.values),
-                    clip(&finding.text),
-                    against(None, evaluator)
-                );
-            }
-        }
+        let failed = grouped(found, evaluator.nested)
+            .into_iter()
+            .flat_map(|(lead, inside)| {
+                std::iter::once((false, lead)).chain(inside.into_iter().map(|at| (true, at)))
+            })
+            .map(|(nested, at)| Failed {
+                nested,
+                ..failed(&found[at], None, evaluator)
+            })
+            .collect();
+        out.tell(Ratchet::New {
+            unit: evaluator.unit.to_string(),
+            condition: evaluator.condition.to_string(),
+            held,
+            failed,
+        });
     }
     if !comparison.rose.is_empty() {
-        let _ = writeln!(
-            out,
-            "FAIL: {} {} got worse — the ratchet only tightens:",
-            comparison.rose.len(),
-            evaluator.unit
-        );
-        for (finding, entry) in &comparison.rose {
-            let _ = writeln!(
-                out,
-                "  {}:{}  {}, was {}{}  {}{}",
-                finding.file,
-                finding.line,
-                (evaluator.format_metrics)(&finding.values),
-                (evaluator.format_metrics)(entry),
-                came_from(finding, entry),
-                clip(&finding.text),
-                against(Some(entry), evaluator)
-            );
-        }
+        out.tell(Ratchet::Worse {
+            unit: evaluator.unit.to_string(),
+            failed: comparison
+                .rose
+                .iter()
+                .map(|(finding, entry)| failed(finding, Some(entry), evaluator))
+                .collect(),
+        });
     }
-    let _ = writeln!(out, "{}", remedy(comparison, evaluator));
+    out.tell(Plain::Remedy(remedy(comparison, evaluator)));
+}
+
+/// One failure with what it was judged against: the `before` site it matched, the accepted
+/// entry, or nothing at all, and the ceiling in force beside it. A person disputes a wrong match
+/// from this, and an agent fixes the site the ratchet actually compared. Spec 8.6.
+fn failed(finding: &Finding, entry: Option<&Values>, evaluator: &Evaluator) -> Failed {
+    let matched = match entry {
+        None => Matched::Nothing,
+        Some(entry) if is_accepted(entry) => Matched::Accepted(text(entry, "file")),
+        Some(entry) => {
+            let (file, line) = entry_site(entry);
+            Matched::Base { file, line }
+        }
+    };
+    Failed {
+        file: finding.file.clone(),
+        line: finding.line,
+        shown: (evaluator.format_metrics)(&finding.values),
+        was: entry.map(|entry| Was {
+            shown: (evaluator.format_metrics)(entry),
+            at: came_from(finding, entry),
+        }),
+        text: finding.text.clone(),
+        matched,
+        ceiling: evaluator.ceiling.map(str::to_string),
+        nested: false,
+    }
 }
 
 /// Every new finding once, as the leads in their order, each with the findings that print inside
@@ -671,32 +652,12 @@ fn grouped(found: &[Finding], nested: Option<Nesting>) -> Vec<(usize, Vec<usize>
     groups
 }
 
-/// What one failure was judged against: the `before` site it matched, or the accepted entry, or
-/// nothing at all, and the ceiling in force beside it. A person disputes a wrong match from
-/// this, and an agent fixes the site the ratchet actually compared. Spec 8.6.
-fn against(entry: Option<&Values>, evaluator: &Evaluator) -> String {
-    let matched = match entry {
-        None => "nothing matched".to_string(),
-        Some(entry) if is_accepted(entry) => {
-            format!("matched the accepted entry for {}", text(entry, "file"))
-        }
-        Some(entry) => {
-            let (file, line) = entry_site(entry);
-            format!("matched the base site at {file}:{line}")
-        }
-    };
-    match evaluator.ceiling {
-        Some(ceiling) => format!("  — {matched}, ceiling {ceiling}"),
-        None => format!("  — {matched}"),
-    }
-}
-
 /// The file a failure's own line does not name, which is the one the second pass of 4.4 matched
 /// it to. Without it a function that moved and grew reads as a regression where it now sits.
-fn came_from(finding: &Finding, entry: &Values) -> String {
+fn came_from(finding: &Finding, entry: &Values) -> Option<String> {
     match text(entry, "file") {
-        was if was.is_empty() || was == finding.file => String::new(),
-        was => format!(" at {was}"),
+        was if was.is_empty() || was == finding.file => None,
+        was => Some(was),
     }
 }
 
@@ -732,46 +693,22 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut String) {
+fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut Sink) {
     if comparison.unmatched_accepted.is_empty() {
         return;
     }
-    let count = comparison.unmatched_accepted.len();
-    let plural = if count == 1 { "y" } else { "ies" };
-    listed(
-        out,
-        &format!("NOTE: {count} accepted entr{plural} matched nothing this run:"),
+    out.tell(Ratchet::AcceptedUnmatched(
         comparison
             .unmatched_accepted
             .iter()
-            .map(|entry| {
-                format!(
-                    "{}  {}  {}{}",
-                    text(entry, "file"),
-                    (evaluator.format_metrics)(entry),
-                    clip(&text(entry, "text")),
-                    match retired_row(gate, entry) {
-                        Some(went) => format!("  — {went}"),
-                        None => String::new(),
-                    }
-                )
+            .map(|entry| Unmatched {
+                file: text(entry, "file"),
+                shown: (evaluator.format_metrics)(entry),
+                text: text(entry, "text"),
+                retired: retired_row(gate, entry),
             })
             .collect(),
-    );
-}
-
-fn listed(out: &mut String, heading: &str, rows: Vec<String>) {
-    let _ = writeln!(out, "{heading}");
-    for row in rows.iter().take(20) {
-        let _ = writeln!(out, "  {row}");
-    }
-    if rows.len() > 20 {
-        let _ = writeln!(out, "  … and {} more", rows.len() - 20);
-    }
-}
-
-fn clip(text: &str) -> String {
-    text.chars().take(70).collect()
+    ));
 }
 
 fn collect(comparison: &Comparison, evaluator: &Evaluator, gate: &str, records: &mut Records) {

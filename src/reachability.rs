@@ -13,7 +13,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -22,7 +22,7 @@ use crate::files;
 use crate::key::{self, Key};
 use crate::measurement::{self, Measurement};
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, under_or_at};
 use crate::survey::{self, Survey};
@@ -156,21 +156,21 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .collect();
     let judged = after_states.len();
     let unreached = now.len();
-    let covered_after = covered(&after, &families);
-    let said = out.covered(&covered_after.coverage(None));
+    let said = out.covered(&covered(&after, &families).coverage(None));
     let evaluator = evaluator();
     let code = evaluator.evaluate(
         now,
         prior,
         ratchet::accepted(config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state: &format!(
-                "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
-                 eligible declaration"
-            ),
-            tail: &said,
-        },
+        Line::new(
+            Measured::Reachability {
+                judged,
+                unreached,
+                unjudged,
+            },
+            said,
+        ),
         out,
     );
     let prior = contract::whole_base(at, &commit)?;

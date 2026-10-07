@@ -523,6 +523,46 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
     );
 }
 
+#[test]
+fn in_paths_that_name_nothing_make_one_error_finding_and_none_beside_a_finding() {
+    let tree = tree(
+        r#"{
+          "c": { "text": "FORBIDDEN", "in": "src/mian.rs", "remedy": "Do." },
+          "d": { "text": "FORBIDDEN", "in": "src/gone.rs", "remedy": "Do." }
+        }"#,
+    );
+    tree.write("src/main.rs", "FORBIDDEN\n");
+    tree.base();
+
+    let run = tree.run(&["check", "conventions", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let errors = |report: &serde_json::Value| {
+        report["findings"]
+            .as_array()
+            .expect("findings")
+            .iter()
+            .filter(|finding| finding["outcome"] == "error")
+            .count()
+    };
+    assert_eq!(errors(&run.json()), 1, "{}", run.out);
+
+    let beside = tree_with_finding();
+    let run = beside.run(&["check", "conventions", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(errors(&run.json()), 0, "{}", run.out);
+}
+
+fn tree_with_finding() -> Tree {
+    let tree = tree(
+        r#"{
+          "c": { "text": "FORBIDDEN", "in": "src/mian.rs", "remedy": "Do." },
+          "e": { "text": "FORBIDDEN", "remedy": "Do." }
+        }"#,
+    );
+    tree.write("src/main.rs", "FORBIDDEN\n");
+    tree
+}
+
 const SCRATCH: &str = r#"{
   "no-scratch-files": { "files": "**/scratch.*", "remedy": "Remove temporary scratch files." }
 }"#;

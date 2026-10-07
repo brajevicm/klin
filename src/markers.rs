@@ -6,7 +6,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::changed::Change;
-use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Counted, Line, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage::Files;
@@ -14,7 +14,7 @@ use crate::error::Error;
 use crate::files;
 use crate::key::{self, Key};
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line};
+use crate::ratchet::{self, Evaluator, Finding};
 use crate::record::Values;
 use crate::scope::Scope;
 use crate::survey::{self, Tests};
@@ -265,10 +265,6 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         at.changes.filter(|_| !at.strict),
     )?;
     let sites = ratchet::scoped(&read.findings, at.only);
-    let aside = match read.skipped {
-        0 => String::new(),
-        count => format!(" ({count} in tests skipped)"),
-    };
     let unit = kind.evaluator.unit;
     let said = out.covered(&read.files.coverage(at.only));
     let before = at_the_base(kind, &spec, at)?;
@@ -279,10 +275,14 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         before.findings,
         ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
-        Line {
-            state: &format!("{sites} {unit} in the tree"),
-            tail: &format!("{aside}{said}"),
-        },
+        Line::new(
+            Counted::Markers {
+                sites,
+                unit,
+                skipped: read.skipped,
+            },
+            said,
+        ),
         out,
     );
     Ok(holes::lost_said(&lost, at, code, out))

@@ -6,7 +6,6 @@
 //! nothing here is ratcheted beyond the base's own word count. Spec 5.4, 8.2.1, ADR 0040.
 
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -15,7 +14,7 @@ use crate::base;
 use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::check::contract::{self, Context, Said, Sink};
+use crate::check::contract::{self, Context, Counted, Line, Said, Sink, Standing, Told};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -93,7 +92,7 @@ fn evaluate(
     let measured = documents.len();
     let said = out.covered(&Coverage::whole(measured));
     if over == 0 {
-        let _ = writeln!(out.text, "OK: {measured} document(s) judged{said}");
+        out.tell(Told::judged(Line::new(Counted::Documents(measured), said)));
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
@@ -232,35 +231,25 @@ fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> 
             return failed(document, words, out);
         };
         out.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
-        let _ = writeln!(
-            out.text,
-            "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base \
-             at {before} words"
-        );
+        told(document, words, Standing::Held(before), out);
         return false;
     }
-    let _ = writeln!(out.text, "OK: {name} is {words} words, ceiling {ceiling}");
     let remaining = ceiling.value - words;
-    if remaining as f64 <= ceiling.value as f64 * MARGIN_FRACTION {
-        let _ = writeln!(
-            out.text,
-            "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
-        );
-        out.record(|records| {
-            let near = site("near-ceiling", name, words, ceiling.value);
-            records.notes.push(Value::Object(near));
-        });
+    if remaining as f64 > ceiling.value as f64 * MARGIN_FRACTION {
+        told(document, words, Standing::Under, out);
+        return false;
     }
+    told(document, words, Standing::Near(remaining), out);
+    out.record(|records| {
+        let near = site("near-ceiling", name, words, ceiling.value);
+        records.notes.push(Value::Object(near));
+    });
     false
 }
 
 fn failed(document: &Document, words: u64, out: &mut Sink) -> bool {
     let (name, ceiling) = (&document.name, &document.ceiling);
-    let _ = writeln!(
-        out.text,
-        "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
-    );
-    let _ = writeln!(out.text, "{REMEDY}");
+    told(document, words, Standing::Over(REMEDY), out);
     out.record(|records| {
         let mut over = site("new", name, words, ceiling.value);
         over.insert("condition".into(), "over its word ceiling".into());
@@ -268,6 +257,15 @@ fn failed(document: &Document, words: u64, out: &mut Sink) -> bool {
         records.findings.push(Value::Object(over));
     });
     true
+}
+
+fn told(document: &Document, words: u64, standing: Standing, out: &mut Sink) {
+    out.tell(Told::Document {
+        name: document.name.clone(),
+        words,
+        ceiling: document.ceiling.to_string(),
+        standing,
+    });
 }
 
 fn site(outcome: &str, name: &str, words: u64, ceiling: u64) -> Map<String, Value> {

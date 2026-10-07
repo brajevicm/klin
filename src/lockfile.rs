@@ -10,12 +10,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Counted, Line, Sink};
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope};
 
@@ -203,22 +203,17 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
             entry.insert(STALE.into(), 0.into());
         }
     }
-    let state = format!(
-        "{} dependenc{} in {} manifest(s), each locked and pinned",
-        sites.judged,
-        plural(sites.judged),
-        sites.manifests
-    );
-    let tail = out.covered(&sites.coverage());
+    let state = Counted::Dependencies {
+        judged: sites.judged,
+        manifests: sites.manifests,
+    };
+    let coverage = out.covered(&sites.coverage());
     let code = evaluator().evaluate(
         sites.findings,
         sites.prior,
         accepted,
         at,
-        Line {
-            state: &state,
-            tail: &tail,
-        },
+        Line::new(state, coverage),
         out,
     );
     ratchet::noted(&sites.notes, out);
@@ -453,13 +448,6 @@ fn show(values: &Values) -> String {
 
 fn number(values: &Values, key: &str) -> u64 {
     values.get(key).and_then(Value::as_u64).unwrap_or_default()
-}
-
-fn plural(count: usize) -> &'static str {
-    match count {
-        1 => "y",
-        _ => "ies",
-    }
 }
 
 /// What every judged manifest contributed: the working tree's sites, the base's sites beside

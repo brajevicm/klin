@@ -8,10 +8,10 @@ use serde_json::{Map, Value, json};
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::contract::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNBUILT,
-    UNPARSED, UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Plain, Records, Sink,
+    Told, UNBUILT, UNPARSED, UNRESOLVED,
 };
-use crate::check::{catalogue, holes};
+use crate::check::{catalogue, holes, render};
 use crate::config;
 use crate::error::Error;
 use crate::host;
@@ -1692,21 +1692,14 @@ fn each(
     let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
-        let ((code, text, records), ms) = journal::timed(|| one(args, gate, project, against));
+        let ((code, told, records), ms) = journal::timed(|| one(args, gate, project, against));
+        let text = render::text(&told);
         match code {
             0 => (),
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        if rendered(args, code, &records) {
-            for line in &records.derived_lines {
-                let _ = writeln!(out, "  {line}");
-            }
-            let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-            for line in text.lines().filter(|line| !succeeded(args, code, line)) {
-                let _ = writeln!(out, "        {line}");
-            }
-        }
+        printed(args, (gate, code), &text, &records, out);
         totals.gates.push(row(gate, code, &records, ms));
         gather(&mut totals, records, &gate.name);
     }
@@ -1717,6 +1710,26 @@ fn each(
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
     (tally, totals)
+}
+
+/// One gate's block of the text report: its provenance, its status row, and its rendered result.
+fn printed(
+    args: &Args,
+    (gate, code): (&Gate, u8),
+    text: &str,
+    records: &Records,
+    out: &mut String,
+) {
+    if !rendered(args, code, records) {
+        return;
+    }
+    for line in &records.derived_lines {
+        let _ = writeln!(out, "  {line}");
+    }
+    let _ = writeln!(out, "  {}  {}", status(code), gate.name);
+    for line in text.lines().filter(|line| !succeeded(args, code, line)) {
+        let _ = writeln!(out, "        {line}");
+    }
 }
 
 /// Whether the text report prints this gate. The hook prints a gate that did not pass, and a
@@ -1970,8 +1983,8 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     )))
 }
 
-fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, String, Records) {
-    let mut text = String::new();
+fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, Vec<Told>, Records) {
+    let mut told = Vec::new();
     let mut records = Records::default();
     let at = Context {
         gate: &gate.name,
@@ -1989,18 +2002,30 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, S
     let outcome = (gate.check.run)(
         &at,
         &mut Sink {
-            text: &mut text,
+            told: &mut told,
             records: &mut records,
         },
     );
-    let (code, text) = match outcome {
-        Ok(code) => (code, text),
-        Err(problem) => (2, text + &format!("FAIL: {problem}")),
+    let code = match outcome {
+        Ok(code) => code,
+        Err(problem) => {
+            records.errors.push(problem.to_string());
+            told.push(Plain::Error(problem.to_string()).into());
+            2
+        }
     };
-    if code == 2 && records.findings.is_empty() {
-        records.findings.push(record("error", &text));
+    errored(code, &mut records);
+    (code, told, records)
+}
+
+/// The one `error` finding of a gate that is exit 2 and recorded no other finding, from the
+/// reasons it gave. A gate with findings already names what failed, so it gets none. Spec 11.2.
+fn errored(code: u8, records: &mut Records) {
+    if code != 2 || !records.findings.is_empty() || records.errors.is_empty() {
+        return;
     }
-    (code, text, records)
+    let errors = std::mem::take(&mut records.errors);
+    records.findings.push(record("error", &errors.join("\n")));
 }
 
 fn status(code: u8) -> &'static str {

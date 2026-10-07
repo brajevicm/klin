@@ -1,15 +1,17 @@
 //! What a check is, told once. A check is handed an immutable `Context` — who called it, which
 //! gate it judges under, what base it compares against, what scope it may look at — and it
-//! writes to an explicit `Sink`: the report text a person reads, and the `Records` the runner
-//! turns into the 11.2 object. Nothing about a run reaches a check any other way, so the runner
-//! keeps no side channel into it and a check keeps no state of its own. This module names no
-//! check, so every check and the catalogue that registers them depend on it one way.
+//! writes to an explicit `Sink`: the typed `Told` items a renderer turns into the report a
+//! person reads, and the `Records` the runner turns into the 11.2 object. Nothing about a run
+//! reaches a check any other way, so the runner keeps no side channel into it and a check keeps
+//! no state of its own. This module names no check, so every check and the catalogue that
+//! registers them depend on it one way.
 
 use std::path::Path;
 
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior, Window};
+use crate::ceiling::Ceiling;
 use crate::changed::Change;
 use crate::config::Config;
 use crate::coverage::Coverage;
@@ -75,6 +77,9 @@ impl std::ops::Add for ContentCost {
 #[derive(Default)]
 pub struct Records {
     pub findings: Vec<Value>,
+    /// Why a gate that is exit 2 failed where it names no site. The runner records them as one
+    /// `error` finding, and only for a gate that recorded no other finding.
+    pub errors: Vec<String>,
     pub notes: Vec<Value>,
     /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
     pub gates: Vec<Value>,
@@ -212,15 +217,325 @@ impl Context<'_> {
     }
 }
 
-/// Where a check writes: the report a person reads, and the records the runner keeps.
+/// Where a check writes: what it found, in the order a report says it, and the records the
+/// runner keeps. A check writes no report text: `render` does. Spec 3.1, 6.1.
 pub struct Sink<'a> {
-    pub text: &'a mut String,
+    pub told: &'a mut Vec<Told>,
     pub records: &'a mut Records,
 }
 
+/// What a gate judged, for the `OK:` line: its counts in the check's own terms, and the coverage.
+/// The renderer words both. Spec 8.6.
+pub struct Line {
+    pub judged: Judged,
+    pub coverage: Option<Coverage>,
+}
+
+impl Line {
+    pub fn new(judged: impl Into<Judged>, coverage: Option<Coverage>) -> Line {
+        Line {
+            judged: judged.into(),
+            coverage,
+        }
+    }
+}
+
+/// The counts a gate's `OK:` line states, one variant per gate's terms.
+pub enum Judged {
+    Counted(Counted),
+    Measured(Measured),
+}
+
+/// The counts of a gate that judges what it finds one by one.
+pub enum Counted {
+    Documents(usize),
+    Conventions(usize),
+    Convention {
+        name: String,
+        sites: usize,
+    },
+    Citations(usize),
+    Dependencies {
+        judged: usize,
+        manifests: usize,
+    },
+    Tests {
+        held: usize,
+        gone: usize,
+    },
+    Markers {
+        sites: usize,
+        unit: &'static str,
+        skipped: u64,
+    },
+}
+
+/// The counts of a gate that measures structure over a tree.
+pub enum Measured {
+    DeadSymbols {
+        judged: usize,
+        dead: usize,
+    },
+    Reachability {
+        judged: usize,
+        unreached: usize,
+        unjudged: usize,
+    },
+    Complexity(Complexity),
+    Layering(Layering),
+    PublicApi(PublicApi),
+    Sarif {
+        judged: u64,
+        held: u64,
+        differential: bool,
+    },
+}
+
+/// The functions `complexity` judged, the dated steps of the ceilings in force, and the test
+/// functions it did not judge on length with the files among them a window added or renamed.
+pub struct Complexity {
+    pub judged: usize,
+    pub over: usize,
+    pub steps: Vec<(&'static str, Ceiling)>,
+    pub unjudged: usize,
+    pub arrived: Vec<String>,
+}
+
+/// The dependency sites `layering` judged, and how the module graph attached the files.
+#[derive(Default)]
+pub struct Layering {
+    pub sites: usize,
+    pub forbidden: usize,
+    pub cyclic: usize,
+    pub attached: usize,
+    pub by_manifest: usize,
+    pub by_convention: usize,
+    pub unattached: usize,
+    pub external: usize,
+}
+
+/// The external items `public-api` judged, and the surfaces it discovered.
+pub struct PublicApi {
+    pub items: usize,
+    pub surfaces: usize,
+    pub measured: usize,
+    pub opaque: usize,
+    pub rust: usize,
+    pub typescript: usize,
+    pub inapplicable: usize,
+}
+
+impl From<Counted> for Judged {
+    fn from(counted: Counted) -> Judged {
+        Judged::Counted(counted)
+    }
+}
+
+impl From<Measured> for Judged {
+    fn from(measured: Measured) -> Judged {
+        Judged::Measured(measured)
+    }
+}
+
+/// The kind of form a gate supports and could not resolve. Spec 8.2.1, 8.6.
+#[derive(Clone, Copy)]
+pub enum Unresolvable {
+    Dependency,
+    PublicSurface,
+}
+
+/// One file a list in the report names, with the text the list says of it.
+pub struct Site {
+    pub file: String,
+    pub text: String,
+}
+
+/// One site at a line of a file, with its text.
+pub struct Located {
+    pub file: String,
+    pub line: u64,
+    pub text: String,
+}
+
+/// What a ratchet failure was compared against: nothing, the accepted entry for a file, or the
+/// base site at a file and line. Spec 8.6.
+pub enum Matched {
+    Nothing,
+    Accepted(String),
+    Base { file: String, line: u64 },
+}
+
+/// One finding the ratchet failed, with the check's own words for its values.
+pub struct Failed {
+    pub file: String,
+    pub line: u64,
+    pub shown: String,
+    pub was: Option<Was>,
+    pub text: String,
+    pub matched: Matched,
+    pub ceiling: Option<String>,
+    /// Whether the finding prints inside the group of the one before it.
+    pub nested: bool,
+}
+
+/// An accepted entry that matched nothing this run: its file, the check's words for its values,
+/// its text, and the row it names that klin retired.
+pub struct Unmatched {
+    pub file: String,
+    pub shown: String,
+    pub text: String,
+    pub retired: Option<String>,
+}
+
+/// What the base or accepted entry held for a finding that got worse: the check's words for its
+/// values, and the file it held them at where that is not the finding's own.
+#[derive(Clone)]
+pub struct Was {
+    pub shown: String,
+    pub at: Option<String>,
+}
+
+/// How many of a gate's passing findings an accepted entry held, and how many a base site held.
+/// None of either claims nothing. Spec 8.6.
+#[derive(Default, Clone, Copy)]
+pub struct Held {
+    pub accepted: usize,
+    pub base: usize,
+}
+
+/// Where a document stands against its ceiling. Spec 8.1.
+pub enum Standing {
+    Under,
+    Near(u64),
+    Held(u64),
+    Over(&'static str),
+}
+
+/// One item of a gate's semantic result, in the order the report says it. Spec 3.1, 6.1.
+pub enum Told {
+    Judged {
+        line: Line,
+        held: Held,
+    },
+    Document {
+        name: String,
+        words: u64,
+        ceiling: String,
+        standing: Standing,
+    },
+    Plain(Plain),
+    Hole(Hole),
+    Listed(Listed),
+    Ratchet(Ratchet),
+}
+
+/// A line the report says as it is, under its own word.
+pub enum Plain {
+    Note(String),
+    Remedy(String),
+    PathMissing(String),
+    Error(String),
+}
+
+/// A hole in what a gate measured. Whether it fails is decided by the check, and `fail` carries
+/// it. Spec 8.6.
+pub enum Hole {
+    Lost(Site),
+    LeftScrutiny(usize),
+    NotMeasured {
+        fail: bool,
+        files: Vec<Site>,
+    },
+    Unresolved {
+        fail: bool,
+        kind: Unresolvable,
+        forms: Vec<(Located, String)>,
+    },
+    Unparsed {
+        fail: bool,
+        files: Vec<Site>,
+    },
+}
+
+/// Sites a gate lists that fail nothing: dead symbols a direct run reports, and the tests a
+/// window let through. Spec 8.2.
+pub enum Listed {
+    DeadSymbols(Vec<(Located, String)>),
+    TestsDeleted(Vec<Located>),
+    TestFunctionsOrphaned(Vec<Located>),
+    TestFilesPaired {
+        files: Vec<Site>,
+        rule: &'static str,
+    },
+}
+
+/// What the ratchet's comparison came to beyond the `OK:` line. Spec 4.4, 8.6.
+pub enum Ratchet {
+    New {
+        unit: String,
+        condition: String,
+        held: usize,
+        failed: Vec<Failed>,
+    },
+    Worse {
+        unit: String,
+        failed: Vec<Failed>,
+    },
+    AcceptedUnmatched(Vec<Unmatched>),
+    /// The count of entries that matched nothing, and the file and retired row of each one a
+    /// retired row names.
+    AcceptedStale {
+        count: usize,
+        rows: Vec<Site>,
+    },
+}
+
+impl Told {
+    /// The `OK:` line of a gate that compares nothing, so nothing held its findings.
+    pub fn judged(line: Line) -> Told {
+        Told::Judged {
+            line,
+            held: Held::default(),
+        }
+    }
+}
+
+impl From<Plain> for Told {
+    fn from(said: Plain) -> Told {
+        Told::Plain(said)
+    }
+}
+
+impl From<Hole> for Told {
+    fn from(hole: Hole) -> Told {
+        Told::Hole(hole)
+    }
+}
+
+impl From<Listed> for Told {
+    fn from(listed: Listed) -> Told {
+        Told::Listed(listed)
+    }
+}
+
+impl From<Ratchet> for Told {
+    fn from(said: Ratchet) -> Told {
+        Told::Ratchet(said)
+    }
+}
+
 impl<'a> Sink<'a> {
+    pub fn tell(&mut self, told: impl Into<Told>) {
+        self.told.push(told.into());
+    }
+
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         add(self.records);
+    }
+
+    /// Why this gate is exit 2 where the failure names no site. See `Records::errors`.
+    pub fn error(&mut self, text: String) {
+        self.records.errors.push(text);
     }
 
     /// One value a check derived itself, kept beside the record so the runner can place its
@@ -277,22 +592,9 @@ pub fn own_base(at: &Context) -> Result<Prior, Error> {
 impl Sink<'_> {
     /// What every `OK:` line adds after what the gate judged, recorded for `--json` on the way
     /// past so one call per check carries both. Spec 8.6.
-    pub fn covered(&mut self, coverage: &Coverage) -> String {
+    pub fn covered(&mut self, coverage: &Coverage) -> Option<Coverage> {
         self.record(|records| records.coverage = Some(coverage_record(coverage)));
-        match coverage.not_measured {
-            0 => format!(
-                " ({} file(s) found, {} measured, {} excluded, {} unreadable)",
-                coverage.found, coverage.measured, coverage.excluded, coverage.unreadable
-            ),
-            not_measured => format!(
-                " ({} file(s) found, {} measured, {} not measured, {} excluded, {} unreadable)",
-                coverage.found,
-                coverage.measured,
-                not_measured,
-                coverage.excluded,
-                coverage.unreadable
-            ),
-        }
+        Some(*coverage)
     }
 }
 

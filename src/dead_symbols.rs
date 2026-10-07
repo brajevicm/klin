@@ -11,7 +11,7 @@ use std::fmt::Write;
 use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -20,7 +20,7 @@ use crate::files;
 use crate::key::Key;
 use crate::measurement;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope};
 use crate::syntax::{self, structural};
@@ -107,10 +107,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state: &format!("{judged} declaration(s) judged, {dead} dead symbol(s)"),
-            tail: &said,
-        },
+        Line::new(Measured::DeadSymbols { judged, dead }, said),
         out,
     );
     let prior = contract::whole_base(at, &commit)?;
@@ -519,14 +516,18 @@ fn report_dead(states: &[State], only: Option<&[String]>, out: &mut Sink) {
         .iter()
         .filter(|state| state.dead && coverage::in_scope(&state.file, only))
         .collect();
-    let _ = writeln!(out.text, "REPORT: {} dead symbol(s):", dead.len());
-    for state in dead {
-        let _ = writeln!(
-            out.text,
-            "  {}:{}  {}  {}",
-            state.file, state.line, state.name, state.text
-        );
-    }
+    out.tell(Listed::DeadSymbols(
+        dead.into_iter()
+            .map(|state| {
+                let site = Located {
+                    file: state.file.clone(),
+                    line: state.line,
+                    text: state.text.clone(),
+                };
+                (site, state.name.clone())
+            })
+            .collect(),
+    ));
 }
 
 fn base_note(states: &[&State], only: Option<&[String]>, out: &mut Sink) {

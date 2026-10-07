@@ -10,16 +10,14 @@
 //! number of conventions. The section is a person's policy, and the survey derives none of it.
 //! Spec 8.4, ADR 0037.
 
-use std::fmt::Write;
-
 use serde_json::Value;
 
-use crate::check::contract::{Context, Sink};
+use crate::check::contract::{Context, Counted, Line, Plain, Sink, Told};
 use crate::check::holes;
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::{self};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 
 pub mod report;
@@ -82,7 +80,10 @@ fn every_convention(
         code = code.max(judged(config, rule, (&mut *after, &mut *before), at, out)?);
     }
     if code == 0 {
-        let _ = writeln!(out.text, "OK: {} convention(s) judged{said}", rules.len());
+        out.tell(Told::judged(Line::new(
+            Counted::Conventions(rules.len()),
+            said,
+        )));
     }
     Ok(code)
 }
@@ -115,10 +116,13 @@ fn judged(
         described(rule, &gate, before.take(name)),
         ratchet::accepted(config, &gate, METRICS)?,
         &Context { gate: &gate, ..*at },
-        Line {
-            state: &format!("{name}: {sites} site(s)"),
-            tail: "",
-        },
+        Line::new(
+            Counted::Convention {
+                name: name.clone(),
+                sites,
+            },
+            None,
+        ),
         out,
     ))
 }
@@ -163,11 +167,8 @@ fn holes_said(holes: &[Hole], at: &Context, code: u8, out: &mut Sink) -> u8 {
         .collect();
     ratchet::noted(&noted, out);
     for hole in &refused {
-        let _ = writeln!(
-            out.text,
-            "FAIL: {} — correct the path, or take it out of \"in\".",
-            hole.named()
-        );
+        out.tell(Plain::PathMissing(hole.named()));
+        out.error(hole.named());
     }
     match refused.is_empty() {
         true => code,

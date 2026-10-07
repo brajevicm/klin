@@ -9,14 +9,14 @@ use tree_sitter::Node;
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed::Change;
-use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Line, Sink};
 use crate::check::holes;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::Key;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::{self, Values};
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
@@ -329,6 +329,14 @@ impl Ceilings {
         );
         named
     }
+
+    /// Every ceiling in force under its key, for the `OK:` line that names the dated steps.
+    fn steps(&self) -> Vec<(&'static str, Ceiling)> {
+        self.named()
+            .into_iter()
+            .map(|(key, ceiling)| (key, ceiling.clone()))
+            .collect()
+    }
 }
 
 /// One tree walked: its functions, the files no grammar read, and the files the walk reached,
@@ -394,13 +402,16 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
             &[LINES.name, TEST_LINES.name],
         )?,
         at,
-        Line {
-            state: &format!(
-                "{judged} function(s) judged, {count} over the gate{}",
-                ceiling::in_force(&spec.ceilings.named())
-            ),
-            tail: &format!("{unjudged}{said}"),
-        },
+        Line::new(
+            contract::Measured::Complexity(contract::Complexity {
+                judged,
+                over: count,
+                steps: spec.ceilings.steps(),
+                unjudged: unjudged.0,
+                arrived: unjudged.1,
+            }),
+            said,
+        ),
         out,
     );
     let code = holes::lost_said(&lost, at, code, out);
@@ -473,24 +484,16 @@ fn unjudged_tests<'a>(
 }
 
 impl Unjudged<'_> {
-    fn said(&self, prior: &base::Prior) -> String {
-        if self.functions == 0 {
-            return String::new();
-        }
-        let arrived: Vec<&str> = self
+    /// How many test functions were not judged on length, and the files among them a window
+    /// added or renamed.
+    fn said(&self, prior: &base::Prior) -> (usize, Vec<String>) {
+        let arrived = self
             .files
             .iter()
             .filter(|file| prior.renamed().contains_key(**file) || prior.added().contains(**file))
-            .copied()
+            .map(|file| file.to_string())
             .collect();
-        let named = match arrived.is_empty() {
-            true => String::new(),
-            false => format!("; added or renamed: {}", arrived.join(", ")),
-        };
-        format!(
-            "; {} test function(s) not judged on length, with no test_lines pinned{named}",
-            self.functions
-        )
+        (self.functions, arrived)
     }
 }
 
