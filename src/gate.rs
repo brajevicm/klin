@@ -529,7 +529,7 @@ fn handed(
         Ok(tally) => tally,
         Err(problem) => {
             let _ = writeln!(out, "FAIL: {problem}");
-            let mut records = Records::default();
+            let mut records = Recorded::default();
             records.findings.push(record("error", &problem.to_string()));
             Tally {
                 errored: 1,
@@ -833,12 +833,12 @@ fn reported(
 ) -> (u8, Value, String) {
     let (code, block, note) = blocks.outcome();
     let said = does_not_build_said(block);
-    let mut records = Records {
+    let mut records = Recorded {
         derived: built
             .iter()
             .filter_map(|(_, entry)| entry.clone())
             .collect(),
-        ..Records::default()
+        ..Recorded::default()
     };
     records
         .findings
@@ -1100,14 +1100,14 @@ fn active(
 
 /// One gate's run, kept only for the `derived:` and `pinned:` lines of the values it used.
 fn provenance(quiet: &Args, project: &Project, gate: &Gate, against: &Against) -> Value {
-    let (_, _, records) = one(quiet, gate, project, against);
-    let mut lines = records.derived_lines;
+    let (_, told, _, recorded) = one(quiet, gate, project, against);
+    let mut lines = render::provenance(&told);
     for line in pinned(project, gate) {
         if !lines.contains(&line) {
             lines.push(line);
         }
     }
-    capability(project, gate, lines, records.derived)
+    capability(project, gate, lines, recorded.derived)
 }
 
 fn capability(project: &Project, gate: &Gate, lines: Vec<String>, derived: Vec<Value>) -> Value {
@@ -1252,7 +1252,7 @@ fn finish(
     plan: &Plan,
     gates: usize,
     tally: &Tally,
-    records: Records,
+    records: Recorded,
     against: &Against,
     out: &mut String,
 ) -> Value {
@@ -1304,7 +1304,7 @@ fn status_row(code: u8) -> &'static str {
 
 /// The object of spec 11.2. `status` is the row of 11.1, which a caller gives rather than reads
 /// off `code`, because a build failure that stops blocking is an `ERROR` row that exits 0.
-fn as_json(status: &str, code: u8, tally: &str, records: Records, base: Option<&Window>) -> Value {
+fn as_json(status: &str, code: u8, tally: &str, records: Recorded, base: Option<&Window>) -> Value {
     let mut out = Map::new();
     out.insert("status".into(), status.into());
     out.insert("summary".into(), tally.into());
@@ -1326,7 +1326,7 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
     if !args.json {
         return Err(problem);
     }
-    let mut records = Records::default();
+    let mut records = Recorded::default();
     records.findings.push(record("error", &problem.to_string()));
     let object = as_json(ERROR, 2, &format!("klin: {problem}"), records, None);
     out.clear();
@@ -1336,6 +1336,27 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
         record: Some(object),
         ..Tally::default()
     })
+}
+
+/// The records of spec 11.2 only the runner writes: the findings, notes and derived entries it
+/// renders from each gate's typed result or records itself, and one row per gate.
+#[derive(Default)]
+struct Recorded {
+    findings: Vec<Value>,
+    notes: Vec<Value>,
+    derived: Vec<Value>,
+    gates: Vec<Value>,
+}
+
+impl From<render::Json> for Recorded {
+    fn from(rendered: render::Json) -> Recorded {
+        Recorded {
+            findings: rendered.findings,
+            notes: rendered.notes,
+            derived: rendered.derived,
+            gates: Vec::new(),
+        }
+    }
 }
 
 fn record(outcome: &str, text: &str) -> Value {
@@ -1688,20 +1709,26 @@ fn each(
     project: &Project,
     against: &Against,
     out: &mut String,
-) -> (Tally, Records) {
+) -> (Tally, Recorded) {
     let mut tally = Tally::default();
-    let mut totals = Records::default();
+    let mut totals = Recorded::default();
     for gate in wanted {
-        let ((code, told, records), ms) = journal::timed(|| one(args, gate, project, against));
-        let text = render::text(&told);
+        let ((code, told, records, recorded), ms) =
+            journal::timed(|| one(args, gate, project, against));
+        let text = match args.hook {
+            true => render::stop(&told, code == 0),
+            false => render::text(&told),
+        };
         match code {
             0 => (),
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        printed(args, (gate, code), &text, &records, out);
-        totals.gates.push(row(gate, code, &records, ms));
-        gather(&mut totals, records, &gate.name);
+        printed(args, (gate, code), (&told, &text), &recorded, out);
+        totals
+            .gates
+            .push(row(gate, code, (&records, &recorded), ms));
+        gather(&mut totals, recorded, &gate.name);
     }
     tally.told = totals.notes.iter().filter(|note| told(note)).count();
     tally.reported = totals
@@ -1716,18 +1743,18 @@ fn each(
 fn printed(
     args: &Args,
     (gate, code): (&Gate, u8),
-    text: &str,
-    records: &Records,
+    (told, text): (&[Told], &str),
+    recorded: &Recorded,
     out: &mut String,
 ) {
-    if !rendered(args, code, records) {
+    if !rendered(args, code, recorded) {
         return;
     }
-    for line in &records.derived_lines {
+    for line in render::provenance(told) {
         let _ = writeln!(out, "  {line}");
     }
     let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-    for line in text.lines().filter(|line| !succeeded(args, code, line)) {
+    for line in text.lines() {
         let _ = writeln!(out, "        {line}");
     }
 }
@@ -1735,14 +1762,8 @@ fn printed(
 /// Whether the text report prints this gate. The hook prints a gate that did not pass, and a
 /// passing gate only where it left a note the hook tells, so the agent reads what it must act
 /// on. Every other run prints every gate. The records keep every gate either way. Spec 9.5.
-fn rendered(args: &Args, code: u8, records: &Records) -> bool {
-    !args.hook || code != 0 || records.notes.iter().any(told)
-}
-
-/// A passing gate's own success line, which the hook leaves out of the gate it prints for a
-/// note, so only the note and the row that names its gate remain. Spec 9.5.
-fn succeeded(args: &Args, code: u8, line: &str) -> bool {
-    args.hook && code == 0 && line.starts_with("OK:")
+fn rendered(args: &Args, code: u8, recorded: &Recorded) -> bool {
+    !args.hook || code != 0 || recorded.notes.iter().any(told)
 }
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
@@ -1831,12 +1852,12 @@ fn footprint(held: &crate::syntax::structural::footprint::Footprint) -> Value {
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
 /// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
 /// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
-fn row(gate: &Gate, code: u8, records: &Records, ms: u64) -> Value {
+fn row(gate: &Gate, code: u8, (records, recorded): (&Records, &Recorded), ms: u64) -> Value {
     let mut out = Map::new();
     out.insert("name".into(), gate.name.clone().into());
     out.insert("status".into(), status(code).trim_end().into());
-    out.insert("findings".into(), records.findings.len().into());
-    out.insert("notes".into(), records.notes.len().into());
+    out.insert("findings".into(), recorded.findings.len().into());
+    out.insert("notes".into(), recorded.notes.len().into());
     out.insert(
         "coverage".into(),
         records.coverage.clone().unwrap_or(Value::Null),
@@ -1925,7 +1946,7 @@ fn told(note: &Value) -> bool {
     ) || holes::is_lost(note)
 }
 
-fn gather(totals: &mut Records, mut records: Records, name: &str) {
+fn gather(totals: &mut Recorded, mut records: Recorded, name: &str) {
     for record in records.findings.iter_mut().chain(records.notes.iter_mut()) {
         if let Some(fields) = record.as_object_mut() {
             fields.insert("gate".into(), name.into());
@@ -1983,7 +2004,12 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     )))
 }
 
-fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, Vec<Told>, Records) {
+fn one(
+    args: &Args,
+    gate: &Gate,
+    project: &Project,
+    against: &Against,
+) -> (u8, Vec<Told>, Records, Recorded) {
     let mut told = Vec::new();
     let mut records = Records::default();
     let at = Context {
@@ -2014,18 +2040,19 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, V
             2
         }
     };
-    errored(code, &mut records);
-    (code, told, records)
+    let mut recorded = Recorded::from(render::json(&told));
+    errored(code, &mut records.errors, &mut recorded);
+    (code, told, records, recorded)
 }
 
 /// The one `error` finding of a gate that is exit 2 and recorded no other finding, from the
 /// reasons it gave. A gate with findings already names what failed, so it gets none. Spec 11.2.
-fn errored(code: u8, records: &mut Records) {
-    if code != 2 || !records.findings.is_empty() || records.errors.is_empty() {
+fn errored(code: u8, errors: &mut Vec<String>, recorded: &mut Recorded) {
+    if code != 2 || !recorded.findings.is_empty() || errors.is_empty() {
         return;
     }
-    let errors = std::mem::take(&mut records.errors);
-    records.findings.push(record("error", &errors.join("\n")));
+    let errors = std::mem::take(errors);
+    recorded.findings.push(record("error", &errors.join("\n")));
 }
 
 fn status(code: u8) -> &'static str {

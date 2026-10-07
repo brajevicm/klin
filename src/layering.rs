@@ -11,12 +11,13 @@
 //! derives it: with no section the gate does not run. Spec 8.2.1, ADR 0043, ADR 0058.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fmt::Write;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Line, Measured, Sink, Unresolvable};
+use crate::check::contract::{
+    self, Context, HeldAtBase, Line, Listed, Measured, Sink, Site, Unresolvable,
+};
 use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
@@ -939,17 +940,14 @@ fn held_note(physicals: &Physicals, out: &mut Sink) {
     if held.is_empty() {
         return;
     }
-    let mut note = format!(
-        "{} forbidden or cyclic edge(s) the base already held:",
-        held.len()
-    );
-    for (file, text) in held.iter().take(20) {
-        let _ = write!(note, "\n  {file}  {text}");
-    }
-    if held.len() > 20 {
-        let _ = write!(note, "\n  … and {} more", held.len() - 20);
-    }
-    ratchet::noted(&[(String::new(), note)], out);
+    out.tell(Listed::Held(HeldAtBase::Edges(
+        held.into_iter()
+            .map(|(file, text)| Site {
+                file: file.clone(),
+                text: text.clone(),
+            })
+            .collect(),
+    )));
 }
 
 #[cfg(test)]

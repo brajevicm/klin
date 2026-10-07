@@ -5,10 +5,10 @@
 
 use std::collections::BTreeMap;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::check::contract::{
-    Context, Failed, Held, Line, Matched, Plain, Ratchet, Records, Sink, Site, Told, Unmatched, Was,
+    Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Site, Told, Unmatched, Was,
 };
 use crate::config::{self, Config};
 use crate::error::Error;
@@ -157,19 +157,10 @@ pub fn noted(notes: &[(String, String)], out: &mut Sink) {
     noted_as("note", notes, out);
 }
 
-pub fn noted_as(outcome: &str, notes: &[(String, String)], out: &mut Sink) {
-    for (_, why) in notes {
-        out.tell(Plain::Note(why.clone()));
+pub fn noted_as(outcome: &'static str, notes: &[(String, String)], out: &mut Sink) {
+    for (at, why) in notes {
+        out.note(outcome, at.clone(), why.clone());
     }
-    out.record(|records| {
-        for (at, why) in notes {
-            let mut record = Map::new();
-            record.insert("outcome".into(), outcome.into());
-            record.insert("file".into(), at.clone().into());
-            record.insert("text".into(), why.clone().into());
-            records.notes.push(Value::Object(record));
-        }
-    });
 }
 
 fn is_accepted(entry: &Values) -> bool {
@@ -536,10 +527,9 @@ fn report(
     out.record(|records| {
         records.held = Some(records.held.unwrap_or(0) + comparison.held.len() as u64);
         records.accepted = Some(records.accepted.unwrap_or(0) + accepted as u64);
-        collect(comparison, evaluator, at.gate, records);
     });
     if comparison.failed() {
-        failures(comparison, evaluator, held, out);
+        failures(comparison, evaluator, (at.gate, held), out);
         notes(comparison, evaluator, at.gate, out);
         return 1;
     }
@@ -567,17 +557,23 @@ fn report(
     0
 }
 
-fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &mut Sink) {
+fn failures(
+    comparison: &Comparison,
+    evaluator: &Evaluator,
+    (gate, held): (&str, usize),
+    out: &mut Sink,
+) {
     if !comparison.unmatched_findings.is_empty() {
         let found = &comparison.unmatched_findings;
-        let failed = grouped(found, evaluator.nested)
-            .into_iter()
-            .flat_map(|(lead, inside)| {
-                std::iter::once((false, lead)).chain(inside.into_iter().map(|at| (true, at)))
-            })
-            .map(|(nested, at)| Failed {
-                nested,
-                ..failed(&found[at], None, evaluator)
+        let leads = evaluator
+            .nested
+            .map_or_else(|| vec![None; found.len()], |nested| nested(found));
+        let failed = found
+            .iter()
+            .zip(leads.into_iter().chain(std::iter::repeat(None)))
+            .map(|(finding, lead)| Failed {
+                lead,
+                ..failed(gate, finding, None, evaluator)
             })
             .collect();
         out.tell(Ratchet::New {
@@ -590,10 +586,11 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
     if !comparison.rose.is_empty() {
         out.tell(Ratchet::Worse {
             unit: evaluator.unit.to_string(),
+            condition: evaluator.condition.to_string(),
             failed: comparison
                 .rose
                 .iter()
-                .map(|(finding, entry)| failed(finding, Some(entry), evaluator))
+                .map(|(finding, entry)| failed(gate, finding, Some(entry), evaluator))
                 .collect(),
         });
     }
@@ -603,53 +600,32 @@ fn failures(comparison: &Comparison, evaluator: &Evaluator, held: usize, out: &m
 /// One failure with what it was judged against: the `before` site it matched, the accepted
 /// entry, or nothing at all, and the ceiling in force beside it. A person disputes a wrong match
 /// from this, and an agent fixes the site the ratchet actually compared. Spec 8.6.
-fn failed(finding: &Finding, entry: Option<&Values>, evaluator: &Evaluator) -> Failed {
+fn failed(gate: &str, finding: &Finding, entry: Option<&Values>, evaluator: &Evaluator) -> Failed {
     let matched = match entry {
         None => Matched::Nothing,
-        Some(entry) if is_accepted(entry) => Matched::Accepted(text(entry, "file")),
-        Some(entry) => {
-            let (file, line) = entry_site(entry);
-            Matched::Base { file, line }
-        }
+        Some(entry) if is_accepted(entry) => Matched::Accepted(entry_of(entry)),
+        Some(entry) => Matched::Base(entry_of(entry)),
     };
+    let risen = entry.map_or_else(
+        || finding.values.clone(),
+        |entry| risen(finding, entry, evaluator.metrics),
+    );
     Failed {
+        id: identity(gate, finding),
         file: finding.file.clone(),
         line: finding.line,
+        values: finding.values.clone(),
         shown: (evaluator.format_metrics)(&finding.values),
         was: entry.map(|entry| Was {
             shown: (evaluator.format_metrics)(entry),
             at: came_from(finding, entry),
         }),
         text: finding.text.clone(),
+        fix_advice: evaluator.fix_advice.text(&[&risen]),
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),
-        nested: false,
+        lead: None,
     }
-}
-
-/// Every new finding once, as the leads in their order, each with the findings that print inside
-/// its group. A finding whose named lead is itself inside a group, or out of range, leads.
-fn grouped(found: &[Finding], nested: Option<Nesting>) -> Vec<(usize, Vec<usize>)> {
-    let under = nested.map_or_else(|| vec![None; found.len()], |nested| nested(found));
-    let lead = |at: usize| {
-        under
-            .get(at)
-            .copied()
-            .flatten()
-            .filter(|held| *held != at && under.get(*held).is_some_and(Option::is_none))
-    };
-    let mut groups: Vec<(usize, Vec<usize>)> = Vec::new();
-    let mut slot: Vec<Option<usize>> = vec![None; found.len()];
-    for at in (0..found.len()).filter(|at| lead(*at).is_none()) {
-        slot[at] = Some(groups.len());
-        groups.push((at, Vec::new()));
-    }
-    for at in 0..found.len() {
-        if let Some(group) = lead(at).and_then(|held| slot[held]) {
-            groups[group].1.push(at);
-        }
-    }
-    groups
 }
 
 /// The file a failure's own line does not name, which is the one the second pass of 4.4 matched
@@ -702,58 +678,12 @@ fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut S
             .unmatched_accepted
             .iter()
             .map(|entry| Unmatched {
-                file: text(entry, "file"),
+                entry: entry_of(entry),
                 shown: (evaluator.format_metrics)(entry),
-                text: text(entry, "text"),
                 retired: retired_row(gate, entry),
             })
             .collect(),
     ));
-}
-
-fn collect(comparison: &Comparison, evaluator: &Evaluator, gate: &str, records: &mut Records) {
-    let failing = |outcome, finding: &Finding, entry: Option<&Values>| {
-        let mut out = site(outcome, &finding.file, Some(finding.line), &finding.text);
-        out.insert("id".into(), identity(gate, finding).into());
-        out.insert("values".into(), Value::Object(finding.values.clone()));
-        out.insert("condition".into(), evaluator.condition.into());
-        let values = entry.map_or_else(
-            || finding.values.clone(),
-            |entry| risen(finding, entry, evaluator.metrics),
-        );
-        out.insert(
-            "fix_advice".into(),
-            evaluator.fix_advice.text(&[&values]).into(),
-        );
-        out.insert(
-            "ceiling".into(),
-            evaluator.ceiling.map_or(Value::Null, Into::into),
-        );
-        out.insert("matched".into(), entry.map_or(Value::Null, matched_record));
-        Value::Object(out)
-    };
-    for finding in &comparison.unmatched_findings {
-        records.findings.push(failing("new", finding, None));
-    }
-    for (finding, entry) in &comparison.rose {
-        records
-            .findings
-            .push(failing("worsened", finding, Some(entry)));
-    }
-    for entry in &comparison.unmatched_accepted {
-        records.notes.push(Value::Object(unmatched_record(entry)));
-    }
-}
-
-fn site(outcome: &str, file: &str, line: Option<u64>, text: &str) -> Values {
-    let mut out = Values::new();
-    out.insert("outcome".into(), outcome.into());
-    out.insert("file".into(), file.into());
-    if let Some(line) = line {
-        out.insert("line".into(), line.into());
-    }
-    out.insert("text".into(), text.into());
-    out
 }
 
 /// The site identity of 4.4 in one token: a hash of the gate, the file and the declaration
@@ -776,16 +706,13 @@ pub fn identity(gate: &str, finding: &Finding) -> String {
 
 /// The `before` site or accepted entry a failure was matched to, with the values it held there,
 /// so a harness sees both sides of the comparison. Spec 11.2.
-fn matched_record(entry: &Values) -> Value {
-    let mut out = Values::new();
-    out.insert("file".into(), text(entry, "file").into());
-    out.insert("text".into(), text(entry, "text").into());
-    if let Some(line) = entry.get("line").and_then(Value::as_u64) {
-        out.insert("line".into(), line.into());
+fn entry_of(entry: &Values) -> Entry {
+    Entry {
+        file: text(entry, "file"),
+        line: entry.get("line").and_then(Value::as_u64),
+        text: text(entry, "text"),
+        values: entry_values(entry),
     }
-    out.insert(ACCEPTED.into(), is_accepted(entry).into());
-    out.insert("values".into(), Value::Object(entry_values(entry)));
-    Value::Object(out)
 }
 
 /// The values one entry holds, without the keys that name the site it sits at.
@@ -795,15 +722,4 @@ fn entry_values(entry: &Values) -> Values {
         values.remove(key);
     }
     values
-}
-
-fn unmatched_record(entry: &Values) -> Values {
-    let mut out = site(
-        "unmatched",
-        &text(entry, "file"),
-        entry.get("line").and_then(Value::as_u64),
-        &text(entry, "text"),
-    );
-    out.insert("values".into(), Value::Object(entry_values(entry)));
-    out
 }

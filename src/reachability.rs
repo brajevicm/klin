@@ -7,13 +7,12 @@
 //! and only where every member is proven reached without ambiguity. ADR 0035, spec 8.4.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::fmt::Write;
 use std::path::Path;
 
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::check::contract::{self, Context, Line, Measured, Sink};
+use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -355,15 +354,7 @@ fn said_families(families: &[Family], out: &mut Sink) {
         .join(", ");
     let value = Value::Array(families.iter().map(Family::record).collect());
     let rule = "the file families the derivation commit proves reached";
-    out.provenance(
-        format!("derived: {SECTION} {names}, {rule}"),
-        Some(Value::Object(Map::from_iter([
-            ("section".into(), SECTION.into()),
-            ("key".into(), Value::Null),
-            ("value".into(), value),
-            ("rule".into(), rule.into()),
-        ]))),
-    );
+    out.tell(contract::Derived::keyed(SECTION, None, value, names, rule));
 }
 
 /// The base tree measured, with the families under the scope the base commit recorded, so a
@@ -700,17 +691,9 @@ fn base_note(states: &[&State], out: &mut Sink) {
     if unreached.is_empty() {
         return;
     }
-    let mut note = format!(
-        "{} unreached file(s) the base already held:",
-        unreached.len()
-    );
-    for state in unreached.iter().take(20) {
-        let _ = write!(note, "\n  {}", state.file);
-    }
-    if unreached.len() > 20 {
-        let _ = write!(note, "\n  … and {} more", unreached.len() - 20);
-    }
-    ratchet::noted(&[(String::new(), note)], out);
+    out.tell(Listed::Held(HeldAtBase::Unreached(
+        unreached.iter().map(|state| state.file.clone()).collect(),
+    )));
 }
 
 fn basename(path: &str) -> &str {

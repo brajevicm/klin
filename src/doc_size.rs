@@ -14,7 +14,7 @@ use crate::base;
 use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::check::contract::{self, Context, Counted, Line, Said, Sink, Standing, Told};
+use crate::check::contract::{Context, Counted, Derived, Line, Provenance, Sink, Standing, Told};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -69,7 +69,7 @@ struct Document {
 /// The documents a run judges, and what it says about where each ceiling came from.
 struct Listing {
     documents: Vec<Document>,
-    said: Vec<Said>,
+    said: Vec<Provenance>,
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
@@ -225,7 +225,7 @@ fn based<'a>(
 }
 
 fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> bool {
-    let (name, ceiling) = (&document.name, &document.ceiling);
+    let ceiling = &document.ceiling;
     if words > ceiling.value {
         let Some(before) = held else {
             return failed(document, words, out);
@@ -240,22 +240,15 @@ fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> 
         return false;
     }
     told(document, words, Standing::Near(remaining), out);
-    out.record(|records| {
-        let near = site("near-ceiling", name, words, ceiling.value);
-        records.notes.push(Value::Object(near));
-    });
     false
 }
 
 fn failed(document: &Document, words: u64, out: &mut Sink) -> bool {
-    let (name, ceiling) = (&document.name, &document.ceiling);
-    told(document, words, Standing::Over(REMEDY), out);
-    out.record(|records| {
-        let mut over = site("new", name, words, ceiling.value);
-        over.insert("condition".into(), "over its word ceiling".into());
-        over.insert("fix_advice".into(), REMEDY.into());
-        records.findings.push(Value::Object(over));
-    });
+    let over = Standing::Over {
+        condition: "over its word ceiling",
+        fix_advice: REMEDY,
+    };
+    told(document, words, over, out);
     true
 }
 
@@ -263,20 +256,9 @@ fn told(document: &Document, words: u64, standing: Standing, out: &mut Sink) {
     out.tell(Told::Document {
         name: document.name.clone(),
         words,
-        ceiling: document.ceiling.to_string(),
+        ceiling: document.ceiling.clone(),
         standing,
     });
-}
-
-fn site(outcome: &str, name: &str, words: u64, ceiling: u64) -> Map<String, Value> {
-    let mut values = Map::new();
-    values.insert("words".into(), words.into());
-    values.insert("ceiling".into(), ceiling.into());
-    let mut out = Map::new();
-    out.insert("outcome".into(), outcome.into());
-    out.insert("file".into(), name.into());
-    out.insert("values".into(), Value::Object(values));
-    out
 }
 
 fn documents(
@@ -299,8 +281,8 @@ fn documents(
     }
     let listing = listing(at.project)?;
     let Some(named) = named else {
-        for (line, entry) in listing.said.into_iter() {
-            out.provenance(line, entry);
+        for said in listing.said {
+            out.tell(said);
         }
         return Ok(listing.documents);
     };
@@ -362,9 +344,11 @@ fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> 
             value,
             "a whole number of words",
         )?;
-        listing
-            .said
-            .push((format!("pinned: {SECTION} {name} {ceiling}"), None));
+        listing.said.push(Provenance::Pinned {
+            section: SECTION,
+            key: name.clone(),
+            shown: ceiling.to_string(),
+        });
         listing
             .documents
             .push(document(config, name, ceiling, false));
@@ -400,15 +384,9 @@ fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) -> Re
                 }
             },
         };
-        listing.said.push((
-            format!("derived: {SECTION} {name} {value}, {rule}"),
-            Some(contract::derived_entry(
-                SECTION,
-                Some(name),
-                value.into(),
-                rule,
-            )),
-        ));
+        listing.said.push(
+            Derived::keyed(SECTION, Some(name), value.into(), value.to_string(), rule).into(),
+        );
         let ceiling = Ceiling { value, step: None };
         listing
             .documents
