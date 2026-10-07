@@ -1308,10 +1308,16 @@ fn no_source_root_said(project: &Project) -> String {
 /// person excluded measures nothing on purpose, so neither is this hole. ADR 0016, spec 7.2,
 /// 11.3.
 fn rootless(args: &Args, plan: &Plan, wanted: &[&Gate], project: &Project) -> bool {
+    project.found_no_source_root() && leaves_code(args, plan, wanted, project)
+}
+
+/// Whether the run leaves a check that reads code to find its own roots: one it selected, or one
+/// a whole run would select once the tree holds code.
+fn leaves_code(args: &Args, plan: &Plan, wanted: &[&Gate], project: &Project) -> bool {
     let derives = |check: &catalogue::Row| check.reads_code() && !pins_in(project, check);
     let unselected =
         args.gates.is_empty() && plan.needs_a_section.iter().any(|check| derives(check));
-    project.found_no_source_root() && (unselected || wanted.iter().any(|gate| derives(gate.check)))
+    unselected || wanted.iter().any(|gate| derives(gate.check))
 }
 
 fn pins_in(project: &Project, check: &catalogue::Row) -> bool {
@@ -2321,6 +2327,9 @@ struct Report {
     notes: Vec<Value>,
     measurements: Vec<Value>,
     holes: Vec<Incomplete>,
+    /// The files the selected gates measured, all of them and the ones gates that read code
+    /// measured, which decide the hole of a whole run that measured nothing. Spec 7.2.
+    measured: Measured,
     not_measured: std::collections::BTreeSet<String>,
     errors: Vec<Value>,
     gates: Vec<Value>,
@@ -2409,21 +2418,85 @@ fn chosen_gates<'a>(
 
 /// The hole of a whole-tree run in which the checks that read code measured nothing, because
 /// the survey found no source root. Spec 7.2.
-fn nothing_measured(project: &Project, nothing_ran: bool) -> Incomplete {
-    let text = match nothing_ran {
-        true => format!(
+/// How many files the gates of a run measured: all of them, and the ones a gate that reads code
+/// measured.
+#[derive(Default, Clone, Copy)]
+struct Measured {
+    files: u64,
+    code: u64,
+}
+
+impl Measured {
+    fn add(&mut self, check: &catalogue::Row, records: &Records) {
+        let measured = records
+            .coverage
+            .as_ref()
+            .and_then(|coverage| coverage.get("measured")?.as_u64())
+            .unwrap_or(0);
+        self.files += measured;
+        if check.reads_code() {
+            self.code += measured;
+        }
+    }
+}
+
+/// The hole of a whole run that a check reading code was left to measure and that measured no
+/// code: where the survey found no source root and nothing at all was measured, or where the
+/// derivation commit held source the working tree no longer holds. A documentation-only tree whose documents were measured is no
+/// hole, and a tree that lost its source does not pass on its documents. #500 owns the finer
+/// classification of the lost source. Spec 7.2.
+fn unmeasured_run(
+    args: &Args,
+    (plan, wanted): (&Plan, &[&Gate]),
+    project: &Project,
+    measured: Measured,
+) -> Option<Incomplete> {
+    if !leaves_code(args, plan, wanted, project) || measured.code > 0 {
+        return None;
+    }
+    let lost = held_roots(project);
+    let nothing = measured.files == 0 && project.found_no_source_root();
+    let text = match (nothing, lost.is_empty()) {
+        (_, false) => format!(
+            "the derivation commit held source under {} and the working tree holds none of it, \
+             so no check that reads code measured anything — restore the source, or set those \
+             gates to false to exclude them",
+            lost.join(", ")
+        ),
+        (true, true) => format!(
             "the repository holds no language or document klin measures: {} — write klin.json \
              naming one of: {}",
             no_source_root_said(project),
             every_check()
         ),
-        false => no_source_root_said(project),
+        (false, true) => return None,
     };
-    Incomplete {
+    Some(Incomplete {
         reason: Reason::NothingMeasured,
         detail: None,
         text,
-    }
+    })
+}
+
+/// The source roots the derivation commit's survey held that no file of the working tree sits
+/// under any more.
+fn held_roots(project: &Project) -> Vec<String> {
+    let files = project.tree().files().unwrap_or_default();
+    let holds = |root: &str| {
+        files
+            .iter()
+            .any(|file| crate::scope::under_or_at(file, root))
+    };
+    project
+        .source_derivation()
+        .map(|(held, _, _)| {
+            held.roots
+                .iter()
+                .filter(|root| !holds(root))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 impl Report {
@@ -2438,12 +2511,13 @@ impl Report {
         out: &mut String,
     ) {
         self.window = against.base.as_ref().map(Window::record);
-        if !args.changed && rootless(args, plan, wanted, project) {
-            self.holes
-                .push(nothing_measured(project, wanted.is_empty()));
-        }
         for gate in wanted {
             self.gate(args, gate, project, against, out);
+        }
+        if !args.changed
+            && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
+        {
+            self.holes.push(hole);
         }
         for check in unsupported {
             self.unsupported(args, check, out);
@@ -2475,6 +2549,7 @@ impl Report {
             out,
         );
         self.gates.push(row(gate, code, (&records, &recorded), ms));
+        self.measured.add(gate.check, &records);
         self.capabilities.push(active_row(gate, axes, &records));
         self.measurements.push(measurement(
             &gate.name,

@@ -268,19 +268,46 @@ fn a_selector_for_a_capability_that_does_not_apply_is_an_unsupported_hole() {
 }
 
 #[test]
-fn a_whole_run_where_no_check_that_reads_code_applies_is_a_nothing_measured_hole() {
+fn a_documentation_only_tree_whose_documents_were_measured_is_complete() {
     let tree = without_source("{}");
 
     let (code, report) = checked(&tree, &[]);
 
-    assert_eq!(code, 3, "{report}");
-    assert_eq!(run_holes(&report), ["nothing-measured"], "{report}");
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(report["measurement"], "complete", "{report}");
+    assert!(run_holes(&report).is_empty(), "{report}");
     assert_eq!(
         row(&report, "complexity")["state"],
         "not-applicable",
         "{report}"
     );
     assert_eq!(row(&report, "doc-citations")["state"], "active", "{report}");
+}
+
+#[test]
+fn source_the_base_held_and_the_tree_lost_does_not_pass_on_the_documents_alone() {
+    let tree = tree("{}");
+    tree.remove("src/lib.rs");
+    assert!(std::fs::remove_dir(tree.path("src")).is_ok());
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_ne!(code, 0, "{report}");
+    assert_eq!(report["measurement"], "incomplete", "{report}");
+    assert_eq!(run_holes(&report), ["nothing-measured"], "{report}");
+}
+
+#[test]
+fn a_whole_run_where_no_capability_applies_is_a_nothing_measured_hole() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("notes.txt", "nothing klin measures");
+    tree.base();
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 3, "{report}");
+    assert_eq!(run_holes(&report), ["nothing-measured"], "{report}");
 }
 
 #[test]
@@ -415,4 +442,19 @@ fn a_base_tree_klin_cannot_lay_out_is_a_git_error_of_its_gates_and_the_others_st
     assert_eq!(row(&report, "escapes")["execution"], "error", "{report}");
     assert_eq!(report["errors"][0]["kind"], "git", "{report}");
     assert_eq!(report["errors"][0]["check"], "escapes", "{report}");
+}
+
+#[test]
+fn source_the_base_held_in_a_directory_the_tree_still_has_does_not_pass_either() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("README.md", 5);
+    tree.write("tools/run.py", "def main():\n    return 1\n");
+    tree.base();
+    tree.remove("tools/run.py");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 3, "{report}");
+    assert_eq!(run_holes(&report), ["nothing-measured"], "{report}");
 }

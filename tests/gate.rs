@@ -1362,7 +1362,10 @@ fn strict_accepts_a_config_that_omits_a_derivable_gate() {
 
 #[test]
 fn a_tree_the_survey_finds_no_source_root_in_is_a_nothing_measured_hole() {
-    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("notes.txt", "nothing klin measures");
+    tree.base();
 
     let strict = tree.run(&["check"]);
     assert_eq!(strict.code, 3, "{}", strict.out);
