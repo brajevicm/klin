@@ -123,6 +123,24 @@ fn an_invalid_configuration_exits_2_with_no_judgement_and_no_measurement() {
     assert_eq!(report["errors"][0]["kind"], "configuration", "{report}");
     assert!(report["errors"][0]["check"].is_null(), "{report}");
     assert_eq!(report["capabilities"], Value::Array(Vec::new()), "{report}");
+    assert_eq!(report["config"]["present"], true, "{report}");
+    assert!(
+        report["config"]["path"]
+            .as_str()
+            .is_some_and(|path| path.ends_with("klin.json")),
+        "{report}"
+    );
+}
+
+#[test]
+fn a_config_path_that_names_no_file_is_an_invocation_error_and_not_present() {
+    let tree = tree("{}");
+
+    let (code, report) = checked(&tree, &["--config", "absent.json"]);
+
+    assert_eq!(code, 2, "{report}");
+    assert_eq!(report["errors"][0]["kind"], "invocation", "{report}");
+    assert_eq!(report["config"]["present"], false, "{report}");
 }
 
 #[test]

@@ -202,7 +202,7 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if !args.hook && !args.list {
         return Ok(checked(args, start, loaded, out));
     }
-    if !args.hook {
+    if args.list {
         let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
         return refused(args, judged, out).map(|tally| code(&tally));
     }
@@ -964,11 +964,11 @@ fn against<'a>(
     out: &mut String,
 ) -> Result<Against<'a>, Fault> {
     let base = base(args, wanted, project, window, out).map_err(fault(BASE))?;
-    let changes = changes(args, project, base.as_ref(), out).map_err(fault(GIT))?;
+    let changes = changes(args, project, base.as_ref(), out).map_err(fault(BASE))?;
     let scope = changes
         .as_ref()
         .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
-    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted).map_err(fault(GIT))?;
+    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted).map_err(fault(BASE))?;
     Ok(Against {
         scope,
         changes,
@@ -2148,7 +2148,6 @@ impl From<Fault> for Error {
 const INVOCATION: &str = "invocation";
 const CONFIGURATION: &str = "configuration";
 const BASE: &str = "base";
-const GIT: &str = "git";
 const INTERNAL: &str = "internal";
 
 fn fault(kind: &'static str) -> impl Fn(Error) -> Fault {
@@ -2277,10 +2276,9 @@ struct Report {
 /// One `klin check`: each run-scope step under the kind of error it can raise, every selected
 /// gate, and the check document or its text. Spec 7, 11.3, 11.7.
 fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut String) -> u8 {
-    let named_nothing = args
-        .config
-        .as_ref()
-        .is_some_and(|path| !start.join(path).exists());
+    let located = config::located(args.config.as_deref(), start);
+    let named_nothing =
+        args.config.is_some() && !located.as_ref().is_some_and(|file| file.exists());
     let mut report = Report::default();
     let measured = loaded
         .map_err(fault(match named_nothing {
@@ -2295,6 +2293,12 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
             measured(args, &mut project, &mut report, out)
         });
     if let Err(fault) = measured {
+        if report.config.is_null() {
+            report.config = json!({
+                "path": located.as_ref().map(|file| file.display().to_string()),
+                "present": located.as_ref().is_some_and(|file| file.is_file()),
+            });
+        }
         report.stop(args, fault, out);
     }
     report.finish(args, out)
@@ -2503,12 +2507,6 @@ impl Report {
 
     /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
     fn stop(&mut self, args: &Args, fault: Fault, out: &mut String) {
-        if self.config.is_null() {
-            self.config = json!({
-                "path": args.config.as_ref().map(|path| path.display().to_string()),
-                "present": true,
-            });
-        }
         self.stopped = true;
         self.axes.error = true;
         if !args.json {
