@@ -80,14 +80,11 @@ fn every_convention(
         code = code.max(judged(config, rule, (&mut *after, &mut *before), at, out)?);
     }
     if code == 0 {
-        out.tell(Told::Judged {
-            line: Line {
-                state: format!("{} convention(s) judged", rules.len()),
-                coverage: said,
-                ..Line::default()
-            },
-            held: (0, 0),
-        });
+        out.tell(Told::judged(Line {
+            state: format!("{} convention(s) judged", rules.len()),
+            coverage: said,
+            ..Line::default()
+        }));
     }
     Ok(code)
 }

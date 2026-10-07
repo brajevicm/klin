@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 
 use crate::check::contract::{
-    Context, Failed, Line, Matched, Plain, Ratchet, Records, Sink, Site, Told, Unmatched,
+    Context, Failed, Held, Line, Matched, Plain, Ratchet, Records, Sink, Site, Told, Unmatched, Was,
 };
 use crate::config::{self, Config};
 use crate::error::Error;
@@ -542,7 +542,10 @@ fn report(
     }
     out.tell(Told::Judged {
         line,
-        held: comparison.reasons(),
+        held: {
+            let (accepted, base) = comparison.reasons();
+            Held { accepted, base }
+        },
     });
     notes(comparison, evaluator, at.gate, out);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
@@ -614,7 +617,10 @@ fn failed(finding: &Finding, entry: Option<&Values>, evaluator: &Evaluator) -> F
         file: finding.file.clone(),
         line: finding.line,
         shown: (evaluator.format_metrics)(&finding.values),
-        was: entry.map(|entry| ((evaluator.format_metrics)(entry), came_from(finding, entry))),
+        was: entry.map(|entry| Was {
+            shown: (evaluator.format_metrics)(entry),
+            at: came_from(finding, entry),
+        }),
         text: finding.text.clone(),
         matched,
         ceiling: evaluator.ceiling.map(str::to_string),

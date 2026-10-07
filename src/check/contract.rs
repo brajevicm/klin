@@ -1,9 +1,10 @@
 //! What a check is, told once. A check is handed an immutable `Context` — who called it, which
 //! gate it judges under, what base it compares against, what scope it may look at — and it
 //! writes to an explicit `Sink`: the typed `Told` items a renderer turns into the report a
-//! person reads, and the `Records` the runner turns into the 11.2 object. Nothing about a run reaches a check any other way, so the runner
-//! keeps no side channel into it and a check keeps no state of its own. This module names no
-//! check, so every check and the catalogue that registers them depend on it one way.
+//! person reads, and the `Records` the runner turns into the 11.2 object. Nothing about a run
+//! reaches a check any other way, so the runner keeps no side channel into it and a check keeps
+//! no state of its own. This module names no check, so every check and the catalogue that
+//! registers them depend on it one way.
 
 use std::path::Path;
 
@@ -250,8 +251,7 @@ pub struct Failed {
     pub file: String,
     pub line: u64,
     pub shown: String,
-    /// What the base or accepted entry held, and the file it held it at where that differs.
-    pub was: Option<(String, Option<String>)>,
+    pub was: Option<Was>,
     pub text: String,
     pub matched: Matched,
     pub ceiling: Option<String>,
@@ -268,6 +268,22 @@ pub struct Unmatched {
     pub retired: Option<String>,
 }
 
+/// What the base or accepted entry held for a finding that got worse: the check's words for its
+/// values, and the file it held them at where that is not the finding's own.
+#[derive(Clone)]
+pub struct Was {
+    pub shown: String,
+    pub at: Option<String>,
+}
+
+/// How many of a gate's passing findings an accepted entry held, and how many a base site held.
+/// None of either claims nothing. Spec 8.6.
+#[derive(Default, Clone, Copy)]
+pub struct Held {
+    pub accepted: usize,
+    pub base: usize,
+}
+
 /// Where a document stands against its ceiling. Spec 8.1.
 pub enum Standing {
     Under,
@@ -280,7 +296,7 @@ pub enum Standing {
 pub enum Told {
     Judged {
         line: Line,
-        held: (usize, usize),
+        held: Held,
     },
     Document {
         name: String,
@@ -354,6 +370,16 @@ pub enum Ratchet {
         count: usize,
         rows: Vec<Site>,
     },
+}
+
+impl Told {
+    /// The `OK:` line of a gate that compares nothing, so nothing held its findings.
+    pub fn judged(line: Line) -> Told {
+        Told::Judged {
+            line,
+            held: Held::default(),
+        }
+    }
 }
 
 impl From<Plain> for Told {

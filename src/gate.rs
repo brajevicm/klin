@@ -9,7 +9,7 @@ use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::contract::{
     self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Plain, Records, Sink,
-    UNBUILT, UNPARSED, UNRESOLVED,
+    Told, UNBUILT, UNPARSED, UNRESOLVED,
 };
 use crate::check::{catalogue, holes, render};
 use crate::config;
@@ -1692,21 +1692,17 @@ fn each(
     let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
-        let ((code, text, records), ms) = journal::timed(|| one(args, gate, project, against));
+        let ((code, told, mut records), ms) = journal::timed(|| one(args, gate, project, against));
+        let text = render::text(&told);
+        if code == 2 && records.findings.is_empty() {
+            records.findings.push(record("error", &text));
+        }
         match code {
             0 => (),
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        if rendered(args, code, &records) {
-            for line in &records.derived_lines {
-                let _ = writeln!(out, "  {line}");
-            }
-            let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-            for line in text.lines().filter(|line| !succeeded(args, code, line)) {
-                let _ = writeln!(out, "        {line}");
-            }
-        }
+        printed(args, (gate, code), &text, &records, out);
         totals.gates.push(row(gate, code, &records, ms));
         gather(&mut totals, records, &gate.name);
     }
@@ -1717,6 +1713,26 @@ fn each(
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
     (tally, totals)
+}
+
+/// One gate's block of the text report: its provenance, its status row, and its rendered result.
+fn printed(
+    args: &Args,
+    (gate, code): (&Gate, u8),
+    text: &str,
+    records: &Records,
+    out: &mut String,
+) {
+    if !rendered(args, code, records) {
+        return;
+    }
+    for line in &records.derived_lines {
+        let _ = writeln!(out, "  {line}");
+    }
+    let _ = writeln!(out, "  {}  {}", status(code), gate.name);
+    for line in text.lines().filter(|line| !succeeded(args, code, line)) {
+        let _ = writeln!(out, "        {line}");
+    }
 }
 
 /// Whether the text report prints this gate. The hook prints a gate that did not pass, and a
@@ -1970,7 +1986,7 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     )))
 }
 
-fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, String, Records) {
+fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, Vec<Told>, Records) {
     let mut told = Vec::new();
     let mut records = Records::default();
     let at = Context {
@@ -2000,11 +2016,7 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, S
             2
         }
     };
-    let text = render::text(&told);
-    if code == 2 && records.findings.is_empty() {
-        records.findings.push(record("error", &text));
-    }
-    (code, text, records)
+    (code, told, records)
 }
 
 fn status(code: u8) -> &'static str {

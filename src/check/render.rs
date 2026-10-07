@@ -5,7 +5,7 @@
 use std::fmt::Write;
 
 use crate::check::contract::{
-    Failed, Hole, Line, Listed, Matched, Plain, Ratchet, Site, Standing, Told, Unmatched,
+    Failed, Held, Hole, Line, Listed, Matched, Plain, Ratchet, Site, Standing, Told, Unmatched,
 };
 use crate::coverage::Coverage;
 
@@ -221,7 +221,11 @@ fn worse(unit: &str, failed: &[Failed], out: &mut String) {
         failed.len()
     );
     for finding in failed {
-        let (was, from) = finding.was.clone().unwrap_or_default();
+        let (was, from) = finding
+            .was
+            .as_ref()
+            .map(|was| (was.shown.as_str(), was.at.as_deref()))
+            .unwrap_or_default();
         let from = from.map(|file| format!(" at {file}")).unwrap_or_default();
         let _ = writeln!(
             out,
@@ -249,8 +253,8 @@ fn entries(count: usize) -> &'static str {
 
 /// The `OK:` line: the check's phrase, why every finding passed in the words the comparison
 /// proved, and the coverage. A run that judged no finding claims nothing. Spec 8.6.
-fn judged(line: &Line, (accepted, base): (usize, usize), out: &mut String) {
-    let qualifier = match (accepted, base) {
+fn judged(line: &Line, held: Held, out: &mut String) {
+    let qualifier = match (held.accepted, held.base) {
         (0, 0) => String::new(),
         (0, _) => ", all held at the base".to_string(),
         (_, 0) => ", all on the accepted list".to_string(),

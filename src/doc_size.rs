@@ -92,14 +92,11 @@ fn evaluate(
     let measured = documents.len();
     let said = out.covered(&Coverage::whole(measured));
     if over == 0 {
-        out.tell(Told::Judged {
-            line: Line {
-                state: format!("{measured} document(s) judged"),
-                coverage: said,
-                ..Line::default()
-            },
-            held: (0, 0),
-        });
+        out.tell(Told::judged(Line {
+            state: format!("{measured} document(s) judged"),
+            coverage: said,
+            ..Line::default()
+        }));
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
