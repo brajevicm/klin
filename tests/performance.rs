@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
+use std::sync::OnceLock;
 use std::time::Instant;
 
 const ITERATIONS: usize = 5;
@@ -870,8 +871,11 @@ fn resources(fixture: &Fixture) -> Resources {
     assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
     let (files, bytes) = fixture.structural_cache();
     let warm = peak_rss(fixture, &["gate", "--hook", "--changed"]);
-    let dead_symbols = peak_rss(fixture, &["check", "--changed", "--json", "dead-symbols"]);
-    let strict = peak_rss(fixture, &["check", "--json"]);
+    let dead_symbols = peak_rss(
+        fixture,
+        &checked(&["--changed", "--json"], Some("dead-symbols")),
+    );
+    let strict = peak_rss(fixture, &checked(&["--json"], None));
     fixture.remove_structural_cache();
     let uncached = peak_rss(fixture, &["gate", "--hook", "--changed"]);
     Resources {
@@ -958,8 +962,31 @@ fn median<T: Copy + Ord>(values: &[T]) -> T {
     sorted[sorted.len() / 2]
 }
 
+/// The whole run of the binary under test: `klin check`, or `klin gate --strict` for a `KLIN_BIN`
+/// built before #507, so the benchmark's base side still measures.
+fn checked<'a>(flags: &[&'a str], gate: Option<&'a str>) -> Vec<&'a str> {
+    static KNOWS_CHECK: OnceLock<bool> = OnceLock::new();
+    let knows = *KNOWS_CHECK.get_or_init(|| {
+        Command::new(binary())
+            .args(["check", "--help"])
+            .output()
+            .is_ok_and(|output| output.status.success())
+    });
+    let mut args = match knows {
+        true => vec!["check"],
+        false => vec!["gate", "--strict"],
+    };
+    args.extend_from_slice(flags);
+    match (knows, gate) {
+        (true, Some(gate)) => args.push(gate),
+        (false, Some(gate)) => args.extend(["--gate", gate]),
+        (_, None) => {}
+    }
+    args
+}
+
 fn strict_run(tree: &Tree, label: &str) -> harness::Run {
-    let run = tree.run(&["check", "--json"]);
+    let run = tree.run(&checked(&["--json"], None));
     assert_eq!(run.code, 0, "{label}: {}", run.out);
     let report = run.json();
     assert_eq!(report["status"], "PASS", "{label}: {report}");
