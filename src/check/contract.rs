@@ -77,6 +77,9 @@ impl std::ops::Add for ContentCost {
 #[derive(Default)]
 pub struct Records {
     pub findings: Vec<Value>,
+    /// Why a gate that is exit 2 failed where it names no site. The runner records them as one
+    /// `error` finding, and only for a gate that recorded no other finding.
+    pub errors: Vec<String>,
     pub notes: Vec<Value>,
     /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
     pub gates: Vec<Value>,
@@ -530,13 +533,9 @@ impl<'a> Sink<'a> {
         add(self.records);
     }
 
-    /// An `error` finding for `--json`, for a failure that is exit 2 and names no site.
+    /// Why this gate is exit 2 where the failure names no site. See `Records::errors`.
     pub fn error(&mut self, text: String) {
-        self.record(|records| {
-            records
-                .findings
-                .push(serde_json::json!({ "outcome": "error", "text": text }));
-        });
+        self.records.errors.push(text);
     }
 
     /// One value a check derived itself, kept beside the record so the runner can place its

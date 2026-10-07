@@ -2009,14 +2009,23 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, V
     let code = match outcome {
         Ok(code) => code,
         Err(problem) => {
-            if records.findings.is_empty() {
-                records.findings.push(record("error", &problem.to_string()));
-            }
+            records.errors.push(problem.to_string());
             told.push(Plain::Error(problem.to_string()).into());
             2
         }
     };
+    errored(code, &mut records);
     (code, told, records)
+}
+
+/// The one `error` finding of a gate that is exit 2 and recorded no other finding, from the
+/// reasons it gave. A gate with findings already names what failed, so it gets none. Spec 11.2.
+fn errored(code: u8, records: &mut Records) {
+    if code != 2 || !records.findings.is_empty() || records.errors.is_empty() {
+        return;
+    }
+    let errors = std::mem::take(&mut records.errors);
+    records.findings.push(record("error", &errors.join("\n")));
 }
 
 fn status(code: u8) -> &'static str {
