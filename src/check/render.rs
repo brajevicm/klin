@@ -6,8 +6,8 @@ use std::fmt::Write;
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    Complexity, Counted, Failed, Held, Hole, Judged, Layering, Line, Listed, Matched, Measured,
-    Plain, PublicApi, Ratchet, Site, Standing, Told, Unmatched, Unresolvable,
+    Complexity, Counted, Failed, Held, Hole, Judged, Layering, Line, Listed, Located, Matched,
+    Measured, Plain, PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable,
 };
 use crate::coverage::Coverage;
 
@@ -254,8 +254,8 @@ fn word(fail: bool) -> &'static str {
     if fail { "FAIL" } else { "NOTE" }
 }
 
-fn at(site: &Site) -> String {
-    format!("{}:{}", site.file, site.line.unwrap_or_default())
+fn at(site: &Located) -> String {
+    format!("{}:{}", site.file, site.line)
 }
 
 fn entries(count: usize) -> &'static str {
@@ -463,7 +463,7 @@ fn against(finding: &Failed) -> String {
     let matched = match &finding.matched {
         Matched::Nothing => "nothing matched".to_string(),
         Matched::Accepted(file) => format!("matched the accepted entry for {file}"),
-        Matched::Base(file, line) => format!("matched the base site at {file}:{line}"),
+        Matched::Base { file, line } => format!("matched the base site at {file}:{line}"),
     };
     match &finding.ceiling {
         Some(ceiling) => format!("  — {matched}, ceiling {ceiling}"),

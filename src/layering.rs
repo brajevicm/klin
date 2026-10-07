@@ -778,7 +778,12 @@ fn judged(
         .iter()
         .filter(|dependency| placed.judges(&now.graph, dependency))
         .count();
-    let state = Measured::Layering(attachment(&now.graph, (sites, forbidden, cyclic)));
+    let state = Measured::Layering(contract::Layering {
+        sites,
+        forbidden,
+        cyclic,
+        ..attachment(&now.graph)
+    });
     let evaluator = evaluator();
     Ok(evaluator.evaluate(
         findings,
@@ -831,11 +836,9 @@ fn prior(physicals: &Physicals, (was_edges, now_edges): (&Edges, &Edges)) -> Vec
 }
 
 /// How the working tree's files came to be modules, and how many dependencies V1 left alone.
-/// The sites judged, and how the module graph attached the files, as the `OK:` line counts them.
-fn attachment(
-    graph: &ModuleGraph,
-    (sites, forbidden, cyclic): (usize, usize, usize),
-) -> contract::Layering {
+/// How the module graph attached the files, as the `OK:` line counts them. The caller sets the
+/// counts of what it judged.
+fn attachment(graph: &ModuleGraph) -> contract::Layering {
     let count = |kind: Attachment| {
         graph
             .attached
@@ -844,14 +847,12 @@ fn attachment(
             .count()
     };
     contract::Layering {
-        sites,
-        forbidden,
-        cyclic,
         attached: graph.attached.len(),
         by_manifest: count(Attachment::Manifest),
         by_convention: count(Attachment::Convention),
         unattached: graph.unattached.len(),
         external: graph.external,
+        ..contract::Layering::default()
     }
 }
 

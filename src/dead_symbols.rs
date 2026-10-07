@@ -11,7 +11,7 @@ use std::fmt::Write;
 use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, Line, Listed, Measured, Sink, Site};
+use crate::check::contract::{self, Context, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -519,9 +519,9 @@ fn report_dead(states: &[State], only: Option<&[String]>, out: &mut Sink) {
     out.tell(Listed::DeadSymbols(
         dead.into_iter()
             .map(|state| {
-                let site = Site {
+                let site = Located {
                     file: state.file.clone(),
-                    line: Some(state.line),
+                    line: state.line,
                     text: state.text.clone(),
                 };
                 (site, state.name.clone())

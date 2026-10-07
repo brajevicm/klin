@@ -7,7 +7,8 @@
 use serde_json::{Map, Value};
 
 use crate::check::contract::{
-    Context, Hole, LOST, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED, Unresolvable,
+    Context, Hole, LOST, Located, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED,
+    Unresolvable,
 };
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
 use crate::syntax::structural::facts::Unsupported;
@@ -23,7 +24,6 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
     for file in lost {
         out.tell(Hole::Lost(Site {
             file: file.file.clone(),
-            line: None,
             text: file.why.to_string(),
         }));
     }
@@ -40,6 +40,7 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
         return code;
     }
     out.tell(Hole::LeftScrutiny(lost.len()));
+    out.error(format!("{} file(s) left scrutiny", lost.len()));
     2
 }
 
@@ -66,7 +67,6 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
             .iter()
             .map(|file| Site {
                 file: file.file.clone(),
-                line: None,
                 text: file.language.to_string(),
             })
             .collect(),
@@ -145,9 +145,9 @@ fn listed(fail: bool, named: &[(&Unresolved, bool)], kind: Unresolvable, out: &m
         forms: named
             .iter()
             .map(|(hole, _)| {
-                let form = Site {
+                let form = Located {
                     file: hole.file.clone(),
-                    line: Some(hole.line),
+                    line: hole.line,
                     text: hole.text.clone(),
                 };
                 (form, hole.why.to_string())
@@ -194,7 +194,6 @@ fn unparsed_said(
             out.record(|records| into(records).push(unparsed_site(file, &rejected)));
             Site {
                 file: file.file.clone(),
-                line: None,
                 text: rejected,
             }
         })

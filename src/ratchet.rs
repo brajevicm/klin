@@ -204,13 +204,16 @@ impl Comparison {
     }
 
     /// The held findings an accepted entry holds, and the ones a base site holds.
-    fn reasons(&self) -> (usize, usize) {
+    fn reasons(&self) -> Held {
         let accepted = self
             .held
             .iter()
             .filter(|(_, entry)| is_accepted(entry))
             .count();
-        (accepted, self.held.len() - accepted)
+        Held {
+            accepted,
+            base: self.held.len() - accepted,
+        }
     }
 }
 
@@ -529,7 +532,7 @@ fn report(
     at: &Context,
     out: &mut Sink,
 ) -> u8 {
-    let (accepted, _) = comparison.reasons();
+    let accepted = comparison.reasons().accepted;
     out.record(|records| {
         records.held = Some(records.held.unwrap_or(0) + comparison.held.len() as u64);
         records.accepted = Some(records.accepted.unwrap_or(0) + accepted as u64);
@@ -542,10 +545,7 @@ fn report(
     }
     out.tell(Told::Judged {
         line,
-        held: {
-            let (accepted, base) = comparison.reasons();
-            Held { accepted, base }
-        },
+        held: comparison.reasons(),
     });
     notes(comparison, evaluator, at.gate, out);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
@@ -557,7 +557,6 @@ fn report(
                 .filter_map(|entry| {
                     retired_row(at.gate, entry).map(|went| Site {
                         file: text(entry, "file"),
-                        line: None,
                         text: went,
                     })
                 })
@@ -610,7 +609,7 @@ fn failed(finding: &Finding, entry: Option<&Values>, evaluator: &Evaluator) -> F
         Some(entry) if is_accepted(entry) => Matched::Accepted(text(entry, "file")),
         Some(entry) => {
             let (file, line) = entry_site(entry);
-            Matched::Base(file, line)
+            Matched::Base { file, line }
         }
     };
     Failed {

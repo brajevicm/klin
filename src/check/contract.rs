@@ -299,6 +299,7 @@ pub struct Complexity {
 }
 
 /// The dependency sites `layering` judged, and how the module graph attached the files.
+#[derive(Default)]
 pub struct Layering {
     pub sites: usize,
     pub forbidden: usize,
@@ -340,10 +341,16 @@ pub enum Unresolvable {
     PublicSurface,
 }
 
-/// One site a list in the report names: a file, its line where it has one, and its text.
+/// One file a list in the report names, with the text the list says of it.
 pub struct Site {
     pub file: String,
-    pub line: Option<u64>,
+    pub text: String,
+}
+
+/// One site at a line of a file, with its text.
+pub struct Located {
+    pub file: String,
+    pub line: u64,
     pub text: String,
 }
 
@@ -352,7 +359,7 @@ pub struct Site {
 pub enum Matched {
     Nothing,
     Accepted(String),
-    Base(String, u64),
+    Base { file: String, line: u64 },
 }
 
 /// One finding the ratchet failed, with the check's own words for its values.
@@ -439,7 +446,7 @@ pub enum Hole {
     Unresolved {
         fail: bool,
         kind: Unresolvable,
-        forms: Vec<(Site, String)>,
+        forms: Vec<(Located, String)>,
     },
     Unparsed {
         fail: bool,
@@ -450,9 +457,9 @@ pub enum Hole {
 /// Sites a gate lists that fail nothing: dead symbols a direct run reports, and the tests a
 /// window let through. Spec 8.2.
 pub enum Listed {
-    DeadSymbols(Vec<(Site, String)>),
-    TestsDeleted(Vec<Site>),
-    TestFunctionsOrphaned(Vec<Site>),
+    DeadSymbols(Vec<(Located, String)>),
+    TestsDeleted(Vec<Located>),
+    TestFunctionsOrphaned(Vec<Located>),
     TestFilesPaired {
         files: Vec<Site>,
         rule: &'static str,
@@ -521,6 +528,15 @@ impl<'a> Sink<'a> {
 
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         add(self.records);
+    }
+
+    /// An `error` finding for `--json`, for a failure that is exit 2 and names no site.
+    pub fn error(&mut self, text: String) {
+        self.record(|records| {
+            records
+                .findings
+                .push(serde_json::json!({ "outcome": "error", "text": text }));
+        });
     }
 
     /// One value a check derived itself, kept beside the record so the runner can place its

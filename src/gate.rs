@@ -1692,11 +1692,8 @@ fn each(
     let mut tally = Tally::default();
     let mut totals = Records::default();
     for gate in wanted {
-        let ((code, told, mut records), ms) = journal::timed(|| one(args, gate, project, against));
+        let ((code, told, records), ms) = journal::timed(|| one(args, gate, project, against));
         let text = render::text(&told);
-        if code == 2 && records.findings.is_empty() {
-            records.findings.push(record("error", &text));
-        }
         match code {
             0 => (),
             1 => tally.failed += 1,
@@ -2012,6 +2009,9 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, V
     let code = match outcome {
         Ok(code) => code,
         Err(problem) => {
+            if records.findings.is_empty() {
+                records.findings.push(record("error", &problem.to_string()));
+            }
             told.push(Plain::Error(problem.to_string()).into());
             2
         }

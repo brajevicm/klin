@@ -168,6 +168,7 @@ fn holes_said(holes: &[Hole], at: &Context, code: u8, out: &mut Sink) -> u8 {
     ratchet::noted(&noted, out);
     for hole in &refused {
         out.tell(Plain::PathMissing(hole.named()));
+        out.error(hole.named());
     }
     match refused.is_empty() {
         true => code,

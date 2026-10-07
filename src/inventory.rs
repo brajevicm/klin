@@ -439,10 +439,10 @@ fn deleted(went: &[Finding], out: &mut Sink) {
 }
 
 /// A finding as the site a report lists.
-fn told(site: &Finding) -> contract::Site {
-    contract::Site {
+fn told(site: &Finding) -> contract::Located {
+    contract::Located {
         file: site.file.clone(),
-        line: Some(site.line),
+        line: site.line,
         text: site.text.clone(),
     }
 }
@@ -456,9 +456,9 @@ fn orphaned(orphans: &[Function], out: &mut Sink) {
     out.tell(Listed::TestFunctionsOrphaned(
         orphans
             .iter()
-            .map(|function| contract::Site {
+            .map(|function| contract::Located {
                 file: function.site.file.clone(),
-                line: Some(function.site.line),
+                line: function.site.line,
                 text: function.site.text.clone(),
             })
             .collect(),
@@ -494,7 +494,6 @@ fn noted(paired: &[Site], out: &mut Sink) {
             .iter()
             .map(|site| contract::Site {
                 file: site.path.clone(),
-                line: None,
                 text: site.subject.clone().unwrap_or_default(),
             })
             .collect(),
