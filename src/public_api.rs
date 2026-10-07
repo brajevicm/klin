@@ -9,7 +9,6 @@
 
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::path::PathBuf;
 
 use serde_json::Value;
 
@@ -64,22 +63,6 @@ const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract t
                            accept the break: a person accepts it with an accepted entry in a \
                            reviewed commit, and until then CI refuses it.";
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print the derived public surfaces of the working tree, item by item, without judging them
-    #[arg(long)]
-    report: bool,
-}
-
 /// One tree as the gate judges it: its surfaces, its module graph, the files the grammar refused
 /// under today's paths, and today's path of every file the base names by its path at the base.
 struct Side {
@@ -91,7 +74,7 @@ struct Side {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
-    let commit = contract::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     out.record(|records| {
         records.graph = Some(was.graph.cost() + now.graph.cost());
@@ -427,7 +410,12 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 
 /// The derived contract of the working tree, item by item, so automatic derivation is
 /// inspectable. Nothing is judged and no base is read. ADR 0044.
-pub fn explain(project: &Project, _named: Option<&str>) -> Result<Vec<String>, Error> {
+pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Error> {
+    if let Some(named) = named {
+        return Err(Error(format!(
+            "{NAME} explains every surface at once, so drop {named}"
+        )));
+    }
     project.config.policy(SECTION, KEYS)?;
     let tree = project.tree();
     let measured = measurement::measure_all(tree, None)?;

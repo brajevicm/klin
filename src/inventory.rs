@@ -118,7 +118,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let today = today(project)?;
     said(project, out);
-    let commit = contract::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at)?;
     let mut owned = None;
     let prior = base::laid(at.prior, &mut owned, || {
         base::materialize(project, &commit, None)

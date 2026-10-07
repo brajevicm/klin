@@ -1985,13 +1985,12 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, S
             false => Caller::Gate,
         },
         strict: args.strict && gate.check.needs.the_commit(),
-        quiet: false,
     };
     let outcome = (gate.check.run)(
         &at,
         &mut Sink {
             text: &mut text,
-            records: Some(&mut records),
+            records: &mut records,
         },
     );
     let (code, text) = match outcome {

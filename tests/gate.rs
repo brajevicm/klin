@@ -1322,6 +1322,18 @@ fn strict_refuses_a_tree_the_survey_finds_no_source_root_in() {
     );
 }
 
+/// Only the checks a run selects count toward the hole, so a run of a check that reads no code
+/// judges a tree with no source root. Spec 11.3.
+#[test]
+fn a_selected_check_that_reads_no_code_runs_where_the_survey_finds_no_source_root() {
+    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let run = tree.run(&["check", "doc-size"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("found no source root"), "{}", run.out);
+}
+
 /// The failure is about a gate the survey was left to supply, so a tree that reads no code
 /// because a person excluded every gate that does is not this hole. ADR 0016.
 #[test]

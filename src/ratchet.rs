@@ -562,15 +562,13 @@ fn report(
         notes(comparison, evaluator, at.gate, out.text);
         return 1;
     }
-    if !at.quiet {
-        let _ = writeln!(
-            out.text,
-            "OK: {}{}{}",
-            line.state,
-            qualifier(comparison),
-            line.tail
-        );
-    }
+    let _ = writeln!(
+        out.text,
+        "OK: {}{}{}",
+        line.state,
+        qualifier(comparison),
+        line.tail
+    );
     notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
         let heading = format!(

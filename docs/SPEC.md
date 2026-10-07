@@ -158,7 +158,7 @@ when the roadmap ticket that implements them lands.
 | 0054 | The red pass-through names `klin stats --turn`. | It names `klin report`. | #452. |
 | 0037 | `klin conventions --report [NAME]` summarizes each convention with its sites, or explains one. | `klin policy conventions [NAME]` explains each convention, or one, and counts no match (section 11.6). | #507. `policy` runs no check. |
 | 0044 | `klin public-api --report` prints the derived contract of the working tree. | `klin policy public-api` prints it (section 11.6). | #507. No per-check command survives. |
-| 0036 | The catalogue is one ordered table. | The catalogue also declares each capability's placement and semantics version. | Sections 6.2 and 8.2. |
+| 0036 | The catalogue is one ordered table, and each check is also a Clap command. | The catalogue also declares each capability's placement and semantics version. No check has a command of its own: `klin check NAME` selects a row, so a new check is one row. A row may declare how `klin policy` explains it. | Sections 6.2, 8.2 and 11.6. #507. |
 | 0042 | Large-repository budgets. | The budgets stay. A 1,500 ms admission envelope is added. | #358, #475 section 14. |
 
 ## 1. Problem Statement

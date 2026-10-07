@@ -5,7 +5,6 @@
 //! keeps no side channel into it and a check keeps no state of its own. This module names no
 //! check, so every check and the catalogue that registers them depend on it one way.
 
-use std::fmt::Write;
 use std::path::Path;
 
 use serde_json::{Map, Value};
@@ -116,13 +115,11 @@ pub struct Records {
     pub surface: Option<surface::SurfaceCost>,
 }
 
-/// Who ran this check. A person running one by hand gets the run's own context lines and no
-/// records; the runner gets neither, because it prints the context once for the whole run; the
-/// stop hook is the runner again, where a hole the agent cannot fix is a note and not a failure.
-/// Spec 4.3, 8.2, 11.1.
+/// Who ran this check: `klin check`, or the stop hook, where a hole the agent cannot fix is a
+/// note and not a failure. The runner prints the run's context once for every check. Spec 4.3,
+/// 8.2, 11.1.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Caller {
-    Hand,
     Gate,
     Hook,
 }
@@ -182,18 +179,9 @@ pub struct Context<'a> {
     pub changes: Option<&'a [Change]>,
     pub caller: Caller,
     pub strict: bool,
-    /// Print nothing on success: no `OK:` line, and nothing under it.
-    pub quiet: bool,
 }
 
 impl Context<'_> {
-    /// Whether this check says the run's own context for itself: the `window:` line and the
-    /// `derived:` lines. The runner prints those once for the whole run, so only a check a
-    /// person ran by hand says them here. Spec 4.3, 11.1.
-    pub fn context(&self) -> bool {
-        self.caller == Caller::Hand && !self.quiet && self.changes.is_none()
-    }
-
     /// Whether the Stop hook runs this gate, so a hole the agent cannot fix is a note, not a
     /// failure.
     pub fn hook(&self) -> bool {
@@ -220,59 +208,41 @@ impl Context<'_> {
             changes: self.changes,
             caller: self.caller,
             strict: self.strict,
-            quiet: self.quiet,
         }
     }
 }
 
-impl<'a> Context<'a> {}
-
-/// Where a check writes: the report a person reads, and the records the runner keeps. A check a
-/// person runs by hand has no records, and every `record` call on it does nothing.
+/// Where a check writes: the report a person reads, and the records the runner keeps.
 pub struct Sink<'a> {
     pub text: &'a mut String,
-    pub records: Option<&'a mut Records>,
+    pub records: &'a mut Records,
 }
 
 impl<'a> Sink<'a> {
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
-        if let Some(records) = self.records.as_deref_mut() {
-            add(records);
-        }
+        add(self.records);
     }
 
-    /// One value a check derived itself. Direct commands print it here; the runner keeps the
-    /// line beside the record so it can place provenance before that gate's status row.
+    /// One value a check derived itself, kept beside the record so the runner can place its
+    /// line before that gate's status row.
     pub fn provenance(&mut self, line: String, derived: Option<Value>) {
-        match self.records.as_deref_mut() {
-            Some(records) => {
-                records.derived_lines.push(line);
-                records.derived.extend(derived);
-            }
-            None => {
-                self.text.push_str(&line);
-                self.text.push('\n');
-            }
-        }
+        self.records.derived_lines.push(line);
+        self.records.derived.extend(derived);
     }
 }
 
 /// The base commit a gate judges against: the one the runner chose, or the one this gate
 /// chooses for itself and names once in the report. Spec 6.1.
-pub fn base_commit(root: &Path, at: &Context, out: &mut Sink) -> Result<String, Error> {
+pub fn base_commit(root: &Path, at: &Context) -> Result<String, Error> {
     match at.base {
         Some(commit) => Ok(commit.to_string()),
-        None => Ok(announced(root, at, out)?.before),
+        None => Ok(announced(root, at)?.before),
     }
 }
 
-/// The base a gate the runner did not lay out chooses for itself, named once in the report.
-pub fn announced(root: &Path, at: &Context, out: &mut Sink) -> Result<Window, Error> {
-    let base = base::choose(root, at.strict)?;
-    if at.context() {
-        let _ = writeln!(out.text, "{}", base.line());
-    }
-    Ok(base)
+/// The base a gate the runner did not lay out chooses for itself.
+pub fn announced(root: &Path, at: &Context) -> Result<Window, Error> {
+    base::choose(root, at.strict)
 }
 
 /// The base laid out whole for this run: the runner's own when it laid the whole base out, which
@@ -299,8 +269,8 @@ fn shared<'a>(at: &Context<'a>) -> Option<&'a [Change]> {
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own_base(at: &Context, out: &mut Sink) -> Result<Prior, Error> {
-    let base = announced(at.project.root(), at, out)?;
+pub fn own_base(at: &Context) -> Result<Prior, Error> {
+    let base = announced(at.project.root(), at)?;
     base::materialize(at.project, &base.before, None)
 }
 

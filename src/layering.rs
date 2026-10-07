@@ -12,7 +12,6 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
-use std::path::PathBuf;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -64,19 +63,6 @@ const CYCLE: &str = "cycle";
 const REMEDY: &str = "Depend on a layer this layer's `can_use` names, through that layer's interface, or \
                       move the code to the layer it belongs to. Break a new cycle by moving what \
                       both modules need into a module neither depends back on.";
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
 
 struct Layer {
     name: String,
@@ -178,7 +164,7 @@ impl Placed<'_> {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let policy = policy(at.config())?;
-    let commit = contract::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();

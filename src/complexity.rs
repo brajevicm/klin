@@ -264,22 +264,6 @@ fn metrics(id: LanguageId) -> &'static Metrics {
         .map_or(&NOTHING, |(_, table)| table)
 }
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Judge only these repo-relative files, against only their functions at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
-}
-
 struct Function {
     file: String,
     line: u64,
@@ -395,7 +379,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = out.covered(&sweep.files.coverage(at.only));
     let mut owned = None;
-    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at, out))?;
+    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at))?;
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);

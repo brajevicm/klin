@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
@@ -683,13 +683,13 @@ fn findings(tally: Tally) -> Vec<Finding> {
 /// The base tree measured under the same rules. The base's copy of a renamed file is laid out at
 /// today's path, so its sites keep their key, and its `held` path is the one the base commit holds,
 /// so the scope and a `files` glob read what the base held. Spec 8.4.
-pub(super) fn at_the_base(rules: &[Rule], at: &Context, out: &mut Sink) -> Result<Measured, Error> {
+pub(super) fn at_the_base(rules: &[Rule], at: &Context) -> Result<Measured, Error> {
     let project = at.project;
     let owned;
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = contract::announced(project.root(), at, out)?;
+            let window = contract::announced(project.root(), at)?;
             owned = base::materialize(project, &window.before, None)?;
             (&owned, window.before)
         }

@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
@@ -68,19 +68,6 @@ pub const PATTERN: Key = Key {
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
 
 /// One family the derivation commit proves: where its files are and what they are called.
 #[derive(Clone)]
@@ -143,7 +130,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let families = families(project)?;
     said_families(&families, out);
-    let commit = contract::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, before_families, after) = sweeps(at, &families, &commit, &mut names, &mut layout)?;

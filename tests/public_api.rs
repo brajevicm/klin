@@ -2972,3 +2972,20 @@ fn an_added_optional_parameter_or_overload_is_still_a_changed_contract_by_hand_a
         }
     }
 }
+
+#[test]
+fn policy_refuses_an_entry_for_public_api() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn parse() {}\n");
+    tree.base();
+
+    let run = tree.run(&["policy", "public-api", "core"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("drop core"), "{}", run.out);
+}

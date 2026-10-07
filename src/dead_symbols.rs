@@ -7,7 +7,6 @@
 
 use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::path::PathBuf;
 
 use serde_json::Value;
 
@@ -46,25 +45,6 @@ pub const IGNORE: Key = Key {
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print the complete current list of dead symbols
-    #[arg(long)]
-    report: bool,
-    /// Judge only these repo-relative files, against only their sites at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
-}
-
 #[derive(Clone)]
 struct Selection {
     extensions: Vec<&'static str>,
@@ -92,7 +72,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    let commit = contract::base_commit(project.root(), at, out)?;
+    let commit = contract::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;

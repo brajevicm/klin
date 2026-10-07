@@ -72,8 +72,8 @@ struct Cli {
     command: Command,
 }
 
-/// The six public commands of spec 11.1, and the hidden entry points the host hooks and a person
-/// still reach until the agent ingress replaces them.
+/// The public commands of spec 11.1, less `status`, which #498 adds, and the hidden entry points
+/// the host hooks and a person still reach until the agent ingress replaces them.
 #[derive(Subcommand)]
 enum Command {
     #[command(flatten)]

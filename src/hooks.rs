@@ -47,13 +47,17 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = Scope::of(args.user, start)?;
     let file = scope.config(args.config.as_deref(), start);
-    if args.pin {
-        let file = file
-            .as_deref()
-            .ok_or_else(|| Error(NO_REPOSITORY.to_string()))?;
+    let pinned = match args.pin {
+        true => Some(
+            file.as_deref()
+                .ok_or_else(|| Error(NO_REPOSITORY.to_string()))?,
+        ),
+        false => None,
+    };
+    let components = planned(args, &scope, file.as_deref())?;
+    if let Some(file) = pinned {
         init::pin(file, out)?;
     }
-    let components = planned(args, &scope, file.as_deref())?;
     applied(&components, out)?;
     if let Some(root) = &scope.repository {
         init::inert(root, out);
@@ -145,10 +149,14 @@ impl Scope {
 /// Everything the run will do, resolved before it writes anything: the repository marker, and
 /// one component per host klin knows. A host file that cannot be read or is not the shape the
 /// host reads fails here, where no file has been touched yet. Section 19.3.
+/// The configuration is planned only where `--pin` does not write it itself.
 fn planned(args: &Args, scope: &Scope, file: Option<&Path>) -> Result<Vec<Component>, Error> {
     let (wanted, why) = chosen(args, scope)?;
     let mut skills = Vec::new();
-    let mut components = vec![opt_in(file)];
+    let mut components = match args.pin {
+        true => Vec::new(),
+        false => vec![opt_in(file)],
+    };
     components.extend(why);
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());

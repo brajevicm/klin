@@ -71,23 +71,10 @@ struct Entry {
     differential: bool,
 }
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
     let entry = entry(config, at.gate)?;
-    let (found, changed) = read(config, &entry, at, out)?;
+    let (found, changed) = read(config, &entry, at)?;
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
@@ -189,18 +176,13 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
 /// What this gate reads before it judges: the report, and the lines the window changed. With
 /// `run` klin writes the report over this tree first. Without it klin reads the report as it
 /// finds it, and refuses one that predates the change. Spec 8.3.
-fn read(
-    config: &Config,
-    entry: &Entry,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<(Placed, Hunks), Error> {
+fn read(config: &Config, entry: &Entry, at: &Context) -> Result<(Placed, Hunks), Error> {
     let root = config.root();
     if let Some(command) = &entry.run {
         wrote(root, command, &entry.report)?;
     }
     let data = sarif(&entry.report)?;
-    let changed = Hunks::read(root, &contract::base_commit(root, at, out)?, None)?;
+    let changed = Hunks::read(root, &contract::base_commit(root, at)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }

@@ -44,25 +44,6 @@ const REMEDY: &str = "Point the citation at where the file is now (a bare filena
     the citation. Delete the sentence only when the referenced content was intentionally removed \
     and the sentence no longer applies.";
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Judge this one document instead of every document at the tree root
-    #[arg(long)]
-    file: Option<PathBuf>,
-    /// Where --file's citations may resolve (repeatable; default: the tree root)
-    #[arg(long = "root")]
-    roots: Vec<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
-
 struct Document {
     path: PathBuf,
     roots: Vec<PathBuf>,
@@ -101,10 +82,10 @@ fn evaluate(
     out: &mut Sink,
 ) -> Result<u8, Error> {
     let listing = listing(at, named, roots);
-    if named.is_none() && !at.quiet {
+    if named.is_none() {
         said(&listing, out);
     }
-    let commit = contract::base_commit(&listing.root, at, out)?;
+    let commit = contract::base_commit(&listing.root, at)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {

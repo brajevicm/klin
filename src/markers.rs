@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use regex::Regex;
 use serde_json::Value;
@@ -114,25 +114,6 @@ pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
             .iter()
             .map(|language| (language.names, language.suffixes)),
     )
-}
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print the built-in pattern sets and exit
-    #[arg(long)]
-    list_languages: bool,
-    /// Judge only these repo-relative files, against only their sites at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
 }
 
 #[derive(Clone)]
@@ -290,7 +271,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     };
     let unit = kind.evaluator.unit;
     let said = out.covered(&read.files.coverage(at.only));
-    let before = at_the_base(kind, &spec, at, out)?;
+    let before = at_the_base(kind, &spec, at)?;
     out.record(|records| records.work = Some(read.work + before.work));
     let lost = read.files.lost(&before.files, project, at.only);
     let code = kind.evaluator.evaluate(
@@ -307,12 +288,12 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(holes::lost_said(&lost, at, code, out))
 }
 
-fn at_the_base(kind: &Kind, spec: &Spec, at: &Context, out: &mut Sink) -> Result<Read, Error> {
+fn at_the_base(kind: &Kind, spec: &Spec, at: &Context) -> Result<Read, Error> {
     let owned;
     let prior = match at.prior {
         Some(prior) => prior,
         None => {
-            owned = contract::own_base(at, out)?;
+            owned = contract::own_base(at)?;
             &owned
         }
     };

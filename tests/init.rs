@@ -91,6 +91,19 @@ fn setup_leaves_a_config_that_already_exists_alone() {
     assert_eq!(kept, mine, "{}", run.out);
 }
 
+/// A host file setup cannot read stops the run before it writes anything, the configuration
+/// `--pin` writes included.
+#[test]
+fn pin_writes_no_config_when_a_host_file_cannot_be_read() {
+    let tree = in_debt();
+    tree.write(".claude/settings.json", "{ not json");
+
+    let run = tree.run(&["setup", "--pin", "--host", "claude"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+}
+
 #[test]
 fn pin_fills_in_the_guardrails_the_config_does_not_state() {
     let tree = in_debt();

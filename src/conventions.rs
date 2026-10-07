@@ -11,7 +11,6 @@
 //! Spec 8.4, ADR 0037.
 
 use std::fmt::Write;
-use std::path::PathBuf;
 
 use serde_json::Value;
 
@@ -31,32 +30,13 @@ use rules::{
     REMEDY, Rule, at_the_base, conventions, holes, measure, resolved, walked,
 };
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Judge only these repo-relative files, against only their sites at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
-    /// Summarize every convention, or explain the one named, then exit
-    #[arg(long, value_name = "NAME", num_args = 0..=1)]
-    report: Option<Option<String>>,
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
     let conventions = conventions(config)?;
     let places = walked(config, at.project.tree())?;
     let rules = every_rule(config, &conventions, &places)?;
     let mut after = measure(&rules, &places)?;
-    let mut before = at_the_base(&rules, at, out)?;
+    let mut before = at_the_base(&rules, at)?;
     let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
     Ok(holes::unread_said(
@@ -101,7 +81,7 @@ fn every_convention(
     for rule in rules {
         code = code.max(judged(config, rule, (&mut *after, &mut *before), at, out)?);
     }
-    if code == 0 && !at.quiet {
+    if code == 0 {
         let _ = writeln!(out.text, "OK: {} convention(s) judged{said}", rules.len());
     }
     Ok(code)
