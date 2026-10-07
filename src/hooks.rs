@@ -47,13 +47,7 @@ pub struct Args {
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = Scope::of(args.user, start)?;
     let file = scope.config(args.config.as_deref(), start);
-    let pinned = match args.pin {
-        true => Some(
-            file.as_deref()
-                .ok_or_else(|| Error(NO_REPOSITORY.to_string()))?,
-        ),
-        false => None,
-    };
+    let pinned = pin_target(args.pin, file.as_deref())?;
     let components = planned(args, &scope, file.as_deref())?;
     if let Some(file) = pinned {
         init::pin(file, out)?;
@@ -64,6 +58,15 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
     let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
     Ok(0)
+}
+
+/// The configuration `--pin` writes, which needs a repository or a `--config` to name it.
+fn pin_target(pin: bool, file: Option<&Path>) -> Result<Option<&Path>, Error> {
+    match (pin, file) {
+        (false, _) => Ok(None),
+        (true, Some(file)) => Ok(Some(file)),
+        (true, None) => Err(Error(NO_REPOSITORY.to_string())),
+    }
 }
 
 /// Whether the run wrote a host's file. The repository marker is written on its own account,
