@@ -18,7 +18,7 @@ use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, reference, stamp, state, stats, turn, write};
+use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -2442,7 +2442,7 @@ impl Measured {
 
 /// The hole of a whole run that a check reading code was left to measure and that measured no
 /// code: where the survey found no source root and nothing at all was measured, or where the
-/// derivation commit held source the working tree no longer holds. A documentation-only tree whose documents were measured is no
+/// derivation commit held a source root that no source file of the working tree sits under. A documentation-only tree whose documents were measured is no
 /// hole, and a tree that lost its source does not pass on its documents. #500 owns the finer
 /// classification of the lost source. Spec 7.2.
 fn unmeasured_run(
@@ -2458,9 +2458,9 @@ fn unmeasured_run(
     let nothing = measured.files == 0 && project.found_no_source_root();
     let text = match (nothing, lost.is_empty()) {
         (_, false) => format!(
-            "the derivation commit held source under {} and the working tree holds none of it, \
-             so no check that reads code measured anything — restore the source, or set those \
-             gates to false to exclude them",
+            "the derivation commit held source under {} and the working tree holds no source \
+             file there, so no check that reads code measured anything — restore the source, or \
+             set those gates to false to exclude them",
             lost.join(", ")
         ),
         (true, true) => format!(
@@ -2478,14 +2478,17 @@ fn unmeasured_run(
     })
 }
 
-/// The source roots the derivation commit's survey held that no file of the working tree sits
-/// under any more.
+/// The source roots the derivation commit's survey held that no source file of the working
+/// tree sits under any more. A file of no language klin reads, left where the source was, keeps
+/// no root.
 fn held_roots(project: &Project) -> Vec<String> {
     let files = project.tree().files().unwrap_or_default();
     let holds = |root: &str| {
-        files
-            .iter()
-            .any(|file| crate::scope::under_or_at(file, root))
+        files.iter().any(|file| {
+            survey::surveyed(file)
+                && survey::language_of(file).is_some()
+                && crate::scope::under_or_at(file, root)
+        })
     };
     project
         .source_derivation()

@@ -298,6 +298,22 @@ fn source_the_base_held_and_the_tree_lost_does_not_pass_on_the_documents_alone()
 }
 
 #[test]
+fn a_file_that_is_not_source_left_where_the_source_went_does_not_let_the_run_pass() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.words("README.md", 5);
+    tree.write("tools/run.py", "def main():\n    return 1\n");
+    tree.base();
+    tree.remove("tools/run.py");
+    tree.write("tools/notes.md", "kept\n");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 3, "{report}");
+    assert_eq!(run_holes(&report), ["nothing-measured"], "{report}");
+}
+
+#[test]
 fn a_whole_run_where_no_capability_applies_is_a_nothing_measured_hole() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
