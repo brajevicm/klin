@@ -758,7 +758,7 @@ and never keeps the stamp. Only `work-limit` can occur there.
 | --- | --- | --- |
 | `tool-error` | An integration command wrote no report, the report is stale or not SARIF, the command reached its limit, or the command was not found (detail `command-not-found`). | the gate |
 | `comparison-unproven` | Section 6.5 rule 3. | the run |
-| `nothing-measured` | A whole-tree run in which no capability applies to the tree, so klin measured nothing. The text says that the repository holds no language or document klin measures. It never applies to a changed scope. | the run |
+| `nothing-measured` | A whole-tree run in which no capability applies to the tree, so klin measured nothing. The text says that the repository holds no language or document klin measures. A tree whose documents were measured and that holds no source is complete. Until #500 classifies lost source, a whole-tree run is this hole too when the derivation commit held a source root that no source file of the working tree sits under (a file of no language klin reads does not count) and no check that reads code measured a file, so a tree does not pass on its documents after its source went. It never applies to a changed scope. | the run |
 | `unsupported` | A selector named a capability that does not apply to the tree, or one that needs a policy section the configuration does not hold. | the gate |
 | `work-limit` | A capability stopped at a deterministic bound on its own work before it covered its scope (#354 section 11). The text names the bound and the person's action: narrow the capability's scope with `except`, or set it to `false`. A capability with a work bound MUST show that the controlled 1M row does not reach it. | the gate |
 
@@ -907,7 +907,7 @@ Error kinds:
 | `configuration` | run | An unknown key, a malformed section, a schedule with no due step, an empty `doc_size` map, a duplicate `sarif` entry name. |
 | `configuration` | capability | An explicit `in` that selects no applicable file, a pinned document that is missing, a convention whose `in` measures nothing, a convention that cannot run. |
 | `base` | run | Section 6.5 rules 1 and 2. |
-| `git` | capability | A base read that git could not finish. |
+| `git` | capability | A base read that git could not finish, or a base tree klin could not lay out for a capability that reads it. The capabilities that do not read the base tree still measure and report. |
 | `internal` | run or capability | A klin failure that prevents a trustworthy result. |
 
 Rules:
@@ -1535,7 +1535,9 @@ Text output:
   words `not measured`;
 - the `OK:` line and its coverage counts of 0.x 11.1;
 - one summary line: `judgement: J, measurement: M, execution: E, exit N`,
-  followed by `, N file(s) not measured` when coverage notes exist.
+  followed by `, N file(s) not measured` when coverage notes exist. After a
+  run-scope error, J and M print as `none`, and an `ERR:` line names the
+  error above the summary.
 
 ### 11.4 `klin status`
 
@@ -1669,7 +1671,11 @@ A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail}`;
 every hole's site is the run or the gate).
 
-An error: `kind` (section 7.3), `check` (null for the run), `message`.
+An error: `kind` (section 7.3), `check` (null for the run), `message`. Until
+#500 sorts each 0.x hole of section 8 into its class of section 7.2, a file
+or form that one of them names is an `internal` error with that site's
+`file`, its `line` where it has one, and `reason`, the 0.x outcome
+(`unparsed`, `not-measured`, `unresolved`).
 
 #### The `status` document
 
@@ -2247,7 +2253,10 @@ Result model and exit codes:
   finding in it;
 - a capability that stops at its work bound is a `work-limit` hole, exit 3.
   No shipped capability has a work bound yet, so this is a `#[cfg(test)]`
-  pin under the AGENTS.md exception until one ships;
+  pin under the AGENTS.md exception until one ships. The pins are
+  `a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3` and
+  `a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2` in
+  `src/gate.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities

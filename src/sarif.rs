@@ -12,7 +12,7 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Line, Measured, Sink};
+use crate::check::contract::{self, Context, Incomplete, Line, Measured, Reason, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -74,7 +74,13 @@ struct Entry {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
     let entry = entry(config, at.gate)?;
-    let (found, changed) = read(config, &entry, at)?;
+    let (found, changed) = match read(config, &entry, at)? {
+        Ok(read) => read,
+        Err(hole) => {
+            out.tell(hole);
+            return Ok(0);
+        }
+    };
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
@@ -176,35 +182,70 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
 
 /// What this gate reads before it judges: the report, and the lines the window changed. With
 /// `run` klin writes the report over this tree first. Without it klin reads the report as it
-/// finds it, and refuses one that predates the change. Spec 8.3.
-fn read(config: &Config, entry: &Entry, at: &Context) -> Result<(Placed, Hunks), Error> {
+/// finds it, and refuses one that predates the change. A report klin cannot use is a hole of
+/// the tool's, never a finding and never a klin error. Spec 7.2, 9.4.
+fn read(
+    config: &Config,
+    entry: &Entry,
+    at: &Context,
+) -> Result<Result<(Placed, Hunks), Incomplete>, Error> {
     let root = config.root();
-    if let Some(command) = &entry.run {
-        wrote(root, command, &entry.report)?;
+    if let Some(Err(hole)) = entry
+        .run
+        .as_ref()
+        .map(|run| wrote(root, run, &entry.report))
+    {
+        return Ok(Err(hole));
     }
-    let data = sarif(&entry.report)?;
+    let data = match sarif(&entry.report) {
+        Ok(data) => data,
+        Err(hole) => return Ok(Err(hole)),
+    };
     let changed = Hunks::read(root, &contract::base_commit(root, at)?, None)?;
-    if entry.run.is_none() {
-        fresh(&entry.report, root, &changed)?;
+    if let (None, Err(hole)) = (&entry.run, fresh(&entry.report, root, &changed)) {
+        return Ok(Err(hole));
     }
-    Ok((placed(&data, root), changed))
+    Ok(Ok((placed(&data, root), changed)))
 }
+
+/// The exit code of a shell that could not find the command it was given.
+const NOT_FOUND: i32 = 127;
 
 /// The report the command writes over the tree klin is about to judge. The old report goes
 /// first, so the only file at that path is the one the tool wrote over this tree, and the
 /// command's exit status is not judged, because a linter exits non-zero when it finds
-/// something. Spec 8.3.
-fn wrote(root: &Path, command: &str, report: &Path) -> Result<(), Error> {
+/// something. A shell that could not find the command is the one status klin reads. Spec 8.3,
+/// 9.4.
+fn wrote(root: &Path, command: &str, report: &Path) -> Result<(), Incomplete> {
     let _ = std::fs::remove_file(report);
     match shell::output(root, command) {
-        Err(why) => Err(Error(format!("{command}: {why}"))),
+        Err(why) => Err(tool_error(None, format!("{command}: {why}"))),
         Ok(_) if report.is_file() => Ok(()),
-        Ok(done) => Err(Error(format!(
-            "{command} wrote no report at {} — klin deletes the report before it runs the \
-             command, so this gate has nothing to read:\n{}",
-            report.display(),
-            output(&done)
-        ))),
+        Ok(done) if done.status.code() == Some(NOT_FOUND) => Err(tool_error(
+            Some("command-not-found"),
+            format!(
+                "the shell could not find {command}, so no report was written — install the \
+                 tool, or correct the entry's \"run\":\n{}",
+                output(&done)
+            ),
+        )),
+        Ok(done) => Err(tool_error(
+            None,
+            format!(
+                "{command} wrote no report at {} — klin deletes the report before it runs the \
+                 command, so this gate has nothing to read:\n{}",
+                report.display(),
+                output(&done)
+            ),
+        )),
+    }
+}
+
+fn tool_error(detail: Option<&'static str>, text: String) -> Incomplete {
+    Incomplete {
+        reason: Reason::ToolError,
+        detail,
+        text: text.trim_end().to_string(),
     }
 }
 
@@ -212,9 +253,10 @@ fn output(done: &Output) -> String {
     String::from_utf8_lossy(&done.stdout).into_owned() + &String::from_utf8_lossy(&done.stderr)
 }
 
-/// The report as SARIF, or the tool error that says why it is not. Spec 8.3, 14.
-fn sarif(report: &Path) -> Result<Value, Error> {
-    let bytes = std::fs::read(report).map_err(|why| Error::unreadable(report, why))?;
+/// The report as SARIF, or the hole that says why it is not. Spec 8.3, 9.4.
+fn sarif(report: &Path) -> Result<Value, Incomplete> {
+    let bytes = std::fs::read(report)
+        .map_err(|why| tool_error(None, Error::unreadable(report, why).to_string()))?;
     let data: Value =
         serde_json::from_slice(&bytes).map_err(|why| not_sarif(report, &why.to_string()))?;
     match data.get("runs").is_some_and(Value::is_array) {
@@ -223,24 +265,27 @@ fn sarif(report: &Path) -> Result<Value, Error> {
     }
 }
 
-fn not_sarif(report: &Path, why: &str) -> Error {
-    Error(format!("{} is not SARIF: {why}", report.display()))
+fn not_sarif(report: &Path, why: &str) -> Incomplete {
+    tool_error(None, format!("{} is not SARIF: {why}", report.display()))
 }
 
 /// A report written before the window it must describe cannot describe it, so klin refuses it.
 /// Only an entry with no `run` reads a report klin did not write. Spec 8.3.
-fn fresh(report: &Path, root: &Path, changed: &Hunks) -> Result<(), Error> {
+fn fresh(report: &Path, root: &Path, changed: &Hunks) -> Result<(), Incomplete> {
     let Some(written) = modified(report) else {
         return Ok(());
     };
     for path in changed.paths() {
         if modified(&root.join(path)).is_some_and(|at| at > written) {
-            return Err(Error(format!(
-                "{} is older than {path}, which the window changed — a report that predates the \
-                 change cannot describe it, so write the report after the change, or give the \
-                 entry a \"run\" command and let klin write it",
-                report.display()
-            )));
+            return Err(tool_error(
+                None,
+                format!(
+                    "{} is older than {path}, which the window changed — a report that predates \
+                     the change cannot describe it, so write the report after the change, or \
+                     give the entry a \"run\" command and let klin write it",
+                    report.display()
+                ),
+            ));
         }
     }
     Ok(())

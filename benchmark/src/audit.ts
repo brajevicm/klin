@@ -7,7 +7,7 @@ import { families, VARIANTS, type Variant } from "./catalogue.ts";
 import { detect, type Finding } from "./detectors.ts";
 import * as paths from "./paths.ts";
 import type { RunRecord } from "./record.ts";
-import { klinVersion, wholeRun } from "./session.ts";
+import { klinVersion, wholeRun, wholeRunReport } from "./session.ts";
 import { sourceCommit } from "./trial.ts";
 import { copyTree, files, overlay, sha256 } from "./trees.ts";
 import * as workspace from "./workspace.ts";
@@ -91,6 +91,8 @@ function status(value: unknown): Status {
       return "FAIL";
     case "ERR":
       return "ERR";
+    case "INCOMPLETE":
+      return "UNKNOWN";
     case "":
       return "MISSING";
     case "UNKNOWN":
@@ -265,7 +267,7 @@ function runWhole(base: string, final: string, gate: string, root: string): Verd
   }
   let report: Report;
   try {
-    report = JSON.parse(ran.stdout ?? "") as Report;
+    report = wholeRunReport(JSON.parse(ran.stdout ?? "")) as Report;
   } catch {
     throw new Error("the whole run did not print JSON:\n" + (ran.stdout || ran.stderr));
   }

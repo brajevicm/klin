@@ -1048,9 +1048,14 @@ pub fn no_retired_key(file: &Path, name: &str, values: &Map<String, Value>) -> R
 /// Whether a klin.json is there to read at all, which tells a failure of `load` that names a
 /// config error apart from one that names no file. Section 14.
 pub fn present(explicit: Option<&Path>, start: &Path) -> bool {
+    located(explicit, start).is_some_and(|file| file.is_file())
+}
+
+/// The configuration a run names or finds, whether or not it exists or reads.
+pub fn located(explicit: Option<&Path>, start: &Path) -> Option<PathBuf> {
     match explicit {
-        Some(named) => absolute(named, start).is_file(),
-        None => find(start).is_some(),
+        Some(named) => Some(absolute(named, start)),
+        None => find(start),
     }
 }
 

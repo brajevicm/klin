@@ -362,7 +362,8 @@ fn a_sarif_result(line: u64, message: &str) -> String {
 
 /// Spec 11.2 defines `held` as the findings a base site or an accepted entry carried, which is
 /// one quantity and not two. A sarif gate also drops the results the window did not touch, and
-/// those are its coverage and never its hold.
+/// those are its coverage and never its hold. An integration never runs at the Stop, so the row
+/// is the check document's. Spec 9.4.
 #[test]
 fn a_gate_row_holds_what_the_ratchet_let_through_and_not_what_the_window_dropped() {
     let tree = Tree::new();
@@ -383,17 +384,14 @@ fn a_gate_row_holds_what_the_ratchet_let_through_and_not_what_the_window_dropped
         ),
     );
 
-    let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 0, "{}", run.out);
-    let lines = stops(&tree);
-    let gates = field(&lines[0], &["gates"])
+    let report = tree.run(&["check", "--json"]).json();
+    let eslint = report["capabilities"]
         .as_array()
-        .unwrap_or_else(|| panic!("no gates list in {}", lines[0]));
-    let eslint = gates
-        .iter()
-        .find(|gate| field(gate, &["name"]) == "eslint")
-        .unwrap_or_else(|| panic!("no eslint row in {}", lines[0]));
-    assert_eq!(field(eslint, &["held"]), 1, "{eslint}");
+        .into_iter()
+        .flatten()
+        .find(|row| row["name"] == "eslint")
+        .unwrap_or_else(|| panic!("no eslint row in {report}"));
+    assert_eq!(eslint["held"], 1, "{eslint}");
 }
 
 /// The `why` beside `verdict: "none"` names the reason this stop had, and no other. A stamp

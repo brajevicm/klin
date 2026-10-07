@@ -3,7 +3,7 @@
 //! is one row here, which `klin check` selects by its name. The catalogue names every check, and
 //! no check names the catalogue. ADR 0036.
 
-use crate::check::contract::{Activation, Explain, Needs, Run};
+use crate::check::contract::{Activation, Explain, Needs, Placement, Run};
 use crate::key::{Key, Languages, Section, SectionShape};
 use crate::project::Project;
 use crate::{
@@ -52,6 +52,11 @@ pub struct Row {
     pub section: &'static str,
     /// What the section's absence means: derive it, or run nothing. Spec 4.6.
     pub activation: Activation,
+    /// The paths the engine runs this check at. A check placed at `klin check` alone adds no
+    /// work to the Stop. Spec 6.2.
+    pub placement: Placement,
+    /// Rises when the same inputs can produce a different measurement or judgement. Spec 8.2.
+    pub semantics: u32,
     /// The configuration keys the section reads, declared in the check's own module and printed
     /// by `klin policy --reference`. Spec 5.8.
     pub keys: &'static [Key],
@@ -81,6 +86,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "doc-size",
         section: doc_size::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: doc_size::KEYS,
         reference_text: None,
         languages: None,
@@ -100,6 +107,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "doc-citations",
         section: doc_citations::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: doc_citations::KEYS,
         reference_text: None,
         languages: None,
@@ -119,6 +128,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "lockfile",
         section: lockfile::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: lockfile::KEYS,
         reference_text: None,
         languages: None,
@@ -138,6 +149,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "escapes",
         section: escapes::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: escapes::KIND.keys,
         reference_text: None,
         languages: Some(escapes::language_extensions),
@@ -157,6 +170,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "stubs",
         section: stubs::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: stubs::KIND.keys,
         reference_text: None,
         languages: Some(stubs::language_extensions),
@@ -176,6 +191,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "inventory",
         section: inventory::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: inventory::KEYS,
         reference_text: None,
         languages: None,
@@ -195,6 +212,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "complexity",
         section: complexity::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: complexity::KEYS,
         reference_text: None,
         languages: Some(syntax::language_extensions),
@@ -214,6 +233,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "dead-symbols",
         section: dead_symbols::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: dead_symbols::KEYS,
         reference_text: None,
         languages: Some(dead_symbols::language_extensions),
@@ -233,6 +254,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "reachability",
         section: reachability::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: reachability::KEYS,
         reference_text: None,
         languages: Some(reachability::language_extensions),
@@ -252,6 +275,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "layering",
         section: layering::SECTION,
         activation: Activation::Policy,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: layering::KEYS,
         reference_text: None,
         languages: Some(layering::language_extensions),
@@ -271,6 +296,8 @@ pub const CATALOGUE: &[Row] = &[
         name: public_api::NAME,
         section: public_api::SECTION,
         activation: Activation::Automatic,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: public_api::KEYS,
         reference_text: Some(public_api::REFERENCE_TEXT),
         languages: Some(public_api::language_extensions),
@@ -290,6 +317,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "conventions",
         section: conventions::rules::SECTION,
         activation: Activation::Policy,
+        placement: Placement::StopAndCheck,
+        semantics: 1,
         keys: conventions::rules::KEYS,
         reference_text: None,
         languages: Some(syntax::pattern::language_extensions),
@@ -309,6 +338,8 @@ pub const CATALOGUE: &[Row] = &[
         name: "sarif",
         section: sarif::SECTION,
         activation: Activation::Integration,
+        placement: Placement::Check,
+        semantics: 1,
         keys: sarif::KEYS,
         reference_text: None,
         languages: None,
@@ -346,6 +377,14 @@ pub fn names() -> impl Iterator<Item = &'static str> {
 }
 
 impl Row {
+    /// What the check document calls this row's capability. Spec 4.2, 11.7.
+    pub fn kind(&self) -> &'static str {
+        match self.activation {
+            Activation::Integration => "integration",
+            Activation::Automatic | Activation::Policy => "check",
+        }
+    }
+
     /// Whether this check measures code, which is what a tree with no source root leaves it
     /// nothing to measure. Spec 10, 14.
     pub fn reads_code(&self) -> bool {

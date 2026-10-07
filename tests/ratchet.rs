@@ -134,7 +134,7 @@ fn the_gate_row_counts_the_accepted_findings_beside_the_held_ones() {
     let run = tree.run(&["check", "--json", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    let row = &report["gates"][0];
+    let row = &harness::gate_rows(&report)[0];
     assert_eq!(row["held"], serde_json::json!(2), "{report}");
     assert_eq!(row["accepted"], serde_json::json!(1), "{report}");
 }

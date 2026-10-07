@@ -185,7 +185,7 @@ fn source_area_rows() {
     for areas in SOURCE_AREAS {
         let tree = source_areas(1_000, *areas);
         let primed = strict_run(&tree, "prime survey");
-        assert_eq!(primed.json()["status"], "PASS");
+        assert!(passed(&primed.json()), "{}", primed.out);
         let strict = repeat(|| {
             let started = Instant::now();
             let run = strict_run(&tree, "source areas");
@@ -989,9 +989,15 @@ fn strict_run(tree: &Tree, label: &str) -> harness::Run {
     let run = tree.run(&checked(&["--json"], None));
     assert_eq!(run.code, 0, "{label}: {}", run.out);
     let report = run.json();
-    assert_eq!(report["status"], "PASS", "{label}: {report}");
+    assert!(passed(&report), "{label}: {report}");
     assert_eq!(report["exit"], 0, "{label}: {report}");
     run
+}
+
+/// Whether a run passed, in the check document or in the report a base binary built before
+/// it prints.
+fn passed(report: &Value) -> bool {
+    report["judgement"] == "pass" || report["status"] == "PASS"
 }
 
 fn changed_counts(root: &Path) -> Counts {
@@ -1032,7 +1038,7 @@ fn git_paths<const N: usize>(root: &Path, args: [&str; N]) -> Vec<Vec<u8>> {
 }
 
 fn gate_times(report: &Value) -> BTreeMap<String, u64> {
-    let gates = report["gates"].as_array();
+    let gates = harness::gate_rows(report).as_array();
     assert!(gates.is_some(), "gate timing rows: {report}");
     let mut times = BTreeMap::new();
     for gate in gates.into_iter().flatten() {

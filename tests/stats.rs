@@ -840,13 +840,13 @@ fn every_catalogue_gate_gives_the_report_a_human_label_of_its_own() {
     }
 }
 
-/// Every check the catalogue holds, read off the error the runner prints when a written
+/// Every check the catalogue holds, read off the hole the runner prints when a written
 /// configuration names no gate over a tree the survey finds nothing in.
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
         panic!("no check list in: {}", run.out);
     };

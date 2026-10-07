@@ -1634,7 +1634,7 @@ fn stopped(tree: &Tree) -> serde_json::Value {
 }
 
 fn gate_row<'a>(report: &'a serde_json::Value, gate: &str) -> &'a serde_json::Value {
-    report["gates"]
+    harness::gate_rows(report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
         .unwrap_or_else(|| panic!("no {gate} row in {report}"))
@@ -1656,7 +1656,7 @@ fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
     );
     let counted = |report: &serde_json::Value| {
         ["reads", "parses", "extracted", "cached"].map(|field| {
-            report["gates"]
+            harness::gate_rows(report)
                 .as_array()
                 .into_iter()
                 .flatten()
@@ -1679,7 +1679,7 @@ fn a_tree_with_no_typescript_path_derives_only_rust_surfaces() {
     library(&tree);
 
     let report = tree.run(&["check", "--json", "public-api"]).json();
-    let gate = &report["gates"][0];
+    let gate = &harness::gate_rows(&report)[0];
 
     assert_eq!(
         gate["surface"]["dispatches"],
@@ -2770,11 +2770,11 @@ fn a_module_cycle_names_the_export_that_closes_it() {
 
     assert_eq!(run.code, 2, "{}", run.out);
     let json = run.json();
-    let hole = &json["findings"][0];
+    let hole = &json["errors"][0];
     assert_eq!(hole["file"], "src/nested/deeper.rs", "{}", run.out);
     assert_eq!(hole["line"], 3, "{}", run.out);
     assert_eq!(
-        hole["text"],
+        hole["message"],
         "pub use crate::nested; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
         "{}",
         run.out
@@ -2809,7 +2809,7 @@ fn many_named_re_exports_are_measured_without_losing_aliases() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
-        run.json()["gates"][0]["surface"]["measured"],
+        harness::gate_rows(&run.json())[0]["surface"]["measured"],
         4000,
         "{}",
         run.out
@@ -2831,11 +2831,11 @@ fn a_cycle_through_a_private_parent_names_the_module_export() {
 
     assert_eq!(run.code, 2, "{}", run.out);
     let json = run.json();
-    let hole = &json["findings"][0];
+    let hole = &json["errors"][0];
     assert_eq!(hole["file"], "src/outer.rs", "{}", run.out);
     assert_eq!(hole["line"], 2, "{}", run.out);
     assert_eq!(
-        hole["text"],
+        hole["message"],
         "pub use crate::outer as again; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
         "{}",
         run.out

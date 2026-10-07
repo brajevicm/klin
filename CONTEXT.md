@@ -150,3 +150,58 @@ One set of klin's hooks a host runs for an event: a plugin's, a repository's,
 a person's, or Claude Code's settings read by Cursor. One copy takes each
 event and the others yield.
 _Avoid_: duplicate, instance
+
+**Capability**:
+One row of the catalogue: a native check, a named klin-owned recipe, or a
+user-owned integration.
+_Avoid_: plugin, rule
+
+**Integration**:
+A capability whose command, version and configuration the project owns.
+`sarif` is the one kind.
+_Avoid_: scanner gate, external check
+
+**Recipe**:
+A named capability that runs an external tool under a contract klin owns.
+None ships.
+_Avoid_: preset, integration
+
+**Placement**:
+The paths at which the engine runs a capability, `{stop, check}` or
+`{check}`. The catalogue owns it.
+_Avoid_: phase, mode
+
+**Review item**:
+An observation that needs a person's judgement. It never fails a run and
+never asks the agent to clear it.
+_Avoid_: warning, soft failure
+
+**Hole**:
+One explicit reason why a required measurement is not complete, such as
+`tool-error` or `nothing-measured`.
+_Avoid_: gap, unknown, skip
+
+**Judgement**:
+The result axis that says `pass`, `review` or `fail`.
+_Avoid_: status, verdict
+
+**Measurement**:
+The result axis that says `complete` or `incomplete`. Incomplete means a
+hole exists.
+_Avoid_: coverage, completeness
+
+**Execution**:
+The result axis that says `ok` or `error`. An error is klin's, the
+configuration's, the invocation's or git's, never a code-quality defect.
+_Avoid_: tool error, crash
+
+**Measurement basis**:
+The facts that say what a measurement measured and whether two measurements
+mean the same thing: its producer and semantics version, its policy, its
+scope and its window.
+_Avoid_: metadata, provenance
+
+**Advisory Stop**:
+A Stop that measures and blocks nothing, because the turn's history moved
+under the stamp.
+_Avoid_: skipped stop, dry run

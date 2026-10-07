@@ -20,6 +20,7 @@ use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
 use crate::project::Project;
+use crate::ratchet;
 use crate::survey;
 
 pub const SECTION: &str = "doc_size";
@@ -88,7 +89,7 @@ fn evaluate(
         records.held = Some(0);
         records.accepted = Some(0);
     });
-    let over = judged(&documents, &against, out)?;
+    let over = judged(at.gate, &documents, &against, out)?;
     let measured = documents.len();
     let said = out.covered(&Coverage::whole(measured));
     if over == 0 {
@@ -122,6 +123,7 @@ fn changed_only(at: &Context, documents: Vec<Document>) -> Vec<Document> {
 /// document's failure: every document is judged, and the first error comes back after them. The
 /// base copies of the documents over their ceilings are read through one git process.
 fn judged(
+    gate: &str,
     documents: &[Document],
     against: &Option<(String, PathBuf)>,
     out: &mut Sink,
@@ -143,7 +145,7 @@ fn judged(
             .get(document.name.as_str())
             .copied()
             .filter(|before| *before > document.ceiling.value && words <= *before);
-        over += usize::from(judge(document, words, held, out));
+        over += usize::from(judge(gate, document, words, held, out));
     }
     problem.map_or(Ok(over), Err)
 }
@@ -224,11 +226,11 @@ fn based<'a>(
     Ok(before)
 }
 
-fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> bool {
+fn judge(gate: &str, document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> bool {
     let ceiling = &document.ceiling;
     if words > ceiling.value {
         let Some(before) = held else {
-            return failed(document, words, out);
+            return failed(gate, document, words, out);
         };
         out.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
         told(document, words, Standing::Held(before), out);
@@ -243,8 +245,9 @@ fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> 
     false
 }
 
-fn failed(document: &Document, words: u64, out: &mut Sink) -> bool {
+fn failed(gate: &str, document: &Document, words: u64, out: &mut Sink) -> bool {
     let over = Standing::Over {
+        id: ratchet::site_id(gate, &document.name, ""),
         condition: "over its word ceiling",
         fix_advice: REMEDY,
     };

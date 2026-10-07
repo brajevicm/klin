@@ -139,7 +139,7 @@ fn a_stale_citation_the_base_holds_is_held_and_the_run_passes() {
 
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("\"status\":\"PASS\""), "{}", run.out);
+    assert!(run.says("\"judgement\":\"pass\""), "{}", run.out);
     assert!(!run.says("src/store.py"), "{}", run.out);
 }
 

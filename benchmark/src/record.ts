@@ -91,7 +91,7 @@ export function isGateReport(value: unknown): value is GateReport {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
   const held = value as Record<string, unknown>;
   return typeof held.status === "string" &&
-    ["PASS", "FAIL", "ERROR"].includes(held.status) &&
+    ["PASS", "FAIL", "ERROR", "INCOMPLETE"].includes(held.status) &&
     typeof held.summary === "string" &&
     Number.isInteger(held.exit) &&
     Array.isArray(held.derived) &&

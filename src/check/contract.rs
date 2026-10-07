@@ -160,6 +160,57 @@ pub enum Activation {
     Integration,
 }
 
+/// The execution paths at which the engine runs a capability. The catalogue owns it, and no
+/// configuration changes it. Spec 4.3, 6.2.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Placement {
+    StopAndCheck,
+    Check,
+}
+
+impl Placement {
+    pub fn at_stop(self) -> bool {
+        self == Placement::StopAndCheck
+    }
+
+    pub fn names(self) -> &'static [&'static str] {
+        match self {
+            Placement::StopAndCheck => &["stop", "check"],
+            Placement::Check => &["check"],
+        }
+    }
+}
+
+/// Why a required measurement is not complete. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Reason {
+    ToolError,
+    NothingMeasured,
+    Unsupported,
+    /// No shipped capability has a work bound yet, so only a test reaches it. Spec 7.2.
+    #[cfg_attr(not(test), allow(dead_code))]
+    WorkLimit,
+}
+
+impl Reason {
+    pub fn name(self) -> &'static str {
+        match self {
+            Reason::ToolError => "tool-error",
+            Reason::NothingMeasured => "nothing-measured",
+            Reason::Unsupported => "unsupported",
+            Reason::WorkLimit => "work-limit",
+        }
+    }
+}
+
+/// One explicit reason why a required measurement is not complete, with the detail a consumer
+/// branches on and the words a person reads. Spec 7.2.
+pub struct Incomplete {
+    pub reason: Reason,
+    pub detail: Option<&'static str>,
+    pub text: String,
+}
+
 /// Everything one check is told, and nothing it writes. Borrowed for the length of the call, so
 /// a check cannot keep any of it and cannot change it.
 pub struct Context<'a> {
@@ -416,6 +467,8 @@ pub enum Standing {
     Near(u64),
     Held(u64),
     Over {
+        /// The document's identity, a site with no line or text. Spec 11.7.
+        id: String,
         condition: &'static str,
         fix_advice: &'static str,
     },
@@ -438,6 +491,7 @@ pub enum Told {
     Hole(Hole),
     Listed(Listed),
     Ratchet(Ratchet),
+    Incomplete(Incomplete),
 }
 
 /// One value of a check's policy and where it came from: pinned by a person, or derived by a
@@ -578,6 +632,12 @@ impl From<Plain> for Told {
 impl From<Hole> for Told {
     fn from(hole: Hole) -> Told {
         Told::Hole(hole)
+    }
+}
+
+impl From<Incomplete> for Told {
+    fn from(hole: Incomplete) -> Told {
+        Told::Incomplete(hole)
     }
 }
 

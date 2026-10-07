@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { sha256 } from "./trees.ts";
-import { wholeRun } from "./session.ts";
+import { wholeRun, wholeRunReport } from "./session.ts";
 
 const CUTOFF = "2026-09-29T00:00:00Z";
 const CHANGES = 10;
@@ -239,7 +239,7 @@ export function run(into: string, clones: string, klin: string): number {
       const ms = Date.now() - started;
       let report: unknown = null;
       try {
-        report = JSON.parse(done.stdout);
+        report = wholeRunReport(JSON.parse(done.stdout));
       } catch {
         report = null;
       }

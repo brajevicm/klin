@@ -524,7 +524,7 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
 }
 
 #[test]
-fn in_paths_that_name_nothing_make_one_error_finding_and_none_beside_a_finding() {
+fn each_in_path_that_names_nothing_is_a_configuration_error_even_beside_a_finding() {
     let tree = tree(
         r#"{
           "c": { "text": "FORBIDDEN", "in": "src/mian.rs", "remedy": "Do." },
@@ -537,19 +537,19 @@ fn in_paths_that_name_nothing_make_one_error_finding_and_none_beside_a_finding()
     let run = tree.run(&["check", "conventions", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let errors = |report: &serde_json::Value| {
-        report["findings"]
+        report["errors"]
             .as_array()
-            .expect("findings")
+            .expect("errors")
             .iter()
-            .filter(|finding| finding["outcome"] == "error")
+            .filter(|error| error["kind"] == "configuration")
             .count()
     };
-    assert_eq!(errors(&run.json()), 1, "{}", run.out);
+    assert_eq!(errors(&run.json()), 2, "{}", run.out);
 
     let beside = tree_with_finding();
     let run = beside.run(&["check", "conventions", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert_eq!(errors(&run.json()), 0, "{}", run.out);
+    assert_eq!(errors(&run.json()), 1, "{}", run.out);
 }
 
 fn tree_with_finding() -> Tree {
@@ -850,7 +850,7 @@ fn two_conventions_on_one_line_are_two_findings_each_with_its_own_remedy() {
                 finding["values"]["logical_gate"]
                     .as_str()
                     .unwrap_or_default(),
-                finding["fix_advice"].as_str().unwrap_or_default(),
+                finding["remedy"].as_str().unwrap_or_default(),
             )
         })
         .collect();
@@ -916,7 +916,7 @@ fn a_json_finding_carries_its_convention_matcher_language_count_and_remedy() {
     let report = run.json();
     let finding = &report["findings"][0];
 
-    assert_eq!(finding["gate"], "conventions", "{}", run.out);
+    assert_eq!(finding["check"], "conventions", "{}", run.out);
     assert_eq!(finding["file"], "src/run.rs", "{}", run.out);
     assert_eq!(finding["line"], 1, "{}", run.out);
     assert_eq!(
@@ -940,7 +940,7 @@ fn a_json_finding_carries_its_convention_matcher_language_count_and_remedy() {
         run.out
     );
     assert_eq!(
-        finding["fix_advice"], "Use the shared Git boundary.",
+        finding["remedy"], "Use the shared Git boundary.",
         "{}",
         run.out
     );

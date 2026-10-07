@@ -85,7 +85,11 @@ fn cached_files(tree: &Tree) -> Vec<PathBuf> {
 /// that are allowed to differ.
 fn judged(run: &Run) -> Value {
     let mut report = run.json();
-    for row in report["gates"].as_array_mut().into_iter().flatten() {
+    let rows = match report["diagnostics"]["gates"].is_array() {
+        true => &mut report["diagnostics"]["gates"],
+        false => &mut report["gates"],
+    };
+    for row in rows.as_array_mut().into_iter().flatten() {
         for group in ["graph", "surface"] {
             if let Some(held) = row[group].as_object_mut() {
                 held.remove("ms");
@@ -103,7 +107,7 @@ fn judged(run: &Run) -> Value {
 
 fn facts(run: &Run, gate: &str) -> Value {
     let report = run.json();
-    report["gates"]
+    harness::gate_rows(&report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
         .map(|row| row["facts"].clone())
@@ -152,7 +156,7 @@ fn a_cached_decode_shares_reference_names_across_files() {
     changed(&tree);
     let warm = changed(&tree);
     let report = warm.json();
-    let row = report["gates"]
+    let row = harness::gate_rows(&report)
         .as_array()
         .into_iter()
         .flatten()
@@ -318,7 +322,7 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
             .lines()
             .find_map(|line| serde_json::from_str(line).ok())
             .unwrap_or_else(|| panic!("no report in {}", run.out));
-        let row = report["gates"]
+        let row = harness::gate_rows(&report)
             .as_array()
             .and_then(|gates| gates.iter().find(|row| row["name"] == "dead-symbols"))
             .unwrap_or_else(|| panic!("no dead-symbols row in {report}"));
@@ -349,7 +353,7 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
 /// The whole base's layout as a run recorded it, off the row of the gate that laid it out.
 fn layout(run: &Run) -> Value {
     let report = run.json();
-    report["gates"]
+    harness::gate_rows(&report)
         .as_array()
         .into_iter()
         .flatten()

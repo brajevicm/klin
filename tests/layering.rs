@@ -815,7 +815,7 @@ fn stopped(tree: &Tree) -> serde_json::Value {
 }
 
 fn gate_row<'a>(report: &'a serde_json::Value, gate: &str) -> &'a serde_json::Value {
-    report["gates"]
+    harness::gate_rows(report)
         .as_array()
         .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
         .unwrap_or_else(|| panic!("no {gate} row in {report}"))
@@ -835,7 +835,7 @@ fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
     );
     let counted = |report: &serde_json::Value| {
         ["reads", "parses", "extracted", "cached"].map(|field| {
-            report["gates"]
+            harness::gate_rows(report)
                 .as_array()
                 .into_iter()
                 .flatten()
@@ -887,7 +887,7 @@ fn a_tree_with_no_typescript_path_dispatches_only_the_rust_resolver() {
     two_layers(&tree, "use crate::ui::show;\npub fn rule() { show(); }\n");
 
     let report = tree.run(&["check", "--json", "layering"]).json();
-    let graph = &report["gates"][0]["graph"];
+    let graph = &harness::gate_rows(&report)[0]["graph"];
 
     assert_eq!(
         graph["dispatches"],
@@ -911,10 +911,15 @@ fn rust_source_the_grammar_rejects_still_dispatches_the_rust_resolver() {
     let report = run.json();
 
     assert_eq!(
-        report["gates"][0]["graph"]["dispatches"]["rust"], 1,
+        harness::gate_rows(&report)[0]["graph"]["dispatches"]["rust"],
+        1,
         "{report}"
     );
-    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+    assert_eq!(
+        harness::gate_rows(&report)[0]["graph"]["modules"],
+        1,
+        "{report}"
+    );
     assert!(
         tree.run(&["check", "layering"])
             .says("1 file(s) attached, 0 by a Cargo manifest and 1 by a conventional root"),
@@ -934,11 +939,15 @@ fn typescript_source_the_grammar_rejects_still_dispatches_the_typescript_resolve
     let report = tree.run(&["check", "--json", "layering"]).json();
 
     assert_eq!(
-        report["gates"][0]["graph"]["dispatches"],
+        harness::gate_rows(&report)[0]["graph"]["dispatches"],
         serde_json::json!({"rust": 0, "typescript": 1}),
         "{report}"
     );
-    assert_eq!(report["gates"][0]["graph"]["modules"], 1, "{report}");
+    assert_eq!(
+        harness::gate_rows(&report)[0]["graph"]["modules"],
+        1,
+        "{report}"
+    );
 }
 
 #[test]
