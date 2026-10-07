@@ -384,13 +384,9 @@ fn derived(project: &Project, unpinned: &[&String], listing: &mut Listing) -> Re
                 }
             },
         };
-        listing.said.push(Derived::keyed(
-            SECTION,
-            Some(name),
-            value.into(),
-            value.to_string(),
-            rule,
-        ));
+        listing.said.push(
+            Derived::keyed(SECTION, Some(name), value.into(), value.to_string(), rule).into(),
+        );
         let ceiling = Ceiling { value, step: None };
         listing
             .documents

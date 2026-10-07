@@ -606,15 +606,13 @@ fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolv
             .as_ref()
             .map(|_| format!("; recorded scope: {}", found.scope.description()))
             .unwrap_or_default();
-        let said = contract::Provenance::Derived(contract::Derived {
-            section: SECTION,
-            key: Some(key.name.to_string()),
-            value: value.into(),
-            shown: value.to_string(),
-            rule,
-            wording: contract::Wording::Sampled(recorded),
-        });
-        Ok((Ceiling { value, step: None }, said))
+        let said = contract::Derived::sampled(
+            (SECTION, key.name),
+            value.into(),
+            value.to_string(),
+            (&rule, recorded),
+        );
+        Ok((Ceiling { value, step: None }, said.into()))
     };
     let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
     let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;

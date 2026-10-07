@@ -73,23 +73,16 @@ impl std::ops::Add for ContentCost {
     }
 }
 
-/// Everything a run records about what it judged, which the runner prints as the one object of
-/// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
-/// into one for the run. A check a person runs by hand has none, and records nothing. A check
-/// writes none of `findings`, `notes` or `derived`: the runner renders them from its `Told`.
+/// What one gate's run cost and covered, which the runner puts on the gate's row of spec 11.2,
+/// and why it erred. A check a person runs by hand has none, and records nothing. The findings,
+/// notes and derived entries are not here: the runner renders them from the gate's `Told`.
 #[derive(Default)]
 pub struct Records {
-    pub findings: Vec<Value>,
     /// Why a gate that is exit 2 failed where it names no site. The runner records them as one
     /// `error` finding, and only for a gate that recorded no other finding.
     pub errors: Vec<String>,
-    pub notes: Vec<Value>,
-    /// One row per gate the run judged, which only the runner fills in. Spec 11.2.
-    pub gates: Vec<Value>,
     /// What scope the gate measured, which every check records once. Spec 11.2.
     pub coverage: Option<Value>,
-    /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
-    pub derived: Vec<Value>,
     /// The findings the ratchet passed, which the runner puts on the gate's row. `None` for a
     /// gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
@@ -708,15 +701,55 @@ impl Derived {
         value: Value,
         shown: String,
         rule: &str,
-    ) -> Provenance {
-        Provenance::Derived(Derived {
+    ) -> Derived {
+        Derived {
             section,
             key: key.map(str::to_string),
             value,
             shown,
             rule: rule.to_string(),
             wording: Wording::Keyed,
-        })
+        }
+    }
+
+    /// A derived value under a key that names itself, with the rule after a comma.
+    pub fn bare(
+        section: &'static str,
+        key: &str,
+        value: Value,
+        shown: String,
+        rule: &str,
+    ) -> Derived {
+        Derived {
+            wording: Wording::Bare,
+            ..Derived::keyed(section, Some(key), value, shown, rule)
+        }
+    }
+
+    /// A value sampled under its section and key, with the rule in parentheses and then the
+    /// scope the sample read.
+    pub fn sampled(
+        (section, key): (&'static str, &str),
+        value: Value,
+        shown: String,
+        (rule, recorded): (&str, String),
+    ) -> Derived {
+        Derived {
+            wording: Wording::Sampled(recorded),
+            ..Derived::keyed(section, Some(key), value, shown, rule)
+        }
+    }
+}
+
+impl From<Derived> for Provenance {
+    fn from(derived: Derived) -> Provenance {
+        Provenance::Derived(derived)
+    }
+}
+
+impl From<Derived> for Told {
+    fn from(derived: Derived) -> Told {
+        Told::Provenance(derived.into())
     }
 }
 

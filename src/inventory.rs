@@ -223,14 +223,13 @@ fn said(project: &Project, out: &mut Sink) {
     if roots.is_empty() {
         return;
     }
-    out.tell(contract::Provenance::Derived(contract::Derived {
-        section: SECTION,
-        key: Some(TEST_ROOTS.to_string()),
-        value: roots.clone().into(),
-        shown: roots.join(", "),
-        rule: ROOTS_RULE.to_string(),
-        wording: contract::Wording::Bare,
-    }));
+    out.tell(contract::Derived::bare(
+        SECTION,
+        TEST_ROOTS,
+        roots.clone().into(),
+        roots.join(", "),
+        ROOTS_RULE,
+    ));
 }
 
 /// Every test function the base holds, with what the working tree says about it. A match is by
