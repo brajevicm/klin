@@ -4,7 +4,7 @@
 mod harness;
 
 use harness::Tree;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 const CLEAN: &str = "pub fn one(a: i32) -> i32 {\n    a + 1\n}\n";
 
@@ -107,7 +107,44 @@ fn a_failing_run_exits_1() {
     assert_eq!(code, 1, "{report}");
     assert_eq!(report["judgement"], "fail", "{report}");
     assert_eq!(row(&report, "doc-size")["judgement"], "fail", "{report}");
-    assert_eq!(report["findings"][0]["check"], "doc-size", "{report}");
+    let finding = &report["findings"][0];
+    for key in [
+        "id", "check", "kind", "outcome", "file", "line", "text", "values", "ceiling", "matched",
+        "remedy",
+    ] {
+        assert!(
+            finding
+                .as_object()
+                .is_some_and(|fields| fields.contains_key(key)),
+            "{key} missing: {report}"
+        );
+    }
+    assert_eq!(finding["check"], "doc-size", "{report}");
+    assert_eq!(finding["kind"], "metric", "{report}");
+    assert_eq!(finding["outcome"], "new", "{report}");
+    assert_eq!(finding["file"], "README.md", "{report}");
+    assert!(finding["line"].is_null(), "{report}");
+    assert!(finding["text"].is_null(), "{report}");
+    assert_eq!(
+        finding["values"],
+        json!({"words": 30, "ceiling": 10}),
+        "{report}"
+    );
+    assert_eq!(finding["ceiling"], json!({"words": 10}), "{report}");
+    assert!(finding["matched"].is_null(), "{report}");
+    assert!(
+        finding["remedy"]
+            .as_str()
+            .is_some_and(|remedy| !remedy.is_empty()),
+        "{report}"
+    );
+    let id = finding["id"].as_str().unwrap_or_default();
+    assert!(
+        id.len() == 16 && id.chars().all(|c| c.is_ascii_hexdigit()),
+        "{report}"
+    );
+    let (_, again) = checked(&tree, &[]);
+    assert_eq!(again["findings"][0]["id"], finding["id"], "{report}");
 }
 
 #[test]

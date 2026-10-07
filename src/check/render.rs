@@ -764,10 +764,16 @@ fn document_json((name, words, ceiling): (&str, u64, u64), standing: &Standing, 
         Standing::Under | Standing::Held(_) => (),
         Standing::Near(_) => out.notes.push(Value::Object(site("near-ceiling"))),
         Standing::Over {
+            id,
             condition,
             fix_advice,
         } => {
             let mut over = site("new");
+            over.insert("id".into(), id.clone().into());
+            over.insert("line".into(), Value::Null);
+            over.insert("text".into(), Value::Null);
+            over.insert("ceiling".into(), serde_json::json!({ "words": ceiling }));
+            over.insert("matched".into(), Value::Null);
             over.insert("condition".into(), (*condition).into());
             over.insert("fix_advice".into(), (*fix_advice).into());
             out.findings.push(Value::Object(over));
