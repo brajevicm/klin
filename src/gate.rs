@@ -963,12 +963,13 @@ fn against<'a>(
     window: Option<&Window>,
     out: &mut String,
 ) -> Result<Against<'a>, Fault> {
-    let base = base(args, wanted, project, window, out).map_err(fault(BASE))?;
-    let changes = changes(args, project, base.as_ref(), out).map_err(fault(BASE))?;
+    let base = base(args, wanted, project, window, out).map_err(fault(ErrorKind::Base))?;
+    let changes = changes(args, project, base.as_ref(), out).map_err(fault(ErrorKind::Base))?;
     let scope = changes
         .as_ref()
         .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
-    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted).map_err(fault(BASE))?;
+    let prior = prior(project, base.as_ref(), changes.as_deref(), wanted)
+        .map_err(fault(ErrorKind::Base))?;
     Ok(Against {
         scope,
         changes,
@@ -2134,7 +2135,7 @@ fn summary(failed: usize, errored: usize) -> String {
 
 /// One error of spec 7.3: its kind, and what went wrong.
 struct Fault {
-    kind: &'static str,
+    kind: ErrorKind,
     error: Error,
 }
 
@@ -2145,12 +2146,26 @@ impl From<Fault> for Error {
 }
 
 /// The error kinds of spec 7.3 the runner tells apart.
-const INVOCATION: &str = "invocation";
-const CONFIGURATION: &str = "configuration";
-const BASE: &str = "base";
-const INTERNAL: &str = "internal";
+#[derive(Clone, Copy)]
+enum ErrorKind {
+    Invocation,
+    Configuration,
+    Base,
+    Internal,
+}
 
-fn fault(kind: &'static str) -> impl Fn(Error) -> Fault {
+impl ErrorKind {
+    fn name(self) -> &'static str {
+        match self {
+            ErrorKind::Invocation => "invocation",
+            ErrorKind::Configuration => "configuration",
+            ErrorKind::Base => "base",
+            ErrorKind::Internal => "internal",
+        }
+    }
+}
+
+fn fault(kind: ErrorKind) -> impl Fn(Error) -> Fault {
     move |error| Fault { kind, error }
 }
 
@@ -2189,33 +2204,38 @@ impl Axes {
         }
     }
 
-    /// ERROR 2 > FAIL 1 > INCOMPLETE 3 > success 0. Spec 7.4.
-    fn exit(self) -> u8 {
+    /// The one state that wins: an error, then a failing finding, then a hole. Spec 7.4.
+    fn worst(self) -> Worst {
         match self {
-            Axes { error: true, .. } => 2,
+            Axes { error: true, .. } => Worst::Error,
             Axes {
                 judgement: Judgement::Fail,
                 ..
-            } => 1,
+            } => Worst::Fail,
             Axes {
                 incomplete: true, ..
-            } => 3,
-            _ => 0,
+            } => Worst::Incomplete,
+            _ => Worst::Ok,
+        }
+    }
+
+    /// ERROR 2 > FAIL 1 > INCOMPLETE 3 > success 0. Spec 7.4.
+    fn exit(self) -> u8 {
+        match self.worst() {
+            Worst::Error => 2,
+            Worst::Fail => 1,
+            Worst::Incomplete => 3,
+            Worst::Ok => 0,
         }
     }
 
     /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `ok`. Spec 11.3.
     fn state(self) -> &'static str {
-        match self {
-            Axes { error: true, .. } => "ERR ",
-            Axes {
-                judgement: Judgement::Fail,
-                ..
-            } => "FAIL",
-            Axes {
-                incomplete: true, ..
-            } => "INCOMPLETE",
-            _ => "ok  ",
+        match self.worst() {
+            Worst::Error => "ERR ",
+            Worst::Fail => "FAIL",
+            Worst::Incomplete => "INCOMPLETE",
+            Worst::Ok => "ok  ",
         }
     }
 
@@ -2232,6 +2252,15 @@ impl Axes {
             false => "ok",
         }
     }
+}
+
+/// The state of a gate or run that the exit code and the row word both follow.
+#[derive(Clone, Copy)]
+enum Worst {
+    Error,
+    Fail,
+    Incomplete,
+    Ok,
 }
 
 /// One gate's axes from its exit code and its result. A gate that erred still carries the
@@ -2258,7 +2287,7 @@ fn failing(finding: &Value) -> bool {
 /// What one `klin check` came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
 struct Report {
-    config: Value,
+    config: Option<Value>,
     window: Option<Value>,
     axes: Axes,
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
@@ -2282,23 +2311,23 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
     let mut report = Report::default();
     let measured = loaded
         .map_err(fault(match named_nothing {
-            true => INVOCATION,
-            false => CONFIGURATION,
+            true => ErrorKind::Invocation,
+            false => ErrorKind::Configuration,
         }))
         .and_then(|mut project| {
-            report.config = json!({
+            report.config = Some(json!({
                 "path": project.config.file.display().to_string(),
                 "present": project.config.written(),
-            });
+            }));
             measured(args, &mut project, &mut report, out)
         });
     if let Err(fault) = measured {
-        if report.config.is_null() {
-            report.config = json!({
+        report.config.get_or_insert_with(|| {
+            json!({
                 "path": located.as_ref().map(|file| file.display().to_string()),
                 "present": located.as_ref().is_some_and(|file| file.is_file()),
-            });
-        }
+            })
+        });
         report.stop(args, fault, out);
     }
     report.finish(args, out)
@@ -2315,7 +2344,7 @@ fn measured(
         project.bind(window);
     }
     let project = &*project;
-    let plan = plan(project).map_err(fault(CONFIGURATION))?;
+    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
     let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
@@ -2332,7 +2361,7 @@ fn chosen_gates<'a>(
 ) -> Result<(Vec<&'a Gate>, Vec<&'static catalogue::Row>), Fault> {
     if named.is_empty() && plan.gates.is_empty() && !plan.excluded.is_empty() {
         return Err(Fault {
-            kind: CONFIGURATION,
+            kind: ErrorKind::Configuration,
             error: no_gate(project, plan),
         });
     }
@@ -2343,7 +2372,7 @@ fn chosen_gates<'a>(
             Some(check) if !plan.gates.iter().any(|gate| &gate.name == name) => {
                 unsupported.push(*check)
             }
-            _ => known(name, plan, project).map_err(fault(INVOCATION))?,
+            _ => known(name, plan, project).map_err(fault(ErrorKind::Invocation))?,
         }
     }
     let wanted = plan
@@ -2460,12 +2489,16 @@ impl Report {
         self.findings.extend(
             recorded
                 .findings
-                .iter()
-                .filter(|finding| failing(finding))
+                .into_iter()
+                .filter(failing)
                 .map(|finding| finding_record(gate, finding)),
         );
-        self.notes
-            .extend(recorded.notes.iter().map(|note| note_record(gate, note)));
+        self.notes.extend(
+            recorded
+                .notes
+                .into_iter()
+                .map(|note| note_record(gate, note)),
+        );
     }
 
     /// The row of a capability a selector named that does not apply to this tree. Spec 7.2.
@@ -2639,7 +2672,7 @@ fn gate_errors(gate: &str, code: u8, told: &[Told]) -> Vec<Value> {
     let mut errors: Vec<Value> = told.iter().flat_map(|item| erred(gate, item)).collect();
     if errors.is_empty() {
         errors.push(error_record(
-            INTERNAL,
+            ErrorKind::Internal,
             Some(gate),
             "the gate stopped before it finished its measurement",
         ));
@@ -2650,50 +2683,52 @@ fn gate_errors(gate: &str, code: u8, told: &[Told]) -> Vec<Value> {
 /// The errors one item of a gate's result names: one per site for a file or form klin could
 /// not measure, with its site and its 0.x outcome as the reason, so no site is lost.
 fn erred(gate: &str, item: &Told) -> Vec<Value> {
-    let rendered = || {
-        let text = render::text(std::slice::from_ref(item));
-        let text = text.trim_end();
-        text.strip_prefix("FAIL: ").unwrap_or(text).to_string()
-    };
+    let one = |kind, message: &str| vec![error_record(kind, Some(gate), message)];
     match item {
-        Told::Plain(Plain::Error(problem)) => {
-            vec![error_record(CONFIGURATION, Some(gate), problem)]
-        }
-        Told::Plain(Plain::PathMissing(_)) => {
-            vec![error_record(CONFIGURATION, Some(gate), &rendered())]
-        }
-        Told::Hole(Hole::LeftScrutiny(_)) => vec![error_record(INTERNAL, Some(gate), &rendered())],
+        Told::Plain(Plain::Error(problem)) => one(ErrorKind::Configuration, problem),
+        Told::Plain(Plain::PathMissing(named)) => one(
+            ErrorKind::Configuration,
+            &format!("{named} — correct the path, or take it out of \"in\"."),
+        ),
+        Told::Hole(Hole::LeftScrutiny(count)) => one(
+            ErrorKind::Internal,
+            &format!("{count} file(s) left scrutiny, measured at the base and not now"),
+        ),
         Told::Hole(
             Hole::NotMeasured { fail: true, .. }
             | Hole::Unresolved { fail: true, .. }
             | Hole::Unparsed { fail: true, .. },
         ) => render::json(std::slice::from_ref(item))
             .findings
-            .iter()
+            .into_iter()
             .map(|site| sited_error(gate, site))
             .collect(),
         _ => Vec::new(),
     }
 }
 
-fn sited_error(gate: &str, site: &Value) -> Value {
-    let mut fields = site.as_object().cloned().unwrap_or_default();
+fn sited_error(gate: &str, site: Value) -> Value {
+    let Value::Object(mut fields) = site else {
+        return site;
+    };
     let reason = fields.remove("outcome").unwrap_or(Value::Null);
     let message = fields.remove("text").unwrap_or(Value::Null);
-    fields.insert("kind".into(), INTERNAL.into());
+    fields.insert("kind".into(), ErrorKind::Internal.name().into());
     fields.insert("check".into(), gate.into());
     fields.insert("reason".into(), reason);
     fields.insert("message".into(), message);
     Value::Object(fields)
 }
 
-fn error_record(kind: &str, check: Option<&str>, message: &str) -> Value {
-    json!({ "kind": kind, "check": check, "message": message })
+fn error_record(kind: ErrorKind, check: Option<&str>, message: &str) -> Value {
+    json!({ "kind": kind.name(), "check": check, "message": message })
 }
 
 /// A failing finding as the check document names it. Spec 11.7.
-fn finding_record(gate: &str, finding: &Value) -> Value {
-    let mut fields = finding.as_object().cloned().unwrap_or_default();
+fn finding_record(gate: &str, finding: Value) -> Value {
+    let Value::Object(mut fields) = finding else {
+        return finding;
+    };
     fields.insert("check".into(), gate.into());
     fields.insert("kind".into(), "metric".into());
     if let Some(remedy) = fields.remove("fix_advice") {
@@ -2703,8 +2738,10 @@ fn finding_record(gate: &str, finding: &Value) -> Value {
 }
 
 /// A note as the check document names it: its kind, and the words a person reads. Spec 11.7.
-fn note_record(gate: &str, note: &Value) -> Value {
-    let mut fields = note.as_object().cloned().unwrap_or_default();
+fn note_record(gate: &str, note: Value) -> Value {
+    let Value::Object(mut fields) = note else {
+        return note;
+    };
     let kind = fields.remove("outcome").unwrap_or(Value::Null);
     let message = fields.remove("text").unwrap_or_else(|| kind.clone());
     if fields.get("file").and_then(Value::as_str) == Some("") {
