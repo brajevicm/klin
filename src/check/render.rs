@@ -1,15 +1,23 @@
-//! The text renderer over a gate's typed result: every word, status and indent a person reads of
-//! what a check found. The checks and the ratchet return `Told` items, and this writes them in
-//! their order. The JSON renders the `Records` beside them. Spec 3.1, 6.1, 11.1.
+//! The renderers over a gate's typed result. The checks and the ratchet return `Told` items, and
+//! this writes them in their order: as the text `klin check` prints, as the text the Stop hook
+//! prints, as the `derived:` and `pinned:` lines above a gate's row, and as the findings, notes
+//! and derived entries of the JSON. Spec 3.1, 6.1, 11.1, 11.2.
 
 use std::fmt::Write;
 
+use serde_json::{Map, Value};
+
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    Complexity, Counted, Failed, Held, Hole, Judged, Layering, Line, Listed, Located, Matched,
-    Measured, Plain, PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable,
+    self, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole, Judged,
+    LOST, Layering, Line, Listed, Located, Matched, Measured, NOT_MEASURED, Plain, Provenance,
+    PublicApi, Ratchet, Site, Standing, Told, UNPARSED, UNRESOLVED, Unmatched, Unresolvable,
+    Wording,
 };
 use crate::coverage::Coverage;
+
+/// How many rows a listed block prints before it says how many more there are.
+const SHOWN: usize = 20;
 
 const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \
                            on purpose and accept that nothing measures it.";
@@ -20,34 +28,53 @@ const NOT_MEASURED_REMEDY: &str = "Add a structural adapter for the language, or
 const UNPARSED_REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the \
                                grammar, or exclude the file and accept that nothing measures it.";
 
-/// The report text of one gate's result.
+/// The report text `klin check` prints of one gate's result.
 pub fn text(told: &[Told]) -> String {
+    rendered(told, true)
+}
+
+/// The report text the Stop hook prints of one gate's result. A gate that passed prints only what
+/// it tells beside its success, so the agent reads what it must act on. Spec 9.5.
+pub fn stop(told: &[Told], passed: bool) -> String {
+    rendered(told, !passed)
+}
+
+fn rendered(told: &[Told], with_ok: bool) -> String {
     let mut out = String::new();
     for item in told {
-        one(item, &mut out);
+        one(item, with_ok, &mut out);
     }
     out
 }
 
-fn one(told: &Told, out: &mut String) {
+/// One item, where `with_ok` says whether its `OK:` lines print.
+fn one(told: &Told, with_ok: bool, out: &mut String) {
     match told {
-        Told::Judged { line, held } => judged(line, *held, out),
+        Told::Judged { line, held } if with_ok => judged(line, *held, out),
         Told::Document {
             name,
             words,
             ceiling,
             standing,
-        } => document(name, *words, ceiling, standing, out),
+        } => document((name, *words, ceiling), standing, with_ok, out),
+        other => said(other, out),
+    }
+}
+
+/// One item that says the same in every report.
+fn said(told: &Told, out: &mut String) {
+    match told {
         Told::Plain(said) => plain(said, out),
         Told::Hole(hole) => holed(hole, out),
         Told::Listed(listed) => sites(listed, out),
         Told::Ratchet(said) => ratchet(said, out),
+        Told::Judged { .. } | Told::Document { .. } | Told::Provenance(_) => (),
     }
 }
 
 fn plain(said: &Plain, out: &mut String) {
     let _ = match said {
-        Plain::Note(text) => writeln!(out, "NOTE: {text}"),
+        Plain::Note(note) => writeln!(out, "NOTE: {}", note.text),
         Plain::Remedy(text) => writeln!(out, "{text}"),
         Plain::PathMissing(named) => writeln!(
             out,
@@ -168,6 +195,10 @@ fn sites(listed: &Listed, out: &mut String) {
                 .chain([format!("each subject matched by {rule}")])
                 .collect(),
         ),
+        Listed::Held(_) | Listed::NoSurface(_) => {
+            let _ = writeln!(out, "NOTE: {}", noted(listed).unwrap_or_default());
+            return;
+        }
     };
     let _ = writeln!(out, "{heading}");
     for row in rows {
@@ -188,20 +219,24 @@ fn ratchet(said: &Ratchet, out: &mut String) {
                 "FAIL: {} new {unit} {condition}, beyond the {held} the base holds:",
                 failed.len()
             );
-            for finding in failed {
-                let indent = if finding.nested { "  " } else { "" };
-                let _ = writeln!(
-                    out,
-                    "  {indent}{}:{}  {}  {}{}",
-                    finding.file,
-                    finding.line,
-                    finding.shown,
-                    clip(&finding.text),
-                    against(finding)
-                );
+            for (lead, inside) in grouped(failed) {
+                for (indent, at) in
+                    std::iter::once(("", lead)).chain(inside.into_iter().map(|at| ("  ", at)))
+                {
+                    let finding = &failed[at];
+                    let _ = writeln!(
+                        out,
+                        "  {indent}{}:{}  {}  {}{}",
+                        finding.file,
+                        finding.line,
+                        finding.shown,
+                        clip(&finding.text),
+                        against(finding)
+                    );
+                }
             }
         }
-        Ratchet::Worse { unit, failed } => worse(unit, failed, out),
+        Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
         Ratchet::AcceptedUnmatched(unmatched) => listed(
             out,
             &format!(
@@ -223,6 +258,28 @@ fn ratchet(said: &Ratchet, out: &mut String) {
                 .collect::<Vec<_>>(),
         ),
     }
+}
+
+/// Every new finding once, as the leads in their order, each with the findings that print inside
+/// its group. A finding whose named lead is itself inside a group, or out of range, leads.
+fn grouped(found: &[Failed]) -> Vec<(usize, Vec<usize>)> {
+    let lead = |at: usize| {
+        found[at]
+            .lead
+            .filter(|held| *held != at && found.get(*held).is_some_and(|lead| lead.lead.is_none()))
+    };
+    let mut groups: Vec<(usize, Vec<usize>)> = Vec::new();
+    let mut slot: Vec<Option<usize>> = vec![None; found.len()];
+    for at in (0..found.len()).filter(|at| lead(*at).is_none()) {
+        slot[at] = Some(groups.len());
+        groups.push((at, Vec::new()));
+    }
+    for at in 0..found.len() {
+        if let Some(group) = lead(at).and_then(|held| slot[held]) {
+            groups[group].1.push(at);
+        }
+    }
+    groups
 }
 
 fn worse(unit: &str, failed: &[Failed], out: &mut String) {
@@ -429,18 +486,27 @@ fn covered(coverage: &Coverage) -> String {
     }
 }
 
-fn document(name: &str, words: u64, ceiling: &str, standing: &Standing, out: &mut String) {
+fn document(
+    (name, words, ceiling): (&str, u64, &Ceiling),
+    standing: &Standing,
+    with_ok: bool,
+    out: &mut String,
+) {
     match standing {
-        Standing::Under => {
+        Standing::Under | Standing::Near(_) if with_ok => {
             let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
         }
+        _ => (),
+    }
+    match standing {
+        Standing::Under => (),
         Standing::Near(remaining) => {
-            let _ = writeln!(out, "OK: {name} is {words} words, ceiling {ceiling}");
             let _ = writeln!(
                 out,
                 "WARN: {name} is {words} words, {remaining} from its ceiling of {ceiling}."
             );
         }
+        Standing::Held(_) if !with_ok => (),
         Standing::Held(before) => {
             let _ = writeln!(
                 out,
@@ -448,12 +514,12 @@ fn document(name: &str, words: u64, ceiling: &str, standing: &Standing, out: &mu
                  at {before} words"
             );
         }
-        Standing::Over(remedy) => {
+        Standing::Over { fix_advice, .. } => {
             let _ = writeln!(
                 out,
                 "FAIL: {name} is {words} words, over its ceiling of {ceiling}."
             );
-            let _ = writeln!(out, "{remedy}");
+            let _ = writeln!(out, "{fix_advice}");
         }
     }
 }
@@ -462,8 +528,12 @@ fn document(name: &str, words: u64, ceiling: &str, standing: &Standing, out: &mu
 fn against(finding: &Failed) -> String {
     let matched = match &finding.matched {
         Matched::Nothing => "nothing matched".to_string(),
-        Matched::Accepted(file) => format!("matched the accepted entry for {file}"),
-        Matched::Base { file, line } => format!("matched the base site at {file}:{line}"),
+        Matched::Accepted(entry) => format!("matched the accepted entry for {}", entry.file),
+        Matched::Base(entry) => format!(
+            "matched the base site at {}:{}",
+            entry.file,
+            entry.line.unwrap_or(0)
+        ),
     };
     match &finding.ceiling {
         Some(ceiling) => format!("  — {matched}, ceiling {ceiling}"),
@@ -479,20 +549,365 @@ fn unmatched_row(entry: &Unmatched) -> String {
         .unwrap_or_default();
     format!(
         "{}  {}  {}{retired}",
-        entry.file,
+        entry.entry.file,
         entry.shown,
-        clip(&entry.text)
+        clip(&entry.entry.text)
     )
 }
 
 fn listed(out: &mut String, heading: &str, rows: &[String]) {
-    let _ = writeln!(out, "{heading}");
-    for row in rows.iter().take(20) {
-        let _ = writeln!(out, "  {row}");
+    let _ = writeln!(out, "{}", capped(heading, rows));
+}
+
+/// A heading and its first rows indented under it, with how many more there are.
+fn capped(heading: &str, rows: &[String]) -> String {
+    let mut out = heading.to_string();
+    for row in rows.iter().take(SHOWN) {
+        let _ = write!(out, "\n  {row}");
     }
-    if rows.len() > 20 {
-        let _ = writeln!(out, "  … and {} more", rows.len() - 20);
+    if rows.len() > SHOWN {
+        let _ = write!(out, "\n  … and {} more", rows.len() - SHOWN);
     }
+    out
+}
+
+/// The text of a listed NOTE that the JSON records as one note, and nothing for any other list.
+fn noted(listed: &Listed) -> Option<String> {
+    let (heading, rows): (String, Vec<String>) = match listed {
+        Listed::Held(HeldAtBase::DeadSymbols(dead)) => (
+            format!("{} dead symbol(s) the base already held:", dead.len()),
+            dead.iter()
+                .map(|site| format!("{}  {}", at(site), site.text))
+                .collect(),
+        ),
+        Listed::Held(HeldAtBase::Edges(edges)) => (
+            format!(
+                "{} forbidden or cyclic edge(s) the base already held:",
+                edges.len()
+            ),
+            edges
+                .iter()
+                .map(|edge| format!("{}  {}", edge.file, edge.text))
+                .collect(),
+        ),
+        Listed::Held(HeldAtBase::Unreached(files)) => (
+            format!("{} unreached file(s) the base already held:", files.len()),
+            files.clone(),
+        ),
+        Listed::NoSurface(held) => (
+            format!(
+                "{} package(s) or target(s) with no supported public surface:",
+                held.len()
+            ),
+            held.iter()
+                .map(|held| format!("{}: {}", held.file, held.text))
+                .collect(),
+        ),
+        _ => return None,
+    };
+    Some(capped(&heading, &rows))
+}
+
+/// The `derived:` and `pinned:` lines of the values a gate used, which the report prints above
+/// its row. Spec 4.3.
+pub fn provenance(told: &[Told]) -> Vec<String> {
+    told.iter()
+        .filter_map(|item| match item {
+            Told::Provenance(said) => Some(provenance_line(said)),
+            _ => None,
+        })
+        .collect()
+}
+
+fn provenance_line(said: &Provenance) -> String {
+    let derived = match said {
+        Provenance::Pinned {
+            section,
+            key,
+            shown,
+        } => return format!("pinned: {section} {key} {shown}"),
+        Provenance::Derived(derived) => derived,
+    };
+    let Derived {
+        section,
+        key,
+        shown,
+        rule,
+        wording,
+        ..
+    } = derived;
+    let key = key
+        .as_deref()
+        .map(|key| format!(" {key}"))
+        .unwrap_or_default();
+    match wording {
+        Wording::Keyed => format!("derived: {section}{key} {shown}, {rule}"),
+        Wording::Bare => format!("derived:{key} {shown}, {rule}"),
+        Wording::Sampled(recorded) => format!("derived: {section}{key} {shown} ({rule}){recorded}"),
+    }
+}
+
+/// What the JSON of spec 11.2 carries of one gate's result.
+#[derive(Default)]
+pub struct Json {
+    pub findings: Vec<Value>,
+    pub notes: Vec<Value>,
+    pub derived: Vec<Value>,
+}
+
+/// The findings, notes and derived entries of one gate's result, in the order the result says
+/// them. Spec 11.2.
+pub fn json(told: &[Told]) -> Json {
+    let mut out = Json::default();
+    for item in told {
+        json_one(item, &mut out);
+    }
+    out
+}
+
+fn json_one(told: &Told, out: &mut Json) {
+    match told {
+        Told::Judged { .. } => (),
+        Told::Document {
+            name,
+            words,
+            ceiling,
+            standing,
+        } => document_json((name, *words, ceiling.value), standing, out),
+        Told::Provenance(said) => out.derived.extend(derived_json(said)),
+        Told::Plain(said) => out.notes.extend(note_json(said)),
+        Told::Hole(hole) => hole_json(hole, out),
+        Told::Listed(listed) => listed_json(listed, out),
+        Told::Ratchet(said) => ratchet_json(said, out),
+    }
+}
+
+/// The entry of a derived value, and nothing for a pinned one, which the config already holds.
+fn derived_json(said: &Provenance) -> Option<Value> {
+    let Provenance::Derived(derived) = said else {
+        return None;
+    };
+    let rule = match &derived.wording {
+        Wording::Sampled(recorded) => format!("{}{recorded}", derived.rule),
+        Wording::Keyed | Wording::Bare => derived.rule.clone(),
+    };
+    Some(contract::derived_entry(
+        derived.section,
+        derived.key.as_deref(),
+        derived.value.clone(),
+        &rule,
+    ))
+}
+
+/// The record of a NOTE, and nothing for a line the JSON records elsewhere or not at all.
+fn note_json(said: &Plain) -> Option<Value> {
+    let Plain::Note(note) = said else {
+        return None;
+    };
+    Some(record(note.outcome, Some(&note.file), None, &note.text))
+}
+
+fn record(outcome: &str, file: Option<&str>, line: Option<u64>, text: &str) -> Value {
+    Value::Object(fields(outcome, file, line, text))
+}
+
+/// One record of a site: what it is, the file and line it names where it names them, its text.
+fn fields(outcome: &str, file: Option<&str>, line: Option<u64>, text: &str) -> Map<String, Value> {
+    let mut out = Map::new();
+    out.insert("outcome".into(), outcome.into());
+    if let Some(file) = file {
+        out.insert("file".into(), file.into());
+    }
+    if let Some(line) = line {
+        out.insert("line".into(), line.into());
+    }
+    out.insert("text".into(), text.into());
+    out
+}
+
+fn document_json((name, words, ceiling): (&str, u64, u64), standing: &Standing, out: &mut Json) {
+    let site = |outcome: &str| {
+        let mut site = Map::new();
+        site.insert("outcome".into(), outcome.into());
+        site.insert("file".into(), name.into());
+        site.insert(
+            "values".into(),
+            serde_json::json!({ "words": words, "ceiling": ceiling }),
+        );
+        site
+    };
+    match standing {
+        Standing::Under | Standing::Held(_) => (),
+        Standing::Near(_) => out.notes.push(Value::Object(site("near-ceiling"))),
+        Standing::Over {
+            condition,
+            fix_advice,
+        } => {
+            let mut over = site("new");
+            over.insert("condition".into(), (*condition).into());
+            over.insert("fix_advice".into(), (*fix_advice).into());
+            out.findings.push(Value::Object(over));
+        }
+    }
+}
+
+fn hole_json(hole: &Hole, out: &mut Json) {
+    match hole {
+        Hole::Lost(site) => out.notes.push(site_json(LOST, site)),
+        Hole::LeftScrutiny(_) => (),
+        Hole::NotMeasured { fail, files } => sited(out, *fail).extend(files.iter().map(|file| {
+            record(
+                NOT_MEASURED,
+                Some(&file.file),
+                None,
+                &format!("{} has no structural adapter", file.text),
+            )
+        })),
+        Hole::Unresolved { fail, forms, .. } => {
+            sited(out, *fail).extend(forms.iter().map(|(form, why)| {
+                record(
+                    UNRESOLVED,
+                    Some(&form.file),
+                    Some(form.line),
+                    &format!("{} — {why}", form.text),
+                )
+            }));
+        }
+        Hole::Unparsed { fail, files } => {
+            sited(out, *fail).extend(files.iter().map(|file| site_json(UNPARSED, file)));
+        }
+    }
+}
+
+/// Where a hole's records go: its findings where it fails, and its notes where it does not.
+fn sited(out: &mut Json, fail: bool) -> &mut Vec<Value> {
+    match fail {
+        true => &mut out.findings,
+        false => &mut out.notes,
+    }
+}
+
+fn site_json(outcome: &str, site: &Site) -> Value {
+    record(outcome, Some(&site.file), None, &site.text)
+}
+
+fn listed_json(listed: &Listed, out: &mut Json) {
+    let notes: Vec<Value> = match listed {
+        Listed::DeadSymbols(_) => Vec::new(),
+        Listed::TestsDeleted(went) => went
+            .iter()
+            .map(|site| {
+                record(
+                    DELETED,
+                    Some(&site.file),
+                    Some(site.line),
+                    &format!(
+                        "the test site {} in {} went in this window",
+                        site.text, site.file
+                    ),
+                )
+            })
+            .collect(),
+        Listed::TestFunctionsOrphaned(went) => went
+            .iter()
+            .map(|site| {
+                record(
+                    "note",
+                    Some(&site.file),
+                    Some(site.line),
+                    &format!(
+                        "the test function {} went with the file {} that held it",
+                        site.text, site.file
+                    ),
+                )
+            })
+            .collect(),
+        Listed::TestFilesPaired { files, rule } => files
+            .iter()
+            .map(|site| {
+                record(
+                    "note",
+                    Some(&site.file),
+                    None,
+                    &format!(
+                        "the test file {} went with its subject {}, matched by {rule}",
+                        site.file, site.text
+                    ),
+                )
+            })
+            .collect(),
+        Listed::Held(_) | Listed::NoSurface(_) => noted(listed)
+            .map(|text| record("note", Some(""), None, &text))
+            .into_iter()
+            .collect(),
+    };
+    out.notes.extend(notes);
+}
+
+fn ratchet_json(said: &Ratchet, out: &mut Json) {
+    match said {
+        Ratchet::New {
+            condition, failed, ..
+        } => out.findings.extend(
+            failed
+                .iter()
+                .map(|finding| failed_json("new", condition, finding)),
+        ),
+        Ratchet::Worse {
+            condition, failed, ..
+        } => out.findings.extend(
+            failed
+                .iter()
+                .map(|finding| failed_json("worsened", condition, finding)),
+        ),
+        Ratchet::AcceptedUnmatched(unmatched) => {
+            out.notes.extend(unmatched.iter().map(|entry| {
+                let site = &entry.entry;
+                let mut record = fields("unmatched", Some(&site.file), site.line, &site.text);
+                record.insert("values".into(), Value::Object(entry.entry.values.clone()));
+                Value::Object(record)
+            }));
+        }
+        Ratchet::AcceptedStale { .. } => (),
+    }
+}
+
+/// One failure with what the ratchet held against it, so a harness sees both sides of the
+/// comparison. Spec 11.2.
+fn failed_json(outcome: &str, condition: &str, finding: &Failed) -> Value {
+    let mut out = fields(
+        outcome,
+        Some(&finding.file),
+        Some(finding.line),
+        &finding.text,
+    );
+    out.insert("id".into(), finding.id.clone().into());
+    out.insert("values".into(), Value::Object(finding.values.clone()));
+    out.insert("condition".into(), condition.into());
+    out.insert("fix_advice".into(), finding.fix_advice.clone().into());
+    out.insert(
+        "ceiling".into(),
+        finding.ceiling.clone().map_or(Value::Null, Into::into),
+    );
+    let matched = match &finding.matched {
+        Matched::Nothing => Value::Null,
+        Matched::Accepted(entry) => matched_json(entry, true),
+        Matched::Base(entry) => matched_json(entry, false),
+    };
+    out.insert("matched".into(), matched);
+    Value::Object(out)
+}
+
+fn matched_json(entry: &Entry, accepted: bool) -> Value {
+    let mut out = Map::new();
+    out.insert("file".into(), entry.file.clone().into());
+    out.insert("text".into(), entry.text.clone().into());
+    if let Some(line) = entry.line {
+        out.insert("line".into(), line.into());
+    }
+    out.insert("accepted".into(), accepted.into());
+    out.insert("values".into(), Value::Object(entry.values.clone()));
+    Value::Object(out)
 }
 
 fn clip(text: &str) -> String {

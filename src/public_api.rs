@@ -12,7 +12,7 @@ use std::fmt::Write;
 
 use serde_json::Value;
 
-use crate::check::contract::{self, Context, Line, Measured, Sink, Unresolvable};
+use crate::check::contract::{self, Context, Line, Listed, Measured, Sink, Site, Unresolvable};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -390,17 +390,16 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
     if derived.inapplicable.is_empty() {
         return;
     }
-    let mut note = format!(
-        "{} package(s) or target(s) with no supported public surface:",
-        derived.inapplicable.len()
-    );
-    for held in derived.inapplicable.iter().take(20) {
-        let _ = write!(note, "\n  {}: {}", held.what, held.why);
-    }
-    if derived.inapplicable.len() > 20 {
-        let _ = write!(note, "\n  … and {} more", derived.inapplicable.len() - 20);
-    }
-    ratchet::noted(&[(String::new(), note)], out);
+    out.tell(Listed::NoSurface(
+        derived
+            .inapplicable
+            .iter()
+            .map(|held| Site {
+                file: held.what.to_string(),
+                text: held.why.to_string(),
+            })
+            .collect(),
+    ));
 }
 
 /// The derived contract of the working tree, item by item, so automatic derivation is

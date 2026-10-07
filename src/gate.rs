@@ -1100,8 +1100,8 @@ fn active(
 
 /// One gate's run, kept only for the `derived:` and `pinned:` lines of the values it used.
 fn provenance(quiet: &Args, project: &Project, gate: &Gate, against: &Against) -> Value {
-    let (_, _, records) = one(quiet, gate, project, against);
-    let mut lines = records.derived_lines;
+    let (_, told, records) = one(quiet, gate, project, against);
+    let mut lines = render::provenance(&told);
     for line in pinned(project, gate) {
         if !lines.contains(&line) {
             lines.push(line);
@@ -1693,13 +1693,16 @@ fn each(
     let mut totals = Records::default();
     for gate in wanted {
         let ((code, told, records), ms) = journal::timed(|| one(args, gate, project, against));
-        let text = render::text(&told);
+        let text = match args.hook {
+            true => render::stop(&told, code == 0),
+            false => render::text(&told),
+        };
         match code {
             0 => (),
             1 => tally.failed += 1,
             _ => tally.errored += 1,
         }
-        printed(args, (gate, code), &text, &records, out);
+        printed(args, (gate, code), (&told, &text), &records, out);
         totals.gates.push(row(gate, code, &records, ms));
         gather(&mut totals, records, &gate.name);
     }
@@ -1716,18 +1719,18 @@ fn each(
 fn printed(
     args: &Args,
     (gate, code): (&Gate, u8),
-    text: &str,
+    (told, text): (&[Told], &str),
     records: &Records,
     out: &mut String,
 ) {
     if !rendered(args, code, records) {
         return;
     }
-    for line in &records.derived_lines {
+    for line in render::provenance(told) {
         let _ = writeln!(out, "  {line}");
     }
     let _ = writeln!(out, "  {}  {}", status(code), gate.name);
-    for line in text.lines().filter(|line| !succeeded(args, code, line)) {
+    for line in text.lines() {
         let _ = writeln!(out, "        {line}");
     }
 }
@@ -1737,12 +1740,6 @@ fn printed(
 /// on. Every other run prints every gate. The records keep every gate either way. Spec 9.5.
 fn rendered(args: &Args, code: u8, records: &Records) -> bool {
     !args.hook || code != 0 || records.notes.iter().any(told)
-}
-
-/// A passing gate's own success line, which the hook leaves out of the gate it prints for a
-/// note, so only the note and the row that names its gate remain. Spec 9.5.
-fn succeeded(args: &Args, code: u8, line: &str) -> bool {
-    args.hook && code == 0 && line.starts_with("OK:")
 }
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
@@ -2014,6 +2011,10 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, V
             2
         }
     };
+    let rendered = render::json(&told);
+    records.findings = rendered.findings;
+    records.notes = rendered.notes;
+    records.derived = rendered.derived;
     errored(code, &mut records);
     (code, told, records)
 }

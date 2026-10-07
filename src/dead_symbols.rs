@@ -6,12 +6,11 @@
 //! the result. ADR 0035, spec 8.4.
 
 use std::collections::BTreeSet;
-use std::fmt::Write;
 
 use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, Line, Listed, Located, Measured, Sink};
+use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -539,12 +538,13 @@ fn base_note(states: &[&State], only: Option<&[String]>, out: &mut Sink) {
     if dead.is_empty() {
         return;
     }
-    let mut note = format!("{} dead symbol(s) the base already held:", dead.len());
-    for state in dead.iter().take(20) {
-        let _ = write!(note, "\n  {}:{}  {}", state.file, state.line, state.text);
-    }
-    if dead.len() > 20 {
-        let _ = write!(note, "\n  … and {} more", dead.len() - 20);
-    }
-    ratchet::noted(&[(String::new(), note)], out);
+    out.tell(Listed::Held(HeldAtBase::DeadSymbols(
+        dead.iter()
+            .map(|state| Located {
+                file: state.file.clone(),
+                line: state.line,
+                text: state.text.clone(),
+            })
+            .collect(),
+    )));
 }

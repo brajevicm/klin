@@ -297,15 +297,14 @@ fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
 /// The manifests this run judges, as the one `derived:` line and its JSON entry.
 fn said(found: &[(&str, &Format)], out: &mut Sink) {
     let names: Vec<&str> = found.iter().map(|(path, _)| *path).collect();
-    out.provenance(
-        format!("derived: {SECTION} manifests {}, {RULE}", names.join(", ")),
-        Some(contract::derived_entry(
-            SECTION,
-            Some("manifests"),
-            names.into(),
-            RULE,
-        )),
-    );
+    let shown = names.join(", ");
+    out.tell(contract::Derived::keyed(
+        SECTION,
+        Some("manifests"),
+        names.into(),
+        shown,
+        RULE,
+    ));
 }
 
 /// Every path a judged manifest could read in one tree: the manifest, and each lockfile name its

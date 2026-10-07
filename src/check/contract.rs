@@ -1,7 +1,8 @@
 //! What a check is, told once. A check is handed an immutable `Context` — who called it, which
 //! gate it judges under, what base it compares against, what scope it may look at — and it
-//! writes to an explicit `Sink`: the typed `Told` items a renderer turns into the report a
-//! person reads, and the `Records` the runner turns into the 11.2 object. Nothing about a run
+//! writes to an explicit `Sink`: the typed `Told` items the renderers turn into the report a
+//! person reads and into the findings, notes and derived entries of the 11.2 object, and the
+//! `Records` of what the run cost and covered, which the runner adds to that object. Nothing about a run
 //! reaches a check any other way, so the runner keeps no side channel into it and a check keeps
 //! no state of its own. This module names no check, so every check and the catalogue that
 //! registers them depend on it one way.
@@ -19,6 +20,7 @@ use crate::error::Error;
 use crate::key::Key;
 use crate::measurement::{self, Unchanged};
 use crate::project::Project;
+use crate::record::Values;
 use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
 use crate::{modules, surface};
 
@@ -73,7 +75,8 @@ impl std::ops::Add for ContentCost {
 
 /// Everything a run records about what it judged, which the runner prints as the one object of
 /// spec 11.2 and the journal writes as the stop's line. There is one of these per gate, gathered
-/// into one for the run. A check a person runs by hand has none, and records nothing.
+/// into one for the run. A check a person runs by hand has none, and records nothing. A check
+/// writes none of `findings`, `notes` or `derived`: the runner renders them from its `Told`.
 #[derive(Default)]
 pub struct Records {
     pub findings: Vec<Value>,
@@ -87,7 +90,6 @@ pub struct Records {
     pub coverage: Option<Value>,
     /// One `{section, key, value, rule}` entry per value the run derived. Spec 11.2.
     pub derived: Vec<Value>,
-    pub derived_lines: Vec<String>,
     /// The findings the ratchet passed, which the runner puts on the gate's row. `None` for a
     /// gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
@@ -361,29 +363,41 @@ pub struct Located {
 /// base site at a file and line. Spec 8.6.
 pub enum Matched {
     Nothing,
-    Accepted(String),
-    Base { file: String, line: u64 },
+    Accepted(Entry),
+    Base(Entry),
 }
 
-/// One finding the ratchet failed, with the check's own words for its values.
+/// A base site or accepted entry, with the values it holds apart from the keys of its site.
+pub struct Entry {
+    pub file: String,
+    pub line: Option<u64>,
+    pub text: String,
+    pub values: Values,
+}
+
+/// One finding the ratchet failed: its site and identity, its values and the check's own words
+/// for them, and what the ratchet held against it. Spec 8.6, 11.2.
 pub struct Failed {
+    pub id: String,
     pub file: String,
     pub line: u64,
+    pub values: Values,
     pub shown: String,
     pub was: Option<Was>,
     pub text: String,
+    pub fix_advice: String,
     pub matched: Matched,
     pub ceiling: Option<String>,
-    /// Whether the finding prints inside the group of the one before it.
-    pub nested: bool,
+    /// The new finding whose group this one prints inside, for a gate whose text report groups
+    /// what one change took away. Presentation only.
+    pub lead: Option<usize>,
 }
 
-/// An accepted entry that matched nothing this run: its file, the check's words for its values,
-/// its text, and the row it names that klin retired.
+/// An accepted entry that matched nothing this run: the entry, the check's words for its values,
+/// and the row it names that klin retired.
 pub struct Unmatched {
-    pub file: String,
+    pub entry: Entry,
     pub shown: String,
-    pub text: String,
     pub retired: Option<String>,
 }
 
@@ -408,7 +422,10 @@ pub enum Standing {
     Under,
     Near(u64),
     Held(u64),
-    Over(&'static str),
+    Over {
+        condition: &'static str,
+        fix_advice: &'static str,
+    },
 }
 
 /// One item of a gate's semantic result, in the order the report says it. Spec 3.1, 6.1.
@@ -420,18 +437,59 @@ pub enum Told {
     Document {
         name: String,
         words: u64,
-        ceiling: String,
+        ceiling: Ceiling,
         standing: Standing,
     },
+    Provenance(Provenance),
     Plain(Plain),
     Hole(Hole),
     Listed(Listed),
     Ratchet(Ratchet),
 }
 
+/// One value of a check's policy and where it came from: pinned by a person, or derived by a
+/// rule. Spec 4.3, 11.2.
+pub enum Provenance {
+    Pinned {
+        section: &'static str,
+        key: String,
+        shown: String,
+    },
+    Derived(Derived),
+}
+
+/// A value a check derived, and the rule that derived it. Spec 11.2.
+pub struct Derived {
+    pub section: &'static str,
+    pub key: Option<String>,
+    pub value: Value,
+    /// The value as the `derived:` line words it.
+    pub shown: String,
+    pub rule: String,
+    pub wording: Wording,
+}
+
+/// How a `derived:` line names its value and gives its rule.
+pub enum Wording {
+    /// Under its section and key, with the rule after a comma.
+    Keyed,
+    /// Under its key alone, a key that names itself, with the rule after a comma.
+    Bare,
+    /// Under its section and key, with the rule in parentheses and then the scope the rule read,
+    /// which the JSON rule carries joined.
+    Sampled(String),
+}
+
+/// A NOTE that fails nothing: what it is about, the file it names, and its text.
+pub struct Note {
+    pub outcome: &'static str,
+    pub file: String,
+    pub text: String,
+}
+
 /// A line the report says as it is, under its own word.
 pub enum Plain {
-    Note(String),
+    Note(Note),
     Remedy(String),
     PathMissing(String),
     Error(String),
@@ -467,6 +525,17 @@ pub enum Listed {
         files: Vec<Site>,
         rule: &'static str,
     },
+    /// Sites the base already held, which fail nothing because the change opened none.
+    Held(HeldAtBase),
+    /// The packages and targets `public-api` derived no surface from.
+    NoSurface(Vec<Site>),
+}
+
+/// What the base already held, of a gate that names it.
+pub enum HeldAtBase {
+    DeadSymbols(Vec<Located>),
+    Edges(Vec<Site>),
+    Unreached(Vec<String>),
 }
 
 /// What the ratchet's comparison came to beyond the `OK:` line. Spec 4.4, 8.6.
@@ -479,6 +548,7 @@ pub enum Ratchet {
     },
     Worse {
         unit: String,
+        condition: String,
         failed: Vec<Failed>,
     },
     AcceptedUnmatched(Vec<Unmatched>),
@@ -497,6 +567,12 @@ impl Told {
             line,
             held: Held::default(),
         }
+    }
+}
+
+impl From<Provenance> for Told {
+    fn from(said: Provenance) -> Told {
+        Told::Provenance(said)
     }
 }
 
@@ -538,11 +614,13 @@ impl<'a> Sink<'a> {
         self.records.errors.push(text);
     }
 
-    /// One value a check derived itself, kept beside the record so the runner can place its
-    /// line before that gate's status row.
-    pub fn provenance(&mut self, line: String, derived: Option<Value>) {
-        self.records.derived_lines.push(line);
-        self.records.derived.extend(derived);
+    /// A NOTE that fails nothing, about `file`, recorded for `--json` under `outcome`.
+    pub fn note(&mut self, outcome: &'static str, file: String, text: String) {
+        self.tell(Plain::Note(Note {
+            outcome,
+            file,
+            text,
+        }));
     }
 }
 
@@ -613,13 +691,33 @@ pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 /// A check's own explanation of its derived policy, of every entry or of the one a person names.
 pub type Explain = fn(&Project, Option<&str>) -> Result<Vec<String>, Error>;
 
-/// One `derived:` or `pinned:` line and the `{section, key, value, rule}` entry beside a derived
-/// one, built together so the two cannot say different things. Spec 11.2.
+/// One `derived:` line of the runner's own build and the `{section, key, value, rule}` entry
+/// beside it, built together so the two cannot say different things. Spec 11.2.
 pub type Said = (String, Option<Value>);
 
 /// The `{section, key, value, rule}` entry `--json` prints beside a `derived:` line. Spec 11.2.
 pub fn derived_entry(section: &str, key: Option<&str>, value: Value, rule: &str) -> Value {
     serde_json::json!({ "section": section, "key": key, "value": value, "rule": rule })
+}
+
+impl Derived {
+    /// A derived value under its section and key, with the rule after a comma.
+    pub fn keyed(
+        section: &'static str,
+        key: Option<&str>,
+        value: Value,
+        shown: String,
+        rule: &str,
+    ) -> Provenance {
+        Provenance::Derived(Derived {
+            section,
+            key: key.map(str::to_string),
+            value,
+            shown,
+            rule: rule.to_string(),
+            wording: Wording::Keyed,
+        })
+    }
 }
 
 /// The key every entry of a named section carries, whichever check reads the section.

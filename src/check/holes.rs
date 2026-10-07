@@ -4,18 +4,15 @@
 //! change opened no hole or the agent cannot close it, and exit 2 elsewhere, so a green run never
 //! implies a measurement klin did not make. Spec 8.6, 10.
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
-use crate::check::contract::{
-    Context, Hole, LOST, Located, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED,
-    Unresolvable,
-};
+use crate::check::contract::{Context, Hole, LOST, Located, Sink, Site, Unresolvable};
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
 use crate::syntax::structural::facts::Unsupported;
 use crate::syntax::{self, Unparsed};
 
-/// What a gate says about the files that left its scrutiny: a NOTE per file for a person and a
-/// `lost` record under its notes for `--json`. Under `--strict` the loss is exit 2, beside the
+/// What a gate says about the files that left its scrutiny: a NOTE per file, which `--json`
+/// records as a `lost` note. Under `--strict` the loss is exit 2, beside the
 /// other strict failures of spec 10. In the hook and without either flag the code stands.
 pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
     if lost.is_empty() {
@@ -27,15 +24,6 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
             text: file.why.to_string(),
         }));
     }
-    out.record(|records| {
-        for file in lost {
-            let mut record = Map::new();
-            record.insert("outcome".into(), LOST.into());
-            record.insert("file".into(), file.file.clone().into());
-            record.insert("text".into(), file.why.into());
-            records.notes.push(Value::Object(record));
-        }
-    });
     if !at.strict {
         return code;
     }
@@ -71,22 +59,6 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
             })
             .collect(),
     });
-    out.record(|records| {
-        for file in &files {
-            let mut record = Map::new();
-            record.insert("outcome".into(), NOT_MEASURED.into());
-            record.insert("file".into(), file.file.clone().into());
-            record.insert(
-                "text".into(),
-                format!("{} has no structural adapter", file.language).into(),
-            );
-            if at.hook() {
-                records.notes.push(Value::Object(record));
-            } else {
-                records.findings.push(Value::Object(record));
-            }
-        }
-    });
     if at.hook() { code } else { 2 }
 }
 
@@ -113,21 +85,6 @@ pub fn unresolved_said(
     for (fail, named) in [(false, &noted), (true, &refused)] {
         listed(fail, named, kind, out);
     }
-    out.record(|records| {
-        for (into, named) in [
-            (&mut records.notes, &noted),
-            (&mut records.findings, &refused),
-        ] {
-            into.extend(named.iter().map(|(hole, _)| {
-                serde_json::json!({
-                    "outcome": UNRESOLVED,
-                    "file": hole.file,
-                    "line": hole.line,
-                    "text": format!("{} — {}", hole.text, hole.why),
-                })
-            }));
-        }
-    });
     match refused.is_empty() {
         true => code,
         false => 2,
@@ -169,42 +126,25 @@ pub fn unread_said(
     out: &mut Sink,
 ) -> u8 {
     let rejected = syntax::rejected(unparsed, at.only, (!at.hook()).then_some(base));
-    unparsed_said(false, &rejected.held, out, |records| &mut records.notes);
-    unparsed_said(true, &rejected.new, out, |records| &mut records.findings);
+    unparsed_said(false, &rejected.held, out);
+    unparsed_said(true, &rejected.new, out);
     match rejected.new.is_empty() {
         true => code,
         false => 2,
     }
 }
 
-/// One block of unparsed files under one word, each recorded where `into` puts it.
-fn unparsed_said(
-    fail: bool,
-    named: &[&Unparsed],
-    out: &mut Sink,
-    into: fn(&mut Records) -> &mut Vec<Value>,
-) {
+/// One block of unparsed files under one word.
+fn unparsed_said(fail: bool, named: &[&Unparsed], out: &mut Sink) {
     if named.is_empty() {
         return;
     }
     let files = named
         .iter()
-        .map(|file| {
-            let rejected = format!("the {} grammar rejected it", file.language);
-            out.record(|records| into(records).push(unparsed_site(file, &rejected)));
-            Site {
-                file: file.file.clone(),
-                text: rejected,
-            }
+        .map(|file| Site {
+            file: file.file.clone(),
+            text: format!("the {} grammar rejected it", file.language),
         })
         .collect();
     out.tell(Hole::Unparsed { fail, files });
-}
-
-fn unparsed_site(file: &Unparsed, rejected: &str) -> Value {
-    let mut out = Map::new();
-    out.insert("outcome".into(), UNPARSED.into());
-    out.insert("file".into(), file.file.clone().into());
-    out.insert("text".into(), rejected.into());
-    Value::Object(out)
 }

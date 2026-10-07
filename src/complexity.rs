@@ -364,14 +364,14 @@ struct Spec {
     notes: Notes,
 }
 
-type Provenance = Vec<(String, Option<Value>)>;
+type Provenance = Vec<contract::Provenance>;
 type Notes = Vec<(String, String)>;
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
-    let spec = spec(project)?;
-    for (line, value) in &spec.provenance {
-        out.provenance(line.clone(), value.clone());
+    let mut spec = spec(project)?;
+    for said in std::mem::take(&mut spec.provenance) {
+        out.tell(said);
     }
     ratchet::noted_as(contract::DERIVATION, &spec.notes, out);
     let sweep = measure(
@@ -577,7 +577,7 @@ fn pinned(
     project: &Project,
     key: Key,
     value: &Value,
-) -> Result<(Ceiling, (String, Option<Value>)), Error> {
+) -> Result<(Ceiling, contract::Provenance), Error> {
     let ceiling = ceiling::read(
         &project.config.file,
         SECTION,
@@ -585,8 +585,12 @@ fn pinned(
         value,
         "a whole number",
     )?;
-    let line = format!("pinned: {SECTION} {} {ceiling}", key.name);
-    Ok((ceiling, (line, None)))
+    let said = contract::Provenance::Pinned {
+        section: SECTION,
+        key: key.name.to_string(),
+        shown: ceiling.to_string(),
+    };
+    Ok((ceiling, said))
 }
 
 fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolved, Error> {
@@ -602,14 +606,15 @@ fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolv
             .as_ref()
             .map(|_| format!("; recorded scope: {}", found.scope.description()))
             .unwrap_or_default();
-        let record = derived_value(key.name, value, &format!("{rule}{recorded}"));
-        Ok((
-            Ceiling { value, step: None },
-            (
-                format!("derived: {SECTION} {} {value} ({rule}){recorded}", key.name),
-                Some(record),
-            ),
-        ))
+        let said = contract::Provenance::Derived(contract::Derived {
+            section: SECTION,
+            key: Some(key.name.to_string()),
+            value: value.into(),
+            shown: value.to_string(),
+            rule,
+            wording: contract::Wording::Sampled(recorded),
+        });
+        Ok((Ceiling { value, step: None }, said))
     };
     let (cc, cc_said) = resolve(CC, CC_FLOOR, |found| found.cc)?;
     let (lines, lines_said) = resolve(LINES, LINES_FLOOR, |found| found.lines)?;
@@ -843,15 +848,6 @@ fn kept_sample(sample: &Sample) -> Value {
         kept.insert("fallback".into(), fallback.clone().into());
     }
     Value::Object(kept)
-}
-
-fn derived_value(key: &str, value: u64, rule: &str) -> Value {
-    Value::Object(Map::from_iter([
-        ("section".into(), SECTION.into()),
-        ("key".into(), key.into()),
-        ("value".into(), value.into()),
-        ("rule".into(), rule.into()),
-    ]))
 }
 
 fn short(commit: &str) -> &str {

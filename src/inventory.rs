@@ -9,10 +9,10 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, Counted, DELETED, Line, Listed, Sink};
+use crate::check::contract::{self, Context, Counted, Line, Listed, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -223,15 +223,14 @@ fn said(project: &Project, out: &mut Sink) {
     if roots.is_empty() {
         return;
     }
-    out.provenance(
-        format!("derived: {TEST_ROOTS} {}, {ROOTS_RULE}", roots.join(", ")),
-        Some(contract::derived_entry(
-            SECTION,
-            Some(TEST_ROOTS),
-            roots.clone().into(),
-            ROOTS_RULE,
-        )),
-    );
+    out.tell(contract::Provenance::Derived(contract::Derived {
+        section: SECTION,
+        key: Some(TEST_ROOTS.to_string()),
+        value: roots.clone().into(),
+        shown: roots.join(", "),
+        rule: ROOTS_RULE.to_string(),
+        wording: contract::Wording::Bare,
+    }));
 }
 
 /// Every test function the base holds, with what the working tree says about it. A match is by
@@ -419,23 +418,6 @@ fn deleted(went: &[Finding], out: &mut Sink) {
         return;
     }
     out.tell(Listed::TestsDeleted(went.iter().map(told).collect()));
-    out.record(|records| {
-        for site in went {
-            let mut record = Map::new();
-            record.insert("outcome".into(), DELETED.into());
-            record.insert("file".into(), site.file.clone().into());
-            record.insert("line".into(), site.line.into());
-            record.insert(
-                "text".into(),
-                format!(
-                    "the test site {} in {} went in this window",
-                    site.text, site.file
-                )
-                .into(),
-            );
-            records.notes.push(Value::Object(record));
-        }
-    });
 }
 
 /// A finding as the site a report lists.
@@ -463,24 +445,6 @@ fn orphaned(orphans: &[Function], out: &mut Sink) {
             })
             .collect(),
     ));
-    for function in orphans {
-        let site = &function.site;
-        out.record(|records| {
-            let mut record = Map::new();
-            record.insert("outcome".into(), "note".into());
-            record.insert("file".into(), site.file.clone().into());
-            record.insert("line".into(), site.line.into());
-            record.insert(
-                "text".into(),
-                format!(
-                    "the test function {} went with the file {} that held it",
-                    site.text, site.file
-                )
-                .into(),
-            );
-            records.notes.push(Value::Object(record));
-        });
-    }
 }
 
 /// A deleted test whose subject went in the same window, which is a NOTE and not a finding.
@@ -498,23 +462,6 @@ fn noted(paired: &[Site], out: &mut Sink) {
             })
             .collect(),
         rule: RULE,
-    });
-    out.record(|records| {
-        for site in paired {
-            let mut record = Map::new();
-            record.insert("outcome".into(), "note".into());
-            record.insert("file".into(), site.path.clone().into());
-            record.insert(
-                "text".into(),
-                format!(
-                    "the test file {} went with its subject {}, matched by {RULE}",
-                    site.path,
-                    site.subject.as_deref().unwrap_or("")
-                )
-                .into(),
-            );
-            records.notes.push(Value::Object(record));
-        }
     });
 }
 

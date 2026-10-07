@@ -113,10 +113,14 @@ fn said(listing: &Listing, out: &mut Sink) {
         .iter()
         .map(|document| document.name.as_str())
         .collect();
-    out.provenance(
-        format!("derived: {SECTION} {}, {RULE}", names.join(", ")),
-        Some(contract::derived_entry(SECTION, None, names.into(), RULE)),
-    );
+    let shown = names.join(", ");
+    out.tell(contract::Derived::keyed(
+        SECTION,
+        None,
+        names.into(),
+        shown,
+        RULE,
+    ));
 }
 
 /// What this gate discovered: one document per entry, and the ones it read. A document the
