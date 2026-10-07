@@ -2,7 +2,7 @@
 # machine-independent budgets (ADR 0042).
 def rise: 10;
 
-# A `klin gate --strict --json` report, or a set of counters a performance row already printed as
+# A `klin check --json` report, or a set of counters a performance row already printed as
 # key=value. Time and memory keys are deliberately removed from the deterministic comparison.
 def counters:
   ( if has("gates")

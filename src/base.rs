@@ -644,7 +644,7 @@ pub struct Window {
     pub derives: Option<String>,
 }
 
-/// The three window kinds of section 4.2. The hook judges a turn, `klin gate` by hand and CI
+/// The three window kinds of section 4.2. The hook judges a turn, `klin check` by hand and CI
 /// on a pull request judge a branch, and CI on a push judges the push.
 #[derive(Clone, Copy)]
 pub enum Kind {
@@ -785,8 +785,7 @@ fn cannot_tell(strict: bool, base: Window, why: &str) -> Result<Window, Error> {
     }
     Err(Error(format!(
         "the base is HEAD ({}) and the working tree matches it, so a run would measure nothing, \
-         and {why}, so klin cannot tell whether these commits are pushed — fetch the remote, or \
-         drop --strict",
+         and {why}, so klin cannot tell whether these commits are pushed — fetch the remote",
         base.how
     )))
 }

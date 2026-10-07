@@ -225,23 +225,7 @@ impl Context<'_> {
     }
 }
 
-impl<'a> Context<'a> {
-    /// A check a person ran by hand: no runner, so no base laid out for it and no scope from a
-    /// window. A command states the rest.
-    pub fn by_hand(gate: &'a str, project: &'a Project) -> Context<'a> {
-        Context {
-            gate,
-            project,
-            prior: None,
-            base: None,
-            only: None,
-            changes: None,
-            caller: Caller::Hand,
-            strict: false,
-            quiet: false,
-        }
-    }
-}
+impl<'a> Context<'a> {}
 
 /// Where a check writes: the report a person reads, and the records the runner keeps. A check a
 /// person runs by hand has no records, and every `record` call on it does nothing.
@@ -251,15 +235,6 @@ pub struct Sink<'a> {
 }
 
 impl<'a> Sink<'a> {
-    /// A sink that only prints, for a check a person runs by hand. Nothing records the run, so
-    /// every `record` call on it does nothing.
-    pub fn unrecorded(text: &'a mut String) -> Sink<'a> {
-        Sink {
-            text,
-            records: None,
-        }
-    }
-
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         if let Some(records) = self.records.as_deref_mut() {
             add(records);
@@ -363,6 +338,9 @@ fn coverage_record(coverage: &Coverage) -> Value {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
+/// A check's own explanation of its derived policy, of every entry or of the one a person names.
+pub type Explain = fn(&Project, Option<&str>) -> Result<Vec<String>, Error>;
+
 /// One `derived:` or `pinned:` line and the `{section, key, value, rule}` entry beside a derived
 /// one, built together so the two cannot say different things. Spec 11.2.
 pub type Said = (String, Option<Value>);
@@ -375,7 +353,7 @@ pub fn derived_entry(section: &str, key: Option<&str>, value: Value, rule: &str)
 /// The key every entry of a named section carries, whichever check reads the section.
 pub const NAMED: Key = Key {
     name: "name",
-    holds: "the gate's own name, which `--gate` takes",
+    holds: "the gate's own name, which `klin check` takes",
     required: true,
     rule: None,
     default: "",

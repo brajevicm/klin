@@ -20,7 +20,7 @@ fn a_new_literal_the_base_does_not_hold_fails_with_the_convention_and_its_remedy
     let tree = tree(NO_OLD_FLAGS);
     tree.write("src/lib.rs", "use crate::config::Flags;\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("no-old-flags"), "{}", run.out);
@@ -39,7 +39,7 @@ fn a_literal_the_base_holds_passes() {
     tree.write("src/lib.rs", "use crate::config::Flags;\n");
     tree.base();
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: no-old-flags"), "{}", run.out);
@@ -50,7 +50,7 @@ fn the_gate_runs_every_convention_the_section_names() {
     let tree = tree(NO_OLD_FLAGS);
     tree.write("src/lib.rs", "use crate::config::Flags;\n");
 
-    let run = tree.run(&["gate", "--gate", "conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  conventions"), "{}", run.out);
@@ -71,7 +71,7 @@ fn a_duplicate_occurrence_on_one_line_raises_the_count() {
         "use config::Flags;\nfn f() {}\nuse config::Flags;\n",
     );
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("got worse"), "{}", run.out);
@@ -87,7 +87,7 @@ fn the_configuration_that_states_a_convention_is_not_judged_by_it() {
     let tree = tree(NO_OLD_FLAGS);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("klin.json:"), "{}", run.out);
@@ -100,7 +100,7 @@ fn a_literal_holds_its_regex_metacharacters_as_text() {
     tree.base();
     tree.write("src/two.txt", "call a.b(c)* here\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new site(s)"), "{}", run.out);
@@ -112,7 +112,7 @@ fn a_literal_in_a_comment_is_still_a_text_match() {
     let tree = tree(NO_OLD_FLAGS);
     tree.write("src/lib.rs", "// config::Flags was retired\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:1"), "{}", run.out);
@@ -125,7 +125,7 @@ fn a_site_that_moves_to_another_line_of_its_file_holds() {
     tree.base();
     tree.write("src/lib.rs", "\n\n// moved\nuse crate::config::Flags;\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
 }
@@ -139,7 +139,7 @@ fn a_site_that_moves_to_another_file_is_new() {
     tree.write("src/a.rs", "fn a() {}\n");
     tree.write("src/b.rs", "use crate::config::Flags;\nfn b() {}\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/b.rs:1"), "{}", run.out);
@@ -153,7 +153,7 @@ fn a_file_renamed_inside_the_scope_keeps_its_sites() {
     tree.base();
     tree.git(&["mv", "src/a.rs", "src/b.rs"]);
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: no-old-flags: 1 site(s)"), "{}", run.out);
@@ -168,7 +168,7 @@ fn a_file_renamed_out_of_except_brings_its_sites_in_as_new() {
     tree.base();
     tree.git(&["mv", "src/allowed/a.rs", "src/a.rs"]);
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.rs:1"), "{}", run.out);
@@ -182,7 +182,7 @@ fn a_site_copied_into_another_file_is_new() {
     tree.base();
     tree.write("src/b.rs", "use crate::config::Flags;\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new site(s)"), "{}", run.out);
@@ -196,14 +196,14 @@ fn a_site_the_code_removed_passes_with_nothing_to_say() {
     tree.base();
     tree.write("src/a.rs", "fn a() {}\n");
 
-    let run = tree.run(&["conventions", "--strict"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("NOTE"), "{}", run.out);
 }
 
 fn judged(tree: &Tree) -> harness::Run {
-    tree.run(&["gate", "--gate", "conventions", "--json"])
+    tree.run(&["check", "conventions", "--json"])
 }
 
 /// Every finding a run reported, as the convention and the site, sorted.
@@ -229,7 +229,7 @@ fn sites(run: &harness::Run) -> Vec<String> {
 fn refused(conventions: &str) -> harness::Run {
     let tree = tree(conventions);
     tree.write("src/lib.rs", "fn f() {}\n");
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
     assert_eq!(run.code, 2, "{conventions}\n{}", run.out);
     run
 }
@@ -475,10 +475,7 @@ fn a_scope_path_is_read_from_the_repository_root_wherever_klin_runs_and_never_as
     tree.write("lib.rs", "FORBIDDEN\n");
 
     assert_eq!(sites(&judged(&tree)), ["c src/lib.rs:1"]);
-    let below = harness::run_from(
-        &tree.path("src"),
-        &["gate", "--gate", "conventions", "--json"],
-    );
+    let below = harness::run_from(&tree.path("src"), &["check", "conventions", "--json"]);
     assert_eq!(sites(&below), ["c src/lib.rs:1"]);
 }
 
@@ -505,7 +502,7 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
     tree.write("src/main.rs", "FORBIDDEN\n");
     tree.base();
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("FAIL: convention \"c\" has an \"in\" path \"src/mian.rs\" that names nothing"),
@@ -518,16 +515,9 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
         run.out
     );
 
-    let report = tree.run(&["conventions", "--report"]);
-    assert_eq!(
-        row(&report, "c"),
-        "c Its \"in\" path matches nothing.",
-        "{}",
-        report.out
-    );
-    let detail = tree.run(&["conventions", "--report", "c"]);
+    let detail = tree.run(&["policy", "conventions", "c"]);
     assert!(
-        detail.says("The \"in\" path src/mian.rs matches nothing in the tree.\n"),
+        detail.says("  The \"in\" path src/mian.rs matches nothing in the tree.\n"),
         "{}",
         detail.out
     );
@@ -544,12 +534,12 @@ fn a_new_path_a_files_glob_matches_fails_and_one_the_base_holds_passes() {
     tree.write("src/lib.rs", "fn f() {}\n");
     tree.base();
 
-    let held = tree.run(&["conventions"]);
+    let held = tree.run(&["check", "conventions"]);
     assert_eq!(held.code, 0, "{}", held.out);
 
     tree.write("src/deep/scratch.rs", "new\n");
     tree.write("src/scratchpad.rs", "not a match\n");
-    let new = tree.run(&["conventions"]);
+    let new = tree.run(&["check", "conventions"]);
     assert_eq!(new.code, 1, "{}", new.out);
     assert!(new.says("src/deep/scratch.rs:0"), "{}", new.out);
     assert!(!new.says("src/scratchpad.rs"), "{}", new.out);
@@ -563,7 +553,7 @@ fn a_path_renamed_into_a_files_glob_fails() {
     tree.base();
     tree.git(&["mv", "src/notes.txt", "src/scratch.txt"]);
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/scratch.txt:0"), "{}", run.out);
@@ -609,7 +599,7 @@ fn a_code_pattern_matches_code_and_not_a_comment_or_a_string_that_reads_like_it(
         "fn run() {\n    // Command::new(\"git\")\n    let said = \"Command::new(\\\"git\\\")\";\n    Command::new(\"git\").arg(said);\n}\n",
     );
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new site(s)"), "{}", run.out);
@@ -623,7 +613,7 @@ fn a_code_site_the_base_holds_passes() {
     tree.write("src/run.rs", "fn run() { Command::new(\"git\"); }\n");
     tree.base();
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -640,7 +630,7 @@ fn a_code_pattern_that_matches_nothing_now_is_a_convention_all_the_same() {
     );
     tree.write("README.md", "no source here\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: retired: 0 site(s)"), "{}", run.out);
@@ -693,7 +683,7 @@ fn typescript_and_tsx_are_one_language_and_holes_work_in_both() {
             "no-raw-div web/b.tsx:1"
         ]
     );
-    let report = tree.run(&["conventions", "--report", "no-console"]);
+    let report = tree.run(&["policy", "conventions", "no-console"]);
     assert!(
         report.says("in TypeScript. The language is derived from the files in scope.\n"),
         "{}",
@@ -707,18 +697,19 @@ fn a_scope_in_two_languages_asks_for_one_and_a_language_the_convention_names_set
         r#"{ "no-direct-open": { "code": "open($PATH)", "remedy": "Use the file boundary." } }"#,
     );
     tree.write("src/lib.rs", "fn f() { open(p); }\n");
-    let one = tree.run(&["conventions"]);
+    let one = tree.run(&["check", "conventions"]);
     assert_eq!(one.code, 1, "{}", one.out);
 
     tree.write("web/a.ts", "open(p);\n");
-    let two = tree.run(&["conventions"]);
+    let two = tree.run(&["check", "conventions"]);
     assert_eq!(two.code, 2, "{}", two.out);
     assert!(
         two.says("convention \"no-direct-open\" applies to more than one structural language"),
         "{}",
         two.out
     );
-    assert!(two.says("\n  rust\n  typescript\n"), "{}", two.out);
+    assert!(two.says("  rust\n"), "{}", two.out);
+    assert!(two.says("  typescript\n"), "{}", two.out);
     assert!(
         two.says("Add \"language\": \"rust\" or narrow \"in\"."),
         "{}",
@@ -729,7 +720,7 @@ fn a_scope_in_two_languages_asks_for_one_and_a_language_the_convention_names_set
         "klin.json",
         r#"{ "conventions": { "no-direct-open": { "code": "open($PATH)", "language": "typescript", "remedy": "Use the file boundary." } } }"#,
     );
-    let named = tree.run(&["conventions"]);
+    let named = tree.run(&["check", "conventions"]);
     assert_eq!(named.code, 1, "{}", named.out);
     assert!(named.says("web/a.ts:1"), "{}", named.out);
     assert!(!named.says("src/lib.rs"), "{}", named.out);
@@ -740,7 +731,7 @@ fn a_scope_with_no_source_a_pattern_reads_asks_for_a_language_or_a_scope() {
     let tree = tree(r#"{ "c": { "code": "open($PATH)", "in": "docs", "remedy": "Do." } }"#);
     tree.write("docs/a.md", "open(p)\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
@@ -756,7 +747,7 @@ fn the_language_comes_from_the_scope_and_never_from_the_grammar_that_reads_the_p
     let tree = tree(r#"{ "c": { "code": "function $NAME() {}", "remedy": "Do." } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
@@ -771,7 +762,7 @@ fn a_source_file_the_grammar_rejects_is_named_and_not_measured() {
     let tree = tree(GIT);
     tree.write("src/broken.rs", "fn broken( {\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("src/broken.rs"), "{}", run.out);
@@ -784,7 +775,7 @@ fn a_source_file_the_grammar_rejected_at_the_base_too_is_a_note() {
     tree.write("src/broken.rs", "fn broken( {\n");
     tree.base();
 
-    let run = tree.run(&["conventions", "--strict"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -849,7 +840,7 @@ fn accepting_one_convention_at_a_site_leaves_the_other_failing_there() {
     );
     tree.write("src/lib.rs", "fn f() { Command::new(\"git\"); }\n");
 
-    let run = tree.run(&["conventions"]);
+    let run = tree.run(&["check", "conventions"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("OK: no-git: 1 site(s)"), "{}", run.out);
@@ -866,7 +857,7 @@ fn an_accepted_entry_for_a_convention_the_section_no_longer_defines_is_refused()
     );
     tree.write("src/lib.rs", "x\n");
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
@@ -916,7 +907,7 @@ fn a_json_finding_carries_its_convention_matcher_language_count_and_remedy() {
 }
 
 #[test]
-fn the_report_explains_scope_language_and_remedy_and_says_zero_matches_without_failing() {
+fn the_policy_explains_scope_language_and_remedy() {
     let tree = tree(
         r#"{ "single-parser-owner": { "code": "Parser::new()", "except": "src/syntax", "remedy": "Use the shared syntax parser." } }"#,
     );
@@ -925,100 +916,40 @@ fn the_report_explains_scope_language_and_remedy_and_says_zero_matches_without_f
     tree.base();
     let before = tree.status();
 
-    let summary = tree.run(&["conventions", "--report"]);
-    let run = tree.run(&["conventions", "--report", "single-parser-owner"]);
+    let run = tree.run(&["policy", "conventions", "single-parser-owner"]);
 
-    assert_eq!(summary.code, 0, "{}", summary.out);
-    assert!(
-        summary.says("1 convention, nothing new\n"),
-        "{}",
-        summary.out
-    );
-    assert_eq!(
-        row(&summary, "single-parser-owner"),
-        "single-parser-owner Clear",
-        "{}",
-        summary.out
-    );
-    assert!(
-        summary.says("For details, run: klin conventions --report <name>\n"),
-        "{}",
-        summary.out
-    );
-    assert!(!summary.says("window:"), "{}", summary.out);
     assert_eq!(run.code, 0, "{}", run.out);
     for line in [
-        "window: branch",
-        "\nsingle-parser-owner\n",
-        "Forbids Parser::new() in the repository except src/syntax (1 file).\n",
-        "Reads as an expression or a type in Rust. The language is derived from the files in scope.\n",
-        "No matches.\n",
-        "Fix: Use the shared syntax parser.\n",
+        "single-parser-owner:\n",
+        "  Forbids Parser::new() in the repository except src/syntax.\n",
+        "  Reads as an expression or a type in Rust. The language is derived from the files in scope.\n",
+        "  Fix: Use the shared syntax parser.\n",
     ] {
         assert!(run.says(line), "{line}: {}", run.out);
     }
     for engine in ["ast-grep", "tree-sitter", "Tree-sitter"] {
-        assert!(!run.says(engine) && !summary.says(engine), "{}", run.out);
+        assert!(!run.says(engine), "{}", run.out);
     }
-    assert_eq!(tree.status(), before, "the report wrote to the tree");
+    assert_eq!(tree.status(), before, "the policy wrote to the tree");
 }
-
 #[test]
-fn the_report_lists_each_site_with_what_the_base_and_the_accepted_list_make_of_it() {
+fn the_policy_says_a_language_the_convention_names_is_pinned() {
     let tree = Tree::new();
     tree.write(
         "klin.json",
-        r#"{ "conventions": { "legacy-direct-git": { "code": "Command::new(\"git\")", "language": "rust", "remedy": "Use the shared Git boundary." } },
-             "accepted": [{ "gate": "conventions/legacy-direct-git", "file": "src/legacy/b.rs", "text": "fn b() { Command::new(\"git\"); }", "count": 1 }] }"#,
+        r#"{ "conventions": { "legacy-direct-git": { "code": "Command::new(\"git\")", "language": "rust", "remedy": "Use the shared Git boundary." } } }"#,
     );
     tree.write("src/legacy/a.rs", "fn a() { Command::new(\"git\"); }\n");
-    tree.base();
-    tree.write("src/legacy/b.rs", "fn b() { Command::new(\"git\"); }\n");
-    tree.write("src/legacy/c.rs", "fn c() { Command::new(\"git\"); }\n");
 
-    let summary = tree.run(&["conventions", "--report"]);
-    let run = tree.run(&["conventions", "--report", "legacy-direct-git"]);
+    let run = tree.run(&["policy", "conventions", "legacy-direct-git"]);
 
-    assert_eq!(summary.code, 0, "{}", summary.out);
-    assert!(
-        summary.says("1 convention: 1 new site\n"),
-        "{}",
-        summary.out
-    );
-    assert_eq!(
-        row(&summary, "legacy-direct-git"),
-        "legacy-direct-git 1 new src/legacy/c.rs:1",
-        "{}",
-        summary.out
-    );
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("The language is pinned in klin.json.\n"),
         "{}",
         run.out
     );
-    for (site, status) in [
-        (
-            "src/legacy/a.rs:1   fn a() { Command::new(\"git\"); }",
-            "Held",
-        ),
-        (
-            "src/legacy/b.rs:1   fn b() { Command::new(\"git\"); }",
-            "Accepted",
-        ),
-        (
-            "src/legacy/c.rs:1   fn c() { Command::new(\"git\"); }",
-            "New",
-        ),
-    ] {
-        assert!(
-            run.says(&format!("  {site}   {status}\n")),
-            "{site}: {}",
-            run.out
-        );
-    }
 }
-
 #[test]
 fn the_rules_klin_means_to_enforce_on_itself_read_as_policy_and_catch_their_violations() {
     let tree = tree(
@@ -1042,7 +973,7 @@ fn the_rules_klin_means_to_enforce_on_itself_read_as_policy_and_catch_their_viol
     );
     tree.base();
 
-    let clean = tree.run(&["conventions", "--strict"]);
+    let clean = tree.run(&["check", "conventions"]);
     assert_eq!(clean.code, 0, "{}", clean.out);
 
     tree.write(
@@ -1066,38 +997,7 @@ fn the_rules_klin_means_to_enforce_on_itself_read_as_policy_and_catch_their_viol
 }
 
 #[test]
-fn the_report_names_a_file_in_scope_the_grammar_could_not_read() {
-    let tree = tree(GIT);
-    tree.write("src/run.rs", "fn run() {}\n");
-    tree.write("src/broken.rs", "fn broken( {\n");
-
-    let summary = tree.run(&["conventions", "--report"]);
-    let run = tree.run(&["conventions", "--report", "single-git-boundary"]);
-
-    assert_eq!(
-        row(&summary, "single-git-boundary"),
-        "single-git-boundary Can't parse 1 file.",
-        "{}",
-        summary.out
-    );
-    assert!(
-        run.says("klin can't parse src/broken.rs, so nothing in it was measured.\n"),
-        "{}",
-        run.out
-    );
-}
-
-/// The summary row of one convention, with the padding between its columns collapsed.
-fn row(run: &harness::Run, name: &str) -> String {
-    run.out
-        .lines()
-        .find(|line| line.split_whitespace().next() == Some(name))
-        .map(|line| line.split_whitespace().collect::<Vec<&str>>().join(" "))
-        .unwrap_or_default()
-}
-
-#[test]
-fn the_report_summary_names_what_cannot_run_and_the_detail_says_what_to_do() {
+fn the_policy_says_why_a_pattern_cannot_run_and_what_to_do() {
     let tree = tree(
         r#"{
           "no-bad": { "code": "fn (", "remedy": "Write a pattern klin can read." },
@@ -1106,28 +1006,9 @@ fn the_report_summary_names_what_cannot_run_and_the_detail_says_what_to_do() {
     );
     tree.write("src/lib.rs", "fn f() { Command::new(\"git\"); }\n");
 
-    let summary = tree.run(&["conventions", "--report"]);
-    let run = tree.run(&["conventions", "--report", "no-bad"]);
+    let run = tree.run(&["policy", "conventions", "no-bad"]);
 
-    assert_eq!(summary.code, 2, "{}", summary.out);
-    assert!(
-        summary.says("2 conventions: 1 new site, 1 can't run\n"),
-        "{}",
-        summary.out
-    );
-    assert_eq!(
-        row(&summary, "no-bad"),
-        "no-bad Can't read the pattern.",
-        "{}",
-        summary.out
-    );
-    assert_eq!(
-        row(&summary, "no-git"),
-        "no-git 1 new src/lib.rs:1",
-        "{}",
-        summary.out
-    );
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(
             "klin can't read this pattern as Rust code in any of these places: code as written, \
@@ -1137,18 +1018,18 @@ fn the_report_summary_names_what_cannot_run_and_the_detail_says_what_to_do() {
         run.out
     );
     assert!(
-        run.says("Fix: Write a pattern klin can read.\n"),
+        run.says("  Fix: Write a pattern klin can read.\n"),
         "{}",
         run.out
     );
+    assert!(!run.says("no-git"), "{}", run.out);
 }
-
 #[test]
-fn the_report_refuses_a_name_the_section_does_not_define() {
+fn the_policy_refuses_a_name_the_section_does_not_define() {
     let tree = tree(NO_OLD_FLAGS);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["conventions", "--report", "no-old-flag"]);
+    let run = tree.run(&["policy", "conventions", "no-old-flag"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
@@ -1168,7 +1049,7 @@ fn an_accepted_entry_for_a_section_set_to_false_stops_no_other_gate() {
     );
     tree.words("README.md", 5);
 
-    let run = tree.run(&["gate", "--gate", "doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
 }
@@ -1190,7 +1071,7 @@ fn a_fragment_reads_as_the_match_arm_it_is_whatever_its_spacing() {
             "exhaustive-cli-dispatch src/main.rs:7"
         ]
     );
-    let report = tree.run(&["conventions", "--report", "exhaustive-cli-dispatch"]);
+    let report = tree.run(&["policy", "conventions", "exhaustive-cli-dispatch"]);
     assert!(
         report.says("Reads as a match arm in Rust."),
         "{}",
@@ -1215,7 +1096,7 @@ fn a_fragment_reads_as_the_type_it_is_wherever_the_type_is_written() {
             "no-records-side-channel src/lib.rs:2"
         ]
     );
-    let report = tree.run(&["conventions", "--report", "no-records-side-channel"]);
+    let report = tree.run(&["policy", "conventions", "no-records-side-channel"]);
     assert!(report.says("Reads as a type in Rust."), "{}", report.out);
 }
 
@@ -1231,7 +1112,7 @@ fn a_fragment_with_two_readings_matches_through_both() {
         sites(&judged(&tree)),
         ["no-array-of-foo web/a.ts:1", "no-array-of-foo web/a.ts:2"]
     );
-    let report = tree.run(&["conventions", "--report", "no-array-of-foo"]);
+    let report = tree.run(&["policy", "conventions", "no-array-of-foo"]);
     assert!(
         report.says("Reads as code as written or a type in TypeScript."),
         "{}",

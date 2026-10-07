@@ -24,7 +24,7 @@ fn rust_tree() -> Tree {
 #[test]
 fn a_dependency_in_the_base_state_is_held() {
     let tree = rust_tree();
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -35,7 +35,7 @@ fn a_new_rust_dependency_with_no_lockfile_entry_fails_as_new() {
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new dependenc(ies)"), "{}", run.out);
     assert!(
@@ -49,7 +49,7 @@ fn a_new_rust_dependency_with_no_lockfile_entry_fails_as_new() {
 fn a_rust_lockfile_entry_that_went_fails_as_worsened() {
     let tree = rust_tree();
     tree.write("Cargo.lock", &locked(&["other"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("dependenc(ies) got worse"), "{}", run.out);
     assert!(
@@ -63,7 +63,7 @@ fn a_rust_lockfile_entry_that_went_fails_as_worsened() {
 fn a_rust_pin_that_became_a_range_fails_as_worsened() {
     let tree = rust_tree();
     tree.write("Cargo.toml", &manifest("serde = \"1.0\"\n"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 0, unpinned 1, stale 0, was unlocked 0, unpinned 0, stale 0  serde"),
@@ -80,7 +80,7 @@ fn a_new_dependency_with_a_range_and_a_lockfile_entry_does_not_fail() {
         &manifest("serde = \"=1.0.0\"\nregex = \"1.0\"\n"),
     );
     tree.write("Cargo.lock", &locked(&["serde", "regex"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -94,7 +94,7 @@ fn a_path_a_git_and_a_workspace_dependency_are_not_judged_for_unlocked() {
              far = { git = \"https://example.com/far\" }\nshared.workspace = true\n",
         ),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -108,7 +108,7 @@ fn a_deleted_lockfile_fails_every_dependency_of_its_manifest() {
     tree.write("Cargo.lock", &locked(&["serde", "regex"]));
     tree.base();
     tree.remove("Cargo.lock");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 dependenc(ies) got worse"), "{}", run.out);
     assert!(run.says("  regex"), "{}", run.out);
@@ -125,7 +125,7 @@ fn a_workspace_lockfile_above_the_member_manifest_is_found() {
         "crates/a/Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("crates/a/Cargo.toml:0  unlocked 1, unpinned 0, stale 0  regex"),
@@ -143,7 +143,7 @@ fn a_manifest_with_no_lockfile_in_either_tree_is_a_note_and_no_finding() {
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: Cargo.toml has no lockfile beside it in either tree"),
@@ -193,7 +193,7 @@ const YARN_V2: &str = r#"__metadata:
 fn both_npm_lockfile_versions_hold_a_dependency_in_the_base_state() {
     for lockfile in [NPM_V3, NPM_V1] {
         let tree = npm_tree(lockfile);
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 0, "{}", run.out);
     }
 }
@@ -202,7 +202,7 @@ fn both_npm_lockfile_versions_hold_a_dependency_in_the_base_state() {
 fn pnpm_lockfile_key_styles_hold_and_missing_dependencies_fail() {
     for lockfile in [PNPM_V5, PNPM_V6, PNPM_V9] {
         let tree = npm_tree_at("pnpm-lock.yaml", lockfile);
-        let held = tree.run(&["gate", "--gate", "lockfile"]);
+        let held = tree.run(&["check", "lockfile"]);
         assert_eq!(held.code, 0, "{}", held.out);
         assert!(!held.says("cannot read"), "{}", held.out);
 
@@ -210,7 +210,7 @@ fn pnpm_lockfile_key_styles_hold_and_missing_dependencies_fail() {
             "package.json",
             r#"{"dependencies": {"left-pad": "1.0.0", "right-pad": "2.0.0"}}"#,
         );
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 1, "{}", run.out);
         assert!(
             run.says("package.json:0  unlocked 1, unpinned 0, stale 0  right-pad"),
@@ -224,7 +224,7 @@ fn pnpm_lockfile_key_styles_hold_and_missing_dependencies_fail() {
 fn both_yarn_lockfile_formats_hold_and_missing_dependencies_fail() {
     for lockfile in [YARN_V1, YARN_V2] {
         let tree = npm_tree_at("yarn.lock", lockfile);
-        let held = tree.run(&["gate", "--gate", "lockfile"]);
+        let held = tree.run(&["check", "lockfile"]);
         assert_eq!(held.code, 0, "{}", held.out);
         assert!(!held.says("cannot read"), "{}", held.out);
 
@@ -232,7 +232,7 @@ fn both_yarn_lockfile_formats_hold_and_missing_dependencies_fail() {
             "package.json",
             r#"{"dependencies": {"left-pad": "1.0.0", "right-pad": "2.0.0"}}"#,
         );
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 1, "{}", run.out);
         assert!(
             run.says("package.json:0  unlocked 1, unpinned 0, stale 0  right-pad"),
@@ -250,7 +250,7 @@ fn a_new_npm_dependency_with_no_lockfile_entry_fails_as_new() {
             "package.json",
             r#"{"dependencies": {"left-pad": "1.0.0", "right-pad": "2.0.0"}}"#,
         );
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 1, "{}", run.out);
         assert!(run.says("1 new dependenc(ies)"), "{}", run.out);
         assert!(
@@ -268,7 +268,7 @@ fn an_npm_lockfile_entry_that_went_fails_and_a_pin_that_became_a_range_fails() {
         "package-lock.json",
         r#"{"lockfileVersion": 3, "packages": {}}"#,
     );
-    let gone = tree.run(&["gate", "--gate", "lockfile"]);
+    let gone = tree.run(&["check", "lockfile"]);
     assert_eq!(gone.code, 1, "{}", gone.out);
     assert!(
         gone.says("unlocked 1, unpinned 0, stale 0, was unlocked 0, unpinned 0, stale 0  left-pad"),
@@ -281,7 +281,7 @@ fn an_npm_lockfile_entry_that_went_fails_and_a_pin_that_became_a_range_fails() {
         "package.json",
         r#"{"dependencies": {"left-pad": "^1.0.0"}}"#,
     );
-    let range = tree.run(&["gate", "--gate", "lockfile"]);
+    let range = tree.run(&["check", "lockfile"]);
     assert_eq!(range.code, 1, "{}", range.out);
     assert!(
         range
@@ -297,7 +297,7 @@ fn an_unrecognized_lockfile_format_is_a_note_and_judges_no_manifest() {
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("yarn.lock", "left-pad@1.0.0:\n  version \"1.0.0\"\n");
     tree.base();
-    let run = tree.run(&["gate", "--gate", "lockfile", "--json"]);
+    let run = tree.run(&["check", "lockfile", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("yarn.lock is a lockfile format klin cannot read yet"),
@@ -313,7 +313,7 @@ fn a_malformed_lockfile_is_a_tool_error_naming_the_file() {
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("package-lock.json", "{ not json");
     tree.base();
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("package-lock.json is not valid JSON"),
@@ -339,7 +339,7 @@ fn a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_ju
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("NOTE: testdata/broken/package.json is not valid JSON"),
@@ -359,7 +359,7 @@ fn a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_e
     tree.write("tools/package.json", r#"{"dependencies": {}}"#);
     tree.base();
     tree.write("tools/package.json", "{ not json");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("tools/package.json is not valid JSON"),
@@ -381,7 +381,7 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
         "tools/package.json",
         r#"{"dependencies": {"left-pad": "1.0.0"}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("tools/package.json:0  unlocked 1, unpinned 0, stale 0  left-pad"),
@@ -395,10 +395,10 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_
     let tree = derived_tree();
     tree.base();
     tree.write("testdata/broken/package.json", "{ not json");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     let stop = harness::feed(
         tree.root(),
-        &["gate", "--hook", "--gate", "lockfile"],
+        &["gate", "--hook"],
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
     );
     assert_eq!(run.code, 2, "{}", run.out);
@@ -418,7 +418,7 @@ fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note()
     tree.base();
     assert!(std::fs::create_dir_all(tree.path("tools/b")).is_ok());
     tree.git(&["mv", "tools/a/package.json", "tools/b/package.json"]);
-    let run = tree.run(&["gate", "--gate", "lockfile", "--strict"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: tools/b/package.json is not valid JSON"),
@@ -442,7 +442,7 @@ fn a_renamed_manifest_is_judged_against_the_lockfile_beside_it_at_the_base() {
         "tools/b/package-lock.json",
         r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"}}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("1 dependenc(ies) got worse")
@@ -473,8 +473,8 @@ fn a_lockfile_only_the_base_could_not_read_is_named_at_the_base() {
         "tools/b/yarn.lock",
         "# yarn lockfile v1\n\nleft-pad@1.0.0:\n  version \"1.0.0\"\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
-    let json = tree.run(&["gate", "--gate", "lockfile", "--json"]);
+    let run = tree.run(&["check", "lockfile"]);
+    let json = tree.run(&["check", "lockfile", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(
@@ -496,7 +496,7 @@ fn a_manifest_renamed_to_another_format_has_no_base_to_hide_behind() {
     let tree = derived_tree();
     tree.base();
     tree.git(&["mv", "Cargo.toml", "package.json"]);
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("package.json is not valid JSON")
@@ -512,7 +512,7 @@ fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
     tree.write("package.json", "{ not json");
     tree.write("package-lock.json", NPM_V3);
     tree.base();
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: package.json is not valid JSON"),
@@ -525,7 +525,7 @@ fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
 fn an_in_that_selects_no_manifest_is_a_tool_error() {
     let tree = rust_tree();
     tree.write("klin.json", r#"{"lockfile": {"in": "web"}}"#);
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("\"lockfile\" has an \"in\" scope with no applicable manifest"),
@@ -543,7 +543,7 @@ fn two_manifests_that_share_one_lockfile_are_each_judged_against_it() {
     tree.write("Cargo.lock", &locked(&["serde", "regex"]));
     tree.base();
     tree.write("Cargo.lock", &locked(&["serde"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
@@ -568,14 +568,14 @@ fn go_tree() -> Tree {
 #[test]
 fn a_go_require_in_the_base_state_is_held_and_a_new_one_fails() {
     let tree = go_tree();
-    let held = tree.run(&["gate", "--gate", "lockfile"]);
+    let held = tree.run(&["check", "lockfile"]);
     assert_eq!(held.code, 0, "{}", held.out);
 
     tree.write(
         "go.mod",
         "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.0.0\n\texample.com/b v2.0.0\n)\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("go.mod:0  unlocked 1, unpinned 0, stale 0  example.com/b"),
@@ -588,7 +588,7 @@ fn a_go_require_in_the_base_state_is_held_and_a_new_one_fails() {
 fn a_go_sum_entry_that_went_fails_as_worsened() {
     let tree = go_tree();
     tree.write("go.sum", "example.com/other v1.0.0 h1:abc=\n");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
@@ -607,7 +607,7 @@ fn a_go_module_replaced_by_a_local_path_is_not_judged_for_unlocked() {
         "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.0.0\n\texample.com/b v2.0.0\n)\n\
          \nreplace example.com/b => ../b\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -615,7 +615,7 @@ fn a_go_module_replaced_by_a_local_path_is_not_judged_for_unlocked() {
 fn under_changed_a_changed_lockfile_with_an_unchanged_manifest_is_still_judged() {
     let tree = rust_tree();
     tree.write("Cargo.lock", &locked(&["other"]));
-    let run = tree.run(&["gate", "--gate", "lockfile", "--changed"]);
+    let run = tree.run(&["check", "lockfile", "--changed"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 1, unpinned 0, stale 0, was unlocked 0, unpinned 0, stale 0  serde"),
@@ -636,7 +636,7 @@ fn an_accepted_entry_keyed_by_the_manifest_and_the_name_holds_a_finding() {
         r#"{"accepted": [{"gate": "lockfile", "file": "Cargo.toml", "text": "regex",
                           "unlocked": 1, "unpinned": 0}]}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -648,7 +648,7 @@ fn a_manifest_the_scope_takes_out_is_not_judged() {
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
     tree.write("klin.json", r#"{"lockfile": {"except": "Cargo.toml"}}"#);
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("(1 file(s) found, 0 measured, 1 excluded, 0 unreadable)"),
@@ -668,7 +668,7 @@ fn the_survey_derives_the_manifests_of_a_tree_with_no_configuration() {
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("derived: lockfile manifests Cargo.toml"),
@@ -691,14 +691,14 @@ fn a_sub_table_and_a_target_table_are_read_like_any_dependency_table() {
     tree.write("Cargo.toml", held);
     tree.write("Cargo.lock", &locked(&["serde", "libc"]));
     tree.base();
-    let green = tree.run(&["gate", "--gate", "lockfile"]);
+    let green = tree.run(&["check", "lockfile"]);
     assert_eq!(green.code, 0, "{}", green.out);
 
     tree.write(
         "Cargo.toml",
         &format!("{held}\n[dependencies.regex]\nversion = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Cargo.toml:0  unlocked 1, unpinned 0, stale 0  regex"),
@@ -717,7 +717,7 @@ fn a_dotted_key_states_one_field_and_undoes_nothing_another_line_stated() {
         "Cargo.toml",
         &manifest("serde.version = \"=1.0.0\"\nserde.features = [\"derive\"]\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -728,7 +728,7 @@ fn a_dotted_path_key_is_not_judged_for_unlocked_either() {
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nnear.path = \"../near\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -745,7 +745,7 @@ fn an_inline_table_written_over_several_lines_is_read_as_one_dependency() {
         "Cargo.toml",
         &manifest("serde = {\n    version = \"=1.0.0\",\n    features = [\n        \"derive\",\n    ],\n}\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -756,7 +756,7 @@ fn a_brace_inside_a_comment_hides_no_dependency_below_it() {
         "Cargo.toml",
         &manifest("# serde_json { is slower\nserde = \"1.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 0, unpinned 1, stale 0, was unlocked 0, unpinned 0, stale 0  serde"),
@@ -772,7 +772,7 @@ fn a_renamed_dependency_is_locked_by_the_package_the_lockfile_records() {
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nserde1 = { package = \"serde\", version = \"=1.0.0\" }\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -801,7 +801,7 @@ fn a_manifest_pin_the_lockfile_records_at_another_version_fails_as_worsened() {
         "package.json",
         r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
@@ -828,7 +828,7 @@ fn a_new_pin_the_lockfile_records_at_another_version_fails_as_new() {
         "package.json",
         r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
@@ -850,7 +850,7 @@ fn npm_judges_the_version_under_a_package_root_and_not_a_nested_one() {
         "package.json",
         r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 0, unpinned 0, stale 1, was unlocked 0, unpinned 0, stale 0"),
@@ -864,7 +864,7 @@ fn npm_judges_the_version_under_a_package_root_and_not_a_nested_one() {
             .to_string(),
     ] {
         tree.write("package-lock.json", &lockfile);
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 0, "{}", run.out);
     }
 }
@@ -882,7 +882,7 @@ fn every_lockfile_reader_fails_a_pin_it_records_at_another_version() {
         let tree = Tree::new();
         tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
         tree.write(name, lockfile);
-        let run = tree.run(&["gate", "--gate", "lockfile"]);
+        let run = tree.run(&["check", "lockfile"]);
         assert_eq!(run.code, 1, "{name}: {}", run.out);
         assert!(
             run.says("package.json:0  unlocked 0, unpinned 0, stale 1  left-pad"),
@@ -894,7 +894,7 @@ fn every_lockfile_reader_fails_a_pin_it_records_at_another_version() {
     let tree = Tree::new();
     tree.write("Cargo.toml", &manifest("serde = \"=2.0.0\"\n"));
     tree.write("Cargo.lock", &locked(&["serde"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Cargo.toml:0  unlocked 0, unpinned 0, stale 1  serde"),
@@ -907,7 +907,7 @@ fn every_lockfile_reader_fails_a_pin_it_records_at_another_version() {
         "go.mod",
         "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.1.0\n)\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
@@ -920,7 +920,7 @@ fn every_lockfile_reader_fails_a_pin_it_records_at_another_version() {
         "go.sum",
         "example.com/a v1.0.0 h1:abc=\nexample.com/a v1.1.0/go.mod h1:def=\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -943,7 +943,7 @@ fn a_range_with_a_lockfile_entry_at_any_version_passes() {
             "node_modules/typescript": {"version": "4.0.0"},
             "node_modules/left-pad": {"version": "9.9.9"}}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -956,7 +956,7 @@ fn staleness_the_base_already_had_is_held() {
     );
     tree.write("package-lock.json", &npm_lock("5.4.0"));
     tree.base();
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -968,11 +968,11 @@ fn a_lockfile_with_several_versions_of_one_name_is_stale_only_when_none_equals_t
     tree.write("Cargo.toml", &manifest("serde = \"=2.0.0\"\n"));
     tree.write("Cargo.lock", lock);
     tree.base();
-    let held = tree.run(&["gate", "--gate", "lockfile"]);
+    let held = tree.run(&["check", "lockfile"]);
     assert_eq!(held.code, 0, "{}", held.out);
 
     tree.write("Cargo.toml", &manifest("serde = \"=3.0.0\"\n"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 0, unpinned 0, stale 1, was unlocked 0, unpinned 0, stale 0"),
@@ -988,7 +988,7 @@ fn a_new_dependency_missing_from_the_lockfile_gets_a_remedy_that_names_the_insta
         "Cargo.toml",
         &manifest("serde = \"=1.0.0\"\nregex = \"=1.0.0\"\n"),
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Run the project's own install, so the lockfile records the dependency."),
@@ -1014,7 +1014,7 @@ fn a_finding_with_several_values_prints_the_remedy_for_each() {
     let tree = rust_tree();
     tree.write("Cargo.toml", &manifest("serde = \"1.0\"\n"));
     tree.write("Cargo.lock", &locked(&["other"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 1, unpinned 1, stale 0, was unlocked 0, unpinned 0, stale 0  serde"),
@@ -1043,7 +1043,7 @@ fn a_pnpm_5_peer_suffix_is_no_part_of_the_name_or_the_version() {
         r#"{"dependencies": {"react-dom": "18.2.0", "left-pad": "1.0.0"}}"#,
     );
     tree.write("pnpm-lock.yaml", pnpm);
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -1056,7 +1056,7 @@ fn a_go_module_a_replace_sends_to_another_version_is_judged_at_that_version() {
          \nreplace example.com/a => example.com/a v1.2.0\n",
     );
     tree.write("go.sum", "example.com/a v1.2.0 h1:abc=\n");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -1071,7 +1071,7 @@ fn an_exact_pin_beside_a_range_of_the_same_dependency_is_still_judged_for_stale(
         ),
     );
     tree.write("Cargo.lock", &locked(&["serde"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Cargo.toml:0  unlocked 0, unpinned 1, stale 1  serde"),
@@ -1093,7 +1093,7 @@ fn an_npm_pin_with_only_a_nested_lockfile_entry_is_stale() {
             "node_modules/tool": {"version": "1.0.0"},
             "node_modules/tool/node_modules/typescript": {"version": "5.6.3"}}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
@@ -1114,11 +1114,11 @@ fn an_npm_workspace_link_is_judged_at_the_version_of_the_package_it_links() {
         )
     };
     tree.write("package-lock.json", &lockfile("1.0.0"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
     tree.write("package-lock.json", &lockfile("2.0.0"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  shared"),
         "{}",
@@ -1144,7 +1144,7 @@ fn each_npm_workspace_manifest_is_judged_against_its_own_entry_and_then_the_root
             "node_modules/left-pad": {"version": "1.0.0"},
             "packages/a/node_modules/typescript": {"version": "5.6.3"}}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("  package.json:0  unlocked 0, unpinned 0, stale 1  typescript"),
@@ -1162,7 +1162,7 @@ fn a_cargo_lock_block_is_read_whatever_the_order_of_its_fields() {
         "Cargo.lock",
         "[[package]]\nversion = \"1.0.0\"\nname = \"serde\"\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Cargo.toml:0  unlocked 0, unpinned 0, stale 1  serde"),
@@ -1179,7 +1179,7 @@ fn only_a_pin_with_fewer_than_three_numbers_holds_the_versions_it_is_a_prefix_of
         "Cargo.lock",
         "[[package]]\nname = \"serde\"\nversion = \"1.2.5\"\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let tree = Tree::new();
@@ -1192,7 +1192,7 @@ fn only_a_pin_with_fewer_than_three_numbers_holds_the_versions_it_is_a_prefix_of
         r#"{"lockfileVersion": 3, "packages": {"": {"name": "t"},
             "node_modules/left-pad": {"version": "1.0.0-alpha.1"}}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  left-pad"),
@@ -1209,7 +1209,7 @@ fn a_go_replace_applies_only_to_the_version_it_names_and_judges_its_target() {
         "module t\n\ngo 1.22\n\nrequire (\n\texample.com/a v1.1.0\n)\n\
          \nreplace example.com/a v1.0.0 => example.com/a v1.2.0\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says(
@@ -1225,7 +1225,7 @@ fn a_go_replace_applies_only_to_the_version_it_names_and_judges_its_target() {
          \nreplace example.com/a => example.com/fork v1.2.0\n",
     );
     tree.write("go.sum", "example.com/fork v1.2.0 h1:abc=\n");
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -1248,11 +1248,11 @@ fn a_pnpm_manifest_is_judged_against_its_own_importer_and_not_the_package_pool()
         r#"{"devDependencies": {"foo": "2.0.0"}}"#,
     );
     tree.write("pnpm-lock.yaml", &lockfile("2.0.0"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
     tree.write("pnpm-lock.yaml", &lockfile("1.0.0"));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("  package.json:0  unlocked 0, unpinned 0, stale 1  foo"),
@@ -1272,7 +1272,7 @@ fn a_pnpm_5_root_dependency_section_is_its_importer() {
          packages:\n\n  /foo/1.0.0:\n    resolution: {integrity: sha512-a}\n\n\
          \x20 /foo/2.0.0:\n    resolution: {integrity: sha512-b}\n",
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("package.json:0  unlocked 0, unpinned 0, stale 1  foo"),
@@ -1288,7 +1288,7 @@ fn a_worsened_finding_prints_only_the_remedy_of_the_value_that_rose() {
     tree.write("Cargo.lock", &locked(&["serde"]));
     tree.base();
     tree.write("Cargo.lock", &locked(&["other"]));
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("unlocked 1, unpinned 1, stale 0, was unlocked 0, unpinned 1, stale 0  serde"),
@@ -1309,7 +1309,7 @@ fn a_stale_pin_fails_under_a_condition_that_names_it() {
         "package.json",
         r#"{"devDependencies": {"typescript": "5.6.3"}}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert!(
         run.says(
             "1 new dependenc(ies) that the lockfile beside the manifest does not lock at an exact pin"
@@ -1331,7 +1331,7 @@ fn an_accepted_entry_that_gives_no_stale_holds_no_staleness() {
         r#"{"accepted": [{"gate": "lockfile", "file": "package.json", "text": "typescript",
                           "unlocked": 0, "unpinned": 0}]}"#,
     );
-    let run = tree.run(&["gate", "--gate", "lockfile"]);
+    let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("stale 1, was unlocked 0, unpinned 0, stale 0  typescript"),

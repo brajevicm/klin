@@ -191,7 +191,7 @@ fn a_build_is_not_run_outside_the_hook() {
     let tree = tree(r#""build": "touch build-ran","#);
     let marker = tree.path("build-ran");
 
-    for args in [&["gate"][..], &["gate", "--strict"]] {
+    for args in [&["check"][..], &["check"]] {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
         assert!(
@@ -202,10 +202,9 @@ fn a_build_is_not_run_outside_the_hook() {
     }
 }
 
-/// The hook's words for who builds a tree outside it, because `klin gate` outside the hook runs
-/// no build. ADR 0012, spec 9.3.
-const OWN_CI: &str =
-    "`klin gate` outside the hook runs no build, so the project's own CI must run it";
+/// The hook's words for who builds a tree outside it, because `klin check` runs no build.
+/// ADR 0012, spec 9.3.
+const OWN_CI: &str = "`klin check` runs no build, so the project's own CI must run it";
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 

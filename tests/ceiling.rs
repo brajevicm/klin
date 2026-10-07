@@ -29,7 +29,7 @@ fn a_numeric_ceiling_works_as_before() {
     let tree = tree(r#"{"cc": 8, "lines": 5}"#);
     tree.write("src/wide.rs", WIDE);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/wide.rs:1"), "{}", run.out);
     assert!(!run.says("step"), "{}", run.out);
@@ -44,7 +44,7 @@ fn the_lowest_due_step_wins_whatever_the_order_in_the_object() {
         let tree = tree(ceilings);
         tree.write("src/wide.rs", WIDE);
 
-        let run = on(&tree, "2027-06-01", &["complexity"]);
+        let run = on(&tree, "2027-06-01", &["check", "complexity"]);
         assert_eq!(run.code, 1, "{}", run.out);
         assert!(run.says("src/wide.rs:1"), "{}", run.out);
     }
@@ -55,7 +55,7 @@ fn a_step_higher_than_an_earlier_one_never_wins() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 5, "2027-01-01": 60}}"#);
     tree.write("src/wide.rs", WIDE);
 
-    let run = on(&tree, "2027-06-01", &["complexity"]);
+    let run = on(&tree, "2027-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/wide.rs:1"), "{}", run.out);
 }
@@ -65,7 +65,7 @@ fn a_step_that_is_not_due_yet_is_not_used() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 60, "2027-01-01": 5}}"#);
     tree.write("src/wide.rs", WIDE);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -74,7 +74,7 @@ fn the_ok_line_names_the_step_in_force() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 60, "2027-01-01": 5}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("the 2026-01-01 step"), "{}", run.out);
 }
@@ -84,7 +84,7 @@ fn a_failure_names_the_step_in_force() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 60, "2027-01-01": 5}}"#);
     tree.write("src/wide.rs", WIDE);
 
-    let run = on(&tree, "2027-06-01", &["complexity"]);
+    let run = on(&tree, "2027-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("the 2027-01-01 step"), "{}", run.out);
 }
@@ -94,7 +94,7 @@ fn a_schedule_with_no_step_due_is_a_config_error_naming_the_key() {
     let tree = tree(r#"{"cc": 8, "lines": {"2027-01-01": 5}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("2026-06-01"), "{}", run.out);
@@ -105,7 +105,7 @@ fn an_empty_schedule_is_a_config_error_naming_the_key() {
     let tree = tree(r#"{"cc": 8, "lines": {}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
 }
@@ -115,7 +115,7 @@ fn a_malformed_date_is_a_config_error_naming_the_key_and_the_value() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-9-8": 60}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("2026-9-8"), "{}", run.out);
@@ -127,7 +127,7 @@ fn a_step_that_is_not_a_number_is_a_config_error_naming_the_key() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": "60"}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "2026-06-01", &["complexity"]);
+    let run = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"complexity\" \"lines\""), "{}", run.out);
     assert!(run.says("whole number"), "{}", run.out);
@@ -138,7 +138,7 @@ fn a_malformed_klin_today_is_an_error_naming_the_variable() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 60}}"#);
     tree.write("src/small.rs", SMALL);
 
-    let run = on(&tree, "the-ninth", &["complexity"]);
+    let run = on(&tree, "the-ninth", &["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("KLIN_TODAY"), "{}", run.out);
 }
@@ -149,11 +149,11 @@ fn a_lower_step_holds_the_complexity_the_base_holds_and_fails_new_code() {
     tree.write("src/wide.rs", WIDE);
     tree.base();
 
-    let held = on(&tree, "2026-06-01", &["complexity"]);
+    let held = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(held.code, 0, "{}", held.out);
 
     tree.write("src/added.rs", WIDE);
-    let added = on(&tree, "2026-06-01", &["complexity"]);
+    let added = on(&tree, "2026-06-01", &["check", "complexity"]);
     assert_eq!(added.code, 1, "{}", added.out);
     assert!(added.says("src/added.rs:1"), "{}", added.out);
     assert!(!added.says("src/wide.rs"), "{}", added.out);
@@ -168,7 +168,7 @@ fn a_dated_ceiling_on_a_document_names_the_step_and_fails_a_new_document() {
     );
     tree.words("README.md", 30);
 
-    let run = on(&tree, "2026-06-01", &["doc-size"]);
+    let run = on(&tree, "2026-06-01", &["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("over its ceiling of 10"), "{}", run.out);
     assert!(run.says("the 2026-01-01 step"), "{}", run.out);
@@ -184,12 +184,12 @@ fn a_lower_step_holds_the_document_the_base_holds_and_fails_one_that_grew() {
     tree.words("README.md", 30);
     tree.base();
 
-    let held = on(&tree, "2026-06-01", &["doc-size"]);
+    let held = on(&tree, "2026-06-01", &["check", "doc-size"]);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(held.says("held at the base"), "{}", held.out);
 
     tree.words("README.md", 31);
-    let grew = on(&tree, "2026-06-01", &["doc-size"]);
+    let grew = on(&tree, "2026-06-01", &["check", "doc-size"]);
     assert_eq!(grew.code, 1, "{}", grew.out);
 }
 
@@ -204,7 +204,7 @@ fn a_document_the_base_lacks_is_new_debt_under_a_dated_ceiling() {
     tree.base();
 
     tree.words("README.md", 30);
-    let run = on(&tree, "2026-06-01", &["doc-size"]);
+    let run = on(&tree, "2026-06-01", &["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
 }
 
@@ -217,7 +217,7 @@ fn a_document_over_its_ceiling_outside_a_repository_still_fails() {
     );
     tree.words("README.md", 30);
 
-    let run = on(&tree, "2026-06-01", &["doc-size"]);
+    let run = on(&tree, "2026-06-01", &["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("over its ceiling of 10"), "{}", run.out);
 }
@@ -227,7 +227,7 @@ fn the_gate_runner_reads_a_dated_ceiling_too() {
     let tree = tree(r#"{"cc": 8, "lines": {"2026-01-01": 5}}"#);
     tree.write("src/wide.rs", WIDE);
 
-    let run = on(&tree, "2026-06-01", &["gate"]);
+    let run = on(&tree, "2026-06-01", &["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  complexity"), "{}", run.out);
 }

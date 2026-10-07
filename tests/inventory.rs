@@ -29,7 +29,7 @@ fn a_new_file_and_a_file_outside_the_roots_do_not_fail() {
     let tree = tree_with_a_test();
     tree.write("tests/test_bar.py", "def test_bar():\n    assert True\n");
     tree.remove("src/foo.py");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -42,7 +42,7 @@ fn an_accepted_entry_keyed_by_the_path_holds_it() {
         r#"{"accepted": [{"gate": "inventory", "file": "tests/test_foo.py",
                           "text": "test file", "missing": 1}]}"#,
     );
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -62,7 +62,7 @@ fn a_deleted_test_whose_subject_went_too_is_a_note() {
     tree.base();
     tree.remove("src/foo_test.go");
     tree.remove("src/foo.go");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("src/foo_test.go  its subject src/foo.go went too"),
@@ -85,7 +85,7 @@ fn with_no_configuration_the_derived_test_roots_are_judged_under_changed() {
     tree.write("tests/test_foo.py", "def test_foo():\n    assert True\n");
     tree.base();
     tree.remove("tests/test_foo.py");
-    let run = tree.run(&["gate", "--gate", "inventory", "--changed"]);
+    let run = tree.run(&["check", "inventory", "--changed"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("tests/test_foo.py:0  test file"), "{}", run.out);
 }
@@ -153,7 +153,7 @@ fn an_except_the_base_records_takes_a_path_out_of_the_tests_judged() {
     tree.base();
     tree.remove("tests/legacy/old_test.go");
 
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("tests/legacy/old_test.go"), "{}", run.out);
 }
@@ -181,7 +181,7 @@ fn an_in_that_selects_no_test_is_a_tool_error() {
     tree.write("docs/guide.md", "A guide.\n");
     tree.base();
 
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("\"inventory\" has an \"in\" scope with no applicable file"),
@@ -277,11 +277,7 @@ const QUESTION: &str = "say why in your reply and stop again";
 /// that states no policy writes the empty one. ADR 0028.
 fn stop(tree: &Tree) -> harness::Run {
     opted_in(tree);
-    harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--gate", "inventory"],
-        A_STOP,
-    )
+    harness::feed(tree.root(), &["gate", "--hook"], A_STOP)
 }
 
 fn opted_in(tree: &Tree) {
@@ -314,7 +310,7 @@ fn a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook() {
         let tree = tree_with(pattern);
         tree.write("src/lib.rs", "pub fn kept() {}\n");
         tree.write(pattern.file, pattern.stays);
-        let run = tree.run(&["gate", "--gate", "inventory", "--strict"]);
+        let run = tree.run(&["check", "inventory"]);
         assert_eq!(run.code, 0, "{}: {}", pattern.marker, run.out);
         assert!(
             run.says("NOTE: 1 test site(s) the base holds went in this window:"),
@@ -334,11 +330,7 @@ fn the_stop_after_the_question_passes_and_leaves_a_green_verdict() {
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     let asked = stop(&tree);
     assert_eq!(asked.code, 2, "{}", asked.out);
-    let again = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--gate", "inventory"],
-        A_SECOND_STOP,
-    );
+    let again = harness::feed(tree.root(), &["gate", "--hook"], A_SECOND_STOP);
     assert_eq!(again.code, 0, "{}", again.out);
     assert_eq!(tree.field("verdict"), "green", "{}", again.out);
 }
@@ -348,11 +340,7 @@ const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 
 fn second_stop(tree: &Tree) -> harness::Run {
     opted_in(tree);
-    harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--gate", "inventory"],
-        A_SECOND_STOP,
-    )
+    harness::feed(tree.root(), &["gate", "--hook"], A_SECOND_STOP)
 }
 
 /// What a stop hands the person through the host's `systemMessage`, or nothing.
@@ -506,7 +494,7 @@ fn an_accepted_entry_for_a_deleted_test_holds_it_under_strict_and_matches() {
         r#"{"accepted": [{"gate": "inventory", "file": "tests/suite.rs",
                           "text": "fn beta() {", "missing": 1}]}"#,
     );
-    let run = tree.run(&["gate", "--gate", "inventory", "--strict"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("matched nothing"), "{}", run.out);
 }
@@ -517,7 +505,7 @@ fn a_test_function_renamed_and_moved_with_its_body_unchanged_is_held() {
         let tree = tree_with(pattern);
         tree.write(pattern.file, pattern.stays);
         tree.write(pattern.moved_to, pattern.moved);
-        let run = tree.run(&["gate", "--gate", "inventory"]);
+        let run = tree.run(&["check", "inventory"]);
         assert_eq!(run.code, 0, "{}: {}", pattern.marker, run.out);
     }
 }
@@ -531,7 +519,7 @@ fn an_accepted_entry_keyed_by_the_vanished_function_holds_it() {
         r#"{"accepted": [{"gate": "inventory", "file": "tests/suite.rs",
                           "text": "fn beta() {", "missing": 1}]}"#,
     );
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -546,7 +534,7 @@ fn a_deleted_test_function_whose_file_went_too_is_a_note() {
     tree.base();
     tree.remove("src/foo_test.go");
     tree.remove("src/foo.go");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("1 deleted test function(s) whose file went in the same window"),
@@ -602,7 +590,7 @@ fn a_function_whose_name_only_holds_a_marker_is_not_a_test_site() {
     );
     tree.base();
     tree.write("tests/test_foo.py", "def test_alpha():\n    assert True\n");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("2 test site(s) the base holds"), "{}", run.out);
 }
@@ -617,7 +605,7 @@ fn a_swift_accessor_is_not_a_test_site() {
         "var testValue: Int {\n    get { return 1 }\n}\n\nfunc test_charge() {\n    _ = 1\n}\n",
     );
     tree.base();
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: 2 test site(s) the base holds, all held at the base"),
@@ -632,7 +620,7 @@ fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
     tree.write("tests/suite.rs", PATTERNS[0].base);
     tree.base();
     tree.write("tests/suite.rs", "%%% not rust %%%\n");
-    let run = tree.run(&["gate", "--gate", "inventory"]);
+    let run = tree.run(&["check", "inventory"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("could not parse"), "{}", run.out);
     assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
@@ -648,10 +636,7 @@ fn a_test_file_no_grammar_read_at_the_base_either_is_a_note() {
     let tree = Tree::new();
     tree.write("tests/suite.rs", "%%% not rust %%%\n");
     tree.base();
-    for args in [
-        &["gate", "--gate", "inventory"][..],
-        &["gate", "--gate", "inventory", "--strict"],
-    ] {
+    for args in [&["check", "inventory"][..], &["check", "inventory"]] {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
         assert!(
@@ -740,7 +725,7 @@ fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
     let tree = tree_with(&PATTERNS[0]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     assert_eq!(stop(&tree).code, 2);
-    let after = harness::feed(tree.root(), &["gate", "--hook", "--gate", "inventory"], "");
+    let after = harness::feed(tree.root(), &["gate", "--hook"], "");
     assert_eq!(after.code, 1, "{}", after.out);
     assert!(after.printed.is_empty(), "printed: {}", after.printed);
     assert!(after.says("went in this window"), "{}", after.out);
@@ -754,7 +739,7 @@ fn an_oversized_test_source_preserves_the_named_resource_error() {
         "tests/test_bundle.js",
         &"test('works',()=>{});".repeat(4_000),
     );
-    let run = tree.run(&["gate", "--gate", "inventory", "--json"]);
+    let run = tree.run(&["check", "inventory", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert!(report["findings"].as_array().expect("findings").iter().any(|finding| {

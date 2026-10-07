@@ -18,7 +18,7 @@ BASE="${KLIN_RELEASE_BASE_URL:-https://github.com/brajevicm/klin/releases/downlo
 CACHE="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/bin"
 BINARY="$CACHE/$VERSION/klin"
 HINTED="${KLIN_CACHE_DIR:-$HOME/.cache/klin}/hinted"
-CLI="klin: this plugin runs klin's hooks. For the klin command itself, such as klin init, install it: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh"
+CLI="klin: this plugin runs klin's hooks. For the klin command itself, such as klin setup, install it: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh"
 
 target() {
 	machine=$(uname -m)

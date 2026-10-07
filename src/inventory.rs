@@ -31,7 +31,7 @@ use crate::turn;
 
 pub const SECTION: &str = "inventory";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 const TEST_ROOTS: &str = "test roots";

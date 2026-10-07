@@ -43,8 +43,10 @@ jobs:
           cargo build --release --locked --manifest-path "$RUNNER_TEMP/base/Cargo.toml"
           cp target/release/klin "$RUNNER_TEMP/klin-base"
           for side in base head; do
+            command=(check)
+            "$RUNNER_TEMP/klin-$side" check --help > /dev/null 2>&1 || command=(gate --strict)
             KLIN_STATE_DIR="$RUNNER_TEMP/state-$side" "$RUNNER_TEMP/klin-$side" \
-              gate --strict --json > "$RUNNER_TEMP/$side.json" || true
+              "${command[@]}" --json > "$RUNNER_TEMP/$side.json" || true
           done
 
       # `KLIN_BIN` is set on both sides, so both rows build the same fixture sections.

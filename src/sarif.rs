@@ -17,15 +17,14 @@ use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::hunks::Hunks;
-use crate::key::{Key, Section};
-use crate::project::Project;
+use crate::key::Key;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::shell;
 
 pub const SECTION: &str = "sarif";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[contract::NAMED, REPORT, RUN, DIFFERENTIAL];
 
 const REPORT: Key = Key {
@@ -83,28 +82,6 @@ pub struct Args {
     /// Print nothing on success
     #[arg(long)]
     quiet: bool,
-}
-
-/// Every entry of the section, judged one after another, which is what `klin gate` does with
-/// one gate per entry. The worst outcome is the command's. Spec 8.3, 8.6.
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let mut worst = 0;
-    for (name, _) in contract::named_entries(&project.config, SECTION)? {
-        worst = worst.max(gate(
-            &context(args, &project, &name),
-            &mut Sink::unrecorded(out),
-        )?);
-    }
-    Ok(worst)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project, name: &'a str) -> Context<'a> {
-    Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(name, project)
-    }
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {

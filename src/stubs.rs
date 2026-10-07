@@ -1,16 +1,14 @@
-use std::path::Path;
-
 use crate::check::contract::{Context, Sink};
 use crate::error::Error;
-use crate::key::{Key, Section};
-use crate::markers::{self, Args, Kind, Language};
+use crate::key::Key;
+use crate::markers::{self, Kind, Language};
 use crate::ratchet::{Evaluator, Remedy};
 use crate::record::Values;
 use crate::scope;
 
 pub const SECTION: &str = "stubs";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 const LABEL: &str = "stub";
@@ -106,10 +104,6 @@ pub const KIND: Kind = Kind {
         nested: None,
     },
 };
-
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    markers::run(&KIND, args, sections, start, out)
-}
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     markers::gate(&KIND, at, out)

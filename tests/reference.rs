@@ -4,7 +4,7 @@ use harness::Tree;
 
 fn printed() -> String {
     let tree = Tree::bare();
-    let run = tree.run(&["reference"]);
+    let run = tree.run(&["policy", "--reference"]);
     assert_eq!(run.code, 0, "{}", run.out);
     run.printed
 }

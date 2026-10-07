@@ -19,13 +19,13 @@ use crate::check::contract::{self, Context, Said, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::project::Project;
 use crate::survey;
 
 pub const SECTION: &str = "doc_size";
 
-/// The one kind of key this section holds, which `klin reference` prints. Spec 5.4, 5.8.
+/// The one kind of key this section holds, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[DOCUMENT];
 
 pub const DOCUMENT: Key = Key {
@@ -89,30 +89,8 @@ struct Listing {
     said: Vec<Said>,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    if let Some(named) = &args.file
-        && !named.is_file()
-    {
-        return Err(Error(format!("no such file: {}", named.display())));
-    }
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.file.as_deref(),
-        args.ceiling,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, None, out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
-    }
 }
 
 fn evaluate(

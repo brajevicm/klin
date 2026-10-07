@@ -24,7 +24,7 @@ The second is the **delivery mechanism**: how klin reaches the host.
 
 - The **native plugin** is the host-managed plugin klin ships for a
   first-class host.
-- The **standalone route** is the klin binary and `klin install`, which writes
+- The **standalone route** is the klin binary and `klin setup`, which writes
   explicit project or user hook files for a first-class host. It is a way to
   deliver a first-class integration, not a tier of support of its own.
 - The **harness protocol** is klin's versioned event and decision contract,
@@ -33,7 +33,7 @@ The second is the **delivery mechanism**: how klin reaches the host.
 
 So everything outside the first-class three is custom. You translate your
 harness's lifecycle into a harness protocol event, run the klin binary, and
-translate the decision back. `klin install` does not connect your harness:
+translate the decision back. `klin setup` does not connect your harness:
 klin ships no adapter, no hook file and no skill placement for it.
 
 The boundary is there for accuracy. A harness can reach a working integration
@@ -146,7 +146,7 @@ must not be described as equivalent to a native integration.
 ### Manual / CI
 
 The harness exposes no lifecycle hook klin can rely on. A person runs
-`klin gate` by hand, and CI runs `klin gate --strict` on a checkout the agent
+`klin check` by hand, and CI runs `klin check` on a checkout the agent
 never touched. There is no automatic same-turn feedback, and none should be
 claimed.
 
@@ -158,14 +158,14 @@ a gate holds against an agent whatever the local integration does.
 
 klin's skill is one authored text at
 [`plugins/klin/skills/klin/SKILL.md`](../plugins/klin/skills/klin/SKILL.md). The
-binary embeds that source, so the plugin copy and the copy `klin install`
+binary embeds that source, so the plugin copy and the copy `klin setup`
 writes cannot drift apart.
 
 Point your harness at that text. Do not fork it into your own repository, and
 do not write a summary of it for your agent: a second copy drifts, and the
 agent then reads two contracts. If your harness loads skills from a path,
 `.agents/skills/klin/SKILL.md` is the conventional one, and it is where
-`klin install` puts the standalone copy.
+`klin setup` puts the standalone copy.
 
 ## Failure modes to get right
 

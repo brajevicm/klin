@@ -189,15 +189,6 @@ impl Unresolved {
         }
     }
 
-    /// A few words for the report's summary.
-    pub(super) fn short(&self) -> &'static str {
-        match self {
-            Unresolved::NoLanguage => "No source in its scope.",
-            Unresolved::Languages(_) => "More than one language in its scope.",
-            Unresolved::Unreadable { .. } => "Can't read the pattern.",
-        }
-    }
-
     /// What the report's detail says, with what to do about it.
     pub(super) fn told(&self) -> String {
         let called = |names: &[&str]| -> String {

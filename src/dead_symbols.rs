@@ -7,7 +7,7 @@
 
 use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde_json::Value;
 
@@ -18,7 +18,7 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::measurement;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
@@ -85,26 +85,8 @@ struct State {
     dead: bool,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.report,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, false, out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        only: args.only.as_deref(),
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand("dead-symbols", project)
-    }
 }
 
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {

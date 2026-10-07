@@ -12,7 +12,7 @@ use crate::config::Config;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
-use crate::key::{self, Key, Section};
+use crate::key::{self, Key};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line};
 use crate::record::Values;
@@ -77,7 +77,7 @@ impl TestCode {
 pub struct Kind {
     pub section: &'static str,
     pub languages: &'static [Language],
-    /// The configuration keys this section reads, which `klin reference` prints. The two kinds
+    /// The configuration keys this section reads, which `klin policy --reference` prints. The two kinds
     /// share most of them and differ in the rule that derives `languages`. Spec 5.8.
     pub keys: &'static [Key],
     /// The values key a matched row's name is recorded under.
@@ -256,25 +256,6 @@ struct Walk {
     work: ContentCost,
 }
 
-pub fn run(
-    kind: &Kind,
-    args: &Args,
-    sections: &[Section],
-    start: &Path,
-    out: &mut String,
-) -> Result<u8, Error> {
-    if args.list_languages {
-        list_languages(kind, out);
-        return Ok(0);
-    }
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    gate(
-        kind,
-        &context(kind, args, &project),
-        &mut Sink::unrecorded(out),
-    )
-}
-
 /// A matched row's name, its count and its remedy, as one report column.
 pub fn show(label: &str, values: &Values) -> String {
     let name = values.get(label).and_then(Value::as_str).unwrap_or("?");
@@ -389,15 +370,6 @@ fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding
     findings
 }
 
-fn context<'a>(kind: &'a Kind, args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        only: args.only.as_deref(),
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(kind.section, project)
-    }
-}
-
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     let values = project.config.policy(kind.section, kind.keys)?;
     let search = search(kind, &project.config, &values)?;
@@ -409,19 +381,6 @@ fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
         )));
     }
     Ok(Spec { search })
-}
-
-fn list_languages(kind: &Kind, out: &mut String) {
-    for language in kind.languages {
-        let mut names: Vec<&str> = language.patterns.iter().map(|(name, _, _)| *name).collect();
-        names.sort_unstable();
-        let _ = writeln!(
-            out,
-            "{:<22} {}",
-            language.names.join(", "),
-            names.join(", ")
-        );
-    }
 }
 
 fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Error> {

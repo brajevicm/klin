@@ -21,7 +21,7 @@ instead, with exit 0.
 1. Read the site each finding names. A finding is one violation at one site,
    not a report about the whole file.
 2. Fix the code at that site.
-3. Run `klin gate --changed` to see whether the fix holds.
+3. Run `klin check --changed` to see whether the fix holds.
 
 A gate failure blocks at most two stops per turn, and each block names its
 number. After the first, a stop over a tree you did not change reports the
@@ -38,8 +38,8 @@ names its manifest, such as `tsc --noEmit from package.json beside
 tsconfig.json`.
 
 A build whose command the shell cannot find is not a build failure. klin
-leaves a NOTE and judges the source as it stands. `klin gate` outside the
-hook runs no build, so the project's own CI must run it. The fix is to install
+leaves a NOTE and judges the source as it stands. `klin check` runs no
+build, so the project's own CI must run it. The fix is to install
 the project's dependencies, not to remove the manifest or the script that
 derived the command.
 
@@ -63,8 +63,8 @@ is visible in the diff a person reviews.
 - Editing the host's hook file, such as `.claude/settings.json`, or
   CODEOWNERS. The guard allows an edit to both, because a person owns them by
   convention rather than by refusal. Leave them alone.
-- `klin init` in any form, and `klin install` in any form. Both write a
-  person's configuration or integration; a person runs them.
+- `klin setup` in any form. It writes a person's configuration and
+  integration; a person runs it.
 - `klin turn reset`. A person owns the decision to start a new turn.
 
 ## Installation ownership
@@ -73,7 +73,7 @@ The native Claude Code, Codex CLI and Cursor plugins already carry this skill.
 A repository may commit the standalone copy beside them, and where both copies
 of the hooks run, one of them yields on each event.
 
-The standalone command is klin install. It opts a project into klin by writing
+The standalone command is klin setup. It opts a project into klin by writing
 klin.json at the repository root, selects hosts from evidence or from
 --host, and reconciles their hooks and this skill. It is a person-owned
 command.
@@ -84,7 +84,7 @@ Project-scope skill paths are:
 - Codex and Cursor: .agents/skills/klin/SKILL.md
 
 Codex and Cursor intentionally share one project file. User-scope paths under
-klin install --user are:
+klin setup --user are:
 
 - Claude Code: ~/.claude/skills/klin/SKILL.md
 - Codex and Cursor: ~/.agents/skills/klin/SKILL.md
@@ -93,16 +93,15 @@ User scope is local to one person's machine. It is not committed, does not
 travel with the repository, and does not reach a cloud or remote agent. The
 flag is --user, never --global.
 
-When klin install finds no skill file, it writes the canonical skill. When
+When klin setup finds no skill file, it writes the canonical skill. When
 the file is byte-identical, it does nothing. When it differs, it reports an
 explicit conflict and never overwrites the person's file. After a binary
-update, rerun klin install to reconcile files klin can safely own; resolve a
+update, rerun klin setup to reconcile files klin can safely own; resolve a
 different file as a person rather than losing its contents. The standalone
 route copies this skill only; plugin slash commands remain plugin-owned.
 
-klin init is separate. It surveys the tree, and klin init --pin writes
-derived ceilings as policy a person reviews. It does not install host hooks or
-this skill.
+klin setup --pin also writes derived ceilings into klin.json as policy a
+person reviews.
 
 ## Asking klin about its state
 
@@ -110,10 +109,10 @@ Ask the binary. Do not read klin's state directory, and do not compute a
 verdict of your own, because a verdict you compute is not the verdict CI
 produces.
 
-- `klin gate --changed` runs the gates over the files this turn changed.
-- `klin gate --list` prints every gate, which values a person pinned and
-  which values klin derived, and where the state directory is.
-- `klin radius --report` prints how far this turn has spread.
+- `klin check --changed` runs the gates over the files this turn changed.
+- `klin policy` prints every gate, which values a person pinned and which
+  values klin derived, and where the state directory is.
+- `klin report` shows what klin caught in the newest session.
 
 ## When klin is missing
 

@@ -124,11 +124,11 @@ fn a_blocked_stop_that_spent_no_gate_block_opens_no_regression() {
     gate["hook"]["gate_block"] = json!(1);
 
     let without = tree(std::slice::from_ref(&build));
-    let json = without.run(&["stats", "--json"]).json();
+    let json = without.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 0, "{json}");
 
     let with = tree(&[build, gate]);
-    let json = with.run(&["stats", "--json"]).json();
+    let json = with.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 1, "{json}");
 }
 
@@ -141,12 +141,12 @@ fn one_id_over_four_blocked_stops_is_one_regression_with_its_latest_outcome() {
     lines.push(stop(300, false, vec![], vec![]));
     let tree = tree(&lines);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 1, "{json}");
     assert_eq!(json["episodes"].as_array().map(Vec::len), Some(1), "{json}");
     assert_eq!(json["episodes"][0]["outcome"], "fixed-later", "{json}");
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("Nothing needs your attention."), "{}", run.out);
     assert!(
@@ -180,7 +180,7 @@ fn two_ids_at_one_line_stay_two_regressions_and_a_renamed_id_is_never_merged_wit
         ),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 3, "{json}");
     assert_eq!(json["counts"]["open"], 3, "{json}");
 }
@@ -194,7 +194,7 @@ fn a_finding_with_no_id_is_counted_by_its_recorded_fields_and_never_dropped() {
         stop(300, true, vec![long, other], vec![]),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 2, "{json}");
     let files: Vec<&str> = json["episodes"]
         .as_array()
@@ -216,7 +216,7 @@ fn two_sites_under_one_failing_gate_resolve_independently() {
         stop(300, true, vec![second], vec![]),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 2, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
     assert_eq!(json["counts"]["open"], 1, "{json}");
@@ -231,12 +231,12 @@ fn a_gate_that_measured_nothing_never_makes_an_earlier_regression_read_as_fixed(
     nothing_ran["gates"] = json!([]);
 
     let open = tree(&[stop(400, true, vec![site.clone()], vec![]), errored]);
-    let json = open.run(&["stats", "--json"]).json();
+    let json = open.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["open"], 1, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
 
     let build = tree(&[stop(400, true, vec![site.clone()], vec![]), nothing_ran]);
-    let json = build.run(&["stats", "--json"]).json();
+    let json = build.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["open"], 1, "{json}");
 
     let later = tree(&[
@@ -248,7 +248,7 @@ fn a_gate_that_measured_nothing_never_makes_an_earlier_regression_read_as_fixed(
         },
         stop(200, false, vec![], vec![]),
     ]);
-    let json = later.run(&["stats", "--json"]).json();
+    let json = later.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
     assert_eq!(json["counts"]["fixed-later"], 0, "{json}");
 }
@@ -261,12 +261,12 @@ fn a_regression_that_goes_after_the_config_changed_is_not_reported_as_a_code_fix
         reconfigured(stop(300, false, vec![], vec![])),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["config-changed"], 1, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
     assert_eq!(json["episodes"][0]["config_changed"], true, "{json}");
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("klin caught 1 regression this week. 1 resolved after the config changed."),
@@ -274,7 +274,7 @@ fn a_regression_that_goes_after_the_config_changed_is_not_reported_as_a_code_fix
         run.out
     );
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert_eq!(all.code, 0, "{}", all.out);
     assert!(
         all.says("Resolved after the config changed."),
@@ -307,7 +307,7 @@ fn every_regression_resolved_says_nothing_needs_your_attention() {
     }
     let tree = tree(&lines);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("Nothing needs your attention."), "{}", run.out);
     assert!(
@@ -347,7 +347,7 @@ fn one_open_regression_opens_the_report_and_names_its_site() {
         ),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("1 regression needs your attention."),
@@ -380,14 +380,18 @@ fn the_default_report_names_three_open_sites_and_points_at_all_for_the_rest() {
         .collect();
     let tree = tree(&[stop(400, true, sites, vec![])]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("4 regressions need your attention."),
         "{}",
         run.out
     );
-    assert!(run.says("and 1 more · klin stats --all"), "{}", run.out);
+    assert!(
+        run.says("and 1 more · klin report --details"),
+        "{}",
+        run.out
+    );
     assert_eq!(
         run.out.matches("unwrap()").count(),
         3,
@@ -395,8 +399,12 @@ fn the_default_report_names_three_open_sites_and_points_at_all_for_the_rest() {
         run.out
     );
 
-    let all = tree.run(&["stats", "--all"]);
-    assert!(!all.says("and 1 more · klin stats --all"), "{}", all.out);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
+    assert!(
+        !all.says("and 1 more · klin report --details"),
+        "{}",
+        all.out
+    );
     assert!(all.says("src/f3.rs:4"), "{}", all.out);
 }
 
@@ -416,7 +424,7 @@ fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tre
         stop(200, false, vec![], vec![]),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("2 regressions were set aside when you restarted."),
@@ -427,14 +435,14 @@ fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tre
     assert!(!run.says("still there"), "{}", run.out);
     assert!(!run.says("were fixed"), "{}", run.out);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(
         all.says("You restarted, and 2 regressions were set aside."),
         "{}",
         all.out
     );
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["set-aside"], 2, "{json}");
     assert_eq!(json["counts"]["caught"], 2, "{json}");
 }
@@ -471,7 +479,7 @@ fn open_attention_comes_before_the_uncertainty_a_reset_left() {
         ),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let said = run.out.replace("\r\n", "\n");
     let open = said
@@ -519,7 +527,7 @@ fn measurement_doubt_opens_the_report_above_the_open_regressions_it_knows_of() {
         ),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let said = run.out.replace("\r\n", "\n");
     let at = |text: &str| {
@@ -556,7 +564,7 @@ fn measurement_doubt_outranks_the_value_story_and_forbids_nothing_needs_your_att
         stop(300, false, vec![], vec![unparsed, other]),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("Stats may be incomplete: 2 source files couldn't be parsed."),
@@ -577,7 +585,7 @@ fn a_quiet_window_klin_did_not_measure_whole_never_says_everything_is_clear() {
                       "text": "the base measured it and this tree did not"});
     let tree = tree(&[stop(300, false, vec![], vec![lost])]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("Stats may be incomplete: 1 file wasn't measured."),
@@ -591,7 +599,7 @@ fn a_quiet_window_klin_did_not_measure_whole_never_says_everything_is_clear() {
     );
     assert!(!run.says("Nothing needs your attention."), "{}", run.out);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(all.says("Measurement"), "{}", all.out);
     assert!(
         all.says("1 file(s) the base measured and this tree did not: src/gone.rs"),
@@ -606,7 +614,7 @@ fn a_journal_line_the_reader_cannot_take_lowers_confidence_and_fails_nothing() {
     newer["schema"] = json!(2);
     let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("Stats may be incomplete: 1 journal record couldn't be read."),
@@ -614,7 +622,7 @@ fn a_journal_line_the_reader_cannot_take_lowers_confidence_and_fails_nothing() {
         run.out
     );
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["skipped"], 1, "{json}");
     assert_eq!(json["confidence"]["whole"], false, "{json}");
 }
@@ -625,7 +633,7 @@ fn a_measured_window_with_no_regression_says_none_were_found_and_nothing_else() 
         stop(200, false, vec![], vec![]),
         stop(100, false, vec![], vec![]),
     ]);
-    let run = quiet.run(&["stats"]);
+    let run = quiet.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("Nothing needs your attention."), "{}", run.out);
     assert!(
@@ -640,13 +648,22 @@ fn a_measured_window_with_no_regression_says_none_were_found_and_nothing_else() 
 #[test]
 fn an_empty_journal_says_klin_is_on() {
     let fresh = Tree::new();
-    let first = fresh.run(&["stats"]);
+    let first = fresh.run(&["report", "--since", "7d"]);
     assert_eq!(first.code, 0, "{}", first.out);
     assert!(
         first.says("klin is on. Your first recap appears after the agent finishes a task."),
         "{}",
         first.out
     );
+}
+
+#[test]
+fn the_session_report_over_an_empty_journal_points_at_the_week() {
+    let fresh = Tree::new();
+    let run = fresh.run(&["report"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("The journal holds no session yet"), "{}", run.out);
+    assert!(run.says("`klin report --since 7d`"), "{}", run.out);
 }
 
 // What the default report leaves out.
@@ -672,7 +689,7 @@ fn the_default_report_prints_no_activity_dashboard() {
         stop(300, false, vec![], vec![]),
     ]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     for absent in [
         "klin ran",
@@ -731,19 +748,19 @@ fn a_deleted_test_klin_let_through_is_a_question_and_stays_out_of_the_count() {
         ),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["asked-once"], 1, "{json}");
     assert_eq!(json["counts"]["caught"], 1, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert!(
         run.says("klin caught 1 regression this week. It was fixed after klin flagged it."),
         "{}",
         run.out
     );
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(
         all.says("a test deleted from tests/pay.rs:20, fn refund_twice(). The agent said why."),
         "{}",
@@ -772,7 +789,7 @@ fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
         reset(300),
     ]);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert_eq!(all.code, 0, "{}", all.out);
     assert!(all.says("klin refused an edit to klin.json"), "{}", all.out);
     assert!(
@@ -791,7 +808,7 @@ fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
         all.out
     );
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     let kinds: Vec<&str> = json["audit"]
         .as_array()
         .unwrap_or_else(|| panic!("{json}"))
@@ -812,7 +829,7 @@ fn every_catalogue_gate_gives_the_report_a_human_label_of_its_own() {
             vec![found("id-a", &gate, "src/one.rs", 1, "a site", "Fix it.")],
             vec![],
         )]);
-        let all = tree.run(&["stats", "--all"]);
+        let all = tree.run(&["report", "--since", "7d", "--details"]);
         assert_eq!(all.code, 0, "{}", all.out);
         assert!(
             !all.says(&format!("  1 {gate}\n")),
@@ -828,7 +845,7 @@ fn every_catalogue_gate_gives_the_report_a_human_label_of_its_own() {
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
         panic!("no check list in: {}", run.out);
@@ -859,14 +876,14 @@ fn a_gate_klin_has_no_check_for_is_read_and_printed_under_its_recorded_name() {
         vec![],
     )]);
 
-    let run = tree.run(&["stats"]);
+    let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("src/new.rs:7  a site"), "{}", run.out);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(all.says("1 a-gate-from-the-future"), "{}", all.out);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(
         json["episodes"][0]["gate"], "a-gate-from-the-future",
         "{json}"
@@ -907,7 +924,7 @@ fn all_carries_the_story_the_default_report_hides() {
         ),
     ]);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert_eq!(all.code, 0, "{}", all.out);
     assert!(
         all.says("klin, this week in this repository"),
@@ -948,7 +965,7 @@ fn json_prints_one_episode_per_regression_identity_and_no_grouped_more() {
         stop(DAY, false, vec![open], vec![]),
     ]);
 
-    let json = tree.run(&["stats", "--json"]).json();
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     let episodes = json["episodes"]
         .as_array()
         .unwrap_or_else(|| panic!("{json}"));
@@ -973,7 +990,7 @@ fn json_prints_one_episode_per_regression_identity_and_no_grouped_more() {
 #[test]
 fn a_since_that_is_not_a_number_of_days_is_a_usage_error() {
     let tree = tree(&[stop(100, false, vec![], vec![])]);
-    let run = tree.run(&["stats", "--since", "a-week"]);
+    let run = tree.run(&["report", "--since", "a-week"]);
     assert_eq!(run.code, 2, "{}", run.out);
 }
 
@@ -996,7 +1013,7 @@ fn since_widens_the_window_and_the_sentence_says_which_one_it_is() {
         stop(19 * DAY, false, vec![], vec![]),
     ]);
 
-    let week = tree.run(&["stats"]);
+    let week = tree.run(&["report", "--since", "7d"]);
     assert_eq!(week.code, 0, "{}", week.out);
     assert!(
         week.says("No regressions were found this week."),
@@ -1004,7 +1021,7 @@ fn since_widens_the_window_and_the_sentence_says_which_one_it_is() {
         week.out
     );
 
-    let month = tree.run(&["stats", "--since", "30d"]);
+    let month = tree.run(&["report", "--since", "30d"]);
     assert_eq!(month.code, 0, "{}", month.out);
     assert!(
         month.says("klin caught 1 regression this month."),
@@ -1041,7 +1058,7 @@ fn session_reports_only_the_lines_carrying_the_newest_session_id() {
         in_session(stop(100, false, vec![], vec![]), "s-2"),
     ]);
 
-    let run = tree.run(&["stats", "--session"]);
+    let run = tree.run(&["report"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("Nothing needs your attention."), "{}", run.out);
     assert!(
@@ -1107,32 +1124,33 @@ fn told(run: &harness::Run) -> String {
 }
 
 #[test]
-fn turn_reports_the_stops_since_the_stamp_and_a_reset_sets_the_rest_aside() {
+fn the_session_report_sets_aside_what_a_reset_left_behind() {
     let tree = hooked();
     blocked(&tree);
 
-    let before = tree.run(&["stats", "--turn"]);
+    let before = tree.run(&["report"]);
     assert_eq!(before.code, 0, "{}", before.out);
     assert!(
         before.says("1 regression needs your attention."),
         "{}",
         before.out
     );
-    assert!(before.says("klin caught 1 this turn."), "{}", before.out);
+    assert!(before.says("klin caught 1 this session."), "{}", before.out);
 
     let reset = tree.run(&["turn", "reset"]);
     assert_eq!(reset.code, 0, "{}", reset.out);
     let after = hook(&tree, A_SECOND_STOP);
     assert_eq!(after.code, 0, "{}", after.out);
 
-    let turn = tree.run(&["stats", "--turn"]);
+    let session = tree.run(&["report"]);
     assert!(
-        turn.says("No regressions were found this turn."),
+        session.says("1 regression was set aside when you restarted."),
         "{}",
-        turn.out
+        session.out
     );
+    assert!(!session.says("needs your attention"), "{}", session.out);
 
-    let week = tree.run(&["stats"]);
+    let week = tree.run(&["report", "--since", "7d"]);
     assert!(
         week.says("1 regression was set aside when you restarted."),
         "{}",
@@ -1150,14 +1168,14 @@ fn a_site_that_spends_both_gate_blocks_is_one_regression() {
     assert_eq!(again.code, 2, "{}", again.out);
     assert!(again.says("gate block 2 of 2"), "{}", again.out);
 
-    let turn = tree.run(&["stats", "--turn"]);
+    let turn = tree.run(&["report"]);
     assert_eq!(turn.code, 0, "{}", turn.out);
     assert!(
         turn.says("1 regression needs your attention."),
         "{}",
         turn.out
     );
-    assert!(turn.says("klin caught 1 this turn."), "{}", turn.out);
+    assert!(turn.says("klin caught 1 this session."), "{}", turn.out);
 }
 
 #[test]
@@ -1191,7 +1209,7 @@ fn a_red_pass_through_tells_the_person_one_regression_still_needs_them() {
     assert_eq!(through.code, 0, "{}", through.out);
     assert_eq!(
         told(&through),
-        "1 regression still needs your attention. `klin stats --turn` shows it.",
+        "1 regression still needs your attention. `klin report` shows it.",
         "{}",
         through.out
     );
@@ -1240,7 +1258,7 @@ fn a_deleted_test_klin_let_through_after_asking_counts_only_as_asked_once() {
     let through = hook(&tree, A_SECOND_STOP);
     assert_eq!(through.code, 0, "{}", through.out);
 
-    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    let json = tree.run(&["report", "--json"]).json();
     assert_eq!(json["counts"]["asked-once"], 1, "{json}");
     assert_eq!(json["counts"]["caught"], 0, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
@@ -1272,7 +1290,7 @@ fn a_deleted_test_restored_after_the_block_counts_as_caught_and_fixed_next() {
         restored.out
     );
 
-    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    let json = tree.run(&["report", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 1, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
     assert_eq!(json["counts"]["asked-once"], 0, "{json}");
@@ -1288,7 +1306,7 @@ fn a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression() {
     assert_eq!(through.code, 0, "{}", through.out);
     assert!(!told(&through).contains("regression"), "{}", through.out);
 
-    let json = tree.run(&["stats", "--turn", "--json"]).json();
+    let json = tree.run(&["report", "--json"]).json();
     assert_eq!(json["counts"]["asked-once"], 2, "{json}");
     assert_eq!(json["counts"]["caught"], 0, "{json}");
     assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
@@ -1315,12 +1333,12 @@ fn a_red_pass_through_whose_open_regressions_are_all_public_api_names_the_breaks
     assert_eq!(hook(&tree, A_STOP).code, 2);
 
     let through = hook(&tree, A_SECOND_STOP);
-    let counted = tree.run(&["stats", "--turn"]);
+    let counted = tree.run(&["report"]);
 
     assert_eq!(through.code, 0, "{}", through.out);
     assert_eq!(
         told(&through),
-        "Public API compatibility breaks still need your attention. `klin stats --turn` shows them.",
+        "Public API compatibility breaks still need your attention. `klin report` shows them.",
         "{}",
         through.out
     );
@@ -1337,7 +1355,7 @@ fn a_red_pass_through_whose_open_regressions_are_all_public_api_names_the_breaks
     let through = hook(&mixed, A_SECOND_STOP);
     assert_eq!(
         told(&through),
-        "2 regressions still need your attention. `klin stats --turn` shows them.",
+        "2 regressions still need your attention. `klin report` shows them.",
         "{}",
         through.out
     );
@@ -1368,7 +1386,7 @@ fn the_weekly_line_rides_the_first_turn_end_seven_days_after_the_last_and_not_th
     assert!(
         told(&first).ends_with(
             "\nklin caught 1 regression in the last seven days. It was fixed after klin \
-             flagged it. `klin stats` shows them."
+             flagged it. `klin report --since 7d` shows them."
         ),
         "{}",
         first.out
@@ -1423,7 +1441,7 @@ fn a_long_history_of_regressions_does_not_change_what_the_turn_end_tells() {
     assert!(
         told(&run).ends_with(
             "\nklin caught 1 regression in the last seven days. It was fixed after klin \
-             flagged it. `klin stats` shows them."
+             flagged it. `klin report --since 7d` shows them."
         ),
         "{}",
         run.out
@@ -1452,7 +1470,7 @@ fn a_deleted_test_file_reads_as_the_file_deleted() {
         ),
     ]);
 
-    let all = tree.run(&["stats", "--all"]);
+    let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert_eq!(all.code, 0, "{}", all.out);
     assert!(
         all.says("tests/test_two.py deleted. The agent said why."),
@@ -1460,7 +1478,7 @@ fn a_deleted_test_file_reads_as_the_file_deleted() {
         all.out
     );
     assert_eq!(
-        tree.run(&["stats", "--json"]).json()["counts"]["asked-once"],
+        tree.run(&["report", "--since", "7d", "--json"]).json()["counts"]["asked-once"],
         1
     );
 }
@@ -1487,17 +1505,17 @@ fn json_keeps_the_previous_window_and_klins_own_time_the_default_no_longer_print
     two.extend(this_week.iter().cloned());
 
     let both = tree(&two);
-    let json = both.run(&["stats", "--json"]).json();
+    let json = both.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["earlier"], json!({"caught": 2, "open": 1}), "{json}");
     assert_eq!(json["activity"]["klin_ms"], 3_000, "{json}");
 
-    let run = both.run(&["stats"]);
+    let run = both.run(&["report", "--since", "7d"]);
     assert!(!run.says("Last week"), "{}", run.out);
     assert!(!run.says("seconds in total"), "{}", run.out);
 
     let alone = tree(&this_week);
     assert_eq!(
-        alone.run(&["stats", "--json"]).json()["earlier"],
+        alone.run(&["report", "--since", "7d", "--json"]).json()["earlier"],
         Value::Null
     );
 }
@@ -1531,55 +1549,22 @@ fn turn_reads_exactly_the_lines_at_or_after_the_time_the_stamp_was_taken() {
         ],
     );
 
-    let run = tree.run(&["stats", "--turn"]);
+    let run = tree.run(&["report"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("src/new.rs:1  todo!()"), "{}", run.out);
     assert!(!run.says("src/old.rs"), "{}", run.out);
 }
 
-/// A window the reader could not place. `--turn` over a worktree holding no readable stamp reads
-/// no line at all, so the report says so instead of reporting a quiet turn.
-#[test]
-fn a_window_klin_cannot_place_says_so_and_never_reads_as_a_quiet_one() {
-    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
-    let tree = tree(&[stop(300, true, vec![site], vec![])]);
-
-    let turn = tree.run(&["stats", "--turn"]);
-    assert_eq!(turn.code, 0, "{}", turn.out);
-    assert!(
-        turn.says("Stats may be incomplete: klin could not tell where this turn began."),
-        "{}",
-        turn.out
-    );
-    assert!(!turn.says("Nothing needs your attention."), "{}", turn.out);
-    assert!(!turn.says("No regressions were found"), "{}", turn.out);
-    assert_eq!(
-        tree.run(&["stats", "--turn", "--json"]).json()["confidence"]["whole"],
-        false
-    );
-
-    let week = tree.run(&["stats"]);
-    assert!(!week.says("could not tell where"), "{}", week.out);
-    assert!(
-        week.says("1 regression needs your attention."),
-        "{}",
-        week.out
-    );
-}
-
-/// The same hole on the sibling scope: a journal carrying no session id cannot place --session.
+/// A journal carrying no session id cannot place the default session scope, so the report says
+/// so instead of reporting a quiet session.
 #[test]
 fn a_session_scope_over_a_journal_with_no_session_id_says_it_could_not_place_it() {
     let mut line = stop(300, false, vec![], vec![]);
     line["session"] = json!(null);
     let tree = tree(&[line]);
 
-    let run = tree.run(&["stats", "--session"]);
+    let run = tree.run(&["report"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("Stats may be incomplete: klin could not tell where this session began."),
-        "{}",
-        run.out
-    );
+    assert!(run.says("holds no session"), "{}", run.out);
     assert!(!run.says("No regressions were found"), "{}", run.out);
 }

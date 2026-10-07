@@ -115,5 +115,5 @@ jobs:
         if: steps.changes.outputs.rust == 'true'
       - run: cargo build --locked
         if: steps.changes.outputs.rust == 'true'
-      - run: ./target/debug/klin gate --strict
+      - run: ./target/debug/klin check
         if: steps.changes.outputs.rust == 'true'

@@ -52,7 +52,7 @@ fn the_hooks_carry_the_three_commands() {
 #[test]
 fn the_cursor_plugin_keeps_the_generated_hook_shape() {
     let tree = Tree::new();
-    let run = tree.run(&["install", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let generated = json_file(&tree.path(".cursor/hooks.json"), "generated Cursor hooks");
@@ -368,7 +368,7 @@ fn the_readmes_install_runs_the_installed_klin_in_the_repository() {
     let klin_ran = fs::read_to_string(home.path("ran")).unwrap_or_default();
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        klin_ran.trim().ends_with("/your-repo install"),
+        klin_ran.trim().ends_with("/your-repo setup"),
         "{klin_ran}{}",
         run.out
     );

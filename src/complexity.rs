@@ -14,7 +14,7 @@ use crate::check::holes;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::{self, Values};
@@ -29,7 +29,7 @@ const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
 const PERCENTILE: usize = 95;
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[CC, LINES, TEST_LINES, scope::IN, scope::EXCEPT];
 
 pub const CC: Key = Key {
@@ -375,11 +375,6 @@ struct Spec {
 type Provenance = Vec<(String, Option<Value>)>;
 type Notes = Vec<(String, String)>;
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    gate(&context(args, &project), &mut Sink::unrecorded(out))
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
@@ -512,15 +507,6 @@ impl Unjudged<'_> {
             "; {} test function(s) not judged on length, with no test_lines pinned{named}",
             self.functions
         )
-    }
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        only: args.only.as_deref(),
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
     }
 }
 

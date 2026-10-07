@@ -12,7 +12,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -22,11 +22,10 @@ use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::measurement;
 use crate::modules::resolver::{Attachment, Dependency, Hole};
 use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
-use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, Selector};
@@ -175,16 +174,6 @@ impl Placed<'_> {
         self.files[graph.source(dependency)].selected
             && self.modules[dependency.to].0 == Folded::All(true)
     }
-}
-
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let at = Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, &project)
-    };
-    gate(&at, &mut Sink::unrecorded(out))
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {

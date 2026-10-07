@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
@@ -8,58 +8,6 @@ use crate::config::{self, Config};
 use crate::error::Error;
 use crate::project::Project;
 use crate::{complexity, doc_size, radius, write};
-
-const FILENAME: &str = "klin.json";
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to write (default: one at the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Write today's complexity ceilings, document ceilings and change radius into the
-    /// configuration as policy, and keep every value it already holds
-    #[arg(long)]
-    pin: bool,
-}
-
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let file = wanted(args, start);
-    let root = file.parent().unwrap_or(start).to_path_buf();
-    let held = read(&file)?;
-    match args.pin {
-        true => pin(&file, &root, held, out)?,
-        false => opt_in(&file, held.is_some(), out)?,
-    }
-    inert(&root, out);
-    Ok(0)
-}
-
-/// The empty configuration, written where there is none, which opts the repository in.
-fn opt_in(file: &Path, held: bool, out: &mut String) -> Result<(), Error> {
-    if held {
-        let _ = writeln!(out, "{}", already(file));
-        return Ok(());
-    }
-    write(file, &Map::new())?;
-    let _ = writeln!(out, "{}", opted_in(file));
-    Ok(())
-}
-
-fn already(file: &Path) -> String {
-    format!(
-        "{} already opts this repository in — klin init --pin adds today's ceilings to it and \
-         keeps every value it holds, and a person edits the rest.",
-        file.display()
-    )
-}
-
-fn opted_in(file: &Path) -> String {
-    format!(
-        "{}: wrote {{}}, which opts this repository in. klin derives every check from the tree; \
-         klin init --pin writes today's ceilings into it as policy a person reviews.",
-        file.display()
-    )
-}
 
 /// One suggested value `--pin` writes under a section, and the `derived:` line that says where
 /// it came from.
@@ -74,12 +22,9 @@ struct Pin {
 /// holds, a `false`, a dated schedule, the accepted list and the journal preference are a
 /// person's and stay as they are. Nothing that describes the repository is written. Spec 5.7,
 /// ADR 0040.
-fn pin(
-    file: &Path,
-    root: &Path,
-    held: Option<Map<String, Value>>,
-    out: &mut String,
-) -> Result<(), Error> {
+pub fn pin(file: &Path, out: &mut String) -> Result<(), Error> {
+    let root = file.parent().unwrap_or(file);
+    let held = read(file)?;
     let project = Project::of(loaded(file, root, held.is_some())?, root);
     let mut config = held.unwrap_or_default();
     let mut written = Vec::new();
@@ -198,8 +143,8 @@ fn added(
 }
 
 /// klin writes nothing git can see, so an ignore line an older klin asked for does nothing.
-/// `init` never edits `.gitignore`, and says so rather than leaving a person to wonder.
-fn inert(root: &Path, out: &mut String) {
+/// `setup` never edits `.gitignore`, and says so rather than leaving a person to wonder.
+pub fn inert(root: &Path, out: &mut String) {
     let file = root.join(".gitignore");
     let text = std::fs::read_to_string(&file).unwrap_or_default();
     let lines = [
@@ -220,14 +165,6 @@ fn inert(root: &Path, out: &mut String) {
          writes nothing the working tree can see. Delete the line when you like.",
         file.display()
     );
-}
-
-fn wanted(args: &Args, start: &Path) -> PathBuf {
-    match &args.config {
-        Some(named) if named.is_absolute() => named.clone(),
-        Some(named) => start.join(named),
-        None => start.join(FILENAME),
-    }
 }
 
 fn pinned(file: &Path, written: &[String]) -> String {

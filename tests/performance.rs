@@ -870,11 +870,8 @@ fn resources(fixture: &Fixture) -> Resources {
     assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
     let (files, bytes) = fixture.structural_cache();
     let warm = peak_rss(fixture, &["gate", "--hook", "--changed"]);
-    let dead_symbols = peak_rss(
-        fixture,
-        &["gate", "--changed", "--json", "--gate", "dead-symbols"],
-    );
-    let strict = peak_rss(fixture, &["gate", "--strict", "--json"]);
+    let dead_symbols = peak_rss(fixture, &["check", "--changed", "--json", "dead-symbols"]);
+    let strict = peak_rss(fixture, &["check", "--json"]);
     fixture.remove_structural_cache();
     let uncached = peak_rss(fixture, &["gate", "--hook", "--changed"]);
     Resources {
@@ -962,7 +959,7 @@ fn median<T: Copy + Ord>(values: &[T]) -> T {
 }
 
 fn strict_run(tree: &Tree, label: &str) -> harness::Run {
-    let run = tree.run(&["gate", "--strict", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{label}: {}", run.out);
     let report = run.json();
     assert_eq!(report["status"], "PASS", "{label}: {report}");

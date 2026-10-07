@@ -19,7 +19,7 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
-use crate::key::{self, Key, Section};
+use crate::key::{self, Key};
 use crate::measurement::{self, Measurement};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
@@ -136,16 +136,6 @@ struct State {
     family: usize,
     unreached: bool,
     proven: bool,
-}
-
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let at = Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, &project)
-    };
-    gate(&at, &mut Sink::unrecorded(out))
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {

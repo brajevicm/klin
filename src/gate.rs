@@ -18,7 +18,7 @@ use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, stamp, state, stats, turn, write};
+use crate::{build, handoff, journal, reference, stamp, state, stats, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -66,45 +66,123 @@ impl Plan {
     }
 }
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
+/// What one run of the runner is asked: by `check`, by `policy`, or by the Stop hook.
+#[derive(Default)]
+struct Args {
     config: Option<PathBuf>,
-    /// Fail on the holes of spec 10: an accepted entry matching nothing, a comparison klin
-    /// cannot explain, and a survey with no source root — what CI runs
-    #[arg(long)]
     strict: bool,
-    /// Run only this gate (repeatable)
-    #[arg(long = "gate", value_name = "NAME")]
     gates: Vec<String>,
-    /// Print the gates that run with derived or pinned per key, the excluded ones, the ones
-    /// that need a section a person writes, and the state directory, then exit
-    #[arg(long)]
     list: bool,
-    /// Judge only the files changed against the base — the fast loop; CI runs the full pass
+    entry: Option<String>,
+    changed: bool,
+    hook: bool,
+    json: bool,
+    host: Option<String>,
+}
+
+#[derive(clap::Args)]
+pub struct Check {
+    /// Run only these checks, by the name a gate takes
+    #[arg(value_name = "CHECK")]
+    checks: Vec<String>,
+    /// Judge only the files changed against the base
     #[arg(long)]
     changed: bool,
-    /// Agent Stop hook mode: the failures to stderr, exit 2 to block the first stop, and
-    /// exit 1 for what only a person can fix
-    #[arg(long)]
-    hook: bool,
     /// Print one JSON object for the run instead of the human report
     #[arg(long)]
     json: bool,
-    /// Read the hook event as this host's shape instead of the one its fields name
+    /// The klin.json to run under (default: the nearest one above the working directory)
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(clap::Args)]
+pub struct Policy {
+    /// Explain only this check, by the name a gate takes
+    section: Option<String>,
+    /// Explain only this entry of the check, such as one convention
+    #[arg(requires = "section")]
+    entry: Option<String>,
+    /// Print the configuration reference, as Markdown, from the keys the checks declare
+    #[arg(long, conflicts_with_all = ["section", "schema", "json", "config"])]
+    reference: bool,
+    /// Print the JSON Schema of klin.json
+    #[arg(long, conflicts_with_all = ["section", "json", "config"])]
+    schema: bool,
+    /// Print one JSON object instead of the text
+    #[arg(long)]
+    json: bool,
+    /// The klin.json to read (default: the nearest one above the working directory)
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+/// The Stop hook line `klin gate --hook --changed` that `setup` writes, which the agent ingress
+/// replaces. It is no public command, so only an invocation that names `--hook` reaches it.
+#[derive(clap::Parser)]
+#[command(name = "klin gate")]
+pub struct Hook {
+    #[arg(long, required = true)]
+    hook: bool,
+    #[arg(long)]
+    changed: bool,
+    #[arg(long)]
+    json: bool,
+    #[arg(long)]
+    config: Option<PathBuf>,
     #[arg(long)]
     host: Option<String>,
 }
 
-pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    if args.hook && args.strict {
-        eprintln!(
-            "klin: --hook and --strict name two callers — the hook runs a turn and never \
-             blocks a person's CI failure, so pass one or the other."
-        );
-        return Ok(1);
+impl Hook {
+    pub fn called() -> Option<Hook> {
+        let mut words = std::env::args_os().skip(1);
+        let gate = words.next().is_some_and(|word| word == "gate");
+        (gate && words.any(|word| word == "--hook"))
+            .then(|| <Hook as clap::Parser>::parse_from(std::env::args_os().skip(1)))
     }
+}
+
+pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let args = Args {
+        config: check.config.clone(),
+        strict: true,
+        gates: check.checks.clone(),
+        changed: check.changed,
+        json: check.json,
+        ..Args::default()
+    };
+    run(&args, start, out)
+}
+
+pub fn policy(policy: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
+    if policy.reference || policy.schema {
+        return reference::run(policy.schema, out);
+    }
+    let args = Args {
+        config: policy.config.clone(),
+        gates: policy.section.iter().cloned().collect(),
+        entry: policy.entry.clone(),
+        list: true,
+        json: policy.json,
+        ..Args::default()
+    };
+    run(&args, start, out)
+}
+
+pub fn hooked(hook: &Hook, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let args = Args {
+        config: hook.config.clone(),
+        changed: hook.changed,
+        hook: hook.hook,
+        json: hook.json,
+        host: hook.host.clone(),
+        ..Args::default()
+    };
+    run(&args, start, out)
+}
+
+fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let event = args
         .hook
         .then(|| host::read(args.host.as_deref()))
@@ -505,8 +583,7 @@ fn does_not_build_said(block: Option<u64>) -> String {
 }
 
 /// Who builds a tree outside the hook: `klin gate` outside it runs no build. ADR 0012, spec 9.3.
-const OWN_CI: &str =
-    "`klin gate` outside the hook runs no build, so the project's own CI must run it";
+const OWN_CI: &str = "`klin check` runs no build, so the project's own CI must run it";
 
 fn stopped_blocking() -> String {
     format!(
@@ -834,7 +911,7 @@ fn judge(
 ) -> Result<Tally, Error> {
     let plan = plan(project)?;
     if args.list {
-        return listed(project, &plan, out);
+        return listed(args, project, &plan, window, out);
     }
     let wanted = select(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window, out)?;
@@ -842,7 +919,7 @@ fn judge(
     if let (Some(unbuilt), false) = (unbuilt, args.json) {
         let _ = writeln!(out, "  {unbuilt}");
     }
-    let rootless = no_source_root(args, &plan, project, out)?;
+    let rootless = no_source_root(args, &plan, &wanted, project, out)?;
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     records.notes.extend(rootless);
     if let Some(unbuilt) = unbuilt {
@@ -920,35 +997,195 @@ fn chosen(window: Option<&Window>, project: &Project, strict: bool) -> Result<Wi
     }
 }
 
-fn listed(project: &Project, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
+/// The effective policy of every gate, or of the one `policy` names: its state, and each value
+/// it uses with where the value came from. A value the section leaves out is said by the run
+/// that derives it, so each gate that runs is run and only its provenance is kept. Spec 11.6.
+// ponytail: derives by running the gate, a derive-only seam per check if policy must stay cheap
+fn listed(
+    args: &Args,
+    project: &Project,
+    plan: &Plan,
+    window: Option<&Window>,
+    out: &mut String,
+) -> Result<Tally, Error> {
     if plan.gates.is_empty() && plan.excluded.is_empty() {
         return Err(no_gate(project, plan));
     }
-    list(project, plan, out);
-    if let Some(at) = state::dir(project.root()) {
-        let _ = writeln!(out, "state: {}", at.display());
+    for name in &args.gates {
+        stated(name, plan, project)?;
+    }
+    let mut capabilities = active(args, project, plan, window)?;
+    capabilities.extend(inactive(args, plan));
+    let state = state::dir(project.root());
+    match args.json {
+        true => policy_json(project, capabilities, state.as_deref(), out),
+        false => policy_text(&capabilities, state.as_deref(), out),
     }
     Ok(Tally::default())
 }
 
-fn list(project: &Project, plan: &Plan, out: &mut String) {
-    for gate in &plan.gates {
-        let _ = writeln!(out, "{} — runs", gate.name);
-        for line in stated(project, gate) {
-            let _ = writeln!(out, "{UNDER}{line}");
-        }
-    }
-    for name in &plan.excluded {
-        let _ = writeln!(out, "{name} — excluded");
-    }
-    for check in &plan.needs_a_section {
-        let _ = writeln!(out, "{} — needs a section a person writes", check.name);
+/// A name `policy` takes: a gate that runs, one a person excluded, or one that needs a section.
+fn stated(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
+    let inactive = plan.excluded.iter().any(|excluded| excluded == name)
+        || plan.needs_a_section.iter().any(|check| check.name == name);
+    match inactive {
+        true => Ok(()),
+        false => known(name, plan, project),
     }
 }
 
-/// The `pinned:` line of each value a person wrote into a gate's section. `--list` derives
-/// nothing, so a value the section leaves out is said by the run that derives it. Spec 10.
-fn stated(project: &Project, gate: &Gate) -> Vec<String> {
+fn inactive(args: &Args, plan: &Plan) -> Vec<Value> {
+    let excluded = plan
+        .excluded
+        .iter()
+        .filter(|name| named(args, name))
+        .map(|name| json!({ "name": name, "state": "excluded" }));
+    let needed = plan
+        .needs_a_section
+        .iter()
+        .filter(|check| named(args, check.name))
+        .map(|check| json!({ "name": check.name, "section": check.section, "state": "needs-policy" }));
+    excluded.chain(needed).collect()
+}
+
+fn named(args: &Args, name: &str) -> bool {
+    args.gates.is_empty() || args.gates.iter().any(|one| one == name)
+}
+
+/// Each gate that runs, with the values its run used and where each came from.
+fn active(
+    args: &Args,
+    project: &Project,
+    plan: &Plan,
+    window: Option<&Window>,
+) -> Result<Vec<Value>, Error> {
+    let wanted: Vec<&Gate> = plan
+        .gates
+        .iter()
+        .filter(|gate| named(args, &gate.name))
+        .collect();
+    if let (Some(entry), [gate]) = (&args.entry, wanted.as_slice())
+        && gate.check.explain.is_none()
+    {
+        return Err(Error(format!(
+            "{} has no entries to explain one by one, so drop {entry}",
+            gate.name
+        )));
+    }
+    let quiet = Args {
+        config: args.config.clone(),
+        json: true,
+        ..Args::default()
+    };
+    let run: Vec<&Gate> = wanted
+        .iter()
+        .copied()
+        .filter(|gate| gate.check.explain.is_none())
+        .collect();
+    let against = against(&quiet, &run, project, window, &mut String::new())?;
+    let mut capabilities = Vec::new();
+    for gate in &wanted {
+        capabilities.push(match gate.check.explain {
+            Some(explain) => capability(
+                project,
+                gate,
+                explain(project, args.entry.as_deref())?,
+                Vec::new(),
+            ),
+            None => provenance(&quiet, project, gate, &against),
+        });
+    }
+    Ok(capabilities)
+}
+
+/// One gate's run, kept only for the `derived:` and `pinned:` lines of the values it used.
+fn provenance(quiet: &Args, project: &Project, gate: &Gate, against: &Against) -> Value {
+    let (_, _, records) = one(quiet, gate, project, against);
+    let mut lines = records.derived_lines;
+    for line in pinned(project, gate) {
+        if !lines.contains(&line) {
+            lines.push(line);
+        }
+    }
+    capability(project, gate, lines, records.derived)
+}
+
+fn capability(project: &Project, gate: &Gate, lines: Vec<String>, derived: Vec<Value>) -> Value {
+    json!({
+        "name": gate.name,
+        "section": gate.check.section,
+        "state": "active",
+        "values": values(project, gate, derived),
+        "lines": lines,
+    })
+}
+
+/// Each value a gate uses as the policy document names it: the ones a person pinned in the
+/// section, then the ones the run derived with their rule. Spec 11.7.
+fn values(project: &Project, gate: &Gate, derived: Vec<Value>) -> Vec<Value> {
+    let section = gate.check.section;
+    let mut values: Vec<Value> = match project.config.pinned(section) {
+        Some(Value::Object(fields)) => fields
+            .iter()
+            .map(|(key, value)| json!({ "key": key, "value": value, "provenance": "pinned" }))
+            .collect(),
+        _ => Vec::new(),
+    };
+    values.extend(derived.into_iter().map(|entry| {
+        json!({
+            "key": entry.get("key"),
+            "value": entry.get("value"),
+            "provenance": "derived",
+            "rule": entry.get("rule"),
+        })
+    }));
+    values
+}
+
+fn policy_text(capabilities: &[Value], state: Option<&Path>, out: &mut String) {
+    for capability in capabilities {
+        let name = capability["name"].as_str().unwrap_or_default();
+        let said = match capability["state"].as_str() {
+            Some("active") => "runs",
+            Some("excluded") => "excluded",
+            _ => "needs a section a person writes",
+        };
+        let _ = writeln!(out, "{name} — {said}");
+        for line in capability["lines"].as_array().into_iter().flatten() {
+            let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
+        }
+    }
+    if let Some(at) = state {
+        let _ = writeln!(out, "state: {}", at.display());
+    }
+}
+
+fn policy_json(
+    project: &Project,
+    mut capabilities: Vec<Value>,
+    state: Option<&Path>,
+    out: &mut String,
+) {
+    for capability in &mut capabilities {
+        if let Value::Object(fields) = capability {
+            fields.remove("lines");
+        }
+    }
+    let document = json!({
+        "schema_version": 1,
+        "command": "policy",
+        "config": {
+            "path": project.config.file.display().to_string(),
+            "present": project.config.written(),
+        },
+        "capabilities": capabilities,
+        "state_dir": state.map(|at| at.display().to_string()),
+    });
+    let _ = writeln!(out, "{document}");
+}
+
+/// The `pinned:` line of each value a person wrote into a gate's section.
+fn pinned(project: &Project, gate: &Gate) -> Vec<String> {
     let section = gate.check.section;
     let Some(Value::Object(fields)) = project.config.pinned(section) else {
         return Vec::new();
@@ -973,7 +1210,8 @@ fn shown(value: &Value) -> String {
 }
 
 /// A survey that finds no source root, with a check that measures code left for it to supply:
-/// exit 2 under `--strict`, and a NOTE otherwise, which lets the turn end in the hook. Without
+/// exit 2 under `klin check`, and a NOTE in the hook, which lets the turn end. Only the gates a
+/// run selected count, so `klin check lockfile` is not this hole. Without
 /// it a CI job in the wrong directory applies every gate to nothing and prints green. A person
 /// who excluded those gates, or who pinned their roots, is not this hole. A clone with no base
 /// is a different error, of spec 14. ADR 0016, spec 10, 14.
@@ -984,11 +1222,13 @@ fn shown(value: &Value) -> String {
 fn no_source_root(
     args: &Args,
     plan: &Plan,
+    wanted: &[&Gate],
     project: &Project,
     out: &mut String,
 ) -> Result<Option<Value>, Error> {
-    let dropped = plan.gates.iter().any(|gate| gate.check.reads_code())
-        || plan.needs_a_section.iter().any(|check| check.reads_code());
+    let unselected =
+        args.gates.is_empty() && plan.needs_a_section.iter().any(|check| check.reads_code());
+    let dropped = wanted.iter().any(|gate| gate.check.reads_code()) || unselected;
     if !dropped || !project.found_no_source_root() {
         return Ok(None);
     }
@@ -1716,7 +1956,7 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     if plan.excluded.iter().any(|excluded| excluded == name) {
         return Err(Error(format!(
             "the gate named {name} is excluded in {} — naming a gate is a claim that it runs, \
-             so lift the exclusion or drop --gate {name}",
+             so lift the exclusion or drop {name}",
             config.file.display()
         )));
     }

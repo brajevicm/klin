@@ -144,7 +144,7 @@ jobs:
           cargo clippy --all-targets --locked -- -D warnings
           cargo nextest run --locked
           cargo build --locked
-          ./target/debug/klin gate --strict
+          ./target/debug/klin check
         env:
           "GH_TOKEN": ""
       - name: Install dist

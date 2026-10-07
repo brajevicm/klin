@@ -17,8 +17,7 @@ use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
-use crate::key::{Key, Section};
-use crate::project::Project;
+use crate::key::Key;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::tree::Tree;
@@ -34,7 +33,7 @@ pub const KEYS: &[Key] = &[];
 
 const RULE: &str = "every Markdown file at the tree root, resolved against it";
 
-/// The extensions a citation may name, which `klin reference` prints.
+/// The extensions a citation may name, which `klin policy --reference` prints.
 pub const EXTENSIONS: &[&str] = &[
     ".py", ".ts", ".tsx", ".js", ".jsx", ".swift", ".rs", ".go", ".kt", ".java", ".rb", ".sh",
     ".md", ".json", ".yml", ".yaml", ".toml",
@@ -91,31 +90,8 @@ struct Index {
     basenames: BTreeMap<String, Vec<String>>,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    if let Some(named) = &args.file
-        && !named.is_file()
-    {
-        return Err(Error(format!("no such file: {}", named.display())));
-    }
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.file.as_deref(),
-        &args.roots,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, &[], out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
-    }
 }
 
 fn evaluate(

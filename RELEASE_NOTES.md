@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Six commands: setup, check, policy, report and update (#507)
+
+klin's public CLI is now `klin setup`, `klin check [CHECK...]`, `klin policy [SECTION]`, `klin report` and `klin update`. `klin status` follows in #498. The old commands are gone, and a removed command is an unknown command that exits 2.
+
+- `klin check` judges the way `klin gate --strict` did. Name checks to run only those: `klin check complexity`. It takes `--changed`, `--json` and `--config`. The Action and klin's own CI run it.
+- `klin setup` replaces `klin init` and `klin install`. It writes `{}` when no `klin.json` exists and reconciles the host hooks and the skill. `--pin` writes the values `klin init --pin` wrote.
+- `klin policy` replaces `klin gate --list` and `klin reference`. It prints each value a check uses with where it came from. `--reference` and `--schema` print the reference and the JSON schema. `klin policy public-api` lists the derived public surface, and `klin policy conventions [NAME]` explains each convention.
+- `klin report` replaces `klin stats`. It reads the newest session by default, and `--since 7d` reads the last seven days. `--details` replaces `--all`.
+- The per-check commands and their own options are gone: `--only`, `--quiet`, `--list-languages`, `doc-size --file`, `doc-citations --file` and `dead-symbols --report`.
+
 ### A `cc` floor of 10, `@ts-expect-error` in tests, and named re-exports (#411)
 
 The derived `complexity.cc` floor rises from 5 to 10. A tree whose 95th

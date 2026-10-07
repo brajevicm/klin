@@ -2,25 +2,8 @@ mod harness;
 
 use harness::Tree;
 
-/// The two checks that run only inside a gate and have no command of their own. A check added
-/// here is a decision a person makes, so a new check that forgot its Clap command fails the
-/// test below rather than passing in silence. ADR 0036.
-const ONLY_IN_A_GATE: &[&str] = &["inventory", "lockfile"];
-
-/// The commands that are not checks: the runner, the survey, the stamp movers and the readers.
-const TOOLS: &[&str] = &[
-    "gate",
-    "init",
-    "install",
-    "guard",
-    "cache",
-    "radius",
-    "turn",
-    "stats",
-    "reference",
-    "update",
-    "help",
-];
+/// The commands `klin --help` offers, which hold no check of their own. ADR 0066.
+const COMMANDS: &[&str] = &["setup", "check", "policy", "report", "update", "help"];
 
 /// Every subcommand `klin --help` offers. A command sits on a line indented by exactly two
 /// spaces, so a description that wrapped onto its own deeper-indented line is not one.
@@ -45,7 +28,7 @@ fn subcommands() -> Vec<String> {
 fn catalogue() -> Vec<String> {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let Some((_, listed)) = run.out.split_once("one of: ") else {
         panic!("no check list in: {}", run.out);
@@ -61,32 +44,31 @@ fn catalogue() -> Vec<String> {
 }
 
 #[test]
-fn every_check_command_has_a_catalogue_row() {
-    let commands = subcommands();
-    let catalogue = catalogue();
-
-    let checks: Vec<&String> = commands
-        .iter()
-        .filter(|name| !TOOLS.contains(&name.as_str()))
-        .collect();
-    assert!(!checks.is_empty(), "no check subcommands in {commands:?}");
-    for command in checks {
-        assert!(
-            catalogue.contains(command),
-            "the command {command} is in the CLI and not in the catalogue: {catalogue:?}"
-        );
-    }
+fn help_lists_exactly_the_public_commands() {
+    assert_eq!(subcommands(), COMMANDS);
 }
 
 #[test]
-fn every_catalogue_check_has_a_command_or_is_named_as_gate_only() {
-    let commands = subcommands();
+fn every_catalogue_check_is_a_name_check_takes_or_one_the_policy_lists() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", "pub fn one(a: i32) -> i32 {\n    a + 1\n}\n");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.write("Cargo.lock", "version = 3\n");
+    tree.base();
+    let policy = tree.run(&["policy"]);
+    assert_eq!(policy.code, 0, "{}", policy.out);
 
     for check in catalogue() {
+        let run = tree.run(&["check", &check]);
         assert!(
-            commands.contains(&check) || ONLY_IN_A_GATE.contains(&check.as_str()),
-            "the check {check} is in the catalogue with no CLI command, and this test does not \
-             name it as one that runs only inside a gate"
+            !run.says(&format!("no gate named {check}")) || policy.says(&format!("{check} — ")),
+            "check {check} is neither taken by `klin check` nor listed by `klin policy`: {}\n{}",
+            run.out,
+            policy.out
         );
     }
 }
@@ -104,19 +86,19 @@ fn every_catalogue_section_is_a_key_the_configuration_accepts() {
     config += "}";
     tree.write("klin.json", &config);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
 
     assert_eq!(run.code, 0, "{config}\n{}", run.out);
     assert!(!run.says("not a key klin reads"), "{}", run.out);
     assert!(run.says("doc-size — runs"), "{}", run.out);
 }
 
-/// Every section `klin reference` prints under one of its headings, which it prints off the
+/// Every section `klin policy --reference` prints under one of its headings, which it prints off the
 /// same catalogue. The page names a section twice, once under `## Sections` with its keys and
 /// once under built-in language coverage with its file sets, so each heading is read on its own.
 fn printed_under(heading: &str) -> Vec<String> {
     let tree = Tree::bare();
-    let run = tree.run(&["reference"]);
+    let run = tree.run(&["policy", "--reference"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let Some((_, rest)) = run.printed.split_once(heading) else {
         panic!("no {heading} in: {}", run.printed);
@@ -150,7 +132,7 @@ fn a_section_named_by_its_command_is_corrected_to_the_section_it_reads() {
         tree.words("README.md", 5);
         tree.write("klin.json", &format!("{{\"{check}\": false}}"));
 
-        let run = tree.run(&["gate"]);
+        let run = tree.run(&["check"]);
 
         assert_eq!(run.code, 2, "{check}: {}", run.out);
         assert!(
@@ -210,7 +192,7 @@ fn every_catalogue_check_is_accounted_for_in_the_plan() {
     tree.write("Cargo.lock", "version = 3\n");
     tree.base();
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     for check in catalogue() {
@@ -231,7 +213,7 @@ fn every_catalogue_check_is_accounted_for_in_the_plan() {
 
 /// The gates one run executed, in the order the report names them.
 fn executed(tree: &Tree) -> Vec<String> {
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let Some(gates) = report.get("gates").and_then(serde_json::Value::as_array) else {
@@ -286,7 +268,7 @@ fn a_per_entry_check_plans_its_gates_in_the_order_the_section_lists_them() {
     );
     tree.base();
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     let Some(zed) = run.out.find("zed — runs") else {

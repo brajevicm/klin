@@ -24,15 +24,19 @@ fn library(tree: &Tree) {
 }
 
 fn by_hand(tree: &Tree) -> Run {
-    tree.run(&["public-api"])
+    tree.run(&["check", "public-api"])
 }
 
 fn report(tree: &Tree) -> Run {
-    tree.run(&["public-api", "--report"])
+    tree.run(&["policy", "public-api"])
+}
+
+fn indent(line: &str) -> usize {
+    line.len() - line.trim_start().len()
 }
 
 fn changed(tree: &Tree) -> Run {
-    tree.run(&["gate", "--changed", "--gate", "public-api"])
+    tree.run(&["check", "--changed", "public-api"])
 }
 
 fn hook(tree: &Tree) -> Run {
@@ -139,7 +143,7 @@ fn accepting_a_namesake_break_cannot_hold_another_librarys_break() {
     let broken = "pub fn run() -> u16 { 1 }\n";
     namesakes(&tree, original, original);
     tree.write("a/src/lib.rs", broken);
-    let first = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let first = tree.run(&["check", "public-api", "--json"]);
     assert_eq!(first.code, 1, "{}", first.out);
     let record = first.json();
     let finding = &record["findings"][0];
@@ -159,7 +163,7 @@ fn accepting_a_namesake_break_cannot_hold_another_librarys_break() {
     for run in [
         by_hand(&tree),
         changed(&tree),
-        tree.run(&["public-api", "--strict"]),
+        tree.run(&["check", "public-api"]),
     ] {
         assert_eq!(run.code, 1, "{}", run.out);
         assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
@@ -178,7 +182,7 @@ fn identical_breaks_in_namesake_libraries_have_distinct_json_ids() {
     for root in ["a", "b"] {
         tree.write(&format!("{root}/src/lib.rs"), "pub fn run() -> u16 { 1 }\n");
     }
-    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let run = tree.run(&["check", "public-api", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let record = run.json();
     let findings = record["findings"].as_array().expect("findings");
@@ -199,7 +203,7 @@ fn an_unqualified_rust_surface_acceptance_is_stale() {
         r#"{"accepted":[{"gate":"public-api","file":"core","text":"parse (function)","break":1}]}"#,
     );
 
-    let run = tree.run(&["public-api", "--strict"]);
+    let run = tree.run(&["check", "public-api"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new compatibility break(s)"), "{}", run.out);
     assert!(run.says("accepted entry"), "{}", run.out);
@@ -418,7 +422,7 @@ fn a_glob_re_export_exposes_every_public_item_of_its_module() {
     );
     assert!(run.says("enum Kind { A, B(u8) }"), "{}", run.out);
     assert!(
-        !run.says("private") && !run.says("core::model"),
+        !run.says("core::private") && !run.says("core::model"),
         "{}",
         run.out
     );
@@ -1198,7 +1202,7 @@ fn a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict() {
     tree.write("src/lib.rs", &format!("{LIB}pub use serde::*;\n"));
     tree.base();
 
-    for args in [&["public-api"][..], &["public-api", "--strict"]] {
+    for args in [&["check", "public-api"][..], &["check", "public-api"]] {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
         assert!(
@@ -1239,7 +1243,7 @@ fn the_section_is_absent_or_false_and_any_object_is_refused() {
     let tree = Tree::new();
     library(&tree);
     tree.write("klin.json", r#"{"public_api": false}"#);
-    let listed = tree.run(&["gate", "--list"]);
+    let listed = tree.run(&["policy"]);
     assert_eq!(listed.code, 0, "{}", listed.out);
     assert!(listed.says("public-api — excluded"), "{}", listed.out);
 
@@ -1268,7 +1272,7 @@ fn init_writes_no_public_api_section() {
     library(&tree);
     tree.remove("klin.json");
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     let written = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
@@ -1610,8 +1614,34 @@ fn a_changed_manifest_changes_what_an_unchanged_file_means_in_a_changed_run() {
     assert!(run.says("useClient (function)"), "{}", run.out);
 }
 
+/// A first Stop over the tree, judged against the branch base, as the report it printed or,
+/// for a green stop that prints none, the one the journal records. Only the hook reads the
+/// structural cache.
+fn stopped(tree: &Tree) -> serde_json::Value {
+    let _ = std::fs::remove_file(tree.state("turn"));
+    let run = harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--changed", "--json"],
+        A_STOP,
+    );
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    run.out
+        .lines()
+        .find(|line| line.starts_with('{'))
+        .or_else(|| journal.lines().last())
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_else(|| panic!("no report in {}", run.out))
+}
+
+fn gate_row<'a>(report: &'a serde_json::Value, gate: &str) -> &'a serde_json::Value {
+    report["gates"]
+        .as_array()
+        .and_then(|gates| gates.iter().find(|row| row["name"] == gate))
+        .unwrap_or_else(|| panic!("no {gate} row in {report}"))
+}
+
 #[test]
-fn a_cached_changed_run_reads_and_parses_only_the_changed_file() {
+fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
     let tree = Tree::new();
     library(&tree);
     tree.write(
@@ -1619,25 +1649,28 @@ fn a_cached_changed_run_reads_and_parses_only_the_changed_file() {
         "pub struct Document {\n    pub title: String,\n}\npub struct Extra;\n",
     );
 
-    let run = || tree.run(&["gate", "--json", "--changed", "--gate", "public-api"]);
-    let (first, again) = (run().json(), run().json());
+    let (first_report, again_report) = (stopped(&tree), stopped(&tree));
+    let (first, again) = (
+        gate_row(&first_report, "public-api"),
+        gate_row(&again_report, "public-api"),
+    );
     let counted = |report: &serde_json::Value| {
         ["reads", "parses", "extracted", "cached"].map(|field| {
-            report["gates"][0]["facts"][field]
-                .as_u64()
-                .unwrap_or(u64::MAX)
+            report["gates"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|row| row["facts"][field].as_u64())
+                .sum::<u64>()
         })
     };
 
-    assert_eq!(counted(&first), [5, 5, 5, 0], "{first}");
-    assert_eq!(counted(&again), [2, 2, 2, 3], "{again}");
-    assert_eq!(first["status"], "PASS", "{first}");
+    assert_eq!(counted(&first_report), [5, 5, 5, 0], "{first_report}");
+    assert_eq!(counted(&again_report), [2, 2, 2, 3], "{again_report}");
+    assert_eq!(first["status"], "ok", "{first}");
     assert_eq!(first["status"], again["status"]);
-    assert_eq!(again["gates"][0]["surface"]["surfaces"], 2, "{again}");
-    assert!(
-        again["gates"][0]["surface"]["items"].as_u64() >= Some(11),
-        "{again}"
-    );
+    assert_eq!(again["surface"]["surfaces"], 2, "{again}");
+    assert!(again["surface"]["items"].as_u64() >= Some(11), "{again}");
 }
 
 #[test]
@@ -1645,7 +1678,7 @@ fn a_tree_with_no_typescript_path_derives_only_rust_surfaces() {
     let tree = Tree::new();
     library(&tree);
 
-    let report = tree.run(&["gate", "--json", "--gate", "public-api"]).json();
+    let report = tree.run(&["check", "--json", "public-api"]).json();
     let gate = &report["gates"][0];
 
     assert_eq!(
@@ -1875,7 +1908,7 @@ fn a_removed_module_prints_as_one_group_and_json_keeps_each_item() {
     tree.write("src/lib.rs", "pub fn kept() {}\n");
 
     let run = by_hand(&tree);
-    let json = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let json = tree.run(&["check", "public-api", "--json"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     let lines: Vec<&str> = run.out.lines().collect();
@@ -1885,10 +1918,16 @@ fn a_removed_module_prints_as_one_group_and_json_keeps_each_item() {
     ] {
         let lead = lines
             .iter()
-            .position(|line| line.starts_with("  core (Cargo.toml):") && line.contains(module))
+            .position(|line| {
+                line.trim_start().starts_with("core (Cargo.toml):") && line.contains(module)
+            })
             .unwrap_or_else(|| panic!("no {module} line: {}", run.out));
         assert!(
-            lines[lead + 1].starts_with("    core (Cargo.toml):") && lines[lead + 1].contains(item),
+            indent(lines[lead + 1]) == indent(lines[lead]) + 2
+                && lines[lead + 1]
+                    .trim_start()
+                    .starts_with("core (Cargo.toml):")
+                && lines[lead + 1].contains(item),
             "{}",
             run.out
         );
@@ -2033,10 +2072,14 @@ fn a_removed_module_of_two_surfaces_with_one_name_prints_each_item_once() {
         let owner = format!("core ({root}/Cargo.toml):");
         let lead = lines
             .iter()
-            .position(|line| line.starts_with(&format!("  {owner}")) && line.contains("m (module)"))
+            .position(|line| line.trim_start().starts_with(&owner) && line.contains("m (module)"))
             .unwrap_or_else(|| panic!("no module for {root}: {}", run.out));
         for line in &lines[lead + 1..lead + 4] {
-            assert!(line.starts_with(&format!("    {owner}")), "{}", run.out);
+            assert!(
+                indent(line) == indent(lines[lead]) + 2 && line.trim_start().starts_with(&owner),
+                "{}",
+                run.out
+            );
         }
     }
 }
@@ -2184,7 +2227,7 @@ fn a_new_exported_declare_namespace_in_an_entry_file_is_an_item_and_passes() {
         &format!("export type A = string;\n{NAMESPACE}"),
     );
 
-    let run = tree.run(&["gate", "--gate", "public-api"]);
+    let run = tree.run(&["check", "public-api"]);
     let listed = report(&tree);
 
     assert_eq!(run.code, 0, "{}", run.out);
@@ -2667,7 +2710,7 @@ fn a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths() {
     tree.write("Cargo.toml", PACKAGE);
     tree.write("src/lib.rs", "pub mod nested { pub use super::nested; }\n");
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("cyclic module re-export"), "{}", run.out);
@@ -2685,7 +2728,7 @@ fn a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever() {
         "pub use a::Item;\nmod a { pub use crate::b::Item; }\nmod b { pub use crate::a::Item; }\n",
     );
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("cyclic named re-export"), "{}", run.out);
@@ -2723,7 +2766,7 @@ fn a_module_cycle_names_the_export_that_closes_it() {
         "// The closing export is in this file.\n\npub use crate::nested;\n",
     );
 
-    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let run = tree.run(&["check", "public-api", "--json"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     let json = run.json();
@@ -2739,7 +2782,7 @@ fn a_module_cycle_names_the_export_that_closes_it() {
 
     tree.base();
     tree.write("src/lib.rs", "pub mod nested;\npub use nested as alias;\n");
-    let held = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let held = tree.run(&["check", "public-api", "--json"]);
     assert_eq!(held.code, 0, "{}", held.out);
     assert_eq!(
         held.json()["findings"],
@@ -2762,7 +2805,7 @@ fn many_named_re_exports_are_measured_without_losing_aliases() {
     tree.write("src/lib.rs", &source);
     tree.base();
 
-    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let run = tree.run(&["check", "public-api", "--json"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
@@ -2784,7 +2827,7 @@ fn a_cycle_through_a_private_parent_names_the_module_export() {
         "pub mod inner {\n    pub use crate::outer as again;\n}\n",
     );
 
-    let run = tree.run(&["gate", "--gate", "public-api", "--json"]);
+    let run = tree.run(&["check", "public-api", "--json"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     let json = run.json();

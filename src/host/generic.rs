@@ -63,7 +63,7 @@ impl Adapter for Generic {
     }
 
     /// klin installs nothing for a harness it does not maintain: the integration owns its own
-    /// hooks and its own skill placement, and `klin install` never reaches this adapter, so it
+    /// hooks and its own skill placement, and `klin setup` never reaches this adapter, so it
     /// names no marker, no hook file, no matcher and no plugin. Spec 19.4.
     fn marker(&self) -> &'static str {
         ""

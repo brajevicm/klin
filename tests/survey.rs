@@ -26,7 +26,7 @@ fn project() -> Tree {
 }
 
 fn gate(tree: &Tree) -> Run {
-    tree.run(&["gate"])
+    tree.run(&["check"])
 }
 
 fn stop(tree: &Tree) -> Run {
@@ -89,7 +89,7 @@ fn the_json_derived_list_is_as_long_as_the_reports_derived_lines() {
     let tree = project();
 
     let text = gate(&tree);
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(text.code, 0, "{}", text.out);
     assert_eq!(run.code, 0, "{}", run.out);
     let said = text
@@ -111,7 +111,7 @@ fn the_json_derived_list_is_as_long_as_the_reports_derived_lines() {
 fn every_derived_line_has_a_matching_json_entry() {
     let tree = project();
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let derived = report["derived"]
@@ -311,7 +311,7 @@ fn a_tree_in_debt_is_green_against_itself_with_no_configuration() {
 fn a_derived_document_ceiling_comes_from_the_derivation_commit() {
     let tree = project();
 
-    let green = tree.run(&["doc-size"]);
+    let green = tree.run(&["check", "doc-size"]);
     assert_eq!(green.code, 0, "{}", green.out);
     assert!(
         green.says("AGENTS.md is 5 words, ceiling 50"),
@@ -320,7 +320,7 @@ fn a_derived_document_ceiling_comes_from_the_derivation_commit() {
     );
 
     tree.words("AGENTS.md", 400);
-    let grown = tree.run(&["doc-size"]);
+    let grown = tree.run(&["check", "doc-size"]);
     assert_eq!(grown.code, 1, "{}", grown.out);
     assert!(
         grown.says("AGENTS.md is 400 words, over its ceiling of 50"),
@@ -393,7 +393,7 @@ fn an_escape_in_a_new_build_script_is_the_only_new_site() {
         "fn main() {\n    std::env::var(\"OUT_DIR\").unwrap();\n}\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new escape site(s)"), "{}", run.out);
     assert!(run.says("build.rs:2  unwrap"), "{}", run.out);
@@ -495,7 +495,7 @@ fn a_new_base_is_a_new_derivation_commit_and_a_new_cache_entry() {
 fn pin_writes_the_ceilings_the_run_derives_and_no_topology() {
     let tree = project();
 
-    let written = tree.run(&["init", "--pin"]);
+    let written = tree.run(&["setup", "--pin"]);
     assert_eq!(written.code, 0, "{}", written.out);
     let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     let config: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
@@ -631,7 +631,7 @@ fn a_push_run_derives_from_the_commit_the_push_started_from() {
         &format!("{{\"before\": \"{}\"}}", tree.revision("main")),
     );
 
-    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["gate"]);
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["check"]);
     assert!(run.says("the commit this push started from"), "{}", run.out);
     derived_at_the_base(&tree, &run);
 }
@@ -660,8 +660,8 @@ fn a_document_ceiling_comes_from_the_same_base_as_the_complexity_ceiling() {
 fn a_check_run_on_its_own_derives_from_the_same_base_as_the_gate() {
     let tree = a_change_that_would_raise_its_own_ceiling();
 
-    derived_at_the_base(&tree, &tree.run(&["gate", "--gate", "complexity"]));
-    derived_at_the_base(&tree, &tree.run(&["complexity"]));
+    derived_at_the_base(&tree, &tree.run(&["check", "complexity"]));
+    derived_at_the_base(&tree, &tree.run(&["check", "complexity"]));
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn doc_size_run_on_its_own_derives_from_the_base() {
     tree.words("AGENTS.md", 400);
     tree.commit("a document that would raise its own ceiling");
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("AGENTS.md is 400 words, over its ceiling of 50"),
@@ -708,7 +708,7 @@ fn a_stop_whose_state_directory_is_unusable_still_derives_from_the_stamps_parent
 }
 
 fn pinned_cc(tree: &Tree) -> Value {
-    let written = tree.run(&["init", "--pin"]);
+    let written = tree.run(&["setup", "--pin"]);
     assert_eq!(written.code, 0, "{}", written.out);
     let held = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     let config: Value = serde_json::from_str(&held).unwrap_or_default();
@@ -806,7 +806,7 @@ fn a_document_the_derivation_commit_lacks_is_judged_under_the_new_file_default()
     tree.remove("klin.json");
 
     tree.base();
-    let held = tree.run(&["doc-size"]);
+    let held = tree.run(&["check", "doc-size"]);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(
         held.says("CLAUDE.md is 400 words, ceiling 450"),
@@ -865,7 +865,7 @@ fn a_tree_whose_documents_are_all_new_still_gates_on_doc_size() {
     tree.base();
     tree.words("AGENTS.md", 40);
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(
@@ -924,7 +924,7 @@ fn an_uncommitted_scope_edit_changes_judgment_but_not_the_ceiling() {
     );
     assert!(run.says("recorded scope: except src/big.rs"), "{}", run.out);
 
-    let json = tree.run(&["gate", "--json"]);
+    let json = tree.run(&["check", "--json"]);
     let report = json.json();
     let derived = report["derived"]
         .as_array()
@@ -1011,7 +1011,7 @@ fn a_pre_compact_recorded_scope_falls_back_to_the_whole_repository() {
     tree.write("klin.json", r#"{ "complexity": { "in": "src/clean.rs" } }"#);
 
     let run = gate(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("derived: complexity cc 12 ("), "{}", run.out);
     assert!(run.says("recorded scope: whole repository"), "{}", run.out);
 }
@@ -1074,7 +1074,7 @@ fn narrowing_today_keeps_the_recorded_ceiling_and_strict_lost_coverage() {
         r#"{ "complexity": { "in": "src", "except": "src/a.rs" } }"#,
     );
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("derived: complexity cc 10"), "{}", run.out);
     assert!(run.says("today's complexity scope"), "{}", run.out);

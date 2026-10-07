@@ -12,7 +12,7 @@ fn finds_the_config_by_walking_up() {
     tree.write("a/b/keep.txt", "");
 
     let deep = tree.path("a/b");
-    let run = run_from(&deep, &["doc-size"]);
+    let run = run_from(&deep, &["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: README.md is 5 words, ceiling 10"),
@@ -21,21 +21,11 @@ fn finds_the_config_by_walking_up() {
     );
 }
 
-/// With no configuration a check runs over what the tree holds, so a tree with no document
-/// judges none and passes. ADR 0016, ADR 0040.
-#[test]
-fn no_config_and_no_document_judges_nothing() {
-    let tree = Tree::new();
-    let run = tree.run(&["doc-size"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("OK: 0 document(s) judged"), "{}", run.out);
-}
-
 #[test]
 fn a_malformed_config_is_a_tool_error_naming_the_file() {
     let tree = Tree::new();
     tree.write("klin.json", "{not json");
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(&tree.at("klin.json")), "{}", run.out);
 }
@@ -47,7 +37,7 @@ fn structural_config_shapes_fail_before_any_gate_runs() {
         tree.write("klin.json", config);
         tree.words("README.md", 1);
 
-        let run = tree.run(&["doc-size"]);
+        let run = tree.run(&["check", "doc-size"]);
         assert_eq!(run.code, 2, "{config}: {}", run.out);
         assert!(run.says(&tree.at("klin.json")), "{config}: {}", run.out);
     }
@@ -87,7 +77,7 @@ fn valid_shape_configs() {
         tree.write("src/lib.rs", "fn main() {}\n");
         tree.write("klin.json", config);
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
         assert_eq!(run.code, 0, "valid {name}: {}", run.out);
     }
 }
@@ -96,7 +86,7 @@ fn false_disables_a_gate() {
     let tree = Tree::new();
     tree.words("README.md", 1);
     tree.write("klin.json", r#"{"doc_size":false}"#);
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "false disables: {}", run.out);
     assert!(run.says("doc-size — excluded"), "{}", run.out);
 }
@@ -126,7 +116,7 @@ fn invalid_shape_configs() {
         let tree = Tree::new();
         tree.write("klin.json", config);
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
         assert_eq!(run.code, 2, "invalid {name}: {}", run.out);
         assert!(run.says(fragment), "invalid {name}: {}", run.out);
         assert!(
@@ -146,7 +136,7 @@ fn config_flag_overrides_discovery() {
 
     let run = run_from(
         &tree.path("elsewhere"),
-        &["doc-size", "--config", &tree.at("repo/klin.json")],
+        &["check", "doc-size", "--config", &tree.at("repo/klin.json")],
     );
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -165,7 +155,7 @@ fn paths_resolve_against_the_configs_own_directory() {
 
     let run = run_from(
         tree.root(),
-        &["doc-size", "--config", &tree.at("repo/klin.json")],
+        &["check", "doc-size", "--config", &tree.at("repo/klin.json")],
     );
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -184,7 +174,7 @@ fn an_absolute_path_in_the_config_passes_through() {
         &format!(r#"{{"doc_size": {{{:?}: 10}}}}"#, doc.display().to_string()),
     );
 
-    let run = run_from(&tree.path("repo"), &["doc-size"]);
+    let run = run_from(&tree.path("repo"), &["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is 5 words, ceiling 10"), "{}", run.out);
 }
@@ -193,7 +183,7 @@ fn an_absolute_path_in_the_config_passes_through() {
 fn a_retired_project_key_is_an_error_naming_the_file_and_the_key() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"project": "mine"}"#);
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"project\""), "{}", run.out);
     assert!(run.says("delete the key"), "{}", run.out);
@@ -206,7 +196,7 @@ fn an_empty_compact_source_policy_is_an_error() {
     tree.write("klin.json", r#"{"stubs": {}}"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["stubs"]);
+    let run = tree.run(&["check", "stubs"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("must state at least one of: in, except"),
@@ -225,7 +215,7 @@ fn a_doc_size_entry_list_is_an_error_naming_the_map_that_replaces_it() {
         r#"{"doc_size": [{"file": "README.md", "ceiling": 10}]}"#,
     );
     tree.words("README.md", 5);
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
     assert!(run.says(r#"{"README.md": 1200}"#), "{}", run.out);
@@ -238,7 +228,7 @@ fn a_section_of_the_wrong_shape_is_an_error() {
         "klin.json",
         r#"{"doc_size": {"file": "README.md", "ceiling": 10}}"#,
     );
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
 }
@@ -253,7 +243,7 @@ fn a_tilde_path_in_the_config_expands_to_the_home_directory() {
     let home = Tree::bare();
     let at = home.root().display().to_string();
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["doc-size"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says(&home.at("klin-no-such-document.md")),
@@ -269,7 +259,7 @@ fn a_ceiling_of_the_wrong_type_says_it_is_malformed_not_absent() {
     tree.words("README.md", 5);
     tree.write("klin.json", r#"{"doc_size": {"README.md": "10"}}"#);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"README.md\""), "{}", run.out);
     assert!(run.says("whole number"), "{}", run.out);
@@ -286,7 +276,7 @@ fn a_section_naming_a_baseline_says_the_key_is_not_one_klin_reads() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"baseline\""), "{}", run.out);
     assert!(run.says("not a key klin reads"), "{}", run.out);
@@ -302,7 +292,7 @@ fn a_section_naming_sources_says_the_key_is_now_roots() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["complexity"]);
+    let run = tree.run(&["check", "complexity"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"sources\""), "{}", run.out);
     assert!(run.says("\"roots\""), "{}", run.out);
@@ -320,7 +310,7 @@ fn source_gates_reject_retired_repository_description() {
         let tree = Tree::new();
         tree.write("klin.json", &format!(r#"{{"{section}":{{"{field}":[]}}}}"#));
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
 
         assert_eq!(run.code, 2, "{section}.{field}: {}", run.out);
         assert!(run.says(&format!("\"{field}\"")), "{}", run.out);
@@ -337,7 +327,7 @@ fn a_version_key_is_a_tool_error_under_any_command() {
     );
     tree.words("README.md", 5);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"version\""), "{}", run.out);
 }
@@ -352,7 +342,7 @@ fn an_unknown_top_level_key_is_a_tool_error_naming_the_file_and_the_key() {
     );
     tree.words("README.md", 5);
 
-    for args in [&["gate"][..], &["gate", "--strict"][..]] {
+    for args in [&["check"][..], &["check"][..]] {
         let run = tree.run(args);
         assert_eq!(run.code, 2, "{args:?}: {}", run.out);
         assert!(run.says(&tree.at("klin.json")), "{args:?}: {}", run.out);
@@ -370,7 +360,7 @@ fn a_schedule_with_no_step_due_today_is_a_tool_error_before_any_gate_runs() {
     );
     tree.words("README.md", 5);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(&tree.at("klin.json")), "{}", run.out);
     assert!(run.says("no step due"), "{}", run.out);
@@ -410,7 +400,7 @@ fn a_section_that_describes_the_repository_is_refused_with_its_replacement() {
         let tree = Tree::new();
         tree.write("klin.json", config);
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
         assert_eq!(run.code, 2, "{config}: {}", run.out);
         assert!(run.says(said), "{config}: {}", run.out);
     }
@@ -439,7 +429,7 @@ fn a_misspelt_key_or_field_names_the_one_it_most_likely_meant() {
         let tree = Tree::new();
         tree.write("klin.json", config);
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
         assert_eq!(run.code, 2, "{config}: {}", run.out);
         assert!(run.says(meant), "{config}: {}", run.out);
     }
@@ -457,7 +447,7 @@ fn a_build_of_the_wrong_type_is_a_config_error_before_any_gate_runs() {
         let tree = Tree::new();
         tree.write("klin.json", config);
 
-        let run = tree.run(&["gate", "--list"]);
+        let run = tree.run(&["policy"]);
         assert_eq!(run.code, 2, "{config}: {}", run.out);
         assert!(run.says("\"build\" is a command"), "{config}: {}", run.out);
     }

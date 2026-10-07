@@ -44,7 +44,7 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
     }
     let _ = writeln!(
         out.text,
-        "FAIL: {} file(s) left scrutiny — under --strict a file klin measured at the base and \
+        "FAIL: {} file(s) left scrutiny — a file klin measured at the base and \
          does not measure now, though it is still in the tree, is a failure. {LOST_REMEDY}",
         lost.len()
     );

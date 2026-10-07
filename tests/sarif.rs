@@ -66,7 +66,7 @@ fn a_result_on_a_changed_line_fails_with_its_file_line_rule_and_message() {
         &report(&[result("src/a.ts", 2, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new result(s)"), "{}", run.out);
     assert!(
@@ -93,7 +93,7 @@ fn the_ok_line_counts_the_files_it_placed_and_the_places_it_could_not() {
         ]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("(3 file(s) found, 2 measured, 0 excluded, 1 unreadable)"),
@@ -110,16 +110,13 @@ fn a_result_on_a_line_the_window_did_not_change_is_held_and_counted() {
         &report(&[result("src/a.ts", 3, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["sarif"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: 0 result(s) on lines this window changed, 1 held"),
         "{}",
         run.out
     );
-
-    let gated = tree.run(&["gate", "--gate", "eslint"]);
-    assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
 #[test]
@@ -131,7 +128,7 @@ fn a_result_in_an_untracked_file_fails() {
         &report(&[result("src/b.ts", 2, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/b.ts:2"), "{}", run.out);
 }
@@ -144,7 +141,7 @@ fn differential_judges_every_result_wherever_it_sits() {
         &report(&[result("src/a.ts", 3, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.ts:3"), "{}", run.out);
 }
@@ -164,12 +161,12 @@ fn an_accepted_entry_holds_a_result() {
         &report(&[result("src/a.ts", 2, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
 #[test]
-fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_strict_failure() {
+fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_failure() {
     let tree = tree(
         r#"{
         "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
@@ -180,13 +177,10 @@ fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_strict_failure() {
     );
     tree.write("eslint.sarif", &report(&[]));
 
-    let loose = tree.run(&["gate", "--gate", "eslint"]);
-    assert_eq!(loose.code, 0, "{}", loose.out);
-    assert!(loose.says("matched nothing this run"), "{}", loose.out);
-
-    let strict = tree.run(&["gate", "--strict", "--gate", "eslint"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-    assert!(strict.says("Delete the line"), "{}", strict.out);
+    let run = tree.run(&["check", "eslint"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("matched nothing this run"), "{}", run.out);
+    assert!(run.says("Delete the line"), "{}", run.out);
 }
 
 #[test]
@@ -206,7 +200,7 @@ fn every_location_form_resolves_to_a_path_in_the_tree() {
         ),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("4 new result(s)"), "{}", run.out);
     for rule in ["relative", "absolute", "uri", "based"] {
@@ -229,7 +223,7 @@ fn a_location_klin_cannot_place_is_a_note_and_is_not_judged() {
         ]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("/elsewhere/x.ts"), "{}", run.out);
@@ -244,7 +238,7 @@ fn a_relative_location_that_climbs_out_of_the_tree_is_a_note() {
         &report(&[result("../outside/x.ts", 2, "outside", "m")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("could not place"), "{}", run.out);
     assert!(run.says("../outside/x.ts"), "{}", run.out);
@@ -255,7 +249,7 @@ fn a_differential_entry_says_on_its_ok_line_that_it_judged_every_result() {
     let tree = tree(DIFFERENTIAL);
     tree.write("eslint.sarif", &report(&[]));
 
-    let run = tree.run(&["sarif"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: 0 result(s) judged, which is every result the scanner reported"),
@@ -268,7 +262,7 @@ fn a_differential_entry_says_on_its_ok_line_that_it_judged_every_result() {
 fn a_section_that_is_not_a_list_of_entries_is_a_config_error() {
     let tree = tree(r#"{"sarif": {"report": "eslint.sarif"}}"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("is a list of entries"), "{}", run.out);
 }
@@ -277,7 +271,7 @@ fn a_section_that_is_not_a_list_of_entries_is_a_config_error() {
 fn an_entry_with_an_unknown_field_is_a_config_error() {
     let tree = tree(r#"{"sarif": [{"name": "eslint", "report": "eslint.sarif", "extra": true}]}"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("has unknown field \"extra\""), "{}", run.out);
 }
@@ -290,7 +284,7 @@ fn run_deletes_the_report_it_finds_before_it_reads_the_one_the_tool_wrote() {
         &report(&[result("src/a.ts", 2, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("wrote no report"), "{}", run.out);
 }
@@ -307,7 +301,7 @@ fn run_judges_the_report_a_nonzero_exit_wrote() {
         &report(&[result("src/a.ts", 2, "no-any", "Unexpected any")]),
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.ts:2"), "{}", run.out);
 }
@@ -317,7 +311,7 @@ fn a_report_that_is_not_sarif_is_a_tool_error() {
     let tree = tree(ONE);
     tree.write("eslint.sarif", "not a report\n");
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("is not SARIF"), "{}", run.out);
 }
@@ -326,7 +320,7 @@ fn a_report_that_is_not_sarif_is_a_tool_error() {
 fn a_missing_report_is_a_tool_error() {
     let tree = tree(ONE);
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("eslint.sarif"), "{}", run.out);
 }
@@ -346,7 +340,7 @@ fn a_report_older_than_a_file_the_window_changed_is_a_tool_error() {
         "the report's modification time could not be set back"
     );
 
-    let run = tree.run(&["gate", "--gate", "eslint"]);
+    let run = tree.run(&["check", "eslint"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("older than"), "{}", run.out);
 }
@@ -361,11 +355,11 @@ fn each_entry_is_its_own_gate() {
     );
     tree.write("semgrep.sarif", &report(&[]));
 
-    let listed = tree.run(&["gate", "--list"]);
+    let listed = tree.run(&["policy"]);
     assert!(listed.says("eslint — runs"), "{}", listed.out);
     assert!(listed.says("semgrep — runs"), "{}", listed.out);
 
-    let run = tree.run(&["gate", "--gate", "semgrep"]);
+    let run = tree.run(&["check", "semgrep"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    semgrep"), "{}", run.out);
 }
@@ -374,7 +368,7 @@ fn each_entry_is_its_own_gate() {
 fn an_entry_with_no_name_names_the_key_it_is_missing() {
     let tree = tree(r#"{"sarif": [{"report": "eslint.sarif"}]}"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("has no \"name\""), "{}", run.out);
 }
@@ -386,10 +380,7 @@ fn a_run_that_never_exits_is_stopped_at_the_limit_and_named() {
     );
 
     let started = std::time::Instant::now();
-    let run = tree.run_with(
-        &[("KLIN_COMMAND_LIMIT", "1")],
-        &["gate", "--gate", "eslint"],
-    );
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "1")], &["check", "eslint"]);
     assert!(started.elapsed().as_secs() < 30, "{}", run.out);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("sleep 60; echo never"), "{}", run.out);
@@ -409,9 +400,7 @@ fn the_commands_of_one_run_share_twice_the_limit() {
     let started = std::time::Instant::now();
     let run = tree.run_with(
         &[("KLIN_COMMAND_LIMIT", "1")],
-        &[
-            "gate", "--gate", "first", "--gate", "second", "--gate", "third",
-        ],
+        &["check", "first", "second", "third"],
     );
     assert!(started.elapsed().as_secs() < 30, "{}", run.out);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -432,7 +421,7 @@ fn the_build_draws_on_the_limit_the_sarif_commands_share() {
         ]}"#,
     );
 
-    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "2")], &["gate"]);
+    let run = tree.run_with(&[("KLIN_COMMAND_LIMIT", "2")], &["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the 2 second limit"), "{}", run.out);
     assert!(

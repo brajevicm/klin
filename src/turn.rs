@@ -427,7 +427,7 @@ fn turn(stamp: &Stamp) -> Window {
     }
 }
 
-/// The base `klin gate` would choose by hand, and HEAD when none resolves. Spec 6.3.
+/// The base `klin check` would choose, and HEAD when none resolves. Spec 6.3.
 fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     base::choose(root, false).or_else(|problem| {
         let Some(head) = stamp::resolve(root, "HEAD") else {

@@ -128,7 +128,7 @@ const ANOTHER_TOOL: &str = r#"{"hooks": {"Stop": [{"hooks": [{"type": "command",
 fn the_committed_stop_says_how_to_install_klin_where_none_resolves() {
     let tree = a_repository();
     let run = tree.run(&[
-        "install", "--host", "claude", "--host", "codex", "--host", "cursor",
+        "setup", "--host", "claude", "--host", "codex", "--host", "cursor",
     ]);
     assert_eq!(run.code, 0, "{}", run.out);
     let stops = [
@@ -181,7 +181,7 @@ fn install_opts_the_repository_in_from_a_nested_directory() {
     tree.write(".claude/settings.json", "{}\n");
     tree.write("apps/web/index.ts", "export const one = 1;\n");
 
-    let run = harness::run_from(&tree.path("apps/web"), &["install"]);
+    let run = harness::run_from(&tree.path("apps/web"), &["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
     assert!(!tree.path("apps/web/klin.json").exists(), "{}", run.out);
@@ -195,7 +195,7 @@ fn install_keeps_the_configuration_a_person_wrote() {
     tree.write("klin.json", r#"{"escapes": false}"#);
     tree.write(".claude/settings.json", "{}\n");
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let held = settings_at(&tree.path("klin.json"));
     assert_eq!(held["escapes"], Value::Bool(false), "{held}");
@@ -207,7 +207,7 @@ fn install_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     let tree = a_repository();
     tree.write(".claude/settings.json", ANOTHER_TOOL);
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     assert_eq!(
@@ -242,7 +242,7 @@ fn install_writes_klins_entries_for_codex_cli() {
     let tree = a_repository();
     tree.write(".codex/hooks.json", ANOTHER_TOOL);
 
-    let run = tree.run(&["install", "--host", "codex"]);
+    let run = tree.run(&["setup", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = codex_settings(&tree);
     assert_eq!(
@@ -265,7 +265,7 @@ fn install_writes_klins_entries_for_cursor_in_its_own_shape() {
         r#"{"version":1,"hooks":{"stop":[{"command":"cargo fmt"}]}}"#,
     );
 
-    let run = tree.run(&["install", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = cursor_settings(&tree);
     assert_eq!(settings["version"], 1, "{settings}");
@@ -301,7 +301,7 @@ fn install_reconciles_every_host_the_repository_names() {
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".cursor/rules", "\n");
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
@@ -324,7 +324,7 @@ fn install_narrows_to_the_host_that_is_named() {
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".cursor/rules", "\n");
 
-    let run = tree.run(&["install", "--host", "claude"]);
+    let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
 }
@@ -333,7 +333,7 @@ fn install_narrows_to_the_host_that_is_named() {
 fn install_refuses_a_host_klin_does_not_know() {
     let tree = a_repository();
 
-    let run = tree.run(&["install", "--host", "borg"]);
+    let run = tree.run(&["setup", "--host", "borg"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("borg"), "{}", run.out);
     assert!(run.says("claude"), "{}", run.out);
@@ -346,7 +346,7 @@ fn install_refuses_a_host_klin_does_not_know() {
 fn install_with_no_provable_host_writes_every_first_class_host() {
     let tree = a_repository();
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
     assert!(run.says("shows no host"), "{}", run.out);
@@ -385,7 +385,7 @@ fn install_user_with_no_provable_host_names_the_supported_ones() {
     let home = Tree::bare();
 
     let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("--host"), "{}", run.out);
     for host in ["claude", "codex", "cursor"] {
@@ -403,7 +403,7 @@ fn install_proves_a_host_from_an_enabled_plugin_alone() {
     home.write(".claude/settings.json", A_PLUGIN);
 
     let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("claude: reconciled"), "{}", run.out);
     assert!(tree.path(".claude/settings.json").is_file(), "{}", run.out);
@@ -419,7 +419,7 @@ fn install_writes_every_host_where_only_the_persons_plugin_shows_one() {
     home.write(".claude/settings.json", A_PLUGIN);
 
     let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     for file in [
         ".claude/settings.json",
@@ -437,7 +437,7 @@ fn install_writes_the_hooks_and_the_skill_beside_the_plugin_and_says_the_copy_yi
     let tree = a_repository();
     tree.write(".claude/settings.json", A_PLUGIN);
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_ne!(settings(&tree)["hooks"], Value::Null, "{}", run.out);
     assert_eq!(
@@ -458,7 +458,7 @@ fn install_writes_the_hooks_and_the_skill_beside_the_plugin_and_says_the_copy_yi
 fn install_writes_the_canonical_skill_once_for_codex_and_cursor() {
     let tree = a_repository();
 
-    let run = tree.run(&["install", "--host", "codex", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "codex", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         skill_at(&tree.path(".agents/skills/klin/SKILL.md")),
@@ -480,7 +480,7 @@ fn install_user_writes_the_canonical_shared_skill() {
 
     let run = tree.run_with(
         &[("HOME", at.as_str())],
-        &["install", "--user", "--host", "codex", "--host", "cursor"],
+        &["setup", "--user", "--host", "codex", "--host", "cursor"],
     );
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
@@ -505,7 +505,7 @@ fn install_refuses_a_different_skill_before_writing_anything() {
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
 
-    let run = tree.run(&["install", "--host", "claude"]);
+    let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("SKILL.md"), "{}", run.out);
     assert!(run.says("refusing to overwrite"), "{}", run.out);
@@ -522,7 +522,7 @@ fn install_refuses_a_shared_skill_conflict_before_writing_either_host() {
     let tree = a_repository();
     tree.write(".agents/skills/klin/SKILL.md", "a person's shared skill\n");
 
-    let run = tree.run(&["install", "--host", "codex", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "codex", "--host", "cursor"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(".agents/skills/klin/SKILL.md"), "{}", run.out);
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
@@ -544,7 +544,7 @@ fn install_replaces_a_stale_matcher_of_klins_own() {
     ]}});
     tree.write(".claude/settings.json", &stale.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     assert_eq!(
@@ -570,7 +570,7 @@ fn install_replaces_a_stale_command_of_klins_own_in_place() {
     ]}});
     tree.write(".claude/settings.json", &stale.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
@@ -589,7 +589,7 @@ fn install_repairs_a_partial_install() {
     ]}});
     tree.write(".claude/settings.json", &partial.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     for event in CLAUDE_EVENTS {
@@ -607,7 +607,7 @@ fn install_removes_a_duplicate_entry_of_klins() {
     ]}});
     tree.write(".claude/settings.json", &doubled.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
@@ -630,7 +630,7 @@ fn install_removes_klins_entry_from_an_event_it_no_longer_writes() {
     }});
     tree.write(".claude/settings.json", &retired.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     assert_eq!(settings["hooks"]["PostToolUse"], Value::Null, "{settings}");
@@ -650,7 +650,7 @@ fn install_keeps_a_hook_that_runs_another_klin_command() {
     ]}});
     tree.write(".claude/settings.json", &held.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "SessionStart"),
@@ -671,7 +671,7 @@ fn install_keeps_a_hook_that_only_mentions_klin() {
           "command": "/work/klin-ui/scripts/fmt.sh"}]}]}}"#,
     );
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
@@ -690,10 +690,10 @@ fn a_second_complete_run_changes_nothing() {
     let tree = a_repository();
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".cursor/rules", "\n");
-    assert_eq!(tree.run(&["install"]).code, 0);
+    assert_eq!(tree.run(&["setup"]).code, 0);
     tree.commit("the hooks klin wrote");
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.status(), "", "{}", run.out);
     assert!(run.says("already current"), "{}", run.out);
@@ -703,9 +703,9 @@ fn a_second_complete_run_changes_nothing() {
 fn a_second_cursor_run_adds_no_second_entry() {
     let tree = a_repository();
     tree.write(".cursor/hooks.json", "{}\n");
-    assert_eq!(tree.run(&["install", "--host", "cursor"]).code, 0);
+    assert_eq!(tree.run(&["setup", "--host", "cursor"]).code, 0);
 
-    let run = tree.run(&["install", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = cursor_settings(&tree);
     for event in CURSOR_EVENTS {
@@ -724,7 +724,7 @@ fn install_writes_nothing_when_a_host_file_cannot_be_read() {
     let tree = a_repository();
     tree.write(".claude/settings.json", r#"{"hooks": []}"#);
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
     assert_eq!(
@@ -742,7 +742,7 @@ fn install_writes_nothing_when_a_host_file_cannot_be_read() {
 fn a_written_hook_line_says_nothing_when_no_binary_resolves() {
     let tree = a_repository();
     tree.write(".claude/settings.json", "{}\n");
-    assert_eq!(tree.run(&["install"]).code, 0);
+    assert_eq!(tree.run(&["setup"]).code, 0);
     std::fs::remove_file(tree.path("klin.json")).unwrap_or_else(|why| panic!("{why}"));
 
     let settings = settings(&tree);
@@ -775,7 +775,7 @@ fn a_written_hook_line_finds_klin_where_the_installer_put_it() {
     let tree = a_repository();
     assert_eq!(
         tree.run(&[
-            "install", "--host", "claude", "--host", "codex", "--host", "cursor"
+            "setup", "--host", "claude", "--host", "codex", "--host", "cursor"
         ])
         .code,
         0
@@ -821,7 +821,7 @@ fn install_follows_a_settings_file_that_is_a_link() {
     let narrow = std::fs::Permissions::from_mode(0o600);
     assert!(std::fs::set_permissions(&held, narrow).is_ok());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(link.is_symlink(), "{}", run.out);
     assert_eq!(
@@ -844,7 +844,7 @@ fn install_user_writes_the_persons_own_file_and_leaves_the_repository_alone() {
     home.write(".claude/settings.json", "{}\n");
 
     let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
     assert_eq!(
@@ -872,7 +872,7 @@ fn install_user_writes_no_configuration_beside_the_home_directory() {
     home.write(".claude/settings.json", "{}\n");
 
     let at = home_of(&home);
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!home.path("klin.json").exists(), "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
@@ -888,7 +888,7 @@ fn install_user_writes_no_configuration_beside_the_home_directory() {
 fn install_outside_a_repository_is_refused() {
     let tree = Tree::bare();
 
-    let run = tree.run(&["install", "--host", "claude"]);
+    let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("--user"), "{}", run.out);
 }
@@ -901,7 +901,7 @@ fn install_user_outside_a_repository_opts_no_repository_in() {
     let at = home_of(&home);
     let run = tree.run_with(
         &[("HOME", at.as_str())],
-        &["install", "--user", "--host", "claude"],
+        &["setup", "--user", "--host", "claude"],
     );
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("no repository was opted in"), "{}", run.out);
@@ -922,9 +922,9 @@ fn install_writes_the_hooks_where_the_persons_own_file_already_holds_klins_entri
     home.write(".claude/settings.json", "{}\n");
     let at = home_of(&home);
     let environment = [("HOME", at.as_str())];
-    assert_eq!(tree.run_with(&environment, &["install", "--user"]).code, 0);
+    assert_eq!(tree.run_with(&environment, &["setup", "--user"]).code, 0);
 
-    let run = tree.run_with(&environment, &["install", "--host", "claude"]);
+    let run = tree.run_with(&environment, &["setup", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path(".claude/settings.json").is_file(), "{}", run.out);
     assert!(run.says(&home.at(".claude/settings.json")), "{}", run.out);
@@ -942,7 +942,7 @@ fn install_writes_beside_the_local_cursor_plugin() {
         A_CURSOR_PLUGIN,
     );
 
-    let run = tree.run(&["install", "--host", "cursor"]);
+    let run = tree.run(&["setup", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
     assert!(
@@ -967,7 +967,7 @@ fn after_the_cursor_plugin_copy_is_removed_the_committed_hooks_run() {
         ".cursor/plugins/local/klin/.cursor-plugin/plugin.json",
         A_CURSOR_PLUGIN,
     );
-    assert_eq!(tree.run(&["install", "--host", "cursor"]).code, 0);
+    assert_eq!(tree.run(&["setup", "--host", "cursor"]).code, 0);
     assert!(tree.path(".cursor/hooks.json").is_file());
     tree.base();
 
@@ -998,7 +998,7 @@ fn install_writes_beside_a_marketplace_cursor_plugin() {
     );
     let at = home_of(&home);
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--host", "cursor"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
     assert!(
@@ -1022,7 +1022,7 @@ fn install_writes_for_cursor_past_a_klin_manifest_cursor_did_not_install() {
     );
     let at = home_of(&home);
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--host", "cursor"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--host", "cursor"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path(".cursor/hooks.json").is_file(), "{}", run.out);
@@ -1039,7 +1039,7 @@ fn install_writes_beside_the_enabled_codex_plugin() {
     let tree = a_repository();
     tree.write(".codex/config.toml", A_CODEX_PLUGIN);
 
-    let run = tree.run(&["install", "--host", "codex"]);
+    let run = tree.run(&["setup", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(tree.path(".codex/hooks.json").is_file(), "{}", run.out);
     assert!(
@@ -1056,7 +1056,7 @@ fn install_writes_for_codex_when_its_plugin_table_is_switched_off() {
     let tree = a_repository();
     tree.write(".codex/config.toml", A_CODEX_PLUGIN_OFF);
 
-    let run = tree.run(&["install", "--host", "codex"]);
+    let run = tree.run(&["setup", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&codex_settings(&tree), "Stop"),
@@ -1073,7 +1073,7 @@ fn install_for_codex_ignores_claudes_plugin_key() {
     let tree = a_repository();
     tree.write(".codex/hooks.json", A_PLUGIN);
 
-    let run = tree.run(&["install", "--host", "codex"]);
+    let run = tree.run(&["setup", "--host", "codex"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&codex_settings(&tree), "Stop"),
@@ -1091,7 +1091,7 @@ fn install_writes_where_the_plugin_is_listed_but_switched_off() {
         r#"{"enabledPlugins": {"klin@klin-marketplace": false}}"#,
     );
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
@@ -1111,7 +1111,7 @@ fn install_user_writes_where_the_plugin_is_enabled_in_the_repository_alone() {
     home.write(".claude/settings.json", "{}\n");
     let at = home_of(&home);
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
     assert_eq!(
@@ -1128,7 +1128,7 @@ fn install_user_writes_beside_the_persons_plugin() {
     home.write(".claude/settings.json", A_PLUGIN);
     let at = home_of(&home);
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
     assert_ne!(written["hooks"], Value::Null, "{}", run.out);
@@ -1149,7 +1149,7 @@ fn install_user_writes_codex_hooks_to_the_persons_own_file() {
 
     let run = tree.run_with(
         &[("HOME", at.as_str())],
-        &["install", "--user", "--host", "codex"],
+        &["setup", "--user", "--host", "codex"],
     );
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
@@ -1170,7 +1170,7 @@ fn install_keeps_the_settings_keys_that_are_not_klins() {
     });
     tree.write(".claude/settings.json", &held.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     assert_eq!(settings["permissions"], held["permissions"], "{settings}");
@@ -1188,7 +1188,7 @@ fn install_names_what_it_did_not_write_when_a_write_fails() {
     tree.write(".claude/settings.json", "{}\n");
     assert!(std::fs::create_dir_all(tree.path(".cursor/hooks.json")).is_ok());
 
-    let run = tree.run(&["install", "--host", "cursor", "--host", "claude"]);
+    let run = tree.run(&["setup", "--host", "cursor", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("repository opted in"), "{}", run.out);
     assert!(run.says("incomplete: klin did not write"), "{}", run.out);
@@ -1203,7 +1203,7 @@ fn install_names_a_host_file_it_wrote_before_the_skill_failed() {
     tree.write(".claude/settings.json", "{}\n");
     assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin/SKILL.writing")).is_ok());
 
-    let run = tree.run(&["install", "--host", "claude"]);
+    let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
     assert_eq!(
@@ -1226,7 +1226,7 @@ fn install_leaves_an_event_it_does_not_write_and_cannot_read() {
     let held = serde_json::json!({"hooks": {"Notification": {"note": "another tool's shape"}}});
     tree.write(".claude/settings.json", &held.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let settings = settings(&tree);
     assert_eq!(
@@ -1249,7 +1249,7 @@ fn install_writes_the_marker_and_the_host_file_and_nothing_else() {
     tree.write(".claude/settings.json", "{}\n");
     tree.commit("an ignore file and a settings file");
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         tree.status(),
@@ -1271,7 +1271,7 @@ fn install_keeps_a_persons_command_that_shares_an_entry_with_klins() {
     ]}]}});
     tree.write(".claude/settings.json", &shared.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let held = commands(&settings(&tree), "Stop");
     assert!(held.contains(&"cargo fmt --check".to_string()), "{held:?}");
@@ -1290,7 +1290,7 @@ fn install_keeps_a_persons_command_on_an_event_it_no_longer_writes() {
     ]}]}});
     tree.write(".claude/settings.json", &shared.to_string());
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "SubagentStop"),
@@ -1309,7 +1309,7 @@ fn install_user_says_to_commit_the_marker_it_wrote() {
     home.write(".claude/settings.json", "{}\n");
     let at = home_of(&home);
 
-    let run = tree.run_with(&[("HOME", at.as_str())], &["install", "--user"]);
+    let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("commit it, so the repository stays opted in"),
@@ -1328,9 +1328,9 @@ fn install_user_says_to_commit_the_marker_it_wrote() {
 fn a_second_install_beside_the_plugin_is_already_current() {
     let tree = a_repository();
     tree.write(".claude/settings.json", A_PLUGIN);
-    assert_eq!(tree.run(&["install"]).code, 0);
+    assert_eq!(tree.run(&["setup"]).code, 0);
 
-    let run = tree.run(&["install"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("Commit the host files"), "{}", run.out);
     assert!(run.says("already current"), "{}", run.out);

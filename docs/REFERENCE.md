@@ -1,6 +1,6 @@
 # klin configuration reference
 
-`klin reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a test fails when the two differ, so the reference cannot drift from the binary. Do not edit the copy by hand.
+`klin policy --reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a test fails when the two differ, so the reference cannot drift from the binary. Do not edit the copy by hand.
 
 `klin.json` is a person's policy over facts klin discovers in the tree. `{}` is a complete configuration: every Automatic check runs over what the tree holds and derives what the file leaves out. A section pins a decision and leaves the rest to derivation, and a run prints one `pinned:` or `derived:` line per value it used. The file never describes the repository: roots, languages, documents, manifests, test roots and build commands are facts. A key or field klin does not read is an error naming it. A gate is excluded by setting its section to `false`.
 
@@ -112,7 +112,7 @@ A Cargo library target and a TypeScript package entry point are surfaces whether
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
-| `name` | the gate's own name, which `--gate` takes | yes | pinned only | — | — |
+| `name` | the gate's own name, which `klin check` takes | yes | pinned only | — | — |
 | `report` | the SARIF file this gate reads | yes | pinned only | — | — |
 | `run` | the command that writes the report before the gate reads it | no | pinned only | — | klin reads the report as it finds it and refuses one that predates the change |
 | `differential` | whether only a finding on a line the window changed is judged | no | pinned only | — | `false` |
@@ -200,7 +200,7 @@ These tables report the source extensions each check discovers automatically. Th
 
 Every source check discovers supported files from one repository walk, skips the fixed directory list `.git`, `node_modules`, `vendor`, `build`, `.build`, `dist`, `target`, `__pycache__`, `.venv`, `venv`, `DerivedData`, `Pods`, `coverage`, `.next`, `out`, `fixtures`, and drops files git ignores. `in` narrows a check to a repository-relative path (or non-empty list) and `except` takes paths back out. Each path names itself and everything below it; neither key accepts globs.
 
-`complexity`, `escapes`, `stubs`, `dead_symbols`, `reachability`, `inventory` and `lockfile` reject the retired `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` topology keys with a migration error. A file measured under the base scope and omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.
+`complexity`, `escapes`, `stubs`, `dead_symbols`, `reachability`, `inventory` and `lockfile` reject the retired `roots`, `languages`, `patterns`, `skip_dirs`, `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` topology keys with a migration error. A file measured under the base scope and omitted by today's scope is a NOTE in the hook and exit 2 under `klin check`.
 
 `doc_size` maps a document path to its ceiling, and `AGENTS.md` and `CLAUDE.md` at the tree root keep a derived ceiling where it does not name them; every other document is judged only when the map names it. `doc_citations` reads every Markdown file at the tree root and resolves a citation against the whole tree; a citation names one of the built-in extensions `.py`, `.ts`, `.tsx`, `.js`, `.jsx`, `.swift`, `.rs`, `.go`, `.kt`, `.java`, `.rb`, `.sh`, `.md`, `.json`, `.yml`, `.yaml`, `.toml`.
 

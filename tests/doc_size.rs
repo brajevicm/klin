@@ -2,124 +2,64 @@ mod harness;
 
 use harness::Tree;
 
+fn judge(tree: &Tree, name: &str, ceiling: u32) -> harness::Run {
+    tree.write(
+        "klin.json",
+        &format!(r#"{{"doc_size": {{"{name}": {ceiling}}}}}"#),
+    );
+    tree.run(&["check", "doc-size"])
+}
+
 #[test]
 fn a_document_under_its_ceiling_passes_and_prints_both_numbers() {
     let tree = Tree::new();
-    let doc = tree.words("small.md", 5);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "10",
-    ]);
+    tree.words("small.md", 5);
+    let run = judge(&tree, "small.md", 10);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is 5 words, ceiling 10"), "{}", run.out);
 }
 
 #[test]
-fn quiet_prints_nothing_on_success() {
-    let tree = Tree::new();
-    let doc = tree.words("small.md", 5);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "10",
-        "--quiet",
-    ]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out, "", "{:?}", run.out);
-}
-
-#[test]
 fn a_document_over_its_ceiling_fails_naming_the_count_and_the_ceiling() {
     let tree = Tree::new();
-    let doc = tree.words("small.md", 5);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "4",
-    ]);
+    tree.words("small.md", 5);
+    let run = judge(&tree, "small.md", 4);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("is 5 words, over its ceiling of 4"), "{}", run.out);
 }
 
 #[test]
-fn a_missing_document_is_a_tool_error() {
+fn a_document_inside_the_margin_prints_the_ok_line_and_warns() {
     let tree = Tree::new();
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &tree.at("missing.md"),
-        "--ceiling",
-        "10",
-    ]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no such file"), "{}", run.out);
-}
-
-#[test]
-fn a_document_inside_the_margin_warns_even_under_quiet() {
-    let tree = Tree::new();
-    let doc = tree.words("margin.md", 99);
-    let name = doc.display().to_string();
-    let run = tree.run(&["doc-size", "--file", &name, "--ceiling", "100", "--quiet"]);
+    tree.words("margin.md", 99);
+    let run = judge(&tree, "margin.md", 100);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says(&format!(
-            "WARN: {name} is 99 words, 1 from its ceiling of 100."
-        )),
+        run.says("OK: margin.md is 99 words, ceiling 100"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("WARN: margin.md is 99 words, 1 from its ceiling of 100."),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_document_inside_the_margin_prints_the_ok_line_too() {
+fn a_document_outside_the_margin_does_not_warn() {
     let tree = Tree::new();
-    let doc = tree.words("margin.md", 99);
-    let name = doc.display().to_string();
-    let run = tree.run(&["doc-size", "--file", &name, "--ceiling", "100"]);
+    tree.words("outside.md", 97);
+    let run = judge(&tree, "outside.md", 100);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says(&format!("OK: {name} is 99 words, ceiling 100")),
-        "{}",
-        run.out
-    );
-    assert!(run.says("WARN:"), "{}", run.out);
-}
-
-#[test]
-fn a_document_outside_the_margin_prints_nothing_under_quiet() {
-    let tree = Tree::new();
-    let doc = tree.words("outside.md", 97);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "100",
-        "--quiet",
-    ]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out, "", "{:?}", run.out);
+    assert!(!run.says("WARN:"), "{}", run.out);
 }
 
 #[test]
 fn a_document_over_its_ceiling_fails_with_no_warn_in_its_place() {
     let tree = Tree::new();
-    let doc = tree.words("over.md", 101);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "100",
-    ]);
+    tree.words("over.md", 101);
+    let run = judge(&tree, "over.md", 100);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(!run.says("WARN:"), "{}", run.out);
 }
@@ -127,14 +67,8 @@ fn a_document_over_its_ceiling_fails_with_no_warn_in_its_place() {
 #[test]
 fn the_failure_says_what_fixes_the_code() {
     let tree = Tree::new();
-    let doc = tree.words("over.md", 101);
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "100",
-    ]);
+    tree.words("over.md", 101);
+    let run = judge(&tree, "over.md", 100);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Keep in this file what the task asked for"),
@@ -160,7 +94,7 @@ fn a_config_of_two_documents_names_only_the_one_over_its_ceiling() {
         r#"{"doc_size": {"small.md": 10, "big.md": 6}}"#,
     );
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("FAIL: big.md is 7 words, over its ceiling of 6"),
@@ -176,33 +110,10 @@ fn a_config_of_two_documents_names_only_the_one_over_its_ceiling() {
 }
 
 #[test]
-fn file_without_ceiling_takes_the_ceiling_from_the_config() {
-    let tree = Tree::new();
-    let doc = tree.words("small.md", 5);
-    tree.write("klin.json", r#"{"doc_size": {"small.md": 10}}"#);
-
-    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("is 5 words, ceiling 10"), "{}", run.out);
-}
-
-#[test]
-fn file_with_neither_a_pin_nor_a_derived_ceiling_is_a_tool_error_naming_it() {
-    let tree = Tree::new();
-    let doc = tree.words("stray.md", 5);
-    tree.write("klin.json", r#"{"doc_size": {"small.md": 10}}"#);
-
-    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("stray.md"), "{}", run.out);
-    assert!(run.says("--ceiling"), "{}", run.out);
-}
-
-#[test]
 fn a_document_the_config_lists_but_the_tree_lacks_is_a_tool_error() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"doc_size": {"gone.md": 10}}"#);
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no such file"), "{}", run.out);
 }
@@ -216,7 +127,7 @@ fn a_missing_document_does_not_hide_the_failure_of_one_before_it() {
         r#"{"doc_size": {"over.md": 3, "gone.md": 10}}"#,
     );
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL: over.md is 5 words"), "{}", run.out);
     assert!(run.says("no such file"), "{}", run.out);
@@ -226,7 +137,7 @@ fn a_missing_document_does_not_hide_the_failure_of_one_before_it() {
 fn an_empty_map_of_documents_is_a_config_error() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"doc_size": {}}"#);
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("must pin at least one document"), "{}", run.out);
 }
@@ -242,7 +153,7 @@ fn a_pinned_document_sits_beside_the_derived_ones_it_does_not_name() {
     tree.write("klin.json", r#"{"doc_size": {"README.md": 1200}}"#);
     tree.words("AGENTS.md", 60);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pinned: doc_size README.md 1200"), "{}", run.out);
     assert!(
@@ -269,10 +180,11 @@ fn a_readme_that_grows_past_its_base_word_count_passes_with_no_pin() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.words("README.md", 120);
+    tree.words("AGENTS.md", 20);
     tree.base();
     tree.words("README.md", 400);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("README.md"), "{}", run.out);
 }
@@ -286,7 +198,7 @@ fn a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section() {
     tree.words("README.md", 120);
     tree.base();
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("doc-size — needs a section a person writes"),
@@ -294,24 +206,6 @@ fn a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section() {
         run.out
     );
     assert!(run.says("doc-citations — runs"), "{}", run.out);
-}
-
-/// With `{}`, `--file` on a README finds no derived ceiling, because only the instruction files
-/// get one. #382.
-#[test]
-fn file_on_a_readme_under_an_empty_config_is_a_tool_error_naming_the_instruction_files() {
-    let tree = Tree::new();
-    tree.write("klin.json", "{}");
-    let doc = tree.words("README.md", 120);
-    tree.base();
-
-    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(
-        run.says("neither pinned nor an instruction file; pass --ceiling N"),
-        "{}",
-        run.out
-    );
 }
 
 /// With `{}`, each instruction file keeps its derived ceiling and fails past it. #382.
@@ -324,7 +218,7 @@ fn an_instruction_file_that_grows_past_its_derived_ceiling_fails_with_no_pin() {
         tree.base();
         tree.words(name, 400);
 
-        let run = tree.run(&["doc-size"]);
+        let run = tree.run(&["check", "doc-size"]);
         assert_eq!(run.code, 1, "{name}: {}", run.out);
         assert!(
             run.says(&format!(
@@ -345,26 +239,11 @@ fn a_pinned_readme_is_judged_under_its_pin() {
     tree.write("klin.json", r#"{"doc_size": {"README.md": 200}}"#);
     tree.words("README.md", 400);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pinned: doc_size README.md 200"), "{}", run.out);
     assert!(
         run.says("FAIL: README.md is 400 words, over its ceiling of 200."),
-        "{}",
-        run.out
-    );
-}
-
-#[test]
-fn file_alone_takes_the_derived_ceiling_of_a_document_the_derivation_commit_holds() {
-    let tree = Tree::new();
-    let doc = tree.words("AGENTS.md", 70);
-    tree.base();
-
-    let run = tree.run(&["doc-size", "--file", &doc.display().to_string()]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("AGENTS.md is 70 words, ceiling 100"),
         "{}",
         run.out
     );
@@ -379,7 +258,7 @@ fn a_section_set_to_false_excludes_the_gate() {
     tree.base();
     tree.words("README.md", 700);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("doc-size"), "{}", run.out);
 }
@@ -393,35 +272,23 @@ fn this_repositorys_own_documents_are_under_their_ceilings() {
     tree.write("RELEASE_NOTES.md", include_str!("../RELEASE_NOTES.md"));
     tree.write("klin.json", include_str!("../klin.json"));
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
 #[test]
 fn a_word_is_a_run_of_non_whitespace_so_markup_counts_and_unicode_spaces_split() {
     let tree = Tree::new();
-    let doc = tree.write(
+    tree.write(
         "spaced.md",
         "# Title\n\none\u{2003}two\u{00A0}three `code` **bold**\n```\nx = 1\n```\n",
     );
-    let at = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "12",
-    ]);
+    let at = judge(&tree, "spaced.md", 12);
     assert_eq!(at.code, 0, "{}", at.out);
     assert!(at.says("is 12 words, ceiling 12"), "{}", at.out);
     assert!(at.says("0 from its ceiling of 12"), "{}", at.out);
 
-    let over = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "11",
-    ]);
+    let over = judge(&tree, "spaced.md", 11);
     assert_eq!(over.code, 1, "{}", over.out);
     assert!(
         over.says("is 12 words, over its ceiling of 11"),
@@ -433,15 +300,8 @@ fn a_word_is_a_run_of_non_whitespace_so_markup_counts_and_unicode_spaces_split()
 #[test]
 fn a_byte_that_is_not_utf8_is_read_as_one_word_not_an_error() {
     let tree = Tree::new();
-    let doc = tree.path("bytes.md");
-    assert!(std::fs::write(&doc, b"one \xFF two\n").is_ok());
-    let run = tree.run(&[
-        "doc-size",
-        "--file",
-        &doc.display().to_string(),
-        "--ceiling",
-        "3",
-    ]);
+    assert!(std::fs::write(tree.path("bytes.md"), b"one \xFF two\n").is_ok());
+    let run = judge(&tree, "bytes.md", 3);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is 3 words, ceiling 3"), "{}", run.out);
 }
@@ -461,7 +321,7 @@ fn each_instruction_file_takes_its_derived_ceiling_or_the_new_file_default() {
     tree.words("CLAUDE.md", 47);
     tree.words("api/AGENTS.md", 71);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     for said in [
         "FAIL: AGENTS.md is 105 words, over its ceiling of 100.",
@@ -486,7 +346,7 @@ fn a_pin_overrides_the_new_file_default_and_a_nested_claude_md_is_not_judged() {
     tree.words("api/AGENTS.md", 71);
     tree.words("api/CLAUDE.md", 400);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: api/AGENTS.md is 71 words, ceiling 80"),
@@ -507,7 +367,7 @@ fn a_hundred_nested_instruction_files_are_each_judged() {
     tree.base();
     tree.words("pkg7/AGENTS.md", 60);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("FAIL: pkg7/AGENTS.md is 60 words, over its ceiling of 50."),
@@ -543,7 +403,7 @@ fn a_cache_that_misses_a_held_instruction_file_is_derived_again() {
     assert!(std::fs::write(&cache, partial).is_ok());
     tree.words("src/AGENTS.md", 191);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: src/AGENTS.md is 191 words, ceiling 200"),
@@ -562,7 +422,7 @@ fn a_changed_run_judges_only_the_instruction_files_that_changed() {
     tree.base();
     tree.words("AGENTS.md", 60);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "doc-size", "--changed"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("FAIL: AGENTS.md is 60 words, over its ceiling of 50."),
@@ -583,7 +443,7 @@ fn a_changed_run_still_reports_a_pinned_document_that_was_renamed() {
     tree.write("docs/.keep", "");
     tree.git(&["mv", "README.md", "docs/README.md"]);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "doc-size", "--changed"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no such file"), "{}", run.out);
 }
@@ -598,7 +458,7 @@ fn a_changed_run_reports_a_new_pin_that_names_a_missing_file() {
     tree.base();
     tree.write("klin.json", r#"{ "doc_size": {"MISSING.md": 100} }"#);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "doc-size", "--changed"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no such file"), "{}", run.out);
 }

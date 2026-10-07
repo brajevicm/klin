@@ -4,6 +4,7 @@ use harness::Tree;
 use serde_json::{Value, json};
 
 const GATES: [&str; 3] = ["complexity", "dead-symbols", "reachability"];
+const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
 /// A base with three reached command files, so `reachability` derives a family, under this
 /// configuration.
@@ -24,11 +25,9 @@ fn commands(config: &str) -> Tree {
 }
 
 fn judged(tree: &Tree, flags: &[&str], gates: &[&str]) -> Value {
-    let mut args = vec!["gate", "--json"];
+    let mut args = vec!["check", "--json"];
     args.extend_from_slice(flags);
-    for gate in gates {
-        args.extend(["--gate", gate]);
-    }
+    args.extend_from_slice(gates);
     tree.run(&args).json()
 }
 
@@ -290,13 +289,13 @@ fn a_strict_changed_run_extracts_both_trees_for_dead_symbols() {
         "pub fn run_alpha() {}\npub fn also() {}\n",
     );
 
-    let report = judged(&tree, &["--changed", "--strict"], &["dead-symbols"]);
+    let report = judged(&tree, &["--changed"], &["dead-symbols"]);
 
     assert_eq!(extracted(&report, "dead-symbols"), (8, 0), "{report}");
 }
 
 #[test]
-fn a_changed_run_shares_one_whole_base_between_structural_gates() {
+fn a_stop_shares_one_whole_base_between_structural_gates() {
     let tree = commands("{}");
     tree.base();
     tree.write(
@@ -304,18 +303,18 @@ fn a_changed_run_shares_one_whole_base_between_structural_gates() {
         "pub fn run_alpha() {}\npub fn also() {}\n",
     );
 
-    let run = tree.run(&[
-        "gate",
-        "--json",
-        "--changed",
-        "--gate",
-        "dead-symbols",
-        "--gate",
-        "reachability",
-    ]);
+    let run = harness::feed(
+        tree.root(),
+        &["gate", "--hook", "--changed", "--json"],
+        A_STOP,
+    );
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("\"extracted\":0"), "{}", run.out);
-    let report = run.json();
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let report: Value = journal
+        .lines()
+        .last()
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_else(|| panic!("no stop in the journal: {}", run.out));
 
     assert_eq!(extracted(&report, "dead-symbols"), (5, 3), "{report}");
     assert_eq!(extracted(&report, "reachability"), (0, 8), "{report}");

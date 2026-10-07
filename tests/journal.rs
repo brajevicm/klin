@@ -255,7 +255,7 @@ fn every_gate_row_carries_ms_and_the_held_count_its_ok_line_prints() {
     tree.base();
     prompt(&tree);
 
-    let by_hand = tree.run(&["escapes"]);
+    let by_hand = tree.run(&["check", "escapes"]);
     assert_eq!(by_hand.code, 0, "{}", by_hand.out);
     assert!(
         by_hand.says("OK: 1 escape site(s) in the tree, all held at the base"),
@@ -627,11 +627,11 @@ fn a_guard_ask_naming_the_state_directory_appends_a_line_with_state_mention() {
 }
 
 #[test]
-fn a_guard_deny_for_klin_init_appends_a_line_with_init() {
+fn a_guard_deny_for_klin_setup_appends_a_line_with_setup() {
     let tree = tree(EVERY_GATE);
     let run = guard(
         &tree,
-        r#"{"tool_name": "Bash", "tool_input": {"command": "klin init"}}"#,
+        r#"{"tool_name": "Bash", "tool_input": {"command": "klin setup"}}"#,
     );
     assert_eq!(run.code, 2, "{}", run.out);
 
@@ -639,7 +639,7 @@ fn a_guard_deny_for_klin_init_appends_a_line_with_init() {
     let line = &lines[0];
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
     assert_eq!(field(line, &["decision"]), "deny", "{line}");
-    assert_eq!(field(line, &["reason"]), "init", "{line}");
+    assert_eq!(field(line, &["reason"]), "setup", "{line}");
 }
 
 /// Codex CLI has no question to ask on this event, so the ask reaches the agent as a refusal.
