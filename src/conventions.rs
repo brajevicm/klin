@@ -12,7 +12,7 @@
 
 use serde_json::Value;
 
-use crate::check::contract::{Context, Line, Plain, Sink, Told};
+use crate::check::contract::{Context, Counted, Line, Plain, Sink, Told};
 use crate::check::holes;
 use crate::config::Config;
 use crate::error::Error;
@@ -80,11 +80,10 @@ fn every_convention(
         code = code.max(judged(config, rule, (&mut *after, &mut *before), at, out)?);
     }
     if code == 0 {
-        out.tell(Told::judged(Line {
-            state: format!("{} convention(s) judged", rules.len()),
-            coverage: said,
-            ..Line::default()
-        }));
+        out.tell(Told::judged(Line::new(
+            Counted::Conventions(rules.len()),
+            said,
+        )));
     }
     Ok(code)
 }
@@ -117,10 +116,13 @@ fn judged(
         described(rule, &gate, before.take(name)),
         ratchet::accepted(config, &gate, METRICS)?,
         &Context { gate: &gate, ..*at },
-        Line {
-            state: format!("{name}: {sites} site(s)"),
-            ..Line::default()
-        },
+        Line::new(
+            Counted::Convention {
+                name: name.clone(),
+                sites,
+            },
+            None,
+        ),
         out,
     ))
 }

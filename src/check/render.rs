@@ -4,8 +4,10 @@
 
 use std::fmt::Write;
 
+use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    Failed, Held, Hole, Line, Listed, Matched, Plain, Ratchet, Site, Standing, Told, Unmatched,
+    Complexity, Counted, Failed, Held, Hole, Judged, Layering, Line, Listed, Matched, Measured,
+    Plain, PublicApi, Ratchet, Site, Standing, Told, Unmatched, Unresolvable,
 };
 use crate::coverage::Coverage;
 
@@ -83,18 +85,13 @@ fn holed(hole: &Hole, out: &mut String) {
                 .map(|file| format!("{}  {}", file.file, file.text)),
             NOT_MEASURED_REMEDY,
         ),
-        Hole::Unresolved {
-            fail,
-            what,
-            remedy,
-            forms,
-        } => block(
+        Hole::Unresolved { fail, kind, forms } => block(
             out,
-            &format!("{}: {} {what}:", word(*fail), forms.len()),
+            &format!("{}: {} {}:", word(*fail), forms.len(), unresolved(*kind).0),
             forms
                 .iter()
                 .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
-            remedy,
+            unresolved(*kind).1,
         ),
         Hole::Unparsed { fail, files } => block(
             out,
@@ -107,6 +104,20 @@ fn holed(hole: &Hole, out: &mut String) {
                 .iter()
                 .map(|file| format!("{}  {}", file.file, file.text)),
             UNPARSED_REMEDY,
+        ),
+    }
+}
+
+/// What a block of unresolved forms of one kind says they are, and how to close them.
+fn unresolved(kind: Unresolvable) -> (&'static str, &'static str) {
+    match kind {
+        Unresolvable::Dependency => (
+            "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",
+            "Make each one name exactly one module file the tree holds, or take its file out of the section's scope.",
+        ),
+        Unresolvable::PublicSurface => (
+            "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",
+            "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds.",
         ),
     }
 }
@@ -263,11 +274,146 @@ fn judged(line: &Line, held: Held, out: &mut String) {
         }
     };
     let coverage = line.coverage.as_ref().map(covered).unwrap_or_default();
-    let _ = writeln!(
-        out,
-        "OK: {}{qualifier}{}{coverage}{}",
-        line.state, line.aside, line.after
-    );
+    let (state, aside, after) = match &line.judged {
+        Judged::Counted(counted) => (
+            counted_state(counted),
+            counted_aside(counted),
+            String::new(),
+        ),
+        Judged::Measured(measured) => measured_phrases(measured),
+    };
+    let _ = writeln!(out, "OK: {state}{qualifier}{aside}{coverage}{after}");
+}
+
+fn counted_state(counted: &Counted) -> String {
+    match counted {
+        Counted::Documents(count) => format!("{count} document(s) judged"),
+        Counted::Conventions(count) => format!("{count} convention(s) judged"),
+        Counted::Convention { name, sites } => format!("{name}: {sites} site(s)"),
+        Counted::Citations(sites) => format!("{sites} citation(s) resolve nowhere"),
+        Counted::Dependencies { judged, manifests } => format!(
+            "{judged} dependenc{} in {manifests} manifest(s), each locked and pinned",
+            entries(*judged)
+        ),
+        Counted::Tests { held, gone } => held_tests(*held, *gone),
+        Counted::Markers { sites, unit, .. } => format!("{sites} {unit} in the tree"),
+    }
+}
+
+fn held_tests(held: usize, gone: usize) -> String {
+    match gone {
+        0 => format!("{held} test site(s) the base holds"),
+        gone => format!("{held} test site(s) the base holds, {gone} of them gone"),
+    }
+}
+
+fn counted_aside(counted: &Counted) -> String {
+    match counted {
+        Counted::Markers { skipped, .. } if *skipped > 0 => {
+            format!(" ({skipped} in tests skipped)")
+        }
+        _ => String::new(),
+    }
+}
+
+/// The state, the aside before the coverage, and what closes the line, of a gate that measures
+/// structure.
+fn measured_phrases(measured: &Measured) -> (String, String, String) {
+    let state = |state: String| (state, String::new(), String::new());
+    match measured {
+        Measured::DeadSymbols { judged, dead } => state(format!(
+            "{judged} declaration(s) judged, {dead} dead symbol(s)"
+        )),
+        Measured::Reachability {
+            judged,
+            unreached,
+            unjudged,
+        } => state(format!(
+            "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
+             eligible declaration"
+        )),
+        Measured::Complexity(complexity) => (
+            format!(
+                "{} function(s) judged, {} over the gate{}",
+                complexity.judged,
+                complexity.over,
+                in_force(&complexity.steps)
+            ),
+            unjudged_tests(complexity),
+            String::new(),
+        ),
+        Measured::Layering(layering) => layering_phrases(layering),
+        Measured::PublicApi(api) => public_api_phrases(api),
+        Measured::Sarif {
+            judged,
+            differential: true,
+            ..
+        } => state(format!(
+            "{judged} result(s) judged, which is every result the scanner reported"
+        )),
+        Measured::Sarif { judged, held, .. } => state(format!(
+            "{judged} result(s) on lines this window changed, {held} held on lines it did not"
+        )),
+    }
+}
+
+/// The dated steps among the ceilings in force, and nothing where a person pinned each one.
+fn in_force(steps: &[(&str, Ceiling)]) -> String {
+    let steps: Vec<String> = steps
+        .iter()
+        .filter(|(_, ceiling)| ceiling.step.is_some())
+        .map(|(key, ceiling)| format!("{key} {ceiling}"))
+        .collect();
+    match steps.is_empty() {
+        true => String::new(),
+        false => format!(" under {}", steps.join(" and ")),
+    }
+}
+
+fn unjudged_tests(complexity: &Complexity) -> String {
+    if complexity.unjudged == 0 {
+        return String::new();
+    }
+    let named = match complexity.arrived.is_empty() {
+        true => String::new(),
+        false => format!("; added or renamed: {}", complexity.arrived.join(", ")),
+    };
+    format!(
+        "; {} test function(s) not judged on length, with no test_lines pinned{named}",
+        complexity.unjudged
+    )
+}
+
+fn layering_phrases(layering: &Layering) -> (String, String, String) {
+    (
+        format!(
+            "{} dependency site(s) judged, {} forbidden, {} cyclic",
+            layering.sites, layering.forbidden, layering.cyclic
+        ),
+        String::new(),
+        format!(
+            "; {} file(s) attached, {} by a Cargo manifest and {} by a conventional root, {} not attached, {} external or unsupported dependenc(ies)",
+            layering.attached,
+            layering.by_manifest,
+            layering.by_convention,
+            layering.unattached,
+            layering.external
+        ),
+    )
+}
+
+fn public_api_phrases(api: &PublicApi) -> (String, String, String) {
+    (
+        format!(
+            "{} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change",
+            api.items, api.surfaces, api.measured, api.opaque
+        ),
+        String::new(),
+        format!(
+            "; {} Rust library target(s), {} TypeScript entry point(s), {} package(s) or target(s) with no supported surface",
+            api.rust, api.typescript, api.inapplicable
+        ),
+    )
 }
 
 fn covered(coverage: &Coverage) -> String {

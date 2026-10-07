@@ -12,6 +12,7 @@ use crate::error::Error;
 /// The value a measure may reach, either a number a person pinned or the lowest step of a dated
 /// schedule that is due today. Every gate reads its ceiling here, so both shapes are accepted
 /// everywhere, and every line that names the ceiling names the step that set it.
+#[derive(Clone)]
 pub struct Ceiling {
     pub value: u64,
     pub step: Option<String>,
@@ -139,20 +140,6 @@ fn due(
         }
     }
     Ok(out)
-}
-
-/// The dated steps in force, for a line that names no ceiling of its own. Empty while every
-/// ceiling is a number.
-pub fn in_force(named: &[(&str, &Ceiling)]) -> String {
-    let steps: Vec<String> = named
-        .iter()
-        .filter(|(_, ceiling)| ceiling.step.is_some())
-        .map(|(key, ceiling)| format!("{key} {ceiling}"))
-        .collect();
-    match steps.is_empty() {
-        true => String::new(),
-        false => format!(" under {}", steps.join(" and ")),
-    }
 }
 
 fn step_error(file: &Path, section: &str, key: &str, date: &str, must_be: &str) -> Error {

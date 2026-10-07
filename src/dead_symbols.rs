@@ -11,7 +11,7 @@ use std::fmt::Write;
 use serde_json::Value;
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, Line, Listed, Sink, Site};
+use crate::check::contract::{self, Context, Line, Listed, Measured, Sink, Site};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -107,11 +107,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state: format!("{judged} declaration(s) judged, {dead} dead symbol(s)"),
-            coverage: said,
-            ..Line::default()
-        },
+        Line::new(Measured::DeadSymbols { judged, dead }, said),
         out,
     );
     let prior = contract::whole_base(at, &commit)?;

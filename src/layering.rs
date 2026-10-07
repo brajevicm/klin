@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Line, Sink};
+use crate::check::contract::{self, Context, Line, Measured, Sink, Unresolvable};
 use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
@@ -772,27 +772,20 @@ fn judged(
     };
     let (forbidden, cyclic) = (kinds(Kind::Forbidden), kinds(Kind::Cycle));
     let said = out.covered(&now.covered(policy).coverage(None));
-    let state = format!(
-        "{} dependency site(s) judged, {forbidden} forbidden, {cyclic} cyclic",
-        now.graph
-            .dependencies
-            .iter()
-            .filter(|dependency| placed.judges(&now.graph, dependency))
-            .count()
-    );
-    let after = format!("; {}", attachment(&now.graph));
+    let sites = now
+        .graph
+        .dependencies
+        .iter()
+        .filter(|dependency| placed.judges(&now.graph, dependency))
+        .count();
+    let state = Measured::Layering(attachment(&now.graph, (sites, forbidden, cyclic)));
     let evaluator = evaluator();
     Ok(evaluator.evaluate(
         findings,
         prior,
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state,
-            coverage: said,
-            after,
-            ..Line::default()
-        },
+        Line::new(state, said),
         out,
     ))
 }
@@ -838,7 +831,11 @@ fn prior(physicals: &Physicals, (was_edges, now_edges): (&Edges, &Edges)) -> Vec
 }
 
 /// How the working tree's files came to be modules, and how many dependencies V1 left alone.
-fn attachment(graph: &ModuleGraph) -> String {
+/// The sites judged, and how the module graph attached the files, as the `OK:` line counts them.
+fn attachment(
+    graph: &ModuleGraph,
+    (sites, forbidden, cyclic): (usize, usize, usize),
+) -> contract::Layering {
     let count = |kind: Attachment| {
         graph
             .attached
@@ -846,14 +843,16 @@ fn attachment(graph: &ModuleGraph) -> String {
             .filter(|held| **held == kind)
             .count()
     };
-    format!(
-        "{} file(s) attached, {} by a Cargo manifest and {} by a conventional root, {} not attached, {} external or unsupported dependenc(ies)",
-        graph.attached.len(),
-        count(Attachment::Manifest),
-        count(Attachment::Convention),
-        graph.unattached.len(),
-        graph.external
-    )
+    contract::Layering {
+        sites,
+        forbidden,
+        cyclic,
+        attached: graph.attached.len(),
+        by_manifest: count(Attachment::Manifest),
+        by_convention: count(Attachment::Convention),
+        unattached: graph.unattached.len(),
+        external: graph.external,
+    }
 }
 
 fn evaluator() -> Evaluator<'static> {
@@ -927,15 +926,7 @@ fn holes_said(
             )
             .collect()
     };
-    holes::unresolved_said(
-        (&named, base),
-        (
-            "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",
-            "Make each one name exactly one module file the tree holds, or take its file out of the section's scope.",
-        ),
-        (at, code),
-        out,
-    )
+    holes::unresolved_said((&named, base), Unresolvable::Dependency, (at, code), out)
 }
 
 fn held_note(physicals: &Physicals, out: &mut Sink) {

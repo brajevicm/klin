@@ -11,6 +11,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior, Window};
+use crate::ceiling::Ceiling;
 use crate::changed::Change;
 use crate::config::Config;
 use crate::coverage::Coverage;
@@ -220,15 +221,123 @@ pub struct Sink<'a> {
     pub records: &'a mut Records,
 }
 
-/// What a gate said about what it judged, for the `OK:` line: the check's own phrase for the
-/// state it measured, what follows the ratchet's qualifier, the coverage, and what closes the
-/// line. Spec 8.6.
-#[derive(Default)]
+/// What a gate judged, for the `OK:` line: its counts in the check's own terms, and the coverage.
+/// The renderer words both. Spec 8.6.
 pub struct Line {
-    pub state: String,
-    pub aside: String,
+    pub judged: Judged,
     pub coverage: Option<Coverage>,
-    pub after: String,
+}
+
+impl Line {
+    pub fn new(judged: impl Into<Judged>, coverage: Option<Coverage>) -> Line {
+        Line {
+            judged: judged.into(),
+            coverage,
+        }
+    }
+}
+
+/// The counts a gate's `OK:` line states, one variant per gate's terms.
+pub enum Judged {
+    Counted(Counted),
+    Measured(Measured),
+}
+
+/// The counts of a gate that judges what it finds one by one.
+pub enum Counted {
+    Documents(usize),
+    Conventions(usize),
+    Convention {
+        name: String,
+        sites: usize,
+    },
+    Citations(usize),
+    Dependencies {
+        judged: usize,
+        manifests: usize,
+    },
+    Tests {
+        held: usize,
+        gone: usize,
+    },
+    Markers {
+        sites: usize,
+        unit: &'static str,
+        skipped: u64,
+    },
+}
+
+/// The counts of a gate that measures structure over a tree.
+pub enum Measured {
+    DeadSymbols {
+        judged: usize,
+        dead: usize,
+    },
+    Reachability {
+        judged: usize,
+        unreached: usize,
+        unjudged: usize,
+    },
+    Complexity(Complexity),
+    Layering(Layering),
+    PublicApi(PublicApi),
+    Sarif {
+        judged: u64,
+        held: u64,
+        differential: bool,
+    },
+}
+
+/// The functions `complexity` judged, the dated steps of the ceilings in force, and the test
+/// functions it did not judge on length with the files among them a window added or renamed.
+pub struct Complexity {
+    pub judged: usize,
+    pub over: usize,
+    pub steps: Vec<(&'static str, Ceiling)>,
+    pub unjudged: usize,
+    pub arrived: Vec<String>,
+}
+
+/// The dependency sites `layering` judged, and how the module graph attached the files.
+pub struct Layering {
+    pub sites: usize,
+    pub forbidden: usize,
+    pub cyclic: usize,
+    pub attached: usize,
+    pub by_manifest: usize,
+    pub by_convention: usize,
+    pub unattached: usize,
+    pub external: usize,
+}
+
+/// The external items `public-api` judged, and the surfaces it discovered.
+pub struct PublicApi {
+    pub items: usize,
+    pub surfaces: usize,
+    pub measured: usize,
+    pub opaque: usize,
+    pub rust: usize,
+    pub typescript: usize,
+    pub inapplicable: usize,
+}
+
+impl From<Counted> for Judged {
+    fn from(counted: Counted) -> Judged {
+        Judged::Counted(counted)
+    }
+}
+
+impl From<Measured> for Judged {
+    fn from(measured: Measured) -> Judged {
+        Judged::Measured(measured)
+    }
+}
+
+/// The kind of form a gate supports and could not resolve. Spec 8.2.1, 8.6.
+#[derive(Clone, Copy)]
+pub enum Unresolvable {
+    Dependency,
+    PublicSurface,
 }
 
 /// One site a list in the report names: a file, its line where it has one, and its text.
@@ -329,8 +438,7 @@ pub enum Hole {
     },
     Unresolved {
         fail: bool,
-        what: String,
-        remedy: String,
+        kind: Unresolvable,
         forms: Vec<(Site, String)>,
     },
     Unparsed {

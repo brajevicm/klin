@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::contract::{self, Context, Line, Sink};
+use crate::check::contract::{self, Context, Counted, Line, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -98,11 +98,7 @@ fn evaluate(
         before,
         accepted,
         at,
-        Line {
-            state: format!("{sites} citation(s) resolve nowhere"),
-            coverage: said,
-            ..Line::default()
-        },
+        Line::new(Counted::Citations(sites), said),
         out,
     ))
 }

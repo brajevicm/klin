@@ -12,7 +12,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, DELETED, Line, Listed, Sink};
+use crate::check::contract::{self, Context, Counted, DELETED, Line, Listed, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -138,19 +138,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let held = ratchet::scoped(&now, at.only);
     let accepted = ratchet::accepted(config, at.gate, evaluator().metrics)?;
     let said = out.covered(&covered(&judged, &paired, &measured.unparsed, at));
-    let state = standing(held, went.len());
-    let code = evaluator().evaluate(
-        now,
-        before,
-        accepted,
-        at,
-        Line {
-            state,
-            coverage: said,
-            ..Line::default()
-        },
-        out,
-    );
+    let state = Counted::Tests {
+        held,
+        gone: went.len(),
+    };
+    let code = evaluator().evaluate(now, before, accepted, at, Line::new(state, said), out);
     deleted(&went, out);
     noted(&paired, out);
     orphaned(&orphans, out);
@@ -240,15 +232,6 @@ fn said(project: &Project, out: &mut Sink) {
             ROOTS_RULE,
         )),
     );
-}
-
-/// What the OK line says of the state: how many test sites the base holds, and how many of them
-/// the run let go. Why those sites pass is the ratchet's own qualifier and not this text.
-fn standing(held: usize, gone: usize) -> String {
-    match gone {
-        0 => format!("{held} test site(s) the base holds"),
-        gone => format!("{held} test site(s) the base holds, {gone} of them gone"),
-    }
 }
 
 /// Every test function the base holds, with what the working tree says about it. A match is by

@@ -13,7 +13,7 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::check::contract::{self, Context, Line, Sink};
+use crate::check::contract::{self, Context, Line, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage;
@@ -163,14 +163,14 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         prior,
         ratchet::accepted(config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state: format!(
-                "{judged} file(s) judged, {unreached} unreached, {unjudged} measured with no \
-                 eligible declaration"
-            ),
-            coverage: said,
-            ..Line::default()
-        },
+        Line::new(
+            Measured::Reachability {
+                judged,
+                unreached,
+                unjudged,
+            },
+            said,
+        ),
         out,
     );
     let prior = contract::whole_base(at, &commit)?;

@@ -12,7 +12,7 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Line, Sink};
+use crate::check::contract::{self, Context, Line, Measured, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -78,18 +78,18 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
-    let state = said(&judged, entry.differential);
-    let tail = out.covered(&coverage);
+    let state = Measured::Sarif {
+        judged: judged.judged,
+        held: judged.held,
+        differential: entry.differential,
+    };
+    let coverage = out.covered(&coverage);
     let code = evaluator().evaluate(
         judged.findings,
         Vec::new(),
         accepted,
         at,
-        Line {
-            state,
-            coverage: tail,
-            ..Line::default()
-        },
+        Line::new(state, coverage),
         out,
     );
     ratchet::noted(&found.notes, out);
@@ -531,19 +531,6 @@ fn collected(seen: BTreeMap<(String, String), Tally>) -> Vec<Finding> {
 /// The `OK:` line, which says what the gate judged. A `differential` entry judges every result
 /// the scanner wrote, wherever it sits, so that line does not name the changed lines. Spec 8.3,
 /// 8.6.
-fn said(judged: &Judged, differential: bool) -> String {
-    match differential {
-        true => format!(
-            "{} result(s) judged, which is every result the scanner reported",
-            judged.judged
-        ),
-        false => format!(
-            "{} result(s) on lines this window changed, {} held on lines it did not",
-            judged.judged, judged.held
-        ),
-    }
-}
-
 fn evaluator() -> Evaluator<'static> {
     Evaluator {
         metrics: METRICS,

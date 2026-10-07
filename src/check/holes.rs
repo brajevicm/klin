@@ -7,7 +7,7 @@
 use serde_json::{Map, Value};
 
 use crate::check::contract::{
-    Context, Hole, LOST, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED,
+    Context, Hole, LOST, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED, Unresolvable,
 };
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
 use crate::syntax::structural::facts::Unsupported;
@@ -95,11 +95,10 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
 /// the base holds in the same file, with the same text and reason, is a NOTE in every run,
 /// because the change opened no hole there. Each base form pairs with one form now, so a second
 /// copy of a held form is new. `base` is built only outside the hook, where the answer decides
-/// something. `what` follows the count on the first line, and
-/// `remedy` closes each block. ADR 0021, spec 8.6.
+/// something. `kind` names what the forms are, which the renderer words. ADR 0021, spec 8.6.
 pub fn unresolved_said(
     (now, base): (&[Unresolved], impl FnOnce() -> Vec<Unresolved>),
-    (what, remedy): (&str, &str),
+    kind: Unresolvable,
     (at, code): (&Context, u8),
     out: &mut Sink,
 ) -> u8 {
@@ -112,7 +111,7 @@ pub fn unresolved_said(
     };
     let (noted, refused): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
     for (fail, named) in [(false, &noted), (true, &refused)] {
-        listed(fail, named, (what, remedy), out);
+        listed(fail, named, kind, out);
     }
     out.record(|records| {
         for (into, named) in [
@@ -136,14 +135,13 @@ pub fn unresolved_said(
 }
 
 /// One block of forms under one word, as the report prints it, and nothing for no form.
-fn listed(fail: bool, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str), out: &mut Sink) {
+fn listed(fail: bool, named: &[(&Unresolved, bool)], kind: Unresolvable, out: &mut Sink) {
     if named.is_empty() {
         return;
     }
     out.tell(Hole::Unresolved {
         fail,
-        what: what.to_string(),
-        remedy: remedy.to_string(),
+        kind,
         forms: named
             .iter()
             .map(|(hole, _)| {

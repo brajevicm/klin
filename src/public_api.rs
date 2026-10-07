@@ -12,7 +12,7 @@ use std::fmt::Write;
 
 use serde_json::Value;
 
-use crate::check::contract::{self, Context, Line, Sink};
+use crate::check::contract::{self, Context, Line, Measured, Sink, Unresolvable};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -249,39 +249,35 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
         unreadable: 0,
     };
     let said = out.covered(&coverage);
-    let state = format!(
-        "{} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change",
-        cost.items, cost.surfaces, cost.measured, cost.opaque
-    );
-    let after = format!("; {}", discovered(&now.derived));
+    let state = Measured::PublicApi(discovered(&now.derived, &cost));
     let evaluator = evaluator(at.hook());
     Ok(evaluator.evaluate(
         findings,
         Vec::new(),
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
-        Line {
-            state,
-            coverage: said,
-            after,
-            ..Line::default()
-        },
+        Line::new(state, said),
         out,
     ))
 }
 
 /// Where the working tree's surfaces came from, and what klin found and derived nothing from.
-fn discovered(derived: &Derived) -> String {
+/// The items judged and the surfaces discovered, as the `OK:` line counts them.
+fn discovered(derived: &Derived, cost: &surface::SurfaceCost) -> contract::PublicApi {
     let rust = derived
         .surfaces
         .iter()
         .filter(|surface| surface.language == "Rust")
         .count();
-    let typescript = derived.surfaces.len() - rust;
-    format!(
-        "{rust} Rust library target(s), {typescript} TypeScript entry point(s), {} package(s) or target(s) with no supported surface",
-        derived.inapplicable.len()
-    )
+    contract::PublicApi {
+        items: cost.items,
+        surfaces: cost.surfaces,
+        measured: cost.measured,
+        opaque: cost.opaque,
+        rust,
+        typescript: derived.surfaces.len() - rust,
+        inapplicable: derived.inapplicable.len(),
+    }
 }
 
 fn evaluator(hook: bool) -> Evaluator<'static> {
@@ -348,10 +344,7 @@ fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink
     let named = holes_of(now);
     holes::unresolved_said(
         (&named, || holes_of(was)),
-        (
-            "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",
-            "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds.",
-        ),
+        Unresolvable::PublicSurface,
         (at, code),
         out,
     )

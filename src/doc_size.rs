@@ -14,7 +14,7 @@ use crate::base;
 use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
-use crate::check::contract::{self, Context, Line, Said, Sink, Standing, Told};
+use crate::check::contract::{self, Context, Counted, Line, Said, Sink, Standing, Told};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -92,11 +92,7 @@ fn evaluate(
     let measured = documents.len();
     let said = out.covered(&Coverage::whole(measured));
     if over == 0 {
-        out.tell(Told::judged(Line {
-            state: format!("{measured} document(s) judged"),
-            coverage: said,
-            ..Line::default()
-        }));
+        out.tell(Told::judged(Line::new(Counted::Documents(measured), said)));
     }
     Ok(if over > 0 { 1 } else { 0 })
 }
