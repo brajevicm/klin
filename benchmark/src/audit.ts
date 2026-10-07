@@ -91,6 +91,8 @@ function status(value: unknown): Status {
       return "FAIL";
     case "ERR":
       return "ERR";
+    case "INCOMPLETE":
+      return "UNKNOWN";
     case "":
       return "MISSING";
     case "UNKNOWN":

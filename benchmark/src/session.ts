@@ -391,6 +391,15 @@ function records(value: unknown): Fields[] {
   return Array.isArray(value) ? value.filter((one): one is Fields => typeof one === "object" && one !== null) : [];
 }
 
+/** The word a gate row or a whole run takes from its three axes: an error, then a failing finding,
+ * then a hole, which is never a pass because a measurement is missing. SPEC 7.4. */
+function worst(axes: Fields, ok: string, error: string): string {
+  if (axes.execution === "error") return error;
+  if (axes.judgement === "fail") return "FAIL";
+  if (axes.measurement === "incomplete") return "INCOMPLETE";
+  return ok;
+}
+
 /** The report shape this harness reads, from the `klin check` document of #499, or the report as
  * it is from a binary built before it. The status words are the row words a Stop report prints. */
 export function wholeRunReport(parsed: unknown): unknown {
@@ -398,14 +407,14 @@ export function wholeRunReport(parsed: unknown): unknown {
   const document = parsed as Fields;
   const diagnostics = records((document.diagnostics as Fields | undefined)?.gates);
   const gates = records(document.capabilities)
-    .filter((row) => row.state === "active")
+    .filter((row) => row.state === "active" || row.measurement === "incomplete")
     .map((row) => ({
       ...diagnostics.find((one) => one.name === row.name),
       name: row.name,
-      status: row.execution === "error" ? "ERR" : row.judgement === "fail" ? "FAIL" : "ok",
+      status: worst(row, "ok", "ERR"),
     }));
   return {
-    status: document.execution === "error" ? "ERROR" : document.judgement === "fail" ? "FAIL" : "PASS",
+    status: worst(document, "PASS", "ERROR"),
     summary: "",
     window: document.window,
     exit: document.exit,
