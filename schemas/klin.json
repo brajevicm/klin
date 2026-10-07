@@ -750,7 +750,7 @@
                 "type": "boolean"
               },
               "name": {
-                "description": "the gate's own name, which `--gate` takes",
+                "description": "the gate's own name, which `klin check` takes",
                 "type": "string"
               },
               "report": {

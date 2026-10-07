@@ -44,49 +44,64 @@ fn config(tree: &Tree) -> Value {
 }
 
 #[test]
-fn init_on_a_tree_in_debt_writes_a_config_that_gates_green() {
+fn setup_on_a_tree_in_debt_writes_a_config_that_gates_green() {
     let tree = in_debt();
 
-    let written = tree.run(&["init"]);
+    let written = tree.run(&["setup"]);
     assert_eq!(written.code, 0, "{}", written.out);
 
-    let gated = tree.run(&["gate", "--strict"]);
+    let gated = tree.run(&["check"]);
     assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
 #[test]
-fn init_writes_no_file_but_the_config() {
+fn setup_run_twice_changes_nothing_the_second_time() {
     let tree = in_debt();
 
-    let run = tree.run(&["init"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
+    let first = tree.run(&["setup"]);
+    assert_eq!(first.code, 0, "{}", first.out);
+    tree.commit("setup");
+
+    let second = tree.run(&["setup"]);
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert_eq!(tree.status(), "", "{}", second.out);
 }
 
-/// Plain `init` writes the repository's opt-in marker and nothing it can derive. ADR 0028,
+/// Plain `setup` writes the repository's opt-in marker and nothing it can derive. ADR 0028,
 /// ADR 0040.
 #[test]
-fn init_writes_the_empty_opt_in_marker() {
+fn setup_writes_the_empty_opt_in_marker() {
     let tree = in_debt();
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree), serde_json::json!({}), "{}", run.out);
-    assert!(run.says("--pin"), "{}", run.out);
 }
 
 #[test]
-fn init_leaves_a_config_that_already_exists_alone() {
+fn setup_leaves_a_config_that_already_exists_alone() {
     let tree = in_debt();
     let mine = r#"{ "doc_size": {"README.md": 900} }"#;
     tree.write("klin.json", mine);
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("already"), "{}", run.out);
-    assert!(run.says("--pin"), "{}", run.out);
     let kept = std::fs::read_to_string(tree.path("klin.json")).unwrap_or_default();
     assert_eq!(kept, mine, "{}", run.out);
+}
+
+/// A host file setup cannot read stops the run before it writes anything, the configuration
+/// `--pin` writes included.
+#[test]
+fn pin_writes_no_config_when_a_host_file_cannot_be_read() {
+    let tree = in_debt();
+    tree.write(".claude/settings.json", "{ not json");
+
+    let run = tree.run(&["setup", "--pin", "--host", "claude"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
 }
 
 #[test]
@@ -94,7 +109,7 @@ fn pin_fills_in_the_guardrails_the_config_does_not_state() {
     let tree = in_debt();
     tree.write("klin.json", r#"{ "doc_size": {"README.md": 900} }"#);
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(config["doc_size"]["README.md"], 900, "{config}");
@@ -107,7 +122,7 @@ fn pin_fills_in_the_guardrails_the_config_does_not_state() {
 fn pin_writes_no_test_lines_because_klin_never_derives_it() {
     let tree = in_debt();
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert!(config["complexity"]["lines"].is_u64(), "{config}");
@@ -119,7 +134,7 @@ fn pin_leaves_a_gate_a_person_excluded_alone() {
     let tree = in_debt();
     tree.write("klin.json", r#"{ "escapes": false, "complexity": false }"#);
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(config["escapes"], Value::Bool(false), "{}", run.out);
@@ -150,7 +165,7 @@ fn pin_keeps_every_value_a_person_wrote() {
     });
     tree.write("klin.json", &held.to_string());
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     for key in ["accepted", "doc_size", "escapes", "journal"] {
@@ -165,9 +180,9 @@ fn pin_edits_no_gitignore() {
     tree.write(".gitignore", "/target\n");
     tree.commit("an ignore file");
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(tree.status(), "?? klin.json\n", "{}", run.out);
+    assert!(!tree.status().contains(".gitignore"), "{}", run.out);
 }
 
 /// A pin is a guardrail a person owns, and nothing that describes the repository: no build
@@ -176,7 +191,7 @@ fn pin_edits_no_gitignore() {
 fn pin_writes_only_stable_guardrails() {
     let tree = in_debt();
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     let written: Vec<&String> = config
@@ -194,7 +209,7 @@ fn pin_writes_only_stable_guardrails() {
         "{config}"
     );
 
-    let gated = tree.run(&["gate", "--strict"]);
+    let gated = tree.run(&["check"]);
     assert_eq!(gated.code, 0, "{}", gated.out);
 }
 
@@ -209,7 +224,7 @@ fn pin_writes_a_document_ceiling_only_for_the_instruction_files() {
     tree.words("README.md", 400);
     tree.base();
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         config(&tree)["doc_size"],
@@ -240,7 +255,7 @@ fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
     );
     assert!(std::fs::write(&cache, stale).is_ok());
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         config(&tree)["doc_size"],
@@ -257,13 +272,13 @@ fn pin_writes_no_readme_ceiling_a_cache_of_this_version_still_holds() {
     );
 }
 
-/// `init` pins what history says, so a person can see the two numbers, edit them and put them
+/// `setup --pin` pins what history says, so a person can see the two numbers, edit them and put them
 /// under review. The lines name them as derived and never as a gate. #92.
 #[test]
 fn pin_writes_the_radius_values_history_derives() {
     let tree = harness::history(43, 6);
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(config["radius"]["lines"], 30, "{config}");
@@ -279,7 +294,7 @@ fn pin_writes_the_radius_values_history_derives() {
         run.out
     );
 
-    let listed = tree.run(&["gate", "--list"]);
+    let listed = tree.run(&["policy"]);
     assert!(!listed.says("radius"), "{}", listed.out);
 }
 
@@ -287,7 +302,7 @@ fn pin_writes_the_radius_values_history_derives() {
 fn pin_writes_no_radius_section_below_fifty_commits() {
     let tree = harness::history(42, 6);
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree)["radius"], Value::Null, "{}", run.out);
     assert!(
@@ -309,16 +324,16 @@ fn pin_refuses_retired_source_topology() {
         }"#,
     );
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads"), "{}", run.out);
 }
 
 #[test]
-fn init_omits_automatic_source_sections() {
+fn setup_omits_automatic_source_sections() {
     let tree = in_debt();
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let config = config(&tree);
     assert_eq!(config.get("stubs"), None, "{config}");
@@ -332,29 +347,20 @@ fn pin_refuses_the_retired_stubs_shape() {
         r#"{ "stubs": { "roots": ["old"], "languages": ["go"] } }"#,
     );
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads"), "{}", run.out);
 }
 
-/// The snapshot flags are gone with the snapshot they wrote (#180), and the hook flags are
-/// gone with `klin install`, which owns host integration now (#216).
+/// The snapshot flags are gone with the snapshot they wrote (#180), and the old hook flags are
+/// gone because setup owns host integration through `--host` (#216).
 #[test]
 fn the_retired_flags_are_usage_errors() {
     for flag in ["--add", "--force", "--hooks", "--global"] {
         let tree = in_debt();
 
-        let run = tree.run(&["init", flag]);
+        let run = tree.run(&["setup", flag]);
         assert_eq!(run.code, 2, "{flag}: {}", run.out);
         assert!(!tree.path("klin.json").exists(), "{flag}: {}", run.out);
     }
-}
-
-#[test]
-fn the_retired_host_flag_is_a_usage_error() {
-    let tree = in_debt();
-
-    let run = tree.run(&["init", "--host", "claude"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(!tree.path("klin.json").exists(), "{}", run.out);
 }

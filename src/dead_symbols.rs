@@ -7,7 +7,6 @@
 
 use std::collections::BTreeSet;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
@@ -18,7 +17,7 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::measurement;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
@@ -46,25 +45,6 @@ pub const IGNORE: Key = Key {
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print the complete current list of dead symbols
-    #[arg(long)]
-    report: bool,
-    /// Judge only these repo-relative files, against only their sites at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
-}
-
 #[derive(Clone)]
 struct Selection {
     extensions: Vec<&'static str>,
@@ -85,32 +65,14 @@ struct State {
     dead: bool,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.report,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, false, out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        only: args.only.as_deref(),
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand("dead-symbols", project)
-    }
 }
 
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    let commit = contract::base_commit(project.root(), at, out)?;
+    let commit = contract::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;

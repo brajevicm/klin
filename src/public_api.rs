@@ -9,7 +9,6 @@
 
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
@@ -17,7 +16,7 @@ use crate::check::contract::{self, Context, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::measurement;
 use crate::modules::resolver::Hole;
 use crate::modules::{self, ModuleGraph};
@@ -64,22 +63,6 @@ const HOOK_REMEDY: &str = "Keep the surface, the item or the declared contract t
                            accept the break: a person accepts it with an accepted entry in a \
                            reviewed commit, and until then CI refuses it.";
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print the derived public surfaces of the working tree, item by item, without judging them
-    #[arg(long)]
-    report: bool,
-}
-
 /// One tree as the gate judges it: its surfaces, its module graph, the files the grammar refused
 /// under today's paths, and today's path of every file the base names by its path at the base.
 struct Side {
@@ -89,23 +72,9 @@ struct Side {
     current: HashMap<String, String>,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let at = Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(NAME, &project)
-    };
-    let mut sink = Sink::unrecorded(out);
-    match args.report {
-        true => report(&at, &mut sink),
-        false => gate(&at, &mut sink),
-    }
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
-    let commit = contract::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     out.record(|records| {
         records.graph = Some(was.graph.cost() + now.graph.cost());
@@ -440,10 +409,15 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 }
 
 /// The derived contract of the working tree, item by item, so automatic derivation is
-/// inspectable. Nothing is judged and no base is read.
-fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    at.config().policy(SECTION, KEYS)?;
-    let tree = at.project.tree();
+/// inspectable. Nothing is judged and no base is read. ADR 0044.
+pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Error> {
+    if let Some(named) = named {
+        return Err(Error(format!(
+            "{NAME} explains every surface at once, so drop {named}"
+        )));
+    }
+    project.config.policy(SECTION, KEYS)?;
+    let tree = project.tree();
     let measured = measurement::measure_all(tree, None)?;
     let layout = modules::topology(
         tree.root(),
@@ -454,9 +428,8 @@ fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let graph = modules::build(&layout);
     let derived = surface::derive(&layout, &graph);
     let cost = derived.cost();
-    let _ = writeln!(
-        out.text,
-        "REPORT: {} surface(s), {} item(s): {} measured, {} opaque, {} hole(s), {} package(s) or target(s) with no supported surface",
+    let mut out = format!(
+        "derived: {} surface(s), {} item(s): {} measured, {} opaque, {} hole(s), {} package(s) or target(s) with no supported surface\n",
         cost.surfaces,
         cost.items,
         cost.measured,
@@ -465,12 +438,12 @@ fn report(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         derived.inapplicable.len()
     );
     for surface in &derived.surfaces {
-        report_surface(surface, out.text);
+        report_surface(surface, &mut out);
     }
     for held in &derived.inapplicable {
-        let _ = writeln!(out.text, "not applicable: {}: {}", held.what, held.why);
+        let _ = writeln!(out, "not applicable: {}: {}", held.what, held.why);
     }
-    Ok(0)
+    Ok(out.lines().map(str::to_string).collect())
 }
 
 fn report_surface(surface: &Surface, out: &mut String) {

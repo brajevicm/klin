@@ -18,18 +18,12 @@ use crate::{git::Repo, journal, turn};
 /// named by come from the catalogue and never from a table here. Spec 11.5.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The window to report, as a number of days, such as 30d. Seven days by default
-    #[arg(long, value_name = "Nd", conflicts_with_all = ["turn", "session"])]
+    /// The window to report, as a number of days, such as 7d. The newest session by default
+    #[arg(long, value_name = "Nd")]
     since: Option<String>,
-    /// Report the stops since the current turn stamp
-    #[arg(long, conflicts_with = "session")]
-    turn: bool,
-    /// Report the lines of the newest session the journal holds
-    #[arg(long)]
-    session: bool,
     /// Print every regression of the window, the audit trail and the measurement evidence
     #[arg(long)]
-    all: bool,
+    details: bool,
     /// Print the report as one JSON object
     #[arg(long)]
     json: bool,
@@ -213,6 +207,14 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let held = scoped(&lines, scope, start, now);
     let mut report = Report::read(&held, scope, now, skipped, lines.is_empty() && skipped == 0);
     report.confidence.unscoped = unscoped(&lines, scope, start);
+    if !args.json && report.confidence.unscoped.is_some() && matches!(scope, Scope::Session) {
+        let _ = writeln!(
+            out,
+            "The journal holds no session yet, so there is nothing to report for one. \
+             `klin report --since 7d` reads the last seven days."
+        );
+        return Ok(0);
+    }
     match args.json {
         true => json(out, &report, &lines, scope, now),
         false => text(out, args, start, &report),
@@ -221,19 +223,13 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 fn scope(args: &Args) -> Result<Scope, Error> {
-    if args.turn {
-        return Ok(Scope::Turn);
+    match &args.since {
+        Some(text) => days(text).map(Scope::Since),
+        None => Ok(Scope::Session),
     }
-    if args.session {
-        return Ok(Scope::Session);
-    }
-    window(args.since.as_deref()).map(Scope::Since)
 }
 
-fn window(since: Option<&str>) -> Result<u64, Error> {
-    let Some(text) = since else {
-        return Ok(7);
-    };
+fn days(text: &str) -> Result<u64, Error> {
     let digits = text.strip_suffix('d').unwrap_or(text);
     match digits.parse::<u64>() {
         Ok(days) if days > 0 => Ok(days),
@@ -755,13 +751,12 @@ impl Audit {
 
 /// What a guard line's reason names, in the person's words. A reason this binary does not know
 /// reads as a tool call. Spec 11.4.
-const GUARDED: [(&str, &str); 7] = [
+const GUARDED: [(&str, &str); 6] = [
     ("config-write", "an edit to klin.json"),
     ("state-write", "an edit to klin's own state"),
     ("config-mention", "a command that named klin.json"),
     ("state-mention", "a command that named klin's own state"),
-    ("init", "klin init, which only you run"),
-    ("install", "klin install, which only you run"),
+    ("setup", "klin setup, which only you run"),
     ("turn-reset", "klin turn reset, which only you run"),
 ];
 
@@ -885,8 +880,8 @@ fn text(out: &mut String, args: &Args, start: &Path, report: &Report) {
         let _ = writeln!(out, "{line}");
     }
     value(out, report, named);
-    sites(out, report, args.all);
-    if args.all {
+    sites(out, report, args.details);
+    if args.details {
         history(out, start, report);
     }
 }
@@ -1005,7 +1000,11 @@ fn sites(out: &mut String, report: &Report, all: bool) {
         let _ = writeln!(out, "{:width$}  {}", one.site(), describe(one));
     }
     if open.len() > shown && !all {
-        let _ = writeln!(out, "\nand {} more · klin stats --all", open.len() - shown);
+        let _ = writeln!(
+            out,
+            "\nand {} more · klin report --details",
+            open.len() - shown
+        );
     }
 }
 
@@ -1282,14 +1281,12 @@ fn turn_line(held: &[Regression]) -> Option<String> {
         (0, 0) => None,
         (0, caught) => Some(caught_this("this turn", caught, counts.fixed)),
         (_, _) if public_api => Some(
-            "Public API compatibility breaks still need your attention. `klin stats --turn` shows them."
+            "Public API compatibility breaks still need your attention. `klin report` shows them."
                 .into(),
         ),
-        (1, _) => {
-            Some("1 regression still needs your attention. `klin stats --turn` shows it.".into())
-        }
+        (1, _) => Some("1 regression still needs your attention. `klin report` shows it.".into()),
         (open, _) => Some(format!(
-            "{open} regressions still need your attention. `klin stats --turn` shows them."
+            "{open} regressions still need your attention. `klin report` shows them."
         )),
     }
 }
@@ -1318,8 +1315,8 @@ fn weekly_line(week: &[Value]) -> String {
     let held = regressions(week);
     let counts = Counts::of(&held);
     let rest = match counts.fixed == counts.caught {
-        true => "`klin stats` shows them.",
-        false => "`klin stats` shows the rest.",
+        true => "`klin report --since 7d` shows them.",
+        false => "`klin report --since 7d` shows the rest.",
     };
     format!(
         "{} {rest}",

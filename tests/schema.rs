@@ -6,7 +6,7 @@ use harness::Tree;
 use serde_json::Value;
 
 fn schema() -> Value {
-    let run = Tree::bare().run(&["reference", "--schema"]);
+    let run = Tree::bare().run(&["policy", "--schema"]);
     assert_eq!(run.code, 0, "{}", run.out);
     serde_json::from_str(&run.printed)
         .unwrap_or_else(|why| panic!("reference --schema prints JSON: {why}"))
@@ -121,11 +121,11 @@ fn the_committed_schema_is_what_the_binary_generates() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/klin.json");
     let committed = fs::read_to_string(path)
         .unwrap_or_else(|why| panic!("committed schema could not be read: {why}"));
-    let run = Tree::bare().run(&["reference", "--schema"]);
+    let run = Tree::bare().run(&["policy", "--schema"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         committed, run.printed,
-        "schemas/klin.json is stale — run `klin reference --schema > schemas/klin.json`"
+        "schemas/klin.json is stale — run `klin policy --schema > schemas/klin.json`"
     );
 }

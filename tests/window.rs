@@ -259,7 +259,7 @@ fn a_run_by_hand_keeps_the_branch_window_the_stamp_did_not_touch() {
     assert_eq!(stop(&tree).code, 0);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "--changed"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("window: branch"), "{}", run.out);
     assert!(run.says("the merge-base with main"), "{}", run.out);

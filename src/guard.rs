@@ -27,18 +27,15 @@ const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the 
     .git/klin. It holds the window a gate failed in and the questions this turn already put to \
     you. Only a person moves it, with `klin turn reset`.";
 
-const INIT_REFUSAL: &str = "klin: refused — `klin init` writes the configuration. Only a \
-    person runs it, in a reviewed commit.";
 const RESET_REFUSAL: &str = "klin: refused — `klin turn reset` reopens the window a gate \
     failed in. Only a person runs it.";
-const INSTALL_REFUSAL: &str = "klin: refused — `klin install` writes the configuration and \
+const SETUP_REFUSAL: &str = "klin: refused — `klin setup` writes the configuration and \
     the host's hook files. Only a person runs it, in a reviewed commit.";
 
 /// klin's own subcommands that only a person runs, the reason each is refused, and the
 /// hyphenated tag a journal line names the refusal by. Spec 9.6.
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
-    (&["init"], INIT_REFUSAL, "init"),
-    (&["install"], INSTALL_REFUSAL, "install"),
+    (&["setup"], SETUP_REFUSAL, "setup"),
     (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 

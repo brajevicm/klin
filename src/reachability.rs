@@ -8,7 +8,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Map, Value};
 
@@ -19,7 +19,7 @@ use crate::config::Config;
 use crate::coverage;
 use crate::error::Error;
 use crate::files;
-use crate::key::{self, Key, Section};
+use crate::key::{self, Key};
 use crate::measurement::{self, Measurement};
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
@@ -68,19 +68,6 @@ pub const PATTERN: Key = Key {
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
 
 /// One family the derivation commit proves: where its files are and what they are called.
 #[derive(Clone)]
@@ -138,22 +125,12 @@ struct State {
     proven: bool,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let at = Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, &project)
-    };
-    gate(&at, &mut Sink::unrecorded(out))
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
     let families = families(project)?;
     said_families(&families, out);
-    let commit = contract::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, before_families, after) = sweeps(at, &families, &commit, &mut names, &mut layout)?;

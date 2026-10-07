@@ -12,9 +12,9 @@ outside the agent's environment: an independent CI checkout, plus repository
 policy a person owns.
 
 The two conformance levels of `docs/SPEC.md` section 15 name the same split:
-Feedback is hooks only, Enforced is hooks plus a required `klin gate --strict`
+Feedback is hooks only, Enforced is hooks plus a required `klin check`
 run on a checkout the agent never touched. Enforced names klin's measurements:
-`klin gate` outside the hook runs no project build, so the project's own CI
+`klin check` runs no project build, so the project's own CI
 must separately build, type-check and test what it requires.
 
 ## Zone 1: the agent-controlled worktree
@@ -57,7 +57,7 @@ protected, another system supplies that protection.
 ## Zone 3: the independent CI checkout
 
 A workflow that checks out the proposed commit on its own, installs a pinned
-klin release, and runs `klin gate --strict`. It reads the committed tree. It
+klin release, and runs `klin check`. It reads the committed tree. It
 does not trust any hook output the agent's worktree recorded.
 
 `action.yml` is that workflow step: it resolves a version from its input, then
@@ -87,13 +87,13 @@ gate that would have named it.
 
 | Behavior | Local feedback | Independent CI | Needs repository policy |
 | --- | --- | --- | --- |
-| A new complexity, escape, stub or other finding | The stop hook blocks the turn and names it | `klin gate --strict` measures the committed tree again | Yes, to make the check required |
+| A new complexity, escape, stub or other finding | The stop hook blocks the turn and names it | `klin check` measures the committed tree again | Yes, to make the check required |
 | An agent edit to `klin.json` through a routed edit tool | `deny`, naming the file | The diff is visible, and `--strict` reads the committed config | Yes, review over `klin.json` |
 | An agent edit to `klin.json` through a path the guard cannot prove | May pass, by design (SPEC 9.4) | Same as the row above | Yes |
 | An agent removes or disables the local hook | May remove the feedback, and klin does not detect it | Still measures the final tree | Yes |
 | An agent changes the CI workflow | The hook file and the workflow are not guarded | The same change may alter the run that judges it | Yes, CODEOWNERS and protected settings |
 | An agent adds an entry to `accepted` | The guard denies routed edits to `klin.json`, and the skill says not to | `--strict` reads the committed config, so an accepted entry is silent in CI too | Yes, a reviewed commit by a person |
-| `klin init` or `klin turn reset` from an agent | `deny`, naming the command a person runs | Not applicable | No |
+| `klin setup` or `klin turn reset` from an agent | `deny`, naming the command a person runs | Not applicable | No |
 | A deleted test | The hook blocks the first stop once, then reports it | A NOTE, including under `--strict` (SPEC 8.2) | Yes, human review remains part of this guarantee |
 | No binary, or no network | Fails open, see below | The install must fail, see below | Yes |
 
@@ -124,7 +124,7 @@ enforcement boundary back into feedback.
 ## klin's own repository
 
 `.github/workflows/quality.yml` builds klin from the commit under review and
-runs `./target/debug/klin gate --strict`. The checkout is independent of the
+runs `./target/debug/klin check`. The checkout is independent of the
 agent's worktree, but the binary is not independent of the change: a commit
 that alters a check also alters the binary that judges it. `.github/CODEOWNERS`
 over `/.github/workflows/`, `/klin.json`, `/.claude/settings.json` and

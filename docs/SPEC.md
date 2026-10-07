@@ -156,7 +156,9 @@ when the roadmap ticket that implements them lands.
 | 0047 | A custom harness speaks protocol v1 through the shipped commands. | It speaks protocol v1 through `klin __agent event`. The schemas do not change. | #452. |
 | 0052 | A tool error after a gate block spends gate block 2. | An opened gap, a coverage note, a hole and a configuration error spend no gate block and do not keep the window red. | #492 and the frictionless rule. |
 | 0054 | The red pass-through names `klin stats --turn`. | It names `klin report`. | #452. |
-| 0036 | The catalogue is one ordered table. | The catalogue also declares each capability's placement and semantics version. | Sections 6.2 and 8.2. |
+| 0037 | `klin conventions --report [NAME]` summarizes each convention with its sites, or explains one. | `klin policy conventions [NAME]` explains each convention, or one, and counts no match (section 11.6). | #507. `policy` runs no check. |
+| 0044 | `klin public-api --report` prints the derived contract of the working tree. | `klin policy public-api` prints it (section 11.6). | #507. No per-check command survives. |
+| 0036 | The catalogue is one ordered table, and each check is also a Clap command. | The catalogue also declares each capability's placement and semantics version. No check has a command of its own: `klin check NAME` selects a row, so a new check is one row. A row may declare how `klin policy` explains it. | Sections 6.2, 8.2 and 11.6. #507. |
 | 0042 | Large-repository budgets. | The budgets stay. A 1,500 ms admission envelope is added. | #358, #475 section 14. |
 
 ## 1. Problem Statement
@@ -1507,9 +1509,8 @@ exits 2, also under `--json`.
 - Never runs the build. Never writes local state other than caches.
 - Exit codes: section 7.4.
 
-The 0.x flags `--gate`, `--strict`, `--hook`, `--list` and `--host` given to
-`klin check` print a targeted migration error that names the vNext form, and
-exit 2.
+A 0.x flag such as `--gate`, `--strict`, `--hook` or `--list` given to
+`klin check` is an unknown argument, and exits 2.
 
 The holes and entries that 0.x judged only under `--strict` are part of every
 `klin check`:
@@ -1519,7 +1520,7 @@ The holes and entries that 0.x judged only under `--strict` are part of every
 | An accepted entry that matches nothing | Review item (section 7.6) |
 | A same-tree comparison klin cannot explain | Section 6.5 |
 | A file measured in `before` and not in `after` | A `measurement-lost` finding, a `left-scope` review item, or a `left-scope` coverage note (section 7.2) |
-| No source root | Hole, `nothing-measured`, in a whole-tree run only |
+| No source root | Hole, `nothing-measured`, in a whole-tree run only, and only when a check the run selected reads code. `klin check lockfile` in a tree with no source root is not this hole. |
 
 Text output:
 
@@ -1578,6 +1579,14 @@ Section 13.2.
   rule and derivation commit, `pinned`, dated with the step in force, or
   `built-in`). It also prints the build policy, the accepted list and the
   integration limitations of section 9.4.
+- A capability whose derived policy is more than a value per key explains it
+  in place of those lines. `public-api` lists each derived surface with its
+  items, measured or opaque, and the packages with no supported surface (ADR
+  0044). `conventions` explains each convention, or the one that
+  `klin policy conventions NAME` names: what it forbids and where, what its
+  code pattern reads as and how its language was settled, any `in` or
+  `except` path that matches nothing, and its remedy (ADR 0037). It counts no
+  match, because a count is a measurement. An unknown `NAME` exits 2.
 - `--reference` prints the configuration reference of 0.x 5.8 as Markdown,
   and `--schema` prints the JSON schema of `klin.json`. Both read no
   configuration and no tree, and exit 0 anywhere, inside or outside a
@@ -1727,8 +1736,6 @@ the project's commands ran. No message, document or hook text may claim that
   file when it has none.
 - It refuses a pinned klin version older than the first release that ships
   `klin check`, with a message that names that version.
-- An `args` value that holds a 0.x flag gets the migration error of section
-  11.3.
 
 ## 13. Reporting
 
@@ -1969,35 +1976,14 @@ comes from a fixed table and is printed before it runs. klin never invokes
 
 ### 17.1 Public command migration
 
-Before 1.0, a removed public command fails with a targeted migration error
-that names the replacement. It exits 2. It is not an alias. Section 10.10
-covers the hook spellings, which never exit 2 except to block or deny.
-
-| 0.x command | vNext |
-| --- | --- |
-| `klin gate` | `klin check` |
-| `klin gate --gate NAME` | `klin check NAME` |
-| `klin gate --strict` | `klin check` |
-| `klin gate --list` | `klin policy` |
-| `klin gate --hook` | hidden legacy dispatch (section 17.3) |
-| `klin complexity`, `klin escapes` and every other per-check command | `klin check NAME` |
-| `klin init` | `klin setup` |
-| `klin init --pin` | `klin setup --pin` |
-| `klin install` | `klin setup` |
-| `klin stats` | `klin report` |
-| `klin stats --turn`, `--session` | `klin report` (default scope) |
-| `klin stats --all` | `klin report --details` |
-| `klin reference` | `klin policy --reference` |
-| `klin reference --schema` | `klin policy --schema` |
-| `klin radius` from a host hook | hidden legacy dispatch (section 17.3) |
-| `klin radius --report`, or `klin radius` on a terminal | no replacement. The radius note reaches the person at prompt time. |
-| `klin guard` from a host hook | hidden legacy dispatch (section 17.3) |
-| `klin turn reset` | no replacement. A history move makes one Stop advisory, then a fresh stamp follows (section 6.6). |
-| `klin cache clean` | no replacement. The cache is safe to delete by hand. |
-| `klin update` | unchanged |
-
-Legacy dispatch tells a hook call of `klin radius` from a person's by stdin:
-a hook call has a non-terminal stdin and no `--report`.
+klin is private before 1.0, so it keeps no 0.x spelling alive. A removed
+public command is an unknown command and a removed flag is an unknown
+argument. Both exit 2, with no alias and no migration error. The per-check
+options with no vNext place are gone: `dead-symbols --report`,
+`doc-size --file` and `--ceiling`, `doc-citations --file` and `--roots`,
+`--list-languages`, `--only` and `--quiet`. `klin policy public-api` and
+`klin policy conventions [NAME]` take over the two reports (section 11.6).
+Section 17.3 covers the hook spellings.
 
 ### 17.2 Behavior migration
 
@@ -2272,7 +2258,7 @@ Result model and exit codes:
   `command-not-found`;
 - an integration with an empty, fresh report is complete;
 - a selector that names an unknown or excluded gate exits 2;
-- a `klin check` with a 0.x flag prints the migration error and exits 2.
+- a `klin check` with a 0.x flag is an unknown argument and exits 2.
 
 Windows:
 
@@ -2376,7 +2362,7 @@ Host protocol:
 
 CLI:
 
-- each removed command prints its migration error and exits 2;
+- each removed command is an unknown command and exits 2;
 - `status`, `report` and `policy` write nothing to the state directory;
 - `status` reports a `legacy` integration and the local window verdict;
 - `report` with no session says so and suggests `--since 7d`;

@@ -1,9 +1,9 @@
 //! The `CATALOGUE` is the one table of the checks klin has. The runner takes its gates from it,
 //! `config` takes the section names it accepts from it, and `reference` prints it. A new check
-//! is one row here beside its Clap command, and a CLI test fails when only one of the two is
-//! written. The catalogue names every check, and no check names the catalogue. ADR 0036.
+//! is one row here, which `klin check` selects by its name. The catalogue names every check, and
+//! no check names the catalogue. ADR 0036.
 
-use crate::check::contract::{Activation, Needs, Run};
+use crate::check::contract::{Activation, Explain, Needs, Run};
 use crate::key::{Key, Languages, Section, SectionShape};
 use crate::project::Project;
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
 /// gate itself.
 pub const PUBLIC_API: &str = public_api::NAME;
 
-/// The words a report gives one check's findings, in the person's language. `klin stats` reads
+/// The words a report gives one check's findings, in the person's language. `klin report` reads
 /// these so the report keeps no second gate-name vocabulary of its own, and a new row does not
 /// compile until it supplies them. They are presentation only: they change no gate identity, no
 /// section, no journal record, no accepted entry and no judgement. Spec 11.5.
@@ -46,14 +46,14 @@ pub fn labels(gate: &str) -> Option<&'static Labels> {
 /// One row of the catalogue: one check, as the runner, the configuration, the reference and
 /// the plan all read it.
 pub struct Row {
-    /// What `--gate` calls this check, which for two checks is not the name of the section
+    /// What `klin check` calls this check, which for two checks is not the name of the section
     /// they read.
     pub name: &'static str,
     pub section: &'static str,
     /// What the section's absence means: derive it, or run nothing. Spec 4.6.
     pub activation: Activation,
     /// The configuration keys the section reads, declared in the check's own module and printed
-    /// by `klin reference`. Spec 5.8.
+    /// by `klin policy --reference`. Spec 5.8.
     pub keys: &'static [Key],
     pub reference_text: Option<&'static str>,
     /// The built-in language coverage this check reports, and none for a check that reads no
@@ -63,6 +63,9 @@ pub struct Row {
     /// answered from facts alone and never from a derived number. Spec 4.6, ADR 0040.
     pub available: fn(&Project) -> bool,
     pub run: Run,
+    /// What `klin policy` prints for this check in place of a run's provenance lines, for a
+    /// check whose derived policy is more than a value per key. Spec 11.6.
+    pub explain: Option<Explain>,
     pub needs: Needs,
     pub takes_scope: bool,
     /// Whether the section is a list of entries a person writes, each its own gate under its
@@ -83,6 +86,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: doc_size::applies,
         run: doc_size::gate,
+        explain: None,
         needs: Needs::Nothing,
         takes_scope: false,
         labels: Labels {
@@ -101,6 +105,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -119,6 +124,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: lockfile::applies,
         run: lockfile::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -137,6 +143,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(escapes::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: escapes::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -155,6 +162,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(stubs::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: stubs::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -173,6 +181,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: inventory::applies,
         run: inventory::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -191,6 +200,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(syntax::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: complexity::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -209,6 +219,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(dead_symbols::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: dead_symbols::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -227,6 +238,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(reachability::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: reachability::gate,
+        explain: None,
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -245,6 +257,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(layering::language_extensions),
         available: |_| false,
         run: layering::gate,
+        explain: None,
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -263,6 +276,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(public_api::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: public_api::gate,
+        explain: Some(public_api::explain),
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -281,6 +295,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(syntax::pattern::language_extensions),
         available: |_| false,
         run: conventions::gate,
+        explain: Some(conventions::report::explain),
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -299,6 +314,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: |_| false,
         run: sarif::gate,
+        explain: None,
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {

@@ -49,14 +49,14 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases
 source $HOME/.local/bin/env
 
 # Set up this repository. For Claude Code only, add --host claude.
-klin install
+klin setup
 ```
 
 Then commit `klin.json` and the generated integration files.
 
-klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin install`.
+klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, append `--host claude`, `--host codex`, or `--host cursor` to `klin setup`.
 
-If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin install`.
+If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin setup`.
 
 > [!NOTE]
 > **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
@@ -70,7 +70,7 @@ When the agent tries to finish a turn, klin compares the code with how it was wh
 ### 3. See what happened
 
 ```sh
-klin stats --session
+klin report
 ```
 
 ```text
@@ -79,13 +79,13 @@ Nothing needs your attention.
 klin caught 1 regression this session. It was fixed after klin flagged it.
 ```
 
-Add `--all` for individual findings or `--json` for machine-readable output.
+Add `--details` for individual findings, `--since 7d` for the last seven days, or `--json` for machine-readable output.
 
 ## Native plugins
 
 Instead of the CLI setup above, you can run klin through the native plugin system of Claude Code, Codex, or Cursor.
 
-A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin stats`. If the plugin and the repository hooks are both present, only one of them handles each event.
+A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin report`. If the plugin and the repository hooks are both present, only one of them handles each event.
 
 ### Claude Code
 
@@ -189,7 +189,7 @@ Documentation links, text and file conventions, and SARIF input work in any lang
 
 ## Configure
 
-`{}` runs every automatic check klin can derive from the repository. Use `klin gate --list` to see what applies and which values are derived or pinned.
+`{}` runs every automatic check klin can derive from the repository. Use `klin policy` to see what applies and which values are derived or pinned.
 
 Policy lives in `klin.json`:
 
@@ -249,7 +249,7 @@ GitHub Actions:
 Other CI: install klin, fetch the full Git history, then run:
 
 ```sh
-klin gate --strict
+klin check
 ```
 
 ## Learn more

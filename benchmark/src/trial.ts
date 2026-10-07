@@ -151,7 +151,7 @@ export function wholeRun(
     });
     if (radius.error || radius.status !== 0) throw commandFailure("radius", radius);
     replaceTree(subject, repo);
-    const ran = spawnSync(binary, ["gate", "--json"], spawned);
+    const ran = spawnSync(binary, [...session.wholeRun(binary), "--json"], spawned);
     const whole = verdictOf("gate", ran, ran.stdout ?? "", gate, expected);
     const hooked = spawnSync(binary, ["gate", "--hook", "--changed"], {
       ...spawned,

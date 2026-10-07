@@ -19,18 +19,10 @@ const HEAD: &str = "| Key | Holds | Required | Source | Derivation rule | Defaul
 const RULE: &str = "| --- | --- | --- | --- | --- | --- |";
 const NONE: &str = "—";
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// Print the generated JSON Schema instead of the Markdown reference.
-    #[arg(long)]
-    pub schema: bool,
-}
-
-pub fn run(args: &Args, out: &mut String) -> Result<u8, Error> {
-    if args.schema {
-        schema(out);
-    } else {
-        reference(out);
+pub fn run(schema: bool, out: &mut String) -> Result<u8, Error> {
+    match schema {
+        true => self::schema(out),
+        false => reference(out),
     }
     Ok(0)
 }
@@ -284,7 +276,7 @@ fn preamble(out: &mut String) {
     let _ = writeln!(
         out,
         "# klin configuration reference\n\n\
-         `klin reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a \
+         `klin policy --reference` prints this page. `docs/REFERENCE.md` holds the printed copy, and a \
          test fails when the two differ, so the reference cannot drift from the binary. Do not \
          edit the copy by hand.\n\n\
          `klin.json` is a person's policy over facts klin discovers in the tree. `{{}}` is a \
@@ -392,7 +384,7 @@ fn exclusion(out: &mut String) {
          `lockfile` reject the retired `roots`, `languages`, `patterns`, `skip_dirs`, \
          `exclude`, `exclude_except`, `ceilings`, `name`, `path`, `pattern` and `manifests` \
          topology keys with a migration error. A file measured under the base scope and \
-         omitted by today's scope is a NOTE in the hook and exit 2 under `--strict`.\n\n\
+         omitted by today's scope is a NOTE in the hook and exit 2 under `klin check`.\n\n\
          `doc_size` maps a document path to its ceiling, and `AGENTS.md` and `CLAUDE.md` at the \
          tree root keep a derived ceiling where it does not name them; every other document is \
          judged only when the map names it. `doc_citations` reads every Markdown file at the \

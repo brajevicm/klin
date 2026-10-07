@@ -7,7 +7,7 @@ use crate::config;
 use crate::error::Error;
 use crate::host::ADAPTERS;
 use crate::host::adapter::{Adapter, Filter, Hook, HookFile};
-use crate::write;
+use crate::{init, write};
 
 const HOOKS: &str = "hooks";
 const MARKER: &str = "klin.json";
@@ -18,8 +18,8 @@ const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
 /// and this command leaves it where it is. Section 19.3.
 const LIFECYCLE: &[&str] = &["radius", "guard", "gate"];
 
-const NO_REPOSITORY: &str = "klin install writes a repository's own files, and this is no git \
-    repository. Run it inside one, or run klin install --user --host NAME to install the host \
+const NO_REPOSITORY: &str = "klin setup writes a repository's own files, and this is no git \
+    repository. Run it inside one, or run klin setup --user --host NAME to set up the host \
     files of one person on this machine.";
 
 const NO_HOME: &str = "--user writes the host files of one person on this machine, and this \
@@ -35,14 +35,38 @@ pub struct Args {
     /// repository's own
     #[arg(long)]
     user: bool,
+    /// Write today's complexity ceilings, document ceilings and change radius into the
+    /// configuration as policy, and keep every value it already holds
+    #[arg(long)]
+    pin: bool,
+    /// The klin.json to write (default: one at the repository root)
+    #[arg(long)]
+    config: Option<PathBuf>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = Scope::of(args.user, start)?;
-    let components = planned(args, &scope)?;
+    let file = scope.config(args.config.as_deref(), start);
+    let pinned = pin_target(args.pin, file.as_deref())?;
+    let components = planned(args, &scope, file.as_deref())?;
+    if let Some(file) = pinned {
+        init::pin(file, out)?;
+    }
     applied(&components, out)?;
+    if let Some(root) = &scope.repository {
+        init::inert(root, out);
+    }
     let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
     Ok(0)
+}
+
+/// The configuration `--pin` writes, which needs a repository or a `--config` to name it.
+fn pin_target(pin: bool, file: Option<&Path>) -> Result<Option<&Path>, Error> {
+    match (pin, file) {
+        (false, _) => Ok(None),
+        (true, Some(file)) => Ok(Some(file)),
+        (true, None) => Err(Error(NO_REPOSITORY.to_string())),
+    }
 }
 
 /// Whether the run wrote a host's file. The repository marker is written on its own account,
@@ -79,6 +103,14 @@ impl Scope {
             repository,
             user,
         })
+    }
+
+    /// The configuration this run opts in: the one `--config` names, or the repository's own.
+    fn config(&self, named: Option<&Path>, start: &Path) -> Option<PathBuf> {
+        match named {
+            Some(named) => Some(start.join(named)),
+            None => self.repository.as_ref().map(|root| root.join(MARKER)),
+        }
     }
 
     /// The person's own file for this host, when it already holds klin's entries beside the
@@ -120,10 +152,14 @@ impl Scope {
 /// Everything the run will do, resolved before it writes anything: the repository marker, and
 /// one component per host klin knows. A host file that cannot be read or is not the shape the
 /// host reads fails here, where no file has been touched yet. Section 19.3.
-fn planned(args: &Args, scope: &Scope) -> Result<Vec<Component>, Error> {
+/// The configuration is planned only where `--pin` does not write it itself.
+fn planned(args: &Args, scope: &Scope, file: Option<&Path>) -> Result<Vec<Component>, Error> {
     let (wanted, why) = chosen(args, scope)?;
     let mut skills = Vec::new();
-    let mut components = vec![opt_in(scope)];
+    let mut components = match args.pin {
+        true => Vec::new(),
+        false => vec![opt_in(file)],
+    };
     components.extend(why);
     for host in ADAPTERS.iter().copied() {
         let named = wanted.iter().any(|one| one.name() == host.name());
@@ -224,8 +260,8 @@ fn incomplete(components: &[Component], component_at: usize, target_at: usize, o
 /// The repository's opt-in marker, at the repository root and not at the directory the command
 /// was run from. A marker a person already wrote is theirs, and its content is kept whole.
 /// Spec 5.1, ADR 0028.
-fn opt_in(scope: &Scope) -> Component {
-    let Some(root) = &scope.repository else {
+fn opt_in(file: Option<&Path>) -> Component {
+    let Some(file) = file else {
         return Component {
             said: "klin: no repository was opted in, because this is no git repository."
                 .to_string(),
@@ -233,7 +269,6 @@ fn opt_in(scope: &Scope) -> Component {
             host: false,
         };
     };
-    let file = root.join(MARKER);
     match file.is_file() {
         true => Component {
             said: format!("klin: {} already opts this repository in.", file.display()),
@@ -243,11 +278,12 @@ fn opt_in(scope: &Scope) -> Component {
         false => Component {
             said: format!(
                 "klin: repository opted in at {} — commit it, so the repository stays opted in \
-                 for everyone.",
+                 for everyone. klin setup --pin writes today's ceilings into it as policy a \
+                 person reviews.",
                 file.display()
             ),
             targets: vec![Target {
-                file,
+                file: file.to_path_buf(),
                 bytes: b"{}\n".to_vec(),
             }],
             host: false,
@@ -416,7 +452,7 @@ fn skill(
         }
         Ok(_) => Err(Error(format!(
             "{}: existing skill differs from klin's canonical skill; refusing to overwrite it. \
-             Move it aside or reconcile it, then rerun klin install",
+             Move it aside or reconcile it, then rerun klin setup",
             file.display()
         ))),
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok((
@@ -631,7 +667,7 @@ fn klins(entry: &Value) -> bool {
 }
 
 /// Whether a command runs the klin binary on one of the commands a hook runs. The word after
-/// the binary decides it, so a person's own `klin stats` hook is theirs and stays.
+/// the binary decides it, so a person's own `klin report` hook is theirs and stays.
 fn runs_a_hook(command: &str) -> bool {
     let words: Vec<&str> = command
         .split_whitespace()

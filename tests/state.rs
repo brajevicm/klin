@@ -43,7 +43,7 @@ fn git(cwd: &Path, args: &[&str]) {
 fn list_prints_the_state_directory_under_the_git_directory() {
     let tree = tree("");
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(state_line(&run).ends_with("/.git/klin"), "{}", run.out);
 }
@@ -70,11 +70,11 @@ fn two_clones_of_one_repository_get_two_state_directories() {
     let under = cache.root().display().to_string();
     let environment = [("KLIN_STATE_DIR", under.as_str())];
 
-    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    let mine = state_line(&tree.run_with(&environment, &["policy"]));
     let theirs = state_line(&harness::run_from_with(
         clone.root(),
         &environment,
-        &["gate", "--list"],
+        &["policy"],
     ));
     assert!(mine.contains(&under), "{mine}");
     assert!(theirs.contains(&under), "{theirs}");
@@ -98,8 +98,8 @@ fn a_git_worktree_gets_its_own_state_directory() {
         ],
     );
 
-    let mine = state_line(&tree.run(&["gate", "--list"]));
-    let theirs = state_line(&harness::run_from(&at, &["gate", "--list"]));
+    let mine = state_line(&tree.run(&["policy"]));
+    let theirs = state_line(&harness::run_from(&at, &["policy"]));
     assert!(theirs.ends_with("/klin"), "{theirs}");
     assert_ne!(mine, theirs);
 }
@@ -124,7 +124,7 @@ fn cache_clean_all_removes_only_the_cache_of_a_repository_that_is_gone() {
     let environment = [("KLIN_STATE_DIR", under.as_str())];
     let stamped = tree.run_with(&environment, &["gate", "--hook"]);
     assert_eq!(stamped.code, 0, "{}", stamped.out);
-    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    let mine = state_line(&tree.run_with(&environment, &["policy"]));
     let mine = Path::new(mine.trim_start_matches("state: ")).to_path_buf();
     let stamp = mine.join("build-blocked");
     assert!(std::fs::write(&stamp, "").is_ok(), "a stamp of my own");
@@ -162,7 +162,7 @@ fn init_says_an_older_ignore_line_is_inert_and_leaves_it_alone() {
     tree.words("README.md", 5);
     tree.write(".gitignore", ".klin/\n");
 
-    let run = tree.run(&["init"]);
+    let run = tree.run(&["setup"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("the .klin line is inert"), "{}", run.out);
     let held = std::fs::read_to_string(tree.path(".gitignore")).unwrap_or_default();
@@ -202,7 +202,7 @@ fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
 
     let run = tree.run_with(&environment, &["gate", "--hook"]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let mine = state_line(&tree.run_with(&environment, &["gate", "--list"]));
+    let mine = state_line(&tree.run_with(&environment, &["policy"]));
     let mine = Path::new(mine.trim_start_matches("state: "));
     assert!(mine.starts_with(&under), "{}", mine.display());
     assert!(mine.join("build-blocked").is_file(), "{}", run.out);

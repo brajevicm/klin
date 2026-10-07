@@ -17,8 +17,7 @@ use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
-use crate::key::{Key, Section};
-use crate::project::Project;
+use crate::key::Key;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::tree::Tree;
@@ -34,7 +33,7 @@ pub const KEYS: &[Key] = &[];
 
 const RULE: &str = "every Markdown file at the tree root, resolved against it";
 
-/// The extensions a citation may name, which `klin reference` prints.
+/// The extensions a citation may name, which `klin policy --reference` prints.
 pub const EXTENSIONS: &[&str] = &[
     ".py", ".ts", ".tsx", ".js", ".jsx", ".swift", ".rs", ".go", ".kt", ".java", ".rb", ".sh",
     ".md", ".json", ".yml", ".yaml", ".toml",
@@ -44,25 +43,6 @@ const REMEDY: &str = "Point the citation at where the file is now (a bare filena
     when exactly one file under the roots has that name). A move or rename calls for updating \
     the citation. Delete the sentence only when the referenced content was intentionally removed \
     and the sentence no longer applies.";
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Judge this one document instead of every document at the tree root
-    #[arg(long)]
-    file: Option<PathBuf>,
-    /// Where --file's citations may resolve (repeatable; default: the tree root)
-    #[arg(long = "root")]
-    roots: Vec<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
 
 struct Document {
     path: PathBuf,
@@ -91,31 +71,8 @@ struct Index {
     basenames: BTreeMap<String, Vec<String>>,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    if let Some(named) = &args.file
-        && !named.is_file()
-    {
-        return Err(Error(format!("no such file: {}", named.display())));
-    }
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.file.as_deref(),
-        &args.roots,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, &[], out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
-    }
 }
 
 fn evaluate(
@@ -125,10 +82,10 @@ fn evaluate(
     out: &mut Sink,
 ) -> Result<u8, Error> {
     let listing = listing(at, named, roots);
-    if named.is_none() && !at.quiet {
+    if named.is_none() {
         said(&listing, out);
     }
-    let commit = contract::base_commit(&listing.root, at, out)?;
+    let commit = contract::base_commit(&listing.root, at)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {

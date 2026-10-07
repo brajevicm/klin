@@ -505,8 +505,9 @@ impl Evaluator<'_> {
 }
 
 /// What the ratchet makes of each finding, without printing or recording anything: `new`,
-/// `worsened`, `held` by a base site, or `accepted` by an entry a person wrote. For a report that
-/// explains a gate rather than judging it. Spec 8.4.
+/// `worsened`, `held` by a base site, or `accepted` by an entry a person wrote. For a test that
+/// pins a gate's matching. Spec 8.4.
+#[cfg(test)]
 pub fn outcomes(
     findings: Vec<Finding>,
     prior: Vec<Finding>,
@@ -561,20 +562,17 @@ fn report(
         notes(comparison, evaluator, at.gate, out.text);
         return 1;
     }
-    if !at.quiet {
-        let _ = writeln!(
-            out.text,
-            "OK: {}{}{}",
-            line.state,
-            qualifier(comparison),
-            line.tail
-        );
-    }
+    let _ = writeln!(
+        out.text,
+        "OK: {}{}{}",
+        line.state,
+        qualifier(comparison),
+        line.tail
+    );
     notes(comparison, evaluator, at.gate, out.text);
     if at.strict && !comparison.unmatched_accepted.is_empty() {
         let heading = format!(
-            "FAIL: the accepted list holds {} entr{} that matched nothing — under --strict an \
-             entry that no longer describes the code is a failure. Delete the line.",
+            "FAIL: the accepted list holds {} entr{} that matched nothing — an entry that no longer describes the code is a failure. Delete the line.",
             comparison.unmatched_accepted.len(),
             match comparison.unmatched_accepted.len() {
                 1 => "y",

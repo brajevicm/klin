@@ -1,5 +1,5 @@
 name: klin
-description: Install a pinned klin release and run klin gate --strict. Spec 19.5.
+description: Install a pinned klin release and run klin check. Spec 12.3.
 inputs:
   version:
     description: >-
@@ -8,7 +8,7 @@ inputs:
     required: false
     default: ""
   args:
-    description: Arguments appended to klin gate --strict, such as --gate names or --json.
+    description: Arguments appended to klin check, such as check names or --json.
     required: false
     default: ""
 runs:
@@ -35,4 +35,4 @@ runs:
       shell: bash
       env:
         ARGS: ${{ inputs.args }}
-      run: klin gate --strict $ARGS
+      run: klin check $ARGS

@@ -31,7 +31,7 @@ use crate::turn;
 
 pub const SECTION: &str = "inventory";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 const TEST_ROOTS: &str = "test roots";
@@ -118,7 +118,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let today = today(project)?;
     said(project, out);
-    let commit = contract::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at)?;
     let mut owned = None;
     let prior = base::laid(at.prior, &mut owned, || {
         base::materialize(project, &commit, None)

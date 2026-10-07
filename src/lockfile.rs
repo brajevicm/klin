@@ -21,7 +21,7 @@ use crate::scope::{self, Scope};
 
 pub const SECTION: &str = "lockfile";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT];
 
 const RULE: &str = "the manifests the survey found that klin can read a lockfile for";
@@ -233,7 +233,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     said(&found, out);
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
-    let commit = contract::base_commit(config.root(), at, out)?;
+    let commit = contract::base_commit(config.root(), at)?;
     let changes = at.project.changes(&commit)?;
     let renamed = renamed(&changes, &judged);
     let judged: Vec<(&str, &str, &Format)> = judged

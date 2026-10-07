@@ -8,7 +8,7 @@ use crate::key::{Key, Section, SectionShape, Shape};
 const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
-/// one reads it through the declaration here, and `klin reference` prints them. Spec 5.2, 5.8.
+/// one reads it through the declaration here, and `klin policy --reference` prints them. Spec 5.2, 5.8.
 pub const KEYS: &[Key] = &[BUILD, ACCEPTED, RADIUS, JOURNAL];
 
 /// The top-level keys klin no longer reads, each with what to do instead. Spec 5.2, ADR 0040.

@@ -66,7 +66,7 @@ fn at(run: &harness::Run, text: &str) -> usize {
 fn every_configured_gate_runs_in_ladder_order() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         at(&run, "doc-size") < at(&run, "doc-citations"),
@@ -85,7 +85,7 @@ fn every_configured_gate_runs_in_ladder_order() {
 fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
     let tree = tree(r#"{ "doc_size": {"README.md": 10} }"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
@@ -96,22 +96,10 @@ fn a_gate_the_config_does_not_name_runs_over_the_section_the_survey_derives() {
 }
 
 #[test]
-fn a_gate_the_survey_cannot_supply_does_not_run() {
-    let tree = without_source(r#"{ "doc_size": {"README.md": 10} }"#);
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("ok    doc-size"), "{}", run.out);
-    assert!(!run.says("escapes"), "{}", run.out);
-    assert!(!run.says("complexity"), "{}", run.out);
-    assert!(run.says("2 gate(s), all passed."), "{}", run.out);
-}
-
-#[test]
 fn a_status_row_per_gate_and_a_summary_line() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    doc-size"), "{}", run.out);
     assert!(run.says("ok    doc-citations"), "{}", run.out);
@@ -124,7 +112,7 @@ fn a_status_row_per_gate_and_a_summary_line() {
 fn a_passing_gate_prints_a_row_and_the_one_ok_line_under_it() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(
@@ -141,7 +129,7 @@ fn a_failing_gate_prints_its_full_output_under_its_row() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(
@@ -159,7 +147,7 @@ fn every_gate_runs_even_when_an_earlier_one_failed() {
     let source = format!("pub fn f() {{\n    x.{};\n}}\n", "unwrap()");
     tree.write("src/work.rs", &source);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("FAIL  escapes"), "{}", run.out);
@@ -172,7 +160,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
     let tree = tree(A_BROKEN_GATE);
     tree.words("README.md", 30);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
@@ -187,7 +175,7 @@ fn a_tool_error_is_distinguishable_from_a_gate_failure() {
 fn a_tool_error_alone_exits_two() {
     let tree = tree(A_BROKEN_GATE);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
     assert!(
@@ -212,7 +200,7 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
@@ -231,26 +219,10 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
 }
 
 #[test]
-fn list_does_not_derive_source_policy() {
-    let tree = tree(
-        r#"{ "doc_size": {"README.md": 10},
-              "complexity": { "in": "src", "cc": 8 } }"#,
-    );
-
-    let run = tree.run(&["gate", "--list"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("pinned: doc_size README.md"), "{}", run.out);
-    assert!(run.says("complexity — runs"), "{}", run.out);
-    assert!(run.says("escapes — runs"), "{}", run.out);
-    assert!(!run.says("derived: complexity"), "{}", run.out);
-    assert!(!run.says("derived: escapes"), "{}", run.out);
-}
-
-#[test]
 fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
     let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
@@ -274,7 +246,7 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
 fn list_ends_with_the_state_directory() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let last = run.out.trim_end().lines().last().unwrap_or_default();
     assert!(last.starts_with("state: "), "{}", run.out);
@@ -286,7 +258,7 @@ fn gate_by_name_runs_only_that_gate() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = tree.run(&["gate", "--gate", "escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(!run.says("doc-size"), "{}", run.out);
@@ -297,7 +269,7 @@ fn gate_by_name_runs_only_that_gate() {
 fn gate_by_name_is_repeatable_and_keeps_ladder_order() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate", "--gate", "complexity", "--gate", "doc-size"]);
+    let run = tree.run(&["check", "complexity", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(at(&run, "doc-size") < at(&run, "complexity"), "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
@@ -308,7 +280,7 @@ fn gate_by_name_is_repeatable_and_keeps_ladder_order() {
 fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
     let tree = without_source(r#"{ "doc_size": {"README.md": 10} }"#);
 
-    let run = tree.run(&["gate", "--gate", "escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no gate named escapes"), "{}", run.out);
     assert!(run.says("doc-size"), "{}", run.out);
@@ -318,7 +290,7 @@ fn a_gate_name_the_config_does_not_configure_is_a_tool_error() {
 fn a_config_that_configures_no_gate_is_a_tool_error() {
     let tree = nothing_to_survey(r#"{}"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("configures no gate"), "{}", run.out);
 }
@@ -327,7 +299,7 @@ fn a_config_that_configures_no_gate_is_a_tool_error() {
 fn a_section_named_after_the_command_is_a_tool_error() {
     let tree = tree(r#"{ "doc-size": [{"file": "README.md", "ceiling": 1}] }"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"doc-size\" is what the command"), "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
@@ -337,21 +309,16 @@ fn a_section_named_after_the_command_is_a_tool_error() {
 fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
     let tree = nothing_to_survey(r#"{}"#);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("configures no gate"), "{}", run.out);
 }
 
 #[test]
-fn strict_reaches_the_gates_that_take_it() {
+fn an_accepted_entry_that_matched_nothing_fails_its_gate() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
 
-    let loose = tree.run(&["gate"]);
-    assert_eq!(loose.code, 0, "{}", loose.out);
-    assert!(loose.says("ok    escapes"), "{}", loose.out);
-    assert!(loose.says("matched nothing this run"), "{}", loose.out);
-
-    let strict = tree.run(&["gate", "--strict"]);
+    let strict = tree.run(&["check"]);
     assert_eq!(strict.code, 1, "{}", strict.out);
     assert!(strict.says("FAIL  escapes"), "{}", strict.out);
 }
@@ -363,7 +330,7 @@ fn the_config_flag_names_the_klin_json_every_gate_runs_under() {
     tree.words("elsewhere/README.md", 30);
     tree.write("elsewhere/src/lib.rs", CLEAN);
 
-    let run = tree.run(&["gate", "--config", &tree.at("elsewhere/klin.json")]);
+    let run = tree.run(&["check", "--config", &tree.at("elsewhere/klin.json")]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
 }
@@ -394,13 +361,13 @@ fn changed_scopes_the_scoped_gates_to_the_working_tree_and_untracked_files() {
     let tree = based(EVERY_GATE, &[("src/old.rs", AN_ESCAPE)]);
     tree.write("src/new.rs", AN_ESCAPE);
 
-    let scoped = tree.run(&["gate", "--changed"]);
+    let scoped = tree.run(&["check", "--changed"]);
     assert_eq!(scoped.code, 1, "{}", scoped.out);
     assert!(scoped.says("changed: 1 file(s)"), "{}", scoped.out);
     assert!(scoped.says("src/new.rs:2"), "{}", scoped.out);
     assert!(!scoped.says("src/old.rs"), "{}", scoped.out);
 
-    let whole = tree.run(&["gate"]);
+    let whole = tree.run(&["check"]);
     assert_eq!(whole.code, 1, "{}", whole.out);
     assert!(whole.says("src/new.rs:2"), "{}", whole.out);
     assert!(!whole.says("src/old.rs"), "{}", whole.out);
@@ -412,7 +379,7 @@ fn a_gate_that_is_not_scoped_still_runs_over_everything() {
     tree.words("README.md", 30);
     tree.write("src/new.rs", CLEAN);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "--changed"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("README.md is 30 words"), "{}", run.out);
@@ -424,12 +391,12 @@ fn an_accepted_entry_for_a_file_outside_the_changed_set_is_not_judged() {
     let tree = based(AN_UNMATCHED_ACCEPTED, &[]);
     tree.write("src/new.rs", CLEAN);
 
-    let scoped = tree.run(&["gate", "--changed", "--strict"]);
+    let scoped = tree.run(&["check", "--changed"]);
     assert_eq!(scoped.code, 0, "{}", scoped.out);
     assert!(!scoped.says("matched nothing this run"), "{}", scoped.out);
 
-    let whole = tree.run(&["gate"]);
-    assert_eq!(whole.code, 0, "{}", whole.out);
+    let whole = tree.run(&["check"]);
+    assert_eq!(whole.code, 1, "{}", whole.out);
     assert!(whole.says("matched nothing this run"), "{}", whole.out);
 }
 
@@ -441,12 +408,12 @@ fn changed_diffs_against_the_pull_request_base_when_ci_names_one() {
     tree.git(&["update-ref", "refs/remotes/origin/release", "HEAD"]);
     tree.write("src/newer.rs", AN_ESCAPE);
 
-    let in_ci = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["gate", "--changed"]);
+    let in_ci = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["check", "--changed"]);
     assert_eq!(in_ci.code, 1, "{}", in_ci.out);
     assert!(in_ci.says("src/newer.rs:2"), "{}", in_ci.out);
     assert!(!in_ci.says("src/new.rs:2"), "{}", in_ci.out);
 
-    let locally = tree.run(&["gate", "--changed"]);
+    let locally = tree.run(&["check", "--changed"]);
     assert_eq!(locally.code, 1, "{}", locally.out);
     assert!(locally.says("src/new.rs:2"), "{}", locally.out);
 }
@@ -458,7 +425,7 @@ fn a_run_outside_a_repository_is_a_tool_error_rather_than_an_empty_pass() {
     tree.words("README.md", 5);
     tree.write("src/new.rs", AN_ESCAPE);
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "--changed"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base commit"), "{}", run.out);
     assert!(!run.says("ok    escapes"), "{}", run.out);
@@ -469,7 +436,7 @@ fn changed_restricts_complexity_as_well_as_escapes() {
     let tree = based(EVERY_GATE, &[("src/old.rs", &tangled("was_here"))]);
     tree.write("src/new.rs", &tangled("is_new"));
 
-    let scoped = tree.run(&["gate", "--changed"]);
+    let scoped = tree.run(&["check", "--changed"]);
     assert_eq!(scoped.code, 1, "{}", scoped.out);
     assert!(scoped.says("FAIL  complexity"), "{}", scoped.out);
     assert!(scoped.says("src/new.rs:1"), "{}", scoped.out);
@@ -543,7 +510,7 @@ fn hook_prints_only_the_gates_that_did_not_pass() {
         assert!(!run.says(passed), "{passed}: {}", run.out);
     }
 
-    let by_hand = tree.run(&["gate"]);
+    let by_hand = tree.run(&["check"]);
     assert_eq!(by_hand.code, 1, "{}", by_hand.out);
     assert!(by_hand.says("ok    escapes"), "{}", by_hand.out);
     assert!(by_hand.says("pinned: complexity cc 8"), "{}", by_hand.out);
@@ -691,7 +658,7 @@ fn hook_says_nothing_in_a_tree_that_holds_no_config() {
 fn gate_by_hand_in_a_tree_that_holds_no_config_still_names_what_is_missing() {
     let tree = Tree::new();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("klin.json does not exist"), "{}", run.out);
     assert!(run.says("nothing to gate"), "{}", run.out);
@@ -831,7 +798,7 @@ fn the_ladder_writes_nothing() {
     tree.write("src/lib.rs", AN_ESCAPE);
     tree.words("README.md", 30);
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let dirty = tree.status();
     assert_eq!(
@@ -871,7 +838,7 @@ fn json_prints_one_object_holding_every_failing_finding() {
     tree.words("README.md", 30);
     tree.write("src/work.rs", AN_ESCAPE);
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
@@ -895,7 +862,7 @@ fn a_json_finding_carries_the_site_the_values_and_the_advice() {
     let tree = tree(EVERY_GATE);
     tree.write("src/lib.rs", AN_ESCAPE);
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
     let finding = &list(&report, "findings")[0];
@@ -956,7 +923,7 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
             .any(|finding| finding["gate"] == "escapes")
     );
 
-    let standalone = tree.run(&["gate", "--json"]);
+    let standalone = tree.run(&["check", "--json"]);
     assert_eq!(standalone.code, 1, "{}", standalone.out);
     assert!(
         standalone.json()["findings"]
@@ -973,7 +940,7 @@ fn a_json_record_names_no_column_and_no_violation() {
     tree.words("README.md", 30);
     tree.write("src/lib.rs", AN_ESCAPE);
 
-    let run = tree.run(&["gate", "--json", "--strict"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
     let banned = ["column", "violation", "invariant"];
@@ -993,7 +960,7 @@ fn a_json_record_names_no_column_and_no_violation() {
 fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
 
-    let run = tree.run(&["gate", "--json", "--strict"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "FAIL", "{}", run.out);
@@ -1010,7 +977,7 @@ fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
 fn a_gate_that_could_not_run_is_a_json_finding_too() {
     let tree = tree(A_BROKEN_GATE);
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
@@ -1028,7 +995,7 @@ fn a_gate_that_could_not_run_is_a_json_finding_too() {
 fn a_passing_json_run_holds_no_findings() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "PASS", "{}", run.out);
@@ -1046,7 +1013,7 @@ fn a_json_run_with_pinned_policy_invents_no_derived_entries() {
              "complexity": { "in": "src", "cc": 8, "lines": 60 } }"#,
     );
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     let derived = list(&report, "derived");
@@ -1057,7 +1024,7 @@ fn a_json_run_with_pinned_policy_invents_no_derived_entries() {
 fn a_config_the_run_cannot_read_is_a_json_object_too() {
     let tree = tree(EVERY_GATE);
 
-    let run = tree.run(&["gate", "--json", "--config", "absent.json"]);
+    let run = tree.run(&["check", "--json", "--config", "absent.json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
@@ -1076,7 +1043,7 @@ fn a_file_the_grammar_rejected_is_a_json_finding_at_its_own_file() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert_eq!(
@@ -1099,7 +1066,7 @@ fn a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict(
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
     tree.base();
 
-    for args in [&["gate"][..], &["gate", "--strict"]] {
+    for args in [&["check"][..], &["check"]] {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
         assert!(
@@ -1108,7 +1075,7 @@ fn a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict(
             run.out
         );
     }
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     let report = run.json();
     assert_eq!(
         outcomes(list(&report, "notes")),
@@ -1126,7 +1093,7 @@ fn a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename() {
     tree.base();
     tree.git(&["mv", "src/broken.rs", "src/moved.rs"]);
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/moved.rs"),
@@ -1142,7 +1109,7 @@ fn a_rename_one_grammar_reads_at_both_paths_keeps_the_note() {
     tree.base();
     tree.git(&["mv", "src/broken.js", "src/broken.mjs"]);
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.mjs"),
@@ -1158,7 +1125,7 @@ fn a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand() {
     tree.base();
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("FAIL: 1 file(s) the grammar could not parse"),
@@ -1172,10 +1139,10 @@ const WORKFLOW: &str = include_str!("../.github/workflows/quality.yml");
 fn ci_arguments() -> Vec<&'static str> {
     WORKFLOW
         .lines()
-        .find(|line| line.contains("klin gate"))
-        .unwrap_or_else(|| panic!("no klin gate line in:\n{WORKFLOW}"))
+        .find(|line| line.contains("klin check"))
+        .unwrap_or_else(|| panic!("no klin check line in:\n{WORKFLOW}"))
         .split_whitespace()
-        .skip_while(|word| *word != "gate")
+        .skip_while(|word| *word != "check")
         .collect()
 }
 
@@ -1207,12 +1174,34 @@ const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
   "complexity": false
 }"#;
 
+/// `policy` names each value a gate used with where it came from: the section pinned one, and
+/// the run derived the other with its rule. Spec 11.6.
+#[test]
+fn policy_names_each_value_of_one_gate_with_its_provenance() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"cc": 8}}"#);
+    tree.write("src/lib.rs", "fn a() {}\nfn b() {}\n");
+    tree.base();
+
+    let run = tree.run(&["policy", "complexity"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("complexity — runs"), "{}", run.out);
+    assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
+    assert!(
+        run.says("derived: complexity lines 25 (the floor of 25"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("escapes"), "{}", run.out);
+}
+
 #[test]
 fn a_named_gate_runs_alone_when_the_command_line_names_it() {
     let tree = tree(AN_EXCLUDED_GATE);
     tree.write("src/big.rs", &tangled("big"));
 
-    let run = tree.run(&["gate", "--gate", "complexity"]);
+    let run = tree.run(&["check", "complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL  complexity"), "{}", run.out);
     assert!(!run.says("doc-size"), "{}", run.out);
@@ -1225,7 +1214,7 @@ fn a_named_gate_runs_alone_when_the_command_line_names_it() {
 fn a_gates_key_is_not_one_klin_reads() {
     let tree = tree(r#"{ "gates": [{"name": "n", "check": "complexity", "with": {}}] }"#);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"gates\" is not a key klin reads"), "{}", run.out);
 }
@@ -1237,7 +1226,7 @@ fn two_gates_of_one_name_are_a_tool_error() {
               "sarif": [{"name": "doc-size", "report": "out/lint.sarif"}] }"#,
     );
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("two gates are named doc-size"), "{}", run.out);
 }
@@ -1247,7 +1236,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
     let tree = tree(AN_EXCLUDED_GATE);
     tree.write("src/risky.rs", AN_ESCAPE);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("escapes"), "{}", run.out);
     assert!(
@@ -1261,7 +1250,7 @@ fn a_section_set_to_false_excludes_its_gate_and_the_summary_counts_it() {
 fn list_names_the_excluded_gates() {
     let tree = tree(AN_EXCLUDED_GATE);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
@@ -1281,7 +1270,7 @@ fn list_names_the_excluded_gates() {
 fn list_names_an_available_gate_the_survey_cannot_supply_either() {
     let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("escapes — needs a section a person writes"),
@@ -1294,7 +1283,7 @@ fn list_names_an_available_gate_the_survey_cannot_supply_either() {
 fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(rows(&run).contains("escapes — runs\n"), "{}", run.out);
     assert!(
@@ -1308,7 +1297,7 @@ fn list_names_a_gate_the_survey_supplies_as_one_that_runs() {
 fn naming_an_excluded_gate_is_a_tool_error() {
     let tree = tree(AN_EXCLUDED_GATE);
 
-    let run = tree.run(&["gate", "--gate", "escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("named escapes is excluded"), "{}", run.out);
 }
@@ -1317,7 +1306,7 @@ fn naming_an_excluded_gate_is_a_tool_error() {
 fn strict_accounts_for_a_gate_the_survey_supplies() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let strict = tree.run(&["gate", "--strict"]);
+    let strict = tree.run(&["check"]);
     assert_eq!(strict.code, 0, "{}", strict.out);
     assert!(strict.says("ok    escapes"), "{}", strict.out);
 }
@@ -1329,7 +1318,7 @@ fn strict_accounts_for_a_gate_the_survey_supplies() {
 fn strict_accepts_a_config_that_omits_a_derivable_gate() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let strict = tree.run(&["gate", "--strict"]);
+    let strict = tree.run(&["check"]);
     assert_eq!(strict.code, 0, "{}", strict.out);
     assert!(strict.says("ok    escapes"), "{}", strict.out);
     assert!(!strict.says("unaccounted"), "{}", strict.out);
@@ -1339,7 +1328,7 @@ fn strict_accepts_a_config_that_omits_a_derivable_gate() {
 fn strict_refuses_a_tree_the_survey_finds_no_source_root_in() {
     let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let strict = tree.run(&["gate", "--strict"]);
+    let strict = tree.run(&["check"]);
     assert_eq!(strict.code, 2, "{}", strict.out);
     let named = tree
         .root()
@@ -1353,6 +1342,18 @@ fn strict_refuses_a_tree_the_survey_finds_no_source_root_in() {
         "{}",
         strict.out
     );
+}
+
+/// Only the checks a run selects count toward the hole, so a run of a check that reads no code
+/// judges a tree with no source root. Spec 11.3.
+#[test]
+fn a_selected_check_that_reads_no_code_runs_where_the_survey_finds_no_source_root() {
+    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let run = tree.run(&["check", "doc-size"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("found no source root"), "{}", run.out);
 }
 
 /// The failure is about a gate the survey was left to supply, so a tree that reads no code
@@ -1369,7 +1370,7 @@ fn strict_accepts_a_tree_with_no_source_when_every_code_gate_is_excluded() {
               "public_api": false }"#,
     );
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("no source root"), "{}", run.out);
 }
@@ -1381,7 +1382,7 @@ fn list_says_a_compact_source_policy_runs() {
               "escapes": {"in": "src"} }"#,
     );
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("escapes — runs"), "{}", run.out);
     assert!(!run.says("derived: escapes"), "{}", run.out);
@@ -1397,7 +1398,7 @@ fn a_named_gate_derives_nothing_another_gate_would_need() {
     tree.base();
     tree.words("AGENTS.md", 5);
 
-    let every = tree.run(&["gate"]);
+    let every = tree.run(&["check"]);
     assert_eq!(every.code, 0, "{}", every.out);
     assert!(
         every.says("derived: doc_size AGENTS.md 50, the 50-word default"),
@@ -1405,22 +1406,11 @@ fn a_named_gate_derives_nothing_another_gate_would_need() {
         every.out
     );
 
-    let one = tree.run(&["gate", "--gate", "escapes"]);
+    let one = tree.run(&["check", "escapes"]);
     assert_eq!(one.code, 0, "{}", one.out);
     assert!(!one.says("derived: escapes"), "{}", one.out);
     assert!(!one.says("doc_size"), "{}", one.out);
     assert!(!one.says("derived: complexity"), "{}", one.out);
-}
-
-#[test]
-fn no_source_root_without_strict_is_a_note_and_the_gates_still_run() {
-    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
-
-    let run = tree.run(&["gate"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("NOTE: the survey of"), "{}", run.out);
-    assert!(run.says("found no source root"), "{}", run.out);
-    assert!(run.says("ok    doc-size"), "{}", run.out);
 }
 
 #[test]
@@ -1435,7 +1425,7 @@ fn no_source_root_in_the_hook_lets_the_turn_end() {
 fn a_source_root_leaves_no_note() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("found no source root"), "{}", run.out);
 }
@@ -1455,7 +1445,7 @@ fn strict_passes_once_every_derivable_gate_is_set_to_false() {
               "public_api": false }"#,
     );
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("1 gate(s), 7 excluded, all passed."),
@@ -1472,7 +1462,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
               "reachability": false, "public_api": false }"#,
     );
 
-    let run = tree.run(&["gate", "--list"]);
+    let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         rows(&run),
@@ -1489,7 +1479,7 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
         run.out
     );
 
-    let judged = tree.run(&["gate"]);
+    let judged = tree.run(&["check"]);
     assert_eq!(judged.code, 2, "{}", judged.out);
     assert!(
         judged.says(
@@ -1569,7 +1559,7 @@ fn a_project_or_version_key_is_a_config_error_that_says_to_delete_it() {
             r#"{{ "{key}": {value}, "doc_size": {{"README.md": 10}} }}"#
         ));
 
-        let run = tree.run(&["gate"]);
+        let run = tree.run(&["check"]);
         assert_eq!(run.code, 2, "{key}: {}", run.out);
         assert!(
             run.says(&format!("\"{key}\" is not a key klin reads")),
@@ -1607,26 +1597,14 @@ fn hook_reports_a_config_error_and_does_not_block_the_stop() {
 }
 
 #[test]
-fn hook_with_strict_is_a_usage_error_and_runs_no_gate() {
-    let tree = tree(EVERY_GATE);
-    tree.words("README.md", 30);
-
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--strict"], A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("--hook"), "{}", run.out);
-    assert!(run.says("--strict"), "{}", run.out);
-    assert!(!run.says("doc-size"), "{}", run.out);
-}
-
-#[test]
 fn no_ci_variable_changes_what_a_run_does() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let plain = tree.run(&["gate"]);
+    let plain = tree.run(&["check"]);
     let in_ci = tree.run_with(
         &[("CI", "true"), ("CONTINUOUS_INTEGRATION", "true")],
-        &["gate"],
+        &["check"],
     );
     assert_eq!(plain.code, in_ci.code, "{}", in_ci.out);
     assert_eq!(plain.out, in_ci.out);
@@ -1669,10 +1647,9 @@ fn lost_file() -> Tree {
 fn a_coverage_loss_is_a_note_under_the_gate_in_the_json() {
     let tree = lost_file();
 
-    let run = tree.run(&["gate", "--json"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
-    assert!(list(&report, "findings").is_empty(), "{}", run.out);
     assert_eq!(
         outcomes(list(&report, "notes")),
         [("complexity", "lost")],
@@ -1706,7 +1683,7 @@ fn a_coverage_loss_in_the_hook_is_a_note_and_the_turn_ends() {
 fn a_coverage_loss_under_strict_fails_the_run() {
     let tree = lost_file();
 
-    let run = tree.run(&["gate", "--strict"]);
+    let run = tree.run(&["check"]);
 
     assert_ne!(run.code, 0, "{}", run.out);
     assert!(run.says("FAIL: 1 file(s) left scrutiny"), "{}", run.out);
@@ -1717,7 +1694,7 @@ fn a_minified_bundle_reports_a_resource_error_in_json() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("bundle.js", &"function bundled(){};".repeat(4_000));
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = run.json();
     assert_eq!(field(&report, "status"), "ERROR", "{}", run.out);
@@ -1730,4 +1707,31 @@ fn a_minified_bundle_reports_a_resource_error_in_json() {
         "{}",
         run.out
     );
+}
+
+#[test]
+fn the_retired_commands_are_unrecognized_and_help_names_no_hidden_one() {
+    let tree = Tree::new();
+    for command in [
+        "gate",
+        "complexity",
+        "init",
+        "install",
+        "reference",
+        "stats",
+    ] {
+        let run = tree.run(&[command]);
+        assert_eq!(run.code, 2, "{command}: {}", run.out);
+        assert!(
+            run.says("unrecognized subcommand"),
+            "{command}: {}",
+            run.out
+        );
+    }
+
+    let help = tree.run(&["--help"]);
+    assert_eq!(help.code, 0, "{}", help.out);
+    for hidden in ["radius", "guard", "turn", "cache", "gate"] {
+        assert!(!help.says(hidden), "{hidden}: {}", help.out);
+    }
 }

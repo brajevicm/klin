@@ -27,7 +27,7 @@ fn a_site_the_base_does_not_hold_is_new_and_fails() {
     let tree = tree();
     tree.write("src/lib.rs", "fn f() {\n    x.unwrap();\n}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL: 1 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:2"), "{}", run.out);
@@ -39,7 +39,7 @@ fn a_base_that_holds_no_source_makes_every_site_new() {
     let tree = tree();
     tree.write("src/lib.rs", "x.expect(\"boom\");\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new escape site(s)"), "{}", run.out);
 }
@@ -53,7 +53,7 @@ fn the_sites_the_base_holds_pass() {
     );
     tree.base();
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("OK: 3 escape site(s) in the tree, all held at the base"),
@@ -70,7 +70,7 @@ fn a_ratcheted_count_that_rose_since_the_base_is_worse_and_fails() {
     tree.base();
     tree.write("src/lib.rs", text::DOUBLED_TWICE);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("got worse — the ratchet only tightens"),
@@ -87,7 +87,7 @@ fn a_count_that_fell_since_the_base_passes_with_nothing_to_say() {
     tree.base();
     tree.write("src/lib.rs", text::DOUBLED_PADDED);
 
-    let run = tree.run(&["escapes", "--strict"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("NOTE"), "{}", run.out);
 }
@@ -104,17 +104,17 @@ fn an_accepted_escape_holds_at_its_count_and_fails_above_it() {
     );
     tree.write("src/lib.rs", text::ONE);
 
-    let held = tree.run(&["escapes"]);
+    let held = tree.run(&["check", "escapes"]);
     assert_eq!(held.code, 0, "{}", held.out);
 
     tree.write("src/lib.rs", text::TWO_ON_TWO_LINES);
-    let worse = tree.run(&["escapes"]);
+    let worse = tree.run(&["check", "escapes"]);
     assert_eq!(worse.code, 1, "{}", worse.out);
     assert!(worse.says("got worse"), "{}", worse.out);
 }
 
 #[test]
-fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_strict_failure() {
+fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_failure() {
     let tree = tree();
     tree.write(
         "klin.json",
@@ -125,14 +125,11 @@ fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_strict_failure() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(run.says("src/gone.rs"), "{}", run.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-    assert!(strict.says("Delete the line"), "{}", strict.out);
+    assert!(run.says("Delete the line"), "{}", run.out);
 }
 
 #[test]
@@ -142,7 +139,7 @@ fn a_site_the_base_held_and_the_code_fixed_passes_with_nothing_to_say() {
     tree.base();
     tree.write("src/lib.rs", "fn f() {\n}\n");
 
-    let run = tree.run(&["escapes", "--strict"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("NOTE"), "{}", run.out);
 }
@@ -159,7 +156,7 @@ fn an_accepted_entry_that_names_no_value_is_a_tool_error() {
     );
     tree.write("src/lib.rs", text::DOUBLED);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("does not give a number for count"), "{}", run.out);
 }
@@ -172,12 +169,9 @@ fn a_file_git_ignores_is_not_judged_because_the_base_holds_no_copy_of_it() {
     tree.base();
     tree.write("src/generated.rs", text::ONE);
 
-    let whole = tree.run(&["escapes"]);
+    let whole = tree.run(&["check", "escapes"]);
     assert_eq!(whole.code, 0, "{}", whole.out);
     assert!(!whole.says("src/generated.rs"), "{}", whole.out);
-
-    let scoped = tree.run(&["escapes", "--only", "src/generated.rs"]);
-    assert_eq!(scoped.code, 0, "{}", scoped.out);
 }
 
 #[test]
@@ -186,7 +180,7 @@ fn one_file_is_read_once_and_counted_once() {
     tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/c.ts", "const c: any = 3;\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/c.ts:1  any  "), "{}", run.out);
@@ -199,7 +193,7 @@ fn a_line_carrying_two_escape_kinds_counts_both_under_the_first() {
     tree.write("src/lib.rs", text::TWO_KINDS);
     tree.base();
 
-    let run = tree.run(&["escapes", "--strict"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: 1 escape site(s)"), "{}", run.out);
 }
@@ -209,37 +203,11 @@ fn failure_output_names_the_fix_and_no_command_that_records_debt() {
     let tree = tree();
     tree.write("src/lib.rs", text::TWO_FILES);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("Fix what the escape hides"), "{}", run.out);
     assert!(!run.says("--write-baseline"), "{}", run.out);
     assert!(!run.says("Tighten"), "{}", run.out);
-}
-
-#[test]
-fn only_restricts_findings_and_the_base_so_untouched_files_are_out_of_scope() {
-    let tree = tree();
-    tree.write("src/a.rs", text::ONE);
-    tree.write("src/b.rs", text::OTHER);
-    tree.base();
-    tree.write("src/a.rs", text::FIXED_AND_BOTH);
-
-    let all = tree.run(&["escapes"]);
-    assert_eq!(all.code, 1, "{}", all.out);
-
-    let only = tree.run(&["escapes", "--only", "src/b.rs"]);
-    assert_eq!(only.code, 0, "{}", only.out);
-}
-
-#[test]
-fn a_clean_quiet_run_prints_nothing() {
-    let tree = tree();
-    tree.write("src/lib.rs", text::ONE);
-    tree.base();
-
-    let run = tree.run(&["escapes", "--quiet", "--strict"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.out, "", "{}", run.out);
 }
 
 fn spread() -> Tree {
@@ -276,7 +244,7 @@ fn spread() -> Tree {
 fn every_built_in_language_finds_and_names_its_escapes() {
     let tree = spread();
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     for expected in [
         "src/thing.py:1  type ignore",
@@ -317,30 +285,6 @@ fn every_built_in_language_finds_and_names_its_escapes() {
 }
 
 #[test]
-fn list_languages_prints_the_built_in_pattern_sets() {
-    let tree = Tree::new();
-
-    let run = tree.run(&["escapes", "--list-languages"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    for expected in [
-        "go",
-        "java",
-        "kotlin",
-        "python",
-        "ruby",
-        "rust",
-        "shell",
-        "swift",
-        "typescript",
-        "force unwrap",
-        "bare except",
-        "nolint",
-    ] {
-        assert!(run.says(expected), "missing {expected}\n{}", run.out);
-    }
-}
-
-#[test]
 fn a_site_shifted_by_an_edit_above_it_still_matches_by_its_line_text() {
     let tree = tree();
     tree.write("src/lib.rs", text::WRAPPED);
@@ -350,7 +294,7 @@ fn a_site_shifted_by_an_edit_above_it_still_matches_by_its_line_text() {
         "// a header\n// and more\nfn f() {\n    a.unwrap();\n}\n",
     );
 
-    let run = tree.run(&["escapes", "--strict"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("NOTE"), "{}", run.out);
 }
@@ -362,7 +306,7 @@ fn a_renamed_file_is_measured_at_its_old_path() {
     tree.base();
     tree.git(&["mv", "src/lib.rs", "src/moved.rs"]);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("src/moved.rs"), "{}", run.out);
 }
@@ -374,7 +318,7 @@ fn the_same_line_twice_in_one_file_is_one_site_whose_count_ratchets() {
     tree.base();
     tree.write("src/lib.rs", text::TWO_PADDED);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("got worse"), "{}", run.out);
     assert!(run.says("unwrap x2, was unwrap"), "{}", run.out);
@@ -390,7 +334,7 @@ fn a_retired_project_pattern_is_rejected() {
     );
     tree.write("src/lib.rs", "a.unwrap();\n// TODO! later\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
@@ -400,8 +344,9 @@ fn an_explicit_scope_with_only_unsupported_files_is_a_configuration_error() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/notes.txt", "TODO! later\n");
+    tree.write("lib/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("has an \"in\" scope with no applicable file"),
@@ -418,7 +363,7 @@ fn a_default_skipped_directory_is_not_read() {
     tree.write("legacy/old.ts", "const y: any = 1;\n");
     tree.write("web/new.ts", "const x: any = 1;\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("web/new.ts:1  any"), "{}", run.out);
     assert!(!run.says("node_modules"), "{}", run.out);
@@ -437,7 +382,7 @@ fn except_drops_a_subtree() {
     tree.write("src/thing.test.ts", "const b: any = 1;\n");
     tree.write("src/generated/api.ts", "const c: any = 1;\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/thing.ts:1"), "{}", run.out);
@@ -471,7 +416,7 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
     let tree = tree();
     tree.write("src/lib.rs", CFG_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:3  unwrap"), "{}", run.out);
@@ -480,7 +425,7 @@ fn a_site_inside_a_cfg_test_module_is_not_a_production_site() {
     assert!(!run.says("src/lib.rs:12"), "{}", run.out);
 
     tree.base();
-    let rerun = tree.run(&["escapes"]);
+    let rerun = tree.run(&["check", "escapes"]);
     assert_eq!(rerun.code, 0, "{}", rerun.out);
     assert!(rerun.says("(2 in tests skipped)"), "{}", rerun.out);
 }
@@ -494,7 +439,7 @@ fn skip_test_idioms_turned_off_judges_the_test_module_too() {
     );
     tree.write("src/lib.rs", CFG_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:11"), "{}", run.out);
     assert!(run.says("src/lib.rs:12"), "{}", run.out);
@@ -507,7 +452,7 @@ fn a_retired_language_selector_is_rejected() {
     tree.write("klin.json", r#"{ "escapes": { "languages": ["cobol"] } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
@@ -518,7 +463,7 @@ fn an_empty_retired_language_selector_is_rejected() {
     tree.write("klin.json", r#"{ "escapes": { "languages": [] } }"#);
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads \"languages\""), "{}", run.out);
 }
@@ -532,7 +477,7 @@ fn a_retired_malformed_project_pattern_is_rejected_before_compilation() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads \"patterns\""), "{}", run.out);
 }
@@ -543,7 +488,7 @@ fn javascript_is_read_by_the_typescript_set() {
     tree.write("klin.json", r#"{ "escapes": { "in": "src" } }"#);
     tree.write("src/thing.js", "it.only('x', () => {});\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/thing.js:1  skipped test"), "{}", run.out);
 }
@@ -556,7 +501,7 @@ fn a_cfg_test_module_behind_stacked_attributes_is_still_a_test_module() {
         "#[cfg(test)]\n#[allow(clippy::all)]\nmod tests {\n    fn t() {\n        x.unwrap();\n    }\n}\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:2  allow"), "{}", run.out);
@@ -571,7 +516,7 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
         "#[cfg(test)]\n// a note about the tests\nmod tests {\n    fn t() {\n        x.unwrap();\n    }\n}\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("(1 in tests skipped)"), "{}", run.out);
 }
@@ -579,12 +524,13 @@ fn a_comment_between_the_attribute_and_the_module_does_not_end_the_range() {
 #[test]
 fn hidden_directories_are_read_except_for_the_default_skip_list() {
     let tree = Tree::new();
-    tree.write("klin.json", r#"{}"#);
+    tree.write("klin.json", r#"{ "escapes": { "in": "." } }"#);
+    tree.write("src/lib.rs", "fn f() {}\n");
     tree.write(".github/workflows/ci.sh", "make test || true\n");
     tree.write(".git/hooks/pre-commit.sh", "lint || true\n");
     tree.write(".config/scripts/setup.sh", "install || true\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says(".github/workflows/ci.sh:1"), "{}", run.out);
     assert!(!run.says(".git/hooks"), "{}", run.out);
@@ -606,7 +552,7 @@ fn a_retired_exclude_glob_is_rejected() {
     tree.write("src/aa.gen.ts", "const y: any = 1;\n");
     tree.write("src/plain.ts", "const p: any = 1;\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no longer reads \"exclude\""), "{}", run.out);
 }
@@ -627,7 +573,7 @@ fn every_alternative_inside_a_pattern_matches_too() {
     tree.write("src/alt.rb", "xit 'x'\npending 'y'\n");
     tree.write("src/alt.sh", "set +e\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     for expected in [
         "src/alt.py:1  skipped test",
@@ -656,7 +602,7 @@ fn a_module_typescript_file_is_scanned_like_any_other_typescript_file() {
     tree.write("src/a.mts", "const a: any = 1;\n");
     tree.write("src/b.cts", "const b: any = 1;\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/a.mts:1"), "{}", run.out);
     assert!(run.says("src/b.cts:1"), "{}", run.out);
@@ -675,7 +621,7 @@ fn a_focused_or_expected_failure_test_is_a_new_escape_and_holds_at_the_base() {
         "@pytest.mark.xfail\ndef a():\n    return 1\n@pytest.mark.skipif(WINDOWS)\ndef b():\n    return 2\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/spec.ts:1  focused test"), "{}", run.out);
     assert!(run.says("src/spec.ts:2  focused test"), "{}", run.out);
@@ -685,7 +631,7 @@ fn a_focused_or_expected_failure_test_is_a_new_escape_and_holds_at_the_base() {
     assert!(!run.says("src/thing.py:4"), "{}", run.out);
 
     tree.base();
-    let held = tree.run(&["escapes", "--strict"]);
+    let held = tree.run(&["check", "escapes"]);
     assert_eq!(held.code, 0, "{}", held.out);
 }
 
@@ -700,7 +646,7 @@ fn repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_wi
         &format!("{MIXED}\nfn pad() {{}}\n    {MIXED}\n"),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("FAIL: 1 new escape site(s)"), "{}", run.out);
     assert!(
@@ -722,17 +668,14 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
         r#"{ "escapes": { "in": "src", "except": "src/gone.rs" } }"#,
     );
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 2, "{}", run.out);
     assert!(
         run.says("NOTE: src/gone.rs was measured at the base"),
         "{}",
         run.out
     );
     assert!(run.says("an exclusion drops it now"), "{}", run.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
-    assert_eq!(strict.code, 2, "{}", strict.out);
 }
 
 #[test]
@@ -747,24 +690,11 @@ fn an_accepted_entry_for_a_retired_row_names_the_row_and_where_it_went() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(run.says("\"todo\" is a row klin retired"), "{}", run.out);
     assert!(run.says("\"stub\": \"not implemented\""), "{}", run.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-    assert!(
-        strict.says("\"todo\" is a row klin retired"),
-        "{}",
-        strict.out
-    );
-    assert!(
-        strict.says("\"stub\": \"not implemented\""),
-        "{}",
-        strict.out
-    );
 }
 
 #[test]
@@ -779,8 +709,8 @@ fn an_accepted_entry_for_the_narrowed_skipped_test_row_names_skipif() {
     );
     tree.write("src/lib.py", "def f():\n    return 1\n");
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("pytest.mark.skipif"), "{}", run.out);
 }
 
@@ -796,8 +726,8 @@ fn an_accepted_entry_that_matches_nothing_for_another_reason_names_no_row() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(!run.says("is a row klin"), "{}", run.out);
 }
@@ -814,8 +744,8 @@ fn a_live_row_of_another_language_is_not_read_as_the_retired_one() {
     );
     tree.write("src/lib.rs", "fn f() {}\n");
 
-    let run = tree.run(&["escapes"]);
-    assert_eq!(run.code, 0, "{}", run.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(!run.says("is a row klin"), "{}", run.out);
 }
@@ -840,7 +770,7 @@ fn unwrap_and_expect_in_a_file_under_a_test_root_are_left_out_by_default() {
     );
     tree.write("tests/render.rs", INTEGRATION_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("(2 in tests skipped)"), "{}", run.out);
 }
@@ -858,7 +788,7 @@ fn a_skipped_test_under_a_test_root_is_still_an_escape() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new escape site(s)"), "{}", run.out);
     assert!(run.says("tests/render.rs:2  skipped test"), "{}", run.out);
@@ -878,7 +808,7 @@ fn a_cfg_attr_whose_predicate_always_holds_is_a_skipped_test() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("3 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:2  skipped test"), "{}", run.out);
@@ -901,7 +831,7 @@ fn a_skipped_test_is_found_through_whitespace_comments_and_nesting() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("5 new escape site(s)"), "{}", run.out);
     for line in [2, 6, 13, 17, 22] {
@@ -927,7 +857,7 @@ fn a_cfg_attr_on_test_or_a_true_literal_is_a_skipped_test() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("3 new escape site(s)"), "{}", run.out);
     for line in [2, 6, 10] {
@@ -952,7 +882,7 @@ fn a_cfg_attr_whose_predicate_may_not_hold_is_no_skipped_test() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 escape site(s)"), "{}", run.out);
 }
@@ -968,7 +898,7 @@ fn a_skipped_test_inside_an_inline_test_module_is_still_an_escape() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:4  skipped test"), "{}", run.out);
     assert!(!run.says("src/lib.rs:6"), "{}", run.out);
@@ -995,7 +925,7 @@ fn allow_and_unsafe_in_rust_tests_remain_escapes() {
         ),
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("4 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:3  allow"), "{}", run.out);
@@ -1014,7 +944,7 @@ fn skip_test_idioms_turned_off_judges_a_file_under_a_test_root_too() {
     tree.write("src/lib.rs", CFG_TEST);
     tree.write("tests/render.rs", INTEGRATION_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("6 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:11  unwrap"), "{}", run.out);
@@ -1037,7 +967,7 @@ fn production_rust_beside_a_test_root_is_judged_as_before() {
     );
     tree.write("tests/render.rs", INTEGRATION_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/lib.rs:2  unwrap"), "{}", run.out);
@@ -1059,7 +989,7 @@ fn unwrap_and_expect_in_the_tests_of_a_crate_with_a_build_script_are_left_out_by
     );
     tree.write("tests/render.rs", INTEGRATION_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("(2 in tests skipped)"), "{}", run.out);
 }
@@ -1080,7 +1010,7 @@ fn a_workspace_members_build_script_and_src_are_judged_beside_its_test_root() {
     );
     tree.write("demo/tests/render.rs", INTEGRATION_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("demo/build.rs:2  unwrap"), "{}", run.out);
@@ -1113,7 +1043,7 @@ fn a_script_added_between_a_workspace_member_and_its_root_keeps_the_members_test
     tree.base();
     tree.write("crates/check.sh", "echo hi\n");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("(1 in tests skipped)"), "{}", run.out);
     assert!(!run.says("crates/foo/tests/it.rs"), "{}", run.out);
@@ -1135,7 +1065,7 @@ fn a_directory_inside_src_is_no_test_root_beside_a_non_source_file() {
         "fn main() {\n    std::env::args().next().unwrap();\n}\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("2 new escape site(s)"), "{}", run.out);
     assert!(run.says("src/spec/mod.rs:2  unwrap"), "{}", run.out);
@@ -1160,7 +1090,7 @@ fn removing_a_non_source_file_from_src_keeps_a_held_site_under_it_held() {
     tree.base();
     tree.remove("src/grammar.lalrpop");
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("1 escape site(s) in the tree, all held at the base"),
@@ -1183,7 +1113,7 @@ fn a_root_that_stops_being_test_only_has_its_new_production_unwrap_judged() {
         "pub fn load(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("cases/runtime.rs:2  unwrap"), "{}", run.out);
     assert!(!run.says("in tests skipped"), "{}", run.out);
@@ -1199,7 +1129,7 @@ fn a_ts_expect_error_in_a_typescript_test_file_is_left_out_by_default() {
     tree.write("web/src/count.test.ts", EXPECTED_ERROR);
     tree.write("web/test/types.ts", EXPECTED_ERROR);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 escape site(s) in the tree"), "{}", run.out);
     assert!(run.says("(2 in tests skipped)"), "{}", run.out);
@@ -1215,7 +1145,7 @@ fn every_other_typescript_escape_is_still_judged_in_a_test_file() {
         "// @ts-ignore\nconst a = 1;\n// @ts-nocheck\nconst b = c!.d;\n",
     );
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("4 new escape site(s)"), "{}", run.out);
     assert!(
@@ -1251,7 +1181,7 @@ fn skip_test_idioms_turned_off_judges_the_idioms_of_every_language() {
     tree.write("src/lib.rs", CFG_TEST);
     tree.write("web/src/count.test.ts", EXPECTED_ERROR);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/lib.rs:11  unwrap"), "{}", run.out);
     assert!(
@@ -1271,7 +1201,7 @@ fn the_retired_skip_rust_tests_key_names_the_key_that_replaced_it() {
     );
     tree.write("src/lib.rs", CFG_TEST);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"skip_rust_tests\""), "{}", run.out);
     assert!(run.says("\"skip_test_idioms\""), "{}", run.out);
@@ -1282,7 +1212,7 @@ fn the_retired_skip_rust_tests_key_names_the_key_that_replaced_it() {
 fn a_skipped_test_gets_a_remedy_that_restores_the_test_and_rejects_swallowed_errors() {
     let tree = tree();
     tree.write("src/check.test.ts", "test.skip('works', () => {});\n");
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("Remove the skip, or fix what made the test fail"),

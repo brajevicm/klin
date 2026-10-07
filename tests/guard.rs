@@ -98,13 +98,12 @@ fn refuses_a_redirect_onto_the_configuration() {
 #[test]
 fn refuses_the_commands_only_a_person_runs() {
     for command in [
-        "klin init",
-        "klin init --add",
-        "cd repo && target/debug/klin init --add --config klin.json",
+        "klin setup",
+        "klin setup --pin",
+        "cd repo && target/debug/klin setup --pin --config klin.json",
         "klin turn reset",
         "target/debug/klin turn reset",
-        "klin install",
-        "klin install --user --host claude",
+        "klin setup --user --host claude",
     ] {
         denied(&bash(command), command);
     }
@@ -245,13 +244,13 @@ fn allows_a_command_it_cannot_read_in_full() {
 #[test]
 fn refuses_a_persons_command_behind_a_prefix() {
     for command in [
-        "env $(echo) klin init",
-        "sudo $(pwd) klin init",
+        "env $(echo) klin setup",
+        "sudo $(pwd) klin setup",
         "time `echo` klin turn reset",
-        "KLIN_STATE_DIR=/tmp/x klin init --add",
+        "KLIN_STATE_DIR=/tmp/x klin setup --pin",
         "env klin turn reset",
-        "npx klin init",
-        "sudo klin init",
+        "npx klin setup",
+        "sudo klin setup",
         "cd sub && klin turn reset",
     ] {
         denied(&bash(command), command);

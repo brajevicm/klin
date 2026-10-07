@@ -26,7 +26,7 @@ _Avoid_: error, issue, violation
 
 **Regression**:
 One finding site a blocked stop put in front of the agent, counted once per
-finding identity in a window, as `klin stats` counts it.
+finding identity in a window, as `klin report` counts it.
 _Avoid_: shortcut, slip
 
 **Site**:
@@ -117,12 +117,12 @@ _Avoid_: published, outside the repository
 **Intervention**:
 One gate failure on a stop that itself spent one of the prompt's two gate
 blocks. A failure on a stop that spent no gate block is an observation. It is
-the hook's unit, not the person's: `klin stats` counts regressions.
+the hook's unit, not the person's: `klin report` counts regressions.
 _Avoid_: catch, prevention
 
 **Journal**:
 The per-worktree record of each stop, guard refusal and reset, written
-best-effort and read by `klin stats`.
+best-effort and read by `klin report`.
 _Avoid_: log, telemetry
 
 **First-class integration**:
@@ -136,7 +136,7 @@ which implements the harness protocol.
 _Avoid_: generic integration, community host
 
 **Standalone route**:
-The klin binary and `klin install`, delivering a first-class integration
+The klin binary and `klin setup`, delivering a first-class integration
 through explicit hook files.
 _Avoid_: standalone integration
 

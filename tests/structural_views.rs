@@ -10,81 +10,99 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#
 /// Every caller's view of one before and after pair. With `KLIN_DIFF_BIN` naming an earlier
 /// build, that build judges a second copy of the same trees, and the two views must match.
 fn views(scenario: fn(&Tree)) -> Value {
-    views_for(
-        CONFIG,
-        "dead-symbols",
-        &["dead-symbols", "--report"],
-        scenario,
-    )
+    views_for(CONFIG, "dead-symbols", scenario)
 }
 
 fn reachability_views(scenario: fn(&Tree)) -> Value {
-    views_for(
-        REACHABILITY_CONFIG,
-        "reachability",
-        &["reachability"],
-        scenario,
-    )
+    views_for(REACHABILITY_CONFIG, "reachability", scenario)
 }
 
-fn views_for(config: &str, gate_name: &str, report: &[&str], scenario: fn(&Tree)) -> Value {
-    let seen = observed(&harness::binary(), config, gate_name, report, scenario);
+fn views_for(config: &str, gate_name: &str, scenario: fn(&Tree)) -> Value {
+    let seen = observed(&harness::binary(), config, gate_name, scenario);
     if let Ok(other) = std::env::var("KLIN_DIFF_BIN") {
         assert_eq!(
             seen,
-            observed(&other, config, gate_name, report, scenario),
+            observed(&other, config, gate_name, scenario),
             "{other} judged differently"
         );
     }
     seen
 }
 
-fn observed(
-    klin: &str,
-    config: &str,
-    gate_name: &str,
-    report: &[&str],
-    scenario: fn(&Tree),
-) -> Value {
+fn observed(klin: &str, config: &str, gate_name: &str, scenario: fn(&Tree)) -> Value {
     let tree = Tree::new();
     tree.write("klin.json", config);
     scenario(&tree);
-    let run = |args: &[&str]| harness::feed_as(klin, tree.root(), args, A_STOP);
-    let judged = |flags: &[&str]| {
-        let mut args = vec!["gate", "--json", "--gate", gate_name];
+    let check = |flags: &[&str]| {
+        let mut args = vec!["check", "--json", gate_name];
         args.extend_from_slice(flags);
-        run(&args)
+        normalized(&harness::feed_as(klin, tree.root(), &args, ""), gate_name)
     };
-    let gate = |flags: &[&str]| normalized(&judged(flags));
-    let whole = gate(&[]);
-    let strict = gate(&["--strict"]);
-    let first = judged(&["--changed"]);
-    let changed = normalized(&first);
-    let base = tree.revision("main");
-    let report = run(report).out.replace(&base[..7], "BASE");
-    let hook = gate(&["--hook", "--changed"]);
-    let again = judged(&["--changed"]);
+    let whole = check(&[]);
+    let changed = check(&["--changed"]);
+    let first = stop(klin, &tree);
+    let again = stop(klin, &tree);
     assert_eq!(
-        normalized(&again),
-        changed,
-        "a changed run over the structural cache judged differently"
+        normalized(&again, gate_name)["report"],
+        normalized(&first, gate_name)["report"],
+        "a stop over the structural cache judged differently"
     );
-    read_from_the_cache(&first, &again);
-    json!({"whole": whole, "strict": strict, "changed": changed, "report": report, "hook": hook})
+    read_from_the_cache(&row(&first, gate_name), &row(&again, gate_name));
+    json!({"whole": whole, "changed": changed, "hook": normalized(&first, gate_name)})
 }
 
-/// A repeated changed run takes from the structural cache every base outcome the first run
-/// extracted beyond the changed files. A build that records no `cached` is not asked.
-fn read_from_the_cache(first: &Run, again: &Run) {
-    let facts = |run: &Run| {
-        let report: Value = run
-            .out
-            .lines()
-            .find_map(|line| serde_json::from_str(line).ok())
-            .unwrap_or_default();
-        report["gates"][0]["facts"].clone()
-    };
-    let (first, again) = (facts(first), facts(again));
+/// A first Stop over the tree, judged against the branch base, as the report it printed or,
+/// for a green stop that prints none, the one the journal records. The hook runs every gate,
+/// and only the hook reads the structural cache.
+fn stop(klin: &str, tree: &Tree) -> Run {
+    let _ = std::fs::remove_file(tree.state("turn"));
+    let run = harness::feed_as(
+        klin,
+        tree.root(),
+        &["gate", "--hook", "--changed", "--json"],
+        A_STOP,
+    );
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: Value = run
+        .out
+        .lines()
+        .find(|line| line.starts_with('{'))
+        .or_else(|| journal.lines().last())
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_else(|| panic!("no report in {}", run.out));
+    let report: serde_json::Map<String, Value> = ["findings", "gates", "notes", "status"]
+        .into_iter()
+        .map(|key| (key.to_string(), line[key].clone()))
+        .collect();
+    let out = Value::Object(report).to_string();
+    Run {
+        code: run.code,
+        printed: out.clone(),
+        out,
+    }
+}
+
+fn report(run: &Run) -> Value {
+    run.out
+        .lines()
+        .find_map(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default()
+}
+
+/// The row of one gate in a run's report.
+fn row(run: &Run, gate_name: &str) -> Value {
+    let report = report(run);
+    report["gates"]
+        .as_array()
+        .and_then(|gates| gates.iter().find(|row| row["name"] == gate_name))
+        .cloned()
+        .unwrap_or_else(|| panic!("no {gate_name} row in {report}"))
+}
+
+/// A repeated stop takes from the structural cache every base outcome the first stop extracted
+/// beyond the changed files. A build that records no `cached` is not asked.
+fn read_from_the_cache(first: &Value, again: &Value) {
+    let (first, again) = (&first["facts"], &again["facts"]);
     let Some(cached) = again["cached"].as_u64() else {
         return;
     };
@@ -97,14 +115,16 @@ fn read_from_the_cache(first: &Run, again: &Run) {
     );
 }
 
-fn normalized(run: &Run) -> Value {
-    let mut report: Value = run
-        .out
-        .lines()
-        .find_map(|line| serde_json::from_str(line).ok())
-        .unwrap_or_default();
+/// The verdict, and the findings, notes and row of one gate, without what a run may vary.
+fn normalized(run: &Run, gate_name: &str) -> Value {
+    let mut report = report(run);
     if let Some(window) = report["window"].as_object_mut() {
         window.remove("before");
+    }
+    for list in ["findings", "notes", "gates"] {
+        if let Some(held) = report[list].as_array_mut() {
+            held.retain(|item| item["gate"] == gate_name || item["name"] == gate_name);
+        }
     }
     for row in report["gates"].as_array_mut().into_iter().flatten() {
         if let Some(fields) = row.as_object_mut() {
@@ -173,7 +193,6 @@ fn reachability_uses_a_changed_outside_caller_for_an_unchanged_member() {
         ),
         "{seen}"
     );
-    assert_eq!(lines(&seen["strict"]), lines(&seen["whole"]));
     assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]), "{seen}");
     assert_eq!(
         lines(&seen["hook"])[1..],
@@ -289,13 +308,6 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
         "{seen}"
     );
     assert!(
-        lines(&seen["strict"])[0] == r#""ERROR" 2"#
-            && lines(&seen["strict"])
-                .iter()
-                .any(|line| line.contains("delta_command.rs")),
-        "{seen}"
-    );
-    assert!(
         lines(&seen["changed"])[0] == r#""ERROR" 2"#
             && lines(&seen["changed"])
                 .iter()
@@ -310,12 +322,12 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
         "{seen}"
     );
     assert_eq!(
-        ["whole", "strict", "changed", "hook"].map(|view| {
+        ["whole", "changed", "hook"].map(|view| {
             seen[view]["report"]["gates"][0]["coverage"]["not_measured"]
                 .as_u64()
                 .unwrap_or(u64::MAX)
         }),
-        [0, 0, 0, 0],
+        [0, 0, 0],
         "{seen}"
     );
 }
@@ -333,31 +345,21 @@ fn a_cached_structural_view_keeps_imports_modules_and_coverage_together() {
     tree.base();
     tree.write("src/changed.rs", "fn changed() {}\n");
 
-    let run = || tree.run(&["gate", "--json", "--changed", "--gate", "dead-symbols"]);
-    let first = run();
-    let again = run();
-    let report = |run: &Run| {
-        run.out
-            .lines()
-            .find_map(|line| serde_json::from_str::<Value>(line).ok())
-            .unwrap_or_default()
-    };
-    let (first_report, again_report) = (report(&first), report(&again));
-    let counted = |report: &Value| {
-        ["reads", "parses", "extracted", "cached"].map(|field| {
-            report["gates"][0]["facts"][field]
-                .as_u64()
-                .unwrap_or(u64::MAX)
-        })
+    let first = stop(&harness::binary(), &tree);
+    let again = stop(&harness::binary(), &tree);
+    let (first_row, again_row) = (row(&first, "dead-symbols"), row(&again, "dead-symbols"));
+    let counted = |row: &Value| {
+        ["reads", "parses", "extracted", "cached"]
+            .map(|field| row["facts"][field].as_u64().unwrap_or(u64::MAX))
     };
 
-    assert_eq!(normalized(&first), normalized(&again));
-    assert_eq!(counted(&first_report), [4, 4, 4, 0], "{first_report}");
-    assert_eq!(counted(&again_report), [1, 1, 1, 3], "{again_report}");
     assert_eq!(
-        first_report["gates"][0]["coverage"],
-        again_report["gates"][0]["coverage"]
+        normalized(&first, "dead-symbols")["report"],
+        normalized(&again, "dead-symbols")["report"]
     );
+    assert_eq!(counted(&first_row), [4, 4, 4, 0], "{first_row}");
+    assert_eq!(counted(&again_row), [1, 1, 1, 3], "{again_row}");
+    assert_eq!(first_row["coverage"], again_row["coverage"]);
 }
 
 #[test]
@@ -409,7 +411,7 @@ fn an_addition_exists_only_in_the_after_view_and_resolves_unchanged_references()
             "note  1 dead symbol(s) the base already held:\n  src/lib.rs:1  fn lonely() {}",
         ]
     );
-    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"])[..2]);
 }
 
 #[test]
@@ -431,7 +433,11 @@ fn a_deletion_exists_only_in_the_before_view_and_names_the_lost_reference() {
             "note  1 dead symbol(s) the base already held:\n  src/gone.rs:1  fn gone() {}",
         ]
     );
-    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
+    assert_eq!(
+        lines(&seen["changed"]),
+        [r#""PASS" 0"#, &lines(&seen["whole"])[2]]
+    );
+    assert_eq!(lines(&seen["hook"])[1..], lines(&seen["whole"])[1..]);
 }
 
 #[test]
@@ -538,7 +544,6 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
     let new = "unparsed src/new_broken.rs:null the Rust grammar rejected it null";
     let old = "note src/old_broken.rs the Rust grammar rejected it";
     assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, new, old]);
-    assert_eq!(lines(&seen["strict"]), [r#""ERROR" 2"#, new, old]);
     assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, new]);
     assert_eq!(
         lines(&seen["hook"]),
@@ -562,6 +567,6 @@ fn a_case_only_rename_git_does_not_see_is_read_from_the_working_tree() {
 
     let worsened =
         r#"worsened src/lib.rs:1 fn helper() {} {"dead":1,"lost_reference":"src/Caller.rs"}"#;
-    assert_eq!(lines(&seen["changed"])[..2], [r#""FAIL" 1"#, worsened]);
+    assert_eq!(lines(&seen["changed"])[1], worsened);
     assert_eq!(lines(&seen["hook"])[1], worsened);
 }

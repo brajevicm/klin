@@ -17,15 +17,14 @@ use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::hunks::Hunks;
-use crate::key::{Key, Section};
-use crate::project::Project;
+use crate::key::Key;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::shell;
 
 pub const SECTION: &str = "sarif";
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[contract::NAMED, REPORT, RUN, DIFFERENTIAL];
 
 const REPORT: Key = Key {
@@ -72,45 +71,10 @@ struct Entry {
     differential: bool,
 }
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-}
-
-/// Every entry of the section, judged one after another, which is what `klin gate` does with
-/// one gate per entry. The worst outcome is the command's. Spec 8.3, 8.6.
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let mut worst = 0;
-    for (name, _) in contract::named_entries(&project.config, SECTION)? {
-        worst = worst.max(gate(
-            &context(args, &project, &name),
-            &mut Sink::unrecorded(out),
-        )?);
-    }
-    Ok(worst)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project, name: &'a str) -> Context<'a> {
-    Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(name, project)
-    }
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
     let entry = entry(config, at.gate)?;
-    let (found, changed) = read(config, &entry, at, out)?;
+    let (found, changed) = read(config, &entry, at)?;
     let coverage = covered(&found);
     let judged = judge(found.placed, &changed, entry.differential);
     let accepted = ratchet::accepted(config, at.gate, METRICS)?;
@@ -212,18 +176,13 @@ fn only_the_new(config: &Config, held: Option<&Value>) -> Result<bool, Error> {
 /// What this gate reads before it judges: the report, and the lines the window changed. With
 /// `run` klin writes the report over this tree first. Without it klin reads the report as it
 /// finds it, and refuses one that predates the change. Spec 8.3.
-fn read(
-    config: &Config,
-    entry: &Entry,
-    at: &Context,
-    out: &mut Sink,
-) -> Result<(Placed, Hunks), Error> {
+fn read(config: &Config, entry: &Entry, at: &Context) -> Result<(Placed, Hunks), Error> {
     let root = config.root();
     if let Some(command) = &entry.run {
         wrote(root, command, &entry.report)?;
     }
     let data = sarif(&entry.report)?;
-    let changed = Hunks::read(root, &contract::base_commit(root, at, out)?, None)?;
+    let changed = Hunks::read(root, &contract::base_commit(root, at)?, None)?;
     if entry.run.is_none() {
         fresh(&entry.report, root, &changed)?;
     }

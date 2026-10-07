@@ -31,7 +31,7 @@ fn on_a_branch() -> Tree {
 fn a_run_names_the_window_it_compares_against() {
     let tree = on_a_branch();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("window: branch — base "), "{}", run.out);
     assert!(run.says("the merge-base with main"), "{}", run.out);
@@ -41,7 +41,7 @@ fn a_run_names_the_window_it_compares_against() {
 fn the_json_run_names_the_window_too() {
     let tree = on_a_branch();
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let Ok(report) = serde_json::from_str::<Value>(run.out.trim()) else {
         panic!("not one JSON object: {}", run.out)
@@ -71,7 +71,7 @@ fn at_the_remote_tip() -> Tree {
 fn a_base_that_resolves_to_head_at_the_remote_tip_runs_the_gates() {
     let tree = at_the_remote_tip();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
 }
@@ -83,22 +83,19 @@ fn a_base_that_resolves_to_head_ahead_of_the_remote_tip_is_a_tool_error() {
     tree.write("src/work.rs", CLEAN);
     tree.commit("a commit the remote does not have");
 
-    let run = tree.run_with(&[("GITHUB_BASE_REF", "trunk")], &["gate"]);
+    let run = tree.run_with(&[("GITHUB_BASE_REF", "trunk")], &["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("origin/main does not hold"), "{}", run.out);
     assert!(run.says("a commit the remote does not have"), "{}", run.out);
 }
 
 #[test]
-fn a_base_that_resolves_to_head_with_no_remote_tip_is_a_strict_failure_only() {
+fn a_base_that_resolves_to_head_with_no_remote_tip_is_a_tool_error() {
     let tree = tree();
     tree.repository();
     tree.commit("everything on the default branch");
 
-    let loose = tree.run(&["escapes"]);
-    assert_eq!(loose.code, 0, "{}", loose.out);
-
-    let strict = tree.run(&["escapes", "--strict"]);
+    let strict = tree.run(&["check", "escapes"]);
     assert_eq!(strict.code, 2, "{}", strict.out);
     assert!(
         strict.says("no remote default branch resolves"),
@@ -114,7 +111,7 @@ fn a_local_branch_named_like_a_remote_one_does_not_count_as_the_remote() {
     tree.commit("everything on the default branch");
     tree.git(&["branch", "origin/main"]);
 
-    let strict = tree.run(&["escapes", "--strict"]);
+    let strict = tree.run(&["check", "escapes"]);
     assert_eq!(strict.code, 2, "{}", strict.out);
     assert!(
         strict.says("no remote default branch resolves"),
@@ -130,7 +127,7 @@ fn a_dirty_tree_whose_base_resolves_to_head_runs_the_gates() {
     tree.commit("everything on the default branch");
     tree.write("src/work.rs", CLEAN);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
 }
@@ -143,7 +140,7 @@ fn a_repository_whose_only_reference_is_head_is_a_tool_error() {
     tree.git(&["checkout", "-q", "--detach"]);
     tree.git(&["branch", "-q", "-D", "main"]);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base commit"), "{}", run.out);
 }
@@ -152,7 +149,7 @@ fn a_repository_whose_only_reference_is_head_is_a_tool_error() {
 fn a_tree_that_is_not_a_repository_is_a_tool_error() {
     let tree = tree();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base commit"), "{}", run.out);
 }
@@ -170,7 +167,7 @@ fn under_a_pull_request_the_base_is_the_target_tip() {
     tree.write("src/work.rs", CLEAN);
     tree.commit("work on the branch");
 
-    let run = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["gate"]);
+    let run = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("the tip of release"), "{}", run.out);
     let tip = tree.revision("release");
@@ -189,7 +186,7 @@ fn under_a_push_the_base_is_the_commit_the_event_names() {
     tree.commit("second of two");
     tree.write("event.json", &format!("{{\"before\": \"{before}\"}}"));
 
-    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["gate"]);
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("the commit this push started from"), "{}", run.out);
     assert!(run.says(&before[..7]), "{}\nwanted {before}", run.out);
@@ -203,7 +200,7 @@ fn a_push_event_naming_no_previous_commit_falls_back_to_the_branch() {
         "{\"before\": \"0000000000000000000000000000000000000000\"}",
     );
 
-    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["gate"]);
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("the merge-base with main"), "{}", run.out);
 }
@@ -220,7 +217,7 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     );
     tree.words("README.md", 5);
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("window:"), "{}", run.out);
 }
@@ -244,7 +241,7 @@ fn a_config_below_the_repository_root_holds_the_debt_the_base_holds() {
     let tree = in_a_subdirectory();
     tree.write("proj/src/other.rs", CLEAN);
 
-    let whole = in_the_project(&tree, &["gate"]);
+    let whole = in_the_project(&tree, &["check"]);
     assert_eq!(whole.code, 0, "{}", whole.out);
     assert!(
         whole.says("NOTE: 1 dead symbol(s) the base already held"),
@@ -258,7 +255,7 @@ fn a_config_below_the_repository_root_scopes_a_changed_run_the_same_way() {
     let tree = in_a_subdirectory();
     tree.write("proj/src/lib.rs", text::WRAPPED_WITH_A_NOTE);
 
-    let scoped = in_the_project(&tree, &["gate", "--changed"]);
+    let scoped = in_the_project(&tree, &["check", "--changed"]);
     assert_eq!(scoped.code, 0, "{}", scoped.out);
     assert!(!scoped.says("src/lib.rs:2"), "{}", scoped.out);
 }
@@ -275,7 +272,7 @@ fn a_scope_outside_the_tree_klin_compares_is_a_tool_error() {
     );
     tree.write("src/lib.rs", CLEAN);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("is absolute"), "{}", run.out);
 }

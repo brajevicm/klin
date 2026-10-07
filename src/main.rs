@@ -72,139 +72,74 @@ struct Cli {
     command: Command,
 }
 
-/// The three groups a command belongs to. Each is flattened into one subcommand list, so the
-/// command line a person types is unchanged, and each group is matched exhaustively on its own.
-/// A new command is a variant of one group and an arm beside it, and nothing compiles until its
-/// dispatch is decided. ADR 0036.
+/// The public commands of spec 11.1, less `status`, which #498 adds, and the hidden entry points
+/// the host hooks and a person still reach until the agent ingress replaces them.
 #[derive(Subcommand)]
 enum Command {
     #[command(flatten)]
-    Check(Check),
+    Public(Public),
     #[command(flatten)]
-    Structural(Structural),
-    #[command(flatten)]
-    Runner(Runner),
-    #[command(flatten)]
-    Tool(Tool),
+    Hidden(Hidden),
 }
 
-/// The checks a person runs one at a time, each judging its own section against the base.
 #[derive(Subcommand)]
-enum Check {
-    /// Fail when a document cites a file that resolves nowhere under its roots
-    DocCitations(doc_citations::Args),
-    /// Fail when a document has grown past its ceiling
-    DocSize(doc_size::Args),
-    /// Fail on a new escape site — a place where the code opts out of a check
-    Escapes(markers::Args),
-    /// Fail on a new placeholder marker — a stub an agent left where the work belongs
-    Stubs(markers::Args),
-    /// Fail on a new site a project convention forbids
-    Conventions(conventions::Args),
-    /// Fail on a scanner's result that sits on a line this window changed
-    Sarif(sarif::Args),
-}
-
-/// The checks that read source through a grammar, each judging its own section against the base.
-#[derive(Subcommand)]
-enum Structural {
-    /// Fail on a function over the cyclomatic or length ceiling that the base does not hold
-    Complexity(complexity::Args),
-    /// Fail when a private declaration has no reference outside its own declaration
-    DeadSymbols(dead_symbols::Args),
-    /// Fail when a file of a named family is referenced by no other file in the repository
-    Reachability(reachability::Args),
-    /// Fail when a dependency crosses a layer the policy forbids, or closes a new cycle
-    Layering(layering::Args),
-    /// Fail when a consumer-facing Rust or TypeScript contract the base exposed is gone or changed
-    PublicApi(public_api::Args),
-}
-
-/// The runner, the survey that writes a configuration, the guard over that file, and the cache
-/// the survey keeps.
-#[derive(Subcommand)]
-enum Runner {
-    /// Run every gate the configuration names, in catalogue order, which is cheapest first
-    Gate(gate::Args),
-    /// Survey the tree and write the configuration it can say for itself
-    Init(init::Args),
-    /// Opt this repository in and reconcile the explicit host hooks klin owns
-    Install(hooks::Args),
-    /// Refuse an agent's tool call that would edit the configuration
-    Guard(guard::Args),
-    /// Remove the cache klin keeps for this tree, or every orphaned one
-    Cache(cache::Args),
-}
-
-/// The turn stamp's two movers, the two commands that only read and print, and the updater.
-#[derive(Subcommand)]
-enum Tool {
-    /// Move the turn stamp by its one rule, on a session start and on every prompt
-    Radius(turn::Args),
-    /// Move the turn stamp to the working tree, which only a person does
-    Turn(turn::Moved),
-    /// Report what klin caught over the last seven days, in the person's words
-    Stats(stats::Args),
-    /// Print the configuration reference, as Markdown, from the keys the checks declare
-    Reference(reference::Args),
+enum Public {
+    /// Set up or repair klin integration for this repository, or for one person's host files
+    Setup(hooks::Args),
+    /// Measure the repository against klin's quality policy, optionally only the named checks
+    Check(gate::Check),
+    /// Explain the effective policy and where each value came from
+    Policy(gate::Policy),
+    /// Show what klin caught, what was resolved, and what still needs attention
+    Report(stats::Args),
     /// Install the newest release over this binary, through the klin-update beside it
     Update,
 }
 
+#[derive(Subcommand)]
+enum Hidden {
+    #[command(hide = true)]
+    Guard(guard::Args),
+    #[command(hide = true)]
+    Radius(turn::Args),
+    #[command(hide = true)]
+    Turn(turn::Moved),
+    #[command(hide = true)]
+    Cache(cache::Args),
+}
+
 /// The guard and the updater answer before the working directory is read, because neither needs
-/// it. Everything else prints through `report`.
+/// it. The Stop hook's `klin gate --hook` line is read before the public commands, so a plain
+/// `klin gate` stays an unknown command. Everything else prints through `report`.
 fn main() -> ExitCode {
     LazyLock::force(&shell::STARTED);
+    if let Some(hook) = gate::Hook::called() {
+        return report(|start, out| gate::hooked(&hook, start, out));
+    }
     match Cli::parse().command {
-        Command::Runner(Runner::Guard(args)) => ExitCode::from(guard::run(&args)),
-        Command::Tool(Tool::Update) => ExitCode::from(update::run()),
-        Command::Check(command) => report(|start, out| check(&command, start, out)),
-        Command::Structural(command) => report(|start, out| structural(&command, start, out)),
-        Command::Runner(command) => report(|start, out| runner(&command, start, out)),
-        Command::Tool(command) => report(|start, out| tool(&command, start, out)),
+        Command::Hidden(Hidden::Guard(args)) => ExitCode::from(guard::run(&args)),
+        Command::Public(Public::Update) => ExitCode::from(update::run()),
+        Command::Public(command) => report(|start, out| public(&command, start, out)),
+        Command::Hidden(command) => report(|start, out| hidden(&command, start, out)),
     }
 }
 
-fn check(command: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let sections = &catalogue::sections();
+fn public(command: &Public, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Check::DocCitations(args) => doc_citations::run(args, sections, start, out),
-        Check::DocSize(args) => doc_size::run(args, sections, start, out),
-        Check::Escapes(args) => escapes::run(args, sections, start, out),
-        Check::Stubs(args) => stubs::run(args, sections, start, out),
-        Check::Conventions(args) => conventions::run(args, sections, start, out),
-        Check::Sarif(args) => sarif::run(args, sections, start, out),
+        Public::Setup(args) => hooks::run(args, start, out),
+        Public::Check(args) => gate::check(args, start, out),
+        Public::Policy(args) => gate::policy(args, start, out),
+        Public::Report(args) => stats::run(args, start, out),
+        Public::Update => Ok(update::run()),
     }
 }
 
-fn structural(command: &Structural, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let sections = &catalogue::sections();
+fn hidden(command: &Hidden, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Structural::Complexity(args) => complexity::run(args, sections, start, out),
-        Structural::DeadSymbols(args) => dead_symbols::run(args, sections, start, out),
-        Structural::Reachability(args) => reachability::run(args, sections, start, out),
-        Structural::Layering(args) => layering::run(args, sections, start, out),
-        Structural::PublicApi(args) => public_api::run(args, sections, start, out),
-    }
-}
-
-fn runner(command: &Runner, start: &Path, out: &mut String) -> Result<u8, Error> {
-    match command {
-        Runner::Gate(args) => gate::run(args, start, out),
-        Runner::Init(args) => init::run(args, start, out),
-        Runner::Install(args) => hooks::run(args, start, out),
-        Runner::Guard(args) => Ok(guard::run(args)),
-        Runner::Cache(args) => cache::run(args, start, out),
-    }
-}
-
-fn tool(command: &Tool, start: &Path, out: &mut String) -> Result<u8, Error> {
-    match command {
-        Tool::Radius(args) => turn::run(args, &catalogue::sections(), start, out),
-        Tool::Turn(args) => turn::moved(args, start, out),
-        Tool::Stats(args) => stats::run(args, start, out),
-        Tool::Reference(args) => reference::run(args, out),
-        Tool::Update => Ok(update::run()),
+        Hidden::Guard(args) => Ok(guard::run(args)),
+        Hidden::Radius(args) => turn::run(args, &catalogue::sections(), start, out),
+        Hidden::Turn(args) => turn::moved(args, start, out),
+        Hidden::Cache(args) => cache::run(args, start, out),
     }
 }
 

@@ -9,7 +9,7 @@ use crate::host::adapter::Event;
 use crate::state;
 
 /// The journal: one JSON line per hook stop, appended under the state directory. It is the
-/// record `klin stats` and the benchmark read, so its shape is a contract. The write rule is
+/// record `klin report` and the benchmark read, so its shape is a contract. The write rule is
 /// `state.rs`'s: nothing klin writes for itself may change a block or a pass, so the append is
 /// best-effort, a failed one prints nothing to the agent, the hook never prunes, and `cache
 /// clean` leaves the file alone. Spec 9.6, 11.4.

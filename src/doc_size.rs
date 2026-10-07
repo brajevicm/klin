@@ -19,13 +19,13 @@ use crate::check::contract::{self, Context, Said, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::project::Project;
 use crate::survey;
 
 pub const SECTION: &str = "doc_size";
 
-/// The one kind of key this section holds, which `klin reference` prints. Spec 5.4, 5.8.
+/// The one kind of key this section holds, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[DOCUMENT];
 
 pub const DOCUMENT: Key = Key {
@@ -56,22 +56,6 @@ const REMEDY: &str = "Keep in this file what the task asked for. Remove or compr
     docs/ only where the instruction keeps its intent. Only a person raises the ceiling, \
     in a reviewed commit.";
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Judge this one document instead of every document
-    #[arg(long)]
-    file: Option<PathBuf>,
-    /// The ceiling for --file (default: its pinned or derived ceiling)
-    #[arg(long)]
-    ceiling: Option<u64>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-}
-
 struct Document {
     path: PathBuf,
     ceiling: Ceiling,
@@ -89,30 +73,8 @@ struct Listing {
     said: Vec<Said>,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    if let Some(named) = &args.file
-        && !named.is_file()
-    {
-        return Err(Error(format!("no such file: {}", named.display())));
-    }
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    evaluate(
-        &context(args, &project),
-        args.file.as_deref(),
-        args.ceiling,
-        &mut Sink::unrecorded(out),
-    )
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     evaluate(at, None, None, out)
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
-    }
 }
 
 fn evaluate(
@@ -122,15 +84,15 @@ fn evaluate(
     out: &mut Sink,
 ) -> Result<u8, Error> {
     let documents = changed_only(at, documents(at, named, ceiling, out)?);
-    let against = against(at, &documents, out)?;
+    let against = against(at, &documents)?;
     out.record(|records| {
         records.held = Some(0);
         records.accepted = Some(0);
     });
-    let over = judged(&documents, &against, at, out)?;
+    let over = judged(&documents, &against, out)?;
     let measured = documents.len();
     let said = out.covered(&Coverage::whole(measured));
-    if over == 0 && !at.quiet {
+    if over == 0 {
         let _ = writeln!(out.text, "OK: {measured} document(s) judged{said}");
     }
     Ok(if over > 0 { 1 } else { 0 })
@@ -163,7 +125,6 @@ fn changed_only(at: &Context, documents: Vec<Document>) -> Vec<Document> {
 fn judged(
     documents: &[Document],
     against: &Option<(String, PathBuf)>,
-    at: &Context,
     out: &mut Sink,
 ) -> Result<usize, Error> {
     let mut problem = None;
@@ -183,7 +144,7 @@ fn judged(
             .get(document.name.as_str())
             .copied()
             .filter(|before| *before > document.ceiling.value && words <= *before);
-        over += usize::from(judge(document, words, held, at, out));
+        over += usize::from(judge(document, words, held, out));
     }
     problem.map_or(Ok(over), Err)
 }
@@ -200,29 +161,22 @@ fn counted_words(document: &Document) -> Result<u64, Error> {
 /// The base commit a document is compared against, and the directory its path is relative to.
 /// `None` outside a repository and wherever no base resolves, and then the ceiling judges the
 /// working tree alone.
-fn against(
-    at: &Context,
-    documents: &[Document],
-    out: &mut Sink,
-) -> Result<Option<(String, PathBuf)>, Error> {
+fn against(at: &Context, documents: &[Document]) -> Result<Option<(String, PathBuf)>, Error> {
     if !documents.iter().any(|document| document.relative.is_some()) {
         return Ok(None);
     }
     let config = at.config();
-    let Some(commit) = commit(config, at, out) else {
+    let Some(commit) = commit(config, at) else {
         return Ok(None);
     };
     Ok(Some((commit, config.root().to_path_buf())))
 }
 
-fn commit(config: &Config, at: &Context, out: &mut Sink) -> Option<String> {
+fn commit(config: &Config, at: &Context) -> Option<String> {
     if let Some(named) = at.base {
         return Some(named.to_string());
     }
     let base = base::choose(config.root(), at.strict).ok()?;
-    if at.context() {
-        let _ = writeln!(out.text, "{}", base.line());
-    }
     Some(base.before)
 }
 
@@ -271,25 +225,21 @@ fn based<'a>(
     Ok(before)
 }
 
-fn judge(document: &Document, words: u64, held: Option<u64>, at: &Context, out: &mut Sink) -> bool {
+fn judge(document: &Document, words: u64, held: Option<u64>, out: &mut Sink) -> bool {
     let (name, ceiling) = (&document.name, &document.ceiling);
     if words > ceiling.value {
         let Some(before) = held else {
             return failed(document, words, out);
         };
         out.record(|records| records.held = Some(records.held.unwrap_or(0) + 1));
-        if !at.quiet {
-            let _ = writeln!(
-                out.text,
-                "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base \
-                 at {before} words"
-            );
-        }
+        let _ = writeln!(
+            out.text,
+            "OK: {name} is {words} words, over its ceiling of {ceiling}, held at the base \
+             at {before} words"
+        );
         return false;
     }
-    if !at.quiet {
-        let _ = writeln!(out.text, "OK: {name} is {words} words, ceiling {ceiling}");
-    }
+    let _ = writeln!(out.text, "OK: {name} is {words} words, ceiling {ceiling}");
     let remaining = ceiling.value - words;
     if remaining as f64 <= ceiling.value as f64 * MARGIN_FRACTION {
         let _ = writeln!(
@@ -351,7 +301,7 @@ fn documents(
     }
     let listing = listing(at.project)?;
     let Some(named) = named else {
-        for (line, entry) in listing.said.into_iter().filter(|_| !at.quiet) {
+        for (line, entry) in listing.said.into_iter() {
             out.provenance(line, entry);
         }
         return Ok(listing.documents);

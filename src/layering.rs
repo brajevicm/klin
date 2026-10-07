@@ -12,7 +12,6 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -22,11 +21,10 @@ use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
 use crate::error::Error;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::measurement;
 use crate::modules::resolver::{Attachment, Dependency, Hole};
 use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
-use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, Selector};
@@ -65,19 +63,6 @@ const CYCLE: &str = "cycle";
 const REMEDY: &str = "Depend on a layer this layer's `can_use` names, through that layer's interface, or \
                       move the code to the layer it belongs to. Break a new cycle by moving what \
                       both modules need into a module neither depends back on.";
-
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-}
 
 struct Layer {
     name: String,
@@ -177,19 +162,9 @@ impl Placed<'_> {
     }
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    let at = Context {
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, &project)
-    };
-    gate(&at, &mut Sink::unrecorded(out))
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let policy = policy(at.config())?;
-    let commit = contract::base_commit(at.project.root(), at, out)?;
+    let commit = contract::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();

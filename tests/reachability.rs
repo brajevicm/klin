@@ -55,7 +55,7 @@ fn a_family_the_base_proves_judges_a_new_unreached_member() {
     tree.base();
     tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -72,7 +72,7 @@ fn json_exposes_the_derived_family_topology() {
     let tree = three_reached_commands();
     tree.base();
 
-    let run = tree.run(&["gate", "--json", "--gate", "reachability"]);
+    let run = tree.run(&["check", "--json", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
@@ -97,7 +97,7 @@ fn a_new_member_another_file_references_passes() {
     tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
     tree.write("src/other.rs", "fn other() { run_delta(); }\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("4 file(s) judged, 0 unreached"), "{}", run.out);
@@ -109,7 +109,7 @@ fn losing_the_last_external_reference_is_worsened() {
     tree.base();
     tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("got worse"), "{}", run.out);
@@ -126,7 +126,7 @@ fn a_member_a_serde_string_names_is_reached() {
         "pub struct Settings {\n    #[serde(default = \"run_alpha\")]\n    pub zoom: u8,\n}\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 unreached"), "{}", run.out);
@@ -141,7 +141,7 @@ fn a_reference_from_the_same_file_does_not_reach_it() {
         "pub fn run_delta() {}\nfn again() { run_delta(); }\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
@@ -157,7 +157,7 @@ fn a_method_name_reference_alone_does_not_reach_a_file() {
     );
     tree.write("src/other.rs", "fn other() { held.go(); }\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
@@ -169,7 +169,7 @@ fn a_file_with_only_entry_points_is_measured_and_not_judged() {
     tree.base();
     tree.write("src/commands/delta_command.rs", "#[test]\nfn works() {}\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -187,7 +187,7 @@ fn one_ambiguous_reference_reaches_every_matching_declaration() {
     tree.write("src/commands/epsilon_command.rs", "pub fn run_extra() {}\n");
     tree.write("src/other.rs", "fn other() { run_extra(); }\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("5 file(s) judged, 0 unreached"), "{}", run.out);
@@ -199,7 +199,7 @@ fn the_remedy_names_a_proven_reached_sibling() {
     tree.base();
     tree.write("src/commands/delta_command.rs", "pub fn run_delta() {}\n");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -224,7 +224,7 @@ fn a_reference_in_another_language_does_not_reach_a_rust_family_member() {
         "export function caller() { run_delta(); }\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("src/commands/delta_command.rs"), "{}", run.out);
@@ -239,7 +239,7 @@ fn a_typescript_family_is_derived_and_judged_in_its_language() {
         "export function Profile() {}\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("web/handlers/*Handler.ts"), "{}", run.out);
@@ -259,7 +259,7 @@ fn a_destructuring_that_binds_a_member_name_is_no_second_declaration_of_it() {
         "export function Profile() {}\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -284,7 +284,7 @@ fn a_destructuring_in_another_file_that_binds_a_member_name_reaches_it() {
         "const { default: Profile } = await import(\"./handlers/ProfileHandler\");\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
@@ -301,7 +301,7 @@ fn a_plain_declaration_elsewhere_or_a_destructuring_in_the_same_file_reaches_no_
         "export function Profile() {}\nif (ready) { const { Profile } = registry; }\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("3 new unreached file(s)"), "{}", run.out);
@@ -320,7 +320,7 @@ fn a_member_only_a_destructuring_in_another_file_binds_still_proves_its_family()
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -346,7 +346,7 @@ fn a_shorthand_binding_in_another_file_reaches_and_proves_a_member() {
         "export function Profile() {}\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -376,7 +376,7 @@ fn a_member_only_a_named_re_export_in_another_file_names_is_reached() {
          export { Settings as Preferences } from \"./handlers/SettingsHandler\";\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -409,7 +409,7 @@ fn named_re_exports_in_another_file_prove_a_family() {
         "export function Profile() {}\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
@@ -441,7 +441,7 @@ fn a_default_member_only_a_barrel_names(clause: &str) -> Tree {
 fn a_default_member_a_bare_default_re_export_names_is_reached() {
     let tree = a_default_member_only_a_barrel_names("default");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
@@ -451,7 +451,7 @@ fn a_default_member_a_bare_default_re_export_names_is_reached() {
 fn a_default_member_a_renamed_default_re_export_names_is_reached() {
     let tree = a_default_member_only_a_barrel_names("default as Profile");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("OK: 4 file(s) judged"), "{}", run.out);
@@ -461,7 +461,7 @@ fn a_default_member_a_renamed_default_re_export_names_is_reached() {
 fn a_default_member_a_re_export_of_its_own_name_leaves_unreached() {
     let tree = a_default_member_only_a_barrel_names("Profile");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new unreached file(s)"), "{}", run.out);
@@ -492,7 +492,7 @@ fn a_re_export_of_the_only_default_proves_its_member() {
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -520,7 +520,7 @@ fn a_default_re_export_proves_no_member_while_several_files_export_a_default() {
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("derived: reachability"), "{}", run.out);
@@ -539,7 +539,7 @@ fn a_member_only_a_star_re_export_names_stays_unreached() {
         "export * from \"./handlers/ProfileHandler\";\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("1 new unreached file(s)"), "{}", run.out);
@@ -554,7 +554,7 @@ fn two_members_do_not_derive_a_family() {
     tree.write("src/main.rs", "fn main() { run_alpha(); run_beta(); }\n");
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("derived: reachability"), "{}", run.out);
@@ -567,7 +567,7 @@ fn one_unreached_member_derives_no_broad_family() {
     tree.write("src/main.rs", "fn main() { run_alpha(); run_beta(); }\n");
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("derived: reachability"), "{}", run.out);
@@ -579,8 +579,8 @@ fn a_file_the_grammar_rejects_keeps_the_unparsed_rule() {
     tree.base();
     tree.write("src/commands/delta_command.rs", "pub fn broken( {\n");
 
-    let run = tree.run(&["reachability"]);
-    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
+    let run = tree.run(&["check", "reachability"]);
+    let changed = tree.run(&["check", "--changed", "reachability"]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("1 unreadable"), "{}", run.out);
@@ -597,7 +597,7 @@ fn changed_mode_still_resolves_against_unchanged_callers() {
         "pub fn run_alpha() {}\npub fn also() {}\n",
     );
 
-    let run = tree.run(&["gate", "--changed", "--gate", "reachability"]);
+    let run = tree.run(&["check", "--changed", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    reachability"), "{}", run.out);
@@ -612,10 +612,11 @@ fn excepting_a_file_measured_at_the_base_reports_lost_coverage() {
         r#"{"reachability":{"except":"src/commands/alpha_command.rs"}}"#,
     );
 
-    let run = tree.run(&["reachability"]);
-    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
+    let run = tree.run(&["check", "reachability"]);
+    let changed = tree.run(&["check", "--changed", "reachability"]);
 
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("1 file(s) left scrutiny"), "{}", run.out);
     assert!(
         run.says("src/commands/alpha_command.rs was measured at the base"),
         "{}",
@@ -634,7 +635,7 @@ fn false_disables_reachability_and_a_person_authored_family_is_rejected() {
     tree.base();
     tree.write("klin.json", r#"{"reachability":false}"#);
 
-    let disabled = tree.run(&["gate", "--list"]);
+    let disabled = tree.run(&["policy"]);
     assert_eq!(disabled.code, 0, "{}", disabled.out);
     assert!(disabled.says("reachability — excluded"), "{}", disabled.out);
 
@@ -642,7 +643,7 @@ fn false_disables_reachability_and_a_person_authored_family_is_rejected() {
         "klin.json",
         r#"{"reachability":[{"name":"mine","roots":["src"],"pattern":"*_command.rs"}]}"#,
     );
-    let retired = tree.run(&["reachability"]);
+    let retired = tree.run(&["check", "reachability"]);
     assert_eq!(retired.code, 2, "{}", retired.out);
     assert!(
         retired.says("no longer accepts a list of entries"),
@@ -671,7 +672,7 @@ fn typescript_and_tsx_derive_separate_concrete_families_in_one_order() {
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -686,7 +687,7 @@ fn init_does_not_serialize_derived_reachability_topology() {
     let tree = three_reached_commands();
     tree.base();
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!config(&tree)["reachability"].is_array());
@@ -698,14 +699,14 @@ fn init_pin_keeps_an_explicit_false() {
     tree.base();
     tree.write("klin.json", r#"{"reachability":false}"#);
 
-    let run = tree.run(&["init", "--pin"]);
+    let run = tree.run(&["setup", "--pin"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(config(&tree)["reachability"], Value::Bool(false));
 }
 
 fn derives_no_family(tree: &Tree) {
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("derived: reachability"), "{}", run.out);
 }
@@ -756,7 +757,7 @@ fn a_crates_integration_tests_beside_its_build_script_still_prove_a_family() {
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("derived: reachability src/commands/*_command.rs"),
@@ -789,7 +790,7 @@ fn a_new_test_file_in_a_family_directory_is_no_member() {
         "const inline = {};\nit(\"reads\", () => isInline(inline));\n",
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -879,7 +880,7 @@ fn the_broadest_safe_candidate_wins_and_a_narrow_one_survives_an_unsafe_broad_on
     );
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("derived: reachability src/commands/*_command.rs,"),
@@ -891,7 +892,7 @@ fn the_broadest_safe_candidate_wins_and_a_narrow_one_survives_an_unsafe_broad_on
     tree.write("src/commands/list_command.rs", "pub fn list() {}\n");
     tree.base();
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("derived: reachability src/commands/*_user_command.rs,"),
@@ -911,7 +912,7 @@ fn an_accepted_path_holds_a_new_unreached_member() {
         r#"{"accepted":[{"gate":"reachability","file":"src/commands/delta_command.rs","text":"file","unreached":1}]}"#,
     );
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
 }
@@ -922,7 +923,7 @@ fn a_deleted_member_is_no_reachability_finding() {
     tree.base();
     tree.remove("src/commands/alpha_command.rs");
 
-    let run = tree.run(&["reachability"]);
+    let run = tree.run(&["check", "reachability"]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("2 file(s) judged, 0 unreached"), "{}", run.out);
@@ -938,8 +939,8 @@ fn a_changed_run_judges_a_member_a_dispatch_edit_stopped_referencing() {
     tree.base();
     tree.write("src/main.rs", "fn main() { run_gamma(); }\n");
 
-    let changed = tree.run(&["gate", "--changed", "--gate", "reachability"]);
-    let whole = tree.run(&["gate", "--gate", "reachability"]);
+    let changed = tree.run(&["check", "--changed", "reachability"]);
+    let whole = tree.run(&["check", "reachability"]);
 
     assert_eq!(changed.code, 1, "{}", changed.out);
     assert_eq!(changed.code, whole.code, "{}\n{}", changed.out, whole.out);
@@ -985,7 +986,7 @@ fn a_changed_run_reports_one_surface_the_whole_run_reports_too() {
     tree.write("src/main.rs", "fn main() { run_gamma(); }\n");
 
     let row = |flags: &[&str]| {
-        let mut args = vec!["gate", "--json", "--gate", "reachability"];
+        let mut args = vec!["check", "--json", "reachability"];
         args.extend_from_slice(flags);
         let report = tree.run(&args).json();
         let mut row = report["gates"][0].clone();
@@ -1019,8 +1020,8 @@ fn reachability_on_its_own_derives_its_families_from_the_base_as_the_gate_does()
     );
     tree.commit("a change that would prove the family it is judged by");
 
-    let gate = tree.run(&["gate", "--gate", "reachability"]);
-    let alone = tree.run(&["reachability"]);
+    let gate = tree.run(&["check", "reachability"]);
+    let alone = tree.run(&["check", "reachability"]);
 
     assert!(gate.says("0 file(s) judged"), "{}", gate.out);
     assert!(alone.says("0 file(s) judged"), "{}", alone.out);
@@ -1096,7 +1097,7 @@ fn an_unreached_file_that_held_a_public_api_break_names_the_conflict_and_not_a_b
         "fn main() { run_alpha(); run_beta(); run_gamma(); }\n",
     );
 
-    let run = tree.run(&["gate", "--changed"]);
+    let run = tree.run(&["check", "--changed"]);
 
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(

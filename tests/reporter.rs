@@ -89,7 +89,7 @@ fn count(row: &Value, key: &str) -> u64 {
 fn the_ok_line_carries_the_four_coverage_counts() {
     let tree = two_files();
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("(2 file(s) found, 1 measured, 1 excluded, 0 unreadable)"),
@@ -102,7 +102,7 @@ fn the_ok_line_carries_the_four_coverage_counts() {
 fn the_runner_prints_the_ok_line_of_every_gate_it_passed() {
     let tree = two_files();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ok    escapes"), "{}", run.out);
     assert!(
@@ -121,7 +121,7 @@ fn the_runner_says_the_window_and_the_derived_values_once() {
     tree.write("src/lib.rs", "fn f() -> i32 {\n    1\n}\n");
     tree.base();
 
-    let run = tree.run(&["gate"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out.matches("window: branch").count(), 1, "{}", run.out);
     assert_eq!(
@@ -136,7 +136,7 @@ fn the_runner_says_the_window_and_the_derived_values_once() {
 fn the_json_carries_the_coverage_of_every_gate() {
     let tree = two_files();
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let report = json(&run);
     let row = named(&report, "escapes");
@@ -157,7 +157,7 @@ fn a_file_the_grammar_rejected_is_one_the_coverage_calls_unreadable() {
     tree.base();
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);
     let report = json(&run);
     let row = named(&report, "complexity");
@@ -173,7 +173,7 @@ fn a_new_finding_says_that_nothing_matched() {
     let tree = tree(CONFIG);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(run.says("nothing matched"), "{}", run.out);
 }
@@ -188,7 +188,7 @@ fn a_worsened_finding_names_the_base_site_it_matched_and_the_ceiling() {
         &TANGLED.replace("a == 0 ||", "a == 0 || a == -2 ||"),
     );
 
-    let run = tree.run(&["complexity"]);
+    let run = tree.run(&["check", "complexity"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("cc 10, 13 lines, was cc 9, 13 lines"),
@@ -214,7 +214,7 @@ fn a_worsened_finding_names_the_accepted_entry_it_matched() {
     ));
     tree.write("src/lib.rs", text::TWO_ON_TWO_LINES);
 
-    let run = tree.run(&["escapes"]);
+    let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
         run.says("matched the accepted entry for src/lib.rs"),
@@ -233,7 +233,7 @@ fn a_json_finding_carries_the_matched_site_the_ceiling_and_an_id() {
         &TANGLED.replace("a == 0 ||", "a == 0 || a == -2 ||"),
     );
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = json(&run);
     let finding = &list(&report, "findings")[0];
@@ -280,7 +280,7 @@ fn a_new_json_finding_carries_a_null_match() {
     let tree = tree(CONFIG);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = tree.run(&["gate", "--json"]);
+    let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = json(&run);
     let finding = &list(&report, "findings")[0];
@@ -293,9 +293,9 @@ fn one_finding_keeps_its_id_across_stops_and_commits() {
     let tree = tree(CONFIG);
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let first = tree.run(&["gate", "--json"]);
+    let first = tree.run(&["check", "--json"]);
     tree.commit("the work so far");
-    let second = tree.run(&["gate", "--json"]);
+    let second = tree.run(&["check", "--json"]);
     assert_eq!(first.code, 1, "{}", first.out);
     assert_eq!(second.code, 1, "{}", second.out);
     assert_eq!(id(&first), id(&second), "{}", second.out);
@@ -305,10 +305,10 @@ fn one_finding_keeps_its_id_across_stops_and_commits() {
 fn the_id_follows_the_path_so_a_rename_changes_it() {
     let tree = tree(CONFIG);
     tree.write("src/lib.rs", text::WRAPPED);
-    let first = tree.run(&["gate", "--json"]);
+    let first = tree.run(&["check", "--json"]);
     tree.remove("src/lib.rs");
     tree.write("src/other.rs", text::WRAPPED);
-    let second = tree.run(&["gate", "--json"]);
+    let second = tree.run(&["check", "--json"]);
 
     assert_ne!(id(&first), id(&second), "{}", second.out);
 }
@@ -320,7 +320,7 @@ fn a_held_document_names_the_size_the_base_holds_it_at() {
     tree.base();
     tree.words("README.md", 20);
 
-    let run = tree.run(&["doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("over its ceiling of 10, held at the base at 30 words"),

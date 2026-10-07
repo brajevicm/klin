@@ -367,10 +367,31 @@ export function hookEvidence(directory: string): HookInvocation[] {
     });
 }
 
+const checks = new Map<string, boolean>();
+
+/** Whether this binary has `klin check`, which #507 put in place of `klin gate` and `klin stats`.
+ * A harness that measures a release built before it still runs the old commands. */
+function knowsCheck(klinBin: string): boolean {
+  let known = checks.get(klinBin);
+  if (known === undefined) {
+    known = spawnSync(klinBin, ["check", "--help"], { stdio: "ignore" }).status === 0;
+    checks.set(klinBin, known);
+  }
+  return known;
+}
+
+/** The whole run of a klin binary: `klin check`, or `klin gate` before #507. */
+export function wholeRun(klinBin: string): string[] {
+  return knowsCheck(klinBin) ? ["check"] : ["gate"];
+}
+
 /** What klin reports about the trial, through the command line and never through the journal
- * file. */
+ * file. `--session` is the default scope of `klin report`, so it is dropped there. */
 export function stats(repo: string, state: string, klinBin: string, scope: string[]): unknown {
-  const ran = spawnSync(klinBin, ["stats", "--json", ...scope], {
+  const command = knowsCheck(klinBin)
+    ? ["report", "--json", ...scope.filter((one) => one !== "--session")]
+    : ["stats", "--json", ...scope];
+  const ran = spawnSync(klinBin, command, {
     cwd: repo,
     encoding: "utf8",
     env: { ...withoutKlin(), KLIN_STATE_DIR: state },

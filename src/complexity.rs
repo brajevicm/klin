@@ -14,7 +14,7 @@ use crate::check::holes;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
-use crate::key::{Key, Section};
+use crate::key::Key;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
 use crate::record::{self, Values};
@@ -29,7 +29,7 @@ const LINES_FLOOR: u64 = 25;
 const SAMPLE_SIZE: usize = 50;
 const PERCENTILE: usize = 95;
 
-/// The keys this section reads, which `klin reference` prints. Spec 5.4, 5.8.
+/// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
 pub const KEYS: &[Key] = &[CC, LINES, TEST_LINES, scope::IN, scope::EXCEPT];
 
 pub const CC: Key = Key {
@@ -264,22 +264,6 @@ fn metrics(id: LanguageId) -> &'static Metrics {
         .map_or(&NOTHING, |(_, table)| table)
 }
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-    /// Print nothing on success
-    #[arg(long)]
-    quiet: bool,
-    /// Fail when an accepted entry matches nothing — what CI runs
-    #[arg(long)]
-    strict: bool,
-    /// Judge only these repo-relative files, against only their functions at the base
-    #[arg(long, num_args = 0.., value_name = "FILE")]
-    only: Option<Vec<String>>,
-}
-
 struct Function {
     file: String,
     line: u64,
@@ -375,11 +359,6 @@ struct Spec {
 type Provenance = Vec<(String, Option<Value>)>;
 type Notes = Vec<(String, String)>;
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = Project::load(args.config.as_deref(), start, sections)?;
-    gate(&context(args, &project), &mut Sink::unrecorded(out))
-}
-
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
@@ -400,7 +379,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = out.covered(&sweep.files.coverage(at.only));
     let mut owned = None;
-    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at, out))?;
+    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at))?;
     let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
     out.record(|records| records.work = Some(sweep.work + before_work));
     let lost = sweep.files.lost(&before, project, at.only);
@@ -512,15 +491,6 @@ impl Unjudged<'_> {
             "; {} test function(s) not judged on length, with no test_lines pinned{named}",
             self.functions
         )
-    }
-}
-
-fn context<'a>(args: &'a Args, project: &'a Project) -> Context<'a> {
-    Context {
-        only: args.only.as_deref(),
-        strict: args.strict,
-        quiet: args.quiet,
-        ..Context::by_hand(SECTION, project)
     }
 }
 
