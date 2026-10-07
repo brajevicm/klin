@@ -1174,6 +1174,28 @@ const NOTHING_SAID_ABOUT_ESCAPES: &str = r#"{
   "complexity": false
 }"#;
 
+/// `policy` names each value a gate used with where it came from: the section pinned one, and
+/// the run derived the other with its rule. Spec 11.6.
+#[test]
+fn policy_names_each_value_of_one_gate_with_its_provenance() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"complexity": {"cc": 8}}"#);
+    tree.write("src/lib.rs", "fn a() {}\nfn b() {}\n");
+    tree.base();
+
+    let run = tree.run(&["policy", "complexity"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("complexity — runs"), "{}", run.out);
+    assert!(run.says("pinned: complexity cc 8"), "{}", run.out);
+    assert!(
+        run.says("derived: complexity lines 25 (the floor of 25"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("escapes"), "{}", run.out);
+}
+
 #[test]
 fn a_named_gate_runs_alone_when_the_command_line_names_it() {
     let tree = tree(AN_EXCLUDED_GATE);
