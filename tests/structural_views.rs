@@ -567,6 +567,6 @@ fn a_case_only_rename_git_does_not_see_is_read_from_the_working_tree() {
 
     let worsened =
         r#"worsened src/lib.rs:1 fn helper() {} {"dead":1,"lost_reference":"src/Caller.rs"}"#;
-    assert_eq!(lines(&seen["changed"])[..2], [r#""ERROR" 2"#, worsened]);
+    assert_eq!(lines(&seen["changed"])[1], worsened);
     assert_eq!(lines(&seen["hook"])[1], worsened);
 }

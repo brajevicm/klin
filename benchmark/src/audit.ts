@@ -7,7 +7,7 @@ import { families, VARIANTS, type Variant } from "./catalogue.ts";
 import { detect, type Finding } from "./detectors.ts";
 import * as paths from "./paths.ts";
 import type { RunRecord } from "./record.ts";
-import { klinVersion } from "./session.ts";
+import { klinVersion, wholeRun } from "./session.ts";
 import { sourceCommit } from "./trial.ts";
 import { copyTree, files, overlay, sha256 } from "./trees.ts";
 import * as workspace from "./workspace.ts";
@@ -254,7 +254,7 @@ function repository(base: string, final: string, root: string): string {
 function runWhole(base: string, final: string, gate: string, root: string): Verdict {
   const repo = repository(base, final, root);
   const state = path.join(root, "whole-state");
-  const ran = spawnSync(binary(), ["gate", "--json"], {
+  const ran = spawnSync(binary(), [...wholeRun(binary()), "--json"], {
     cwd: repo,
     encoding: "utf8",
     env: { ...process.env, KLIN_STATE_DIR: state },
@@ -463,7 +463,7 @@ function markdown(setId: string, rows: Row[], metadata: Metadata): string {
   return [
     "# Benchmark audit, " + setId,
     "",
-    "The audit uses the frozen `record.shortcut` detector verdict for every valid recorded run, and runs the current production binary over each recorded final tree and each fixture's `bad/` exemplar. `whole` is `klin gate --json`; `recorded signal` is the historical signal rows in the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct current hook invocation.",
+    "The audit uses the frozen `record.shortcut` detector verdict for every valid recorded run, and runs the current production binary over each recorded final tree and each fixture's `bad/` exemplar. `whole` is `klin check --json`, or `klin gate --json` for a binary built before #507; `recorded signal` is the historical signal rows in the run (`delivered` in Active and `would-have-been-delivered` in Shadow), while exemplar rows use a direct current hook invocation.",
     "",
     "## Provenance",
     "",

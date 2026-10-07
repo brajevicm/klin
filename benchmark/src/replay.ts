@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { sha256 } from "./trees.ts";
+import { wholeRun } from "./session.ts";
 
 const CUTOFF = "2026-09-29T00:00:00Z";
 const CHANGES = 10;
@@ -228,7 +229,7 @@ export function run(into: string, clones: string, klin: string): number {
       }
       prepare(cwd, change);
       const started = Date.now();
-      const done = spawnSync(klin, ["gate", "--json"], {
+      const done = spawnSync(klin, [...wholeRun(klin), "--json"], {
         cwd,
         env: environment(),
         encoding: "utf8",
@@ -580,7 +581,7 @@ export function worksheets(into: string, clones: string, journal: string): numbe
   fs.writeFileSync(path.join(into, "worksheet.json"), JSON.stringify(replay, null, 2) + "\n");
   fs.writeFileSync(
     path.join(into, "worksheet.md"),
-    worksheetMarkdown("Replay worksheet", [`Every gate that failed or erred in the ${runs} replay runs of \`klin gate --json\` with \`{}\`, one row each.`], replay),
+    worksheetMarkdown("Replay worksheet", [`Every gate that failed or erred in the ${runs} replay runs of \`klin check --json\` (\`klin gate --json\` before #507) with \`{}\`, one row each.`], replay),
   );
   fs.writeFileSync(path.join(into, "journal-worksheet.json"), JSON.stringify(own, null, 2) + "\n");
   fs.writeFileSync(

@@ -17,6 +17,7 @@ import * as oracle from "./oracle.ts";
 import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
 import * as toolchain from "./toolchain.ts";
+import { wholeRun } from "./session.ts";
 
 /**
  * The deterministic fixture and oracle self-tests.
@@ -88,7 +89,7 @@ function repository(starting: string, tree: string, repo: string): string {
 }
 
 /**
- * Whether a whole run, `klin gate` as CI runs it, passes every gate over one tree.
+ * Whether a whole run, `klin check` as CI runs it, passes every gate over one tree.
  *
  * A hook verdict reads one gate's row, so a candidate's `good` tree that another gate fails would
  * still meet every declared expectation. The whole run is what holds that tree to every gate,
@@ -96,14 +97,14 @@ function repository(starting: string, tree: string, repo: string): string {
  */
 export function wholeRunPasses(starting: string, tree: string, room: string): Measured {
   const repo = repository(starting, tree, path.join(room, "whole"));
-  const ran = spawnSync(klinBinary(), ["gate"], {
+  const ran = spawnSync(klinBinary(), wholeRun(klinBinary()), {
     cwd: repo,
     encoding: "utf8",
     timeout: 300_000,
     env: { ...process.env, KLIN_STATE_DIR: path.join(room, "whole-state") },
   });
   if (ran.error) {
-    return { passed: null, detail: "klin gate could not run: " + ran.error.message };
+    return { passed: null, detail: "klin check could not run: " + ran.error.message };
   }
   const failing = (ran.stdout ?? "")
     .split("\n")
@@ -111,9 +112,9 @@ export function wholeRunPasses(starting: string, tree: string, room: string): Me
     .map((line) => line.trim())
     .join(", ");
   if (ran.status === 0 || ran.status === 1) {
-    return { passed: ran.status === 0, detail: "klin gate exited " + String(ran.status) + (failing ? ": " + failing : "") };
+    return { passed: ran.status === 0, detail: "klin check exited " + String(ran.status) + (failing ? ": " + failing : "") };
   }
-  return { passed: null, detail: "klin gate exited " + String(ran.status) + " " + String(ran.signal ?? "") + ": " + (ran.stderr ?? "").slice(-600) };
+  return { passed: null, detail: "klin check exited " + String(ran.status) + " " + String(ran.signal ?? "") + ": " + (ran.stderr ?? "").slice(-600) };
 }
 
 /**
