@@ -3,6 +3,8 @@
 > ADR 0016 retires the second rule below. A derivable gate runs whether or
 > not the config names it, so it cannot be unaccounted. The first rule, that
 > naming an excluded gate is exit 2, stands.
+>
+> The amendment at the end retires `--strict` itself (#499).
 
 A gate is excluded by setting its section to `false`. ADR 0005 chose that over
 deleting the section so `init --add` leaves the decision alone. Two rules follow,
@@ -49,3 +51,24 @@ not mention, so the two lists behind a strict failure are readable before it.
 
 A local run is unchanged. Both rules cost nothing until CI runs `--strict`, or
 until someone names a gate a person has switched off.
+
+## Amendment: no `--strict` (#499)
+
+vNext has no `--strict`. `klin check` takes no such flag, and a 0.x flag given
+to it is an unknown argument, exit 2. What 0.x judged only under `--strict` is
+part of every `klin check` (SPEC 11.3):
+
+- naming an excluded gate is an invocation error, exit 2, as the first rule
+  above says;
+- a selector for a capability that does not apply to the tree, or that needs a
+  section the configuration does not hold, is a hole, `unsupported`, exit 3,
+  and no longer a tool error;
+- a tree with no source root is a hole, `nothing-measured`, exit 3, in a
+  whole-tree run only, and only for a selected check that reads code and does
+  not pin its own `in`;
+- an accepted entry that matches nothing, and a file measured in `before` and
+  not in `after`, follow SPEC 7.6 and 7.2.
+
+The exit codes are those of SPEC 7.4: an error 2, a failing finding 1, an
+incomplete measurement 3, and success 0, in that precedence. The Stop never
+had `--strict` and keeps the behaviour it had.

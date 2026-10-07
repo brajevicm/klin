@@ -168,3 +168,21 @@ is held, and only a site the turn turned red fails. ADR 0014's turn window
 says which work belongs to the turn. It never said that a finding of that turn
 must sit on a line the turn edited, and any text that read it that way was
 wrong.
+
+## Amendment: placement and a semantics version in each row (#499)
+
+Each catalogue row also declares its placement and its semantics version
+(SPEC 4.3, 6.2, 8.2).
+
+- **Placement** is the set of paths that run the check: `{stop, check}` or
+  `{check}`. The row owns it, and no configuration changes it. The engine
+  drops a `{check}` row before it resolves the row's needs, so such a row adds
+  no read, parse, process or git command to the Stop. `sarif` is the one
+  `{check}` row. `klin policy` prints each row's placement.
+- **Semantics version** is an integer that rises when the same inputs can
+  produce a different measurement or judgement. Every row starts at 1. The
+  `klin check` document names it in each measurement record's basis.
+
+The table stays ordered cheapest first, and placement does not change the
+order. A row's kind, `check` or `integration`, follows its activation: an
+Integration row is an integration, and every other row is a check.

@@ -1535,7 +1535,9 @@ Text output:
   words `not measured`;
 - the `OK:` line and its coverage counts of 0.x 11.1;
 - one summary line: `judgement: J, measurement: M, execution: E, exit N`,
-  followed by `, N file(s) not measured` when coverage notes exist.
+  followed by `, N file(s) not measured` when coverage notes exist. After a
+  run-scope error, J and M print as `none`, and an `ERR:` line names the
+  error above the summary.
 
 ### 11.4 `klin status`
 
@@ -1669,7 +1671,11 @@ A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail}`;
 every hole's site is the run or the gate).
 
-An error: `kind` (section 7.3), `check` (null for the run), `message`.
+An error: `kind` (section 7.3), `check` (null for the run), `message`. Until
+#500 sorts each 0.x hole of section 8 into its class of section 7.2, a file
+or form that one of them names is an `internal` error with that site's
+`file`, its `line` where it has one, and `reason`, the 0.x outcome
+(`unparsed`, `not-measured`, `unresolved`).
 
 #### The `status` document
 
@@ -2247,7 +2253,10 @@ Result model and exit codes:
   finding in it;
 - a capability that stops at its work bound is a `work-limit` hole, exit 3.
   No shipped capability has a work bound yet, so this is a `#[cfg(test)]`
-  pin under the AGENTS.md exception until one ships;
+  pin under the AGENTS.md exception until one ships. The pins are
+  `a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3` and
+  `a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2` in
+  `src/gate.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities
