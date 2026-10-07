@@ -1,7 +1,7 @@
 //! What a check is, told once. A check is handed an immutable `Context` — who called it, which
 //! gate it judges under, what base it compares against, what scope it may look at — and it
-//! writes to an explicit `Sink`: the report text a person reads, and the `Records` the runner
-//! turns into the 11.2 object. Nothing about a run reaches a check any other way, so the runner
+//! writes to an explicit `Sink`: the typed `Told` items a renderer turns into the report a
+//! person reads, and the `Records` the runner turns into the 11.2 object. Nothing about a run reaches a check any other way, so the runner
 //! keeps no side channel into it and a check keeps no state of its own. This module names no
 //! check, so every check and the catalogue that registers them depend on it one way.
 
@@ -212,13 +212,179 @@ impl Context<'_> {
     }
 }
 
-/// Where a check writes: the report a person reads, and the records the runner keeps.
+/// Where a check writes: what it found, in the order a report says it, and the records the
+/// runner keeps. A check writes no report text: `render` does. Spec 3.1, 6.1.
 pub struct Sink<'a> {
-    pub text: &'a mut String,
+    pub told: &'a mut Vec<Told>,
     pub records: &'a mut Records,
 }
 
+/// What a gate said about what it judged, for the `OK:` line: the check's own phrase for the
+/// state it measured, what follows the ratchet's qualifier, the coverage, and what closes the
+/// line. Spec 8.6.
+#[derive(Default)]
+pub struct Line {
+    pub state: String,
+    pub aside: String,
+    pub coverage: Option<Coverage>,
+    pub after: String,
+}
+
+/// One site a list in the report names: a file, its line where it has one, and its text.
+pub struct Site {
+    pub file: String,
+    pub line: Option<u64>,
+    pub text: String,
+}
+
+/// What a ratchet failure was compared against: nothing, the accepted entry for a file, or the
+/// base site at a file and line. Spec 8.6.
+pub enum Matched {
+    Nothing,
+    Accepted(String),
+    Base(String, u64),
+}
+
+/// One finding the ratchet failed, with the check's own words for its values.
+pub struct Failed {
+    pub file: String,
+    pub line: u64,
+    pub shown: String,
+    /// What the base or accepted entry held, and the file it held it at where that differs.
+    pub was: Option<(String, Option<String>)>,
+    pub text: String,
+    pub matched: Matched,
+    pub ceiling: Option<String>,
+    /// Whether the finding prints inside the group of the one before it.
+    pub nested: bool,
+}
+
+/// An accepted entry that matched nothing this run: its file, the check's words for its values,
+/// its text, and the row it names that klin retired.
+pub struct Unmatched {
+    pub file: String,
+    pub shown: String,
+    pub text: String,
+    pub retired: Option<String>,
+}
+
+/// Where a document stands against its ceiling. Spec 8.1.
+pub enum Standing {
+    Under,
+    Near(u64),
+    Held(u64),
+    Over(&'static str),
+}
+
+/// One item of a gate's semantic result, in the order the report says it. Spec 3.1, 6.1.
+pub enum Told {
+    Judged {
+        line: Line,
+        held: (usize, usize),
+    },
+    Document {
+        name: String,
+        words: u64,
+        ceiling: String,
+        standing: Standing,
+    },
+    Plain(Plain),
+    Hole(Hole),
+    Listed(Listed),
+    Ratchet(Ratchet),
+}
+
+/// A line the report says as it is, under its own word.
+pub enum Plain {
+    Note(String),
+    Remedy(String),
+    PathMissing(String),
+    Error(String),
+}
+
+/// A hole in what a gate measured. Whether it fails is decided by the check, and `fail` carries
+/// it. Spec 8.6.
+pub enum Hole {
+    Lost(Site),
+    LeftScrutiny(usize),
+    NotMeasured {
+        fail: bool,
+        files: Vec<Site>,
+    },
+    Unresolved {
+        fail: bool,
+        what: String,
+        remedy: String,
+        forms: Vec<(Site, String)>,
+    },
+    Unparsed {
+        fail: bool,
+        files: Vec<Site>,
+    },
+}
+
+/// Sites a gate lists that fail nothing: dead symbols a direct run reports, and the tests a
+/// window let through. Spec 8.2.
+pub enum Listed {
+    DeadSymbols(Vec<(Site, String)>),
+    TestsDeleted(Vec<Site>),
+    TestFunctionsOrphaned(Vec<Site>),
+    TestFilesPaired {
+        files: Vec<Site>,
+        rule: &'static str,
+    },
+}
+
+/// What the ratchet's comparison came to beyond the `OK:` line. Spec 4.4, 8.6.
+pub enum Ratchet {
+    New {
+        unit: String,
+        condition: String,
+        held: usize,
+        failed: Vec<Failed>,
+    },
+    Worse {
+        unit: String,
+        failed: Vec<Failed>,
+    },
+    AcceptedUnmatched(Vec<Unmatched>),
+    /// The count of entries that matched nothing, and the file and retired row of each one a
+    /// retired row names.
+    AcceptedStale {
+        count: usize,
+        rows: Vec<Site>,
+    },
+}
+
+impl From<Plain> for Told {
+    fn from(said: Plain) -> Told {
+        Told::Plain(said)
+    }
+}
+
+impl From<Hole> for Told {
+    fn from(hole: Hole) -> Told {
+        Told::Hole(hole)
+    }
+}
+
+impl From<Listed> for Told {
+    fn from(listed: Listed) -> Told {
+        Told::Listed(listed)
+    }
+}
+
+impl From<Ratchet> for Told {
+    fn from(said: Ratchet) -> Told {
+        Told::Ratchet(said)
+    }
+}
+
 impl<'a> Sink<'a> {
+    pub fn tell(&mut self, told: impl Into<Told>) {
+        self.told.push(told.into());
+    }
+
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         add(self.records);
     }
@@ -277,22 +443,9 @@ pub fn own_base(at: &Context) -> Result<Prior, Error> {
 impl Sink<'_> {
     /// What every `OK:` line adds after what the gate judged, recorded for `--json` on the way
     /// past so one call per check carries both. Spec 8.6.
-    pub fn covered(&mut self, coverage: &Coverage) -> String {
+    pub fn covered(&mut self, coverage: &Coverage) -> Option<Coverage> {
         self.record(|records| records.coverage = Some(coverage_record(coverage)));
-        match coverage.not_measured {
-            0 => format!(
-                " ({} file(s) found, {} measured, {} excluded, {} unreadable)",
-                coverage.found, coverage.measured, coverage.excluded, coverage.unreadable
-            ),
-            not_measured => format!(
-                " ({} file(s) found, {} measured, {} not measured, {} excluded, {} unreadable)",
-                coverage.found,
-                coverage.measured,
-                not_measured,
-                coverage.excluded,
-                coverage.unreadable
-            ),
-        }
+        Some(*coverage)
     }
 }
 

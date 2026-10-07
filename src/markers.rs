@@ -6,7 +6,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::changed::Change;
-use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Line, Sink};
 use crate::check::holes;
 use crate::config::Config;
 use crate::coverage::Files;
@@ -14,7 +14,7 @@ use crate::error::Error;
 use crate::files;
 use crate::key::{self, Key};
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line};
+use crate::ratchet::{self, Evaluator, Finding};
 use crate::record::Values;
 use crate::scope::Scope;
 use crate::survey::{self, Tests};
@@ -280,8 +280,10 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ratchet::accepted(&project.config, at.gate, kind.evaluator.metrics)?,
         at,
         Line {
-            state: &format!("{sites} {unit} in the tree"),
-            tail: &format!("{aside}{said}"),
+            state: format!("{sites} {unit} in the tree"),
+            aside,
+            coverage: said,
+            after: String::new(),
         },
         out,
     );

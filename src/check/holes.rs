@@ -4,17 +4,14 @@
 //! change opened no hole or the agent cannot close it, and exit 2 elsewhere, so a green run never
 //! implies a measurement klin did not make. Spec 8.6, 10.
 
-use std::fmt::Write;
-
 use serde_json::{Map, Value};
 
-use crate::check::contract::{Context, LOST, NOT_MEASURED, Records, Sink, UNPARSED, UNRESOLVED};
+use crate::check::contract::{
+    Context, Hole, LOST, NOT_MEASURED, Records, Sink, Site, UNPARSED, UNRESOLVED,
+};
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
 use crate::syntax::structural::facts::Unsupported;
 use crate::syntax::{self, Unparsed};
-
-const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \
-                           on purpose and accept that nothing measures it.";
 
 /// What a gate says about the files that left its scrutiny: a NOTE per file for a person and a
 /// `lost` record under its notes for `--json`. Under `--strict` the loss is exit 2, beside the
@@ -24,11 +21,11 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
         return code;
     }
     for file in lost {
-        let _ = writeln!(
-            out.text,
-            "NOTE: {} was measured at the base and is not measured now — {}",
-            file.file, file.why
-        );
+        out.tell(Hole::Lost(Site {
+            file: file.file.clone(),
+            line: None,
+            text: file.why.to_string(),
+        }));
     }
     out.record(|records| {
         for file in lost {
@@ -42,12 +39,7 @@ pub fn lost_said(lost: &[Lost], at: &Context, code: u8, out: &mut Sink) -> u8 {
     if !at.strict {
         return code;
     }
-    let _ = writeln!(
-        out.text,
-        "FAIL: {} file(s) left scrutiny — a file klin measured at the base and \
-         does not measure now, though it is still in the tree, is a failure. {LOST_REMEDY}",
-        lost.len()
-    );
+    out.tell(Hole::LeftScrutiny(lost.len()));
     2
 }
 
@@ -68,19 +60,17 @@ pub fn not_measured_said(files: &[Unsupported], at: &Context, code: u8, out: &mu
     if files.is_empty() {
         return code;
     }
-    let word = if at.hook() { "NOTE" } else { "FAIL" };
-    let _ = writeln!(
-        out.text,
-        "{word}: {} file(s) in unsupported structural languages were not measured:",
-        files.len()
-    );
-    for file in &files {
-        let _ = writeln!(out.text, "  {}  {}", file.file, file.language);
-    }
-    let _ = writeln!(
-        out.text,
-        "Add a structural adapter for the language, or exclude the file and accept that nothing measures it."
-    );
+    out.tell(Hole::NotMeasured {
+        fail: !at.hook(),
+        files: files
+            .iter()
+            .map(|file| Site {
+                file: file.file.clone(),
+                line: None,
+                text: file.language.to_string(),
+            })
+            .collect(),
+    });
     out.record(|records| {
         for file in &files {
             let mut record = Map::new();
@@ -121,8 +111,8 @@ pub fn unresolved_said(
         false => held_at(now, &base()),
     };
     let (noted, refused): (Vec<_>, Vec<_>) = now.iter().zip(held).partition(|(_, held)| *held);
-    for (word, named) in [("NOTE", &noted), ("FAIL", &refused)] {
-        listed(word, named, (what, remedy), out);
+    for (fail, named) in [(false, &noted), (true, &refused)] {
+        listed(fail, named, (what, remedy), out);
     }
     out.record(|records| {
         for (into, named) in [
@@ -146,19 +136,26 @@ pub fn unresolved_said(
 }
 
 /// One block of forms under one word, as the report prints it, and nothing for no form.
-fn listed(word: &str, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str), out: &mut Sink) {
+fn listed(fail: bool, named: &[(&Unresolved, bool)], (what, remedy): (&str, &str), out: &mut Sink) {
     if named.is_empty() {
         return;
     }
-    let _ = writeln!(out.text, "{word}: {} {what}:", named.len());
-    for (hole, _) in named {
-        let _ = writeln!(
-            out.text,
-            "  {}:{}  {}  — {}",
-            hole.file, hole.line, hole.text, hole.why
-        );
-    }
-    let _ = writeln!(out.text, "{remedy}");
+    out.tell(Hole::Unresolved {
+        fail,
+        what: what.to_string(),
+        remedy: remedy.to_string(),
+        forms: named
+            .iter()
+            .map(|(hole, _)| {
+                let form = Site {
+                    file: hole.file.clone(),
+                    line: Some(hole.line),
+                    text: hole.text.clone(),
+                };
+                (form, hole.why.to_string())
+            })
+            .collect(),
+    });
 }
 
 /// What a gate does about the files no grammar read: a NOTE in the hook, and exit 2 outside
@@ -174,8 +171,8 @@ pub fn unread_said(
     out: &mut Sink,
 ) -> u8 {
     let rejected = syntax::rejected(unparsed, at.only, (!at.hook()).then_some(base));
-    unparsed_said("NOTE", &rejected.held, out, |records| &mut records.notes);
-    unparsed_said("FAIL", &rejected.new, out, |records| &mut records.findings);
+    unparsed_said(false, &rejected.held, out, |records| &mut records.notes);
+    unparsed_said(true, &rejected.new, out, |records| &mut records.findings);
     match rejected.new.is_empty() {
         true => code,
         false => 2,
@@ -184,7 +181,7 @@ pub fn unread_said(
 
 /// One block of unparsed files under one word, each recorded where `into` puts it.
 fn unparsed_said(
-    word: &str,
+    fail: bool,
     named: &[&Unparsed],
     out: &mut Sink,
     into: fn(&mut Records) -> &mut Vec<Value>,
@@ -192,21 +189,20 @@ fn unparsed_said(
     if named.is_empty() {
         return;
     }
-    let _ = writeln!(
-        out.text,
-        "{word}: {} file(s) the grammar could not parse, so nothing in them was measured:",
-        named.len()
-    );
-    for file in named {
-        let rejected = format!("the {} grammar rejected it", file.language);
-        let _ = writeln!(out.text, "  {}  {rejected}", file.file);
-        out.record(|records| into(records).push(unparsed_site(file, &rejected)));
-    }
-    let _ = writeln!(out.text, "{UNPARSED_REMEDY}");
+    let files = named
+        .iter()
+        .map(|file| {
+            let rejected = format!("the {} grammar rejected it", file.language);
+            out.record(|records| into(records).push(unparsed_site(file, &rejected)));
+            Site {
+                file: file.file.clone(),
+                line: None,
+                text: rejected,
+            }
+        })
+        .collect();
+    out.tell(Hole::Unparsed { fail, files });
 }
-
-const UNPARSED_REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the \
-                               grammar, or exclude the file and accept that nothing measures it.";
 
 fn unparsed_site(file: &Unparsed, rejected: &str) -> Value {
     let mut out = Map::new();

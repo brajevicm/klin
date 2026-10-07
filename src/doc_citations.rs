@@ -11,14 +11,14 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
 use crate::key::Key;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::tree::Tree;
 
@@ -99,8 +99,9 @@ fn evaluate(
         accepted,
         at,
         Line {
-            state: &format!("{sites} citation(s) resolve nowhere"),
-            tail: &said,
+            state: format!("{sites} citation(s) resolve nowhere"),
+            coverage: said,
+            ..Line::default()
         },
         out,
     ))

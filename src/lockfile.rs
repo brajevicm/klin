@@ -10,12 +10,12 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Sink};
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope};
 
@@ -216,8 +216,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         accepted,
         at,
         Line {
-            state: &state,
-            tail: &tail,
+            state,
+            coverage: tail,
+            ..Line::default()
         },
         out,
     );

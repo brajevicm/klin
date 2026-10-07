@@ -12,7 +12,7 @@ use std::fmt::Write;
 
 use serde_json::Value;
 
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
@@ -21,7 +21,7 @@ use crate::measurement;
 use crate::modules::resolver::Hole;
 use crate::modules::{self, ModuleGraph};
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::surface::item::{Contract, Item, MODULE, Surface};
 use crate::surface::{self, Derived};
@@ -253,7 +253,7 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
         "{} external item(s) on {} surface(s) judged against the base, {} measured, {} opaque, no removal or contract change",
         cost.items, cost.surfaces, cost.measured, cost.opaque
     );
-    let tail = format!("{said}; {}", discovered(&now.derived));
+    let after = format!("; {}", discovered(&now.derived));
     let evaluator = evaluator(at.hook());
     Ok(evaluator.evaluate(
         findings,
@@ -261,8 +261,10 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
         Line {
-            state: &state,
-            tail: &tail,
+            state,
+            coverage: said,
+            after,
+            ..Line::default()
         },
         out,
     ))

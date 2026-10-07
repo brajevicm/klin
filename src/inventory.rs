@@ -7,20 +7,19 @@
 //! 8.2.1, ADR 0040.
 
 use std::collections::BTreeSet;
-use std::fmt::Write;
 use std::path::Path;
 
 use serde_json::{Map, Value};
 
 use crate::base::{self, Prior};
-use crate::check::contract::{self, Context, DELETED, Sink};
+use crate::check::contract::{self, Context, DELETED, Line, Listed, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
 use crate::error::Error;
 use crate::git::Repo;
 use crate::key::Key;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Roots, Scope};
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
@@ -146,8 +145,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         accepted,
         at,
         Line {
-            state: &state,
-            tail: &said,
+            state,
+            coverage: said,
+            ..Line::default()
         },
         out,
     );
@@ -435,14 +435,7 @@ fn deleted(went: &[Finding], out: &mut Sink) {
     if went.is_empty() {
         return;
     }
-    let _ = writeln!(
-        out.text,
-        "NOTE: {} test site(s) the base holds went in this window:",
-        went.len()
-    );
-    for site in went {
-        let _ = writeln!(out.text, "  {}:{}  {}", site.file, site.line, site.text);
-    }
+    out.tell(Listed::TestsDeleted(went.iter().map(told).collect()));
     out.record(|records| {
         for site in went {
             let mut record = Map::new();
@@ -462,24 +455,33 @@ fn deleted(went: &[Finding], out: &mut Sink) {
     });
 }
 
+/// A finding as the site a report lists.
+fn told(site: &Finding) -> contract::Site {
+    contract::Site {
+        file: site.file.clone(),
+        line: Some(site.line),
+        text: site.text.clone(),
+    }
+}
+
 /// A deleted test function whose file went in the same window, which is a NOTE and not a
 /// finding. #45 judges the file, and for a function the file is the whole subject. Spec 8.2.
 fn orphaned(orphans: &[Function], out: &mut Sink) {
     if orphans.is_empty() {
         return;
     }
-    let _ = writeln!(
-        out.text,
-        "NOTE: {} deleted test function(s) whose file went in the same window:",
-        orphans.len()
-    );
+    out.tell(Listed::TestFunctionsOrphaned(
+        orphans
+            .iter()
+            .map(|function| contract::Site {
+                file: function.site.file.clone(),
+                line: Some(function.site.line),
+                text: function.site.text.clone(),
+            })
+            .collect(),
+    ));
     for function in orphans {
         let site = &function.site;
-        let _ = writeln!(
-            out.text,
-            "  {}:{}  {}  its file went too",
-            site.file, site.line, site.text
-        );
         out.record(|records| {
             let mut record = Map::new();
             record.insert("outcome".into(), "note".into());
@@ -504,16 +506,17 @@ fn noted(paired: &[Site], out: &mut Sink) {
     if paired.is_empty() {
         return;
     }
-    let _ = writeln!(
-        out.text,
-        "NOTE: {} deleted test file(s) whose subject went in the same window:",
-        paired.len()
-    );
-    for site in paired {
-        let subject = site.subject.as_deref().unwrap_or("");
-        let _ = writeln!(out.text, "  {}  its subject {subject} went too", site.path);
-    }
-    let _ = writeln!(out.text, "  each subject matched by {RULE}");
+    out.tell(Listed::TestFilesPaired {
+        files: paired
+            .iter()
+            .map(|site| contract::Site {
+                file: site.path.clone(),
+                line: None,
+                text: site.subject.clone().unwrap_or_default(),
+            })
+            .collect(),
+        rule: RULE,
+    });
     out.record(|records| {
         for site in paired {
             let mut record = Map::new();

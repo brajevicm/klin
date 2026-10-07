@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Sink};
 use crate::check::holes;
 use crate::config::{self, Config};
 use crate::coverage;
@@ -25,7 +25,7 @@ use crate::key::Key;
 use crate::measurement;
 use crate::modules::resolver::{Attachment, Dependency, Hole};
 use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Scope, Selector};
 use crate::syntax::{self, structural};
@@ -780,7 +780,7 @@ fn judged(
             .filter(|dependency| placed.judges(&now.graph, dependency))
             .count()
     );
-    let tail = format!("{said}; {}", attachment(&now.graph));
+    let after = format!("; {}", attachment(&now.graph));
     let evaluator = evaluator();
     Ok(evaluator.evaluate(
         findings,
@@ -788,8 +788,10 @@ fn judged(
         ratchet::accepted(&at.project.config, at.gate, evaluator.metrics)?,
         at,
         Line {
-            state: &state,
-            tail: &tail,
+            state,
+            coverage: said,
+            after,
+            ..Line::default()
         },
         out,
     ))

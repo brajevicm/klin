@@ -9,14 +9,14 @@ use tree_sitter::Node;
 use crate::base;
 use crate::ceiling::{self, Ceiling};
 use crate::changed::Change;
-use crate::check::contract::{self, ContentCost, Context, Sink};
+use crate::check::contract::{self, ContentCost, Context, Line, Sink};
 use crate::check::holes;
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files;
 use crate::key::Key;
 use crate::project::Project;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::{self, Values};
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
@@ -395,11 +395,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         )?,
         at,
         Line {
-            state: &format!(
+            state: format!(
                 "{judged} function(s) judged, {count} over the gate{}",
                 ceiling::in_force(&spec.ceilings.named())
             ),
-            tail: &format!("{unjudged}{said}"),
+            aside: unjudged,
+            coverage: said,
+            after: String::new(),
         },
         out,
     );

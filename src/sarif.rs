@@ -12,13 +12,13 @@ use std::time::SystemTime;
 
 use serde_json::{Map, Value};
 
-use crate::check::contract::{self, Context, Sink};
+use crate::check::contract::{self, Context, Line, Sink};
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::hunks::Hunks;
 use crate::key::Key;
-use crate::ratchet::{self, Evaluator, Finding, Line, Remedy};
+use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::shell;
 
@@ -86,8 +86,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         accepted,
         at,
         Line {
-            state: &state,
-            tail: &tail,
+            state,
+            coverage: tail,
+            ..Line::default()
         },
         out,
     );

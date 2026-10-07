@@ -8,10 +8,10 @@ use serde_json::{Map, Value, json};
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
 use crate::check::contract::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Records, Sink, UNBUILT,
-    UNPARSED, UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, NOT_MEASURED, Plain, Records, Sink,
+    UNBUILT, UNPARSED, UNRESOLVED,
 };
-use crate::check::{catalogue, holes};
+use crate::check::{catalogue, holes, render};
 use crate::config;
 use crate::error::Error;
 use crate::host;
@@ -1971,7 +1971,7 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
 }
 
 fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, String, Records) {
-    let mut text = String::new();
+    let mut told = Vec::new();
     let mut records = Records::default();
     let at = Context {
         gate: &gate.name,
@@ -1989,14 +1989,18 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> (u8, S
     let outcome = (gate.check.run)(
         &at,
         &mut Sink {
-            text: &mut text,
+            told: &mut told,
             records: &mut records,
         },
     );
-    let (code, text) = match outcome {
-        Ok(code) => (code, text),
-        Err(problem) => (2, text + &format!("FAIL: {problem}")),
+    let code = match outcome {
+        Ok(code) => code,
+        Err(problem) => {
+            told.push(Plain::Error(problem.to_string()).into());
+            2
+        }
     };
+    let text = render::text(&told);
     if code == 2 && records.findings.is_empty() {
         records.findings.push(record("error", &text));
     }
