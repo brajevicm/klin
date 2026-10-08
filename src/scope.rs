@@ -41,7 +41,8 @@ pub struct Scope {
     within: Vec<Selector>,
     except: Vec<Selector>,
     kept: Vec<String>,
-    moved: bool,
+    /// The `in` paths that selected files in the base and that the change moved or deleted.
+    pinned: Vec<String>,
 }
 
 impl PartialEq for Scope {
@@ -62,7 +63,7 @@ impl Scope {
         let mut scope = Scope::from_fields(fields)
             .map_err(|why| Error(format!("{}: \"{section}\" {why}", config.file.display())))?;
         scope.kept = moves.kept(section);
-        scope.moved = moves.pinned(section);
+        scope.pinned = moves.pinned(section);
         Ok(scope)
     }
 
@@ -124,14 +125,21 @@ impl Scope {
                 && !any_holds(&self.except, path))
     }
 
-    /// Whether the section states an `in` that must select a file, which a pinned path the
-    /// change moved need not. Spec 7.3.
+    /// Whether the section states an `in` that must select an applicable file. An `in` whose
+    /// every path is a pin the change moved need not, and any other path, such as one this
+    /// change wrote, still must. Spec 7.3.
     pub fn has_in(&self) -> bool {
-        !self.within.is_empty() && !self.moved
+        !self.within.is_empty()
+            && !self
+                .within
+                .iter()
+                .all(|selector| self.pinned.iter().any(|pin| pin == selector.as_str()))
     }
 
+    /// Whether the stated `in` holds the path, which is what an `in` must select. A path this
+    /// run keeps because the change moved it is not stated, so it counts for no `in`.
     pub fn inside(&self, path: &str) -> bool {
-        self.keeps(path) || self.within.is_empty() || any_holds(&self.within, path)
+        self.within.is_empty() || any_holds(&self.within, path)
     }
 
     /// Whether this run keeps the path in the scope because the change moved it. Spec 7.3.
@@ -154,7 +162,7 @@ impl Scope {
             })
             .map(|stated| Scope {
                 kept: today.kept.clone(),
-                moved: today.moved,
+                pinned: today.pinned.clone(),
                 ..stated
             })
             .unwrap_or_else(|| today.clone())
@@ -168,9 +176,6 @@ impl Scope {
 /// of the same `in` selects a file: a path this change wrote that names nothing stays a
 /// configuration error, and one beside a path that selects files never was one. Spec 7.3.
 pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) -> Moves {
-    if !states_a_scope(config) {
-        return Moves::default();
-    }
     let renamed: Vec<(&str, &str)> = changes
         .iter()
         .filter_map(|change| {
@@ -223,7 +228,7 @@ fn section_moves(
 }
 
 /// Whether any section states an `in` or an `except`, so a path the change moved can matter.
-fn states_a_scope(config: &Config) -> bool {
+pub fn states_a_scope(config: &Config) -> bool {
     config
         .objects()
         .any(|(_, fields)| fields.contains_key(IN.name) || fields.contains_key(EXCEPT.name))
@@ -333,10 +338,16 @@ impl Moves {
         kept
     }
 
-    /// Whether a pinned `in` path of the section moved, so its scope may select nothing.
-    fn pinned(&self, section: &str) -> bool {
+    /// The pinned `in` paths of the section the change moved, which may select nothing.
+    fn pinned(&self, section: &str) -> Vec<String> {
         self.iter()
-            .any(|moved| matches!(moved, Moved::Pin { .. }) && moved.section() == section)
+            .filter_map(|moved| match moved {
+                Moved::Pin {
+                    section: of, path, ..
+                } if of == section => Some(path.clone()),
+                _ => None,
+            })
+            .collect()
     }
 
     /// The paths of the files a rename took out of the section's scope.

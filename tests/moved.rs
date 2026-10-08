@@ -158,3 +158,62 @@ fn a_complex_function_in_a_file_moved_out_of_an_in_scope_still_fails() {
     assert_eq!(stop.code, 2, "{}", stop.out);
     assert!(stop.says("src/elsewhere/a.rs"), "{}", stop.out);
 }
+
+/// A Stop builds before it measures, so a file the build writes or rewrites is measured even
+/// where a section states an `in`. Spec 6.4.
+#[test]
+fn a_stop_measures_what_its_build_wrote_under_an_in_scope() {
+    for target in ["src/core/made.rs", "src/core/a.rs"] {
+        let config = format!(
+            r#"{{"build": "cp made.txt {target}",
+                 "complexity": {{"in": "src/core", "cc": 8, "lines": 60}}}}"#
+        );
+        let tree = pinned(&config);
+        tree.write("made.txt", &format!("{}{}", many(), complex()));
+        tree.write("src/core/b.rs", &format!("{SIMPLE}\n"));
+
+        let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+        assert_eq!(stop.code, 2, "{target}: {}", stop.out);
+        assert!(stop.says(target), "{target}: {}", stop.out);
+    }
+}
+
+/// A moved pin excuses only its own path: a nonexistent path the change wrote beside it is still
+/// a configuration error. Spec 7.3.
+#[test]
+fn a_new_path_beside_a_moved_pin_that_selects_nothing_is_a_configuration_error() {
+    let tree = pinned(CONFIG);
+    std::fs::create_dir_all(tree.path("src/engine")).unwrap_or_default();
+    tree.git(&["mv", "src/core/a.rs", "src/engine/a.rs"]);
+    tree.git(&["mv", "src/core/b.rs", "src/engine/b.rs"]);
+    tree.write(
+        "klin.json",
+        r#"{"complexity": {"in": ["src/core", "src/typo"], "cc": 8, "lines": 60}}"#,
+    );
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["errors"][0]["kind"], "configuration", "{report}");
+    assert_eq!(report["errors"][0]["check"], "complexity", "{report}");
+}
+
+/// A run that selects one check reports only that check's moved pins. Spec 7.3, 11.3.
+#[test]
+fn a_selected_check_reports_no_moved_pin_of_a_check_it_did_not_select() {
+    let tree = pinned(
+        r#"{"complexity": {"in": "src/core", "cc": 8, "lines": 60},
+            "doc_size": {"README.md": 10}}"#,
+    );
+    tree.words("README.md", 5);
+    tree.base();
+    std::fs::create_dir_all(tree.path("src/engine")).unwrap_or_default();
+    tree.git(&["mv", "src/core/a.rs", "src/engine/a.rs"]);
+    tree.git(&["mv", "src/core/b.rs", "src/engine/b.rs"]);
+
+    let run = tree.run(&["check", "doc-size", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "pass", "{report}");
+    assert!(moved_pins(&report).is_empty(), "{report}");
+}

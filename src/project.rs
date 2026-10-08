@@ -31,9 +31,11 @@ pub struct Project {
     facts: OnceCell<survey::Facts>,
     derivation: OnceCell<Option<String>>,
     by_hand: bool,
-    /// What the change did to the paths the policy names, set once when the run binds its
-    /// window. Spec 7.3.
-    moves: Moves,
+    /// The base the run's window names, which the moved policy paths are read against.
+    bound: Option<String>,
+    /// What the change did to the paths the policy names, read on the first call after the
+    /// build, so a file the build writes is in it. Spec 6.4, 7.3.
+    moves: OnceCell<Moves>,
 }
 
 impl Project {
@@ -62,7 +64,8 @@ impl Project {
             facts: OnceCell::new(),
             derivation: OnceCell::new(),
             by_hand: false,
-            moves: Moves::default(),
+            bound: None,
+            moves: OnceCell::new(),
         }
     }
 
@@ -105,15 +108,25 @@ impl Project {
             .or_else(|| stamp::unwindowed(self.root()));
         self.derivation = OnceCell::from(commit);
         self.facts.take();
-        self.moves = match (self.changes(&window.before), self.tree.files()) {
-            (Ok(changes), Ok(files)) => scope::moved(&self.config, files, &window.before, &changes),
-            _ => Moves::default(),
-        };
+        self.bound = Some(window.before.clone());
+        self.moves.take();
     }
 
-    /// What the change did to the paths the policy names, which the run follows. Spec 7.3.
+    /// What the change did to the paths the policy names, which the run follows, and nothing
+    /// before a window is bound or where no section states a scope. Spec 7.3.
     pub fn moves(&self) -> &Moves {
-        &self.moves
+        self.moves.get_or_init(|| {
+            let Some(base) = self.bound.as_deref() else {
+                return Moves::default();
+            };
+            if !scope::states_a_scope(&self.config) {
+                return Moves::default();
+            }
+            match (self.changes(base), self.tree.files()) {
+                (Ok(changes), Ok(files)) => scope::moved(&self.config, files, base, &changes),
+                _ => Moves::default(),
+            }
+        })
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives

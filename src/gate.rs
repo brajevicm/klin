@@ -1013,7 +1013,7 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
-    let gone = gone_pins(args, project, out);
+    let gone = gone_pins(args, project, &wanted, out);
     tally.told += gone.len();
     records.notes.extend(gone);
     if let Some(unbuilt) = unbuilt {
@@ -2675,8 +2675,8 @@ fn measured(
 /// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
 /// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
 /// and `klin check` names it. Spec 7.3.
-fn gone_pins(args: &Args, project: &Project, out: &mut String) -> Vec<Value> {
-    let gone = project.moves().iter().filter(|moved| moved.gone());
+fn gone_pins(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
+    let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
     gone.filter_map(Moved::said)
         .map(|said| {
             if !args.json {
@@ -2685,6 +2685,15 @@ fn gone_pins(args: &Args, project: &Project, out: &mut String) -> Vec<Value> {
             record("note", &said)
         })
         .collect()
+}
+
+/// The moves of the sections whose gates this run selected.
+fn selected<'a>(moves: &'a Moves, wanted: &'a [&Gate]) -> impl Iterator<Item = &'a Moved> {
+    moves.iter().filter(|moved| {
+        wanted
+            .iter()
+            .any(|gate| gate.check.section == moved.section())
+    })
 }
 
 /// The review item of a moved pinned path, and nothing for a file moved out of a scope, whose
@@ -2870,7 +2879,7 @@ impl Report {
         against: &Against,
         out: &mut String,
     ) {
-        self.windowed(args, project, against.base.as_ref(), out);
+        self.windowed(args, (project, wanted), against.base.as_ref(), out);
         for gate in wanted {
             self.gate(args, gate, project, against, out);
         }
@@ -2906,13 +2915,13 @@ impl Report {
     fn windowed(
         &mut self,
         args: &Args,
-        project: &Project,
+        (project, wanted): (&Project, &[&Gate]),
         base: Option<&Window>,
         out: &mut String,
     ) {
         self.window = base.map(Window::record);
         self.tree = Some(base::tree_record(project.root()));
-        for review in project.moves().iter().filter_map(moved_pin) {
+        for review in selected(project.moves(), wanted).filter_map(moved_pin) {
             if !args.json {
                 let _ = writeln!(
                     out,
