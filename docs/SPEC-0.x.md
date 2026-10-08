@@ -4548,10 +4548,13 @@ physical files they hold, and dependency sites from the distinct module pairs
 those sites join. The `public-api` row also prints
 `surface_dispatches_<language>`. The warm hook asserts that `layering`
 reads and parses no source of its own, because it takes every structural
-outcome an earlier gate of the stop already held. `KLIN_PERF_LAYERING=off`
-leaves the section out, for a binary before #50 that reads none. The choice
-does not depend on `KLIN_BIN`, so a row taken with and without it judges the
-same gates, and the fixture line prints `layering=on` or `layering=off`.
+outcome an earlier gate of the stop already held. `KLIN_PERF_LAYERING`
+chooses the section: `on`, the default, writes it, and `off` leaves it out,
+for a binary before #50 that reads none. The choice does not depend on
+`KLIN_BIN`, so a row taken with and without it judges the same gates. The
+fixture line prints `layering=on` or `layering=off`. It prints `off` for the
+2k and 10k rows and for the `legacy` configuration, which never hold the
+section.
 The fixture's `web/package.json` names `./src/index.ts` under `exports`, and
 its `rust/src/lib.rs` is the implicit library root, so every row derives one
 Rust and one TypeScript public surface, and the `public-api` gate row prints

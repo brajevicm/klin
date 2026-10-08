@@ -265,8 +265,9 @@ impl Fixture {
         let tsx = files_per_language / 100;
         let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
         let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
-        let layering =
-            profile.units.is_some() && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
+        let layering = profile.units.is_some()
+            && config != "legacy"
+            && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
         write_project_files(&tree, scope, config, layering);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
