@@ -622,11 +622,9 @@ fn coverage_result(
     out: &mut Sink,
 ) {
     let now = covered(after, families);
-    holes::lost_said(
-        &now.lost(&covered(before, before_families), at.project, None),
-        out,
-    );
-    holes::formed_said(&now, at, out);
+    let was = covered(before, before_families);
+    holes::lost_said(&now.lost(&was, at.project, None), out);
+    holes::files_formed(&now, &was, at, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
         .iter()

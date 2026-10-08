@@ -205,7 +205,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     )?;
     holes::lost_said(&left, out);
-    holes::formed_said(&now_files, at, out);
+    holes::files_formed(&now_files, &was_files, at, out);
     holes_said((&was, &now), &policy, (&was_ambiguous, &ambiguous), at, out);
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed

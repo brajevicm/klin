@@ -7,7 +7,7 @@
 //! `break` at 1, the base holds none, and an intentional break is an accepted entry. The
 //! section is absent, or `false` to exclude the gate. Spec 8.2.1, ADR 0044.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use serde_json::Value;
@@ -85,6 +85,13 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     });
     let code = judged(at, &now, findings, out)?;
     holes_said((&was, &now), at, out);
+    let read_at_base: HashSet<&str> = surface_files(&was).collect();
+    holes::formed_said(
+        surface_files(&now),
+        |file| read_at_base.contains(file),
+        at,
+        out,
+    );
     inapplicable_note(&now.derived, out);
     let inside: Vec<syntax::Unparsed> = now
         .unparsed
@@ -140,6 +147,14 @@ fn side(
             .map(|(now, was)| (was.clone(), now.clone()))
             .collect(),
     })
+}
+
+/// Every file a side's public surfaces were derived from.
+fn surface_files(side: &Side) -> impl Iterator<Item = &str> {
+    side.derived
+        .surfaces
+        .iter()
+        .flat_map(|surface| surface.files.iter().map(String::as_str))
 }
 
 impl Side {

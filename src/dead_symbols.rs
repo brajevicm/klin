@@ -110,7 +110,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     holes::lost_said(&after.files.lost(&before.files, at.project, at.only), out);
-    holes::formed_said(&after.files, at, out);
+    holes::files_formed(&after.files, &before.files, at, out);
     holes::unread_said(&after.unparsed, at, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)

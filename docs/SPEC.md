@@ -791,13 +791,18 @@ finding by making a file unmeasurable.
   cannot decode. klin reads attributes only from the in-tree `.gitattributes`
   files of each side, never from `.git/info/attributes` or
   `core.attributesFile`, so two machines agree. It matches their patterns as
-  git does: `*` and `?` stay inside one directory, `**` spans directories, and
-  a pattern in double quotes may hold spaces. klin reads the first mebibyte
+  git does: `*` and `?` stay inside one directory, `**` spans directories
+  only where it stands alone between slashes or at either end, and a pattern
+  in double quotes may hold spaces. It expands the `[attr]` macros that the
+  top-level `.gitattributes` defines, and git's own `binary`. klin reads the first mebibyte
   and the first 10,000 lines of each `.gitattributes` file and ignores a
   pattern longer than 256 bytes. What klin ignores changes only how a form is
   reported, never what is measured. An attribute never takes a
   file out of measurement: the capabilities that read the file still measure
-  its bytes, and the run sorts the form the attribute gives it. So no
+  its bytes, and the run sorts the form the attribute gives it. Each such
+  capability says whether it measured the file at the base, and that
+  evidence decides the class, because a reader such as a text convention
+  measures a file no strict grammar reads. So no
   difference between klin's reading of the attributes and git's can hide a
   finding. An encoding that
   klin cannot decode is a coverage note where the base gave the path one
@@ -819,8 +824,10 @@ finding by making a file unmeasurable.
   detection to `-M50%`, exact renames without a limit and inexact renames
   under a fixed limit of 1,000 candidate files, and ignores the person's git
   configuration for both. Those commands run no filter program either: klin
-  turns off every filter driver git's configuration names, and writes
-  nothing to the repository. A
+  turns off every filter driver git's configuration names and every
+  end-of-line check, and writes nothing to the repository. Where git still
+  cannot pair a moved file with the path the base held it at, the run stops
+  with a `git` error instead of reading the move as a new file. A
   file detected as renamed is compared with its base copy. The base bytes are
   read with the base path's reader, and the working-tree bytes with the
   current path's reader.

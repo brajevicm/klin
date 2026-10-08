@@ -20,25 +20,31 @@ const RENAMES: &[&str] = &["-M50%", "-l1000"];
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
     let quiet = Quiet::of(&repo);
-    let listed = tracked(&repo, &quiet, base)
-        .map(|listed| match moved_untracked(&listed) {
-            true => staged(&repo, root, (&quiet, base)).unwrap_or(listed),
-            false => listed,
-        })
-        .ok_or_else(|| {
+    let listed = tracked(&repo, &quiet, base).ok_or_else(|| {
+        Error(format!(
+            "--changed needs a git repository, and git could not read {}",
+            root.display()
+        ))
+    })?;
+    let listed = match moved_untracked(&listed) {
+        true => staged(&repo, root, (&quiet, base)).ok_or_else(|| {
             Error(format!(
-                "--changed needs a git repository, and git could not read {}",
+                "git could not stage {} to pair a moved file with the path the base held it at, \
+                 so klin cannot tell a move from a new file",
                 root.display()
             ))
-        })?;
+        })?,
+        false => listed,
+    };
     let mut changes: Vec<Change> = listed.lines().filter_map(change).collect();
     changes.sort_by(|a, b| a.path.cmp(&b.path));
     changes.dedup_by(|a, b| a.path == b.path);
     Ok(changes)
 }
 
-/// The settings under which finding changes starts no program of the person's: every filter
-/// driver git's configuration names turned off, and no file-system monitor. They travel as
+/// The settings under which finding changes starts no program of the person's and refuses no
+/// file for its line endings: every filter driver git's configuration names turned off, no
+/// file-system monitor, and no end-of-line check. They travel as
 /// `GIT_CONFIG_KEY_n` and `GIT_CONFIG_VALUE_n` pairs, so a driver whose name holds `=` cannot
 /// split its own setting. A filter git runs must be configured, so this covers every attributes
 /// source. Spec 7.2.
@@ -58,7 +64,13 @@ impl Quiet {
             .collect();
         drivers.sort_unstable();
         drivers.dedup();
-        let mut settings = vec![("core.fsmonitor".to_string(), "false".to_string())];
+        let mut settings: Vec<(String, String)> = [
+            ("core.fsmonitor", "false"),
+            ("core.autocrlf", "false"),
+            ("core.safecrlf", "false"),
+        ]
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .into();
         for driver in drivers {
             for key in ["clean", "smudge", "process"] {
                 settings.push((format!("filter.{driver}.{key}"), String::new()));

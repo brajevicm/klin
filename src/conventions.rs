@@ -38,7 +38,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let code = every_convention(config, &rules, (&mut after, &mut before), at, out)?;
     let code = holes_said(&holes(&conventions, &places), at, code, out);
     holes::lost_said(&after.files.lost(&before.files, at.project, at.only), out);
-    holes::formed_said(&after.files, at, out);
+    holes::files_formed(&after.files, &before.files, at, out);
     holes::unread_said(&after.unparsed, at, out);
     Ok(code)
 }

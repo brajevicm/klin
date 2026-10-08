@@ -1849,7 +1849,13 @@ fn each(
         gather(&mut totals, recorded, &gate.name);
     }
     let base = against.base.as_ref().map(|base| base.before.as_str());
-    let sorted = holes::sorted(project, base, reported);
+    let (sorted, failed) = holes::sorted(project, base, reported);
+    if let Some(why) = failed {
+        tally.errored += 1;
+        if !args.json {
+            let _ = writeln!(out, "  ERR: {why}");
+        }
+    }
     stop_unmeasured(
         args,
         (project, wanted),
@@ -2156,7 +2162,11 @@ fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
                 .map(|file| seen(&file.file, Seen::Unread))
                 .collect(),
             Told::Hole(Hole::Lost { file, why }) => vec![seen(file, Seen::Left(*why))],
-            Told::Hole(Hole::Formed { file, form }) => vec![seen(file, Seen::Form(*form))],
+            Told::Hole(Hole::Formed {
+                file,
+                form,
+                measured,
+            }) => vec![seen(file, Seen::Form(*form, *measured))],
             Told::Hole(Hole::Manifest { site, class }) => vec![seen(
                 &site.file,
                 Seen::Manifest {
@@ -2663,12 +2673,15 @@ impl Report {
         }
         let base = against.base.as_ref().map(|base| base.before.as_str());
         let reported = std::mem::take(&mut self.reported);
-        self.unmeasured(
-            args,
-            (project, wanted),
-            &holes::sorted(project, base, reported),
-            out,
-        );
+        let (sorted, failed) = holes::sorted(project, base, reported);
+        if let Some(why) = failed {
+            self.axes.error = true;
+            self.errors.push(error_record(ErrorKind::Git, None, &why));
+            if !args.json {
+                let _ = writeln!(out, "  ERR: {why}");
+            }
+        }
+        self.unmeasured(args, (project, wanted), &sorted, out);
         self.not_read(wanted, &by_extension(project, against));
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)

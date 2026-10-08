@@ -11,6 +11,7 @@ use serde_json::Value;
 
 use crate::changed;
 use crate::check::contract::{self, Class, Context, Counted, Hole, Line, Sink, Site};
+use crate::check::holes;
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
@@ -261,6 +262,12 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     for (manifest, was, format) in &judged {
         sites.add((&mut now, &mut before), (manifest, was), format)?;
     }
+    holes::formed_said(
+        judged.iter().map(|(manifest, _, _)| *manifest),
+        |_| true,
+        at,
+        out,
+    );
     Ok(sites)
 }
 

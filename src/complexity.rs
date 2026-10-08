@@ -415,7 +415,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     holes::lost_said(&lost, out);
-    holes::formed_said(&sweep.files, at, out);
+    holes::files_formed(&sweep.files, &before, at, out);
     holes::unread_said(&sweep.unparsed, at, out);
     Ok(code)
 }

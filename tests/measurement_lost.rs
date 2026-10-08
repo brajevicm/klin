@@ -879,7 +879,7 @@ fn a_filter_added_to_a_file_the_base_could_not_parse_stays_a_coverage_note() {
     tree.base();
     tree.write(".gitattributes", "src/bad.rs filter=lfs\n");
 
-    let (code, report) = checked(&tree, &[]);
+    let (code, report) = checked(&tree, &["complexity"]);
 
     assert_eq!(code, 0, "{report}");
     assert!(lost(&report).is_empty(), "{report}");
@@ -1011,6 +1011,117 @@ fn an_attribute_never_hides_a_finding_in_a_new_file() {
         list(&report, "findings")
             .iter()
             .any(|finding| finding["check"] == "complexity" && finding["file"] == "src/new.rs"),
+        "{report}"
+    );
+}
+
+#[test]
+fn a_plain_move_is_paired_when_git_would_refuse_to_stage_a_line_ending() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    let body: String = (0..20).map(|at| format!("pub fn f{at}() {{}}\n")).collect();
+    tree.write("src/lib.rs", &body);
+    tree.write(".gitattributes", "* text=auto\n");
+    tree.base();
+    tree.git(&["config", "core.autocrlf", "true"]);
+    tree.git(&["config", "core.safecrlf", "true"]);
+    assert!(std::fs::rename(tree.path("src/lib.rs"), tree.path("src/moved.rs")).is_ok());
+    tree.write("src/moved.rs", &format!("{body}pub fn broken( {{\n"));
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/moved.rs"), ["parse"], "{report}");
+}
+
+#[test]
+fn public_api_alone_reports_an_attribute_on_a_file_it_reads() {
+    let tree = tree(CONFIG);
+    tree.write("Cargo.toml", CARGO);
+    tree.base();
+    tree.write(".gitattributes", "src/lib.rs binary\n");
+
+    let (code, report) = checked(&tree, &["public-api"]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+}
+
+#[test]
+fn a_text_convention_that_read_an_unparseable_base_file_loses_it_to_an_attribute() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"conventions": {"no-x": {"text": "XXX", "in": "src", "remedy": "x"}}}"#,
+    );
+    tree.write("src/lib.rs", "pub fn ok() {}\n");
+    tree.write("src/bad.rs", BROKEN);
+    tree.base();
+    tree.write(".gitattributes", "src/bad.rs binary\n");
+
+    let (code, report) = checked(&tree, &["conventions"]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/bad.rs"), ["form"], "{report}");
+}
+
+#[test]
+fn an_attribute_macro_is_expanded() {
+    let tree = tree(CONFIG);
+    tree.write(".gitattributes", "[attr]opaque -diff\nsrc/lib.rs opaque\n");
+
+    let (code, report) = checked(&tree, &["complexity"]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+}
+
+#[test]
+fn two_stars_inside_a_segment_match_like_one() {
+    let tree = tree(CONFIG);
+    tree.write("src/nested/test.rs", CLEAN);
+    tree.base();
+    tree.write(".gitattributes", "src/**.rs binary\n");
+
+    let (_, report) = checked(&tree, &["complexity"]);
+
+    assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+    assert!(
+        lost_for(&report, "src/nested/test.rs").is_empty(),
+        "{report}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_move_git_cannot_stage_is_a_git_error_and_never_a_new_file() {
+    use std::os::unix::fs::PermissionsExt;
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    let body: String = (0..20).map(|at| format!("pub fn f{at}() {{}}\n")).collect();
+    tree.write("src/lib.rs", &body);
+    tree.base();
+    assert!(std::fs::rename(tree.path("src/lib.rs"), tree.path("src/moved.rs")).is_ok());
+    tree.write("src/moved.rs", &format!("{body}pub fn broken( {{\n"));
+    let locked = tree.write("notes.txt", "private\n");
+    assert!(std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).is_ok());
+
+    let (code, report) = checked(&tree, &[]);
+    let _ = std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o644));
+
+    assert_eq!(code, 2, "{report}");
+    assert!(
+        list(&report, "errors")
+            .iter()
+            .any(|error| error["kind"] == "git"),
+        "{report}"
+    );
+    assert!(
+        !list(&report, "reviews")
+            .iter()
+            .any(|review| review["file"] == "src/moved.rs"),
         "{report}"
     );
 }

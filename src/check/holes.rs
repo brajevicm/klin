@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::changed::{self, Change};
 use crate::check::contract::{Cause, Class, Context, Hole, Located, Sink, Site, Unresolvable};
-use crate::coverage::{Left, Lost, Unresolved, held_at, in_scope};
+use crate::coverage::{Files, Left, Lost, Unresolved, held_at, in_scope};
 use crate::files::{self, Form};
 use crate::project::Project;
 use crate::syntax::{self, Refusal, Unparsed};
@@ -53,23 +53,51 @@ pub fn lost_said(lost: &[Lost], out: &mut Sink) {
 }
 
 /// What a gate says about the files it measured that the working tree's `.gitattributes` give a
-/// form: it still measured their bytes, and the run sorts each one, so the attribute is reported
-/// where a capability reads the file and hides nothing. Spec 7.2.
-pub fn formed_said(files: &crate::coverage::Files, at: &Context, out: &mut Sink) {
+/// form, each with whether this gate measured it at the base too: it still measured their bytes,
+/// and the run sorts each one, so the attribute is reported where a capability reads the file and
+/// hides nothing. The gate's own base evidence decides what the base measured, because a reader
+/// such as a text convention measures what no strict grammar reads. Spec 7.2.
+pub fn formed_said<'a>(
+    now: impl IntoIterator<Item = &'a str>,
+    at_base: impl Fn(&str) -> bool,
+    at: &Context,
+    out: &mut Sink,
+) {
     let forms = at.project.tree().forms();
     if forms.is_empty() {
         return;
     }
-    let measured: std::collections::HashSet<&str> =
-        files.measured.iter().map(String::as_str).collect();
+    let now: std::collections::HashSet<&str> = now.into_iter().collect();
     for (file, form) in forms {
-        if measured.contains(file.as_str()) && in_scope(file, at.only) {
-            out.tell(Hole::Formed {
-                file: file.clone(),
-                form: *form,
-            });
+        if !now.contains(file.as_str()) || !in_scope(file, at.only) {
+            continue;
         }
+        let was = based(at, file);
+        out.tell(Hole::Formed {
+            file: file.clone(),
+            form: *form,
+            measured: at_base(file) || was.is_some_and(|was| at_base(&was)),
+        });
     }
+}
+
+/// The same for a gate that holds what it measured in both trees as coverage files.
+pub fn files_formed(now: &Files, before: &Files, at: &Context, out: &mut Sink) {
+    formed_said(
+        now.measured.iter().map(String::as_str),
+        |file| before.measured.iter().any(|held| held == file),
+        at,
+        out,
+    );
+}
+
+/// The path the base held this file at, where the change renamed it.
+fn based(at: &Context, file: &str) -> Option<String> {
+    let changed = at
+        .changes
+        .and_then(|changes| changes.iter().find(|change| change.path == file))
+        .and_then(|change| change.was.clone());
+    changed.or_else(|| at.prior?.renamed().get(file).cloned())
 }
 
 /// What a gate says about the forms it supports and could not resolve. A form the base holds in
@@ -163,8 +191,9 @@ pub enum Seen {
     Left(Left),
     /// A manifest no parser read, which the gate that reads manifests already classed.
     Manifest { class: Class, why: String },
-    /// A file the working tree's `.gitattributes` make not text, which no gate read.
-    Form(Form),
+    /// A file the working tree's `.gitattributes` give a form, and whether the gate that read it
+    /// now measured it at the base.
+    Form(Form, bool),
 }
 
 /// One file klin could not measure, sorted once for the run: its class, the reason its class
@@ -187,14 +216,16 @@ pub fn sorted(
     project: &Project,
     base: Option<&str>,
     reported: Vec<(String, String, Seen)>,
-) -> Vec<Unmeasured> {
+) -> (Vec<Unmeasured>, Option<String>) {
     let mut by_file: BTreeMap<String, Vec<(String, Seen)>> = BTreeMap::new();
     for (gate, file, seen) in reported {
         by_file.entry(file).or_default().push((gate, seen));
     }
-    let changes = base.map(|base| in_place(project, base, by_file.keys()));
+    let listed = base.map(|base| in_place(project, base, by_file.keys()));
+    let failed = listed.as_ref().and_then(|(_, failed)| failed.clone());
+    let changes = listed.map(|(changes, _)| changes);
     let against = changes.as_deref().zip(base);
-    by_file
+    let sorted = by_file
         .into_iter()
         .map(|(file, seen)| {
             let mut gates: Vec<String> = seen.iter().map(|(gate, _)| gate.clone()).collect();
@@ -210,25 +241,29 @@ pub fn sorted(
                 gates,
             }
         })
-        .collect()
+        .collect();
+    (sorted, failed)
 }
 
 /// The run's changes against the base, or where git cannot list them, every reported file as
-/// changed in place, so each one is still read against the base's copy and none passes as
-/// unchanged. Spec 7.2.
+/// changed in place and why git failed, so each one is still read against the base's copy, none
+/// passes as unchanged, and the run reports the failure. Spec 7.2.
 fn in_place<'a>(
     project: &Project,
     base: &str,
     files: impl Iterator<Item = &'a String>,
-) -> Vec<Change> {
+) -> (Vec<Change>, Option<String>) {
     match project.changes(base) {
-        Ok(changes) => changes.into_owned(),
-        Err(_) => files
-            .map(|file| Change {
-                path: file.clone(),
-                was: Some(file.clone()),
-            })
-            .collect(),
+        Ok(changes) => (changes.into_owned(), None),
+        Err(why) => (
+            files
+                .map(|file| Change {
+                    path: file.clone(),
+                    was: Some(file.clone()),
+                })
+                .collect(),
+            Some(why.to_string()),
+        ),
     }
 }
 
@@ -244,14 +279,21 @@ fn one(
 ) -> Sorted {
     let form = files::form_in(project.root(), file);
     if form.any() {
-        return formed(project.root(), against, file, form);
+        return formed(
+            project.root(),
+            against,
+            file,
+            (form, measured_at_base(seen)),
+        );
     }
     let strongest = seen
         .iter()
         .map(|(_, seen)| seen)
         .min_by_key(|seen| seen.rank());
     match strongest {
-        Some(Seen::Form(form)) => formed(project.root(), against, file, *form),
+        Some(Seen::Form(form, measured)) => {
+            formed(project.root(), against, file, (*form, Some(*measured)))
+        }
         Some(Seen::Unread) => unread(project, against, file),
         Some(Seen::Manifest { class, why }) => manifest(*class, why),
         Some(Seen::Left(_)) => left(project, against, file, &whys(seen)),
@@ -264,7 +306,7 @@ impl Seen {
     /// then a manifest, then a scope it left.
     fn rank(&self) -> u8 {
         match self {
-            Seen::Form(_) => 0,
+            Seen::Form(..) => 0,
             Seen::Unread => 1,
             Seen::Manifest { .. } => 2,
             Seen::Left(_) => 3,
@@ -285,7 +327,12 @@ fn manifest(class: Class, why: &str) -> Sorted {
 /// gave its path a form too, lost where the base measured the path as text and the change gave
 /// it `binary`, `-diff`, a `filter` or an encoding klin cannot decode, and opened for a new path.
 /// Spec 7.2.
-fn formed(root: &Path, against: Option<(&[Change], &str)>, file: &str, form: Form) -> Sorted {
+fn formed(
+    root: &Path,
+    against: Option<(&[Change], &str)>,
+    file: &str,
+    (form, measured): (Form, Option<bool>),
+) -> Sorted {
     let (reason, said) = match (form.binary, form.filter) {
         (true, _) => (Cause::NotText, "its attributes make it binary"),
         (false, true) => (
@@ -297,7 +344,9 @@ fn formed(root: &Path, against: Option<(&[Change], &str)>, file: &str, form: For
             "its attributes name an encoding klin does not decode",
         ),
     };
-    let class = against.map_or(Class::Limit, |against| form_against(root, against, file));
+    let class = against.map_or(Class::Limit, |against| {
+        form_against(root, against, file, measured)
+    });
     let reason = match class {
         Class::Lost => Cause::Form,
         Class::Opened | Class::Limit => reason,
@@ -306,12 +355,38 @@ fn formed(root: &Path, against: Option<(&[Change], &str)>, file: &str, form: For
 }
 
 /// What the base's own `.gitattributes` gave the path the base held this file at.
-fn form_against(root: &Path, (changes, base): (&[Change], &str), file: &str) -> Class {
+fn form_against(
+    root: &Path,
+    (changes, base): (&[Change], &str),
+    file: &str,
+    measured: Option<bool>,
+) -> Class {
     let was = match changes.iter().find(|change| change.path == file) {
         Some(change) => change.was.as_deref(),
         None => Some(file),
     };
-    at_base(root, base, was, false)
+    match (was, measured) {
+        (None, _) => Class::Opened,
+        (Some(was), _) if files::form_at(root, base, was).any() => Class::Limit,
+        (Some(_), Some(true)) => Class::Lost,
+        (Some(_), Some(false)) => Class::Limit,
+        (Some(was), None) => at_base(root, base, Some(was), false),
+    }
+}
+
+/// Whether a gate that reported the file says it measured it at the base: a form it read with
+/// base evidence, or a scope it left, which only a file the base measured can leave. `None`
+/// where no gate gave evidence either way.
+fn measured_at_base(seen: &[(String, Seen)]) -> Option<bool> {
+    let evidence: Vec<bool> = seen
+        .iter()
+        .filter_map(|(_, seen)| match seen {
+            Seen::Form(_, measured) => Some(*measured),
+            Seen::Left(_) => Some(true),
+            _ => None,
+        })
+        .collect();
+    (!evidence.is_empty()).then(|| evidence.contains(&true))
 }
 
 /// A file no grammar read now, by what the base's own reader made of the base's bytes.

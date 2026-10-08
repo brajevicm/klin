@@ -444,13 +444,14 @@ pub fn attribute_text(bytes: &[u8]) -> String {
 /// `core.attributesFile`, so two machines agree. Spec 7.2.
 pub fn form(path: &str, texts: &[(String, String)]) -> Form {
     let mut states: [Option<State>; 3] = [None, None, None];
+    let macros = macros(texts);
     for (file, text) in texts {
         let directory = file.trim_end_matches(".gitattributes");
         let Some(below) = path.strip_prefix(directory) else {
             continue;
         };
         for line in text.lines().take(ATTRIBUTE_LINES) {
-            apply(line, below, &mut states);
+            apply(line, below, (&macros, &mut states));
         }
     }
     let [diff, filter, encoding] = states;
@@ -462,20 +463,66 @@ pub fn form(path: &str, texts: &[(String, String)]) -> Form {
 }
 
 /// One `.gitattributes` line applied to a path below its directory.
-fn apply(line: &str, below: &str, states: &mut [Option<State>; 3]) {
+fn apply(line: &str, below: &str, (macros, states): (&Macros, &mut [Option<State>; 3])) {
     let Some((pattern, attributes)) = pattern_of(line.trim_start()) else {
         return;
     };
     if pattern.len() > ATTRIBUTE_PATTERN
         || pattern.starts_with('#')
         || pattern.starts_with('!')
+        || pattern.starts_with(MACRO)
         || !attribute_matches(&pattern, below)
     {
         return;
     }
-    for (at, state) in attributes.split_whitespace().filter_map(attribute) {
+    let mut set = Vec::new();
+    for word in attributes.split_whitespace() {
+        expand(word, macros, MACRO_DEPTH, &mut set);
+    }
+    for (at, state) in set {
         states[at] = Some(state);
     }
+}
+
+/// What starts a line that defines a macro, which only the top-level `.gitattributes` may do.
+const MACRO: &str = "[attr]";
+/// How deep one macro may name another, so a cycle of macros ends.
+const MACRO_DEPTH: usize = 8;
+
+/// The macros the top-level `.gitattributes` defines, each by name with the words it stands for,
+/// beside git's own `binary`, which unsets `diff`.
+type Macros = std::collections::HashMap<String, String>;
+
+fn macros(texts: &[(String, String)]) -> Macros {
+    let mut out = Macros::new();
+    out.insert("binary".to_string(), "-diff -merge -text".to_string());
+    let top = texts.iter().filter(|(file, _)| file == ".gitattributes");
+    for (_, text) in top {
+        for line in text.lines().take(ATTRIBUTE_LINES) {
+            let Some(defined) = line.trim_start().strip_prefix(MACRO) else {
+                continue;
+            };
+            let (name, words) = defined
+                .split_once(char::is_whitespace)
+                .unwrap_or((defined, ""));
+            out.insert(name.to_string(), words.to_string());
+        }
+    }
+    out
+}
+
+/// The attributes klin reads that one word sets, with a macro the word sets expanded into the
+/// words it stands for.
+fn expand(word: &str, macros: &Macros, depth: usize, into: &mut Vec<(usize, State)>) {
+    if let (name, State::Set) = named(word)
+        && let Some(words) = macros.get(name).filter(|_| depth > 0)
+    {
+        for word in words.split_whitespace() {
+            expand(word, macros, depth - 1, into);
+        }
+        return;
+    }
+    into.extend(attribute(word));
 }
 
 /// A line's pattern and the attributes after it. A pattern in double quotes may hold spaces and
@@ -505,11 +552,9 @@ fn unescaped(unit: char) -> char {
     }
 }
 
-/// Which of the three attributes klin reads one word sets, and to what. The `binary` macro
-/// unsets `diff`, which is the one part of it klin reads.
+/// Which of the three attributes klin reads one word sets, and to what.
 fn attribute(word: &str) -> Option<(usize, State)> {
     match named(word) {
-        ("binary", State::Set) => Some((0, State::Unset)),
         ("diff", state) => Some((0, state)),
         ("filter", state) => Some((1, state)),
         ("working-tree-encoding", state) => Some((2, state)),
@@ -575,13 +620,23 @@ impl Wild<'_> {
         }
         let matched = match &self.pattern[p..] {
             [] => t == self.path.len(),
-            [b'*', b'*', ..] => self.any_depth(p + 2, t),
+            [b'*', b'*', ..] if self.spans(p) => self.any_depth(p + 2, t),
+            [b'*', b'*', ..] => self.within_segment(p + 2, t),
             [b'*', ..] => self.within_segment(p + 1, t),
             [b'[', ..] => self.classed(p, t),
             _ => self.one_byte(p, t),
         };
         self.decided[slot] = Some(matched);
         matched
+    }
+
+    /// Whether the `**` at `p` stands alone in its segment, at the pattern's start or after a
+    /// slash, and at its end or before a slash, which is the one place git lets it span
+    /// directories. Anywhere else two stars match like one.
+    fn spans(&self, p: usize) -> bool {
+        let opens = p == 0 || self.pattern[p - 1] == b'/';
+        let closes = matches!(self.pattern.get(p + 2), None | Some(b'/'));
+        opens && closes
     }
 
     /// `**`: before a slash it matches no directory or any run of whole directories, and

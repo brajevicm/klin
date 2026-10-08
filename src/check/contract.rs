@@ -595,7 +595,11 @@ pub enum Hole {
     /// The files in the gate's scope no grammar read, each with its grammar's name.
     Unparsed(Vec<Site>),
     /// A file the gate measured that the working tree's `.gitattributes` give a form.
-    Formed { file: String, form: Form },
+    Formed {
+        file: String,
+        form: Form,
+        measured: bool,
+    },
     /// A manifest klin could not parse, which the gate already classed against the base.
     Manifest { site: Site, class: Class },
     /// Forms the gate supports and could not resolve, `opened` where the base held none of them.
