@@ -101,12 +101,13 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     Some(window)
 }
 
-/// The last advisory Stop the journal records and its reason. Spec 13.1.
+/// The last advisory Stop the journal records and its reason, also one that lost the lock and
+/// so wrote no fresh stamp. Spec 11.4, 13.1.
 fn last_advisory(lines: &[Value]) -> Value {
     lines
         .iter()
         .rev()
-        .find(|line| line["kind"] == "stop" && line["verdict"] == "advisory")
+        .find(|line| line["kind"] == "stop" && line["advisory"].is_string())
         .map_or(
             Value::Null,
             |line| json!({"time": line["time"], "reason": line["advisory"]}),

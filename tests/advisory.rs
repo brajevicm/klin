@@ -62,6 +62,23 @@ impl Remote {
         self.pushed("src/theirs.rs", text::ONE);
     }
 
+    /// Someone force-pushes `main` back one commit, and the agent fetches it.
+    fn rewound(&self) {
+        let other = tempfile::tempdir().expect("temporary directory");
+        let at = other.path().join("clone");
+        git(
+            other.path(),
+            &[
+                "clone",
+                "-q",
+                &self.bare.path().display().to_string(),
+                "clone",
+            ],
+        );
+        git(&at, &["push", "-q", "--force", "origin", "HEAD~1:main"]);
+        self.tree.git(&["fetch", "-q", "origin"]);
+    }
+
     /// A commit someone else pushes to `main` that writes one file.
     fn pushed(&self, file: &str, contents: &str) {
         let other = tempfile::tempdir().expect("temporary directory");
@@ -742,4 +759,57 @@ fn on_cursor_a_stop_that_lost_the_lock_leaves_the_advisory_note_to_the_next_stop
     assert!(told.printed.contains("followup_message"), "{}", told.out);
     assert!(told.says(MOVED), "{}", told.out);
     assert_eq!(last_stop(&remote.tree)["verdict"], "advisory");
+}
+
+/// The agent on `main` one commit past the base, level with `origin/main`, so a rewind of one
+/// commit leaves a tree that still opts in, and one prompt's stamp taken.
+fn ahead_on_main() -> Remote {
+    let remote = Remote::unstamped(CONFIG);
+    remote.incoming();
+    remote.tree.git(&["checkout", "-q", "main"]);
+    remote
+        .tree
+        .git(&["pull", "-q", "--ff-only", "origin", "main"]);
+    prompt(&remote.tree);
+    remote
+}
+
+#[test]
+fn a_reset_onto_a_default_branch_someone_rewound_is_lost_history() {
+    let remote = ahead_on_main();
+    remote.rewound();
+    remote.tree.git(&["reset", "-q", "--hard", "origin/main"]);
+
+    assert_advisory(&remote.tree, "history-lost");
+}
+
+#[test]
+fn a_stop_between_the_fetch_of_a_rewind_and_the_reset_onto_it_does_not_adopt_it() {
+    let remote = ahead_on_main();
+    remote.rewound();
+    let between = stop(&remote.tree);
+    assert_eq!(between.code, 0, "{}", between.out);
+    assert_ne!(last_stop(&remote.tree)["verdict"], "advisory");
+    remote.tree.git(&["reset", "-q", "--hard", "origin/main"]);
+
+    assert_advisory(&remote.tree, "history-lost");
+}
+
+#[test]
+fn status_names_an_advisory_stop_that_lost_the_lock() {
+    let remote = Remote::new();
+    remote.incoming();
+    remote
+        .tree
+        .git(&["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"]);
+    let Ok(lock) = std::fs::File::create(remote.tree.state("lock")) else {
+        panic!("the lock file could not be made")
+    };
+    assert!(lock.lock().is_ok(), "the test could not hold the lock");
+    assert_eq!(stop(&remote.tree).code, 0);
+    drop(lock);
+
+    let status = remote.tree.run(&["status", "--json"]).json();
+    let last = &status["window"]["last_advisory"];
+    assert_eq!(last["reason"], "incoming-commits", "{status}");
 }

@@ -669,10 +669,14 @@ these happened:
 3. **Lost history.** The recorded default-branch merge-base is no longer an
    ancestor of HEAD, for example after the default branch was rewritten and
    the agent reset onto it, or after a reset onto history that shares no
-   merge-base with the default branch. A merge-base that moved back behind
-   the recorded one is the agent's own rewrite of commits the default branch
-   already holds, such as a `reset --soft` or an amend after a push of the
-   default branch, and is not lost history.
+   merge-base with the default branch. Where HEAD still shares a merge-base
+   with the default branch, the history is lost only when the default branch
+   no longer holds the recorded merge-base either, as after someone rewound
+   or rewrote it. The agent's own rewrite of commits the default branch still
+   holds, such as a `reset --soft` or an amend after a push of the default
+   branch, is not lost history. A Stop that is not advisory records only a
+   merge-base that moved forward, so a rewind fetched before the reset onto
+   it is still lost history at the Stop after the reset.
 4. **Missing state.** The stamp and its ref are both missing (0.x 6.2).
 
 Where HEAD has a reflog, the agent's own work never triggers these rules: a

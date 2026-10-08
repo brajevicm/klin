@@ -350,16 +350,18 @@ fn recorded(root: &Path, at: &Path, stamp: &Stamp, default: &str) -> Option<Stri
 }
 
 /// A merge-base that moved. Forward past the recorded one, it is incoming commits when the
-/// reflog says so, and the agent's own push otherwise. Back behind it, the agent rewrote
-/// commits the default branch already holds, as a `reset --soft` or an amend after a push of
-/// the default branch does. Anywhere else, the turn lost its history when HEAD no longer holds
-/// the recorded merge-base.
+/// reflog says so, and the agent's own push otherwise. Anywhere else, the turn lost its history
+/// when neither HEAD nor the default branch holds the recorded merge-base any more. So the
+/// agent's own rewrite of commits the default branch still holds, as a `reset --soft` or an
+/// amend after a push of the default branch, keeps the turn, and a reset onto a default branch
+/// someone rewound or rewrote does not.
 fn moved(root: &Path, here: &Here, stamp: &Stamp, recorded: &str, now: &str) -> Option<Reason> {
     let repo = Repo::at(root);
     if repo.is_ancestor(recorded, now) == Some(true) {
         return incoming(here, stamp).then_some(Reason::IncomingCommits);
     }
-    if repo.is_ancestor(now, recorded) == Some(true) {
+    let (_, default) = here.pair()?;
+    if repo.is_ancestor(recorded, default) == Some(true) {
         return None;
     }
     lost(root, recorded)
@@ -383,9 +385,17 @@ fn incoming(here: &Here, stamp: &Stamp) -> bool {
 
 /// The history a Stop that is not advisory leaves on the stamp: where it stands now, so the
 /// agent's own push or branch is the stamp's history from here on, and a stamp restored from
-/// its ref records it at its first Stop. Nothing is written when nothing moved.
+/// its ref records it at its first Stop. Only a merge-base that moved forward replaces the
+/// recorded one, so a rewind of the default branch fetched before a reset onto it is still
+/// lost history at the Stop after the reset. Nothing is written when nothing moved.
 fn settled(root: &Path, at: &Path, stamp: &Stamp, here: &Here, out: &mut String) {
-    let history = History::now(root, at, here);
+    let mut history = History::now(root, at, here);
+    if let (Some(was), Some(now)) = (&stamp.history.merge_base, &history.merge_base)
+        && was != now
+        && Repo::at(root).is_ancestor(was, now) != Some(true)
+    {
+        history.merge_base = Some(was.clone());
+    }
     if history == stamp.history {
         return;
     }
