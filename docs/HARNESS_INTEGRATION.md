@@ -97,17 +97,19 @@ happened, and klin allows every call it carries.
 
 ## The lifecycle mapping
 
-| Your harness can | klin's responsibility | The command |
+| Your harness can | klin's responsibility | The `event` |
 | --- | --- | --- |
-| Start a session, or submit a prompt | Open or update the turn, and report the spread | `klin radius` |
-| Intercept a tool before it runs | Guard the configuration against a proven path or command | `klin guard` |
-| End a turn, and be blocked | Run every gate over the turn's window, and return the report | `klin gate --hook --changed` |
+| Start a session, or submit a prompt | Open or update the turn, and report the spread | `session`, `prompt` |
+| Intercept a tool before it runs | Guard the configuration against a proven path or command | `pre_tool` |
+| End a turn, and be blocked | Run every gate over the turn's window, and return the report | `stop` |
 | Load agent skills or instructions | Carry klin's canonical skill | see [The skill](#the-skill) |
 
-Each command reads one harness protocol event on stdin. You do not need
-`--host`: the `klin_protocol` field places the event. `--host harness` exists as
-an override for `klin guard` and `klin gate`, and it refuses any payload that
-carries no version of this protocol.
+Every row runs one command, `klin __agent event`, which reads one harness
+protocol event on stdin and takes the kind from its `event` field. You do not
+need `--host`: the `klin_protocol` field places the event. `--host harness`
+exists as an override, and it refuses any payload that carries no version of
+this protocol. klin answers nothing in a repository whose worktree root holds
+no `klin.json`.
 
 You do not have to support every row. You do have to say which rows you support.
 

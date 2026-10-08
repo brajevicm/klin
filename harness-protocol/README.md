@@ -43,15 +43,8 @@ event is yours rather than a host's. klin speaks version 1. Any other version
 is refused with a message naming the version klin does speak; it is never read
 as some other harness's event.
 
-`event` is one of `session`, `prompt`, `pre_tool` and `stop`, and it decides
-which klin command you run:
-
-| `event` | The command to run |
-| --- | --- |
-| `session` | `klin radius` |
-| `prompt` | `klin radius` |
-| `pre_tool` | `klin guard` |
-| `stop` | `klin gate --hook --changed` |
+`event` is one of `session`, `prompt`, `pre_tool` and `stop`. Every event goes
+to the same command, `klin __agent event`, which reads the kind from this field.
 
 `root` is the repository the agent is working in. Leave it out if you run klin
 inside that repository already.

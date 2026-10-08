@@ -40,7 +40,7 @@ fn changed(tree: &Tree) -> Run {
 }
 
 fn hook(tree: &Tree) -> Run {
-    harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
 #[test]
@@ -1119,7 +1119,7 @@ fn a_break_in_the_hook_names_the_intended_change_route_and_leaves_acceptance_to_
     tree.write("src/lib.rs", &LIB.replace("pub fn parse", "pub fn read"));
 
     let first = hook(&tree);
-    let second = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_SECOND_STOP);
+    let second = harness::feed(tree.root(), harness::AGENT, A_SECOND_STOP);
 
     assert_eq!(first.code, 2, "{}", first.out);
     assert!(
@@ -1623,11 +1623,7 @@ fn a_changed_manifest_changes_what_an_unchanged_file_means_in_a_changed_run() {
 /// structural cache.
 fn stopped(tree: &Tree) -> serde_json::Value {
     let _ = std::fs::remove_file(tree.state("turn"));
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     run.out
         .lines()

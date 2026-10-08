@@ -35,7 +35,7 @@ fn failing() -> Tree {
 
 fn guard(tree: &Tree, held: Value) -> Run {
     let event = event("pre_tool", tree.root(), held);
-    feed(tree.root(), &["guard"], &event)
+    feed(tree.root(), harness::AGENT, &event)
 }
 
 /// The decision a run printed on stdout, which is the whole answer a shim reads.
@@ -57,7 +57,7 @@ fn a_generic_session_and_prompt_open_a_turn() {
     for kind in ["session", "prompt"] {
         let opened = feed(
             tree.root(),
-            &["radius"],
+            harness::AGENT,
             &event(kind, tree.root(), json!({})),
         );
         assert_eq!(opened.code, 0, "{kind}: {}", opened.out);
@@ -128,7 +128,7 @@ fn a_generic_stop_returns_the_failing_report_in_its_decision() {
     let tree = failing();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({"blocked_before": false})),
     );
 
@@ -147,7 +147,7 @@ fn a_generic_stop_over_a_green_tree_lets_the_turn_end() {
     tree.base();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({})),
     );
 
@@ -168,7 +168,7 @@ fn an_unknown_protocol_version_refuses_and_is_not_read_as_another_host() {
         "file_paths": ["src/main.rs"]
     });
 
-    let run = feed(tree.root(), &["guard"], &unknown.to_string());
+    let run = feed(tree.root(), harness::AGENT, &unknown.to_string());
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!run.says("reading it as"), "{}", run.out);
@@ -188,7 +188,7 @@ fn an_unknown_protocol_version_records_its_refusal_in_the_journal() {
         "tool": "write_file"
     });
 
-    let run = feed(tree.root(), &["guard"], &unknown.to_string());
+    let run = feed(tree.root(), harness::AGENT, &unknown.to_string());
     assert_eq!(run.code, 2, "{}", run.out);
 
     let lines = journal(&tree);
@@ -216,7 +216,7 @@ fn a_named_harness_host_without_a_version_is_refused() {
 
     let run = feed(
         tree.root(),
-        &["guard", "--host", "harness"],
+        &["__agent", "event", "--host", "harness"],
         &payload.to_string(),
     );
 
@@ -231,7 +231,11 @@ fn the_generic_host_name_names_no_host() {
     let tree = failing();
     let event = event("pre_tool", tree.root(), json!({"tool": "write_file"}));
 
-    let run = feed(tree.root(), &["guard", "--host", "generic"], &event);
+    let run = feed(
+        tree.root(),
+        &["__agent", "event", "--host", "generic"],
+        &event,
+    );
 
     assert!(
         run.says("--host generic names no host klin knows"),
@@ -245,7 +249,7 @@ fn the_journal_names_a_protocol_event_the_harness_host() {
     let tree = failing();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({})),
     );
     assert_eq!(run.code, 2, "{}", run.out);
@@ -281,7 +285,7 @@ fn every_shipped_fixture_places_as_a_generic_event() {
             panic!("{} is not JSON", at.display());
         };
         assert_eq!(held["klin_protocol"], 1, "{}", at.display());
-        let run = feed(tree.root(), &["guard"], &text);
+        let run = feed(tree.root(), harness::AGENT, &text);
         assert!(!run.says("reading it as"), "{}", run.out);
         read += 1;
     }

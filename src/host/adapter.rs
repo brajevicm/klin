@@ -2,13 +2,36 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-/// One line `klin setup` writes for a host event. The adapter owns the event names and what
-/// each one filters by, so a fourth host adds a table rather than a branch in the writer.
-/// Section 19.3.
+/// One line `klin setup` writes for a host event. The adapter owns the event names, the kind
+/// each one is, and what each one filters by, so a fourth host adds a table rather than a branch
+/// in the writer. Spec 10.1, 11.2.
 pub struct Hook {
     pub event: &'static str,
-    pub arguments: &'static str,
+    pub kind: Kind,
     pub filter: Filter,
+}
+
+/// The four kinds of host event `klin __agent event` answers. Spec 10.1, 10.3.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Session,
+    Prompt,
+    PreTool,
+    Stop,
+}
+
+impl Kind {
+    pub const ALL: [Kind; 4] = [Kind::Session, Kind::Prompt, Kind::PreTool, Kind::Stop];
+
+    /// The kind's own name, which the harness protocol sends under `event`. Spec 10.9.
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Session => "session",
+            Kind::Prompt => "prompt",
+            Kind::PreTool => "pre_tool",
+            Kind::Stop => "stop",
+        }
+    }
 }
 
 /// What one entry runs on: every call the event carries, or the tools the guard reads. An event
@@ -48,22 +71,22 @@ pub(super) const CLAUDE_CODE_AND_CODEX_MATCHER: &str =
 const DEFAULT_HOOKS: &[Hook] = &[
     Hook {
         event: "SessionStart",
-        arguments: "radius",
+        kind: Kind::Session,
         filter: Filter::Every,
     },
     Hook {
         event: "UserPromptSubmit",
-        arguments: "radius",
+        kind: Kind::Prompt,
         filter: Filter::Every,
     },
     Hook {
         event: "PreToolUse",
-        arguments: "guard",
+        kind: Kind::PreTool,
         filter: Filter::Tools,
     },
     Hook {
         event: "Stop",
-        arguments: "gate --hook --changed",
+        kind: Kind::Stop,
         filter: Filter::Every,
     },
 ];
@@ -83,16 +106,12 @@ pub trait Adapter: Sync {
     }
     /// The tools the guard reads on the pre-tool event, in the host's matcher syntax.
     fn matcher(&self) -> &'static str;
-    /// The host's name for the event a person's prompt raises, which is the one event that
-    /// carries the spread report. It is the last `radius` line in the hook table: session start
-    /// is also radius, and comes first. Spec 9.2.
-    fn prompt_event(&self) -> &'static str {
+    /// The kind of the event the host names, from the hook table. Spec 10.1.
+    fn kind(&self, name: &str) -> Option<Kind> {
         self.hooks()
             .iter()
-            .rev()
-            .find(|hook| hook.arguments == "radius")
-            .map(|hook| hook.event)
-            .unwrap_or("")
+            .find(|hook| hook.event == name)
+            .map(|hook| hook.kind)
     }
     /// The events `klin setup` writes. Claude Code and Codex share the table; Cursor names
     /// its own events.
@@ -140,6 +159,10 @@ pub trait Adapter: Sync {
     fn stop(&self, stop: &Stop) -> u8 {
         emit(stop)
     }
+    /// A notice for the person outside a Stop, on the host's non-blocking channel. Spec 10.7.
+    fn tell(&self, text: &str) {
+        self.stop(&Stop::Tell(text.to_string()));
+    }
     /// The exit code a stop this host blocks ends with. The block itself is the report the
     /// adapter delivered; the code is only the host's protocol for it. Spec 9.1.
     fn block_exit(&self) -> u8 {
@@ -157,8 +180,8 @@ pub struct Event {
     pub host: &'static dyn Adapter,
     /// The tree the payload names, when its hook may run elsewhere.
     pub root: Option<PathBuf>,
-    /// Whether this is the host's prompt event.
-    pub prompted: bool,
+    /// The kind of event this is, or `None` for an event the host names no kind for.
+    pub kind: Option<Kind>,
     pub tool: String,
     pub file_paths: Vec<String>,
     pub command: String,
@@ -184,7 +207,7 @@ impl Event {
         Event {
             host,
             root: None,
-            prompted: false,
+            kind: None,
             tool: String::new(),
             file_paths: Vec::new(),
             command: String::new(),

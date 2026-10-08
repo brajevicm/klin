@@ -106,7 +106,9 @@ impl Config {
     /// A tree with no configuration at all. The file it names is the one `init` would write, so
     /// an error still points a person at the place a section belongs.
     fn unwritten(start: &Path) -> Config {
-        let root = repository(start).unwrap_or_else(|| start.to_path_buf());
+        let root = Discovered::from(start)
+            .root
+            .unwrap_or_else(|| start.to_path_buf());
         Config {
             file: root.join(FILENAME),
             root,
@@ -1054,10 +1056,28 @@ pub fn no_retired_key(file: &Path, name: &str, values: &Map<String, Value>) -> R
     Ok(())
 }
 
-/// Whether a klin.json is there to read at all, which tells a failure of `load` that names a
-/// config error apart from one that names no file. Section 14.
-pub fn present(explicit: Option<&Path>, start: &Path) -> bool {
-    located(explicit, start).is_some_and(|file| file.is_file())
+/// The lines `check`, `status` and `policy` print about discovery: that no `klin.json` is at
+/// the worktree root, and each one below it that klin ignores. A `--config` names its own file,
+/// so it has none. Spec 5.1.
+pub fn notes(explicit: Option<&Path>, start: &Path) -> Vec<String> {
+    if explicit.is_some() {
+        return Vec::new();
+    }
+    let found = Discovered::from(start);
+    let none = found
+        .config
+        .is_none()
+        .then(|| "config: none, running under {}".to_string());
+    none.into_iter().chain(found.notes()).collect()
+}
+
+/// The paths of every `klin.json` the walk from `start` passed and never read. Spec 5.1.
+pub fn ignored(start: &Path) -> Vec<String> {
+    Discovered::from(start)
+        .ignored
+        .iter()
+        .map(|file| file.display().to_string())
+        .collect()
 }
 
 /// The configuration a run names or finds, whether or not it exists or reads.
@@ -1131,16 +1151,72 @@ pub fn repository(start: &Path) -> Option<PathBuf> {
 }
 
 fn find(start: &Path) -> Option<PathBuf> {
-    let mut here = start.to_path_buf();
-    loop {
-        let candidate = here.join(FILENAME);
-        if candidate.is_file() {
-            return Some(candidate);
+    Discovered::from(start).config
+}
+
+/// What the walk of spec 5.1 finds from one directory: the worktree root, the root's
+/// `klin.json` when it holds one, and every `klin.json` between the directory and the root,
+/// which klin never reads. Outside a worktree there is no root, and a command reads the
+/// `klin.json` of the directory it starts in. The walk starts no git process and parses no file.
+pub struct Discovered {
+    pub root: Option<PathBuf>,
+    pub config: Option<PathBuf>,
+    pub ignored: Vec<PathBuf>,
+}
+
+impl Discovered {
+    pub fn from(start: &Path) -> Discovered {
+        let mut ignored = Vec::new();
+        for here in start.ancestors() {
+            let candidate = here.join(FILENAME);
+            if worktree_root(here) {
+                return Discovered {
+                    root: Some(here.to_path_buf()),
+                    config: candidate.is_file().then_some(candidate),
+                    ignored,
+                };
+            }
+            if candidate.is_file() {
+                ignored.push(candidate);
+            }
         }
-        if !here.pop() {
-            return None;
+        let candidate = start.join(FILENAME);
+        Discovered {
+            root: None,
+            config: candidate.is_file().then_some(candidate),
+            ignored: Vec::new(),
         }
     }
+
+    /// The note `check`, `status` and `policy` print for each file the walk passed and never
+    /// read. Spec 5.1.
+    pub fn notes(&self) -> Vec<String> {
+        self.ignored
+            .iter()
+            .map(|file| {
+                format!(
+                    "NOTE: {} is ignored — klin reads only the klin.json at the worktree root.",
+                    file.display()
+                )
+            })
+            .collect()
+    }
+}
+
+/// A directory that holds a `.git` directory, or a `.git` file whose first line names an
+/// existing git directory. Spec 5.1.
+fn worktree_root(here: &Path) -> bool {
+    let git = here.join(".git");
+    if git.is_dir() {
+        return true;
+    }
+    let Ok(text) = std::fs::read_to_string(&git) else {
+        return false;
+    };
+    text.lines()
+        .next()
+        .and_then(|line| line.strip_prefix("gitdir: "))
+        .is_some_and(|named| here.join(named.trim()).exists())
 }
 
 fn absolute(path: &Path, start: &Path) -> PathBuf {

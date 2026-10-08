@@ -52,7 +52,7 @@ fn lost(report: &Value) -> Vec<&Value> {
 }
 
 fn stop(tree: &Tree) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], A_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
 #[test]
@@ -510,7 +510,7 @@ fn a_stop_that_does_not_block_tells_the_person_how_to_hold_a_file_the_grammar_la
 
     let run = harness::feed(
         tree.root(),
-        &["gate", "--hook"],
+        harness::AGENT,
         r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#,
     );
 

@@ -295,7 +295,7 @@ fn a_module_two_files_answer_is_a_review_item_by_hand_and_a_note_in_the_hook() {
     tree.write("src/ui.rs", "pub fn show() {}\n");
 
     let run = tree.run(&["check", "layering"]);
-    let hook = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let hook = harness::feed(tree.root(), harness::AGENT, A_STOP);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
@@ -815,11 +815,7 @@ fn a_changed_run_beside_a_gate_that_lays_out_changed_files_judges_the_whole_base
 /// structural cache.
 fn stopped(tree: &Tree) -> serde_json::Value {
     let _ = std::fs::remove_file(tree.state("turn"));
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     run.out
         .lines()

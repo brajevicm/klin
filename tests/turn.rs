@@ -18,7 +18,7 @@ fn tree() -> Tree {
 }
 
 fn radius(tree: &Tree, event: &str) -> Run {
-    harness::feed(tree.root(), &["radius"], event)
+    harness::feed(tree.root(), harness::AGENT, event)
 }
 
 fn stamp(tree: &Tree) -> serde_json::Value {
@@ -67,7 +67,7 @@ exec "$KLIN_TEST_GIT" "$@"
     .expect("wrapper");
     std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755)).expect("executable");
     let mut child = Command::new(harness::binary())
-        .arg("radius")
+        .args(harness::AGENT)
         .current_dir(tree.root())
         .env(
             "PATH",
@@ -357,7 +357,7 @@ fn two_worktrees_keep_their_own_stamp_through_a_prune() {
     assert!(std::fs::write(at.join("src/lib.rs"), "fn beside() {}\n").is_ok());
 
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
-    assert_eq!(harness::feed(&at, &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(&at, harness::AGENT, A_PROMPT).code, 0);
     let mine = tree.revision("refs/worktree/klin/turn");
     let theirs = git_out(&at, &["rev-parse", "refs/worktree/klin/turn"]);
     assert_ne!(mine, theirs, "the two worktrees share one stamp");
@@ -376,7 +376,7 @@ fn two_worktrees_keep_their_own_stamp_through_a_prune() {
 fn outside_a_repository_the_stamp_says_nothing_and_blocks_nothing() {
     let tree = Tree::bare();
 
-    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let run = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 

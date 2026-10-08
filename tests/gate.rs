@@ -478,7 +478,7 @@ const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#
 const A_SECOND_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true}"#;
 
 fn stop(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+    harness::feed(tree.root(), harness::AGENT, event)
 }
 
 #[test]
@@ -591,16 +591,18 @@ fn hook_says_nothing_when_every_gate_passes() {
     assert_eq!(run.out, "", "{:?}", run.out);
 }
 
+/// An event the ingress cannot read names no kind, so it runs no gate and never exits 2.
+/// Spec 10.10.
 #[test]
-fn hook_without_an_event_on_stdin_reports_but_does_not_block() {
+fn a_hook_event_it_cannot_read_answers_nothing() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    for event in ["", "not json"] {
+    for event in ["", "not json", "{}"] {
         let run = stop(&tree, event);
-        assert_eq!(run.code, 1, "{event:?}: {}", run.out);
-        assert!(run.says("FAIL  doc-size"), "{event:?}: {}", run.out);
-        assert!(!run.says("stop again"), "{event:?}: {}", run.out);
+        assert_eq!(run.code, 0, "{event:?}: {}", run.out);
+        assert_eq!(run.printed, "", "{event:?}: {}", run.out);
+        assert!(!run.says("doc-size"), "{event:?}: {}", run.out);
     }
 }
 
@@ -668,16 +670,6 @@ fn a_tool_error_after_a_changed_tree_spends_the_second_gate_block() {
 }
 
 #[test]
-fn hook_without_an_event_reports_a_tool_error_without_blocking_the_stop() {
-    let tree = nothing_to_survey(r#"{}"#);
-
-    let run = stop(&tree, "");
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("configures no gate"), "{}", run.out);
-    assert!(!run.says("stop again"), "{}", run.out);
-}
-
-#[test]
 fn hook_says_nothing_in_a_tree_that_holds_no_config() {
     let tree = Tree::new();
 
@@ -708,7 +700,7 @@ fn settings() -> String {
 #[test]
 fn the_stop_hook_is_one_line_that_runs_the_binary() {
     let settings = settings();
-    assert!(settings.contains("gate --hook --changed"), "{settings}");
+    assert!(settings.contains("__agent event"), "{settings}");
     for wrapper in [BUILD_BLOCKED, "stop_hook_active", "cargo build"] {
         assert!(!settings.contains(wrapper), "{wrapper}: {settings}");
     }
@@ -719,7 +711,7 @@ fn the_stamp_sits_beside_the_config_rather_than_the_working_directory() {
     let tree = tree(EVERY_GATE);
     tree.words("README.md", 30);
 
-    let run = harness::feed(&tree.path("src"), &["gate", "--hook"], A_STOP);
+    let run = harness::feed(&tree.path("src"), harness::AGENT, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.path(BUILD_BLOCKED).is_file(), "{}", run.out);
 }
@@ -765,7 +757,7 @@ fn the_gate_blocks_twice_under_each_prompt_and_only_over_a_changed_tree() {
         capped.out
     );
 
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree, A_STOP);
     assert_eq!(after.code, 2, "{}", after.out);
@@ -937,7 +929,7 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
     let hook = harness::feed_with(
         tree.root(),
         &[("KLIN_HOOK_REPORT", evidence.as_str())],
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         A_STOP,
     );
     assert_eq!(hook.code, 2, "{}", hook.out);
@@ -1585,9 +1577,8 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--json"], A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
-    let report = object(run.out.lines().last().unwrap_or_default(), &run);
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
     let notes = list(&report, "notes");
     assert_eq!(notes.len(), 1, "{}", run.out);
     assert_eq!(field(&notes[0], "outcome"), "unparsed", "{}", run.out);
@@ -1766,14 +1757,18 @@ fn a_minified_bundle_is_a_resource_limit_review_item_in_json() {
 fn the_retired_commands_are_unrecognized_and_help_names_no_hidden_one() {
     let tree = Tree::new();
     for command in [
-        "gate",
-        "complexity",
-        "init",
-        "install",
-        "reference",
-        "stats",
+        &["gate"][..],
+        &["gate", "--hook", "--changed"],
+        &["radius"],
+        &["guard"],
+        &["complexity"],
+        &["init"],
+        &["install"],
+        &["reference"],
+        &["stats"],
     ] {
-        let run = tree.run(&[command]);
+        let run = tree.run(command);
+        let command = command.join(" ");
         assert_eq!(run.code, 2, "{command}: {}", run.out);
         assert!(
             run.says("unrecognized subcommand"),
@@ -1784,7 +1779,7 @@ fn the_retired_commands_are_unrecognized_and_help_names_no_hidden_one() {
 
     let help = tree.run(&["--help"]);
     assert_eq!(help.code, 0, "{}", help.out);
-    for hidden in ["radius", "guard", "turn", "cache", "gate"] {
+    for hidden in ["radius", "guard", "turn", "cache", "gate", "__agent"] {
         assert!(!help.says(hidden), "{hidden}: {}", help.out);
     }
 }

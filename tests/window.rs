@@ -22,18 +22,18 @@ fn stamped() -> Tree {
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     tree
 }
 
 fn stop(tree: &Tree) -> Run {
-    harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
 /// One prompt of the same turn, which raises the prompt counter and so hands the next stop a
 /// fresh block budget.
 fn prompt(tree: &Tree) {
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
 }
 
 fn accepting(file: &str) -> String {
@@ -135,7 +135,7 @@ fn a_deleted_stamp_falls_back_to_head_when_no_base_resolves() {
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree.commit("the only commit, on a branch no base names");
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     tree.remove(".git/klin/turn");
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
     tree.write("src/lib.rs", text::WRAPPED);
@@ -216,7 +216,7 @@ fn a_state_directory_klin_cannot_keep_still_reads_the_stamp_from_the_ref() {
     let run = harness::feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", held.as_str())],
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         A_STOP,
     );
     assert_eq!(run.code, 0, "{}", run.out);
@@ -230,20 +230,8 @@ fn the_json_report_names_the_window_the_stop_used() {
     let tree = stamped();
     tree.write("src/lib.rs", text::WRAPPED);
 
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let object = run
-        .out
-        .lines()
-        .find(|line| line.starts_with('{'))
-        .unwrap_or_else(|| panic!("no JSON object in:\n{}", run.out));
-    let Ok(report) = serde_json::from_str::<Value>(object) else {
-        panic!("not one JSON object: {}", run.out)
-    };
     let window = report["window"].clone();
     assert_eq!(window["kind"], "turn", "{window}");
     assert_eq!(

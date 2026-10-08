@@ -1,3 +1,4 @@
+mod agent;
 mod base;
 mod build;
 mod cache;
@@ -43,6 +44,7 @@ mod shell;
 mod stamp;
 mod state;
 mod stats;
+mod status;
 mod stubs;
 mod surface;
 mod survey;
@@ -58,7 +60,6 @@ use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
 
-use crate::check::catalogue;
 use crate::error::Error;
 
 #[derive(Parser)]
@@ -72,8 +73,8 @@ struct Cli {
     command: Command,
 }
 
-/// The public commands of spec 11.1, less `status`, which #498 adds, and the hidden entry points
-/// the host hooks and a person still reach until the agent ingress replaces them.
+/// The public commands of spec 11.1, and the hidden entry points a person still reaches until
+/// the roadmap removes them.
 #[derive(Subcommand)]
 enum Command {
     #[command(flatten)]
@@ -88,6 +89,8 @@ enum Public {
     Setup(hooks::Args),
     /// Measure the repository against klin's quality policy, optionally only the named checks
     Check(gate::Check),
+    /// Read repository, setup, integration and local window state without running any check
+    Status(status::Args),
     /// Explain the effective policy and where each value came from
     Policy(gate::Policy),
     /// Show what klin caught, what was resolved, and what still needs attention
@@ -99,25 +102,20 @@ enum Public {
 #[derive(Subcommand)]
 enum Hidden {
     #[command(hide = true)]
-    Guard(guard::Args),
-    #[command(hide = true)]
-    Radius(turn::Args),
-    #[command(hide = true)]
     Turn(turn::Moved),
     #[command(hide = true)]
     Cache(cache::Args),
 }
 
-/// The guard and the updater answer before the working directory is read, because neither needs
-/// it. The Stop hook's `klin gate --hook` line is read before the public commands, so a plain
-/// `klin gate` stays an unknown command. Everything else prints through `report`.
+/// The agent ingress answers before the command line is parsed, so an argument it does not know
+/// never becomes a usage error. The updater answers before the working directory is read,
+/// because it does not need it. Everything else prints through `report`. Spec 10.1, 10.10.
 fn main() -> ExitCode {
     LazyLock::force(&shell::STARTED);
-    if let Some(hook) = gate::Hook::called() {
-        return report(|start, out| gate::hooked(&hook, start, out));
+    if agent::called() {
+        return agent::run();
     }
     match Cli::parse().command {
-        Command::Hidden(Hidden::Guard(args)) => ExitCode::from(guard::run(&args)),
         Command::Public(Public::Update) => ExitCode::from(update::run()),
         Command::Public(command) => report(|start, out| public(&command, start, out)),
         Command::Hidden(command) => report(|start, out| hidden(&command, start, out)),
@@ -128,6 +126,7 @@ fn public(command: &Public, start: &Path, out: &mut String) -> Result<u8, Error>
     match command {
         Public::Setup(args) => hooks::run(args, start, out),
         Public::Check(args) => gate::check(args, start, out),
+        Public::Status(args) => status::run(args, start, out),
         Public::Policy(args) => gate::policy(args, start, out),
         Public::Report(args) => stats::run(args, start, out),
         Public::Update => Ok(update::run()),
@@ -136,8 +135,6 @@ fn public(command: &Public, start: &Path, out: &mut String) -> Result<u8, Error>
 
 fn hidden(command: &Hidden, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Hidden::Guard(args) => Ok(guard::run(args)),
-        Hidden::Radius(args) => turn::run(args, &catalogue::sections(), start, out),
         Hidden::Turn(args) => turn::moved(args, start, out),
         Hidden::Cache(args) => cache::run(args, start, out),
     }

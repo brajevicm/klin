@@ -306,11 +306,12 @@ impl Fixture {
 
     /// A hook run, through the stand-in toolchain when the configuration derives the build.
     fn hook(&self) -> harness::Run {
-        let args = ["gate", "--hook", "--changed"];
-        match &self.toolchain {
-            Some((_, path)) => self.tree.run_with(&[("PATH", path)], &args),
-            None => self.tree.run(&args),
-        }
+        let environment: Vec<(&str, &str)> = self
+            .toolchain
+            .iter()
+            .map(|(_, path)| ("PATH", path.as_str()))
+            .collect();
+        harness::feed_with(self.tree.root(), &environment, hooked(), harness::STOP)
     }
 
     fn current_dense(&self) -> bool {
@@ -382,7 +383,7 @@ impl Fixture {
     }
 
     fn prime(&self) {
-        let primed = self.tree.run(&["radius"]);
+        let primed = self.tree.session();
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
         let primed = self.hook();
         assert_eq!(primed.code, 0, "prime survey: {}", primed.out);
@@ -796,7 +797,7 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         _ => {
             let (files, bytes) = fixture.structural_cache();
             println!("structural cache: files={files}, bytes={bytes}");
-            let rss = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+            let rss = peak_rss(fixture, hooked());
             println!(
                 "resource: warm_hook_peak_rss_kb={}",
                 rss.map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
@@ -870,14 +871,14 @@ fn resources(fixture: &Fixture) -> Resources {
     let primed = fixture.hook();
     assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
     let (files, bytes) = fixture.structural_cache();
-    let warm = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+    let warm = peak_rss(fixture, hooked());
     let dead_symbols = peak_rss(
         fixture,
         &checked(&["--changed", "--json"], Some("dead-symbols")),
     );
     let strict = peak_rss(fixture, &checked(&["--json"], None));
     fixture.remove_structural_cache();
-    let uncached = peak_rss(fixture, &["gate", "--hook", "--changed"]);
+    let uncached = peak_rss(fixture, hooked());
     Resources {
         cache_files: files,
         cache_bytes: bytes,
@@ -917,16 +918,24 @@ fn peak_rss(fixture: &Fixture, args: &[&str]) -> Option<u64> {
     for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
         command.env_remove(name);
     }
-    if let (true, Some((_, path))) = (args.contains(&"--hook"), &fixture.toolchain) {
+    if let (true, Some((_, path))) = (args == hooked(), &fixture.toolchain) {
         command.env("PATH", path);
     }
-    let done = command
+    let mut child = command
         .arg(binary())
         .args(args)
         .env("HOME", empty_home())
         .current_dir(fixture.tree.root())
-        .output()
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
         .ok()?;
+    let _ = child
+        .stdin
+        .take()
+        .map(|mut stdin| std::io::Write::write_all(&mut stdin, harness::STOP.as_bytes()));
+    let done = child.wait_with_output().ok()?;
     let output = String::from_utf8_lossy(&done.stderr);
     output.lines().find_map(|line| {
         line.contains(marker)
@@ -960,6 +969,23 @@ fn median<T: Copy + Ord>(values: &[T]) -> T {
     let mut sorted = values.to_vec();
     sorted.sort_unstable();
     sorted[sorted.len() / 2]
+}
+
+/// The Stop of the binary under test: the agent ingress, or `klin gate --hook --changed` for a
+/// `KLIN_BIN` built before #498, so the benchmark's base side still measures. Either reads the
+/// Stop event on stdin.
+fn hooked() -> &'static [&'static str] {
+    static KNOWS_AGENT: OnceLock<bool> = OnceLock::new();
+    let knows = *KNOWS_AGENT.get_or_init(|| {
+        Command::new(binary())
+            .args(["status", "--help"])
+            .output()
+            .is_ok_and(|output| output.status.success())
+    });
+    match knows {
+        true => harness::AGENT,
+        false => &["gate", "--hook", "--changed"],
+    }
 }
 
 /// The whole run of the binary under test: `klin check`, or `klin gate --strict` for a `KLIN_BIN`
@@ -1601,7 +1627,7 @@ fn guard(tree: &Tree) -> Vec<u128> {
     repeat_totals(|| {
         let started = Instant::now();
         for (index, event) in events.iter().enumerate() {
-            let run = feed(tree.root(), &["guard"], event);
+            let run = feed(tree.root(), harness::AGENT, event);
             match index % 10 {
                 2 | 9 => {
                     assert_eq!(run.code, 2, "guard deny: {}", run.out);

@@ -287,13 +287,13 @@ fn the_stop_hook_blocks_on_a_move_that_breaks_an_untouched_documents_citation() 
     tree.write("src/index.py", "y = 1\n");
     tree.write("README.md", "The client is `src/client.py`.\n");
     tree.base();
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     tree.remove("src/client.py");
     tree.write("src/transport/client.py", "x = 1\n");
     tree.write("src/index.py", "y = 2\n");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("README.md:1"), "{}", run.out);
 }

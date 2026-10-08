@@ -3,7 +3,9 @@ mod harness;
 use harness::Tree;
 
 /// The commands `klin --help` offers, which hold no check of their own. ADR 0066.
-const COMMANDS: &[&str] = &["setup", "check", "policy", "report", "update", "help"];
+const COMMANDS: &[&str] = &[
+    "setup", "check", "status", "policy", "report", "update", "help",
+];
 
 /// Every subcommand `klin --help` offers. A command sits on a line indented by exactly two
 /// spaces, so a description that wrapped onto its own deeper-indented line is not one.

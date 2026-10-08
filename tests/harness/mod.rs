@@ -9,6 +9,13 @@ pub struct Tree {
     dir: tempfile::TempDir,
 }
 
+/// The hidden ingress every host integration runs. Spec 10.1.
+pub const AGENT: &[&str] = &["__agent", "event"];
+/// A Claude Code session start and Stop with no session, so no copy of klin's hooks claims
+/// either one and every run answers it.
+pub const SESSION_START: &str = r#"{"hook_event_name":"SessionStart"}"#;
+pub const STOP: &str = r#"{"hook_event_name":"Stop"}"#;
+
 pub struct Run {
     pub code: i32,
     pub out: String,
@@ -86,6 +93,25 @@ impl Tree {
 
     pub fn run_with(&self, environment: &[(&str, &str)], args: &[&str]) -> Run {
         spawn(self.root(), args, "", environment)
+    }
+
+    /// A session start through the ingress.
+    pub fn session(&self) -> Run {
+        feed(self.root(), AGENT, SESSION_START)
+    }
+
+    /// A Stop through the ingress.
+    pub fn stop(&self) -> Run {
+        feed(self.root(), AGENT, STOP)
+    }
+
+    pub fn stop_with(&self, environment: &[(&str, &str)]) -> Run {
+        spawn(self.root(), AGENT, STOP, environment)
+    }
+
+    /// A Stop through the ingress, and the report it recorded under `KLIN_HOOK_REPORT`.
+    pub fn stop_report(&self) -> (Run, serde_json::Value) {
+        stop_report(self.root(), STOP, &[])
     }
 
     pub fn git(&self, args: &[&str]) {
@@ -409,6 +435,26 @@ fn spawn_binary(
         out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
         printed,
     }
+}
+
+/// One Stop event through the ingress from `cwd`, and the report it recorded. A Stop that wrote
+/// no report reads as `null`.
+pub fn stop_report(
+    cwd: &Path,
+    event: &str,
+    environment: &[(&str, &str)],
+) -> (Run, serde_json::Value) {
+    let held = tempfile::tempdir().expect("temporary directory");
+    let file = held.path().join("report.json");
+    let path = file.display().to_string();
+    let mut environment = environment.to_vec();
+    environment.push(("KLIN_HOOK_REPORT", path.as_str()));
+    let run = spawn(cwd, AGENT, event, &environment);
+    let report = fs::read_to_string(&file)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or(serde_json::Value::Null);
+    (run, report)
 }
 
 /// The per-gate rows of a report: the check document's diagnostics, or the Stop hook's report.

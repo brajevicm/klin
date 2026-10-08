@@ -1,18 +1,11 @@
 mod harness;
 
-use harness::{Run, Tree};
+use harness::Tree;
 use serde_json::Value;
 
 const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 const GATES: [&str; 3] = ["complexity", "escapes", "stubs"];
-
-fn report(run: &Run) -> Value {
-    run.out
-        .lines()
-        .find_map(|line| serde_json::from_str(line).ok())
-        .unwrap_or_else(|| panic!("no JSON report in:\n{}", run.out))
-}
 
 #[test]
 fn changed_file_local_gates_skip_unchanged_hook_contents() {
@@ -24,7 +17,7 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
     );
     tree.write("src/changed.rs", "fn changed() {}\n");
     tree.base();
-    let radius = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let radius = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(radius.code, 0, "{}", radius.out);
     assert!(!tree.field("commit").is_empty(), "{}", radius.out);
 
@@ -32,13 +25,8 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
         "src/changed.rs",
         concat!("fn changed() { let _ = Some(1).", "un", "wrap(); }\n"),
     );
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--json", "--hook", "--changed"],
-        A_STOP,
-    );
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report = report(&run);
     assert_eq!(report["window"]["kind"], "turn", "{report}");
     let row = &harness::gate_rows(&report)[0];
     assert_eq!(row["work"]["reads"], Value::from(2), "{report}");
@@ -54,13 +42,8 @@ fn changed_file_local_gates_skip_unchanged_hook_contents() {
 }
 
 fn assert_changed_failures(tree: &Tree) {
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--json", "--hook", "--changed"],
-        A_STOP,
-    );
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report = report(&run);
     for gate in GATES {
         let row = harness::gate_rows(&report)
             .as_array()

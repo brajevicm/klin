@@ -415,13 +415,18 @@ with an existing `PATH`. The walk starts no git process. It does not see
 them names its configuration with `--config PATH` for `klin check`, and its
 hooks stay silent. A `klin.json` below the worktree root is never read.
 `klin check`, `klin status` and `klin policy` print a note that names it as
-ignored. A `--config PATH` that names no file is exit 2.
+ignored. A `--config PATH` that names no file is exit 2. Outside any worktree there is
+no root: `klin check` and `klin policy` read the `klin.json` of the directory
+they start in, `klin status` is exit 2, and the hooks stay silent.
 
 The hooks' walk passes every directory between the event's tree and the
 worktree root, and tests each for a `klin.json` without parsing it. When it
 finds one below the root and none at the root, the hooks stay silent as an
 opt-out, and tell one person notice per session that names the file and
-says to move it to the worktree root. This replaces the 0.x support for a
+says to move it to the worktree root. The `session` event tells it, which
+makes it once per session with no state. It uses the host's person channel
+of section 10.7, and stderr on Cursor, because a repository that has not
+opted in has no journal. This replaces the 0.x support for a
 configuration below the repository root, which
 `a_config_below_the_repository_root_holds_the_debt_the_base_holds` and
 `a_config_below_the_repository_root_scopes_a_changed_run_the_same_way` in
@@ -1446,9 +1451,7 @@ The `deny` list of commands is:
 - `klin update`, because it replaces the binary that judges the agent;
 - `klin __agent` in any form from an agent's shell, because a fabricated
   event could refresh a block budget. The host runs the hook lines itself, so
-  the guard never sees them;
-- the 0.x spellings `init`, `install` and `turn reset`, because an older
-  binary on PATH may still run them.
+  the guard never sees them.
 
 A deny reason says that a person changes the file in a reviewed commit, or
 names the command a person runs instead. It never names a command that
@@ -1467,8 +1470,7 @@ unknown protocol version stays (section 0.4).
 On Claude Code, Codex and the harness protocol, exit 2 blocks a Stop or
 denies a tool call. So:
 
-- `klin __agent event`, and every hook spelling that legacy dispatch accepts
-  (section 17.3), exit 2 only to block or to deny.
+- `klin __agent event` exits 2 only to block or to deny.
 - A usage error, an unknown argument, a host event klin cannot read, a
   run-scope internal failure and a panic exit 0 with no decision at
   `pre_tool`, `session` and `prompt`, and exit 1 at `stop`. Each writes a
@@ -1476,10 +1478,8 @@ denies a tool call. So:
   capability-scope error is not one of these (section 7.3).
 - A well-formed harness event with an unknown `klin_protocol` version is not
   "an event klin cannot read". It keeps the fail-closed rule of section 10.9.
-- A hook spelling that a later release removes keeps these rules. It exits 0
-  and tells a notice that names `klin setup` through the host's person
-  channel (`systemMessage`, or `tell` on the harness protocol). It never
-  falls through to a migration error with exit 2.
+- An event klin cannot read, or one whose host names no kind klin answers,
+  has no kind, so it exits 0 whatever event the host meant.
 
 ## 11. Public CLI
 
@@ -1518,7 +1518,7 @@ exits 2, also under `--json`.
   except under `--pin`.
 - Reconciles host integration files for the hosts the repository proves, or
   the hosts that `--host NAME` names, with the host selection of 0.x 19.3
-  (ADR 0056). It writes the hook lines of section 17.3, the skill files and
+  (ADR 0056). It writes the `klin __agent event` hook lines, the skill files and
   the slash-command text, all with vNext command names.
 - A klin-owned file that a person changed is a conflict. `setup` reports it
   and leaves it, as 0.x 19.3 does for `install`.
@@ -1592,7 +1592,6 @@ Text output:
 | State | Test on the host files |
 | --- | --- |
 | `current` | The host files hold the hook lines and owned files that this klin's `setup` writes. |
-| `legacy` | The host files hold 0.x hook lines that legacy dispatch serves. |
 | `missing` | The repository proves the host, and no copy of klin's hooks is installed for it. |
 | `conflict` | A klin-owned file was changed, or two copies disagree in a way 0.x 9.8 cannot settle. |
 
@@ -1642,7 +1641,7 @@ Rules:
   consumer MUST ignore a field it does not know and MUST tolerate an enum
   value it does not know.
 - Removing a documented field or changing its meaning needs the
-  compatibility policy of #344 (section 17.5).
+  compatibility policy of #344 (section 17.4).
 - Fields under `diagnostics` are outside the stable schema. The 0.x per-gate
   fields `ms`, `facts`, `names`, `work`, `graph`, `surface` and `footprint`
   move there, and the performance rows read them there.
@@ -2019,7 +2018,9 @@ options with no vNext place are gone: `dead-symbols --report`,
 `doc-size --file` and `--ceiling`, `doc-citations --file` and `--roots`,
 `--list-languages`, `--only` and `--quiet`. `klin policy public-api` and
 `klin policy conventions [NAME]` take over the two reports (section 11.6).
-Section 17.3 covers the hook spellings.
+The 0.x hook spellings `klin radius`, `klin guard` and `klin gate --hook`
+are unknown commands too. `klin setup` and the plugin write only
+`klin __agent event` (section 10.1), at every scope.
 
 ### 17.2 Behavior migration
 
@@ -2048,36 +2049,12 @@ Section 17.3 covers the hook spellings.
 | A merge of the default branch makes its code new at the Stop | That Stop is advisory, and the next prompt takes a fresh stamp |
 | The branch fallback after a history move judges the whole branch, red | With a remote: one advisory Stop that takes a fresh stamp. Without a remote: the branch fallback from the stamp's parent, with the gates' verdict |
 
-### 17.3 Generated host integrations
-
-An updated binary MUST NOT strand an installed integration. The invariants:
-
-1. The release that ships `klin __agent event` keeps hidden legacy dispatch
-   for the generated 0.x hook lines: `klin radius`, `klin guard` and
-   `klin gate --hook --changed`, each with an optional `--host`. Legacy
-   dispatch routes into the same event path, under section 10.10. It is
-   absent from help.
-2. Plugin hooks switch to `klin __agent event` in that release, because a
-   plugin pins its own binary.
-3. `klin setup` writes `klin __agent event` lines into user-scope files from
-   that release on, because one person's machine holds one binary.
-4. `klin setup` keeps writing legacy lines into project-scope files, which a
-   team commits and whose members may run older binaries, until the release
-   that removes legacy dispatch. That release raises the minimum version and
-   names it.
-5. Legacy dispatch is removed before 1.0. After its removal, a legacy hook
-   spelling still exits 0 with a notice (section 10.10).
-6. `klin status` reports legacy lines as `legacy` and names the minimum
-   version that reads the new lines.
-
-The roadmap sets the release numbers.
-
-### 17.4 Configuration migration
+### 17.3 Configuration migration
 
 vNext retires no `klin.json` key. A configuration that 0.x accepted is valid
 in vNext, provided it sits at the worktree root (section 5.1).
 
-### 17.5 Inputs to the stability contract (#344)
+### 17.4 Inputs to the stability contract (#344)
 
 #344 rewrites the stability contract against this document. The surfaces
 are:
@@ -2400,7 +2377,6 @@ Host protocol:
 - with an invalid `klin.json`, `pre_tool`, `session` and `prompt` still answer
   correctly, which shows that they dispatch before configuration loads;
 - without `klin.json`, every event exits 0 with no output and no state;
-- legacy dispatch reaches the same behavior as `klin __agent event`;
 - a usage error, an unknown argument and an unreadable event under the
   ingress never exit 2;
 - an unknown harness protocol version still fails closed;
@@ -2412,7 +2388,7 @@ CLI:
 
 - each removed command is an unknown command and exits 2;
 - `status`, `report` and `policy` write nothing to the state directory;
-- `status` reports a `legacy` integration and the local window verdict;
+- `status` reports each integration's state and the local window verdict;
 - `report` with no session says so and suggests `--since 7d`;
 - `setup` run twice changes nothing the second time;
 - `check` writes no stamp, no build stamp and no journal line, runs no build,

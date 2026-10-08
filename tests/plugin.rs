@@ -36,16 +36,15 @@ struct Ran {
 }
 
 #[test]
-fn the_hooks_carry_the_three_commands() {
+fn every_hook_runs_the_agent_ingress() {
     let matcher = json(HOOKS)["hooks"]["PreToolUse"][0]["matcher"]
         .as_str()
         .unwrap_or_default()
         .to_string();
 
-    assert!(hook("SessionStart").ends_with("\"$k\" radius"));
-    assert!(hook("UserPromptSubmit").ends_with("\"$k\" radius"));
-    assert!(hook("PreToolUse").ends_with("\"$k\" guard"));
-    assert!(hook("Stop").ends_with("\"$k\" gate --hook --changed"));
+    for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"] {
+        assert!(hook(event).ends_with("\"$k\" __agent event"), "{event}");
+    }
     assert_eq!(matcher, SHARED_MATCHER);
 }
 
@@ -556,7 +555,7 @@ fn a_checksum_that_does_not_match_installs_nothing_and_lets_the_turn_end() {
 fn a_download_that_fails_prints_one_line_and_lets_the_turn_end() {
     let tree = Tree::bare();
 
-    let run = fetch(&tree, &["gate", "--hook", "--changed"]);
+    let run = fetch(&tree, harness::AGENT);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out.lines().count(), 1, "{}", run.out);
@@ -717,8 +716,8 @@ fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
     let tree = Tree::bare();
     release_running(&tree, "true");
 
-    let first = fetch(&tree, &["radius"]);
-    let second = fetch(&tree, &["radius"]);
+    let first = fetch(&tree, harness::AGENT);
+    let second = fetch(&tree, harness::AGENT);
 
     assert_eq!(first.code, 0, "{}", first.out);
     assert!(
@@ -739,7 +738,7 @@ fn the_wrapper_names_the_cli_to_nobody_under_cursor() {
 
     let run = ran(
         &at(WRAPPER).display().to_string(),
-        &["radius"],
+        harness::AGENT,
         tree.root(),
         &[
             ("PATH", SYSTEM_PATH),
@@ -767,7 +766,7 @@ fn a_radius_run_keeps_its_version_in_the_cache() {
     );
     assert_eq!(aged.code, 0, "{}", aged.out);
 
-    assert_eq!(fetch(&tree, &["radius"]).code, 0);
+    assert_eq!(fetch(&tree, harness::AGENT).code, 0);
 
     let used = fs::metadata(&pinned)
         .and_then(|held| held.modified())
@@ -785,7 +784,7 @@ fn a_radius_run_keeps_its_version_in_the_cache() {
 fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
     let tree = Tree::bare();
     release(&tree, "the-radius-note");
-    let spoke = fetch(&tree, &["radius"]);
+    let spoke = fetch(&tree, harness::AGENT);
     assert_eq!(spoke.printed.trim(), "the-radius-note", "{}", spoke.out);
 
     let decoy = tree.write("path/klin", "#!/bin/sh\n");
@@ -795,7 +794,7 @@ fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
     let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
     let own = ran(
         &at(WRAPPER).display().to_string(),
-        &["radius"],
+        harness::AGENT,
         tree.root(),
         &[
             ("PATH", &path),

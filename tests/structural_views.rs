@@ -56,12 +56,7 @@ fn observed(klin: &str, config: &str, gate_name: &str, scenario: fn(&Tree)) -> V
 /// and only the hook reads the structural cache.
 fn stop(klin: &str, tree: &Tree) -> Run {
     let _ = std::fs::remove_file(tree.state("turn"));
-    let run = harness::feed_as(
-        klin,
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let run = harness::feed_as(klin, tree.root(), harness::AGENT, A_STOP);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     let line: Value = run
         .out
@@ -348,7 +343,7 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
     let review = "review src/commands/delta_command.rs unreadable";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, review], "{seen}");
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, review], "{seen}");
-    assert_eq!(lines(&seen["hook"])[0], r#""PASS" 1"#);
+    assert_eq!(lines(&seen["hook"])[0], r#""PASS" 0"#);
     assert_eq!(
         ["whole", "changed", "hook"].map(|view| {
             gate_rows(&seen[view]["report"])[0]["coverage"]["not_measured"]
@@ -570,7 +565,7 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
     let old = "note src/old_broken.rs src/old_broken.rs is not measured (unreadable) — the Rust grammar finds an error at line 1, column 1";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, new, old]);
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, new]);
-    assert_eq!(lines(&seen["hook"]), [r#""PASS" 1"#]);
+    assert_eq!(lines(&seen["hook"]), [r#""PASS" 0"#]);
 }
 
 #[test]

@@ -81,7 +81,6 @@ struct Args {
     changed: bool,
     hook: bool,
     json: bool,
-    host: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -121,32 +120,6 @@ pub struct Policy {
     config: Option<PathBuf>,
 }
 
-/// The Stop hook line `klin gate --hook --changed` that `setup` writes, which the agent ingress
-/// replaces. It is no public command, so only an invocation that names `--hook` reaches it.
-#[derive(clap::Parser)]
-#[command(name = "klin gate")]
-pub struct Hook {
-    #[arg(long, required = true)]
-    hook: bool,
-    #[arg(long)]
-    changed: bool,
-    #[arg(long)]
-    json: bool,
-    #[arg(long)]
-    config: Option<PathBuf>,
-    #[arg(long)]
-    host: Option<String>,
-}
-
-impl Hook {
-    pub fn called() -> Option<Hook> {
-        let mut words = std::env::args_os().skip(1);
-        let gate = words.next().is_some_and(|word| word == "gate");
-        (gate && words.any(|word| word == "--hook"))
-            .then(|| <Hook as clap::Parser>::parse_from(std::env::args_os().skip(1)))
-    }
-}
-
 pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
     let args = Args {
         config: check.config.clone(),
@@ -174,52 +147,41 @@ pub fn policy(policy: &Policy, start: &Path, out: &mut String) -> Result<u8, Err
     run(&args, start, out)
 }
 
-pub fn hooked(hook: &Hook, start: &Path, out: &mut String) -> Result<u8, Error> {
+/// One Stop of the agent ingress, over the tree the event names, after the opt-in walk found
+/// the worktree root's `klin.json`. Spec 10.2, 10.3.
+pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
     let args = Args {
-        config: hook.config.clone(),
-        changed: hook.changed,
-        hook: hook.hook,
-        json: hook.json,
-        host: hook.host.clone(),
+        changed: true,
+        hook: true,
         ..Args::default()
     };
-    run(&args, start, out)
-}
-
-fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let event = args
-        .hook
-        .then(|| host::read(args.host.as_deref()))
-        .flatten();
-    let start = event
-        .as_ref()
-        .and_then(|event| event.root.as_deref())
-        .unwrap_or(start);
-    if args.hook && !config::present(args.config.as_deref(), start) {
-        return Ok(0);
-    }
-    let identity = event.as_ref().map_or("", |event| event.identity.as_str());
-    let Some(_claim) = state::claimed(start, identity) else {
-        return Ok(0);
+    let Some(_claim) = state::claimed(start, &event.identity) else {
+        return 0;
     };
-    let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
-    if !args.hook && !args.list {
-        return Ok(checked(args, start, loaded, out));
-    }
-    if args.list {
-        let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
-        return refused(args, judged, out).map(|tally| code(&tally));
-    }
-    match loaded {
-        Ok(mut project) => Ok(stopped(args, &mut project, event, out)),
+    match Project::load(None, start, &catalogue::sections()) {
+        Ok(mut project) => stopped(&args, &mut project, Some(event), out),
         Err(problem) => {
             eprintln!(
                 "klin: FAIL: {problem} — only a person edits that file, so this stop is not \
                  blocked."
             );
-            Ok(1)
+            1
         }
     }
+}
+
+fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
+    if !args.json {
+        for note in config::notes(args.config.as_deref(), start) {
+            let _ = writeln!(out, "{note}");
+        }
+    }
+    let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
+    if !args.list {
+        return Ok(checked(args, start, loaded, out));
+    }
+    let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
+    refused(args, judged, out).map(|tally| code(&tally))
 }
 
 fn by_hand(args: &Args, project: &mut Project, out: &mut String) -> Result<Tally, Error> {
@@ -1241,6 +1203,7 @@ fn policy_json(
         "config": {
             "path": project.config.file.display().to_string(),
             "present": project.config.written(),
+            "ignored": config::ignored(project.start()),
         },
         "capabilities": capabilities,
         "state_dir": state.map(|at| at.display().to_string()),
@@ -2505,6 +2468,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
             report.config = Some(json!({
                 "path": project.config.file.display().to_string(),
                 "present": project.config.written(),
+                "ignored": config::ignored(start),
             }));
             measured(args, &mut project, &mut report, out)
         });

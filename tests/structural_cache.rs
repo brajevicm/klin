@@ -32,18 +32,12 @@ fn commands() -> Tree {
 }
 
 /// A first Stop over the tree at `cwd`, judged against the branch base, as the report it
-/// printed or, for a green stop that prints none, the one the journal records, with the code
-/// `check` gives its status. Only the hook reads the
-/// structural cache, since `check` checks the base out whole.
+/// recorded, with the code `check` gives its status. Only the hook reads the structural cache,
+/// since `check` checks the base out whole.
 fn stop(tree: &Tree, cwd: &Path) -> Run {
     let _ = fs::remove_file(tree.state("turn"));
-    let run = harness::feed(cwd, &["gate", "--hook", "--changed", "--json"], A_STOP);
-    let journal = fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
-    let printed = run.out.lines().find(|line| line.starts_with('{'));
-    let line: Value = printed
-        .or_else(|| journal.lines().last())
-        .and_then(|line| serde_json::from_str(line).ok())
-        .unwrap_or_else(|| panic!("no report in {}", run.out));
+    let (run, line) = harness::stop_report(cwd, A_STOP, &[]);
+    assert!(line.is_object(), "no report in {}", run.out);
     let report: serde_json::Map<String, Value> = [
         "derived", "findings", "gates", "notes", "status", "summary", "window",
     ]
@@ -309,19 +303,10 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
     tree.write("src/lib.rs", "pub fn api() {}\n");
     tree.write("src/main.rs", "fn main() {}\n");
     tree.base();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     tree.write("src/lib.rs", "pub fn api() {}\nfn debt() {}\n");
     let stop = || {
-        let run = harness::feed(
-            tree.root(),
-            &["gate", "--hook", "--changed", "--json"],
-            A_STOP,
-        );
-        let report: Value = run
-            .out
-            .lines()
-            .find_map(|line| serde_json::from_str(line).ok())
-            .unwrap_or_else(|| panic!("no report in {}", run.out));
+        let (_, report) = harness::stop_report(tree.root(), A_STOP, &[]);
         let row = harness::gate_rows(&report)
             .as_array()
             .and_then(|gates| gates.iter().find(|row| row["name"] == "dead-symbols"))
@@ -335,7 +320,7 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
 
     let first = stop();
     let second = stop();
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     tree.git(&["checkout", "-q", "-b", "elsewhere"]);
     let third = stop();
 
@@ -625,22 +610,6 @@ fn a_symlink_setting_git_spells_another_way_reads_as_git_reads_it() {
         assert_eq!(warm.code, 1, "{set}: {}", warm.out);
         assert!(warm.says("fn spare() {}"), "{set}: {}", warm.out);
     }
-}
-
-#[test]
-fn a_configuration_root_below_the_git_top_level_lists_its_own_subtree() {
-    let tree = Tree::new();
-    tree.write("README.md", "# outside\n");
-    tree.write("app/klin.json", "{}");
-    tree.write("app/src/lib.rs", "pub fn api() {}\n");
-    tree.write("app/src/caller.rs", "fn main() { api(); }\n");
-    tree.base();
-    tree.write("app/src/lib.rs", "pub fn api() {}\nfn spare() {}\n");
-
-    let warm = light_beside_whole(&tree, |tree| stop(tree, &tree.path("app")));
-
-    assert_eq!(warm.code, 1, "{}", warm.out);
-    assert!(warm.says("src/lib.rs"), "{}", warm.out);
 }
 
 #[test]

@@ -1096,11 +1096,11 @@ fn an_escape() -> String {
 }
 
 fn hook(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+    harness::feed(tree.root(), harness::AGENT, event)
 }
 
 fn prompt(tree: &Tree) {
-    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let run = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
