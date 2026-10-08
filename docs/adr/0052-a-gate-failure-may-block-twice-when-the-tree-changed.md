@@ -186,3 +186,22 @@ leaves unresolved (ADR 0009).
   index, at a stop that may spend a gate block. A stop that finds both blocks
   spent hashes nothing.
 - `docs/SPEC.md` 9.3, 9.5, 11.4, 11.5 and 16.3 carry the rule.
+
+## Amendment: only an agent-fixable FAIL spends a gate block (#502)
+
+The decision above let "any gate failure or tool error" spend a gate block.
+vNext narrows it (spec 2.3, 10.4). Only a FAIL the agent can fix in code,
+`measurement-lost` included, spends gate block 1 or gate block 2. A tool
+error, a capability-scope configuration error, an opened gap, a coverage note
+and a hole spend no gate block and do not keep the stamp red. The Stop tells
+each of them once per stamp, and its text holds no source-repair instruction.
+A FAIL beside one of them still spends its block, and the lead line names the
+others as a limitation of the Stop.
+
+A klin.json that klin cannot read writes `unjudged` and blocks nothing. The
+Stop exits 0 and tells the error to the person once per stamp. An `unjudged`
+Stop after a `red` one keeps `red` (spec 6.6).
+
+The deleted-test question of ADR 0031 is the one other reason to spend a gate
+block, and it shares the FAIL's block. The two-block cap, the changed-tree
+condition and the record of the tree are unchanged.

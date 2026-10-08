@@ -392,7 +392,7 @@ fn a_person_resets_the_stamp_after_a_red_stop() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("a person moved"), "{}", run.out);
     assert_ne!(tree.field("commit"), first, "the reset left the stamp put");
-    assert_eq!(tree.field("verdict"), "red");
+    assert_eq!(tree.field("verdict"), "pending");
     assert_eq!(
         git_out(tree.root(), &["show", "refs/worktree/klin/turn:src/lib.rs"]),
         "fn abandoned() {}"
@@ -400,13 +400,13 @@ fn a_person_resets_the_stamp_after_a_red_stop() {
 }
 
 #[test]
-fn a_reset_after_a_green_stop_leaves_a_red_stamp_the_next_prompt_keeps() {
+fn a_reset_after_a_green_stop_leaves_a_pending_stamp_the_next_prompt_keeps() {
     let tree = tree();
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
     verdict(&tree, "green");
 
     assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    assert_eq!(tree.field("verdict"), "red");
+    assert_eq!(tree.field("verdict"), "pending");
     let moved = tree.field("commit");
     tree.write("src/lib.rs", "fn after_the_reset() {}\n");
 

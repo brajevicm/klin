@@ -11,6 +11,7 @@ use crate::check::catalogue;
 use crate::config::{Config, Discovered};
 use crate::error::Error;
 use crate::hooks::{self, Integration};
+use crate::stamp::Verdict;
 use crate::{journal, stamp, state};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
@@ -72,13 +73,30 @@ fn integration(one: &Integration) -> Value {
     })
 }
 
-/// The local window the stamp holds: its verdict and its age. It never claims that the working
-/// tree passes. Spec 11.4.
+/// The local window the stamp holds: its verdict, its age, and why it is red, unjudged or
+/// aborted. It never claims that the working tree passes. Spec 11.4.
 fn window(at: &Path) -> Option<Value> {
     let held = stamp::read(at)?;
+    let none: &[String] = &[];
+    let (open, unasked) = match &held.verdict {
+        Verdict::Red { open, unasked } => (open.as_slice(), unasked.as_slice()),
+        _ => (none, none),
+    };
+    let error = match &held.verdict {
+        Verdict::Unjudged { error } => Some(error),
+        _ => None,
+    };
+    let aborted_since = match held.verdict {
+        Verdict::Aborted { since } => Some(since),
+        _ => None,
+    };
     Some(json!({
-        "verdict": if held.green { "green" } else { "red" },
+        "verdict": held.verdict.name(),
         "age_seconds": now().saturating_sub(held.time),
+        "open": open,
+        "unasked": unasked,
+        "error": error,
+        "aborted_since": aborted_since,
     }))
 }
 
@@ -138,21 +156,39 @@ fn local_text(document: &Value, out: &mut String) {
         let _ = writeln!(out, "{label}: {}", document[key].as_str().unwrap_or("none"));
     }
     let window = &document["window"];
-    match window["verdict"].as_str() {
-        Some(verdict) => {
-            let _ = writeln!(
-                out,
-                "window: {verdict}, stamped {} s ago",
-                window["age_seconds"]
-            );
-        }
-        None => {
-            let _ = writeln!(out, "window: none, no session has opened one");
-        }
-    }
+    window_text(window, out);
     let stop = &document["last_stop"];
     if let Some(verdict) = stop["verdict"].as_str() {
         let _ = writeln!(out, "last stop (historical): {verdict} at {}", stop["time"]);
+    }
+}
+
+/// The stamp's verdict and age, and what keeps the window red: "nothing judged" for an
+/// unjudged window, never green. Spec 6.6, 11.4.
+fn window_text(window: &Value, out: &mut String) {
+    let age = &window["age_seconds"];
+    let _ = match window["verdict"].as_str() {
+        Some("unjudged") => writeln!(
+            out,
+            "window: nothing judged, stamped {age} s ago — {}",
+            word(window, "error")
+        ),
+        Some("aborted") => writeln!(
+            out,
+            "window: aborted since {}, stamped {age} s ago — klin failed during a stop, and \
+             the next stop that measures replaces it",
+            window["aborted_since"]
+        ),
+        Some(verdict) => writeln!(out, "window: {verdict}, stamped {age} s ago"),
+        None => writeln!(out, "window: none, no session has opened one"),
+    };
+    for (key, label) in [
+        ("open", "open finding"),
+        ("unasked", "deleted test not asked about"),
+    ] {
+        for item in window[key].as_array().into_iter().flatten() {
+            let _ = writeln!(out, "  {label}: {}", item.as_str().unwrap_or_default());
+        }
     }
 }
 

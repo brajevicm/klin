@@ -40,8 +40,8 @@ const MISSING: &str = "missing";
 /// The question the hook's block puts to the agent. Removing a test is ordinary work, and
 /// deleting a failing one is the cheapest route to green, so klin asks once and does not judge
 /// the answer. Spec 8.2.
-const REMEDY: &str = "If a test failed because the code is wrong, restore the test and fix the \
-    code. If the removal is intended, say why in your reply and stop again.";
+const REMEDY: &str = "klin asks once about each test that went: say why in your reply and stop \
+    again.";
 
 /// The one affix table of spec 8.2, which the survey reads to find a test root and this gate
 /// reads to name a test file's subject. Printed with the NOTE.

@@ -301,6 +301,7 @@ fn deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why(
         );
         assert!(run.says(QUESTION), "{}: {}", pattern.marker, run.out);
         assert!(!run.says("accepted"), "{}: {}", pattern.marker, run.out);
+        assert!(!run.says("restore"), "{}: {}", pattern.marker, run.out);
     }
 }
 
