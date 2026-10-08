@@ -24,6 +24,36 @@ fn a_deleted_test_file_blocks_the_stop_naming_the_path() {
     assert!(run.says(QUESTION), "{}", run.out);
 }
 
+/// A deleted test file is a review item at `klin check`: the judgement is `review` and the exit
+/// code does not change. Spec 9.2.
+#[test]
+fn a_deleted_test_file_is_a_review_item_at_klin_check() {
+    let tree = tree_with_a_test();
+    tree.remove("tests/test_foo.py");
+
+    let run = tree.run(&["check", "inventory", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "review", "{report}");
+    assert_eq!(report["findings"], serde_json::json!([]), "{report}");
+    let reviews = report["reviews"].as_array().cloned().unwrap_or_default();
+    assert!(
+        reviews.iter().any(|review| review["kind"] == "deleted-test"
+            && review["check"] == "inventory"
+            && review["file"] == "tests/test_foo.py"),
+        "{report}"
+    );
+
+    let text = tree.run(&["check", "inventory"]);
+    assert_eq!(text.code, 0, "{}", text.out);
+    assert!(text.says("REVIEW  inventory"), "{}", text.out);
+    assert!(
+        text.says("REVIEW: 1 test site(s) the base holds went in this window:"),
+        "{}",
+        text.out
+    );
+}
+
 #[test]
 fn a_new_file_and_a_file_outside_the_roots_do_not_fail() {
     let tree = tree_with_a_test();
@@ -306,7 +336,7 @@ fn deleting_a_test_function_from_a_file_that_stays_blocks_the_stop_and_asks_why(
 }
 
 #[test]
-fn a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook() {
+fn a_deleted_test_function_is_a_review_item_that_fails_nothing_at_klin_check() {
     for pattern in PATTERNS {
         let tree = tree_with(pattern);
         tree.write("src/lib.rs", "pub fn kept() {}\n");
@@ -314,7 +344,7 @@ fn a_deleted_test_function_is_a_note_that_fails_nothing_outside_the_hook() {
         let run = tree.run(&["check", "inventory"]);
         assert_eq!(run.code, 0, "{}: {}", pattern.marker, run.out);
         assert!(
-            run.says("NOTE: 1 test site(s) the base holds went in this window:"),
+            run.says("REVIEW: 1 test site(s) the base holds went in this window:"),
             "{}: {}",
             pattern.marker,
             run.out

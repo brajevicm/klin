@@ -21,7 +21,7 @@ use crate::measurement;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
-use crate::scope::{self, Scope};
+use crate::scope::{self, Moves, Scope};
 use crate::syntax::{self, structural};
 use crate::tree::Tree;
 
@@ -78,7 +78,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let affected = affected_scope(at, &before, &after, &mut names);
     let widened = at.scoped(affected.as_deref().or(at.only));
     let at = &widened;
-    let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
+    let judged_scope = at.only.filter(|_| at.changes.is_some());
     let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
     let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
     let built = (before_states.len() + after_states.len()) as u64;
@@ -156,7 +156,7 @@ fn affected_scope(
     after: &measurement::Measurement,
     names: &mut structural::NameCost,
 ) -> Option<Vec<String>> {
-    let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
+    let only = at.only.filter(|_| at.changes.is_some())?;
     structural::timed(&mut names.before.index, || before.index());
     structural::timed(&mut names.after.index, || after.index());
     let mut affected = BTreeSet::new();
@@ -273,7 +273,7 @@ fn reports(
 fn spec(project: &Project) -> Result<Spec, Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
-    let selection = selection(config, &values)?;
+    let selection = selection(config, project.moves(), &values)?;
     if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
         return Err(Error(format!(
             "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
@@ -286,10 +286,10 @@ fn spec(project: &Project) -> Result<Spec, Error> {
     })
 }
 
-fn selection(config: &Config, values: &Values) -> Result<Selection, Error> {
+fn selection(config: &Config, moves: &Moves, values: &Values) -> Result<Selection, Error> {
     Ok(Selection {
         extensions: structural::selected_extensions(&[]).unwrap_or_default(),
-        scope: Scope::read(config, SECTION, values)?,
+        scope: Scope::read(config, moves, SECTION, values)?,
     })
 }
 

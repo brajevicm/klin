@@ -264,7 +264,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         &spec.search,
         project.tree(),
         project.root(),
-        at.changes.filter(|_| !at.strict),
+        at.changes,
     )?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let unit = kind.evaluator.unit;
@@ -358,7 +358,7 @@ fn named(mut findings: Vec<Finding>, now: &Marks, before: &Marks) -> Vec<Finding
 
 fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     let values = project.config.policy(kind.section, kind.keys)?;
-    let search = search(kind, &project.config, &values)?;
+    let search = search(kind, project, &values)?;
     if search.scope.has_in() && !applicable(kind, project.tree(), &search.scope)? {
         return Err(Error(format!(
             "{}: \"{}\" has an \"in\" scope with no applicable file",
@@ -369,10 +369,11 @@ fn spec(kind: &Kind, project: &Project) -> Result<Spec, Error> {
     Ok(Spec { search })
 }
 
-fn search(kind: &Kind, config: &Config, section: &Values) -> Result<Search, Error> {
+fn search(kind: &Kind, project: &Project, section: &Values) -> Result<Search, Error> {
+    let config = &project.config;
     Ok(Search {
         sets: language_sets(kind, config)?,
-        scope: Scope::read(config, kind.section, section)?,
+        scope: Scope::read(config, project.moves(), kind.section, section)?,
         skip_test_idioms: skips_test_idioms(config, kind.section, section)?,
     })
 }

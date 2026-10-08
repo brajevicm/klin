@@ -985,12 +985,15 @@ Rules:
 - **Moved and deleted policy paths.** A path that the policy names (an `in`
   path, a pinned document, a convention's `in`) and that selects files in the
   base and none in the working tree is decided by what happened to those
-  files, by a deterministic test on both trees:
+  files, by a deterministic test on both trees. The shipped binary applies
+  these rules to a section's `in` and `except` paths only. A pinned document
+  and a convention's own `in` keep their earlier handling until #524:
   - **Renamed.** When git detects every selected file as renamed (`-M50%`),
     the policy follows the rename for this run. The capability measures the
     new paths under the pinned values, so it stays switched on. `klin check`
     adds a review item of kind `moved-pin` that names the old and new path, so
-    a person updates the pin in the pull request. No block and no error.
+    a person updates the pin in the pull request. No block and no error. The
+    Stop follows the rename without a note.
   - **Deleted.** When the selected files are gone and not renamed, it is a
     note at the Stop and a review item of kind `moved-pin` at `klin check`.
     No error.
@@ -1000,7 +1003,12 @@ Rules:
   - **Selects nothing in either tree.** A pinned path that selected nothing in
     the base either, such as a pin left behind after an earlier move merged,
     is a `moved-pin` review item, not an error, so an ignored review item
-    never turns into a later exit 2.
+    never turns into a later exit 2. This holds where the base's own
+    `klin.json` pins the path and no other path of the same `in` selects a
+    file. A path the change itself wrote that selects nothing stays a
+    `configuration` error, so a typo never passes as a moved pin. A path
+    beside another that selects files was never an exit 2, and it says
+    nothing.
   - **Known limit.** A move combined with a rewrite under 50% similarity, or
     past the rename limit of section 7.2, reads as a deletion, so the gate
     measures nothing at the new path until a person updates the pin. The
@@ -1012,7 +1020,11 @@ Rules:
   The finding is an ordinary capability finding, with an added `values` entry
   `moved_out_of_scope: true` that is not ratcheted. This closes the route of hiding a
   finding by moving its file out of scope, without blocking a requested
-  move.
+  move. The kept membership holds in both trees and against an `except`
+  path too, so a file renamed under an `except` path is still measured.
+  **Known limit:** a rename into a directory every walk skips, such as
+  `out/`, `build/` or `vendor/`, takes the file out of both trees' file
+  lists, so this rule does not reach it. #523 owns that case.
 - At the Stop, any other capability-scope error does not stop the other
   capabilities, and it never blocks. A FAIL beside it still spends its block.
   A run-scope configuration error writes `unjudged` (section 6.6). A klin
@@ -1722,7 +1734,7 @@ A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `kind` is its reason of section 7.2. Other kinds include the
 0.x note outcomes that stay notes: `unmatched` at the Stop, `derivation`,
-`config`.
+`config`, and `window` for what choosing the base found (section 6.5).
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail}`;

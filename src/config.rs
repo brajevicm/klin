@@ -136,6 +136,15 @@ impl Config {
         self.data.get(name)
     }
 
+    /// Every section the config states as an object, which is every one a scope can sit in.
+    pub fn objects(&self) -> impl Iterator<Item = (&str, &Map<String, Value>)> {
+        self.data
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter_map(|(name, value)| Some((name.as_str(), value.as_object()?)))
+    }
+
     /// A section the file must state, because nothing derives it: the value, or the error that
     /// names the file and the key. Spec 5.1, 14.
     pub fn required(&self, name: &str) -> Result<&Value, Error> {

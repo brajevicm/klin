@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 use crate::check::contract::{
-    Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Site, Told, Unmatched, Was,
+    Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Told, Unmatched, Was,
 };
 use crate::config::{self, Config};
 use crate::error::Error;
@@ -530,30 +530,14 @@ fn report(
     });
     if comparison.failed() {
         failures(comparison, evaluator, (at.gate, held), out);
-        notes(comparison, evaluator, at.gate, out);
+        notes(comparison, evaluator, at, out);
         return 1;
     }
     out.tell(Told::Judged {
         line,
         held: comparison.reasons(),
     });
-    notes(comparison, evaluator, at.gate, out);
-    if at.strict && !comparison.unmatched_accepted.is_empty() {
-        out.tell(Ratchet::AcceptedStale {
-            count: comparison.unmatched_accepted.len(),
-            rows: comparison
-                .unmatched_accepted
-                .iter()
-                .filter_map(|entry| {
-                    retired_row(at.gate, entry).map(|went| Site {
-                        file: text(entry, "file"),
-                        text: went,
-                    })
-                })
-                .collect(),
-        });
-        return 1;
-    }
+    notes(comparison, evaluator, at, out);
     0
 }
 
@@ -669,21 +653,22 @@ fn text(entry: &Values, key: &str) -> String {
         .to_string()
 }
 
-fn notes(comparison: &Comparison, evaluator: &Evaluator, gate: &str, out: &mut Sink) {
+fn notes(comparison: &Comparison, evaluator: &Evaluator, at: &Context, out: &mut Sink) {
     if comparison.unmatched_accepted.is_empty() {
         return;
     }
-    out.tell(Ratchet::AcceptedUnmatched(
-        comparison
+    out.tell(Ratchet::AcceptedUnmatched {
+        entries: comparison
             .unmatched_accepted
             .iter()
             .map(|entry| Unmatched {
                 entry: entry_of(entry),
                 shown: (evaluator.format_metrics)(entry),
-                retired: retired_row(gate, entry),
+                retired: retired_row(at.gate, entry),
             })
             .collect(),
-    ));
+        caller: at.caller,
+    });
 }
 
 /// The site identity of 4.4 in one token: a hash of the gate, the file and the declaration

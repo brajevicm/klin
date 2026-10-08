@@ -186,7 +186,7 @@ fn commit(config: &Config, at: &Context) -> Option<String> {
     if let Some(named) = at.base {
         return Some(named.to_string());
     }
-    let base = base::choose(config.root(), at.strict).ok()?;
+    let base = base::choose(config.root()).ok()?;
     Some(base.before)
 }
 

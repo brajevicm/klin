@@ -17,6 +17,7 @@ use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
+use crate::scope::{self, Moves};
 use crate::tree::Tree;
 use crate::{stamp, survey};
 
@@ -30,6 +31,11 @@ pub struct Project {
     facts: OnceCell<survey::Facts>,
     derivation: OnceCell<Option<String>>,
     by_hand: bool,
+    /// The base the run's window names, which the moved policy paths are read against.
+    bound: Option<String>,
+    /// What the change did to the paths the policy names, read on the first call after the
+    /// build, so a file the build writes is in it. Spec 6.4, 7.3.
+    moves: OnceCell<Moves>,
 }
 
 impl Project {
@@ -58,6 +64,8 @@ impl Project {
             facts: OnceCell::new(),
             derivation: OnceCell::new(),
             by_hand: false,
+            bound: None,
+            moves: OnceCell::new(),
         }
     }
 
@@ -86,7 +94,7 @@ impl Project {
     fn derivation(&self) -> &Option<String> {
         self.derivation.get_or_init(|| {
             self.by_hand
-                .then(|| base::choose(self.root(), false).ok())
+                .then(|| base::choose(self.root()).ok())
                 .flatten()
                 .and_then(|window| window.derives)
                 .or_else(|| stamp::unwindowed(self.root()))
@@ -100,6 +108,25 @@ impl Project {
             .or_else(|| stamp::unwindowed(self.root()));
         self.derivation = OnceCell::from(commit);
         self.facts.take();
+        self.bound = Some(window.before.clone());
+        self.moves.take();
+    }
+
+    /// What the change did to the paths the policy names, which the run follows, and nothing
+    /// before a window is bound or where no section states a scope. Spec 7.3.
+    pub fn moves(&self) -> &Moves {
+        self.moves.get_or_init(|| {
+            let Some(base) = self.bound.as_deref() else {
+                return Moves::default();
+            };
+            if !scope::states_a_scope(&self.config) {
+                return Moves::default();
+            }
+            match (self.changes(base), self.tree.files()) {
+                (Ok(changes), Ok(files)) => scope::moved(&self.config, files, base, &changes),
+                _ => Moves::default(),
+            }
+        })
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives

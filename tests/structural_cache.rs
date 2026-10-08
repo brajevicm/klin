@@ -633,7 +633,7 @@ fn the_base_scope_comes_from_the_base_configuration_on_a_light_layout() {
 }
 
 #[test]
-fn a_strict_run_a_whole_run_and_a_damaged_cache_check_the_base_out_whole() {
+fn a_whole_run_and_a_damaged_cache_check_the_base_out_whole_and_a_changed_check_does_not() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("src/lib.rs", "pub fn api() {}\n");
@@ -643,17 +643,19 @@ fn a_strict_run_a_whole_run_and_a_damaged_cache_check_the_base_out_whole() {
 
     changed(&tree);
     let light = changed(&tree);
-    let strict = tree.run(&["check", "--json", "--changed", "dead-symbols"]);
+    let checked = tree.run(&["check", "--json", "--changed", "dead-symbols"]);
     let whole = tree.run(&["check", "--json", "dead-symbols"]);
     for file in cached_files(&tree) {
         assert!(fs::write(&file, b"not a cache").is_ok());
     }
     let damaged = changed(&tree);
 
-    assert!(layout(&light)["written"].is_u64(), "{}", light.out);
-    for run in [&strict, &whole, &damaged] {
+    for run in [&light, &checked] {
+        assert!(layout(run)["written"].is_u64(), "{}", run.out);
+    }
+    for run in [&whole, &damaged] {
         assert!(layout(run)["written"].is_null(), "{}", run.out);
     }
     assert_eq!(judged(&damaged), judged(&light));
-    assert_eq!(strict.code, light.code, "{}", strict.out);
+    assert_eq!(checked.code, light.code, "{}", checked.out);
 }

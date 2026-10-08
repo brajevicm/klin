@@ -378,7 +378,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         project.tree(),
         &spec.selection,
         project.root(),
-        at.changes.filter(|_| !at.strict),
+        at.changes,
         None,
     )?;
     let now = over(&sweep.functions, &spec);
@@ -522,7 +522,7 @@ fn spec(project: &Project) -> Result<Spec, Error> {
     let values = config.policy(SECTION, KEYS)?;
     let selection = Selection {
         languages: syntax::LANGUAGES.iter().collect(),
-        scope: Scope::read(config, SECTION, &values)?,
+        scope: Scope::read(config, project.moves(), SECTION, &values)?,
     };
     if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
         return Err(Error(format!(

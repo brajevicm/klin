@@ -42,6 +42,14 @@ pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     Ok(changes)
 }
 
+/// Whether the working tree differs from HEAD, untracked files included, read under the same
+/// settings as finding changes, so asking starts no program of the person's. Spec 6.5.
+pub fn dirty(root: &Path) -> bool {
+    let repo = Repo::at(root);
+    repo.text_with_env(&["status", "--porcelain"], &Quiet::of(&repo).with(&[]))
+        .is_some_and(|listed| !listed.trim().is_empty())
+}
+
 /// The settings under which finding changes starts no program of the person's and refuses no
 /// file for its line endings: every filter driver git's configuration names turned off, no
 /// file-system monitor, and no end-of-line check. They travel as

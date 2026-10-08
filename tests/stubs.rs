@@ -593,15 +593,10 @@ fn an_accepted_entry_for_a_mixed_line_the_base_holds_is_stale_and_the_base_holds
     tree.base();
 
     let run = tree.run(&["check", "stubs"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("all held at the base"), "{}", run.out);
     assert!(
-        run.says("NOTE: 2 accepted entries matched nothing this run"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("the accepted list holds 2 entries that matched nothing"),
+        run.says("REVIEW: 2 accepted entries matched nothing this run"),
         "{}",
         run.out
     );

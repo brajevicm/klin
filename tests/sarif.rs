@@ -166,7 +166,7 @@ fn an_accepted_entry_holds_a_result() {
 }
 
 #[test]
-fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_failure() {
+fn an_accepted_entry_that_matches_nothing_is_a_review_item_and_no_failure() {
     let tree = tree(
         r#"{
         "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
@@ -178,9 +178,12 @@ fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_failure() {
     tree.write("eslint.sarif", &report(&[]));
 
     let run = tree.run(&["check", "eslint"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("matched nothing this run"), "{}", run.out);
-    assert!(run.says("Delete the line"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: 1 accepted entry matched nothing this run"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

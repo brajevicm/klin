@@ -21,6 +21,7 @@ use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
+use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
 use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
@@ -75,7 +76,6 @@ impl Plan {
 #[derive(Default)]
 struct Args {
     config: Option<PathBuf>,
-    strict: bool,
     gates: Vec<String>,
     list: bool,
     entry: Option<String>,
@@ -124,7 +124,6 @@ pub struct Policy {
 pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
     let args = Args {
         config: check.config.clone(),
-        strict: true,
         gates: check.checks.clone(),
         changed: check.changed,
         json: check.json,
@@ -216,7 +215,7 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 fn by_hand(args: &Args, project: &mut Project, out: &mut String) -> Result<Tally, Error> {
-    let window = base::choose(project.root(), args.strict).ok();
+    let window = base::choose(project.root()).ok();
     if let Some(window) = &window {
         project.bind(window);
     }
@@ -985,7 +984,7 @@ fn scoped<'a>(
     if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
         return Ok(None);
     }
-    let base = chosen(window, project, args.strict)?;
+    let base = chosen(window, project)?;
     project.changes(&base.before).map(Some)
 }
 
@@ -1014,6 +1013,9 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
+    let gone = gone_pins(args, project, &wanted, out);
+    tally.told += gone.len();
+    records.notes.extend(gone);
     if let Some(unbuilt) = unbuilt {
         records.notes.push(record(UNBUILT, unbuilt));
         tally.told += 1;
@@ -1096,7 +1098,7 @@ fn base(
     if !args.changed && !wanted.iter().any(|gate| gate.check.needs.the_commit()) {
         return Ok(None);
     }
-    let base = chosen(window, project, args.strict)?;
+    let base = chosen(window, project)?;
     if !args.json {
         let _ = writeln!(out, "  {}", base.line());
     }
@@ -1105,10 +1107,10 @@ fn base(
 
 /// The window the run judges: the one the hook already read, or the base a run by hand and CI
 /// choose for themselves. Spec 6.1, 6.3.
-fn chosen(window: Option<&Window>, project: &Project, strict: bool) -> Result<Window, Error> {
+fn chosen(window: Option<&Window>, project: &Project) -> Result<Window, Error> {
     match window {
         Some(window) => Ok(window.clone()),
-        None => base::choose(project.root(), strict),
+        None => base::choose(project.root()),
     }
 }
 
@@ -1374,9 +1376,6 @@ fn no_source_root(
         return Ok(None);
     }
     let said = no_source_root_said(project);
-    if args.strict {
-        return Err(Error(said));
-    }
     if !args.json {
         let _ = writeln!(out, "  NOTE: {said}");
     }
@@ -2371,7 +2370,6 @@ fn one(
             true => Caller::Hook,
             false => Caller::Gate,
         },
-        strict: args.strict && gate.check.needs.the_commit(),
     };
     let outcome = (gate.check.run)(
         &at,
@@ -2389,6 +2387,7 @@ fn one(
         }
     };
     let mut recorded = Recorded::from(render::json(&told));
+    moved_out(project.moves(), gate.check.section, &mut recorded.findings);
     errored(code, &mut records.errors, &mut recorded);
     (code, told, records, recorded)
 }
@@ -2504,7 +2503,8 @@ impl Axes {
         }
     }
 
-    /// The one state that wins: an error, then a failing finding, then a hole. Spec 7.4.
+    /// The one state that wins: an error, then a failing finding, then a hole, then a review
+    /// item. Spec 7.4, 11.3.
     fn worst(self) -> Worst {
         match self {
             Axes { error: true, .. } => Worst::Error,
@@ -2515,6 +2515,10 @@ impl Axes {
             Axes {
                 incomplete: true, ..
             } => Worst::Incomplete,
+            Axes {
+                judgement: Judgement::Review,
+                ..
+            } => Worst::Review,
             _ => Worst::Ok,
         }
     }
@@ -2525,16 +2529,17 @@ impl Axes {
             Worst::Error => 2,
             Worst::Fail => 1,
             Worst::Incomplete => 3,
-            Worst::Ok => 0,
+            Worst::Review | Worst::Ok => 0,
         }
     }
 
-    /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `ok`. Spec 11.3.
+    /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `REVIEW`, `ok`. Spec 11.3.
     fn state(self) -> &'static str {
         match self.worst() {
             Worst::Error => "ERR ",
             Worst::Fail => "FAIL",
             Worst::Incomplete => "INCOMPLETE",
+            Worst::Review => "REVIEW",
             Worst::Ok => "ok  ",
         }
     }
@@ -2560,6 +2565,7 @@ enum Worst {
     Error,
     Fail,
     Incomplete,
+    Review,
     Ok,
 }
 
@@ -2568,9 +2574,10 @@ enum Worst {
 fn axes(code: u8, recorded: &Recorded) -> Axes {
     let fails = code == 1 || recorded.findings.iter().any(failing);
     Axes {
-        judgement: match fails {
-            true => Judgement::Fail,
-            false => Judgement::Pass,
+        judgement: match (fails, recorded.reviews.is_empty()) {
+            (true, _) => Judgement::Fail,
+            (false, false) => Judgement::Review,
+            (false, true) => Judgement::Pass,
         },
         incomplete: !recorded.holes.is_empty(),
         error: code == 2,
@@ -2589,6 +2596,7 @@ fn failing(finding: &Value) -> bool {
 struct Report {
     config: Option<Value>,
     window: Option<Value>,
+    tree: Option<Value>,
     axes: Axes,
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
     stopped: bool,
@@ -2646,7 +2654,7 @@ fn measured(
     report: &mut Report,
     out: &mut String,
 ) -> Result<(), Fault> {
-    let window = base::choose(project.root(), args.strict).ok();
+    let window = base::choose(project.root()).ok();
     if let Some(window) = &window {
         project.bind(window);
     }
@@ -2662,6 +2670,64 @@ fn measured(
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
     Ok(())
+}
+
+/// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
+/// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
+/// and `klin check` names it. Spec 7.3.
+fn gone_pins(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
+    let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
+    gone.filter_map(Moved::said)
+        .map(|said| {
+            if !args.json {
+                let _ = writeln!(out, "  NOTE: {said}");
+            }
+            record("note", &said)
+        })
+        .collect()
+}
+
+/// The moves of the sections whose gates this run selected.
+fn selected<'a>(moves: &'a Moves, wanted: &'a [&Gate]) -> impl Iterator<Item = &'a Moved> {
+    moves.iter().filter(|moved| {
+        wanted
+            .iter()
+            .any(|gate| gate.check.section == moved.section())
+    })
+}
+
+/// The review item of a moved pinned path, and nothing for a file moved out of a scope, whose
+/// findings carry `moved_out_of_scope`. Spec 7.3, 11.7.
+fn moved_pin(moved: &Moved) -> Option<Value> {
+    let Moved::Pin { path, .. } = moved else {
+        return None;
+    };
+    let check = catalogue::CATALOGUE
+        .iter()
+        .find(|row| row.section == moved.section())
+        .map(|row| row.name);
+    Some(json!({
+        "check": check,
+        "kind": contract::MOVED_PIN,
+        "file": path,
+        "line": null,
+        "text": moved.said(),
+        "reason": moved.reason(),
+    }))
+}
+
+/// A finding at a file the change moved out of its gate's scope, which keeps the scope of its
+/// base path, carries `moved_out_of_scope`, which no ratchet compares. Spec 7.3.
+fn moved_out(moves: &Moves, section: &str, findings: &mut [Value]) {
+    let out = moves.out_of(section);
+    for finding in findings
+        .iter_mut()
+        .filter(|finding| out.contains(&finding["file"].as_str().unwrap_or_default()))
+    {
+        if let Some(values) = finding.get_mut("values").and_then(Value::as_object_mut) {
+            values.insert("moved_out_of_scope".into(), true.into());
+        }
+    }
 }
 
 /// The note of a run under `{}` whose base still holds the worktree root's `klin.json`, so the
@@ -2813,7 +2879,7 @@ impl Report {
         against: &Against,
         out: &mut String,
     ) {
-        self.window = against.base.as_ref().map(Window::record);
+        self.windowed(args, (project, wanted), against.base.as_ref(), out);
         for gate in wanted {
             self.gate(args, gate, project, against, out);
         }
@@ -2839,6 +2905,52 @@ impl Report {
         }
         if args.gates.is_empty() {
             self.not_applicable(plan);
+        }
+    }
+
+    /// What binding the window found: the window and the tree the run judges, a `moved-pin`
+    /// review item per moved pinned path, a note each for a rewritten push base or a base equal
+    /// to HEAD, and the hole of a local base equal to HEAD that may hide unpushed commits.
+    /// Spec 6.5, 7.3.
+    fn windowed(
+        &mut self,
+        args: &Args,
+        (project, wanted): (&Project, &[&Gate]),
+        base: Option<&Window>,
+        out: &mut String,
+    ) {
+        self.window = base.map(Window::record);
+        self.tree = Some(base::tree_record(project.root()));
+        for review in selected(project.moves(), wanted).filter_map(moved_pin) {
+            if !args.json {
+                let _ = writeln!(
+                    out,
+                    "  REVIEW: {}",
+                    review["text"].as_str().unwrap_or_default()
+                );
+            }
+            self.reviews.push(review);
+        }
+        let Some(base) = base else {
+            return;
+        };
+        for note in &base.notes {
+            if !args.json {
+                let _ = writeln!(out, "  NOTE: {note}");
+            }
+            self.notes.push(json!({
+                "check": null,
+                "kind": contract::WINDOW,
+                "file": null,
+                "message": note,
+            }));
+        }
+        if let Some(text) = &base.unproven {
+            self.holes.push(Incomplete {
+                reason: Reason::ComparisonUnproven,
+                detail: None,
+                text: text.clone(),
+            });
         }
     }
 
@@ -3127,7 +3239,7 @@ impl Report {
             "klin": { "version": env!("CARGO_PKG_VERSION") },
             "config": self.config,
             "window": self.window,
-            "tree": null,
+            "tree": self.tree,
             "judgement": ran.then(|| self.axes.judgement.name()),
             "measurement": ran.then(|| self.axes.measurement()),
             "execution": self.axes.execution(),
@@ -3254,7 +3366,9 @@ fn review_record(gate: &str, review: Value) -> Value {
     };
     fields.remove("outcome");
     fields.insert("check".into(), gate.into());
-    fields.insert("kind".into(), holes::UNMEASURED.into());
+    fields
+        .entry("kind")
+        .or_insert_with(|| holes::UNMEASURED.into());
     Value::Object(fields)
 }
 

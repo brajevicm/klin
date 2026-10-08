@@ -76,32 +76,43 @@ fn a_base_that_resolves_to_head_at_the_remote_tip_runs_the_gates() {
     assert!(run.says("ok    escapes"), "{}", run.out);
 }
 
+/// A local source whose HEAD the remote default branch does not hold hides the unpushed
+/// commits, so the comparison is a hole, not a pass. Spec 6.5.
 #[test]
-fn a_base_that_resolves_to_head_ahead_of_the_remote_tip_is_a_tool_error() {
+fn a_local_base_equal_to_head_with_unpushed_commits_is_comparison_unproven() {
     let tree = at_the_remote_tip();
     tree.git(&["checkout", "-q", "-b", "trunk"]);
     tree.write("src/work.rs", CLEAN);
     tree.commit("a commit the remote does not have");
 
     let run = tree.run_with(&[("GITHUB_BASE_REF", "trunk")], &["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 3, "{}", run.out);
+    assert!(run.says("HOLE: comparison-unproven"), "{}", run.out);
     assert!(run.says("origin/main does not hold"), "{}", run.out);
     assert!(run.says("a commit the remote does not have"), "{}", run.out);
+
+    let json = tree.run_with(&[("GITHUB_BASE_REF", "trunk")], &["check", "--json"]);
+    assert_eq!(json.code, 3, "{}", json.out);
+    let report = json.json();
+    assert_eq!(report["measurement"], "incomplete", "{report}");
+    assert_eq!(
+        report["measurements"][0]["holes"][0]["reason"], "comparison-unproven",
+        "{report}"
+    );
 }
 
+/// With no remote at all, nothing proves what to compare, and the run passes with a note.
+/// Spec 6.5.
 #[test]
-fn a_base_that_resolves_to_head_with_no_remote_tip_is_a_tool_error() {
+fn a_base_equal_to_head_with_no_remote_passes_with_a_note() {
     let tree = tree();
     tree.repository();
     tree.commit("everything on the default branch");
 
-    let strict = tree.run(&["check", "escapes"]);
-    assert_eq!(strict.code, 2, "{}", strict.out);
-    assert!(
-        strict.says("no remote default branch resolves"),
-        "{}",
-        strict.out
-    );
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("NOTE: the base is HEAD"), "{}", run.out);
+    assert!(run.says("no remote proves what to compare"), "{}", run.out);
 }
 
 #[test]
@@ -111,12 +122,75 @@ fn a_local_branch_named_like_a_remote_one_does_not_count_as_the_remote() {
     tree.commit("everything on the default branch");
     tree.git(&["branch", "origin/main"]);
 
-    let strict = tree.run(&["check", "escapes"]);
-    assert_eq!(strict.code, 2, "{}", strict.out);
+    let run = tree.run(&["check", "escapes"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("no remote proves what to compare"), "{}", run.out);
+}
+
+/// The pull request target must be fetched, so a `GITHUB_BASE_REF` that does not resolve is an
+/// error that names `fetch-depth`, and never a fall back to another base. Spec 6.5.
+#[test]
+fn a_pull_request_target_that_does_not_resolve_names_fetch_depth() {
+    let tree = on_a_branch();
+
+    let run = tree.run_with(&[("GITHUB_BASE_REF", "release")], &["check"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("release does not resolve"), "{}", run.out);
+    assert!(run.says("fetch-depth: 0"), "{}", run.out);
+}
+
+/// A tree whose push event names a commit no history holds, as a force-push leaves it.
+fn pushed_from_a_rewritten_commit() -> Tree {
+    let tree = on_a_branch();
+    tree.commit("work on the branch");
+    tree.write(
+        "event.json",
+        "{\"before\": \"1234567890123456789012345678901234567890\"}",
+    );
+    tree
+}
+
+#[test]
+fn a_push_base_a_force_push_rewrote_away_falls_back_to_the_merge_base_with_a_note() {
+    let tree = pushed_from_a_rewritten_commit();
+
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("the merge-base with main"), "{}", run.out);
     assert!(
-        strict.says("no remote default branch resolves"),
+        run.says("NOTE: the push started from 1234567, which this repository no longer holds"),
         "{}",
-        strict.out
+        run.out
+    );
+}
+
+#[test]
+fn a_push_base_missing_from_a_shallow_clone_names_fetch_depth() {
+    let tree = pushed_from_a_rewritten_commit();
+    let head = tree.revision("HEAD");
+    tree.write(".git/shallow", &format!("{head}\n"));
+
+    let run = tree.run_with(&[("GITHUB_EVENT_PATH", &tree.at("event.json"))], &["check"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("1234567890123456789012345678901234567890 does not resolve"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("fetch-depth: 0"), "{}", run.out);
+}
+
+/// The check document records HEAD and whether the tree was dirty, and no tree hash. Spec 6.5.
+#[test]
+fn the_json_tree_names_head_and_whether_the_tree_was_dirty() {
+    let tree = on_a_branch();
+
+    let run = tree.run(&["check", "--json"]);
+    let report = run.json();
+    assert_eq!(
+        report["tree"],
+        serde_json::json!({"head": tree.revision("HEAD"), "dirty": true}),
+        "{report}"
     );
 }
 
@@ -143,6 +217,11 @@ fn a_repository_whose_only_reference_is_head_is_a_tool_error() {
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("no base commit"), "{}", run.out);
+    assert!(
+        run.says("none of these resolved: origin/main, origin/master, main, master"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -289,4 +368,21 @@ fn a_scope_outside_the_tree_klin_compares_is_a_tool_error() {
     let run = tree.run(&["check", "escapes"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("is absolute"), "{}", run.out);
+}
+
+#[test]
+fn a_merge_base_a_shallow_clone_cannot_compute_names_fetch_depth() {
+    let tree = on_a_branch();
+    tree.commit("work on the branch");
+    let head = tree.revision("HEAD");
+    tree.write(".git/shallow", &format!("{head}\n"));
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("the merge-base with main does not resolve"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("fetch-depth: 0"), "{}", run.out);
 }

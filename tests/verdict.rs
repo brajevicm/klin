@@ -11,7 +11,7 @@ const DOC_SIZE: &str = r#"{"doc_size": {"README.md": 10}}"#;
 /// A config whose escapes scope holds no applicable file, so that capability errors.
 const A_BROKEN_GATE: &str = r#"{
   "doc_size": {"README.md": 10},
-  "escapes": { "in": "missing" }
+  "escapes": { "in": "README.md" }
 }"#;
 const AN_UNMATCHED_ACCEPTED: &str = r#"{
   "accepted": [{"gate": "escapes", "file": "src/lib.rs", "text": "the line that held it",
