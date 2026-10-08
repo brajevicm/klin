@@ -412,59 +412,60 @@ impl Moved {
     /// What a moved pin or a file moved under a skipped directory says to a person, and nothing
     /// for a file moved out of a scope, whose findings carry `moved_out_of_scope`. Spec 7.3.
     pub fn said(&self) -> Option<String> {
-        let (section, path, renamed, deleted) = match self {
+        match self {
             Moved::Pin {
                 section,
                 path,
                 renamed,
                 deleted,
-            } => (section, path, renamed, deleted),
-            Moved::Out { .. } => return None,
-            Moved::Skipped { was, path } => {
-                return Some(format!(
-                    "{was} moved to {path}, under a directory every walk skips, so no check \
-                     measures it — move it back, or review the move"
-                ));
-            }
-        };
-        let to = renamed
-            .iter()
-            .map(|(_, path)| path.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let what = match (renamed.is_empty(), *deleted) {
-            (false, 0) => format!("its files moved to {to}, and this run measures them there"),
-            (false, deleted) => format!(
-                "its files moved to {to}, and this run measures them there, and {deleted} \
-                 file(s) went with no rename"
-            ),
-            (true, 0) => "it selects nothing in the base or the working tree".to_string(),
-            (true, deleted) => format!(
-                "its {deleted} file(s) went with no rename, so the gate measures nothing there"
-            ),
-        };
-        Some(format!(
-            "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
-             {what} — update the pin in klin.json"
-        ))
+            } => Some(pin_said(section, path, renamed, *deleted)),
+            Moved::Out { .. } => None,
+            Moved::Skipped { was, path } => Some(format!(
+                "{was} moved to {path}, under a directory every walk skips, so no check \
+                 measures it — move it back, or review the move"
+            )),
+        }
     }
 
     /// The old and new path of each file a moved pin followed or a rename took under a skipped
     /// directory, and nothing where none was renamed. Spec 11.7.
     pub fn reason(&self) -> Option<String> {
-        let renamed = match self {
-            Moved::Pin { renamed, .. } => renamed,
-            Moved::Out { .. } => return None,
-            Moved::Skipped { was, path } => return Some(format!("{was} -> {path}")),
-        };
-        (!renamed.is_empty()).then(|| {
-            renamed
-                .iter()
-                .map(|(was, now)| format!("{was} -> {now}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
+        match self {
+            Moved::Pin { renamed, .. } => (!renamed.is_empty()).then(|| {
+                renamed
+                    .iter()
+                    .map(|(was, now)| format!("{was} -> {now}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }),
+            Moved::Out { .. } => None,
+            Moved::Skipped { was, path } => Some(format!("{was} -> {path}")),
+        }
     }
+}
+
+/// What a moved pin says to a person: where its files went, and that the pin needs updating.
+fn pin_said(section: &str, path: &str, renamed: &[(String, String)], deleted: usize) -> String {
+    let to = renamed
+        .iter()
+        .map(|(_, path)| path.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let what = match (renamed.is_empty(), deleted) {
+        (false, 0) => format!("its files moved to {to}, and this run measures them there"),
+        (false, deleted) => format!(
+            "its files moved to {to}, and this run measures them there, and {deleted} \
+             file(s) went with no rename"
+        ),
+        (true, 0) => "it selects nothing in the base or the working tree".to_string(),
+        (true, deleted) => {
+            format!("its {deleted} file(s) went with no rename, so the gate measures nothing there")
+        }
+    };
+    format!(
+        "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
+         {what} — update the pin in klin.json"
+    )
 }
 
 /// Whether any of these selectors holds the path.
