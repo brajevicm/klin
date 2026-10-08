@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
 use std::sync::OnceLock;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const ITERATIONS: usize = 5;
 const EVENTS: usize = 1_000;
@@ -168,16 +168,16 @@ fn perf_case() -> PerfCase {
 fn base_rows() {
     let small = Fixture::new(1_000);
     let small_rows = small.measure(PerfCase::Full);
-    let (guard_rows, mut events) = guard(&small.tree);
-    events.sort_unstable();
+    let (guard_rows, events) = guard(&small.tree);
+    let event_ms = |at: usize| events[at].as_secs_f64() * 1_000.0;
     print_rows(&small, &small_rows, PerfCase::Full);
     println!(
         "guard 1000 events: cache=separate, iterations={ITERATIONS}, median_ms={}, per_event_ms={:.3}, event_p50_ms={:.3}, event_p99_ms={:.3}, event_max_ms={:.3}",
         median(&guard_rows),
         median(&guard_rows) as f64 / EVENTS as f64,
-        milliseconds(events[events.len() / 2]),
-        milliseconds(events[events.len() * 99 / 100]),
-        milliseconds(events[events.len() - 1])
+        event_ms(events.len() / 2),
+        event_ms(events.len() * 99 / 100),
+        event_ms(events.len() - 1)
     );
 
     let large = Fixture::new(5_000);
@@ -825,14 +825,8 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         fixture.profile.name,
         fixture.scope,
         fixture.config,
-        match fixture.layering {
-            true => "on",
-            false => "off",
-        },
-        match fixture.integration {
-            true => "on",
-            false => "off",
-        },
+        on_off(fixture.layering),
+        on_off(fixture.integration),
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,
@@ -869,6 +863,13 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         std::env::consts::OS,
         std::env::consts::ARCH
     );
+}
+
+fn on_off(switched: bool) -> &'static str {
+    match switched {
+        true => "on",
+        false => "off",
+    }
 }
 
 fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
@@ -1679,12 +1680,9 @@ fn typescript_complex(index: usize, tsx: usize) -> String {
     )
 }
 
-fn milliseconds(micros: u128) -> f64 {
-    micros as f64 / 1_000.0
-}
-
-/// The `pre_tool` events of each iteration, timed together, and each single event's time.
-fn guard(tree: &Tree) -> (Vec<u128>, Vec<u128>) {
+/// The `pre_tool` events of each iteration, timed together, and each single event's time, fastest
+/// first.
+fn guard(tree: &Tree) -> (Vec<u128>, Vec<Duration>) {
     let events: Vec<String> = (0..EVENTS).map(guard_event).collect();
     let mut each = Vec::with_capacity(EVENTS * ITERATIONS);
     let totals = repeat_totals(|| {
@@ -1692,7 +1690,7 @@ fn guard(tree: &Tree) -> (Vec<u128>, Vec<u128>) {
         for (index, event) in events.iter().enumerate() {
             let fed = Instant::now();
             let run = feed(tree.root(), harness::AGENT, event);
-            each.push(fed.elapsed().as_micros());
+            each.push(fed.elapsed());
             match index % 10 {
                 2 | 9 => {
                     assert_eq!(run.code, 2, "guard deny: {}", run.out);
@@ -1712,6 +1710,7 @@ fn guard(tree: &Tree) -> (Vec<u128>, Vec<u128>) {
         }
         started.elapsed().as_millis()
     });
+    each.sort_unstable();
     (totals, each)
 }
 
