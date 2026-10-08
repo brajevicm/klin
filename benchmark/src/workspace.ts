@@ -5,6 +5,7 @@ import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay, digest, removals, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
+import { hookArguments, type HookKind } from "./session.ts";
 
 /**
  * The subject workspace and the control plane.
@@ -255,9 +256,10 @@ export function wrapper(plane: string, klinBin: string, deliver: boolean): strin
  * themselves are the host's own lifecycle and no sandbox holds them, so the wrapper still writes
  * the plane the subject cannot read.
  */
-function settingsFor(place: { hook: string; plane: string; repo: string; witness: string }): string {
+function settingsFor(place: { hook: string; plane: string; repo: string; witness: string; klinBin: string }): string {
   const quoted = (one: string): string => JSON.stringify(one);
-  const command = (args: string): string => [quoted(place.hook), args].join(" ");
+  const command = (kind: HookKind): string =>
+    [quoted(place.hook), ...hookArguments(place.klinBin, kind)].join(" ");
   return JSON.stringify(
     {
       ...confinement(
@@ -266,14 +268,14 @@ function settingsFor(place: { hook: string; plane: string; repo: string; witness
         [place.plane, paths.REPO],
       ),
       hooks: {
-        SessionStart: [{ hooks: [{ type: "command", command: command("radius"), timeout: 60 }] }],
+        SessionStart: [{ hooks: [{ type: "command", command: command("session"), timeout: 60 }] }],
         UserPromptSubmit: [
-          { hooks: [{ type: "command", command: command("radius"), timeout: 60 }] },
+          { hooks: [{ type: "command", command: command("prompt"), timeout: 60 }] },
         ],
         PreToolUse: [
           {
             matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*",
-            hooks: [{ type: "command", command: command("guard"), timeout: 60 }],
+            hooks: [{ type: "command", command: command("pre_tool"), timeout: 60 }],
           },
           // `Read`, `Glob` and `Grep` are the host's own file tools. No sandbox holds them and
           // klin's production matcher does not cover them, so the probe alone watches them: this
@@ -292,7 +294,7 @@ function settingsFor(place: { hook: string; plane: string; repo: string; witness
         Stop: [
           {
             hooks: [
-              { type: "command", command: command("gate --hook --changed"), timeout: 900 },
+              { type: "command", command: command("stop"), timeout: 900 },
             ],
           },
         ],
@@ -367,7 +369,7 @@ function stampCommittedBase(repo: string, state: string, klinBin: string): void 
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !name.startsWith("KLIN_")),
   );
-  const ran = spawnSync(klinBin, ["radius"], {
+  const ran = spawnSync(klinBin, hookArguments(klinBin, "session"), {
     cwd: repo,
     input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "base" }),
     encoding: "utf8",
@@ -377,7 +379,7 @@ function stampCommittedBase(repo: string, state: string, klinBin: string): void 
   if (ran.error || ran.status !== 0) {
     throw new Error(
       "the committed base could not be stamped, so a seed laid over it would read as prior work: " +
-        (ran.error?.message ?? "klin radius exited " + String(ran.status) + " " + (ran.stderr ?? "")),
+        (ran.error?.message ?? "the session hook exited " + String(ran.status) + " " + (ran.stderr ?? "")),
     );
   }
 }
@@ -497,7 +499,7 @@ export function materialize(
     fs.writeFileSync(witness, fs.readFileSync(paths.WITNESS, "utf8").replace("@PLANE@", "'" + plane + "'"));
     fs.chmodSync(witness, 0o755);
   }
-  fs.writeFileSync(settings, settingsFor({ hook, plane, repo, witness }) + "\n");
+  fs.writeFileSync(settings, settingsFor({ hook, plane, repo, witness, klinBin }) + "\n");
 
   const treeSha256 = digest(repo);
   git(repo, "init", "--quiet");

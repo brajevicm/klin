@@ -268,7 +268,7 @@ export function seedIsTheOnlyChange(read: {
  * Whether the stamp klin measures a seeded trial's turn against was really taken, and taken over
  * the committed clean base.
  *
- * `klin radius` exits 0 whether or not it wrote a stamp: `turn::run` returns `Ok(0)` on every
+ * The session hook exits 0 whether or not it wrote a stamp: `turn::opened` returns 0 on every
  * path, and the write that persists the stamp returns a boolean the caller discards. So the exit
  * status proves nothing, and a seeded trial whose stamp did not land would let its own session
  * start photograph the seed as prior work while the harness still called the trial valid.

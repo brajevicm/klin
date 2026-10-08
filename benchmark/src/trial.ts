@@ -145,15 +145,15 @@ export function wholeRun(
     workspace.git(repo, "init", "--quiet");
     workspace.git(repo, "add", "-A");
     workspace.git(repo, "commit", "--quiet", "-m", "The whole-run base");
-    const radius = spawnSync(binary, ["radius"], {
+    const radius = spawnSync(binary, session.hookArguments(binary, "session"), {
       ...spawned,
       input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "whole-run" }),
     });
-    if (radius.error || radius.status !== 0) throw commandFailure("radius", radius);
+    if (radius.error || radius.status !== 0) throw commandFailure("session hook", radius);
     replaceTree(subject, repo);
     const ran = spawnSync(binary, [...session.wholeRun(binary), "--json"], spawned);
     const whole = verdictOf("gate", ran, ran.stdout ?? "", gate, expected);
-    const hooked = spawnSync(binary, ["gate", "--hook", "--changed"], {
+    const hooked = spawnSync(binary, session.hookArguments(binary, "stop"), {
       ...spawned,
       input: JSON.stringify({ hook_event_name: "Stop", session_id: "whole-run" }),
       env: { ...env, KLIN_HOOK_REPORT: reported },
@@ -350,7 +350,7 @@ export function validity(held: {
       detail: "the production whole-run and Stop hook verdicts were obtained before the session",
     });
     const missing = (held.hooks ?? []).filter(
-      (hook) => hook.event === "Stop" && hook.arguments.startsWith("gate") && !exactStopReport(hook),
+      (hook) => hook.event === "Stop" && !exactStopReport(hook),
     );
     terms.push({
       name: "seeded-stop-evidence",
@@ -369,8 +369,8 @@ function friction(
   signals: { tries: number | null }[],
   ran: session.SessionResult,
 ): RunRecord["friction"] {
-  const gates = hooks.filter((hook) => hook.arguments.startsWith("gate"));
-  const guards = hooks.filter((hook) => hook.arguments.startsWith("guard"));
+  const gates = hooks.filter((hook) => hook.event === "Stop");
+  const guards = hooks.filter((hook) => hook.event === "PreToolUse");
   const denials = (ran.agent?.permission_denials ?? []) as unknown[];
   return {
     blockedStops: gates.filter((hook) => hook.status === 2).length,
@@ -455,7 +455,7 @@ export function run(
     start: { measured: place.startTreeSha256, declared: digest(declared) },
   });
   const startTree = integrity.startTreeAsDeclared(started, variant.start.shortcut);
-  // `klin radius` exits 0 whether or not it wrote the stamp, so the pre-session stamp is proven
+  // The session hook exits 0 whether or not it wrote the stamp, so the pre-session stamp is proven
   // from klin's own state rather than from that exit status.
   const baseStamp = integrity.baseStampAsDeclared(
     workspace.baseStamp(place),

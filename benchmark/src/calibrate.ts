@@ -492,7 +492,7 @@ export function recordProblems(record: RunRecord): string[] {
     problems.push("the active arm suppressed a hook answer");
   }
   const blocked = record.hooks.filter(
-    (hook) => hook.arguments.startsWith("gate") && hook.status === 2,
+    (hook) => hook.event === "Stop" && hook.status === 2,
   );
   for (const hook of blocked) {
     if (hook.stderr.trim().length === 0) {
