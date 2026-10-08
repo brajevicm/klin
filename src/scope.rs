@@ -8,8 +8,10 @@ use serde_json::{Map, Value};
 use std::collections::HashSet;
 use std::path::Path;
 
-use crate::config::Config;
+use crate::changed::Change;
+use crate::config::{Config, Moved};
 use crate::error::Error;
+use crate::git::Repo;
 use crate::key::Key;
 use crate::record::Values;
 
@@ -31,16 +33,29 @@ pub const EXCEPT: Key = Key {
     shape: crate::key::Shape::StringOrList,
 };
 
-#[derive(Clone, Default, PartialEq, Eq)]
+/// A section's scope: what its `in` and `except` state, and the paths this run keeps in it
+/// because the change moved them, which no section states. Two scopes are the same when they
+/// state the same paths. Spec 7.3.
+#[derive(Clone, Default)]
 pub struct Scope {
     within: Vec<Selector>,
     except: Vec<Selector>,
+    kept: Vec<String>,
+    moved: bool,
+}
+
+impl PartialEq for Scope {
+    fn eq(&self, other: &Scope) -> bool {
+        self.within == other.within && self.except == other.except
+    }
 }
 
 impl Scope {
     pub fn read(config: &Config, section: &str, fields: &Values) -> Result<Scope, Error> {
-        Scope::from_fields(fields)
-            .map_err(|why| Error(format!("{}: \"{section}\" {why}", config.file.display())))
+        let mut scope = Scope::from_fields(fields)
+            .map_err(|why| Error(format!("{}: \"{section}\" {why}", config.file.display())))?;
+        (scope.kept, scope.moved) = config.kept(section);
+        Ok(scope)
     }
 
     /// The scope a section states, in one form for every way of writing the same selection:
@@ -58,7 +73,11 @@ impl Scope {
                         .any(|kept| kept.holds(out.as_str()) || out.holds(kept.as_str()))
             })
             .collect();
-        Ok(Scope { within, except })
+        Ok(Scope {
+            within,
+            except,
+            ..Scope::default()
+        })
     }
 
     /// The scope as a section states it, which `from_fields` reads back as the same scope.
@@ -92,15 +111,23 @@ impl Scope {
     }
 
     pub fn selects(&self, path: &str) -> bool {
-        (self.within.is_empty() || any_holds(&self.within, path)) && !any_holds(&self.except, path)
+        self.keeps(path)
+            || ((self.within.is_empty() || any_holds(&self.within, path))
+                && !any_holds(&self.except, path))
     }
 
+    /// Whether the section states an `in` that must select a file, which a pinned path the
+    /// change moved need not. Spec 7.3.
     pub fn has_in(&self) -> bool {
-        !self.within.is_empty()
+        !self.within.is_empty() && !self.moved
     }
 
     pub fn inside(&self, path: &str) -> bool {
-        self.within.is_empty() || any_holds(&self.within, path)
+        self.keeps(path) || self.within.is_empty() || any_holds(&self.within, path)
+    }
+
+    fn keeps(&self, path: &str) -> bool {
+        self.kept.iter().any(|kept| kept == path)
     }
 
     /// The scope recorded by the base commit, or today's scope when that commit has no readable
@@ -117,6 +144,81 @@ impl Scope {
             })
             .unwrap_or_else(|| today.clone())
     }
+}
+
+/// What the change did to the paths the policy names, by a deterministic test on both trees:
+/// each pinned `in` path that selects no file of the working tree, and each selected file a
+/// rename took out of a scope that still selects other files. A pinned path that selects
+/// nothing in the base either counts only where the base's own `klin.json` pins it and no path
+/// of the same `in` selects a file: a path this change wrote that names nothing stays a
+/// configuration error, and one beside a path that selects files never was one. Spec 7.3.
+pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) -> Vec<Moved> {
+    let renamed: Vec<(&str, &str)> = changes
+        .iter()
+        .filter_map(|change| {
+            let was = change.was.as_deref().filter(|was| *was != change.path)?;
+            Some((was, change.path.as_str()))
+        })
+        .collect();
+    let repo = Repo::at(config.root());
+    let mut listed: Option<Vec<String>> = None;
+    let mut out = Vec::new();
+    for (section, fields) in config.objects() {
+        let Ok(scope) = Scope::from_fields(fields) else {
+            continue;
+        };
+        let dead: Vec<&Selector> = scope
+            .within
+            .iter()
+            .filter(|selector| !files.iter().any(|file| selector.holds(file)))
+            .collect();
+        for selector in &dead {
+            let listed = listed.get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
+            let held = listed.iter().filter(|path| selector.holds(path)).count();
+            let quiet = dead.len() < scope.within.len();
+            if held == 0 && (quiet || !pinned_at_base(config, base, section, selector)) {
+                continue;
+            }
+            let gone: Vec<(String, String)> = renamed
+                .iter()
+                .filter(|(was, _)| selector.holds(was))
+                .map(|(was, path)| (was.to_string(), path.to_string()))
+                .collect();
+            out.push(Moved::Pin {
+                section: section.to_string(),
+                path: selector.as_str().to_string(),
+                deleted: held.saturating_sub(gone.len()),
+                renamed: gone,
+            });
+        }
+        if !files.iter().any(|file| scope.selects(file)) {
+            continue;
+        }
+        for (was, path) in &renamed {
+            if scope.selects(was) && !scope.selects(path) && !any_holds_of(&dead, was) {
+                out.push(Moved::Out {
+                    section: section.to_string(),
+                    path: path.to_string(),
+                });
+            }
+        }
+    }
+    out
+}
+
+fn any_holds_of(selectors: &[&Selector], path: &str) -> bool {
+    selectors.iter().any(|selector| selector.holds(path))
+}
+
+/// Whether the base commit's own `klin.json` pins this path in the section's `in`.
+fn pinned_at_base(config: &Config, base: &str, section: &str, selector: &Selector) -> bool {
+    config
+        .file
+        .file_name()
+        .and_then(|name| Repo::at(config.root()).blob(base, &name.to_string_lossy()))
+        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+        .and_then(|data| Scope::from_fields(data.get(section)?.as_object()?).ok())
+        .is_some_and(|scope| scope.within.contains(selector))
 }
 
 /// The repository root, which every path is relative to and which holds every path.

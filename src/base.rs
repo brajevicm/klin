@@ -715,7 +715,7 @@ pub fn choose(root: &Path) -> Result<Window, Error> {
             notes,
             unproven: None,
         };
-        if head.as_deref() == Some(base.before.as_str()) && !dirty(root) {
+        if head.as_deref() == Some(base.before.as_str()) && !changed::dirty(root) {
             return Ok(equal_to_head(root, source, base));
         }
         return Ok(base);
@@ -834,7 +834,7 @@ const SHOWN: usize = 10;
 /// HEAD and whether the working tree differs from it, which the check document records as the
 /// `after` tree. Spec 6.5, 11.7.
 pub fn tree_record(root: &Path) -> Value {
-    serde_json::json!({ "head": resolve(root, "HEAD"), "dirty": dirty(root) })
+    serde_json::json!({ "head": resolve(root, "HEAD"), "dirty": changed::dirty(root) })
 }
 
 /// The tip of the remote's default branch, which says what the remote already has.
@@ -852,12 +852,6 @@ fn remote_reference(branch: &str) -> Option<String> {
     branch
         .strip_prefix("origin/")
         .map(|remote| format!("refs/remotes/origin/{remote}"))
-}
-
-fn dirty(root: &Path) -> bool {
-    Repo::at(root)
-        .text(&["status", "--porcelain"])
-        .is_some_and(|listed| !listed.trim().is_empty())
 }
 
 fn candidates(root: &Path) -> Vec<Candidate> {

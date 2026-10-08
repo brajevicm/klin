@@ -15,7 +15,7 @@ const EVERY_GATE: &str = r#"{
 const A_BROKEN_GATE: &str = r#"{
   "doc_size": {"README.md": 10},
   "doc_citations": false,
-  "escapes": { "in": "missing" },
+  "escapes": { "in": "README.md" },
   "complexity": { "in": "src", "cc": 8, "lines": 60 }
 }"#;
 

@@ -16,7 +16,7 @@ use crate::check::contract::{Cause, Class};
 use crate::check::holes::{self, Seen, Unmeasured};
 use crate::check::{catalogue, render};
 use crate::config;
-use crate::config::MEASUREMENT_LOST;
+use crate::config::{MEASUREMENT_LOST, Moved};
 use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
@@ -240,6 +240,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     if let Some(window) = &window {
         project.bind(window);
     }
+    follow(project, window.as_ref());
     let project = &*project;
     opened(root, lost, &mut log);
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
@@ -1012,6 +1013,13 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
+    for said in project.config.moved().iter().filter_map(gone_pin) {
+        if !args.json {
+            let _ = writeln!(out, "  NOTE: {said}");
+        }
+        records.notes.push(record("note", &said));
+        tally.told += 1;
+    }
     if let Some(unbuilt) = unbuilt {
         records.notes.push(record(UNBUILT, unbuilt));
         tally.told += 1;
@@ -2383,6 +2391,7 @@ fn one(
         }
     };
     let mut recorded = Recorded::from(render::json(&told));
+    moved_out(&project.config, gate.check.section, &mut recorded.findings);
     errored(code, &mut records.errors, &mut recorded);
     (code, told, records, recorded)
 }
@@ -2653,6 +2662,7 @@ fn measured(
     if let Some(window) = &window {
         project.bind(window);
     }
+    follow(project, window.as_ref());
     let project = &*project;
     if let Some(note) = deleted_config(args, project, window.as_ref()) {
         if !args.json {
@@ -2665,6 +2675,117 @@ fn measured(
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
     Ok(())
+}
+
+/// The moved policy paths of this window, which the run follows: a pinned `in` path whose files
+/// were renamed is measured at the new paths, and a file renamed out of a scope keeps the scope
+/// of its base path. Spec 7.3.
+fn follow(project: &mut Project, window: Option<&Window>) {
+    let Some(window) = window else {
+        return;
+    };
+    let scoped = project.config.objects().any(|(_, fields)| {
+        fields.contains_key(crate::scope::IN.name) || fields.contains_key(crate::scope::EXCEPT.name)
+    });
+    if !scoped {
+        return;
+    }
+    let moved = match (project.changes(&window.before), project.tree().files()) {
+        (Ok(changes), Ok(files)) => {
+            crate::scope::moved(&project.config, &files, &window.before, &changes)
+        }
+        _ => return,
+    };
+    project.config.follow(moved);
+}
+
+/// What a moved pinned path says, as a `moved-pin` review item at `klin check` and as a note at
+/// the Stop where its files went with no rename. A file moved out of a scope says nothing: its
+/// findings carry `moved_out_of_scope`. Spec 7.3.
+fn moved_said(moved: &Moved) -> Option<String> {
+    let Moved::Pin {
+        section,
+        path,
+        renamed,
+        deleted,
+    } = moved
+    else {
+        return None;
+    };
+    let to = renamed
+        .iter()
+        .map(|(_, path)| path.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let what = match (renamed.is_empty(), *deleted) {
+        (false, 0) => format!("its files moved to {to}, and this run measures them there"),
+        (false, deleted) => format!(
+            "its files moved to {to}, and this run measures them there, and {deleted} file(s) \
+             went with no rename"
+        ),
+        (true, 0) => "it selects nothing in the base or the working tree".to_string(),
+        (true, deleted) => {
+            format!("its {deleted} file(s) went with no rename, so the gate measures nothing there")
+        }
+    };
+    Some(format!(
+        "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
+         {what} — update the pin in klin.json"
+    ))
+}
+
+/// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
+/// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
+/// and `klin check` names it. Spec 7.3.
+fn gone_pin(moved: &Moved) -> Option<String> {
+    match moved {
+        Moved::Pin {
+            renamed, deleted, ..
+        } if renamed.is_empty() || *deleted > 0 => moved_said(moved),
+        _ => None,
+    }
+}
+
+/// The review item of a moved pinned path. Spec 7.3, 11.7.
+fn moved_pin(moved: &Moved, said: &str) -> Value {
+    let check = catalogue::CATALOGUE
+        .iter()
+        .find(|row| row.section == moved.section())
+        .map(|row| row.name);
+    let path = match moved {
+        Moved::Pin { path, .. } | Moved::Out { path, .. } => path,
+    };
+    json!({
+        "check": check,
+        "kind": "moved-pin",
+        "file": path,
+        "line": null,
+        "text": said,
+        "reason": null,
+    })
+}
+
+/// A finding at a file the change moved out of its gate's scope, which keeps the scope of its
+/// base path, carries `moved_out_of_scope`, which no ratchet compares. Spec 7.3.
+fn moved_out(config: &config::Config, section: &str, findings: &mut [Value]) {
+    let out: Vec<&str> = config
+        .moved()
+        .iter()
+        .filter_map(|moved| match moved {
+            Moved::Out {
+                section: of, path, ..
+            } if of == section => Some(path.as_str()),
+            _ => None,
+        })
+        .collect();
+    for finding in findings
+        .iter_mut()
+        .filter(|finding| out.contains(&finding["file"].as_str().unwrap_or_default()))
+    {
+        if let Some(values) = finding.get_mut("values").and_then(Value::as_object_mut) {
+            values.insert("moved_out_of_scope".into(), true.into());
+        }
+    }
 }
 
 /// The note of a run under `{}` whose base still holds the worktree root's `klin.json`, so the
@@ -2820,6 +2941,14 @@ impl Report {
         self.tree = Some(base::tree_record(project.root()));
         if let Some(base) = &against.base {
             self.windowed(args, base, out);
+        }
+        for moved in project.config.moved() {
+            if let Some(said) = moved_said(moved) {
+                if !args.json {
+                    let _ = writeln!(out, "  REVIEW: {said}");
+                }
+                self.reviews.push(moved_pin(moved, &said));
+            }
         }
         for gate in wanted {
             self.gate(args, gate, project, against, out);

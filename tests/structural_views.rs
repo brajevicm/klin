@@ -533,8 +533,10 @@ fn an_extension_changing_rename_the_new_grammar_rejects_is_a_lost_measurement() 
     assert_eq!(lines(&seen["hook"]), [r#""FAIL" 2"#, lost, held]);
 }
 
+/// A file moved into the scope joins it, and a file moved out keeps the scope of its base path,
+/// so its reference still keeps `helper` alive. Spec 7.3.
 #[test]
-fn moving_into_and_out_of_scope_judges_each_tree_under_its_own_scope() {
+fn a_file_moved_out_of_scope_keeps_its_base_scope_and_one_moved_in_joins_it() {
     let seen = views(|tree| {
         tree.write("lib/moved.rs", "fn moved_debt() {}\n");
         tree.write("src/lib.rs", "fn helper() {}\n");
@@ -549,7 +551,7 @@ fn moving_into_and_out_of_scope_judges_each_tree_under_its_own_scope() {
         lines(&seen["whole"]),
         [
             r#""PASS" 0"#,
-            "note  2 dead symbol(s) the base already held:\n  src/lib.rs:1  fn helper() {}\n  src/moved.rs:1  fn moved_debt() {}",
+            "note  1 dead symbol(s) the base already held:\n  src/moved.rs:1  fn moved_debt() {}",
         ]
     );
 }
