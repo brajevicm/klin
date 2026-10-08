@@ -187,7 +187,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         );
     });
     let was_files = was.covered(&policy);
-    let left = now.covered(&policy).lost(&was_files, at.project, None);
+    let now_files = now.covered(&policy);
+    let left = now_files.lost(&was_files, at.project, None);
     let (left_edges, left_physicals, left_findings) =
         under_the_base(&policy, base_scoped, &left, &was_edges)?;
     let mut physicals = physicals(&now_edges, &was_edges);
@@ -204,6 +205,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     )?;
     holes::lost_said(&left, out);
+    holes::formed_said(&now_files, at, out);
     holes_said((&was, &now), &policy, (&was_ambiguous, &ambiguous), at, out);
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed

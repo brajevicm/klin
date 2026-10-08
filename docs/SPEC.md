@@ -794,10 +794,12 @@ finding by making a file unmeasurable.
   git does: `*` and `?` stay inside one directory, `**` spans directories, and
   a pattern in double quotes may hold spaces. klin reads the first mebibyte
   and the first 10,000 lines of each `.gitattributes` file and ignores a
-  pattern longer than 256 bytes. An attribute only takes a file out of
-  measurement, so what klin ignores leaves the file measured. The working tree's file list
-  leaves out a path these attributes make not text, filtered or encoded, and
-  the run sorts that path though no capability read it. An encoding that
+  pattern longer than 256 bytes. What klin ignores changes only how a form is
+  reported, never what is measured. An attribute never takes a
+  file out of measurement: the capabilities that read the file still measure
+  its bytes, and the run sorts the form the attribute gives it. So no
+  difference between klin's reading of the attributes and git's can hide a
+  finding. An encoding that
   klin cannot decode is a coverage note where the base gave the path one
   too, a lost form where the change added it to a path the base measured,
   and an opened gap on a new path. Invalid UTF-8 alone is not a lost form, because 0.x readers
@@ -832,7 +834,8 @@ finding by making a file unmeasurable.
   It renders as its own row, named `measurement-lost`, whose `kind` in the
   JSON is `built-in`. The row appears in a run that holds a lost file.
 - **Other rows.** The capabilities that read the file count it as not
-  measured and add no note for it. A capability reports no finding that
+  measured and add no note for it. A form that an attribute gives is the
+  exception: those capabilities still measure the file's bytes. A capability reports no finding that
   depends only on the contents it could not read, such as a `public-api`
   item that the file declared at the base.
 - **Remedy.** For a parse, the remedy names the line and column of the first

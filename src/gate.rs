@@ -22,7 +22,7 @@ use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, files, handoff, journal, reference, stamp, state, stats, survey, turn, write};
+use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -1849,7 +1849,6 @@ fn each(
         gather(&mut totals, recorded, &gate.name);
     }
     let base = against.base.as_ref().map(|base| base.before.as_str());
-    reported.extend(formless(project, wanted, against));
     let sorted = holes::sorted(project, base, reported);
     stop_unmeasured(
         args,
@@ -2147,31 +2146,6 @@ fn told(note: &Value) -> bool {
 /// unresolved one. Spec 7.2.
 const AMBIGUOUS: &str = "ambiguous";
 
-/// The new paths of the run that the working tree's `.gitattributes` make not text, under each
-/// selected gate that reads their language. No gate saw them, because the file list leaves them
-/// out and the base held none of them. A path the base measured reaches the run through the
-/// gate that lost it instead. Spec 7.2.
-fn formless(project: &Project, wanted: &[&Gate], against: &Against) -> Vec<(String, String, Seen)> {
-    let Some(base) = &against.base else {
-        return Vec::new();
-    };
-    let changes = project.changes(&base.before).unwrap_or_default();
-    let mut out = Vec::new();
-    for change in changes.iter().filter(|change| change.was.is_none()) {
-        let form = files::form_in(project.root(), &change.path);
-        if !form.any() {
-            continue;
-        }
-        out.extend(
-            wanted
-                .iter()
-                .filter(|gate| read_by(&[gate], &change.path))
-                .map(|gate| (gate.name.clone(), change.path.clone(), Seen::Form(form))),
-        );
-    }
-    out
-}
-
 /// The files one gate could not measure, as it saw them, for the run to sort once. Spec 7.2.
 fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
     let seen = |file: &str, seen| (gate.to_string(), file.to_string(), seen);
@@ -2182,6 +2156,7 @@ fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
                 .map(|file| seen(&file.file, Seen::Unread))
                 .collect(),
             Told::Hole(Hole::Lost { file, why }) => vec![seen(file, Seen::Left(*why))],
+            Told::Hole(Hole::Formed { file, form }) => vec![seen(file, Seen::Form(*form))],
             Told::Hole(Hole::Manifest { site, class }) => vec![seen(
                 &site.file,
                 Seen::Manifest {
@@ -2687,8 +2662,7 @@ impl Report {
             self.gate(args, gate, project, against, out);
         }
         let base = against.base.as_ref().map(|base| base.before.as_str());
-        let mut reported = std::mem::take(&mut self.reported);
-        reported.extend(formless(project, wanted, against));
+        let reported = std::mem::take(&mut self.reported);
         self.unmeasured(
             args,
             (project, wanted),

@@ -621,8 +621,12 @@ fn coverage_result(
     (after, families): (&Measurement, &[Family]),
     out: &mut Sink,
 ) {
-    let lost = covered(after, families).lost(&covered(before, before_families), at.project, None);
-    holes::lost_said(&lost, out);
+    let now = covered(after, families);
+    holes::lost_said(
+        &now.lost(&covered(before, before_families), at.project, None),
+        out,
+    );
+    holes::formed_said(&now, at, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
         .iter()

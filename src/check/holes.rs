@@ -52,6 +52,26 @@ pub fn lost_said(lost: &[Lost], out: &mut Sink) {
     }
 }
 
+/// What a gate says about the files it measured that the working tree's `.gitattributes` give a
+/// form: it still measured their bytes, and the run sorts each one, so the attribute is reported
+/// where a capability reads the file and hides nothing. Spec 7.2.
+pub fn formed_said(files: &crate::coverage::Files, at: &Context, out: &mut Sink) {
+    let forms = at.project.tree().forms();
+    if forms.is_empty() {
+        return;
+    }
+    let measured: std::collections::HashSet<&str> =
+        files.measured.iter().map(String::as_str).collect();
+    for (file, form) in forms {
+        if measured.contains(file.as_str()) && in_scope(file, at.only) {
+            out.tell(Hole::Formed {
+                file: file.clone(),
+                form: *form,
+            });
+        }
+    }
+}
+
 /// What a gate says about the forms it supports and could not resolve. A form the base holds in
 /// the same file, with the same text and reason, is klin's own limit, because the change opened
 /// no hole there. Each base form pairs with one form now, so a second copy of a held form is

@@ -288,6 +288,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     holes::lost_said(&lost, out);
+    holes::formed_said(&read.files, at, out);
     holes::unread_said(&read.unparsed, at, out);
     Ok(code)
 }

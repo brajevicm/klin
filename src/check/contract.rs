@@ -17,6 +17,7 @@ use crate::changed::Change;
 use crate::config::Config;
 use crate::coverage::{Coverage, Left};
 use crate::error::Error;
+use crate::files::Form;
 use crate::key::Key;
 use crate::measurement::{self, Unchanged};
 use crate::project::Project;
@@ -593,6 +594,8 @@ pub enum Hole {
     Lost { file: String, why: Left },
     /// The files in the gate's scope no grammar read, each with its grammar's name.
     Unparsed(Vec<Site>),
+    /// A file the gate measured that the working tree's `.gitattributes` give a form.
+    Formed { file: String, form: Form },
     /// A manifest klin could not parse, which the gate already classed against the base.
     Manifest { site: Site, class: Class },
     /// Forms the gate supports and could not resolve, `opened` where the base held none of them.

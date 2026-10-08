@@ -104,8 +104,8 @@ impl Files {
     }
 }
 
-/// Whether the working tree still holds this exact path: in its file list, left out of it for
-/// its attributes, or as a symbolic link. The list names each file as the directory holds it,
+/// Whether the working tree still holds this exact path: in its file list, or as a symbolic
+/// link. The list names each file as the directory holds it,
 /// so a path a case-only rename left behind is not held on a file system that ignores case,
 /// where asking for the path itself finds the renamed file. Spec 7.2.
 fn still_held(project: &Project, file: &str) -> bool {
@@ -114,9 +114,8 @@ fn still_held(project: &Project, file: &str) -> bool {
         files
             .binary_search_by(|held| held.as_str().cmp(file))
             .is_ok()
-    }) || tree.formless().iter().any(|(held, _)| held == file)
-        || std::fs::symlink_metadata(project.root().join(file))
-            .is_ok_and(|held| held.file_type().is_symlink())
+    }) || std::fs::symlink_metadata(project.root().join(file))
+        .is_ok_and(|held| held.file_type().is_symlink())
 }
 
 pub struct Lost {

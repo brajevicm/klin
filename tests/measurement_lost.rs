@@ -991,3 +991,26 @@ fn an_attribute_pattern_past_the_bound_takes_no_file_out_of_measurement() {
     assert_eq!(code, 0, "{report}");
     assert!(lost(&report).is_empty(), "{report}");
 }
+
+#[test]
+fn an_attribute_never_hides_a_finding_in_a_new_file() {
+    let tree = tree(r#"{"doc_size": {"README.md": 10}, "complexity": {"cc": 1, "lines": 60}}"#);
+    let mut attributes = vec!["src/new.rs binary".to_string()];
+    attributes.extend(std::iter::repeat_n("# pad".to_string(), 10_000));
+    attributes.push("src/new.rs diff".to_string());
+    tree.write(".gitattributes", &(attributes.join("\n") + "\n"));
+    tree.write(
+        "src/new.rs",
+        "pub fn f(a: i32) -> i32 { if a > 1 { if a > 2 { 3 } else { 4 } } else { 5 } }\n",
+    );
+
+    let (code, report) = checked(&tree, &["complexity"]);
+
+    assert_eq!(code, 1, "{report}");
+    assert!(
+        list(&report, "findings")
+            .iter()
+            .any(|finding| finding["check"] == "complexity" && finding["file"] == "src/new.rs"),
+        "{report}"
+    );
+}
