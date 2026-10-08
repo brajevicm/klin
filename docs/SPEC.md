@@ -795,7 +795,7 @@ finding by making a file unmeasurable.
   only where it stands alone between slashes or at either end, and a pattern
   in double quotes may hold spaces. It expands the `[attr]` macros that the
   top-level `.gitattributes` defines, and git's own `binary`. klin reads the first mebibyte
-  and the first 10,000 lines of each `.gitattributes` file ignores a
+  and the first 10,000 lines of each `.gitattributes` file, ignores a
   pattern longer than 256 bytes, and expands one line's macros to at most
   256 words. What klin ignores changes only how a form is
   reported, never what is measured. An attribute never takes a
