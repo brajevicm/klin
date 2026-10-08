@@ -606,20 +606,16 @@ fn a_hook_event_it_cannot_read_answers_nothing() {
     }
 }
 
+/// A capability-scope error blocks nothing: the Stop tells it to the person. Spec 7.3, 10.4.
 #[test]
-fn hook_blocks_on_a_tool_error_too() {
+fn a_tool_error_alone_blocks_nothing_and_is_told() {
     let tree = tree(A_BROKEN_GATE);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("ERR   escapes"), "{}", run.out);
-    assert!(run.says("could not run a quality gate"), "{}", run.out);
-    assert!(!run.says("a quality gate failed"), "{}", run.out);
-    assert!(
-        run.says("fix what each names, then stop again"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("nothing blocks the stop"), "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
 }
 
 #[test]
@@ -630,7 +626,7 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("a quality gate failed, and another could not run"),
+        run.says("a quality gate failed — fix what each FAIL names"),
         "{}",
         run.out
     );
@@ -643,28 +639,18 @@ fn hook_names_both_when_a_gate_failed_and_another_could_not_run() {
     );
 }
 
+/// A tool error spends no gate block, so the FAIL after it takes the first. Spec 10.4.
 #[test]
-fn hook_says_a_gate_could_not_run_after_a_second_stop_too() {
-    let tree = tree(A_BROKEN_GATE);
-
-    let run = stop(&tree, A_SECOND_STOP);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("could not run a quality gate"), "{}", run.out);
-    assert!(run.says("this stop is not blocked"), "{}", run.out);
-}
-
-#[test]
-fn a_tool_error_after_a_changed_tree_spends_the_second_gate_block() {
+fn a_tool_error_spends_no_gate_block_so_the_fail_after_it_takes_the_first() {
     let tree = tree(A_BROKEN_GATE);
 
     let first = stop(&tree, A_STOP);
-    assert_eq!(first.code, 2, "{}", first.out);
-    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+    assert_eq!(first.code, 0, "{}", first.out);
 
     tree.words("README.md", 30);
-    let second = stop(&tree, A_SECOND_STOP);
+    let second = stop(&tree, A_STOP);
     assert_eq!(second.code, 2, "{}", second.out);
-    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    assert!(second.says("gate block 1 of 2"), "{}", second.out);
     assert!(second.says("FAIL  doc-size"), "{}", second.out);
     assert!(second.says("ERR   escapes"), "{}", second.out);
 }
@@ -1616,8 +1602,8 @@ fn the_hook_reports_a_retired_version_key_and_does_not_block_the_stop() {
     let tree = tree(ANOTHER_VERSION);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("\"version\""), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#"\"version\""#), "{}", run.out);
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
@@ -1632,8 +1618,8 @@ fn hook_reports_a_config_error_and_does_not_block_the_stop() {
     let tree = tree(AN_UNKNOWN_KEY);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("\"nonsense\""), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#"\"nonsense\""#), "{}", run.out);
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
@@ -1656,7 +1642,7 @@ fn hook_reports_a_schedule_with_no_step_due_and_does_not_block_the_stop() {
     let tree = tree(r#"{"doc_size": {"README.md": {"2999-01-01": 10}}}"#);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("no step due"), "{}", run.out);
     assert!(!run.says("stop again"), "{}", run.out);
 }
@@ -1667,8 +1653,8 @@ fn hook_reports_a_section_naming_a_retired_key_and_does_not_block_the_stop() {
         tree(r#"{"escapes": {"roots": ["src"], "languages": ["rust"], "baseline": "old.json"}}"#);
 
     let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("\"baseline\""), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(r#"\"baseline\""#), "{}", run.out);
     assert!(!run.says("stop again"), "{}", run.out);
 }
 

@@ -17,15 +17,131 @@ pub const INDEX: &str = "index";
 /// The mark moves on every event, and it is what the report measures. ADR 0024.
 pub const MARK: &str = "refs/worktree/klin/mark";
 
+/// What the last Stop under a stamp wrote, and `Pending` before one did. The first matching row
+/// of the spec 6.6 table wins, so a Stop writes exactly one.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum Verdict {
+    #[default]
+    Pending,
+    /// klin failed during the Stop, which wrote this before it measured.
+    Aborted {
+        since: u64,
+    },
+    /// The open findings by site id, and the deleted tests klin has not asked about yet.
+    Red {
+        open: Vec<String>,
+        unasked: Vec<String>,
+    },
+    /// A run-scope configuration error stopped the Stop before it measured. `kept` says the
+    /// window holds work no Stop judged, so the next prompt keeps the stamp.
+    Unjudged {
+        error: String,
+        kept: bool,
+    },
+    Green,
+}
+
+impl Verdict {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Verdict::Pending => "pending",
+            Verdict::Aborted { .. } => "aborted",
+            Verdict::Red { .. } => "red",
+            Verdict::Unjudged { .. } => "unjudged",
+            Verdict::Green => "green",
+        }
+    }
+
+    /// A red verdict no Stop judged, which keeps the window until a Stop does. Spec 6.2.
+    pub fn red() -> Verdict {
+        Verdict::Red {
+            open: Vec::new(),
+            unasked: Vec::new(),
+        }
+    }
+
+    /// The verdict of a Stop that a run-scope configuration error stopped before it measured.
+    pub fn unjudged(error: String) -> Verdict {
+        Verdict::Unjudged { error, kept: false }
+    }
+
+    /// What a Stop leaves over the verdict before it: an `unjudged` Stop never hides a window it
+    /// did not judge, so `red` and `aborted` stay, and over `pending` the next prompt keeps the
+    /// stamp. Only a window a Stop judged green moves past an `unjudged` Stop. Spec 6.6.
+    pub fn over(self, prior: Verdict) -> Verdict {
+        match (self, prior) {
+            (Verdict::Unjudged { .. }, kept @ (Verdict::Red { .. } | Verdict::Aborted { .. })) => {
+                kept
+            }
+            (Verdict::Unjudged { error, .. }, Verdict::Pending) => {
+                Verdict::Unjudged { error, kept: true }
+            }
+            (Verdict::Unjudged { error, .. }, Verdict::Unjudged { kept, .. }) => {
+                Verdict::Unjudged { error, kept }
+            }
+            (verdict, _) => verdict,
+        }
+    }
+
+    /// Whether the next session or prompt moves the stamp. An `unjudged` window moves, so the
+    /// first Stop after a fix never judges what came before it. Spec 6.6.
+    pub fn moves(&self) -> bool {
+        matches!(self, Verdict::Green | Verdict::Unjudged { kept: false, .. })
+    }
+
+    fn read(held: &Value) -> Verdict {
+        let text = |key: &str| held.get(key).and_then(Value::as_str).unwrap_or_default();
+        match text("verdict") {
+            "aborted" => Verdict::Aborted {
+                since: held
+                    .get("since")
+                    .and_then(Value::as_u64)
+                    .unwrap_or_default(),
+            },
+            "red" => Verdict::Red {
+                open: strings(held, "open"),
+                unasked: strings(held, "unasked"),
+            },
+            "unjudged" => Verdict::Unjudged {
+                error: text("error").to_string(),
+                kept: held.get("kept").and_then(Value::as_bool) == Some(true),
+            },
+            "green" => Verdict::Green,
+            _ => Verdict::Pending,
+        }
+    }
+
+    fn record(&self, fields: &mut Map<String, Value>) {
+        fields.insert("verdict".into(), self.name().into());
+        match self {
+            Verdict::Aborted { since } => {
+                fields.insert("since".into(), (*since).into());
+            }
+            Verdict::Red { open, unasked } => {
+                listed(fields, "open", open);
+                listed(fields, "unasked", unasked);
+            }
+            Verdict::Unjudged { error, kept } => {
+                fields.insert("error".into(), error.clone().into());
+                if *kept {
+                    fields.insert("kept".into(), true.into());
+                }
+            }
+            Verdict::Pending | Verdict::Green => {}
+        }
+    }
+}
+
 /// Where the turn's window opens: the stamped commit, the HEAD it was taken over, when it was
 /// taken, the verdict of the last stop, and how many prompts this worktree has seen.
+#[derive(Default)]
 pub struct Stamp {
     pub commit: Option<String>,
     pub parent: Option<String>,
     /// Where the last event left the prompt mark, which the spread report measures from.
     pub mark: Option<String>,
     pub time: u64,
-    pub green: bool,
+    pub verdict: Verdict,
     pub prompts: u64,
     /// The findings a stop's block already put in front of the agent under this stamp, by the
     /// site id of spec 11.2. A fresh stamp holds none. Spec 8.2.
@@ -33,6 +149,9 @@ pub struct Stamp {
     /// Whether a stop under this stamp spent a gate block, so the turn holds an intervention for
     /// the turn end to tell. A fresh stamp holds none. Spec 6.5, 9.5.
     pub intervened: bool,
+    /// The notes and errors a Stop already told under this stamp, by record, so a later Stop
+    /// does not repeat them. A fresh stamp holds none. Spec 2.3.
+    pub told: Vec<String>,
 }
 
 /// Where this turn's window opened: the prompt mark the last event left, or the mark ref when
@@ -76,26 +195,36 @@ pub fn read(at: &Path) -> Option<Stamp> {
         parent: text("parent"),
         mark: text("mark"),
         time: held.get("time").and_then(Value::as_u64).unwrap_or_default(),
-        green: text("verdict").as_deref() == Some("green"),
+        verdict: Verdict::read(&held),
         prompts: held
             .get("prompts")
             .and_then(Value::as_u64)
             .unwrap_or_default(),
-        asked: held
-            .get("asked")
-            .and_then(Value::as_array)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(Value::as_str)
-                    .map(str::to_string)
-                    .collect()
-            })
-            .unwrap_or_default(),
+        asked: strings(&held, "asked"),
         intervened: held
             .get("intervened")
             .and_then(Value::as_bool)
             .unwrap_or_default(),
+        told: strings(&held, "told"),
     })
+}
+
+fn strings(held: &Value, key: &str) -> Vec<String> {
+    held.get(key)
+        .and_then(Value::as_array)
+        .map(|ids| {
+            ids.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn listed(fields: &mut Map<String, Value>, key: &str, ids: &[String]) {
+    if !ids.is_empty() {
+        fields.insert(key.into(), ids.to_vec().into());
+    }
 }
 
 /// The stamp as the `turn` file holds it. A field a fresh stamp does not have is left out.
@@ -113,18 +242,13 @@ pub fn recorded(stamp: &Stamp) -> Value {
         }
     }
     fields.insert("time".into(), stamp.time.into());
-    let verdict = match stamp.green {
-        true => "green",
-        false => "red",
-    };
-    fields.insert("verdict".into(), verdict.into());
+    stamp.verdict.record(&mut fields);
     fields.insert("prompts".into(), stamp.prompts.into());
-    if !stamp.asked.is_empty() {
-        fields.insert("asked".into(), stamp.asked.clone().into());
-    }
+    listed(&mut fields, "asked", &stamp.asked);
     if stamp.intervened {
         fields.insert("intervened".into(), true.into());
     }
+    listed(&mut fields, "told", &stamp.told);
     Value::Object(fields)
 }
 

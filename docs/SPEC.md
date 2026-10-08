@@ -620,8 +620,27 @@ replaces it with its final verdict, so a Stop that crashes never leaves an
 earlier `green` in place. A Stop that cannot take the lock writes no verdict,
 as 0.x 6.5 says.
 
+A stamp that no Stop judged yet holds `pending`. The next session or prompt
+keeps a `pending` stamp, as it keeps `red`, so the window stays open until a
+Stop judges it. An `unjudged` Stop keeps an earlier `red` or `aborted`
+verdict, and replaces `pending`, `green` or `unjudged`. Over `pending`, the
+`unjudged` stamp records `kept`, and the next session or prompt keeps it, so
+the first Stop after the fix judges the work no Stop judged before. Only an
+`unjudged` Stop after a window a Stop judged `green` lets the stamp move. When no stamp exists,
+the Stop writes no verdict. Only a `klin.json` that klin cannot read writes
+`unjudged`. Any other error that stops the run before it measures, such as a
+base klin cannot lay out, leaves the `aborted` the Stop wrote, so the next
+prompt cannot move the stamp past work no Stop judged.
+
 Review items, notes, coverage notes and errors the base had too do not keep
 the stamp.
+
+**What the stamp records as told.** The `told` record keys each note and
+each error of a Stop's report by its record. A Stop records them only after
+the host took the block or the notice, so a notice klin could not deliver,
+such as one whose follow-up record would not write, is told at a later Stop. A later Stop under the same stamp whose every note and error
+is already in `told` tells nothing. A Stop with at least one new record tells
+its whole note, with the records told before it.
 
 **Advisory windows.** Some events bring other people's commits into the turn
 or take the turn's history away, so a precise local judgement is no longer
@@ -1722,6 +1741,13 @@ ids], unasked [deleted-test sites], error, aborted_since,
 default_branch, last_advisory {time, reason} or null, notices [...]}` or
 null,
 and `last_stop {time, verdict, historical: true}` or null.
+
+The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
+`green` (section 6.6). `open` and `unasked` are empty unless the verdict is
+`red`. Each `unasked` entry is the site as `file:line  text`. `error` is null
+unless the verdict is `unjudged`, and `aborted_since` is null unless it is
+`aborted`. The text prints an `unjudged` window as "nothing judged" with its
+error.
 
 #### The `report` document
 

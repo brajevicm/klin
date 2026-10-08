@@ -13,7 +13,7 @@ use crate::host::adapter::{self, Event};
 use crate::journal;
 use crate::key::Section;
 use crate::radius;
-use crate::stamp::{self, Stamp};
+use crate::stamp::{self, Stamp, Verdict};
 use crate::state;
 use crate::write::{AtomicWrite, atomic_write};
 
@@ -118,9 +118,9 @@ fn marked(root: &Path, tree: &str) -> Option<String> {
 }
 
 /// One rule, on a session start and on a prompt alike: the stamp moves on a first session or
-/// after a green stop, and otherwise stays. The counter rises either way. Spec 6.2. A stamp
-/// klin never took is a first session, whatever else the state directory holds, because other
-/// commands write there too.
+/// after a green or unjudged stop, and otherwise stays. The counter rises either way. Spec 6.2,
+/// 6.6. A stamp klin never took is a first session, whatever else the state directory holds,
+/// because other commands write there too.
 fn next(
     root: &Path,
     tree: Option<&str>,
@@ -132,7 +132,7 @@ fn next(
     let Some(held) = held else {
         return restored(root, tree, never, prompts, out);
     };
-    if held.green {
+    if held.verdict.moves() {
         return taken(root, tree, prompts, out).or(Some(Stamp { prompts, ..held }));
     }
     if held.commit.is_none() {
@@ -142,7 +142,7 @@ fn next(
 }
 
 /// The third route out of a red window: a person moves the stamp to the working tree, so the
-/// debt behind it stops reading as new. The fresh stamp is red like any other, so the next
+/// debt behind it stops reading as new. The fresh stamp is pending like any other, so the next
 /// prompt leaves it where the reset put it until a stop judges the tree, and the counter
 /// carries over, because the turn did not end. Spec 6.2.
 pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -216,12 +216,9 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
     Some(Stamp {
         commit: Some(commit),
         parent,
-        mark: None,
         time: now(),
-        green: false,
         prompts,
-        asked: Vec::new(),
-        intervened: false,
+        ..Stamp::default()
     })
 }
 
@@ -263,10 +260,8 @@ fn kept(root: &Path) -> Option<Stamp> {
         mark: stamp::resolve(root, stamp::MARK),
         commit: Some(commit),
         time: now(),
-        green: false,
-        prompts: 0,
-        asked: Vec::new(),
-        intervened: false,
+        verdict: Verdict::red(),
+        ..Stamp::default()
     })
 }
 
@@ -284,14 +279,10 @@ fn restored(
     }
     note(out, GONE);
     Some(Stamp {
-        commit: None,
-        parent: None,
-        mark: None,
         time: now(),
-        green: false,
+        verdict: Verdict::red(),
         prompts,
-        asked: Vec::new(),
-        intervened: false,
+        ..Stamp::default()
     })
 }
 
@@ -372,10 +363,9 @@ fn replaced(
             parent: Some(base.before.clone()),
             mark,
             time: now(),
-            green: false,
+            verdict: Verdict::red(),
             prompts: held.map_or(0, |held| held.prompts),
-            asked: Vec::new(),
-            intervened: false,
+            ..Stamp::default()
         },
         out,
     );
@@ -423,42 +413,95 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     })
 }
 
-/// The verdict this stop leaves for the next prompt to read, and, where the stop spent a gate
-/// block, the findings that block put in front of the agent. Green lets the stamp move, red keeps
-/// it, so the debt stays new until a person fixes, accepts or resets it. Spec 6.2, 8.2, 9.5.
-pub fn verdict(
-    root: &Path,
-    green: bool,
-    asked: Option<&[String]>,
-    out: &mut String,
-) -> Result<(), &'static str> {
+/// The notes and errors a Stop already told under the current stamp. Empty when no stamp is
+/// readable. Spec 2.3.
+pub fn told(root: &Path) -> Vec<String> {
+    state::dir(root)
+        .and_then(|at| stamp::read(&at))
+        .map(|held| held.told)
+        .unwrap_or_default()
+}
+
+/// `aborted` over the stamp before the Stop measures, so a Stop that dies leaves no earlier
+/// `green` behind, and the verdict it replaced, which the final verdict needs. An earlier
+/// `aborted` keeps the time it was first written. `None` when no stamp could take it.
+/// Spec 6.6.
+pub fn aborting(root: &Path) -> Option<Verdict> {
+    let at = state::ready(root).ok()?;
+    let mut held = stamp::read(&at)?;
+    let since = match held.verdict {
+        Verdict::Aborted { since } => since,
+        _ => now(),
+    };
+    let prior = std::mem::replace(&mut held.verdict, Verdict::Aborted { since });
+    write(&at, &held, &mut String::new()).then_some(prior)
+}
+
+/// What one Stop leaves under the stamp: the verdict it reached over the one before it, or `None`
+/// where it measured nothing and the `aborted` it wrote stays, and the findings its gate block put
+/// in front of the agent. Spec 6.6, 8.2.
+pub struct Left<'a> {
+    pub prior: Verdict,
+    pub verdict: Option<Verdict>,
+    pub asked: Option<&'a [String]>,
+}
+
+/// The notes and errors a Stop delivered, added to the stamp's `told` record once the host took
+/// them, so a notice klin could not deliver is told again later. Spec 2.3.
+pub fn heard(root: &Path, told: &[String]) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let Some(held) = stamp::read(&at) else {
+        return;
+    };
+    let stamp = Stamp {
+        told: merged(&held.told, told),
+        ..held
+    };
+    write(&at, &stamp, &mut String::new());
+}
+
+/// The verdict this stop leaves for the next prompt to read, and the verdict it wrote. A green or
+/// unjudged verdict lets the stamp move, any other keeps it, so the debt stays new until a person
+/// fixes or accepts it. Spec 6.2, 6.6, 8.2, 9.5.
+pub fn verdict(root: &Path, left: Left, out: &mut String) -> Result<&'static str, &'static str> {
     let Ok(at) = state::ready(root) else {
         return Err("klin could not ready the state directory, so this stop wrote no verdict");
     };
-    let Some(held) = stamp::read(&at) else {
+    let Some(mut held) = stamp::read(&at) else {
         return Err(
             "the state directory holds no stamp klin could read, so this stop wrote no \
                     verdict",
         );
     };
-    let mut all = held.asked.clone();
-    all.extend(asked.unwrap_or_default().iter().cloned());
-    all.sort();
-    all.dedup();
+    let verdict = match left.verdict {
+        Some(verdict) => verdict.over(left.prior),
+        None => std::mem::take(&mut held.verdict),
+    };
+    let name = verdict.name();
     let wrote = write(
         &at,
         &Stamp {
-            green,
-            asked: all,
-            intervened: held.intervened || asked.is_some(),
+            verdict,
+            asked: merged(&held.asked, left.asked.unwrap_or_default()),
+            intervened: held.intervened || left.asked.is_some(),
             ..held
         },
         out,
     );
     match wrote {
-        true => Ok(()),
+        true => Ok(name),
         false => Err("the turn stamp could not be written, so this stop wrote no verdict"),
     }
+}
+
+fn merged(held: &[String], more: &[String]) -> Vec<String> {
+    let mut all = held.to_vec();
+    all.extend(more.iter().cloned());
+    all.sort();
+    all.dedup();
+    all
 }
 
 /// How long ago the stamp was taken, from the time the stamp holds. An age rather than a date,

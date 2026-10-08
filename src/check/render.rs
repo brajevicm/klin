@@ -921,9 +921,9 @@ pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
     let mut out = String::new();
     for item in sorted {
         let word = match (item.class, at_stop) {
-            (Class::Lost, _) | (Class::Limit, true) => continue,
+            (Class::Lost, _) => continue,
             (Class::Opened, false) => "REVIEW",
-            (Class::Opened, true) | (Class::Limit, false) => "NOTE",
+            (Class::Opened, true) | (Class::Limit, _) => "NOTE",
         };
         let _ = writeln!(out, "  {word}: {}", unmeasured_said(item));
     }

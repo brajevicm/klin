@@ -138,22 +138,20 @@ fn a_rename_out_of_a_root_builds_the_root_it_left_as_well() {
 #[test]
 fn a_build_entry_without_run_is_a_config_error() {
     let tree = tree(r#""build": [{"root": "api"}],"#);
+    assert_eq!(tree.session().code, 0);
 
     let first = stop(&tree, A_STOP, harness::AGENT);
-    assert_eq!(first.code, 1, "{}", first.out);
+    assert_eq!(first.code, 0, "{}", first.out);
     assert!(
-        first.says("a \"build\" entry has no \"run\""),
+        first.says(r#"a \"build\" entry has no \"run\""#),
         "{}",
         first.out
     );
+    assert_eq!(tree.field("verdict"), "unjudged", "{}", first.out);
 
     let second = stop(&tree, A_SECOND_STOP, harness::AGENT);
-    assert_eq!(second.code, 1, "{}", second.out);
-    assert!(
-        second.says("a \"build\" entry has no \"run\""),
-        "{}",
-        second.out
-    );
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("has no"), "{}", second.out);
 }
 
 #[test]

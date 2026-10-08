@@ -144,6 +144,7 @@ fn a_generic_stop_over_a_green_tree_lets_the_turn_end() {
     let tree = Tree::new();
     tree.write("klin.json", A_CONFIG);
     tree.words("README.md", 5);
+    tree.write("src/lib.rs", "pub fn kept() {}\n");
     tree.base();
     let run = feed(
         tree.root(),

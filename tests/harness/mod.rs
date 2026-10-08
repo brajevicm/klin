@@ -431,7 +431,7 @@ fn spawn_binary(
     let done = child.wait_with_output().expect("wait for klin");
     let printed = String::from_utf8_lossy(&done.stdout).to_string();
     Run {
-        code: done.status.code().expect("exit code"),
+        code: done.status.code().unwrap_or(-1),
         out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
         printed,
     }

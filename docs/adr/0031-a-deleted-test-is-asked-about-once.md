@@ -84,3 +84,18 @@ A turn that deletes tests costs the agent one extra round.
 - A commit-message trailer, or a command that writes the accepted entry. The
   first is a one-line bypass, because an agent writes commit messages. The
   second still edits the config for every deletion.
+
+## Amendment: the question asks why, and never for a repair (#502)
+
+The question above offered two answers: restore the test and fix the code, or
+say why. vNext asks only why (spec 9.2). The text never tells the agent to
+restore the test, because klin cannot tell why it went and a repair
+instruction pressures the agent to clear the question.
+
+The ask shares the gate block of a FAIL in the same Stop, so a Stop with a
+FAIL and an unasked deletion spends one block for both. When no gate block
+remains under the prompt, the Stop reports the deletion, records no `asked`
+entry, and leaves the stamp `red`. The next prompt keeps the stamp, so the
+question comes under that prompt. After the question, the deletion is a
+review item, which the Stop shows as a note. It is no reason for a gate block.
+`klin status` names a deletion klin has not asked about yet under `unasked`.

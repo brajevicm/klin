@@ -21,6 +21,7 @@ use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
+use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
 use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
 
@@ -160,14 +161,44 @@ pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
     };
     match Project::load(None, start, &catalogue::sections()) {
         Ok(mut project) => stopped(&args, &mut project, Some(event), out),
-        Err(problem) => {
-            eprintln!(
-                "klin: FAIL: {problem} — only a person edits that file, so this stop is not \
-                 blocked."
-            );
-            1
-        }
+        Err(problem) => unjudged(&event, start, &problem),
     }
+}
+
+/// A Stop under a klin.json klin cannot read: it measures nothing, blocks nothing, writes
+/// `unjudged`, and tells the person once per stamp. Spec 6.6, 10.7, 15.
+fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
+    let said = format!(
+        "klin: nothing judged — {problem}. Only a person edits that file, so this stop blocks \
+         nothing."
+    );
+    let mut log = journal::Stop::begun(Some(event), "invalid".to_string());
+    let lock = state::ready(root)
+        .ok()
+        .and_then(|at| state::lock(&at, BUDGET));
+    let Some(_lock) = lock else {
+        eprintln!("{said}");
+        return 0;
+    };
+    let told = [key(&said)];
+    let fresh = !turn::told(root).contains(&told[0]);
+    let left = turn::Left {
+        prior: turn::aborting(root).unwrap_or_default(),
+        verdict: Some(Verdict::unjudged(problem.to_string())),
+        asked: None,
+    };
+    written(root, false, left, &mut log);
+    let mut records = Recorded::default();
+    records.findings.push(record("error", &problem.to_string()));
+    log.report = Some(as_json(ERROR, 0, &said, records, None));
+    let said =
+        Some(said).filter(|said| fresh && !keeps_quiet(root, Some(event), false, said, &mut log));
+    journal::stop(root, &log);
+    if let Some(said) = said {
+        turn::heard(root, &told);
+        host::answering(Some(event)).stop(&Stop::Tell(said));
+    }
+    0
 }
 
 fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -216,7 +247,8 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
         log.flags.push("branch-fallback");
     }
-    let (code, green, asked, note) = ran(
+    let prior = (!lost).then(|| turn::aborting(root)).flatten();
+    let (code, verdict, asked, note) = ran(
         args,
         project,
         window.as_ref(),
@@ -229,14 +261,15 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.base_remove_ms = journal::millis(teardown.remove);
     log.timing.base_prune_ms = journal::millis(teardown.prune);
     let exit = exit_code(code, event.as_ref());
-    if let Some(Value::Object(report)) = &mut log.report {
-        report.insert("exit".into(), exit.into());
-        if let Some(window) = &window {
-            report.entry("window").or_insert_with(|| window.record());
-        }
-    }
+    finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
-    written(root, lost, green, asked.as_deref(), &mut log);
+    let (note, told) = once(root, note, log.report.as_ref());
+    let left = turn::Left {
+        prior: prior.unwrap_or_default(),
+        verdict,
+        asked: asked.as_deref(),
+    };
+    written(root, lost, left, &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
         let held = count(&at, &log);
@@ -246,6 +279,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     }
     let said = tell(args, root, code, note, &mut log)
         .filter(|said| !keeps_quiet(root, event.as_ref(), lost, said, &mut log));
+    if !lost && (log.blocked || log.told.contains(&"note")) {
+        turn::heard(root, &told);
+    }
     observe_hook_report(log.report.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
@@ -253,6 +289,31 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     exit
+}
+
+/// The exit and the window, beside the report the run built. Spec 11.4.
+fn finish_report(log: &mut journal::Stop, exit: u8, window: Option<&Window>) {
+    if let Some(Value::Object(report)) = &mut log.report {
+        report.insert("exit".into(), exit.into());
+        if let Some(window) = window {
+            report.entry("window").or_insert_with(|| window.record());
+        }
+    }
+}
+
+/// The note this stop still tells, and the records it tells, which the stamp holds as told once
+/// the host took them. A note whose every record a Stop already told under the stamp stays
+/// quiet. Spec 2.3.
+fn once(
+    root: &Path,
+    note: Option<String>,
+    report: Option<&Value>,
+) -> (Option<String>, Vec<String>) {
+    let told = told_records(report);
+    let heard = turn::told(root);
+    let note =
+        note.filter(|_| told.is_empty() || told.iter().any(|record| !heard.contains(record)));
+    (note, told)
 }
 
 /// Whether this stop keeps its told message to itself. A host that submits a told message as
@@ -321,13 +382,7 @@ fn observe_hook_report(report: Option<&Value>) {
 
 /// The verdict this stop leaves for the next prompt, or the reason it left none: another event
 /// held the lock for the whole budget, or the stamp could not be read or written. Spec 6.5.
-fn written(
-    root: &Path,
-    lost: bool,
-    green: bool,
-    asked: Option<&[String]>,
-    log: &mut journal::Stop,
-) {
+fn written(root: &Path, lost: bool, left: turn::Left, log: &mut journal::Stop) {
     if lost {
         eprintln!(
             "klin: NOTE: another klin event in this worktree held the state directory for the whole \
@@ -340,13 +395,34 @@ fn written(
         return;
     }
     let mut said = String::new();
-    let wrote = turn::verdict(root, green, asked, &mut said);
+    let wrote = turn::verdict(root, left, &mut said);
     eprint!("{said}");
-    match (wrote, green) {
-        (Ok(()), true) => log.verdict = "green",
-        (Ok(()), false) => log.verdict = "red",
-        (Err(why), _) => log.why = Some(why),
+    match wrote {
+        Ok(verdict) => log.verdict = verdict,
+        Err(why) => log.why = Some(why),
     }
+}
+
+/// What a Stop's report tells that no later Stop under the same stamp repeats: each note and each
+/// error, keyed by its record. Spec 2.3.
+fn told_records(report: Option<&Value>) -> Vec<String> {
+    let Some(report) = report else {
+        return Vec::new();
+    };
+    let notes = report["notes"].as_array().into_iter().flatten();
+    let errors = report["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|finding| finding["outcome"] == "error");
+    notes
+        .chain(errors)
+        .map(|record| key(&record.to_string()))
+        .collect()
+}
+
+fn key(text: &str) -> String {
+    format!("{:016x}", state::hash(text.as_bytes()))
 }
 
 /// What this stop tells the person when nothing blocks it, as one `systemMessage`: the notes the
@@ -431,14 +507,14 @@ fn ran(
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, bool, Option<Vec<String>>, Option<String>) {
+) -> (u8, Option<Verdict>, Option<Vec<String>>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
             let (code, note) = handed(args, project, Err(problem), event, lost, log, out);
-            return (code, false, None, note);
+            return (code, None, None, note);
         }
     };
     match failure {
@@ -447,7 +523,7 @@ fn ran(
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             (
                 blocked_build(project.root(), event, text, code),
-                false,
+                Some(Verdict::red()),
                 None,
                 None,
             )
@@ -457,16 +533,39 @@ fn ran(
             if let (Err(_), Some(note)) = (&judged, &unbuilt) {
                 eprintln!("klin: {note}");
             }
-            let green = matches!(&judged, Ok(tally) if tally.failed == 0 && tally.errored == 0);
+            let verdict = judged_verdict(&judged);
             let reported = judged
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
             let (code, note) = handed(args, project, judged, event, lost, log, out);
             let asked = (code == BLOCKED).then_some(reported);
-            (code, green, asked, note)
+            let verdict = match (verdict, &asked) {
+                (Some(Verdict::Red { open, .. }), Some(_)) => Some(Verdict::Red {
+                    open,
+                    unasked: Vec::new(),
+                }),
+                (verdict, _) => verdict,
+            };
+            (code, verdict, asked, note)
         }
     }
+}
+
+/// The verdict of a run that measured: red for a failing finding, which an unasked deleted test
+/// is, and green otherwise, because an error, a hole or a note keeps nothing red. A run that
+/// failed before it measured reaches none, so the `aborted` the Stop wrote stays and the stamp
+/// never moves past work no Stop judged. Only a klin.json klin cannot read writes `unjudged`.
+/// Spec 6.6, 10.4.
+fn judged_verdict(judged: &Result<Tally, Error>) -> Option<Verdict> {
+    let tally = judged.as_ref().ok()?;
+    Some(match tally.failed {
+        0 => Verdict::Green,
+        _ => Verdict::Red {
+            open: tally.reported.clone(),
+            unasked: tally.unasked.clone(),
+        },
+    })
 }
 
 /// A finished build sorted into what blocks and what is told: the failure text of a build that
@@ -497,7 +596,7 @@ fn handed(
     let mut tally = match refused(args, outcome, out) {
         Ok(tally) => tally,
         Err(problem) => {
-            let _ = writeln!(out, "FAIL: {problem}");
+            let _ = writeln!(out, "ERR: {problem}");
             let mut records = Recorded::default();
             records.findings.push(record("error", &problem.to_string()));
             Tally {
@@ -537,8 +636,25 @@ struct Tally {
     grammar_lag: bool,
     /// The site id of every finding the run reported, which a stop that blocks records as asked.
     reported: Vec<String>,
+    /// The deleted tests among those findings, as sites, which klin has not asked about yet.
+    unasked: Vec<String>,
     /// The 11.2 object the run built, which the journal writes as the stop's line. Spec 11.4.
     record: Option<Value>,
+}
+
+impl Tally {
+    /// One gate's exit in the tally. A gate that could not run fully and still holds a failing
+    /// finding counts as failed too, so its FAIL spends a block. Spec 10.4.
+    fn count(&mut self, code: u8, recorded: &Recorded) {
+        match code {
+            0 => (),
+            1 => self.failed += 1,
+            _ => self.errored += 1,
+        }
+        if code > 1 && recorded.findings.iter().any(failing) {
+            self.failed += 1;
+        }
+    }
 }
 
 /// What the hook says about a tree that does not build. The messages name the bound from
@@ -896,6 +1012,7 @@ fn judge(
     }
     let rootless = no_source_root(args, &plan, &wanted, project, out)?;
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
+    tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
     if let Some(unbuilt) = unbuilt {
         records.notes.push(record(UNBUILT, unbuilt));
@@ -1432,11 +1549,10 @@ fn hook(
     lost: bool,
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
-    let (failed, errored) = (tally.failed, tally.errored);
     let held = state::ready(root).ok().map(|at| (count(&at, log), at));
     unwritable(root);
-    if failed == 0 && errored == 0 {
-        return nothing_blocks(args, tally.told, report, event);
+    if tally.failed == 0 {
+        return nothing_blocks(args, tally.told + tally.errored, report, event);
     }
     let Some(event) = event else {
         eprint!("{report}");
@@ -1450,11 +1566,17 @@ fn hook(
         GateBlock::Take { number, .. } => number,
         GateBlock::Pass(why) => return not_blocked(args, &tally, report, event, &why),
     };
-    let lead = format!(
-        "klin: {} — fix what each names, then stop again (gate block {number} of {GATE_BLOCKS} \
-         in this turn):",
-        lead(failed, errored)
-    );
+    let lead = match tally.errored {
+        0 => format!(
+            "klin: a quality gate failed — fix what each names, then stop again (gate block \
+             {number} of {GATE_BLOCKS} in this turn):"
+        ),
+        _ => format!(
+            "klin: a quality gate failed — fix what each FAIL names, then stop again (gate block \
+             {number} of {GATE_BLOCKS} in this turn). A capability that could not run is a \
+             limitation of this stop and asks for no change to the source:"
+        ),
+    };
     eprintln!("{lead}");
     eprint!("{report}");
     let code = block(root, Some(event), format!("{lead}\n{report}"));
@@ -1474,18 +1596,32 @@ fn not_blocked(
     event: &Event,
     why: &str,
 ) -> (u8, Option<String>) {
-    eprintln!(
-        "klin: {} — this stop is not blocked:",
-        lead(tally.failed, tally.errored)
-    );
+    eprintln!("klin: {} — this stop is not blocked:", lead(tally.errored));
     eprint!("{report}");
     eprintln!(
         "klin: not blocking again; {why}, and the window stays open until a person \
          fixes, accepts or resets it."
     );
-    let person = (tally.grammar_lag && !args.json && !event.host.follows_up())
-        .then(|| render::LOST_TO_A_PERSON.to_string());
+    let person = (!args.json && !event.host.follows_up())
+        .then(|| person_note(tally, report))
+        .flatten();
     (event.host.stop(&Stop::Pass), person)
+}
+
+/// What a failing Stop that spends no gate block still tells the person: the run's notes and
+/// errors, which the told-once record filters, and how to hold a file lost to a parse. A spent
+/// budget never keeps a new limitation from the person. Spec 2.3, 7.2.
+fn person_note(tally: &Tally, report: &str) -> Option<String> {
+    let mut parts = Vec::new();
+    if tally.told + tally.errored > 0 {
+        parts.push(format!(
+            "klin: this stop is not blocked, and the run left a note:\n{report}"
+        ));
+    }
+    if tally.grammar_lag {
+        parts.push(render::LOST_TO_A_PERSON.to_string());
+    }
+    (!parts.is_empty()).then(|| parts.join("\n"))
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -1637,11 +1773,10 @@ fn unwritable(root: &Path) {
     }
 }
 
-fn lead(failed: usize, errored: usize) -> &'static str {
-    match (failed > 0, errored > 0) {
-        (true, true) => "a quality gate failed, and another could not run",
-        (true, false) => "a quality gate failed",
-        _ => "could not run a quality gate",
+fn lead(errored: usize) -> &'static str {
+    match errored {
+        0 => "a quality gate failed",
+        _ => "a quality gate failed, and another could not run",
     }
 }
 
@@ -1797,11 +1932,7 @@ fn each(
             true => render::stop(&told, code == 0),
             false => render::text(&told),
         };
-        match code {
-            0 => (),
-            1 => tally.failed += 1,
-            _ => tally.errored += 1,
-        }
+        tally.count(code, &recorded);
         if rendered(args, code, &recorded) {
             printed(args, (&gate.name, status(code)), (&told, &text), out);
         }
@@ -1825,12 +1956,31 @@ fn each(
         .iter()
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
+    tally.unasked = totals
+        .findings
+        .iter()
+        .filter(|finding| finding["gate"] == INVENTORY)
+        .map(|finding| {
+            format!(
+                "{}:{}  {}",
+                word(finding, "file"),
+                finding["line"],
+                word(finding, "text")
+            )
+        })
+        .collect();
     (tally, totals)
 }
 
+const INVENTORY: &str = "inventory";
+
+fn word<'a>(record: &'a Value, key: &str) -> &'a str {
+    record[key].as_str().unwrap_or_default()
+}
+
 /// What the Stop says of the files the run could not measure: a lost file the accepted list does
-/// not hold fails like any gate, and an opened gap is a note the agent sees. A coverage limit
-/// the change did not open says nothing here. Spec 7.2.
+/// not hold fails like any gate, and an opened gap and a coverage limit the change did not open
+/// are notes the Stop tells. Spec 2.3, 7.2.
 fn stop_unmeasured(
     args: &Args,
     (project, wanted): (&Project, &[&Gate]),
@@ -1858,7 +2008,7 @@ fn stop_unmeasured(
     tally.told += unmatched.len()
         + sorted
             .iter()
-            .filter(|item| item.class == Class::Opened)
+            .filter(|item| item.class != Class::Lost)
             .count();
     totals.notes.extend(sorted.iter().map(journal_note));
     if args.json {
@@ -2107,13 +2257,15 @@ fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
     matches!(
         outcome,
-        Some(DELETED | DERIVATION | UNRESOLVED | AMBIGUOUS | UNBUILT)
+        Some(DELETED | DERIVATION | UNRESOLVED | AMBIGUOUS | UNBUILT | UNMATCHED)
     )
 }
 
 /// The reason of a form a resolver found two answers for, which the Stop tells as it tells an
 /// unresolved one. Spec 7.2.
 const AMBIGUOUS: &str = "ambiguous";
+/// An accepted entry that matched nothing, which the Stop tells as a note. Spec 15.
+const UNMATCHED: &str = "unmatched";
 
 /// The files one gate could not measure, as it saw them, for the run to sort once. Spec 7.2.
 fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
@@ -2241,10 +2393,14 @@ fn one(
     (code, told, records, recorded)
 }
 
-/// The one `error` finding of a gate that is exit 2 and recorded no other finding, from the
-/// reasons it gave. A gate with findings already names what failed, so it gets none. Spec 11.2.
+/// The one `error` finding of a gate that is exit 2, from the reasons it gave, beside any failing
+/// finding it holds, so the error stays in the record the Stop tells from. Spec 10.4, 11.2.
 fn errored(code: u8, errors: &mut Vec<String>, recorded: &mut Recorded) {
-    if code != 2 || !recorded.findings.is_empty() || errors.is_empty() {
+    let named = recorded
+        .findings
+        .iter()
+        .any(|finding| finding["outcome"] == "error");
+    if code != 2 || named || errors.is_empty() {
         return;
     }
     let errors = std::mem::take(errors);
