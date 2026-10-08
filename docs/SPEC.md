@@ -985,7 +985,9 @@ Rules:
 - **Moved and deleted policy paths.** A path that the policy names (an `in`
   path, a pinned document, a convention's `in`) and that selects files in the
   base and none in the working tree is decided by what happened to those
-  files, by a deterministic test on both trees:
+  files, by a deterministic test on both trees. The shipped binary applies
+  these rules to a section's `in` and `except` paths only. A pinned document
+  and a convention's own `in` keep their earlier handling until #524:
   - **Renamed.** When git detects every selected file as renamed (`-M50%`),
     the policy follows the rename for this run. The capability measures the
     new paths under the pinned values, so it stays switched on. `klin check`
@@ -1022,7 +1024,7 @@ Rules:
   path too, so a file renamed under an `except` path is still measured.
   **Known limit:** a rename into a directory every walk skips, such as
   `out/`, `build/` or `vendor/`, takes the file out of both trees' file
-  lists, so this rule does not reach it.
+  lists, so this rule does not reach it. #523 owns that case.
 - At the Stop, any other capability-scope error does not stop the other
   capabilities, and it never blocks. A FAIL beside it still spends its block.
   A run-scope configuration error writes `unjudged` (section 6.6). A klin
