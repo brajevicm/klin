@@ -180,21 +180,19 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         eprintln!("{said}");
         return 0;
     };
-    let told = vec![key(&said)];
+    let told = [key(&said)];
     let fresh = !turn::told(root).contains(&told[0]);
     let left = turn::Left {
         prior: turn::aborting(root).unwrap_or_default(),
-        verdict: Some(Verdict::Unjudged {
-            error: problem.to_string(),
-        }),
+        verdict: Some(Verdict::unjudged(problem.to_string())),
         asked: None,
-        told: &told,
     };
     written(root, false, left, &mut log);
     let said =
         Some(said).filter(|said| fresh && !keeps_quiet(root, Some(event), false, said, &mut log));
     journal::stop(root, &log);
     if let Some(said) = said {
+        turn::heard(root, &told);
         host::answering(Some(event)).stop(&Stop::Tell(said));
     }
     0
@@ -262,12 +260,11 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let exit = exit_code(code, event.as_ref());
     finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
-    let (note, told) = once(root, log.blocked, note, log.report.as_ref());
+    let (note, told) = once(root, note, log.report.as_ref());
     let left = turn::Left {
         prior: prior.unwrap_or_default(),
         verdict,
         asked: asked.as_deref(),
-        told: &told,
     };
     written(root, lost, left, &mut log);
     log.asked = asked.unwrap_or_default();
@@ -279,6 +276,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     }
     let said = tell(args, root, code, note, &mut log)
         .filter(|said| !keeps_quiet(root, event.as_ref(), lost, said, &mut log));
+    if !lost && (log.blocked || log.told.contains(&"note")) {
+        turn::heard(root, &told);
+    }
     observe_hook_report(log.report.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
@@ -298,12 +298,11 @@ fn finish_report(log: &mut journal::Stop, exit: u8, window: Option<&Window>) {
     }
 }
 
-/// The note this stop still tells, and the records the stamp then holds as told. A note whose
-/// every record a Stop already told under the stamp stays quiet, and a stop that tells nothing
-/// records nothing. Spec 2.3.
+/// The note this stop still tells, and the records it tells, which the stamp holds as told once
+/// the host took them. A note whose every record a Stop already told under the stamp stays
+/// quiet. Spec 2.3.
 fn once(
     root: &Path,
-    blocked: bool,
     note: Option<String>,
     report: Option<&Value>,
 ) -> (Option<String>, Vec<String>) {
@@ -311,10 +310,7 @@ fn once(
     let heard = turn::told(root);
     let note =
         note.filter(|_| told.is_empty() || told.iter().any(|record| !heard.contains(record)));
-    match blocked || note.is_some() {
-        true => (note, told),
-        false => (note, Vec::new()),
-    }
+    (note, told)
 }
 
 /// Whether this stop keeps its told message to itself. A host that submits a told message as
@@ -1013,6 +1009,7 @@ fn judge(
     }
     let rootless = no_source_root(args, &plan, &wanted, project, out)?;
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
+    tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
     if let Some(unbuilt) = unbuilt {
         records.notes.push(record(UNBUILT, unbuilt));
@@ -2376,10 +2373,14 @@ fn one(
     (code, told, records, recorded)
 }
 
-/// The one `error` finding of a gate that is exit 2 and recorded no other finding, from the
-/// reasons it gave. A gate with findings already names what failed, so it gets none. Spec 11.2.
+/// The one `error` finding of a gate that is exit 2, from the reasons it gave, beside any failing
+/// finding it holds, so the error stays in the record the Stop tells from. Spec 10.4, 11.2.
 fn errored(code: u8, errors: &mut Vec<String>, recorded: &mut Recorded) {
-    if code != 2 || !recorded.findings.is_empty() || errors.is_empty() {
+    let named = recorded
+        .findings
+        .iter()
+        .any(|finding| finding["outcome"] == "error");
+    if code != 2 || named || errors.is_empty() {
         return;
     }
     let errors = std::mem::take(errors);

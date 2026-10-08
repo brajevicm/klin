@@ -282,3 +282,68 @@ fn a_turn_that_changes_no_measurable_file_leaves_the_stamp_green() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.field("verdict"), "green", "{}", run.out);
 }
+
+/// A window no Stop judged stays through an `unjudged` Stop, so the first Stop after the fix
+/// judges the work done before the configuration broke. Spec 6.6.
+#[test]
+fn an_unjudged_stop_over_a_pending_window_keeps_the_work_in_it() {
+    let tree = tree(DOC_SIZE);
+    assert_eq!(tree.session().code, 0);
+    assert_eq!(tree.field("verdict"), "pending");
+    tree.words("README.md", 30);
+
+    tree.write("klin.json", "not json");
+    assert_eq!(stop(&tree).code, 0);
+    assert_eq!(tree.field("verdict"), "unjudged");
+    let held = tree.field("commit");
+    prompt(&tree);
+    assert_eq!(
+        tree.field("commit"),
+        held,
+        "a prompt moved a window no Stop judged"
+    );
+
+    tree.write("klin.json", DOC_SIZE);
+    let run = stop(&tree);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+}
+
+const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
+
+/// A notice the host never took is not recorded as told, so a later Stop under the same stamp
+/// tells it. Spec 2.3, 10.7.
+#[test]
+fn a_notice_klin_could_not_hand_to_cursor_is_told_at_a_later_stop() {
+    let tree = tree(A_BROKEN_GATE);
+    tree.write("src/work.rs", "pub fn work() {}\n");
+    tree.write(".git/klin/handed", "");
+
+    let quiet = feed(tree.root(), AGENT, A_CURSOR_STOP);
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert!(!quiet.says("followup_message"), "{}", quiet.out);
+
+    tree.remove(".git/klin/handed");
+    let told = feed(tree.root(), AGENT, A_CURSOR_STOP);
+    assert_eq!(told.code, 0, "{}", told.out);
+    assert!(told.says("followup_message"), "{}", told.out);
+    assert!(told.says("escapes"), "{}", told.out);
+}
+
+/// A tree the survey finds no source root in is a limitation the Stop tells, once. Spec 2.3.
+#[test]
+fn a_stop_in_a_tree_with_no_source_root_tells_it_once() {
+    let tree = Tree::new();
+    tree.write("klin.json", DOC_SIZE);
+    tree.words("README.md", 5);
+    tree.base();
+    tree.words("README.md", 6);
+
+    let run = stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(told(&run).contains("found no source root"), "{}", run.out);
+    no_repair(&told(&run));
+
+    let again = second_stop(&tree);
+    assert_eq!(told(&again), "", "{}", again.out);
+}

@@ -90,7 +90,7 @@ fn window(at: &Path) -> Option<Value> {
             window["open"] = open.into();
             window["unasked"] = unasked.into();
         }
-        Verdict::Unjudged { error } => window["error"] = error.into(),
+        Verdict::Unjudged { error, .. } => window["error"] = error.into(),
         Verdict::Aborted { since } => window["aborted_since"] = since.into(),
         Verdict::Pending | Verdict::Green => {}
     }

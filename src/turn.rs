@@ -438,13 +438,28 @@ pub fn aborting(root: &Path) -> Option<Verdict> {
 }
 
 /// What one Stop leaves under the stamp: the verdict it reached over the one before it, or `None`
-/// where it measured nothing and the `aborted` it wrote stays, the findings its gate block put in
-/// front of the agent, and the notes and errors it told. Spec 2.3, 6.6, 8.2.
+/// where it measured nothing and the `aborted` it wrote stays, and the findings its gate block put
+/// in front of the agent. Spec 6.6, 8.2.
 pub struct Left<'a> {
     pub prior: Verdict,
     pub verdict: Option<Verdict>,
     pub asked: Option<&'a [String]>,
-    pub told: &'a [String],
+}
+
+/// The notes and errors a Stop delivered, added to the stamp's `told` record once the host took
+/// them, so a notice klin could not deliver is told again later. Spec 2.3.
+pub fn heard(root: &Path, told: &[String]) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let Some(held) = stamp::read(&at) else {
+        return;
+    };
+    let stamp = Stamp {
+        told: merged(&held.told, told),
+        ..held
+    };
+    write(&at, &stamp, &mut String::new());
 }
 
 /// The verdict this stop leaves for the next prompt to read, and the verdict it wrote. A green or
@@ -471,7 +486,6 @@ pub fn verdict(root: &Path, left: Left, out: &mut String) -> Result<&'static str
             verdict,
             asked: merged(&held.asked, left.asked.unwrap_or_default()),
             intervened: held.intervened || left.asked.is_some(),
-            told: merged(&held.told, left.told),
             ..held
         },
         out,

@@ -32,9 +32,11 @@ pub enum Verdict {
         open: Vec<String>,
         unasked: Vec<String>,
     },
-    /// A run-scope configuration error stopped the Stop before it measured.
+    /// A run-scope configuration error stopped the Stop before it measured. `kept` says the
+    /// window holds work no Stop judged, so the next prompt keeps the stamp.
     Unjudged {
         error: String,
+        kept: bool,
     },
     Green,
 }
@@ -58,12 +60,24 @@ impl Verdict {
         }
     }
 
+    /// The verdict of a Stop that a run-scope configuration error stopped before it measured.
+    pub fn unjudged(error: String) -> Verdict {
+        Verdict::Unjudged { error, kept: false }
+    }
+
     /// What a Stop leaves over the verdict before it: an `unjudged` Stop never hides a window it
-    /// did not judge, so `red` and `aborted` stay. Spec 6.6.
+    /// did not judge, so `red` and `aborted` stay, and over `pending` the next prompt keeps the
+    /// stamp. Only a window a Stop judged green moves past an `unjudged` Stop. Spec 6.6.
     pub fn over(self, prior: Verdict) -> Verdict {
         match (self, prior) {
             (Verdict::Unjudged { .. }, kept @ (Verdict::Red { .. } | Verdict::Aborted { .. })) => {
                 kept
+            }
+            (Verdict::Unjudged { error, .. }, Verdict::Pending) => {
+                Verdict::Unjudged { error, kept: true }
+            }
+            (Verdict::Unjudged { error, .. }, Verdict::Unjudged { kept, .. }) => {
+                Verdict::Unjudged { error, kept }
             }
             (verdict, _) => verdict,
         }
@@ -72,7 +86,7 @@ impl Verdict {
     /// Whether the next session or prompt moves the stamp. An `unjudged` window moves, so the
     /// first Stop after a fix never judges what came before it. Spec 6.6.
     pub fn moves(&self) -> bool {
-        matches!(self, Verdict::Green | Verdict::Unjudged { .. })
+        matches!(self, Verdict::Green | Verdict::Unjudged { kept: false, .. })
     }
 
     fn read(held: &Value) -> Verdict {
@@ -90,6 +104,7 @@ impl Verdict {
             },
             "unjudged" => Verdict::Unjudged {
                 error: text("error").to_string(),
+                kept: held.get("kept").and_then(Value::as_bool) == Some(true),
             },
             "green" => Verdict::Green,
             _ => Verdict::Pending,
@@ -106,8 +121,11 @@ impl Verdict {
                 listed(fields, "open", open);
                 listed(fields, "unasked", unasked);
             }
-            Verdict::Unjudged { error } => {
+            Verdict::Unjudged { error, kept } => {
                 fields.insert("error".into(), error.clone().into());
+                if *kept {
+                    fields.insert("kept".into(), true.into());
+                }
             }
             Verdict::Pending | Verdict::Green => {}
         }
