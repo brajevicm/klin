@@ -1361,21 +1361,7 @@ fn active<'a>(
 fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capability<'a>, Error> {
     let check = gate.check;
     let fields = section_of(project, gate);
-    let (mut lines, mut values) = match check.derivation {
-        Derivation::Explained(explain) => explained(explain, project, args)?,
-        Derivation::ExplainedWhenNamed(explain) if !args.gates.is_empty() => {
-            explained(explain, project, args)?
-        }
-        Derivation::ExplainedWhenNamed(_) => (
-            vec![format!(
-                "derived from the source of the working tree, which `klin policy {}` lists",
-                gate.name
-            )],
-            Vec::new(),
-        ),
-        Derivation::Values(derive) => said_values(check, as_told(derive(project)?), &fields),
-        Derivation::Nothing => said_values(check, Vec::new(), &fields),
-    };
+    let (mut lines, mut values) = said_by(gate, project, args, &fields)?;
     values.extend(
         fields
             .iter()
@@ -1391,6 +1377,34 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
         values,
         limitations,
     })
+}
+
+/// What one gate's derivation says under `policy`: its explanation, its derived values, or a
+/// pointer to the named form when its explanation parses the working tree.
+fn said_by(
+    gate: &Gate,
+    project: &Project,
+    args: &Args,
+    fields: &Map<String, Value>,
+) -> Result<(Vec<String>, Vec<Value>), Error> {
+    let check = gate.check;
+    match check.derivation {
+        Derivation::Explained(explain) => explained(explain, project, args),
+        Derivation::ExplainedWhenNamed(explain) if !args.gates.is_empty() => {
+            explained(explain, project, args)
+        }
+        Derivation::ExplainedWhenNamed(_) => Ok((
+            vec![format!(
+                "derived from the source of the working tree, which `klin policy {}` lists",
+                gate.name
+            )],
+            Vec::new(),
+        )),
+        Derivation::Values(derive) => {
+            derive(project).map(|said| said_values(check, as_told(said), fields))
+        }
+        Derivation::Nothing => Ok(said_values(check, Vec::new(), fields)),
+    }
 }
 
 fn explained(
