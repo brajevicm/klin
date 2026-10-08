@@ -191,8 +191,10 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         told: &told,
     };
     written(root, false, left, &mut log);
+    let said =
+        Some(said).filter(|said| fresh && !keeps_quiet(root, Some(event), false, said, &mut log));
     journal::stop(root, &log);
-    if fresh {
+    if let Some(said) = said {
         host::answering(Some(event)).stop(&Stop::Tell(said));
     }
     0
@@ -307,7 +309,8 @@ fn once(
 ) -> (Option<String>, Vec<String>) {
     let told = told_records(report);
     let heard = turn::told(root);
-    let note = note.filter(|_| told.iter().any(|record| !heard.contains(record)));
+    let note =
+        note.filter(|_| told.is_empty() || told.iter().any(|record| !heard.contains(record)));
     match blocked || note.is_some() {
         true => (note, told),
         false => (note, Vec::new()),
@@ -511,9 +514,7 @@ fn ran(
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
-            let verdict = Verdict::Unjudged {
-                error: problem.to_string(),
-            };
+            let verdict = Verdict::Aborted { since: 0 };
             let (code, note) = handed(args, project, Err(problem), event, lost, log, out);
             return (code, verdict, None, note);
         }
@@ -544,6 +545,13 @@ fn ran(
                 .unwrap_or_default();
             let (code, note) = handed(args, project, judged, event, lost, log, out);
             let asked = (code == BLOCKED).then_some(reported);
+            let verdict = match (verdict, &asked) {
+                (Verdict::Red { open, .. }, Some(_)) => Verdict::Red {
+                    open,
+                    unasked: Vec::new(),
+                },
+                (verdict, _) => verdict,
+            };
             (code, verdict, asked, note)
         }
     }
@@ -551,7 +559,8 @@ fn ran(
 
 /// The verdict of a run that measured: red for a failing finding, which an unasked deleted test
 /// is, and green otherwise, because an error, a hole or a note keeps nothing red. A run that
-/// stopped before it measured judged nothing. Spec 6.6, 10.4.
+/// failed before it measured stays `aborted`, so the stamp never moves past work no Stop judged.
+/// Only a klin.json klin cannot read writes `unjudged`. Spec 6.6, 10.4.
 fn judged_verdict(judged: &Result<Tally, Error>) -> Verdict {
     match judged {
         Ok(tally) if tally.failed == 0 => Verdict::Green,
@@ -559,9 +568,7 @@ fn judged_verdict(judged: &Result<Tally, Error>) -> Verdict {
             open: tally.reported.clone(),
             unasked: tally.unasked.clone(),
         },
-        Err(problem) => Verdict::Unjudged {
-            error: problem.to_string(),
-        },
+        Err(_) => Verdict::Aborted { since: 0 },
     }
 }
 
@@ -637,6 +644,21 @@ struct Tally {
     unasked: Vec<String>,
     /// The 11.2 object the run built, which the journal writes as the stop's line. Spec 11.4.
     record: Option<Value>,
+}
+
+impl Tally {
+    /// One gate's exit in the tally. A gate that could not run fully and still holds a failing
+    /// finding counts as failed too, so its FAIL spends a block. Spec 10.4.
+    fn count(&mut self, code: u8, recorded: &Recorded) {
+        match code {
+            0 => (),
+            1 => self.failed += 1,
+            _ => self.errored += 1,
+        }
+        if code > 1 && recorded.findings.iter().any(failing) {
+            self.failed += 1;
+        }
+    }
 }
 
 /// What the hook says about a tree that does not build. The messages name the bound from
@@ -1896,11 +1918,7 @@ fn each(
             true => render::stop(&told, code == 0),
             false => render::text(&told),
         };
-        match code {
-            0 => (),
-            1 => tally.failed += 1,
-            _ => tally.errored += 1,
-        }
+        tally.count(code, &recorded);
         if rendered(args, code, &recorded) {
             printed(args, (&gate.name, status(code)), (&told, &text), out);
         }
@@ -1947,8 +1965,8 @@ fn word<'a>(record: &'a Value, key: &str) -> &'a str {
 }
 
 /// What the Stop says of the files the run could not measure: a lost file the accepted list does
-/// not hold fails like any gate, and an opened gap is a note the agent sees. A coverage limit
-/// the change did not open says nothing here. Spec 7.2.
+/// not hold fails like any gate, and an opened gap and a coverage limit the change did not open
+/// are notes the Stop tells. Spec 2.3, 7.2.
 fn stop_unmeasured(
     args: &Args,
     (project, wanted): (&Project, &[&Gate]),

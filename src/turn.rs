@@ -488,6 +488,7 @@ pub fn verdict(root: &Path, left: Left, out: &mut String) -> Result<&'static str
     };
     let verdict = match (left.verdict, left.prior) {
         (Verdict::Unjudged { .. }, kept @ (Verdict::Red { .. } | Verdict::Aborted { .. })) => kept,
+        (Verdict::Aborted { .. }, _) => held.verdict.clone(),
         (verdict, _) => verdict,
     };
     let name = verdict.name();

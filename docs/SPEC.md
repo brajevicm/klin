@@ -624,7 +624,10 @@ A stamp that no Stop judged yet holds `pending`. The next session or prompt
 keeps a `pending` stamp, as it keeps `red`, so the window stays open until a
 Stop judges it. An `unjudged` Stop keeps an earlier `red` or `aborted`
 verdict, and replaces `pending`, `green` or `unjudged`. When no stamp exists,
-the Stop writes no verdict.
+the Stop writes no verdict. Only a `klin.json` that klin cannot read writes
+`unjudged`. Any other error that stops the run before it measures, such as a
+base klin cannot lay out, leaves the `aborted` the Stop wrote, so the next
+prompt cannot move the stamp past work no Stop judged.
 
 Review items, notes, coverage notes and errors the base had too do not keep
 the stamp.

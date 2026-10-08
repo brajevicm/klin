@@ -239,6 +239,7 @@ fn status_names_the_open_findings_and_the_unasked_deleted_tests() {
     assert!(run.says("gate block 1 of 2"), "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(run.says("tests/test_one.py"), "{}", run.out);
+    assert_eq!(window(&tree)["unasked"], serde_json::json!([]));
 
     tree.words("README.md", 31);
     let second = second_stop(&tree);
