@@ -8,9 +8,6 @@ use crate::git::Repo;
 /// writes nothing the working tree can see. The guard reads this name too. ADR 0019, ADR 0032.
 pub const DIR: &str = "klin";
 pub const OVERRIDE: &str = "KLIN_STATE_DIR";
-/// Names the tree a keyed directory under `KLIN_STATE_DIR` belongs to, so `cache clean --all`
-/// can tell which entries outlived their repository.
-pub const REPOSITORY: &str = "repository";
 pub const CACHE: &str = "cache";
 /// Where under the cache the base commits' structural outcomes are kept. Spec 8.4.
 pub const STRUCTURAL: &str = "structural";
@@ -38,18 +35,14 @@ pub fn ready(root: &Path) -> Result<PathBuf, String> {
             root.display()
         ));
     };
-    prepared(&at, root)
+    prepared(&at)
 }
 
 /// The same, for a caller that resolved the directory already: `dir` runs a git subprocess, and
 /// the guard holds its answer under a 50 millisecond budget (13).
-pub fn prepared(at: &Path, root: &Path) -> Result<PathBuf, String> {
+pub fn prepared(at: &Path) -> Result<PathBuf, String> {
     if let Err(why) = std::fs::create_dir_all(at) {
         return Err(format!("{} could not be written: {why}", at.display()));
-    }
-    let named = at.join(REPOSITORY);
-    if std::env::var_os(OVERRIDE).is_some() && !named.is_file() {
-        let _ = std::fs::write(&named, worktree(root).display().to_string() + "\n");
     }
     Ok(at.to_path_buf())
 }

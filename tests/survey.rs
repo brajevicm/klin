@@ -971,7 +971,8 @@ fn a_commit_inside_the_turn_does_not_recalibrate_until_the_stamp_moves() {
         held.out
     );
 
-    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, SESSION).code, 0);
     let moved = stop(&tree);
     assert_eq!(moved.code, 0, "{}", moved.out);
     let file = tree.state(&format!("cache/{}.json", tree.revision("HEAD")));

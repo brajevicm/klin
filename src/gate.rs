@@ -237,15 +237,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = turn::window(root, lost, &mut log.flags, out).ok();
-    if let Some(window) = &window {
-        project.bind(window);
-    }
+    let window = windowed(project, lost, &mut log, out);
     let project = &*project;
     opened(root, lost, &mut log);
-    if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
-        log.flags.push("branch-fallback");
-    }
     let prior = (!lost).then(|| turn::aborting(root)).flatten();
     let (code, verdict, asked, note) = ran(
         args,
@@ -262,13 +256,12 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let exit = exit_code(code, event.as_ref());
     finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
-    let (note, told) = once(root, note, log.report.as_ref());
     let left = turn::Left {
         prior: prior.unwrap_or_default(),
         verdict,
         asked: asked.as_deref(),
     };
-    written(root, lost, left, &mut log);
+    let (note, told) = leave(root, lost, note, left, &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
         let held = count(&at, &log);
@@ -288,6 +281,43 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     exit
+}
+
+/// The window this stop judges, bound to the project, and why the stop is advisory when the
+/// history moved under the turn. A repository with no remote judges the branch instead, which
+/// the journal records as `branch-fallback`. Spec 6.6, 13.1.
+fn windowed(
+    project: &mut Project,
+    lost: bool,
+    log: &mut journal::Stop,
+    out: &mut String,
+) -> Option<Window> {
+    let (window, advisory) = turn::window(project.root(), lost, &mut log.flags, out).ok()?;
+    project.bind(&window);
+    log.advisory = advisory.map(turn::Reason::name);
+    if advisory.is_none() && matches!(window.kind, Kind::Branch) {
+        log.flags.push("branch-fallback");
+    }
+    Some(window)
+}
+
+/// What this stop leaves under the stamp, and the note it still tells with the records it
+/// tells: the verdict, or after an advisory Stop the fresh stamp, whose empty `told` lets the
+/// whole note through. Spec 2.3, 6.6.
+fn leave(
+    root: &Path,
+    lost: bool,
+    note: Option<String>,
+    left: turn::Left,
+    log: &mut journal::Stop,
+) -> (Option<String>, Vec<String>) {
+    if log.verdict == ADVISORY {
+        refreshed(root, log);
+        return (note, Vec::new());
+    }
+    let kept = once(root, note, log.report.as_ref());
+    written(root, lost, left, log);
+    kept
 }
 
 /// The exit and the window, beside the report the run built. Spec 11.4.
@@ -400,6 +430,21 @@ fn written(root: &Path, lost: bool, left: turn::Left, log: &mut journal::Stop) {
         Ok(verdict) => log.verdict = verdict,
         Err(why) => log.why = Some(why),
     }
+}
+
+/// The journal verdict of a Stop that measured in an advisory window. Spec 6.6, 13.1.
+const ADVISORY: &str = "advisory";
+
+/// The fresh stamp an advisory Stop takes in place of a verdict, so the next Stop is ordinary.
+/// A stamp git could not take leaves the `aborted` the Stop wrote, and the next Stop is
+/// advisory again. Spec 6.6.
+fn refreshed(root: &Path, log: &mut journal::Stop) {
+    let mut said = String::new();
+    if !turn::refreshed(root, &mut said) {
+        log.verdict = "none";
+        log.why = Some("git could not take a fresh stamp, so this advisory stop wrote none");
+    }
+    eprint!("{said}");
 }
 
 /// What a Stop's report tells that no later Stop under the same stamp repeats: each note and each
@@ -582,7 +627,8 @@ fn sorted(
 }
 
 /// What the hook does with a run it finished: report it, and block the stop or let it end with
-/// the note it leaves for the person.
+/// the note it leaves for the person. An advisory Stop that measured blocks nothing for a
+/// finding and tells what it found. Spec 6.6.
 fn handed(
     args: &Args,
     project: &Project,
@@ -592,13 +638,13 @@ fn handed(
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Option<String>) {
-    let mut tally = match refused(args, outcome, out) {
-        Ok(tally) => tally,
+    let (mut tally, measured) = match refused(args, outcome, out) {
+        Ok(tally) => (tally, true),
         Err(problem) => {
             let _ = writeln!(out, "ERR: {problem}");
             let mut records = Recorded::default();
             records.findings.push(record("error", &problem.to_string()));
-            Tally {
+            let tally = Tally {
                 errored: 1,
                 record: Some(as_json(
                     ERROR,
@@ -608,10 +654,15 @@ fn handed(
                     None,
                 )),
                 ..Tally::default()
-            }
+            };
+            (tally, false)
         }
     };
     log.report = tally.record.take();
+    if let Some(reason) = log.advisory.filter(|_| measured) {
+        log.verdict = ADVISORY;
+        return (0, Some(advised(reason, &tally, &std::mem::take(out))));
+    }
     hook(
         args,
         tally,
@@ -1583,6 +1634,20 @@ fn hook(
         log.gate_block = Some(number);
     }
     (code, None)
+}
+
+/// What an advisory Stop tells in place of a block: that the history moved, that klin blocks
+/// nothing until it settles, and what the run found, once, because the fresh stamp it takes
+/// makes the next Stop ordinary. Spec 6.6.
+fn advised(reason: &str, tally: &Tally, report: &str) -> String {
+    let line = format!(
+        "klin: the history moved under this turn ({reason}), so klin does not block until the \
+         history settles, and `klin check` judges the branch."
+    );
+    match tally.failed + tally.told + tally.errored {
+        0 => line,
+        _ => format!("{line}\n{report}"),
+    }
 }
 
 /// A stop that failed and spends no gate block: the report, why klin does not block again, and

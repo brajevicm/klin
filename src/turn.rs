@@ -13,25 +13,13 @@ use crate::host::adapter::{self, Event};
 use crate::journal;
 use crate::key::Section;
 use crate::radius;
-use crate::stamp::{self, Stamp, Verdict};
+use crate::stamp::{self, Here, History, Stamp, Verdict};
 use crate::state;
 use crate::write::{AtomicWrite, atomic_write};
 
 /// Git shares `refs/` across the worktrees of one repository, and `refs/worktree/` is one of
 /// the exceptions, so each worktree keeps its own stamp. The ref is never pushed. Spec 6.5.
 const REFERENCE: &str = "refs/worktree/klin/turn";
-#[derive(clap::Args)]
-pub struct Moved {
-    #[command(subcommand)]
-    which: Which,
-}
-
-#[derive(clap::Subcommand)]
-enum Which {
-    /// Move the stamp to the working tree, whatever verdict the last stop left
-    Reset,
-}
-
 /// A `session` or `prompt` event of the agent ingress, over the tree the event names, after the
 /// opt-in walk found the worktree root's `klin.json`. Spec 10.3.
 pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String) -> u8 {
@@ -58,7 +46,7 @@ pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String
         journal::prompt(start, prompts, Some(&event), enabled, facts);
     }
     let mark = tree.and_then(|tree| marked(start, tree));
-    if let Some(stamp) = next(start, tree, never, held, prompts, out) {
+    if let Some(stamp) = next(start, &at, tree, never, held, prompts, out) {
         let mark = mark.or(stamp.mark);
         if write(&at, &Stamp { mark, ..stamp }, out)
             && let Some(capture) = capture
@@ -123,6 +111,7 @@ fn marked(root: &Path, tree: &str) -> Option<String> {
 /// because other commands write there too.
 fn next(
     root: &Path,
+    at: &Path,
     tree: Option<&str>,
     never: bool,
     held: Option<Stamp>,
@@ -130,44 +119,15 @@ fn next(
     out: &mut String,
 ) -> Option<Stamp> {
     let Some(held) = held else {
-        return restored(root, tree, never, prompts, out);
+        return restored(root, at, tree, never, prompts, out);
     };
     if held.verdict.moves() {
-        return taken(root, tree, prompts, out).or(Some(Stamp { prompts, ..held }));
+        return taken(root, at, tree, prompts, out).or(Some(Stamp { prompts, ..held }));
     }
     if held.commit.is_none() {
         note(out, GONE);
     }
     Some(Stamp { prompts, ..held })
-}
-
-/// The third route out of a red window: a person moves the stamp to the working tree, so the
-/// debt behind it stops reading as new. The fresh stamp is pending like any other, so the next
-/// prompt leaves it where the reset put it until a stop judges the tree, and the counter
-/// carries over, because the turn did not end. Spec 6.2.
-pub fn moved(args: &Moved, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let Which::Reset = args.which;
-    let at = state::ready(start).map_err(Error)?;
-    let _lock = state::lock(&at, Duration::from_secs(30))
-        .ok_or_else(|| Error("the state directory could not be locked".to_string()))?;
-    let prompts = stamp::read(&at).map_or(0, |held| held.prompts);
-    let capture = stamp::capture(start, &at.join(stamp::INDEX));
-    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
-    let Some(stamp) = taken(start, tree, prompts, out) else {
-        return Err(Error("git could not stamp this tree".to_string()));
-    };
-    let mark = tree.and_then(|tree| marked(start, tree));
-    if write(&at, &Stamp { mark, ..stamp }, out)
-        && let Some(capture) = capture
-    {
-        let _ = capture.retain(&at.join(stamp::INDEX));
-    }
-    journal::reset(start, prompts);
-    let _ = writeln!(
-        out,
-        "klin: a person moved the turn stamp to the working tree."
-    );
-    Ok(0)
 }
 
 /// The prompt counter the stamp holds, which the build stamp keys its count to. Only `klin
@@ -205,7 +165,13 @@ pub fn intervened(root: &Path) -> bool {
 
 /// A fresh stamp, or `None` when git could not take one, so the caller keeps the stamp it has
 /// and the next prompt tries again.
-fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Option<Stamp> {
+fn taken(
+    root: &Path,
+    at: &Path,
+    tree: Option<&str>,
+    prompts: u64,
+    out: &mut String,
+) -> Option<Stamp> {
     let Some((commit, parent)) = tree.and_then(|tree| stamped(root, tree, REFERENCE)) else {
         note(
             out,
@@ -218,6 +184,7 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
         parent,
         time: now(),
         prompts,
+        history: History::now(root, at, &Here::read(root)),
         ..Stamp::default()
     })
 }
@@ -269,13 +236,14 @@ fn kept(root: &Path) -> Option<Stamp> {
 /// fresh stamp would photograph whatever the deletion hid. Spec 6.2.
 fn restored(
     root: &Path,
+    at: &Path,
     tree: Option<&str>,
     never: bool,
     prompts: u64,
     out: &mut String,
 ) -> Option<Stamp> {
     if never {
-        return taken(root, tree, prompts, out);
+        return taken(root, at, tree, prompts, out);
     }
     note(out, GONE);
     Some(Stamp {
@@ -286,45 +254,169 @@ fn restored(
     })
 }
 
-/// The window a stop in the hook judges: the turn stamp, or the whole branch when the stamp
-/// was deleted, which the stop then writes as the stamp so the window stops widening. A state
-/// directory klin cannot keep costs the same widening and nothing else. A stop that `lost` the
-/// state lock reads the same window and writes nothing, because the stop holding the lock may
-/// be writing the stamp. Spec 6.2, 6.5, 14, 16.1.
+/// The window a stop in the hook judges, and why the Stop is advisory when the history moved
+/// under the turn. The window is the turn stamp, or the whole branch when the stamp was deleted.
+/// A repository with no remote takes no advisory Stop: a deleted stamp or a branch change there
+/// judges the branch and writes the base it judged as the stamp, so the window stops widening.
+/// A state directory klin cannot keep costs the same widening and nothing else. A stop that
+/// `lost` the state lock reads the same window and writes nothing, because the stop holding the
+/// lock may be writing the stamp. Spec 6.2, 6.5, 6.6, 14, 16.1.
 pub fn window(
     root: &Path,
     lost: bool,
     flags: &mut Vec<&'static str>,
     out: &mut String,
-) -> Result<Window, Error> {
+) -> Result<(Window, Option<Reason>), Error> {
     let at = state::ready(root).ok().filter(|_| !lost);
     let Some(at) = at else {
-        return read_only(root, out);
+        return read_only(root, out).map(|window| (window, None));
     };
+    let here = Here::read(root);
     let held = held(root, &at, flags, out);
-    if let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) {
-        if !abandoned(root, stamp) {
-            return Ok(turn(stamp));
+    let Some(stamp) = held.as_ref().filter(|held| held.commit.is_some()) else {
+        if here.remotes {
+            return Ok((branch(root, out)?, Some(Reason::StampMissing)));
         }
-        note(out, LEFT_BEHIND);
-        reanchored(root);
+        note(out, GONE_ON_A_STOP);
+        let mark = held.as_ref().and_then(|held| held.mark.clone());
         let base = branch(root, out)?;
-        return Ok(replaced(&at, held.as_ref(), None, base, out));
+        return Ok((replaced(&at, held.as_ref(), mark, base, out), None));
+    };
+    if here.remotes {
+        let reason = advisory(root, &at, stamp, &here);
+        if reason.is_none() {
+            settled(root, &at, stamp, &here, out);
+        }
+        return Ok((turn(stamp), reason));
     }
-    note(out, GONE_ON_A_STOP);
-    let mark = held.as_ref().and_then(|held| held.mark.clone());
+    if !switched(root, stamp, &here) {
+        return Ok((turn(stamp), None));
+    }
+    note(out, LEFT_BEHIND);
+    reanchored(root);
     let base = branch(root, out)?;
-    Ok(replaced(&at, held.as_ref(), mark, base, out))
+    Ok((replaced(&at, held.as_ref(), None, base, out), None))
+}
+
+/// Why a Stop is advisory: the history moved under the turn, so a precise local judgement is
+/// no longer possible. Spec 6.6.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reason {
+    IncomingCommits,
+    BranchChanged,
+    HistoryLost,
+    StampMissing,
+}
+
+impl Reason {
+    pub fn name(self) -> &'static str {
+        match self {
+            Reason::IncomingCommits => "incoming-commits",
+            Reason::BranchChanged => "branch-changed",
+            Reason::HistoryLost => "history-lost",
+            Reason::StampMissing => "stamp-missing",
+        }
+    }
+}
+
+/// The reflog entries that bring other people's commits in or take the turn's history away.
+const INCOMING: [&str; 4] = ["merge", "pull", "rebase", "reset"];
+
+/// Rules 1 to 3 of spec 6.6 over a stamp that resolves. A merge-base the stamp never recorded,
+/// as on a stamp restored from its ref, is the stamp parent's. The merge-base comes from the
+/// cache, so a Stop where neither HEAD nor the default branch moved starts no git process for
+/// it. Without a reflog to read, a moved merge-base alone is advisory.
+fn advisory(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<Reason> {
+    if switched(root, stamp, here) {
+        return Some(Reason::BranchChanged);
+    }
+    let (recorded, now) = merge_bases(root, at, stamp, here)?;
+    if now == recorded {
+        return None;
+    }
+    if incoming(here, stamp) {
+        return Some(Reason::IncomingCommits);
+    }
+    (Repo::at(root).contains(&recorded) == Some(false)).then_some(Reason::HistoryLost)
+}
+
+/// The default-branch merge-base the stamp recorded, and HEAD's as it stands. A stamp that
+/// recorded none, as one restored from its ref, has its parent's.
+fn merge_bases(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<(String, String)> {
+    let (head, default) = here.pair()?;
+    let recorded = match &stamp.history.merge_base {
+        Some(recorded) => recorded.clone(),
+        None => stamp::merge_base(root, at, stamp.parent.as_deref()?, default)?,
+    };
+    Some((recorded, stamp::merge_base(root, at, head, default)?))
+}
+
+/// Whether HEAD's reflog since the stamp holds an entry that brings commits in. A reflog that
+/// cannot be compared, because HEAD has none or the stamp recorded no position, counts as one.
+fn incoming(here: &Here, stamp: &Stamp) -> bool {
+    here.reflog_since(stamp.history.reflog)
+        .is_none_or(|entries| {
+            entries
+                .iter()
+                .any(|entry| INCOMING.iter().any(|kind| entry.starts_with(kind)))
+        })
+}
+
+/// The history a Stop that is not advisory leaves on the stamp: where it stands now, so the
+/// agent's own push or branch is the stamp's history from here on, and a stamp restored from
+/// its ref records it at its first Stop. Nothing is written when nothing moved.
+fn settled(root: &Path, at: &Path, stamp: &Stamp, here: &Here, out: &mut String) {
+    let history = History::now(root, at, here);
+    if history == stamp.history {
+        return;
+    }
+    if let Some(held) = stamp::read(at) {
+        write(at, &Stamp { history, ..held }, out);
+    }
+}
+
+/// Whether the branch changed under the turn: HEAD's symbolic ref differs from the one the
+/// stamp recorded, or the stamp recorded none, and the stamp's parent left HEAD history. So
+/// `git switch -c` at the same HEAD, and an amend or a rebase of the turn's own commits on the
+/// same branch, keep the turn window. Spec 6.6.
+fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
+    let moved = match (&stamp.history.head_ref, &here.head_ref) {
+        (Some(was), Some(now)) => was != now,
+        _ => true,
+    };
+    moved && abandoned(root, stamp)
+}
+
+/// The fresh stamp an advisory Stop takes of the tree it measured, with the history as it now
+/// stands, none of the window's records, the prompt counter carried on, and the prompt mark
+/// moved with it. The caller holds the state lock, so the verdict and the stamp describe the
+/// same tree. Spec 6.6.
+pub fn refreshed(root: &Path, out: &mut String) -> bool {
+    let Ok(at) = state::ready(root) else {
+        return false;
+    };
+    let capture = stamp::capture(root, &at.join(stamp::INDEX));
+    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
+    let Some(stamp) = taken(root, &at, tree, prompts(&at), out) else {
+        return false;
+    };
+    let mark = tree.and_then(|tree| marked(root, tree));
+    let wrote = write(&at, &Stamp { mark, ..stamp }, out);
+    if wrote && let Some(capture) = capture {
+        let _ = capture.retain(&at.join(stamp::INDEX));
+    }
+    wrote
 }
 
 /// The window as the stamp on disk names it, from the `turn` file or else the ref, with no
-/// restore, no re-anchor and no replacement written. Spec 6.5, 14.
+/// restore, no re-anchor, no replacement and no fresh stamp written. Spec 6.5, 14.
 fn read_only(root: &Path, out: &mut String) -> Result<Window, Error> {
     let file = state::dir(root)
         .and_then(|at| stamp::read(&at))
         .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
+    let here = Here::read(root);
     match file.or_else(|| kept(root)) {
-        Some(stamp) if abandoned(root, &stamp) => {
+        Some(stamp) if !here.remotes && switched(root, &stamp, &here) => {
             note(out, LEFT_BEHIND);
             branch(root, out)
         }

@@ -11,7 +11,7 @@ use crate::check::catalogue;
 use crate::config::{Config, Discovered};
 use crate::error::Error;
 use crate::hooks::{self, Integration};
-use crate::stamp::Verdict;
+use crate::stamp::{Here, Verdict};
 use crate::{journal, stamp, state};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
@@ -44,6 +44,7 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
         .as_ref()
         .and_then(|_| Config::load(None, start, &catalogue::sections()).err());
     let at = state::dir(root);
+    let (lines, _) = journal::read(root);
     json!({
         "schema_version": 1,
         "command": "status",
@@ -58,8 +59,8 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
         "integrations": hooks::integrations(root).iter().map(integration).collect::<Vec<Value>>(),
         "state_dir": at.as_ref().map(|at| at.display().to_string()),
         "cache_dir": at.as_ref().map(|at| at.join(state::CACHE).display().to_string()),
-        "window": at.as_deref().and_then(window),
-        "last_stop": last_stop(root),
+        "window": at.as_deref().and_then(|at| window(root, at, &lines)),
+        "last_stop": last_stop(&lines),
     })
 }
 
@@ -73,9 +74,10 @@ fn integration(one: &Integration) -> Value {
     })
 }
 
-/// The local window the stamp holds: its verdict, its age, and why it is red, unjudged or
-/// aborted. It never claims that the working tree passes. Spec 11.4.
-fn window(at: &Path) -> Option<Value> {
+/// The local window the stamp holds: its verdict, its age, why it is red, unjudged or aborted,
+/// the default-branch ref the advisory rules read, and the last advisory Stop. It never claims
+/// that the working tree passes. Spec 6.6, 11.4.
+fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     let held = stamp::read(at)?;
     let mut window = json!({
         "verdict": held.verdict.name(),
@@ -84,6 +86,8 @@ fn window(at: &Path) -> Option<Value> {
         "unasked": [],
         "error": null,
         "aborted_since": null,
+        "default_branch": Here::read(root).default.map(|(name, _)| name),
+        "last_advisory": last_advisory(lines),
     });
     match held.verdict {
         Verdict::Red { open, unasked } => {
@@ -97,9 +101,20 @@ fn window(at: &Path) -> Option<Value> {
     Some(window)
 }
 
+/// The last advisory Stop the journal records and its reason. Spec 13.1.
+fn last_advisory(lines: &[Value]) -> Value {
+    lines
+        .iter()
+        .rev()
+        .find(|line| line["kind"] == "stop" && line["verdict"] == "advisory")
+        .map_or(
+            Value::Null,
+            |line| json!({"time": line["time"], "reason": line["advisory"]}),
+        )
+}
+
 /// The last Stop the journal records, which is history and not the tree as it stands.
-fn last_stop(root: &Path) -> Value {
-    let (lines, _) = journal::read(root);
+fn last_stop(lines: &[Value]) -> Value {
     lines
         .iter()
         .rev()
@@ -179,6 +194,7 @@ fn window_text(window: &Value, out: &mut String) {
         Some(verdict) => writeln!(out, "window: {verdict}, stamped {age} s ago"),
         None => writeln!(out, "window: none, no session has opened one"),
     };
+    history_text(window, out);
     for (key, label) in [
         ("open", "open finding"),
         ("unasked", "deleted test not asked about"),
@@ -186,6 +202,21 @@ fn window_text(window: &Value, out: &mut String) {
         for item in window[key].as_array().into_iter().flatten() {
             let _ = writeln!(out, "  {label}: {}", item.as_str().unwrap_or_default());
         }
+    }
+}
+
+/// The default-branch ref the advisory rules read, and the last advisory Stop. Spec 6.6.
+fn history_text(window: &Value, out: &mut String) {
+    if let Some(branch) = window["default_branch"].as_str() {
+        let _ = writeln!(out, "  default branch: {branch}");
+    }
+    let advisory = &window["last_advisory"];
+    if let Some(reason) = advisory["reason"].as_str() {
+        let _ = writeln!(
+            out,
+            "  last advisory stop: {reason} at {}",
+            advisory["time"]
+        );
     }
 }
 

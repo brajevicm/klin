@@ -433,8 +433,7 @@ impl Fixture {
             self.timed_hook()
         });
         let cold = repeat(|| {
-            let cleaned = self.tree.run(&["cache", "clean"]);
-            assert_eq!(cleaned.code, 0, "cache clean: {}", cleaned.out);
+            let _ = std::fs::remove_dir_all(self.tree.state("cache"));
             let started = Instant::now();
             let run = strict_run(&self.tree, "cold survey");
             Sample {
@@ -865,7 +864,7 @@ fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
     }
 }
 
-/// The structural cache the cold rows' `cache clean` removed is written again by one Stop first,
+/// The structural cache the cold rows removed is written again by one Stop first,
 /// so its size and the warm peak describe a Stop that reads it.
 fn resources(fixture: &Fixture) -> Resources {
     let primed = fixture.hook();

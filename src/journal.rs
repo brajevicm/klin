@@ -46,6 +46,8 @@ pub struct Stop {
     pub verdict: &'static str,
     /// Why the stop wrote no verdict, beside `verdict: "none"` alone.
     pub why: Option<&'static str>,
+    /// Why the Stop was advisory, beside `verdict: "advisory"`. Spec 13.1.
+    pub advisory: Option<&'static str>,
     /// The site ids this stop asked about, as the turn stamp records them. Spec 8.2.
     pub asked: Vec<String>,
     /// The unusual paths this stop took, empty on a clean one: `turn-restored`,
@@ -86,6 +88,7 @@ impl Stop {
             gate_block: None,
             verdict: "none",
             why: None,
+            advisory: None,
             asked: Vec::new(),
             flags: Vec::new(),
             told: Vec::new(),
@@ -144,6 +147,9 @@ pub fn line(stop: &Stop) -> Value {
     line.insert("verdict".into(), stop.verdict.into());
     if let Some(why) = stop.why {
         line.insert("why".into(), why.into());
+    }
+    if let Some(reason) = stop.advisory {
+        line.insert("advisory".into(), reason.into());
     }
     line.insert(
         "timing".into(),
@@ -229,12 +235,12 @@ pub fn prompt_enabled(loaded: &Config) -> bool {
 /// refuses instead (9.1), and 11.4 must count that refusal as the deny it is. An allow appends
 /// nothing, because the guard runs on every tool call under its 50 ms budget and an allow tells
 /// a reader nothing. `at` is the state directory the guard resolved already. Spec 9.6, 11.4.
-pub fn guard(root: &Path, at: &Path, event: &Event, delivered: u8, reason: &'static str) {
+pub fn guard(at: &Path, event: &Event, delivered: u8, reason: &'static str) {
     let kind = match delivered {
         0 => "ask",
         _ => "deny",
     };
-    let Ok(at) = state::prepared(at, root) else {
+    let Ok(at) = state::prepared(at) else {
         return;
     };
     let mut line = base("guard");
@@ -246,17 +252,6 @@ pub fn guard(root: &Path, at: &Path, event: &Event, delivered: u8, reason: &'sta
     );
     line.insert("decision".into(), kind.into());
     line.insert("reason".into(), reason.into());
-    append(&at, &Value::Object(line));
-}
-
-/// `klin turn reset`: the prompt counter the stamp carried over. Spec 9.6, 11.4.
-pub fn reset(root: &Path, counter: u64) {
-    let Ok(at) = state::ready(root) else {
-        return;
-    };
-    let mut line = base("reset");
-    line.insert("session".into(), Value::Null);
-    line.insert("prompt".into(), counter.into());
     append(&at, &Value::Object(line));
 }
 

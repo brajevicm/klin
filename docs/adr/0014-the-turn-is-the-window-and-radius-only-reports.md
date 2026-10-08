@@ -100,3 +100,7 @@ deleting it, and a missing stamp already prints nothing.
 `init` appends `.klin/` to `.gitignore`. `changed::files` lists untracked files,
 so an unignored stamp would join the set every scoped gate judges, and that is a
 wrong measurement rather than a mess.
+
+Amended 2026-10-09. `klin radius --report` no longer exists (#503). The
+radius note reaches the person at prompt time only. The rest of this record
+stands.

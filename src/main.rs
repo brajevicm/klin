@@ -73,18 +73,9 @@ struct Cli {
     command: Command,
 }
 
-/// The public commands of spec 11.1, and the hidden entry points a person still reaches until
-/// the roadmap removes them.
+/// The public commands of spec 11.1.
 #[derive(Subcommand)]
 enum Command {
-    #[command(flatten)]
-    Public(Public),
-    #[command(flatten)]
-    Hidden(Hidden),
-}
-
-#[derive(Subcommand)]
-enum Public {
     /// Set up or repair klin integration for this repository, or for one person's host files
     Setup(hooks::Args),
     /// Measure the repository against klin's quality policy, optionally only the named checks
@@ -99,14 +90,6 @@ enum Public {
     Update,
 }
 
-#[derive(Subcommand)]
-enum Hidden {
-    #[command(hide = true)]
-    Turn(turn::Moved),
-    #[command(hide = true)]
-    Cache(cache::Args),
-}
-
 /// The agent ingress answers before the command line is parsed, so an argument it does not know
 /// never becomes a usage error. The updater answers before the working directory is read,
 /// because it does not need it. Everything else prints through `report`. Spec 10.1, 10.10.
@@ -116,27 +99,19 @@ fn main() -> ExitCode {
         return agent::run();
     }
     match Cli::parse().command {
-        Command::Public(Public::Update) => ExitCode::from(update::run()),
-        Command::Public(command) => report(|start, out| public(&command, start, out)),
-        Command::Hidden(command) => report(|start, out| hidden(&command, start, out)),
+        Command::Update => ExitCode::from(update::run()),
+        command => report(|start, out| public(&command, start, out)),
     }
 }
 
-fn public(command: &Public, start: &Path, out: &mut String) -> Result<u8, Error> {
+fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Public::Setup(args) => hooks::run(args, start, out),
-        Public::Check(args) => gate::check(args, start, out),
-        Public::Status(args) => status::run(args, start, out),
-        Public::Policy(args) => gate::policy(args, start, out),
-        Public::Report(args) => stats::run(args, start, out),
-        Public::Update => Ok(update::run()),
-    }
-}
-
-fn hidden(command: &Hidden, start: &Path, out: &mut String) -> Result<u8, Error> {
-    match command {
-        Hidden::Turn(args) => turn::moved(args, start, out),
-        Hidden::Cache(args) => cache::run(args, start, out),
+        Command::Setup(args) => hooks::run(args, start, out),
+        Command::Check(args) => gate::check(args, start, out),
+        Command::Status(args) => status::run(args, start, out),
+        Command::Policy(args) => gate::policy(args, start, out),
+        Command::Report(args) => stats::run(args, start, out),
+        Command::Update => Ok(update::run()),
     }
 }
 

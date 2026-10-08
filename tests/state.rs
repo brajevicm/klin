@@ -105,45 +105,6 @@ fn a_git_worktree_gets_its_own_state_directory() {
 }
 
 #[test]
-fn cache_clean_removes_the_survey_cache_and_leaves_the_stamps() {
-    let tree = tree("");
-    tree.write(".git/klin/cache/a-tree", "measured");
-    tree.write(".git/klin/build-blocked", "");
-
-    let run = tree.run(&["cache", "clean"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(!tree.state("cache").exists(), "{}", run.out);
-    assert!(tree.state("build-blocked").is_file(), "{}", run.out);
-}
-
-#[test]
-fn cache_clean_all_removes_only_the_cache_of_a_repository_that_is_gone() {
-    let tree = tree("");
-    let cache = Tree::bare();
-    let under = cache.root().display().to_string();
-    let environment = [("KLIN_STATE_DIR", under.as_str())];
-    let stamped = tree.stop_with(&environment);
-    assert_eq!(stamped.code, 0, "{}", stamped.out);
-    let mine = state_line(&tree.run_with(&environment, &["policy"]));
-    let mine = Path::new(mine.trim_start_matches("state: ")).to_path_buf();
-    let stamp = mine.join("build-blocked");
-    assert!(std::fs::write(&stamp, "").is_ok(), "a stamp of my own");
-    let held = cache.write("0000000000000000/cache/a-tree", "measured");
-    cache.write("0000000000000000/repository", &cache.at("gone"));
-    let orphan = cache.write("0000000000000000/build-blocked", "");
-
-    let run = tree.run_with(&environment, &["cache", "clean", "--all"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("removed 1 cache"), "{}", run.out);
-    assert!(!held.exists(), "{}", run.out);
-    assert!(
-        orphan.is_file(),
-        "the stamp of a tree klin cannot see went too"
-    );
-    assert!(stamp.is_file(), "{}", run.out);
-}
-
-#[test]
 fn an_unwritable_state_directory_says_why_and_blocks_nothing() {
     let tree = tree("");
     let file = tree.at("a-file");
@@ -180,17 +141,6 @@ fn a_build_failure_under_an_unwritable_state_directory_says_why_and_blocks_nothi
     assert!(run.says("does not build"), "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("blocks nothing"), "{}", run.out);
-}
-
-#[test]
-fn a_tree_that_is_no_repository_has_no_state_even_under_the_override() {
-    let tree = Tree::bare();
-    let cache = Tree::bare();
-    let under = cache.root().display().to_string();
-
-    let run = tree.run_with(&[("KLIN_STATE_DIR", under.as_str())], &["cache", "clean"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("no git repository here"), "{}", run.out);
 }
 
 #[test]

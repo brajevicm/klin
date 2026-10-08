@@ -659,7 +659,9 @@ these happened:
    alone is advisory.
 2. **A branch change.** HEAD's symbolic ref differs from the recorded one,
    and the stamp's parent is no longer an ancestor of HEAD. `git switch -c`
-   at the same HEAD keeps the turn window, as 0.x 6.2 did.
+   at the same HEAD keeps the turn window, as 0.x 6.2 did. A stamp that
+   recorded no ref, such as one restored from its ref, takes the ancestry
+   test alone.
 3. **Lost history.** The recorded default-branch merge-base is no longer an
    ancestor of HEAD, for example after the default branch was rewritten and
    the agent reset onto it.
@@ -673,6 +675,10 @@ a rewrite drops the stamp's parent from HEAD history, the stamp keeps its
 tree, and the derivation commit stays the stamp's parent, which the stamp
 commit keeps readable.
 
+A Stop that is not advisory records the history as it stands on the stamp.
+So after the agent's own push or `git switch -c`, a later Stop compares
+against that history and not against the history at the stamp.
+
 An advisory Stop:
 
 - runs the build feedback of section 6.4 as usual, and a build failure still
@@ -685,8 +691,11 @@ An advisory Stop:
   empty `asked`, `told` and `intervened`, and moves the prompt mark, unless
   the build failed. It captures the tree while it holds the Stop's state
   lock, because the verdict and the stamp must describe the same tree;
-- writes one `advisory` journal line with its reason: `incoming-commits`,
-  `branch-changed`, `history-lost` or `stamp-missing`.
+- writes its journal line with the verdict `advisory` and its reason:
+  `incoming-commits`, `branch-changed`, `history-lost` or `stamp-missing`.
+
+An advisory Stop for a missing stamp has no stamp to measure against. It
+measures against the 0.x 6.3 base, as the branch fallback does.
 
 Because the advisory Stop takes the fresh stamp itself, the next Stop is
 ordinary, also within the same prompt, in a host continuation, and on a
@@ -696,10 +705,11 @@ host whose prompt hook does not run. The prompt counter carries on.
 can judge what an advisory Stop would skip, so such a repository takes no
 advisory Stop. Rule 1 cannot fire. For rules 2 and 4 it keeps the 0.x 6.2
 branch fallback: the Stop judges a branch window, blocks as any Stop does,
-writes the verdict its gates gave, and keeps `asked`, `told` and
-`intervened`. The fallback's base is the stamp's recorded parent while that
-commit is still readable, and the 0.x 6.3 base otherwise. Its journal
-outcome stays `branch-fallback`. When remote refs exist but the default
+writes the base it judged as the stamp with the verdict its gates gave. The
+fallback's base is the 0.x 6.3 base. The stamp's parent is not the base,
+because it sits on the branch the checkout left, and a window from it would
+read that branch's tests as deleted tests. Its journal outcome stays
+`branch-fallback`. When remote refs exist but the default
 branch is not a remote-tracking ref, rules 1 and 3 cannot fire, and rules 2
 and 4 are advisory.
 
@@ -713,17 +723,19 @@ and 4 are advisory.
   says so.
 - An agent can make one Stop advisory by merging the default branch or by
   switching branches. Section 16.1 records this Feedback limit.
-- A stamp with no recorded merge-base or reflog position, such as a 0.x stamp
-  after an upgrade or a stamp restored from its ref, records them at its first
-  Stop. That Stop is advisory when the default-branch merge-base is not an
-  ancestor of the stamp's parent, because the turn may already hold incoming
-  commits.
+- A stamp restored from its ref has no recorded merge-base or reflog
+  position. Its first Stop compares the default-branch merge-base of the
+  stamp's parent with HEAD's. That Stop is advisory when the two differ,
+  because the turn may already hold incoming commits. A Stop that is not
+  advisory then records them.
 - Section 18.7 lists the cases these rules do not cover.
 
 **Cost.** klin caches the merge-base under the pair (HEAD commit,
 default-branch commit). `session`, `prompt` and `stop` read HEAD, HEAD's
-symbolic ref, the default-branch ref and HEAD's reflog as files, or with one
-git process where the repository stores refs in a reftable. `pre_tool` reads
+symbolic ref, the default-branch ref and HEAD's reflog as files, after one
+`git rev-parse` finds the git directory. Where the repository stores refs in
+a reftable, klin asks git for them and reads no reflog, so a moved
+default-branch merge-base alone is advisory there. `pre_tool` reads
 none of them. klin starts `git merge-base` only when the pair changed, which
 happens on the first Stop or prompt after each commit. An advisory Stop adds
 a stamp capture to an ordinary Stop (section 14.4).
@@ -1357,7 +1369,7 @@ loads configuration, builds facts, resolves a base or walks the tree.
   any kind, compared with the 0.x command that served the same event, except
   the history check of section 6.6. At `session`, `prompt` and `stop` it reads
   HEAD, HEAD's symbolic ref, the default-branch ref and HEAD's reflog as files
-  (or with one git process in a reftable repository). It starts
+  (with git itself in a reftable repository). It starts
   `git merge-base` only when the cached pair changed, and `--is-ancestor`
   only to test rules 2 and 3 after a branch change or a moved merge-base.
   `pre_tool` does none of this.
@@ -1838,8 +1850,9 @@ vNext writes journal `schema` 2:
   `config_hash` and `timing`, and adds `notice`: the non-blocking person
   notice, and whether a host channel delivered it or only the journal holds
   it.
-- An advisory Stop's line carries `verdict: advisory` and its reason:
-  `incoming-commits`, `branch-changed`, `history-lost` or `stamp-missing`.
+- An advisory Stop's line carries `verdict: advisory` and its reason under
+  `advisory`: `incoming-commits`, `branch-changed`, `history-lost` or
+  `stamp-missing`.
   A repository with no remote keeps the 0.x `branch-fallback` outcome for its
   fallback Stop.
 - `prompt` and `guard` lines keep their schema 1 fields.
@@ -2091,8 +2104,8 @@ are unknown commands too. `klin setup` and the plugin write only
 | Stop text names `klin stats --turn` | Stop text names `klin report` |
 | Action runs `klin gate --strict` | Action runs `klin check` |
 | `turn reset` moves the stamp to the current tree | No command |
-| A merge of the default branch makes its code new at the Stop | That Stop is advisory, and the next prompt takes a fresh stamp |
-| The branch fallback after a history move judges the whole branch, red | With a remote: one advisory Stop that takes a fresh stamp. Without a remote: the branch fallback from the stamp's parent, with the gates' verdict |
+| A merge of the default branch makes its code new at the Stop | That Stop is advisory and takes a fresh stamp itself |
+| The branch fallback after a history move judges the whole branch, red | With a remote: one advisory Stop that takes a fresh stamp. Without a remote: the branch fallback from the 0.x 6.3 base, after a branch change or a missing stamp only |
 
 ### 17.3 Configuration migration
 

@@ -54,3 +54,7 @@ hook see the same number. It still moves neither mark.
 
 Deleting the mark costs a report and nothing else. Unlike the stamp, no block
 and no window depend on it, so it needs no recovery beyond the ref.
+
+Amended 2026-10-09. `klin turn reset` and `klin radius --report` no longer
+exist (#503). An advisory Stop moves the mark with the fresh stamp it takes.
+No command moves either mark.

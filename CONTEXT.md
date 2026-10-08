@@ -202,6 +202,6 @@ scope and its window.
 _Avoid_: metadata, provenance
 
 **Advisory Stop**:
-A Stop that measures and blocks nothing, because the turn's history moved
-under the stamp.
+A Stop that measures, blocks nothing for a finding, tells what it found once
+and takes a fresh stamp, because the turn's history moved under the stamp.
 _Avoid_: skipped stop, dry run
