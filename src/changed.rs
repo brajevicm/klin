@@ -85,7 +85,7 @@ impl Quiet {
 
 /// How klin asks git for the changes against the base: names and statuses only, renames
 /// pinned, and no external diff or text conversion.
-fn diffed<'a>(cached: bool, base: &'a str) -> Vec<&'a str> {
+fn diffed(cached: bool, base: &str) -> Vec<&str> {
     let mut asked = vec!["diff", "--name-status", "--no-ext-diff", "--no-textconv"];
     if cached {
         asked.push("--cached");
