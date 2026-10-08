@@ -1195,6 +1195,7 @@ fn inactive(args: &Args, plan: &Plan) -> Vec<Value> {
                 Activation::Automatic => "not-applicable",
                 Activation::Policy | Activation::Integration => "needs-policy",
             };
+            let limitations = limitations(check, &Map::new());
             json!({
                 "name": check.name,
                 "section": check.section,
@@ -1202,6 +1203,11 @@ fn inactive(args: &Args, plan: &Plan) -> Vec<Value> {
                 "activation": check.activation.name(),
                 "placement": check.placement.names(),
                 "state": state,
+                "limitations": limitations,
+                "lines": limitations
+                    .iter()
+                    .map(|said| format!("limitation: {said}"))
+                    .collect::<Vec<_>>(),
             })
         });
     excluded.chain(needed).collect()
@@ -1435,31 +1441,32 @@ fn policy_text(capabilities: &[Value], whole: bool, shared: &Shared, out: &mut S
     }
 }
 
+fn state_said(state: &str) -> &str {
+    match state {
+        "active" => "runs",
+        "needs-policy" => "needs a section a person writes",
+        other => other,
+    }
+}
+
 fn capability_text(capability: &Value, out: &mut String) {
-    {
-        let name = capability["name"].as_str().unwrap_or_default();
-        let said = match capability["state"].as_str() {
-            Some("active") => "runs",
-            Some("excluded") => "excluded",
-            Some("not-applicable") => "not-applicable",
-            _ => "needs a section a person writes",
-        };
-        let _ = writeln!(out, "{name} — {said}");
-        let placement: Vec<&str> = capability["placement"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-            .collect();
-        if !placement.is_empty() {
-            let _ = writeln!(out, "{UNDER}placement: {}", placement.join(", "));
-        }
-        if let Some(activation) = capability["activation"].as_str() {
-            let _ = writeln!(out, "{UNDER}activation: {activation}");
-        }
-        for line in capability["lines"].as_array().into_iter().flatten() {
-            let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
-        }
+    let name = capability["name"].as_str().unwrap_or_default();
+    let said = state_said(capability["state"].as_str().unwrap_or_default());
+    let _ = writeln!(out, "{name} — {said}");
+    let placement: Vec<&str> = capability["placement"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    if !placement.is_empty() {
+        let _ = writeln!(out, "{UNDER}placement: {}", placement.join(", "));
+    }
+    if let Some(activation) = capability["activation"].as_str() {
+        let _ = writeln!(out, "{UNDER}activation: {activation}");
+    }
+    for line in capability["lines"].as_array().into_iter().flatten() {
+        let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
     }
 }
 

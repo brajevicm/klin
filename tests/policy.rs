@@ -201,3 +201,21 @@ fn policy_prints_the_limitations_of_an_integration() {
     let limitations = capability(&json, "scan")["limitations"].clone();
     assert_eq!(limitations.as_array().map(Vec::len), Some(3), "{json}");
 }
+
+#[test]
+fn policy_prints_the_limitations_of_an_integration_no_section_names_yet() {
+    let tree = tree("{}");
+
+    let run = tree.run(&["policy", "sarif"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("sarif — needs a section a person writes"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("limitation: runs at klin check only, never at the Stop"),
+        "{}",
+        run.out
+    );
+}
