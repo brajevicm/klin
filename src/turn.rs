@@ -216,13 +216,9 @@ fn taken(root: &Path, tree: Option<&str>, prompts: u64, out: &mut String) -> Opt
     Some(Stamp {
         commit: Some(commit),
         parent,
-        mark: None,
         time: now(),
-        verdict: Verdict::Pending,
         prompts,
-        asked: Vec::new(),
-        intervened: false,
-        told: Vec::new(),
+        ..Stamp::default()
     })
 }
 
@@ -264,11 +260,8 @@ fn kept(root: &Path) -> Option<Stamp> {
         mark: stamp::resolve(root, stamp::MARK),
         commit: Some(commit),
         time: now(),
-        verdict: red(),
-        prompts: 0,
-        asked: Vec::new(),
-        intervened: false,
-        told: Vec::new(),
+        verdict: Verdict::red(),
+        ..Stamp::default()
     })
 }
 
@@ -286,15 +279,10 @@ fn restored(
     }
     note(out, GONE);
     Some(Stamp {
-        commit: None,
-        parent: None,
-        mark: None,
         time: now(),
-        verdict: red(),
+        verdict: Verdict::red(),
         prompts,
-        asked: Vec::new(),
-        intervened: false,
-        told: Vec::new(),
+        ..Stamp::default()
     })
 }
 
@@ -375,11 +363,9 @@ fn replaced(
             parent: Some(base.before.clone()),
             mark,
             time: now(),
-            verdict: red(),
+            verdict: Verdict::red(),
             prompts: held.map_or(0, |held| held.prompts),
-            asked: Vec::new(),
-            intervened: false,
-            told: Vec::new(),
+            ..Stamp::default()
         },
         out,
     );
@@ -427,14 +413,6 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
     })
 }
 
-/// A red verdict no Stop judged, which keeps the window until a Stop does. Spec 6.2.
-fn red() -> Verdict {
-    Verdict::Red {
-        open: Vec::new(),
-        unasked: Vec::new(),
-    }
-}
-
 /// The notes and errors a Stop already told under the current stamp. Empty when no stamp is
 /// readable. Spec 2.3.
 pub fn told(root: &Path) -> Vec<String> {
@@ -450,25 +428,21 @@ pub fn told(root: &Path) -> Vec<String> {
 /// Spec 6.6.
 pub fn aborting(root: &Path) -> Option<Verdict> {
     let at = state::ready(root).ok()?;
-    let held = stamp::read(&at)?;
-    let prior = held.verdict.clone();
-    let since = match prior {
+    let mut held = stamp::read(&at)?;
+    let since = match held.verdict {
         Verdict::Aborted { since } => since,
         _ => now(),
     };
-    let stamp = Stamp {
-        verdict: Verdict::Aborted { since },
-        ..held
-    };
-    write(&at, &stamp, &mut String::new()).then_some(prior)
+    let prior = std::mem::replace(&mut held.verdict, Verdict::Aborted { since });
+    write(&at, &held, &mut String::new()).then_some(prior)
 }
 
-/// What one Stop leaves under the stamp: the verdict, the findings its gate block put in front of
-/// the agent, and the notes and errors it told. An `unjudged` Stop never hides a window it did not
-/// judge: after `red` or `aborted` that verdict stays. Spec 2.3, 6.6, 8.2.
+/// What one Stop leaves under the stamp: the verdict it reached over the one before it, or `None`
+/// where it measured nothing and the `aborted` it wrote stays, the findings its gate block put in
+/// front of the agent, and the notes and errors it told. Spec 2.3, 6.6, 8.2.
 pub struct Left<'a> {
     pub prior: Verdict,
-    pub verdict: Verdict,
+    pub verdict: Option<Verdict>,
     pub asked: Option<&'a [String]>,
     pub told: &'a [String],
 }
@@ -480,16 +454,15 @@ pub fn verdict(root: &Path, left: Left, out: &mut String) -> Result<&'static str
     let Ok(at) = state::ready(root) else {
         return Err("klin could not ready the state directory, so this stop wrote no verdict");
     };
-    let Some(held) = stamp::read(&at) else {
+    let Some(mut held) = stamp::read(&at) else {
         return Err(
             "the state directory holds no stamp klin could read, so this stop wrote no \
                     verdict",
         );
     };
-    let verdict = match (left.verdict, left.prior) {
-        (Verdict::Unjudged { .. }, kept @ (Verdict::Red { .. } | Verdict::Aborted { .. })) => kept,
-        (Verdict::Aborted { .. }, _) => held.verdict.clone(),
-        (verdict, _) => verdict,
+    let verdict = match left.verdict {
+        Some(verdict) => verdict.over(left.prior),
+        None => std::mem::take(&mut held.verdict),
     };
     let name = verdict.name();
     let wrote = write(

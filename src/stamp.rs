@@ -50,6 +50,25 @@ impl Verdict {
         }
     }
 
+    /// A red verdict no Stop judged, which keeps the window until a Stop does. Spec 6.2.
+    pub fn red() -> Verdict {
+        Verdict::Red {
+            open: Vec::new(),
+            unasked: Vec::new(),
+        }
+    }
+
+    /// What a Stop leaves over the verdict before it: an `unjudged` Stop never hides a window it
+    /// did not judge, so `red` and `aborted` stay. Spec 6.6.
+    pub fn over(self, prior: Verdict) -> Verdict {
+        match (self, prior) {
+            (Verdict::Unjudged { .. }, kept @ (Verdict::Red { .. } | Verdict::Aborted { .. })) => {
+                kept
+            }
+            (verdict, _) => verdict,
+        }
+    }
+
     /// Whether the next session or prompt moves the stamp. An `unjudged` window moves, so the
     /// first Stop after a fix never judges what came before it. Spec 6.6.
     pub fn moves(&self) -> bool {
@@ -97,6 +116,7 @@ impl Verdict {
 
 /// Where the turn's window opens: the stamped commit, the HEAD it was taken over, when it was
 /// taken, the verdict of the last stop, and how many prompts this worktree has seen.
+#[derive(Default)]
 pub struct Stamp {
     pub commit: Option<String>,
     pub parent: Option<String>,

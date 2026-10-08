@@ -77,27 +77,24 @@ fn integration(one: &Integration) -> Value {
 /// aborted. It never claims that the working tree passes. Spec 11.4.
 fn window(at: &Path) -> Option<Value> {
     let held = stamp::read(at)?;
-    let none: &[String] = &[];
-    let (open, unasked) = match &held.verdict {
-        Verdict::Red { open, unasked } => (open.as_slice(), unasked.as_slice()),
-        _ => (none, none),
-    };
-    let error = match &held.verdict {
-        Verdict::Unjudged { error } => Some(error),
-        _ => None,
-    };
-    let aborted_since = match held.verdict {
-        Verdict::Aborted { since } => Some(since),
-        _ => None,
-    };
-    Some(json!({
+    let mut window = json!({
         "verdict": held.verdict.name(),
         "age_seconds": now().saturating_sub(held.time),
-        "open": open,
-        "unasked": unasked,
-        "error": error,
-        "aborted_since": aborted_since,
-    }))
+        "open": [],
+        "unasked": [],
+        "error": null,
+        "aborted_since": null,
+    });
+    match held.verdict {
+        Verdict::Red { open, unasked } => {
+            window["open"] = open.into();
+            window["unasked"] = unasked.into();
+        }
+        Verdict::Unjudged { error } => window["error"] = error.into(),
+        Verdict::Aborted { since } => window["aborted_since"] = since.into(),
+        Verdict::Pending | Verdict::Green => {}
+    }
+    Some(window)
 }
 
 /// The last Stop the journal records, which is history and not the tree as it stands.

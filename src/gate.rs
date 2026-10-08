@@ -184,9 +184,9 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     let fresh = !turn::told(root).contains(&told[0]);
     let left = turn::Left {
         prior: turn::aborting(root).unwrap_or_default(),
-        verdict: Verdict::Unjudged {
+        verdict: Some(Verdict::Unjudged {
             error: problem.to_string(),
-        },
+        }),
         asked: None,
         told: &told,
     };
@@ -508,15 +508,14 @@ fn ran(
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, Verdict, Option<Vec<String>>, Option<String>) {
+) -> (u8, Option<Verdict>, Option<Vec<String>>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
-            let verdict = Verdict::Aborted { since: 0 };
             let (code, note) = handed(args, project, Err(problem), event, lost, log, out);
-            return (code, verdict, None, note);
+            return (code, None, None, note);
         }
     };
     match failure {
@@ -525,10 +524,7 @@ fn ran(
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             (
                 blocked_build(project.root(), event, text, code),
-                Verdict::Red {
-                    open: Vec::new(),
-                    unasked: Vec::new(),
-                },
+                Some(Verdict::red()),
                 None,
                 None,
             )
@@ -546,10 +542,10 @@ fn ran(
             let (code, note) = handed(args, project, judged, event, lost, log, out);
             let asked = (code == BLOCKED).then_some(reported);
             let verdict = match (verdict, &asked) {
-                (Verdict::Red { open, .. }, Some(_)) => Verdict::Red {
+                (Some(Verdict::Red { open, .. }), Some(_)) => Some(Verdict::Red {
                     open,
                     unasked: Vec::new(),
-                },
+                }),
                 (verdict, _) => verdict,
             };
             (code, verdict, asked, note)
@@ -559,17 +555,18 @@ fn ran(
 
 /// The verdict of a run that measured: red for a failing finding, which an unasked deleted test
 /// is, and green otherwise, because an error, a hole or a note keeps nothing red. A run that
-/// failed before it measured stays `aborted`, so the stamp never moves past work no Stop judged.
-/// Only a klin.json klin cannot read writes `unjudged`. Spec 6.6, 10.4.
-fn judged_verdict(judged: &Result<Tally, Error>) -> Verdict {
-    match judged {
-        Ok(tally) if tally.failed == 0 => Verdict::Green,
-        Ok(tally) => Verdict::Red {
+/// failed before it measured reaches none, so the `aborted` the Stop wrote stays and the stamp
+/// never moves past work no Stop judged. Only a klin.json klin cannot read writes `unjudged`.
+/// Spec 6.6, 10.4.
+fn judged_verdict(judged: &Result<Tally, Error>) -> Option<Verdict> {
+    let tally = judged.as_ref().ok()?;
+    Some(match tally.failed {
+        0 => Verdict::Green,
+        _ => Verdict::Red {
             open: tally.reported.clone(),
             unasked: tally.unasked.clone(),
         },
-        Err(_) => Verdict::Aborted { since: 0 },
-    }
+    })
 }
 
 /// A finished build sorted into what blocks and what is told: the failure text of a build that
