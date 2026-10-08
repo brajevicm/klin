@@ -88,12 +88,14 @@ if [ ! -x "$BINARY" ]; then
 	fi
 fi
 
-# A person without a klin of their own hears once that the CLI exists. Cursor shows no message at
-# a prompt, so the hint waits for another host. It is never a followup_message, which Cursor would
-# submit as a prompt that hands the installer to the agent.
+# A person without a klin of their own hears once that the CLI exists, in a repository that opted
+# in: klin says nothing at all where the worktree root holds no klin.json. Cursor shows no
+# message at a prompt, so the hint waits for another host. It is never a followup_message, which
+# Cursor would submit as a prompt that hands the installer to the agent.
 if [ "${1:-}" = __agent ]; then
 	touch "$CACHE/$VERSION" 2>/dev/null
 	if [ ! -e "$HINTED" ] && [ -z "${CURSOR_VERSION:-}" ] &&
+		root=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f "$root/klin.json" ] &&
 		! { on_path=$(command -v klin) && ! [ "$on_path" -ef "$0" ]; }; then
 		printed=$("$BINARY" "$@")
 		outcome=$?

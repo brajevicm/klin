@@ -16,7 +16,7 @@ import {
 import * as oracle from "./oracle.ts";
 import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
-import { hookArguments } from "./session.ts";
+import { hookArguments } from "./capability.ts";
 import * as toolchain from "./toolchain.ts";
 import { wholeRun } from "./session.ts";
 

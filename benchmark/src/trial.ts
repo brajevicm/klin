@@ -6,6 +6,7 @@ import { CURRENT_PROTOCOL } from "./protocol.ts";
 import { copyTree, digest, files, links, sha256 } from "./trees.ts";
 import { family as familyNamed, variantIn, type ArmName, type VariantName } from "./catalogue.ts";
 import * as workspace from "./workspace.ts";
+import { hookArguments } from "./capability.ts";
 import * as session from "./session.ts";
 import * as oracle from "./oracle.ts";
 import * as integrity from "./integrity.ts";
@@ -145,7 +146,7 @@ export function wholeRun(
     workspace.git(repo, "init", "--quiet");
     workspace.git(repo, "add", "-A");
     workspace.git(repo, "commit", "--quiet", "-m", "The whole-run base");
-    const radius = spawnSync(binary, session.hookArguments(binary, "session"), {
+    const radius = spawnSync(binary, hookArguments(binary, "session"), {
       ...spawned,
       input: JSON.stringify({ hook_event_name: "SessionStart", session_id: "whole-run" }),
     });
@@ -153,7 +154,7 @@ export function wholeRun(
     replaceTree(subject, repo);
     const ran = spawnSync(binary, [...session.wholeRun(binary), "--json"], spawned);
     const whole = verdictOf("gate", ran, ran.stdout ?? "", gate, expected);
-    const hooked = spawnSync(binary, session.hookArguments(binary, "stop"), {
+    const hooked = spawnSync(binary, hookArguments(binary, "stop"), {
       ...spawned,
       input: JSON.stringify({ hook_event_name: "Stop", session_id: "whole-run" }),
       env: { ...env, KLIN_HOOK_REPORT: reported },

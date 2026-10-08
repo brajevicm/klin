@@ -11,7 +11,7 @@ use std::process::ExitCode;
 use crate::check::catalogue;
 use crate::config::Discovered;
 use crate::host;
-use crate::host::adapter::{Event, Kind};
+use crate::host::adapter::{Decision, Event, Kind};
 use crate::{gate, guard, turn};
 
 const WORD: &str = "__agent";
@@ -33,9 +33,12 @@ pub fn run() -> ExitCode {
     }
 }
 
-/// The event's answer once the opt-in walk found the worktree root's `klin.json`. A protocol
-/// version klin does not speak is refused whole: the guard delivers the adapter's refusal and
-/// journals it, whatever kind the event meant. Spec 10.2, 10.9.
+/// The event's answer. A protocol version klin does not speak is refused whole and first,
+/// wherever it runs: its payload names no tree klin can trust, so it cannot opt out. In an
+/// opted-in tree the guard delivers the adapter's refusal and journals it; elsewhere the adapter
+/// delivers it alone, and nothing is written. Every other event is answered once the opt-in walk
+/// found the worktree root's `klin.json`.
+/// Spec 5.1, 10.2, 10.9.
 fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
     let Some(event) = invoked() else {
         return ExitCode::SUCCESS;
@@ -48,7 +51,13 @@ fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
         return failed(event.kind);
     };
     let found = Discovered::from(&start);
-    let (Some(root), Some(_)) = (&found.root, &found.config) else {
+    if event.host.refuses() {
+        return ExitCode::from(match (&found.root, &found.config) {
+            (Some(root), Some(_)) => guard::run(&event, root),
+            _ => event.host.decide(&Decision::Allow),
+        });
+    }
+    let (Some(kind), Some(root), Some(_)) = (event.kind, &found.root, &found.config) else {
         if event.kind == Some(Kind::Session)
             && let Some(nested) = found.ignored.first()
         {
@@ -56,11 +65,7 @@ fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
         }
         return ExitCode::SUCCESS;
     };
-    match (event.host.refuses(), event.kind) {
-        (true, _) => ExitCode::from(guard::run(&event, root)),
-        (false, Some(kind)) => ExitCode::from(answered(event, kind, &start, root)),
-        (false, None) => ExitCode::SUCCESS,
-    }
+    ExitCode::from(answered(event, kind, &start, root))
 }
 
 /// The event this invocation carries, when it is one klin answers: `event` was named, the

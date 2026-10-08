@@ -426,7 +426,8 @@ opt-out, and tell one person notice per session that names the file and
 says to move it to the worktree root. The `session` event tells it, which
 makes it once per session with no state. It uses the host's person channel
 of section 10.7, and stderr on Cursor, because a repository that has not
-opted in has no journal. This replaces the 0.x support for a
+opted in has no journal. With no state, the copies of klin's hooks cannot
+share a claim (section 10.3), so each installed copy tells the notice once. This replaces the 0.x support for a
 configuration below the repository root, which
 `a_config_below_the_repository_root_holds_the_debt_the_base_holds` and
 `a_config_below_the_repository_root_scopes_a_changed_run_the_same_way` in
@@ -436,7 +437,11 @@ those tests.
 The file is the repository's opt-in marker for the host protocol (ADR 0028).
 When the worktree root holds no `klin.json`, `klin __agent event` answers
 every event with no decision, prints nothing, writes no state and exits 0. It
-does not read or parse the file for this test.
+does not read or parse the file for this test. The one exception is a harness
+event of a protocol version klin does not speak: its fields name no tree klin
+can trust, so it is refused wherever it runs (section 10.9), with no journal
+line outside an opted-in tree. The plugin's one-time hint that the CLI exists
+is told only in a repository that opted in.
 
 `klin check`, `klin status` and `klin policy` without a `klin.json` run under
 `{}`. They print one line, `config: none, running under {}`, and the JSON
@@ -1523,7 +1528,9 @@ exits 2, also under `--json`.
 - A klin-owned file that a person changed is a conflict. `setup` reports it
   and leaves it, as 0.x 19.3 does for `install`.
 - Flags: `--host NAME` (repeatable), `--user` for one person's host files on
-  this machine, `--pin` (section 5.4), `--config PATH`.
+  this machine, `--pin` (section 5.4), `--config PATH`. The hooks read only
+  the worktree root's `klin.json` (section 5.1), so a `--config PATH` that
+  names any other file is an invocation error, and `setup` writes nothing.
 - Prints what it changed and what it left as it was.
 - Exit 0 on success. Exit 2 on an invalid invocation or a write it could
   not make.
@@ -1593,7 +1600,7 @@ Text output:
 | --- | --- |
 | `current` | The host files hold the hook lines and owned files that this klin's `setup` writes. |
 | `missing` | The repository proves the host, and no copy of klin's hooks is installed for it. |
-| `conflict` | A klin-owned file was changed, or two copies disagree in a way 0.x 9.8 cannot settle. |
+| `conflict` | A klin-owned file was changed, deleted or cannot be read, or two copies disagree in a way 0.x 9.8 cannot settle. |
 
 - `--json` prints the document of section 11.7.
 - Exit 0 when it could read what it reports, whatever it found. Exit 2 on an

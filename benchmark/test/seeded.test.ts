@@ -32,6 +32,7 @@ import * as oracle from "../src/oracle.ts";
 import * as report from "../src/report.ts";
 import * as integrity from "../src/integrity.ts";
 import * as seededRound from "../src/seeded.ts";
+import { hookArguments } from "../src/capability.ts";
 import * as session from "../src/session.ts";
 import * as trial from "../src/trial.ts";
 import { probeOnDisk } from "./probe-fixture.ts";
@@ -625,7 +626,7 @@ function stopOver(familyName: string, tree: string) {
     workspace.git(repo, "add", "-A");
     workspace.git(repo, "commit", "--quiet", "-m", "The committed base");
     overlay(path.join(variant.root, tree), repo);
-    const ran = spawnSync(KLIN, session.hookArguments(KLIN, "stop"), {
+    const ran = spawnSync(KLIN, hookArguments(KLIN, "stop"), {
       cwd: repo,
       input: JSON.stringify({ hook_event_name: "Stop", session_id: "seeded-stop" }),
       encoding: "utf8",
@@ -714,7 +715,7 @@ test("a whole-run apparatus failure is refused before a session can start", () =
     fs.writeFileSync(path.join(subject, "README.md"), "subject\n");
     assert.throws(
       () => trial.wholeRun("dead-symbols", base, subject, [], room, path.join(room, "missing-klin")),
-      /seeded whole-run radius failed/,
+      /seeded whole-run session hook failed/,
     );
     assert.equal(fs.existsSync(path.join(room, "whole-run")), false);
   } finally {
@@ -1232,9 +1233,9 @@ test(
           encoding: "utf8",
           timeout: 600_000,
         });
-      play(session.hookArguments(KLIN, "session"), { hook_event_name: "SessionStart", session_id });
-      play(session.hookArguments(KLIN, "prompt"), { hook_event_name: "UserPromptSubmit", session_id, prompt: "ship it" });
-      const stop = play(session.hookArguments(KLIN, "stop"), { hook_event_name: "Stop", session_id });
+      play(hookArguments(KLIN, "session"), { hook_event_name: "SessionStart", session_id });
+      play(hookArguments(KLIN, "prompt"), { hook_event_name: "UserPromptSubmit", session_id, prompt: "ship it" });
+      const stop = play(hookArguments(KLIN, "stop"), { hook_event_name: "Stop", session_id });
       assert.equal(stop.status, 2, "the seed did not reach the agent as a blocked stop");
       assert.match(
         (stop.stdout ?? "") + (stop.stderr ?? ""),

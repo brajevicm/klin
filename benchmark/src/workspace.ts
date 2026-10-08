@@ -5,7 +5,7 @@ import path from "node:path";
 import * as paths from "./paths.ts";
 import { copyTree, files, overlay, digest, removals, sha256 } from "./trees.ts";
 import type { Variant } from "./catalogue.ts";
-import { hookArguments, type HookKind } from "./session.ts";
+import { hookArguments, type HookKind } from "./capability.ts";
 
 /**
  * The subject workspace and the control plane.

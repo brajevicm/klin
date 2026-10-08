@@ -145,3 +145,34 @@ fn status_outside_a_repository_is_an_invocation_error() {
     let run = Tree::bare().run(&["status"]);
     assert_eq!(run.code, 2, "{}", run.out);
 }
+
+/// Only the exact skill `setup` writes is current. A deleted or unreadable skill is a conflict,
+/// so `klin update` names `klin setup`. Spec 11.4, 11.8.
+#[test]
+fn status_reads_a_missing_or_unreadable_skill_as_a_conflict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
+    let skill = ".claude/skills/klin/SKILL.md";
+
+    tree.remove(skill);
+    let missing = status(&tree);
+    assert_eq!(
+        state(&missing, "claude"),
+        ["project hooks conflict"],
+        "{missing}"
+    );
+
+    tree.write(skill, "");
+    std::fs::set_permissions(
+        tree.path(skill),
+        std::os::unix::fs::PermissionsExt::from_mode(0o000),
+    )
+    .expect("chmod");
+    let unreadable = status(&tree);
+    assert_eq!(
+        state(&unreadable, "claude"),
+        ["project hooks conflict"],
+        "{unreadable}"
+    );
+}

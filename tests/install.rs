@@ -1327,3 +1327,35 @@ fn a_second_install_beside_the_plugin_is_already_current() {
     assert!(run.says("already current"), "{}", run.out);
     assert!(run.says("the committed copy yields"), "{}", run.out);
 }
+
+/// The hooks read only the worktree root's klin.json, so `setup --config` that names another
+/// file is refused before anything is written, and one that names the root's file opts the
+/// worktree in for real: its hooks answer. Spec 5.1, 11.2.
+#[test]
+fn setup_refuses_a_config_the_hooks_never_read() {
+    let tree = Tree::new();
+    tree.write("app/src/main.rs", "fn main() {}\n");
+
+    let refused = tree.run(&["setup", "--host", "claude", "--config", "app/klin.json"]);
+    assert_eq!(refused.code, 2, "{}", refused.out);
+    assert!(refused.says("the worktree root"), "{}", refused.out);
+    assert!(!tree.path("app/klin.json").exists(), "{}", refused.out);
+    assert!(
+        !tree.path(".claude/settings.json").exists(),
+        "{}",
+        refused.out
+    );
+
+    let named = harness::run_from(
+        &tree.path("app"),
+        &["setup", "--host", "claude", "--config", "../klin.json"],
+    );
+    assert_eq!(named.code, 0, "{}", named.out);
+    assert!(tree.path("klin.json").is_file(), "{}", named.out);
+    let session = harness::feed(tree.root(), harness::AGENT, harness::SESSION_START);
+    assert_eq!(session.code, 0, "{}", session.out);
+    assert!(
+        tree.state("turn").is_file(),
+        "the hooks stayed inactive after setup"
+    );
+}

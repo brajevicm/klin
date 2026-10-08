@@ -709,12 +709,16 @@ fn a_fetch_removes_the_other_cached_versions_nothing_ran_this_week() {
     );
 }
 
-/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first turn
-/// whose radius printed nothing, and never again on that machine. Spec 19.2.
+/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first event
+/// that printed nothing in a repository that opted in, and never again on that machine. A
+/// repository with no klin.json at its root hears nothing. Spec 5.1, 19.2.
 #[test]
 fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
     release_running(&tree, "true");
+    let silent = fetch(&tree, harness::AGENT);
+    assert_eq!(silent.printed, "", "the hint spoke where klin is off");
+    tree.write("klin.json", "{}\n");
 
     let first = fetch(&tree, harness::AGENT);
     let second = fetch(&tree, harness::AGENT);
@@ -732,7 +736,8 @@ fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
 /// Cursor shows no message at a prompt, so under Cursor the hint waits for another host.
 #[test]
 fn the_wrapper_names_the_cli_to_nobody_under_cursor() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     release_running(&tree, "true");
     let base = format!("file://{}", tree.path("release").display());
 
@@ -782,7 +787,8 @@ fn a_radius_run_keeps_its_version_in_the_cache() {
 /// never hears it.
 #[test]
 fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     release(&tree, "the-radius-note");
     let spoke = fetch(&tree, harness::AGENT);
     assert_eq!(spoke.printed.trim(), "the-radius-note", "{}", spoke.out);

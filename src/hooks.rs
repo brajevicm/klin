@@ -42,17 +42,16 @@ pub struct Args {
     /// configuration as policy, and keep every value it already holds
     #[arg(long)]
     pin: bool,
-    /// The klin.json to write (default: one at the repository root)
+    /// The klin.json to write, which must be the one at the worktree root (the default)
     #[arg(long)]
     config: Option<PathBuf>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = Scope::of(args.user, start)?;
-    let file = scope.config(args.config.as_deref(), start);
-    let pinned = pin_target(args.pin, file.as_deref())?;
+    let file = configuration(args, &scope, start)?;
     let components = planned(args, &scope, file.as_deref())?;
-    if let Some(file) = pinned {
+    if let Some(file) = file.as_deref().filter(|_| args.pin) {
         init::pin(file, out)?;
     }
     applied(&components, out)?;
@@ -63,7 +62,25 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(0)
 }
 
-/// The configuration `--pin` writes, which needs a repository or a `--config` to name it.
+/// Whether two paths name one file, through the directories that hold them, so a file that does
+/// not exist yet still compares.
+fn same_file(one: &Path, other: &Path) -> bool {
+    let held = |path: &Path| {
+        let directory = path.parent()?.canonicalize().ok()?;
+        Some(directory.join(path.file_name()?))
+    };
+    held(one).is_some_and(|one| held(other) == Some(one))
+}
+
+/// The configuration this run opts in and `--pin` writes, refused before anything is written
+/// where `--config` names a file the hooks never read, or `--pin` has no repository to name one.
+fn configuration(args: &Args, scope: &Scope, start: &Path) -> Result<Option<PathBuf>, Error> {
+    let file = scope.config(args.config.as_deref(), start)?;
+    pin_target(args.pin, file.as_deref())?;
+    Ok(file)
+}
+
+/// The configuration `--pin` writes, which needs a repository to name it.
 fn pin_target(pin: bool, file: Option<&Path>) -> Result<Option<&Path>, Error> {
     match (pin, file) {
         (false, _) => Ok(None),
@@ -108,11 +125,22 @@ impl Scope {
         })
     }
 
-    /// The configuration this run opts in: the one `--config` names, or the repository's own.
-    fn config(&self, named: Option<&Path>, start: &Path) -> Option<PathBuf> {
-        match named {
-            Some(named) => Some(start.join(named)),
-            None => self.repository.as_ref().map(|root| root.join(MARKER)),
+    /// The configuration this run opts in: the repository's own. The hooks read only the
+    /// `klin.json` at the worktree root, so a `--config` that names any other file would report
+    /// an opt-in no hook ever sees, and is refused. Spec 5.1, 11.2.
+    fn config(&self, named: Option<&Path>, start: &Path) -> Result<Option<PathBuf>, Error> {
+        let own = self.repository.as_ref().map(|root| root.join(MARKER));
+        let Some(named) = named.map(|named| start.join(named)) else {
+            return Ok(own);
+        };
+        match own.as_deref().is_some_and(|own| same_file(own, &named)) {
+            true => Ok(own),
+            false => Err(Error(format!(
+                "--config names {}, and the hooks read only the klin.json at the worktree root{}. \
+                 Run klin setup without --config; klin check --config still reads that file.",
+                named.display(),
+                own.map_or_else(String::new, |own| format!(", {}", own.display()))
+            ))),
         }
     }
 
@@ -825,7 +853,9 @@ fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integratio
     plugin.into_iter().chain(hooks).collect()
 }
 
-/// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Spec 11.4.
+/// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Only the
+/// exact skill reads as current: a skill that is missing, unreadable or changed is a conflict
+/// `setup` names. Spec 11.4.
 fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, String) {
     let held = read(file).unwrap_or_default();
     let current = canonical(host, held.clone(), file).is_ok_and(|wanted| wanted == held);
@@ -839,11 +869,15 @@ fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, Str
         );
     }
     let skill = at.join(host.skill_file());
-    match std::fs::read(&skill) {
-        Ok(text) if text != SKILL.as_bytes() => (
-            State::Conflict,
-            format!("{} differs from klin's skill", skill.display()),
-        ),
-        _ => (State::Current, file.display().to_string()),
-    }
+    let wrong = match std::fs::read(&skill) {
+        Ok(text) if text == SKILL.as_bytes() => {
+            return (State::Current, file.display().to_string());
+        }
+        Ok(_) => "differs from klin's skill".to_string(),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
+            "is missing, and klin setup writes it".to_string()
+        }
+        Err(why) => format!("could not be read: {why}"),
+    };
+    (State::Conflict, format!("{} {wrong}", skill.display()))
 }

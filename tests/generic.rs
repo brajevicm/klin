@@ -176,6 +176,32 @@ fn an_unknown_protocol_version_refuses_and_is_not_read_as_another_host() {
     assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
 }
 
+/// An unknown version fails closed wherever its hook runs. A harness that runs klin outside the
+/// repository names the tree under `root`, a field klin does not trust in a version it does not
+/// speak, so the walk from an unconfigured directory or from no worktree at all cannot opt out.
+/// Spec 10.9, 10.10.
+#[test]
+fn an_unknown_protocol_version_fails_closed_outside_the_named_tree() {
+    let tree = failing();
+    let unknown = json!({
+        "klin_protocol": 2,
+        "event": "pre_tool",
+        "root": tree.root(),
+        "file_paths": ["klin.json"]
+    })
+    .to_string();
+
+    for elsewhere in [Tree::new(), Tree::bare()] {
+        let run = feed(elsewhere.root(), harness::AGENT, &unknown);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
+        assert!(
+            !elsewhere.path(".git/klin").exists(),
+            "a refusal wrote state elsewhere"
+        );
+    }
+}
+
 /// A host that refuses a call the guard itself allowed still leaves a journal line. It is the
 /// only record a person has of why every tool call of that session was blocked.
 #[test]
