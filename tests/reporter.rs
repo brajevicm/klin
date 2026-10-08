@@ -160,14 +160,14 @@ fn a_file_the_grammar_rejected_is_one_the_coverage_calls_unreadable() {
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
     let run = tree.run(&["check", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = json(&run);
     let row = named(&report, "complexity");
     assert_eq!(count(row, "found"), 2, "{}", run.out);
     assert_eq!(count(row, "measured"), 1, "{}", run.out);
     assert_eq!(count(row, "unreadable"), 1, "{}", run.out);
-    assert_eq!(row.get("status").and_then(Value::as_str), Some("ERR"));
-    assert_eq!(row.get("findings").and_then(Value::as_u64), Some(1));
+    assert_eq!(row.get("status").and_then(Value::as_str), Some("ok"));
+    assert_eq!(row.get("findings").and_then(Value::as_u64), Some(0));
 }
 
 #[test]

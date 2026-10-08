@@ -473,6 +473,10 @@ fn build_error(file: &Path, key: &str) -> Error {
     ))
 }
 
+/// The name of the built-in row of lost files and of the accepted entries that hold one. No
+/// capability, `sarif` entry or other accepted entry may take it. Spec 7.2.
+pub const MEASUREMENT_LOST: &str = "measurement-lost";
+
 fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
     let Some(entries) = value.as_array() else {
         return Err(shape_error(
@@ -491,8 +495,13 @@ fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Resul
                 "a list of accepted entries",
             ));
         };
-        for name in ["gate", "file", "text"] {
-            if !fields.get(name).is_some_and(Value::is_string) {
+        let by_file = fields.get("gate").and_then(Value::as_str) == Some(MEASUREMENT_LOST);
+        let required: &[&str] = match by_file {
+            true => &["gate", "file"],
+            false => &["gate", "file", "text"],
+        };
+        for name in required {
+            if !fields.get(*name).is_some_and(Value::is_string) {
                 return missing(file, section, name);
             }
         }

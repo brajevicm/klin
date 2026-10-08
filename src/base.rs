@@ -11,7 +11,7 @@ use crate::error::Error;
 use crate::git::{Boolean, Repo, Staged};
 use crate::state;
 use crate::syntax::structural::facts::Outcome;
-use crate::syntax::structural::{Cache, same_grammar, selected_extensions};
+use crate::syntax::structural::{Cache, selected_extensions};
 use crate::tree::{self, Tree};
 
 /// What laying a base out reads from the run beside it: where the configuration sits, the
@@ -156,22 +156,6 @@ impl Prior {
     fn changed_by(&mut self, changes: &[Change]) {
         self.renamed = changed::renamed(changes);
         self.added = changed::added(changes);
-    }
-
-    /// The files a measurement of this base could not read that the base could not read under
-    /// its own path either. A file renamed from a path another grammar reads is left out: the
-    /// layout read its base bytes under today's grammar, which is a reading the base never made.
-    /// ADR 0021, spec 8.6.
-    pub fn unread_either(&self, unreadable: &[String]) -> Vec<String> {
-        unreadable
-            .iter()
-            .filter(|file| {
-                self.renamed
-                    .get(*file)
-                    .is_none_or(|was| same_grammar(was, file))
-            })
-            .cloned()
-            .collect()
     }
 }
 

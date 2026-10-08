@@ -659,7 +659,7 @@ fn repeated_lines_of_two_kinds_fail_as_one_site_labelled_by_the_first_pattern_wi
 }
 
 #[test]
-fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
+fn a_file_measured_at_the_base_and_excluded_now_is_a_coverage_note_naming_it() {
     let tree = tree();
     tree.write("src/gone.rs", "fn f() {}\n");
     tree.base();
@@ -669,9 +669,11 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     );
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: src/gone.rs was measured at the base"),
+        run.says(
+            "NOTE: src/gone.rs is not measured (left-scope) — measured at the base and not now"
+        ),
         "{}",
         run.out
     );

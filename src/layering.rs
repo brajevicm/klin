@@ -166,7 +166,7 @@ impl Placed<'_> {
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let policy = policy(at.config())?;
     let commit = contract::base_commit(at.project.root(), at)?;
-    let (was, now) = sides(at, &commit, out)?;
+    let (was, now, base_scoped) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();
     let was_placed = policy.placed(&was.graph);
@@ -186,8 +186,17 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
                 },
         );
     });
-    let physicals = physicals(&now_edges, &was_edges);
-    let findings = findings(&physicals, &now.graph, now_cycles.as_ref());
+    let was_files = was.covered(&policy);
+    let now_files = now.covered(&policy);
+    let left = now_files.lost(&was_files, at.project, None);
+    let (left_edges, left_physicals, left_findings) =
+        under_the_base(&policy, base_scoped, &left, &was_edges)?;
+    let mut physicals = physicals(&now_edges, &was_edges);
+    let mut findings = findings(&physicals, &now.graph, now_cycles.as_ref());
+    findings.extend(left_findings);
+    physicals.extend(left_physicals);
+    let mut now_edges = now_edges;
+    now_edges.extend(left_edges);
     let code = judged(
         at,
         (&policy, &now, &now_placed),
@@ -195,20 +204,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         (&physicals, &was_edges, &now_edges),
         out,
     )?;
-    let was_files = was.covered(&policy);
-    let code = holes::lost_said(
-        &now.covered(&policy).lost(&was_files, at.project, None),
-        at,
-        code,
-        out,
-    );
-    let code = holes_said(
-        (&was, &now),
-        &policy,
-        (&was_ambiguous, &ambiguous),
-        (at, code),
-        out,
-    );
+    holes::lost_said(&left, out);
+    holes::files_formed(&now_files, &was_files, at, out);
+    holes_said((&was, &now), &policy, (&was_ambiguous, &ambiguous), at, out);
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed
         .iter()
@@ -216,14 +214,45 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         .cloned()
         .collect();
     held_note(&physicals, out);
-    let prior = contract::whole_base(at, &commit)?;
-    let unread_at_base = || prior.unread_either(&was_files.unreadable);
-    Ok(holes::unread_said(&unparsed, unread_at_base, at, code, out))
+    holes::unread_said(&unparsed, at, out);
+    Ok(code)
 }
 
-/// The base and the working tree, each measured and resolved. A changed run that is not strict
-/// takes the base's facts for every file it did not change, as `dead-symbols` does.
-fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
+/// The edges, findings and physical sites that the files which left the section's scope write
+/// under the base's scope: the base's manifests over the working tree's facts. A manifest that
+/// narrows the scope then hides no new edge, and a file that left clean is only the review
+/// item. Spec 7.2.
+fn under_the_base(
+    policy: &Policy,
+    base_scoped: impl FnOnce() -> Result<Side, Error>,
+    left: &[coverage::Lost],
+    was_edges: &Edges,
+) -> Result<(Edges, Physicals, Vec<Finding>), Error> {
+    if left.is_empty() {
+        return Ok(Default::default());
+    }
+    let base_scoped = &base_scoped()?;
+    let files: BTreeSet<&str> = left.iter().map(|file| file.file.as_str()).collect();
+    let placed = policy.placed(&base_scoped.graph);
+    let cycles = policy.cycles(base_scoped, &placed);
+    let (mut edges, _) = edges(policy, (base_scoped, &placed), cycles.as_ref());
+    for edge in edges.values_mut() {
+        edge.sites.retain(|file, _| files.contains(file.as_str()));
+    }
+    edges.retain(|_, edge| !edge.sites.is_empty());
+    let physicals = physicals(&edges, was_edges);
+    let findings = findings(&physicals, &base_scoped.graph, cycles.as_ref());
+    Ok((edges, physicals, findings))
+}
+
+/// The base and the working tree, each measured and resolved, and the working tree resolved
+/// under the base's manifests on demand. A changed run that is not strict takes the base's facts
+/// for every file it did not change, as `dead-symbols` does.
+fn sides<'a>(
+    at: &Context<'a>,
+    commit: &str,
+    out: &mut Sink,
+) -> Result<(Side, Side, impl FnOnce() -> Result<Side, Error> + 'a), Error> {
     let project = at.project;
     let prior = contract::whole_base(at, commit)?;
     let unchanged = contract::unchanged_base(at, prior, commit)?;
@@ -235,14 +264,26 @@ fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Err
             measurement::Unchanged::publish,
         );
     out.record(|records| records.facts = Some(before.cost + after.cost));
-    Ok((
-        side(prior.tree(), &before, prior.renamed())?,
-        side(project.tree(), &after, &HashMap::new())?,
-    ))
+    let was = side(prior.tree(), &before, prior.renamed())?;
+    let now = side(project.tree(), &after, &HashMap::new())?;
+    let base_scoped = move || {
+        let files = project.tree().files()?;
+        side_in((prior.root(), files), &after, &HashMap::new())
+    };
+    Ok((was, now, base_scoped))
 }
 
 fn side(
     tree: &Tree,
+    measured: &measurement::Measurement,
+    renamed: &HashMap<String, String>,
+) -> Result<Side, Error> {
+    side_in((tree.root(), tree.files()?), measured, renamed)
+}
+
+/// One side resolved from the manifests under `root` over these files and facts.
+fn side_in(
+    (root, listed): (&std::path::Path, &[String]),
     measured: &measurement::Measurement,
     renamed: &HashMap<String, String>,
 ) -> Result<Side, Error> {
@@ -253,7 +294,7 @@ fn side(
             .unwrap_or_else(|| file.to_string())
     };
     let facts = measured.facts();
-    let layout = modules::topology(tree.root(), tree.files()?, facts, renamed);
+    let layout = modules::topology(root, listed, facts, renamed);
     let mut files: Vec<String> = facts
         .iter()
         .map(|facts| topology(&facts.file))
@@ -902,9 +943,9 @@ fn holes_said(
     (was, now): (&Side, &Side),
     policy: &Policy,
     (was_ambiguous, ambiguous): (&[Hole], &[Hole]),
-    (at, code): (&Context, u8),
+    at: &Context,
     out: &mut Sink,
-) -> u8 {
+) {
     let row = |file: String, hole: &Hole| coverage::Unresolved {
         file,
         line: hole.line,
@@ -928,7 +969,7 @@ fn holes_said(
             )
             .collect()
     };
-    holes::unresolved_said((&named, base), Unresolvable::Dependency, (at, code), out)
+    holes::unresolved_said((&named, base), Unresolvable::Dependency, at, out);
 }
 
 fn held_note(physicals: &Physicals, out: &mut Sink) {

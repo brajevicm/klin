@@ -87,26 +87,63 @@ impl Files {
             .iter()
             .filter(|file| only.is_none_or(|only| only.contains(file)))
             .filter(|file| !measured.contains(file) && project.was_held(file))
-            .filter(|file| project.root().join(file).is_file())
+            .filter(|file| still_held(project, file))
             .map(|file| Lost {
                 file: file.clone(),
                 why: if self.unreadable.contains(file) {
-                    "the grammar refused it"
+                    Left::Refused
                 } else if self.excluded.contains(file) {
-                    "an exclusion drops it now"
+                    Left::Excluded
                 } else if self.not_measured.contains(file) {
-                    "no structural adapter measures its language"
+                    Left::Unattached
                 } else {
-                    "no discovery rule places it under a root now"
+                    Left::Undiscovered
                 },
             })
             .collect()
     }
 }
 
+/// Whether the working tree still holds this exact path: in its file list, or as a symbolic
+/// link. The list names each file as the directory holds it,
+/// so a path a case-only rename left behind is not held on a file system that ignores case,
+/// where asking for the path itself finds the renamed file. Spec 7.2.
+fn still_held(project: &Project, file: &str) -> bool {
+    let tree = project.tree();
+    tree.files().is_ok_and(|files| {
+        files
+            .binary_search_by(|held| held.as_str().cmp(file))
+            .is_ok()
+    }) || std::fs::symlink_metadata(project.root().join(file))
+        .is_ok_and(|held| held.file_type().is_symlink())
+}
+
 pub struct Lost {
     pub file: String,
-    pub why: &'static str,
+    pub why: Left,
+}
+
+/// Why a file the base measured is not measured now. Only `Excluded` is a person's decision:
+/// the gates measure the base under the base's own `klin.json` scope and the working tree under
+/// today's, so a file today's `in` or `except` drops is one a reviewed commit dropped. Every
+/// other reason comes from the facts, such as a manifest. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Left {
+    Refused,
+    Excluded,
+    Unattached,
+    Undiscovered,
+}
+
+impl Left {
+    pub fn text(self) -> &'static str {
+        match self {
+            Left::Refused => "the grammar refused it",
+            Left::Excluded => "an exclusion drops it now",
+            Left::Unattached => "no structural adapter or module reads it now",
+            Left::Undiscovered => "no discovery rule places it under a root now",
+        }
+    }
 }
 
 /// Whether a scoped run judges this file, which is every file outside a scoped run.

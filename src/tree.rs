@@ -13,6 +13,10 @@ use crate::{files, scope};
 /// 4.3, ADR 0038.
 pub struct Tree {
     root: PathBuf,
+    /// Whether the tree reads the in-tree `.gitattributes` for the forms they give its files,
+    /// which only the working tree does. Spec 7.2.
+    attributes: bool,
+    forms: OnceCell<Vec<(String, files::Form)>>,
     files: OnceCell<Result<Vec<String>, String>>,
     listing: Cell<files::Listing>,
     extracted: Extracted,
@@ -24,10 +28,22 @@ impl Tree {
     pub fn at(root: &Path) -> Tree {
         Tree {
             root: root.to_path_buf(),
+            attributes: false,
+            forms: OnceCell::new(),
             files: OnceCell::new(),
             listing: Cell::new(files::Listing::default()),
             extracted: Extracted::default(),
             test_roots: OnceCell::new(),
+        }
+    }
+
+    /// The working tree at this root, which also records the forms its in-tree `.gitattributes`
+    /// give its files: `binary`, `-diff`, a `filter` or an encoding klin does not decode. The base
+    /// is read from git's stored bytes, which need none of that. Spec 7.2.
+    pub fn working(root: &Path) -> Tree {
+        Tree {
+            attributes: true,
+            ..Tree::at(root)
         }
     }
 
@@ -64,12 +80,45 @@ impl Tree {
                 files::listing(&self.root)
                     .map(|(files, cost)| {
                         self.listing.set(cost);
-                        files
+                        self.with_forms(files)
                     })
                     .map_err(|why| why.to_string())
             })
             .as_deref()
             .map_err(|why| Error(why.clone()))
+    }
+
+    /// The files the in-tree `.gitattributes` give a form klin reports, each with its form, and
+    /// none for a tree that reads no attributes. The list still holds every one of them: an
+    /// attribute never takes a file out of measurement, so no difference between klin's reading
+    /// of the attributes and git's can hide a finding. Spec 7.2.
+    pub fn forms(&self) -> &[(String, files::Form)] {
+        let _ = self.files();
+        self.forms.get().map_or(&[], Vec::as_slice)
+    }
+
+    fn with_forms(&self, files: Vec<String>) -> Vec<String> {
+        let attributes: Vec<&String> = files
+            .iter()
+            .filter(|file| file.rsplit('/').next() == Some(".gitattributes"))
+            .collect();
+        if !self.attributes || attributes.is_empty() {
+            return files;
+        }
+        let texts: Vec<(String, String)> = attributes
+            .into_iter()
+            .filter_map(|file| {
+                let text = files::attribute_text(&std::fs::read(self.root.join(file)).ok()?);
+                Some((file.clone(), text))
+            })
+            .collect();
+        let forms = files
+            .iter()
+            .map(|file| (file.clone(), files::form(file, &texts)))
+            .filter(|(_, form)| form.any())
+            .collect();
+        let _ = self.forms.set(forms);
+        files
     }
 
     /// What reading the file list cost, handed over once: a second call, or a call before the

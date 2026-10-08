@@ -627,7 +627,7 @@ fn an_uncommitted_scope_uses_the_whole_repository_sample_its_commit_recorded() {
 
     tree.write("klin.json", r#"{"complexity":{"in":"src/small"}}"#);
     let scoped = tree.run(&["check", "complexity"]);
-    assert_eq!(scoped.code, 2, "{}", scoped.out);
+    assert_eq!(scoped.code, 0, "{}", scoped.out);
     assert!(scoped.says("over 51 function(s)"), "{}", scoped.out);
     assert!(scoped.says("today's complexity scope"), "{}", scoped.out);
 }
@@ -656,10 +656,13 @@ fn a_file_the_grammar_cannot_parse_is_named_while_the_rest_of_the_tree_is_still_
     tree.write("src/good.rs", RUST);
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not parse"), "{}", run.out);
-    assert!(run.says("src/bad.rs"), "{}", run.out);
-    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/bad.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("the Rust grammar finds an error"), "{}", run.out);
     assert!(run.says("src/good.rs:1"), "{}", run.out);
     assert!(!run.says("src/bad.rs:2"), "{}", run.out);
 }
@@ -1307,14 +1310,18 @@ fn except_drops_a_subtree() {
 }
 
 #[test]
-fn a_file_the_grammar_cannot_parse_is_exit_two() {
+fn a_new_file_the_grammar_cannot_parse_is_an_unreadable_review_item() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/bad.rs", "%%% not rust %%%\n");
     tree.write("src/good.rs", "fn simple() -> i32 { 1 }\n");
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("src/bad.rs"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/bad.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1494,7 +1501,7 @@ fn a_function_that_moved_and_grew_names_the_site_it_matched() {
 }
 
 #[test]
-fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
+fn a_file_measured_at_the_base_and_excluded_now_is_a_coverage_note_naming_it() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/kept.rs", "fn simple() -> i32 { 1 }\n");
     tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
@@ -1506,18 +1513,20 @@ fn a_file_measured_at_the_base_and_excluded_now_is_a_note_naming_it() {
     );
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: src/gone.rs was measured at the base"),
+        run.says(
+            "NOTE: src/gone.rs is not measured (left-scope) — measured at the base and not now"
+        ),
         "{}",
         run.out
     );
     assert!(run.says("an exclusion drops it now"), "{}", run.out);
-    assert!(!run.says("src/kept.rs was measured"), "{}", run.out);
+    assert!(!run.says("src/kept.rs is not measured"), "{}", run.out);
 }
 
 #[test]
-fn a_file_measured_at_the_base_and_not_now_is_exit_two() {
+fn a_file_measured_at_the_base_and_excluded_now_is_a_left_scope_note_in_the_json() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/gone.rs", "fn other() -> i32 { 2 }\n");
     tree.base();
@@ -1527,10 +1536,17 @@ fn a_file_measured_at_the_base_and_not_now_is_exit_two() {
              "cc": 8, "lines": 60 } }"#,
     );
 
-    let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("FAIL:"), "{}", run.out);
-    assert!(run.says("src/gone.rs"), "{}", run.out);
+    let run = tree.run(&["check", "complexity", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let notes = report["notes"].as_array().cloned().unwrap_or_default();
+    assert!(
+        notes.iter().any(|note| note["coverage"] == true
+            && note["kind"] == "left-scope"
+            && note["file"] == "src/gone.rs"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1548,21 +1564,21 @@ fn a_file_added_or_deleted_in_the_window_is_not_a_coverage_loss() {
 }
 
 #[test]
-fn a_file_the_grammar_refuses_now_is_unreadable_and_a_coverage_loss_too() {
+fn a_file_the_grammar_refuses_now_is_a_measurement_lost_fail() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write("src/bad.rs", "fn fine() -> i32 { 1 }\n");
     tree.base();
     tree.write("src/bad.rs", "%%% not rust %%%\n");
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not parse"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  measurement-lost"), "{}", run.out);
     assert!(
-        run.says("NOTE: src/bad.rs was measured at the base"),
+        run.says("FAIL: src/bad.rs was measured at the base and klin cannot measure it now"),
         "{}",
         run.out
     );
-    assert!(run.says("the grammar refused it"), "{}", run.out);
+    assert!(!run.says("left-scope"), "{}", run.out);
 }
 
 #[test]
@@ -1940,19 +1956,19 @@ fn an_accepted_entry_that_names_test_lines_holds_a_test_function() {
 }
 
 #[test]
-fn an_oversized_source_line_reports_a_named_resource_error() {
+fn an_oversized_source_line_in_a_new_file_is_a_resource_limit_review_item() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"complexity": {"in": ["."]}}"#);
     tree.write("bundle.js", &(" ".repeat(65_536) + "function bundled() {}"));
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("bundle.js:1: source-line resource ceiling exceeded"),
+        run.says("REVIEW: bundle.js is not measured (resource-limit)"),
         "{}",
         run.out
     );
     assert!(
-        run.says("source-line resource ceiling exceeded (65557 bytes; ceiling 65536 bytes)"),
+        run.says("line 1 is over the source-line ceiling of 65536 bytes"),
         "{}",
         run.out
     );
@@ -1966,14 +1982,20 @@ fn the_source_line_resource_ceiling_is_inclusive_and_counts_utf8_bytes() {
     tree.write("bundle.js", &(line.clone() + "\r\nfunction bundled() {}\n"));
     let run = tree.run(&["check", "complexity"]);
     assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("bundle.js is not measured"), "{}", run.out);
     tree.write(
         "bundle.js",
         &("function bundled() {}\n".to_owned() + &line + "é"),
     );
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("bundle.js:2: source-line resource ceiling exceeded (65538 bytes"),
+        run.says("REVIEW: bundle.js is not measured (resource-limit)"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("line 2 is over the source-line ceiling"),
         "{}",
         run.out
     );

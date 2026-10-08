@@ -142,7 +142,7 @@ pub fn measure(
                 measured.push(found.file.clone());
                 facts.push(found);
             }
-            Outcome::Unsupported(language) => unsupported.push(Unsupported { file, language }),
+            Outcome::Unsupported(_) => unsupported.push(Unsupported { file }),
             Outcome::Unparsed(file) => unparsed.push(file),
             Outcome::Foreign => {}
         }

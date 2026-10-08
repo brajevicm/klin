@@ -50,7 +50,7 @@ impl Project {
     /// A run over a configuration already loaded.
     pub fn of(config: Config, start: &Path) -> Project {
         Project {
-            tree: Tree::at(config.root()),
+            tree: Tree::working(config.root()),
             config,
             start: start.to_path_buf(),
             changes: OnceCell::new(),

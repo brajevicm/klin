@@ -15,6 +15,7 @@ use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
 use crate::check::contract::{Context, Counted, Derived, Line, Provenance, Sink, Standing, Told};
+use crate::check::holes;
 use crate::config::Config;
 use crate::coverage::Coverage;
 use crate::error::Error;
@@ -91,6 +92,14 @@ fn evaluate(
     });
     let over = judged(at.gate, &documents, &against, out)?;
     let measured = documents.len();
+    holes::formed_said(
+        documents
+            .iter()
+            .filter_map(|document| document.relative.as_deref()?.to_str()),
+        |_| true,
+        at,
+        out,
+    );
     let said = out.covered(&Coverage::whole(measured));
     if over == 0 {
         out.tell(Told::judged(Line::new(Counted::Documents(measured), said)));

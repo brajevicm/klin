@@ -18,7 +18,7 @@ use crate::ratchet::{self, Evaluator, Finding};
 use crate::record::Values;
 use crate::scope::Scope;
 use crate::survey::{self, Tests};
-use crate::syntax;
+use crate::syntax::{self, Unparsed};
 use crate::tree::Tree;
 
 /// One row of a table: the name the report prints, the pattern to look for, and the remedy for
@@ -215,6 +215,7 @@ struct Read {
     skipped: u64,
     files: Files,
     work: ContentCost,
+    unparsed: Vec<Unparsed>,
 }
 
 struct Tally {
@@ -235,6 +236,7 @@ struct Walk {
     shaped: BTreeSet<String>,
     skipped: u64,
     work: ContentCost,
+    unparsed: Vec<Unparsed>,
 }
 
 /// A matched row's name, its count and its remedy, as one report column.
@@ -285,7 +287,10 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    Ok(holes::lost_said(&lost, at, code, out))
+    holes::lost_said(&lost, out);
+    holes::files_formed(&read.files, &before.files, at, out);
+    holes::unread_said(&read.unparsed, at, out);
+    Ok(code)
 }
 
 fn at_the_base(kind: &Kind, spec: &Spec, at: &Context) -> Result<Read, Error> {
@@ -498,17 +503,19 @@ fn findings(
         findings,
         marks,
         skipped: walk.skipped,
-        files: covered(measured, excluded),
+        files: covered(measured, excluded, &walk.unparsed),
         work: walk.work,
+        unparsed: walk.unparsed,
     })
 }
 
-fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>) -> Files {
+fn covered(measured: BTreeSet<String>, excluded: BTreeSet<String>, refused: &[Unparsed]) -> Files {
+    let refused: BTreeSet<String> = refused.iter().map(|file| file.file.clone()).collect();
     Files {
-        measured: measured.into_iter().collect(),
+        measured: measured.difference(&refused).cloned().collect(),
         not_measured: Vec::new(),
         excluded: excluded.into_iter().collect(),
-        unreadable: Vec::new(),
+        unreadable: refused.into_iter().collect(),
     }
 }
 
@@ -520,6 +527,7 @@ impl Walk {
             shaped: BTreeSet::new(),
             skipped: 0,
             work: ContentCost::default(),
+            unparsed: Vec::new(),
         }
     }
 
@@ -542,7 +550,7 @@ impl Walk {
             self.skipped += tally(set, rel, &text, &past, &mut self.seen);
             if set.shapes && self.shaped.insert(rel.to_string()) {
                 self.work.parses += 1;
-                shapes(rel, &text, &mut self.seen)?;
+                shapes(rel, &text, &mut self.seen, &mut self.unparsed)?;
             }
         }
         Ok(())
@@ -564,8 +572,9 @@ fn shapes(
     rel: &str,
     text: &str,
     seen: &mut BTreeMap<(String, String), Tally>,
+    unparsed: &mut Vec<Unparsed>,
 ) -> Result<(), Error> {
-    for stub in syntax::convention::stubs(rel, text)? {
+    for stub in syntax::convention::stubs(rel, text, unparsed)? {
         record(seen, rel, stub.line, &stub.text, stub.name, stub.remedy);
     }
     Ok(())

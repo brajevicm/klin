@@ -629,29 +629,26 @@ fn a_file_of_two_hundred_thousand_distinct_markers_is_judged_in_seconds() {
 }
 
 #[test]
-fn an_oversized_source_preserves_the_named_resource_error_in_stubs() {
+fn an_oversized_new_source_is_a_resource_limit_review_item_in_stubs() {
     let tree = tree();
     tree.write("src/bundle.js", &"function bundled(){};".repeat(4_000));
-    let message =
-        "src/bundle.js:1: source-line resource ceiling exceeded (84000 bytes; ceiling 65536 bytes)";
     let run = tree.run(&["check", "stubs", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    assert!(
-        report["errors"]
-            .as_array()
-            .expect("errors")
-            .iter()
-            .any(|error| {
-                error["check"] == "stubs"
-                    && error["message"]
-                        .as_str()
-                        .is_some_and(|text| text.contains(message))
-            }),
+    let reviews = report["reviews"].as_array().expect("reviews");
+    assert_eq!(reviews.len(), 1, "{}", run.out);
+    assert_eq!(reviews[0]["file"], "src/bundle.js", "{}", run.out);
+    assert_eq!(reviews[0]["reason"], "resource-limit", "{}", run.out);
+    assert_eq!(
+        report["capabilities"][0]["coverage"]["measured"], 0,
         "{}",
         run.out
     );
     let direct = tree.run(&["check", "stubs"]);
-    assert_eq!(direct.code, 2, "{}", direct.out);
-    assert!(direct.says(message), "{}", direct.out);
+    assert_eq!(direct.code, 0, "{}", direct.out);
+    assert!(
+        direct.says("REVIEW: src/bundle.js is not measured (resource-limit)"),
+        "{}",
+        direct.out
+    );
 }

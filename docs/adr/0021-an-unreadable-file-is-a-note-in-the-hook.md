@@ -9,6 +9,9 @@
 > The amendment below (#342) extends that narrowing to every check: a file the
 > base held and klin could not measure there either is a NOTE in every run. It
 > also ends the part of #133 that noted a manifest the base did not hold.
+>
+> The second amendment below (#500) ends the exit 2 outside the hook and the
+> NOTE in it for a file the change made unmeasurable.
 
 ADR 0003 made a file the grammar cannot read a named tool error, exit 2, with
 every other finding still printed. Its reason holds: a file klin cannot
@@ -65,3 +68,28 @@ that adds the fixture fails outside the hook, a person closes it with
 the change only renamed is one the base held, so it keeps the NOTE. A manifest
 renamed to another format has no comparable base, so it is judged as one the
 base did not hold.
+
+## Amendment: the hook blocks on a lost file, and nothing is exit 2 (#500)
+
+Spec 7.2 sorts each file klin could not measure once per run, the same way at
+the Stop and in `klin check`.
+
+A file that the base measured and the change made unmeasurable is a
+`measurement-lost` FAIL in every run. At the Stop it blocks like any other
+FAIL. This reverses the NOTE above for that case: the agent can repair a file
+it broke, and a NOTE let it hide a finding by breaking the file. A rename is
+read on the base side with the base path's reader, so a rename from a path
+another grammar reads is lost only when that reader read the base's bytes.
+
+A file the change made unmeasurable with no clear agent cause, such as a new
+file the grammar rejects or a new manifest that does not parse, is an
+`unmeasured` review item at `klin check` and a note the agent sees at the
+Stop. It is no longer exit 2 outside the hook.
+
+A file the base could not measure either stays klin's own limit, now a
+coverage note. The Stop says nothing about it.
+
+Only a person can hold a lost file whose grammar lags, with the accepted entry
+`{"gate": "measurement-lost", "file": PATH}`. The Stop tells the person how
+only when it does not block, through the host's person channel, and never on
+a host that hands a told message to the agent.

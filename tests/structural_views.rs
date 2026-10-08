@@ -7,11 +7,6 @@ const CONFIG: &str = r#"{"dead_symbols":{"in":["src","web"]}}"#;
 const REACHABILITY_CONFIG: &str = r#"{"reachability":{"in":"src"}}"#;
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
 
-/// The error line of the check document for one file the grammar rejected.
-fn unparsed(file: &str, grammar: &str) -> String {
-    format!("error internal {file} the {grammar} grammar rejected it")
-}
-
 /// Every caller's view of one before and after pair. With `KLIN_DIFF_BIN` naming an earlier
 /// build, that build judges a second copy of the same trees, and the two views must match.
 fn views(scenario: fn(&Tree)) -> Value {
@@ -71,7 +66,7 @@ fn stop(klin: &str, tree: &Tree) -> Run {
     let line: Value = run
         .out
         .lines()
-        .find(|line| line.starts_with('{'))
+        .find(|line| line.starts_with('{') && !line.contains("\"systemMessage\""))
         .or_else(|| journal.lines().last())
         .and_then(|line| serde_json::from_str(line).ok())
         .unwrap_or_else(|| panic!("no report in {}", run.out));
@@ -134,12 +129,13 @@ fn normalized(run: &Run, gate_name: &str) -> Value {
     if let Some(window) = report["window"].as_object_mut() {
         window.remove("before");
     }
-    for list in ["findings", "notes", "errors", "gates"] {
+    for list in ["findings", "reviews", "notes", "errors", "gates"] {
         if let Some(held) = report[list].as_array_mut() {
             held.retain(|item| {
-                ["check", "gate", "name"]
-                    .iter()
-                    .any(|key| item[*key] == gate_name)
+                item.get("check").is_some_and(Value::is_null)
+                    || ["check", "gate", "name"]
+                        .iter()
+                        .any(|key| item[*key] == gate_name)
             });
         }
     }
@@ -174,6 +170,13 @@ fn lines(view: &Value) -> Vec<String> {
             finding["line"],
             text(&finding["text"]),
             finding["values"]
+        ));
+    }
+    for review in report["reviews"].as_array().into_iter().flatten() {
+        out.push(format!(
+            "review {} {}",
+            text(&review["file"]),
+            text(&review["reason"])
         ));
     }
     for note in report["notes"].as_array().into_iter().flatten() {
@@ -342,27 +345,10 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
         tree.write("src/commands/tool.py", "def tool():\n    return 1\n");
     });
 
-    assert!(
-        lines(&seen["whole"])[0] == r#""ERROR" 2"#
-            && lines(&seen["whole"])
-                .iter()
-                .any(|line| line.contains("delta_command.rs")),
-        "{seen}"
-    );
-    assert!(
-        lines(&seen["changed"])[0] == r#""ERROR" 2"#
-            && lines(&seen["changed"])
-                .iter()
-                .any(|line| line.contains("delta_command.rs")),
-        "{seen}"
-    );
+    let review = "review src/commands/delta_command.rs unreadable";
+    assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, review], "{seen}");
+    assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, review], "{seen}");
     assert_eq!(lines(&seen["hook"])[0], r#""PASS" 1"#);
-    assert!(
-        lines(&seen["hook"])
-            .iter()
-            .any(|line| line.contains("delta_command.rs") && line.contains("grammar")),
-        "{seen}"
-    );
     assert_eq!(
         ["whole", "changed", "hook"].map(|view| {
             gate_rows(&seen[view]["report"])[0]["coverage"]["not_measured"]
@@ -499,7 +485,7 @@ fn a_same_extension_rename_keeps_its_inherited_debt() {
 }
 
 #[test]
-fn an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar() {
+fn an_extension_changing_rename_the_new_grammar_rejects_is_a_lost_measurement() {
     let seen = views(|tree| {
         tree.write(
             "web/cast.ts",
@@ -514,14 +500,11 @@ fn an_extension_changing_rename_reads_the_base_bytes_under_the_new_grammar() {
         tree.git(&["mv", "web/view.ts", "web/view.tsx"]);
     });
 
-    let unparsed = unparsed("web/cast.tsx", "TSX");
+    let lost = r#"new web/cast.tsx:null web/cast.tsx {"column":33,"line":1,"reason":"parse"}"#;
     let held = "note  1 dead symbol(s) the base already held:\n  web/view.tsx:1  function old() {}";
-    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, held, &unparsed]);
-    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, held, &unparsed]);
-    assert_eq!(
-        lines(&seen["hook"])[1..],
-        ["note web/cast.tsx the TSX grammar rejected it", held]
-    );
+    assert_eq!(lines(&seen["whole"]), [r#""FAIL" 1"#, lost, held]);
+    assert_eq!(lines(&seen["changed"]), [r#""FAIL" 1"#, lost, held]);
+    assert_eq!(lines(&seen["hook"]), [r#""FAIL" 2"#, lost, held]);
 }
 
 #[test]
@@ -583,17 +566,11 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
         tree.write("src/new_broken.rs", "fn new( {\n");
     });
 
-    let new = unparsed("src/new_broken.rs", "Rust");
-    let old = "note src/old_broken.rs the Rust grammar rejected it";
-    assert_eq!(lines(&seen["whole"]), [r#""ERROR" 2"#, old, &new]);
-    assert_eq!(lines(&seen["changed"]), [r#""ERROR" 2"#, &new]);
-    assert_eq!(
-        lines(&seen["hook"]),
-        [
-            r#""PASS" 1"#,
-            "note src/new_broken.rs the Rust grammar rejected it"
-        ]
-    );
+    let new = "review src/new_broken.rs unreadable";
+    let old = "note src/old_broken.rs src/old_broken.rs is not measured (unreadable) — the Rust grammar finds an error at line 1, column 1";
+    assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, new, old]);
+    assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, new]);
+    assert_eq!(lines(&seen["hook"]), [r#""PASS" 1"#]);
 }
 
 #[test]
