@@ -7,6 +7,7 @@ import path from "node:path";
 import * as paths from "../src/paths.ts";
 import { family } from "../src/catalogue.ts";
 import * as workspace from "../src/workspace.ts";
+import { hookArguments } from "../src/capability.ts";
 import * as session from "../src/session.ts";
 import * as trial from "../src/trial.ts";
 import { signalsFrom } from "../src/record.ts";
@@ -66,13 +67,13 @@ function play(
   fs.rmSync(plane, { recursive: true, force: true });
   const place = workspace.materialize(variant, trialId, plane, KLIN, deliver);
   const session_id = "11111111-2222-3333-4444-555555555555";
-  hook(place, ["radius"], { hook_event_name: "SessionStart", session_id });
-  hook(place, ["radius"], { hook_event_name: "UserPromptSubmit", session_id, prompt: "do the task" });
+  hook(place, hookArguments(KLIN, "session"), { hook_event_name: "SessionStart", session_id });
+  hook(place, hookArguments(KLIN, "prompt"), { hook_event_name: "UserPromptSubmit", session_id, prompt: "do the task" });
   edit(place.repo);
   const answers = [];
   for (let played = 0; played < stops; played += 1) {
     answers.push(
-      hook(place, ["gate", "--hook", "--changed"], {
+      hook(place, hookArguments(KLIN, "stop"), {
         hook_event_name: "Stop",
         session_id,
         stop_hook_active: played > 0,
@@ -140,7 +141,7 @@ test(
     assert.equal(played.stop.status, 0, "the shadow arm blocked the stop");
     assert.equal(played.stop.stdout, "");
     assert.equal(played.stop.stderr, "");
-    const blocked = played.hooks.filter((one) => one.arguments.startsWith("gate"));
+    const blocked = played.hooks.filter((one) => one.event === "Stop");
     assert.equal(blocked.length, 1);
     assert.equal(blocked[0].delivered, false);
     assert.equal(blocked[0].status, 2, "the real hook did not block");

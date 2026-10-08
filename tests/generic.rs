@@ -35,7 +35,7 @@ fn failing() -> Tree {
 
 fn guard(tree: &Tree, held: Value) -> Run {
     let event = event("pre_tool", tree.root(), held);
-    feed(tree.root(), &["guard"], &event)
+    feed(tree.root(), harness::AGENT, &event)
 }
 
 /// The decision a run printed on stdout, which is the whole answer a shim reads.
@@ -57,7 +57,7 @@ fn a_generic_session_and_prompt_open_a_turn() {
     for kind in ["session", "prompt"] {
         let opened = feed(
             tree.root(),
-            &["radius"],
+            harness::AGENT,
             &event(kind, tree.root(), json!({})),
         );
         assert_eq!(opened.code, 0, "{kind}: {}", opened.out);
@@ -128,7 +128,7 @@ fn a_generic_stop_returns_the_failing_report_in_its_decision() {
     let tree = failing();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({"blocked_before": false})),
     );
 
@@ -147,7 +147,7 @@ fn a_generic_stop_over_a_green_tree_lets_the_turn_end() {
     tree.base();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({})),
     );
 
@@ -168,12 +168,71 @@ fn an_unknown_protocol_version_refuses_and_is_not_read_as_another_host() {
         "file_paths": ["src/main.rs"]
     });
 
-    let run = feed(tree.root(), &["guard"], &unknown.to_string());
+    let run = feed(tree.root(), harness::AGENT, &unknown.to_string());
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!run.says("reading it as"), "{}", run.out);
     assert!(run.says("version 1"), "{}", run.out);
     assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
+}
+
+/// An unknown version fails closed wherever its hook runs. A harness that runs klin outside the
+/// repository names the tree under `root`, a field klin does not trust in a version it does not
+/// speak, so the walk from an unconfigured directory or from no worktree at all cannot opt out.
+/// Spec 10.9, 10.10.
+#[test]
+fn an_unknown_protocol_version_fails_closed_outside_the_named_tree() {
+    let tree = failing();
+    let unknown = json!({
+        "klin_protocol": 2,
+        "event": "pre_tool",
+        "root": tree.root(),
+        "file_paths": ["klin.json"]
+    })
+    .to_string();
+
+    for elsewhere in [Tree::new(), Tree::bare()] {
+        let run = feed(elsewhere.root(), harness::AGENT, &unknown);
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert_eq!(answer(&run)["action"], "deny", "{}", run.out);
+        assert!(
+            !elsewhere.path(".git/klin").exists(),
+            "a refusal wrote state elsewhere"
+        );
+    }
+}
+
+/// A working directory klin cannot read is no reason to answer nothing: an unknown version is
+/// still refused. Spec 10.9, 10.10.
+#[test]
+fn an_unknown_protocol_version_fails_closed_where_no_directory_reads() {
+    use std::io::Write;
+    let held = Tree::bare();
+    let gone = held.path("gone");
+    std::fs::create_dir(&gone).expect("directory");
+    let mut child = std::process::Command::new("/bin/sh")
+        .args([
+            "-c",
+            r#"cd "$1" && rmdir "$1" && exec "$2" __agent event"#,
+            "sh",
+        ])
+        .arg(&gone)
+        .arg(harness::binary())
+        .env("HOME", harness::empty_home())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("sh starts");
+    let unknown = json!({"klin_protocol": 2, "event": "pre_tool"}).to_string();
+    let _ = child
+        .stdin
+        .take()
+        .map(|mut stdin| stdin.write_all(unknown.as_bytes()));
+    let done = child.wait_with_output().expect("sh ends");
+    let printed = String::from_utf8_lossy(&done.stdout);
+    assert_eq!(done.status.code(), Some(2), "{printed}");
+    assert!(printed.contains(r#""action":"deny""#), "{printed}");
 }
 
 /// A host that refuses a call the guard itself allowed still leaves a journal line. It is the
@@ -188,7 +247,7 @@ fn an_unknown_protocol_version_records_its_refusal_in_the_journal() {
         "tool": "write_file"
     });
 
-    let run = feed(tree.root(), &["guard"], &unknown.to_string());
+    let run = feed(tree.root(), harness::AGENT, &unknown.to_string());
     assert_eq!(run.code, 2, "{}", run.out);
 
     let lines = journal(&tree);
@@ -216,7 +275,7 @@ fn a_named_harness_host_without_a_version_is_refused() {
 
     let run = feed(
         tree.root(),
-        &["guard", "--host", "harness"],
+        &["__agent", "event", "--host", "harness"],
         &payload.to_string(),
     );
 
@@ -231,7 +290,11 @@ fn the_generic_host_name_names_no_host() {
     let tree = failing();
     let event = event("pre_tool", tree.root(), json!({"tool": "write_file"}));
 
-    let run = feed(tree.root(), &["guard", "--host", "generic"], &event);
+    let run = feed(
+        tree.root(),
+        &["__agent", "event", "--host", "generic"],
+        &event,
+    );
 
     assert!(
         run.says("--host generic names no host klin knows"),
@@ -245,7 +308,7 @@ fn the_journal_names_a_protocol_event_the_harness_host() {
     let tree = failing();
     let run = feed(
         tree.root(),
-        &["gate", "--hook", "--changed"],
+        harness::AGENT,
         &event("stop", tree.root(), json!({})),
     );
     assert_eq!(run.code, 2, "{}", run.out);
@@ -281,7 +344,7 @@ fn every_shipped_fixture_places_as_a_generic_event() {
             panic!("{} is not JSON", at.display());
         };
         assert_eq!(held["klin_protocol"], 1, "{}", at.display());
-        let run = feed(tree.root(), &["guard"], &text);
+        let run = feed(tree.root(), harness::AGENT, &text);
         assert!(!run.says("reading it as"), "{}", run.out);
         read += 1;
     }

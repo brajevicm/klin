@@ -42,7 +42,7 @@ pub fn read(flag: Option<&str>) -> Option<Event> {
     let name = host.event_name(&payload);
     let mut event = host.event(&payload);
     event.root = host.root(&payload);
-    event.prompted = !name.is_empty() && host.prompt_event() == name;
+    event.kind = host.kind(&name);
     if !event.session.is_empty() && SCOPED.iter().any(|field| payload.get(field).is_some()) {
         event.identity = host.identity(&payload);
     }

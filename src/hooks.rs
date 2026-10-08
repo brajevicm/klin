@@ -6,17 +6,20 @@ use serde_json::{Map, Value};
 use crate::config;
 use crate::error::Error;
 use crate::host::ADAPTERS;
-use crate::host::adapter::{Adapter, Filter, Hook, HookFile};
+use crate::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::{init, write};
 
 const HOOKS: &str = "hooks";
 const MARKER: &str = "klin.json";
 const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
 
-/// The klin commands a host hook runs. An entry that runs one of them is klin's own, whatever
-/// shape the klin that wrote it used. An entry that runs another klin command is a person's,
-/// and this command leaves it where it is. Section 19.3.
-const LIFECYCLE: &[&str] = &["radius", "guard", "gate"];
+/// The klin commands a host hook runs: the ingress, and the 0.x commands it replaced. An entry
+/// that runs one of them is klin's own, whatever shape the klin that wrote it used, so `setup`
+/// replaces an old line. An entry that runs another klin command is a person's, and this command
+/// leaves it where it is. Spec 11.2.
+const LIFECYCLE: &[&str] = &["__agent", "radius", "guard", "gate"];
+/// What every hook line klin writes runs. Spec 10.1.
+const INGRESS: &str = "__agent event";
 
 const NO_REPOSITORY: &str = "klin setup writes a repository's own files, and this is no git \
     repository. Run it inside one, or run klin setup --user --host NAME to set up the host \
@@ -39,17 +42,16 @@ pub struct Args {
     /// configuration as policy, and keep every value it already holds
     #[arg(long)]
     pin: bool,
-    /// The klin.json to write (default: one at the repository root)
+    /// The klin.json to write, which must be the one at the worktree root (the default)
     #[arg(long)]
     config: Option<PathBuf>,
 }
 
 pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = Scope::of(args.user, start)?;
-    let file = scope.config(args.config.as_deref(), start);
-    let pinned = pin_target(args.pin, file.as_deref())?;
+    let file = configuration(args, &scope, start)?;
     let components = planned(args, &scope, file.as_deref())?;
-    if let Some(file) = pinned {
+    if let Some(file) = file.as_deref().filter(|_| args.pin) {
         init::pin(file, out)?;
     }
     applied(&components, out)?;
@@ -60,7 +62,25 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(0)
 }
 
-/// The configuration `--pin` writes, which needs a repository or a `--config` to name it.
+/// Whether two paths name one file, through the directories that hold them, so a file that does
+/// not exist yet still compares.
+fn same_file(one: &Path, other: &Path) -> bool {
+    let held = |path: &Path| {
+        let directory = path.parent()?.canonicalize().ok()?;
+        Some(directory.join(path.file_name()?))
+    };
+    held(one).is_some_and(|one| held(other) == Some(one))
+}
+
+/// The configuration this run opts in and `--pin` writes, refused before anything is written
+/// where `--config` names a file the hooks never read, or `--pin` has no repository to name one.
+fn configuration(args: &Args, scope: &Scope, start: &Path) -> Result<Option<PathBuf>, Error> {
+    let file = scope.config(args.config.as_deref(), start)?;
+    pin_target(args.pin, file.as_deref())?;
+    Ok(file)
+}
+
+/// The configuration `--pin` writes, which needs a repository to name it.
 fn pin_target(pin: bool, file: Option<&Path>) -> Result<Option<&Path>, Error> {
     match (pin, file) {
         (false, _) => Ok(None),
@@ -105,11 +125,22 @@ impl Scope {
         })
     }
 
-    /// The configuration this run opts in: the one `--config` names, or the repository's own.
-    fn config(&self, named: Option<&Path>, start: &Path) -> Option<PathBuf> {
-        match named {
-            Some(named) => Some(start.join(named)),
-            None => self.repository.as_ref().map(|root| root.join(MARKER)),
+    /// The configuration this run opts in: the repository's own. The hooks read only the
+    /// `klin.json` at the worktree root, so a `--config` that names any other file would report
+    /// an opt-in no hook ever sees, and is refused. Spec 5.1, 11.2.
+    fn config(&self, named: Option<&Path>, start: &Path) -> Result<Option<PathBuf>, Error> {
+        let own = self.repository.as_ref().map(|root| root.join(MARKER));
+        let Some(named) = named.map(|named| start.join(named)) else {
+            return Ok(own);
+        };
+        match own.as_deref().is_some_and(|own| same_file(own, &named)) {
+            true => Ok(own),
+            false => Err(Error(format!(
+                "--config names {}, and the hooks read only the klin.json at the worktree root{}. \
+                 Run klin setup without --config; klin check --config still reads that file.",
+                named.display(),
+                own.map_or_else(String::new, |own| format!(", {}", own.display()))
+            ))),
         }
     }
 
@@ -528,7 +559,7 @@ fn placed(
     hook: &Hook,
     file: &Path,
 ) -> Result<(), Error> {
-    let wanted = entry(host, hook, &line(hook.arguments));
+    let wanted = entry(host, hook, &line(hook.kind));
     let entries = array(events, hook.event, file)?;
     let held = std::mem::take(entries);
     let mut placed = false;
@@ -585,8 +616,8 @@ fn array<'a>(
 /// learns what they are for. It looks for the marker at the Git root, because a session may
 /// start below it. It is a `systemMessage` alone: Cursor submits a `followup_message`
 /// as the next prompt, which would hand the installer to the agent. Section 19.3.
-fn line(arguments: &str) -> String {
-    let missing = match arguments.starts_with("gate") {
+fn line(kind: Kind) -> String {
+    let missing = match kind == Kind::Stop {
         true => format!(
             "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
              '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
@@ -595,7 +626,7 @@ fn line(arguments: &str) -> String {
     };
     format!(
         "PATH=\"$PATH:$HOME/.local/bin\"; command -v klin > /dev/null 2>&1 || {missing}; \
-         klin {arguments}"
+         klin {INGRESS}"
     )
 }
 
@@ -704,4 +735,149 @@ fn read(file: &Path) -> Result<Map<String, Value>, Error> {
             file.display()
         ))),
     }
+}
+
+/// One copy of klin's integration for a host, as `klin status` reports it. Spec 11.4.
+pub struct Integration {
+    pub host: &'static str,
+    pub scope: Owner,
+    pub route: Route,
+    pub state: State,
+    pub detail: String,
+}
+
+/// Whose files hold a copy: the repository's, or one person's on this machine.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Owner {
+    Project,
+    User,
+}
+
+/// How a copy reaches the host: hook lines in its file, or klin's plugin.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Route {
+    Hooks,
+    Plugin,
+}
+
+/// The integration states of spec 11.4.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum State {
+    Current,
+    Missing,
+    Conflict,
+}
+
+impl Owner {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Owner::Project => "project",
+            Owner::User => "user",
+        }
+    }
+}
+
+impl Route {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Route::Hooks => "hooks",
+            Route::Plugin => "plugin",
+        }
+    }
+}
+
+impl State {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            State::Current => "current",
+            State::Missing => "missing",
+            State::Conflict => "conflict",
+        }
+    }
+}
+
+/// Every copy of klin's integration the repository at `root` and the person's home hold, and a
+/// `missing` row for each host the repository proves where no copy is installed. It reads the
+/// host files and writes nothing. Spec 11.4.
+pub fn integrations(root: &Path) -> Vec<Integration> {
+    let home = std::env::home_dir();
+    let mut found = Vec::new();
+    for host in ADAPTERS.iter().copied() {
+        let mut rows: Vec<Integration> =
+            [(Owner::Project, Some(root)), (Owner::User, home.as_deref())]
+                .into_iter()
+                .filter_map(|(scope, at)| Some((scope, at?)))
+                .flat_map(|(scope, at)| copies(host, scope, at))
+                .collect();
+        if rows.is_empty() && root.join(host.marker()).is_dir() {
+            rows.push(Integration {
+                host: host.name(),
+                scope: Owner::Project,
+                route: Route::Hooks,
+                state: State::Missing,
+                detail: format!(
+                    "{} proves the host, and no copy of klin's hooks is installed",
+                    host.marker()
+                ),
+            });
+        }
+        found.extend(rows);
+    }
+    found
+}
+
+/// The copies of klin's integration one scope holds for one host: its plugin, and its hook file
+/// when that file holds klin's entries.
+fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integration> {
+    let plugin = host
+        .plugin_enabled(at, scope == Owner::User)
+        .filter(|proof| proof.starts_with(at))
+        .map(|proof| Integration {
+            host: host.name(),
+            scope,
+            route: Route::Plugin,
+            state: State::Current,
+            detail: format!("{} enables klin's plugin", proof.display()),
+        });
+    let file = at.join(host.hook_file());
+    let hooks = holds_klin(&file).then(|| {
+        let (state, detail) = hook_state(host, at, &file);
+        Integration {
+            host: host.name(),
+            scope,
+            route: Route::Hooks,
+            state,
+            detail,
+        }
+    });
+    plugin.into_iter().chain(hooks).collect()
+}
+
+/// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Only the
+/// exact skill reads as current: a skill that is missing, unreadable or changed is a conflict
+/// `setup` names. Spec 11.4.
+fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, String) {
+    let held = read(file).unwrap_or_default();
+    let current = canonical(host, held.clone(), file).is_ok_and(|wanted| wanted == held);
+    if !current {
+        return (
+            State::Conflict,
+            format!(
+                "{} holds hook lines this klin's setup does not write",
+                file.display()
+            ),
+        );
+    }
+    let skill = at.join(host.skill_file());
+    let wrong = match std::fs::read(&skill) {
+        Ok(text) if text == SKILL.as_bytes() => {
+            return (State::Current, file.display().to_string());
+        }
+        Ok(_) => "differs from klin's skill".to_string(),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
+            "is missing, and klin setup writes it".to_string()
+        }
+        Err(why) => format!("could not be read: {why}"),
+    };
+    (State::Conflict, format!("{} {wrong}", skill.display()))
 }

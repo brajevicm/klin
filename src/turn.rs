@@ -9,8 +9,7 @@ use crate::config::Config;
 use crate::error::Error;
 use crate::git::Repo;
 use crate::handoff;
-use crate::host;
-use crate::host::adapter::Event;
+use crate::host::adapter::{self, Event};
 use crate::journal;
 use crate::key::Section;
 use crate::radius;
@@ -21,13 +20,6 @@ use crate::write::{AtomicWrite, atomic_write};
 /// Git shares `refs/` across the worktrees of one repository, and `refs/worktree/` is one of
 /// the exceptions, so each worktree keeps its own stamp. The ref is never pushed. Spec 6.5.
 const REFERENCE: &str = "refs/worktree/klin/turn";
-#[derive(clap::Args)]
-pub struct Args {
-    /// Print how far this turn has spread, moving no stamp and raising no counter
-    #[arg(long)]
-    report: bool,
-}
-
 #[derive(clap::Args)]
 pub struct Moved {
     #[command(subcommand)]
@@ -40,36 +32,30 @@ enum Which {
     Reset,
 }
 
-pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) -> Result<u8, Error> {
-    if args.report {
-        return radius::asked(start, sections, out);
-    }
-    let Some((event, named, at, _claim)) = opening(start, out) else {
-        return Ok(0);
+/// A `session` or `prompt` event of the agent ingress, over the tree the event names, after the
+/// opt-in walk found the worktree root's `klin.json`. Spec 10.3.
+pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String) -> u8 {
+    let Some((at, _claim)) = opening(&event, start, out) else {
+        return 0;
     };
-    let start = named.as_path();
+    let prompted = event.kind == Some(adapter::Kind::Prompt);
     let opened = stamp::mark(start, &at);
     let capture = stamp::capture(start, &at.join(stamp::INDEX));
     let tree = capture.as_ref().map(|capture| capture.tree.as_str());
-    let facts = event
-        .as_ref()
-        .is_some_and(|event| event.prompted)
-        .then(|| prompt_facts(start, &at, opened.as_deref(), tree, sections, out));
+    let facts = prompted.then(|| prompt_facts(start, &at, opened.as_deref(), tree, sections, out));
     let Some(_lock) = state::lock(&at, Duration::from_secs(30)) else {
         note(
             out,
             "the state directory could not be locked, so this prompt changed no turn state",
         );
-        return Ok(0);
+        return 0;
     };
     let never = !at.join(stamp::INDEX).exists();
     let held = held(start, &at, &mut Vec::new(), out);
     let prompts = held.as_ref().map_or(0, |held| held.prompts) + 1;
-    if let Some(event) = &event {
-        handoff::clear(start, &event.session);
-    }
+    handoff::clear(start, &event.session);
     if let Some((enabled, facts)) = facts {
-        journal::prompt(start, prompts, event.as_ref(), enabled, facts);
+        journal::prompt(start, prompts, Some(&event), enabled, facts);
     }
     let mark = tree.and_then(|tree| marked(start, tree));
     if let Some(stamp) = next(start, tree, never, held, prompts, out) {
@@ -80,37 +66,28 @@ pub fn run(args: &Args, sections: &[Section], start: &Path, out: &mut String) ->
             let _ = capture.retain(&at.join(stamp::INDEX));
         }
     }
-    Ok(0)
+    0
 }
 
-/// Read and place the hook event once, resolve its tree, and stop before a turn opens when
-/// another copy of klin's hooks took the event, or when the event is the exact follow-up a prior
+/// The state directory, and the claim on this event, or `None` where the turn does not open:
+/// another copy of klin's hooks took the event, or the event is the exact follow-up a prior
 /// stop recorded. The claim comes first, so the copy that yields consumes no follow-up.
-fn opening(
-    start: &Path,
-    out: &mut String,
-) -> Option<(Option<Event>, PathBuf, PathBuf, state::Claim)> {
-    let event = host::read(None);
-    let root = event
-        .as_ref()
-        .and_then(|event| event.root.clone())
-        .unwrap_or_else(|| start.to_path_buf());
-    state::dir(&root)?;
-    let at = match state::ready(&root) {
+fn opening(event: &Event, root: &Path, out: &mut String) -> Option<(PathBuf, state::Claim)> {
+    state::dir(root)?;
+    let at = match state::ready(root) {
         Ok(at) => at,
         Err(why) => {
             note(out, &format!("{why}, so this turn has no stamp"));
             return None;
         }
     };
-    let identity = event.as_ref().map_or("", |event| event.identity.as_str());
-    let claim = state::claim(&at, identity)?;
-    if event.as_ref().is_some_and(|event| {
-        event.prompted && handoff::consumes(&root, &event.session, &event.prompt)
-    }) {
+    let claim = state::claim(&at, &event.identity)?;
+    if event.kind == Some(adapter::Kind::Prompt)
+        && handoff::consumes(root, &event.session, &event.prompt)
+    {
         return None;
     }
-    Some((event, root, at, claim))
+    Some((at, claim))
 }
 
 /// What the prompt line of spec 9.6 and 11.4 reads from the configuration: whether it records

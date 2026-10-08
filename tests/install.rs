@@ -47,8 +47,10 @@ fn cursor_settings(tree: &Tree) -> Value {
 /// The hook line klin writes for one klin command. Every line resolves the binary first, on
 /// PATH and then where the installer puts it, and the stop says how to install it where the
 /// repository opted in.
-fn line(arguments: &str) -> String {
-    let missing = match arguments.starts_with("gate") {
+/// The line `setup` writes for one event: the agent ingress, and for the Stop alone, the notice
+/// that klin is not installed.
+fn line(stop: bool) -> String {
+    let missing = match stop {
         true => format!(
             "{{ r=$(git rev-parse --show-toplevel 2>/dev/null) && [ -f \"$r/klin.json\" ] && echo \
              '{{\"systemMessage\":\"{MISSING}\"}}'; exit 0; }}"
@@ -57,9 +59,12 @@ fn line(arguments: &str) -> String {
     };
     format!(
         "PATH=\"$PATH:$HOME/.local/bin\"; command -v klin > /dev/null 2>&1 || {missing}; \
-         klin {arguments}"
+         klin __agent event"
     )
 }
+
+const STOP: bool = true;
+const OTHER: bool = false;
 
 const MISSING: &str = "klin is not installed. Install it with: curl --proto =https --tlsv1.2 \
                        -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
@@ -212,12 +217,12 @@ fn install_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     let settings = settings(&tree);
     assert_eq!(
         commands(&settings, "Stop"),
-        ["cargo fmt".to_string(), line("gate --hook --changed")],
+        ["cargo fmt".to_string(), line(STOP)],
         "{settings}"
     );
     assert_eq!(
         commands(&settings, "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{settings}"
     );
     assert_eq!(
@@ -227,12 +232,12 @@ fn install_writes_klins_entries_for_claude_code_and_leaves_the_others_alone() {
     );
     assert_eq!(
         commands(&settings, "SessionStart"),
-        [line("radius")],
+        [line(OTHER)],
         "{settings}"
     );
     assert_eq!(
         commands(&settings, "UserPromptSubmit"),
-        [line("radius")],
+        [line(OTHER)],
         "{settings}"
     );
 }
@@ -247,7 +252,7 @@ fn install_writes_klins_entries_for_codex_cli() {
     let settings = codex_settings(&tree);
     assert_eq!(
         commands(&settings, "Stop"),
-        ["cargo fmt".to_string(), line("gate --hook --changed")],
+        ["cargo fmt".to_string(), line(STOP)],
         "{settings}"
     );
     assert_eq!(
@@ -271,7 +276,7 @@ fn install_writes_klins_entries_for_cursor_in_its_own_shape() {
     assert_eq!(settings["version"], 1, "{settings}");
     assert_eq!(
         cursor_commands(&settings, "stop"),
-        ["cargo fmt".to_string(), line("gate --hook --changed")],
+        ["cargo fmt".to_string(), line(STOP)],
         "{settings}"
     );
     assert_eq!(
@@ -282,7 +287,7 @@ fn install_writes_klins_entries_for_cursor_in_its_own_shape() {
     for event in ["beforeShellExecution", "beforeMCPExecution"] {
         assert_eq!(
             cursor_commands(&settings, event),
-            [line("guard")],
+            [line(OTHER)],
             "{event}: {settings}"
         );
         assert_eq!(
@@ -305,13 +310,13 @@ fn install_reconciles_every_host_the_repository_names() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{}",
         run.out
     );
     assert_eq!(
         cursor_commands(&cursor_settings(&tree), "stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -353,19 +358,19 @@ fn install_with_no_provable_host_writes_every_first_class_host() {
     assert!(run.says("--host"), "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
     assert_eq!(
         commands(&codex_settings(&tree), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
     assert_eq!(
         cursor_commands(&cursor_settings(&tree), "stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -540,7 +545,7 @@ fn install_refuses_a_shared_skill_conflict_before_writing_either_host() {
 fn install_replaces_a_stale_matcher_of_klins_own() {
     let tree = a_repository();
     let stale = serde_json::json!({"hooks": {"PreToolUse": [
-        {"matcher": "Write|Edit", "hooks": [{"type": "command", "command": line("guard")}]}
+        {"matcher": "Write|Edit", "hooks": [{"type": "command", "command": line(OTHER)}]}
     ]}});
     tree.write(".claude/settings.json", &stale.to_string());
 
@@ -554,7 +559,7 @@ fn install_replaces_a_stale_matcher_of_klins_own() {
     );
     assert_eq!(
         commands(&settings, "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{settings}"
     );
 }
@@ -574,7 +579,7 @@ fn install_replaces_a_stale_command_of_klins_own_in_place() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        [line("gate --hook --changed"), "cargo fmt".to_string()],
+        [line(STOP), "cargo fmt".to_string()],
         "{}",
         run.out
     );
@@ -585,7 +590,7 @@ fn install_replaces_a_stale_command_of_klins_own_in_place() {
 fn install_repairs_a_partial_install() {
     let tree = a_repository();
     let partial = serde_json::json!({"hooks": {"Stop": [
-        {"hooks": [{"type": "command", "command": line("gate --hook --changed")}]}
+        {"hooks": [{"type": "command", "command": line(STOP)}]}
     ]}});
     tree.write(".claude/settings.json", &partial.to_string());
 
@@ -602,8 +607,8 @@ fn install_repairs_a_partial_install() {
 fn install_removes_a_duplicate_entry_of_klins() {
     let tree = a_repository();
     let doubled = serde_json::json!({"hooks": {"Stop": [
-        {"hooks": [{"type": "command", "command": line("gate --hook --changed")}]},
-        {"hooks": [{"type": "command", "command": line("gate --hook --changed")}]}
+        {"hooks": [{"type": "command", "command": line(STOP)}]},
+        {"hooks": [{"type": "command", "command": line(STOP)}]}
     ]}});
     tree.write(".claude/settings.json", &doubled.to_string());
 
@@ -611,7 +616,7 @@ fn install_removes_a_duplicate_entry_of_klins() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -622,9 +627,9 @@ fn install_removes_a_duplicate_entry_of_klins() {
 fn install_removes_klins_entry_from_an_event_it_no_longer_writes() {
     let tree = a_repository();
     let retired = serde_json::json!({"hooks": {
-        "PostToolUse": [{"hooks": [{"type": "command", "command": line("guard")}]}],
+        "PostToolUse": [{"hooks": [{"type": "command", "command": line(OTHER)}]}],
         "SubagentStop": [
-            {"hooks": [{"type": "command", "command": line("gate --hook --changed")}]},
+            {"hooks": [{"type": "command", "command": line(STOP)}]},
             {"hooks": [{"type": "command", "command": "cargo fmt"}]}
         ]
     }});
@@ -654,7 +659,7 @@ fn install_keeps_a_hook_that_runs_another_klin_command() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "SessionStart"),
-        ["klin stats".to_string(), line("radius")],
+        ["klin stats".to_string(), line(OTHER)],
         "{}",
         run.out
     );
@@ -675,10 +680,7 @@ fn install_keeps_a_hook_that_only_mentions_klin() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "Stop"),
-        [
-            "/work/klin-ui/scripts/fmt.sh".to_string(),
-            line("gate --hook --changed")
-        ],
+        ["/work/klin-ui/scripts/fmt.sh".to_string(), line(STOP)],
         "{}",
         run.out
     );
@@ -802,7 +804,7 @@ fn a_written_hook_line_finds_klin_where_the_installer_put_it() {
             .unwrap_or_else(|why| panic!("sh could not run: {why}"));
         assert_eq!(
             String::from_utf8_lossy(&done.stdout).trim(),
-            "installed klin gate --hook --changed",
+            "installed klin __agent event",
             "{stop}"
         );
     }
@@ -826,7 +828,7 @@ fn install_follows_a_settings_file_that_is_a_link() {
     assert!(link.is_symlink(), "{}", run.out);
     assert_eq!(
         commands(&settings_at(&held), "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{}",
         run.out
     );
@@ -847,11 +849,7 @@ fn install_user_writes_the_persons_own_file_and_leaves_the_repository_alone() {
     let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
-    assert_eq!(
-        commands(&written, "PreToolUse"),
-        [line("guard")],
-        "{written}"
-    );
+    assert_eq!(commands(&written, "PreToolUse"), [line(OTHER)], "{written}");
     assert_eq!(
         skill_at(&home.path(".claude/skills/klin/SKILL.md")),
         CANONICAL_SKILL
@@ -907,7 +905,7 @@ fn install_user_outside_a_repository_opts_no_repository_in() {
     assert!(run.says("no repository was opted in"), "{}", run.out);
     assert_eq!(
         commands(&settings_at(&home.path(".claude/settings.json")), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -980,7 +978,7 @@ fn after_the_cursor_plugin_copy_is_removed_the_committed_hooks_run() {
         "workspace_roots": [tree.root()],
         "prompt": "go",
     });
-    let run = harness::feed(tree.root(), &["radius"], &prompt.to_string());
+    let run = harness::feed(tree.root(), harness::AGENT, &prompt.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(tree.field("prompts"), "1", "{}", run.out);
@@ -1060,7 +1058,7 @@ fn install_writes_for_codex_when_its_plugin_table_is_switched_off() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&codex_settings(&tree), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -1077,7 +1075,7 @@ fn install_for_codex_ignores_claudes_plugin_key() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&codex_settings(&tree), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -1095,7 +1093,7 @@ fn install_writes_where_the_plugin_is_listed_but_switched_off() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings(&tree), "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{}",
         run.out
     );
@@ -1114,11 +1112,7 @@ fn install_user_writes_where_the_plugin_is_enabled_in_the_repository_alone() {
     let run = tree.run_with(&[("HOME", at.as_str())], &["setup", "--user"]);
     assert_eq!(run.code, 0, "{}", run.out);
     let written = settings_at(&home.path(".claude/settings.json"));
-    assert_eq!(
-        commands(&written, "PreToolUse"),
-        [line("guard")],
-        "{written}"
-    );
+    assert_eq!(commands(&written, "PreToolUse"), [line(OTHER)], "{written}");
 }
 
 #[test]
@@ -1154,7 +1148,7 @@ fn install_user_writes_codex_hooks_to_the_persons_own_file() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(
         commands(&settings_at(&home.path(".codex/hooks.json")), "Stop"),
-        [line("gate --hook --changed")],
+        [line(STOP)],
         "{}",
         run.out
     );
@@ -1206,10 +1200,7 @@ fn install_names_a_host_file_it_wrote_before_the_skill_failed() {
     let run = tree.run(&["setup", "--host", "claude"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.path("klin.json").is_file(), "{}", run.out);
-    assert_eq!(
-        commands(&settings(&tree), "Stop"),
-        [line("gate --hook --changed")]
-    );
+    assert_eq!(commands(&settings(&tree), "Stop"), [line(STOP)]);
     assert!(run.says(".claude/skills/klin/SKILL.md"), "{}", run.out);
     assert!(
         run.says("; it wrote") && run.says(".claude/settings.json"),
@@ -1235,7 +1226,7 @@ fn install_leaves_an_event_it_does_not_write_and_cannot_read() {
     );
     assert_eq!(
         commands(&settings, "PreToolUse"),
-        [line("guard")],
+        [line(OTHER)],
         "{settings}"
     );
 }
@@ -1276,7 +1267,7 @@ fn install_keeps_a_persons_command_that_shares_an_entry_with_klins() {
     let held = commands(&settings(&tree), "Stop");
     assert!(held.contains(&"cargo fmt --check".to_string()), "{held:?}");
     assert!(held.contains(&"npm run lint".to_string()), "{held:?}");
-    assert!(held.contains(&line("gate --hook --changed")), "{held:?}");
+    assert!(held.contains(&line(STOP)), "{held:?}");
     assert!(!held.contains(&"klin gate --hook".to_string()), "{held:?}");
 }
 
@@ -1335,4 +1326,36 @@ fn a_second_install_beside_the_plugin_is_already_current() {
     assert!(!run.says("Commit the host files"), "{}", run.out);
     assert!(run.says("already current"), "{}", run.out);
     assert!(run.says("the committed copy yields"), "{}", run.out);
+}
+
+/// The hooks read only the worktree root's klin.json, so `setup --config` that names another
+/// file is refused before anything is written, and one that names the root's file opts the
+/// worktree in for real: its hooks answer. Spec 5.1, 11.2.
+#[test]
+fn setup_refuses_a_config_the_hooks_never_read() {
+    let tree = Tree::new();
+    tree.write("app/src/main.rs", "fn main() {}\n");
+
+    let refused = tree.run(&["setup", "--host", "claude", "--config", "app/klin.json"]);
+    assert_eq!(refused.code, 2, "{}", refused.out);
+    assert!(refused.says("the worktree root"), "{}", refused.out);
+    assert!(!tree.path("app/klin.json").exists(), "{}", refused.out);
+    assert!(
+        !tree.path(".claude/settings.json").exists(),
+        "{}",
+        refused.out
+    );
+
+    let named = harness::run_from(
+        &tree.path("app"),
+        &["setup", "--host", "claude", "--config", "../klin.json"],
+    );
+    assert_eq!(named.code, 0, "{}", named.out);
+    assert!(tree.path("klin.json").is_file(), "{}", named.out);
+    let session = harness::feed(tree.root(), harness::AGENT, harness::SESSION_START);
+    assert_eq!(session.code, 0, "{}", session.out);
+    assert!(
+        tree.state("turn").is_file(),
+        "the hooks stayed inactive after setup"
+    );
 }

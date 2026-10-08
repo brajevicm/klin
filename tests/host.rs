@@ -70,11 +70,13 @@ fn failing() -> Tree {
 }
 
 fn guard(args: &[&str], event: &str) -> Run {
-    feed(Tree::new().root(), &[&["guard"], args].concat(), event)
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    feed(tree.root(), &[harness::AGENT, args].concat(), event)
 }
 
 fn stop(tree: &Tree, event: &str, args: &[&str]) -> Run {
-    feed(tree.root(), &[&["gate", "--hook"], args].concat(), event)
+    feed(tree.root(), &[harness::AGENT, args].concat(), event)
 }
 
 #[test]
@@ -208,7 +210,7 @@ fn cursor_guard_measures_the_tree_the_event_names() {
         "tool_input": {"file_path": "klin.json"}
     });
 
-    let run = feed(elsewhere.root(), &["guard"], &event.to_string());
+    let run = feed(elsewhere.root(), harness::AGENT, &event.to_string());
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says(r#""permission":"deny""#), "{}", run.out);
@@ -227,11 +229,7 @@ fn cursor_stop_measures_the_workspace_root_the_event_names() {
         "loop_count": 0
     });
 
-    let run = feed(
-        elsewhere.root(),
-        &["gate", "--hook", "--changed"],
-        &event.to_string(),
-    );
+    let run = feed(elsewhere.root(), harness::AGENT, &event.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says(r#""followup_message":"#), "{}", run.out);
@@ -282,7 +280,7 @@ fn a_first_cursor_stop_blocks_whatever_its_loop_count() {
         "conversation_id": "s1",
         "workspace_roots": [tree.root()]
     });
-    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    let opened = feed(tree.root(), harness::AGENT, &session.to_string());
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
 
@@ -306,7 +304,7 @@ fn a_first_cursor_stop_blocks_whatever_its_loop_count() {
         "workspace_roots": [tree.root()],
         "prompt": followup
     });
-    let radius = feed(tree.root(), &["radius"], &echoed.to_string());
+    let radius = feed(tree.root(), harness::AGENT, &echoed.to_string());
     assert_eq!(radius.code, 0, "{}", radius.out);
     assert_eq!(radius.out, "", "the expected follow-up opened a turn");
     assert_eq!(
@@ -392,7 +390,7 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
         "conversation_id": "s1",
         "workspace_roots": [tree.root()]
     });
-    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    let opened = feed(tree.root(), harness::AGENT, &session.to_string());
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
     let first = stop(&tree, A_CURSOR_STOP, &[]);
@@ -464,7 +462,7 @@ fn submit(tree: &Tree, session: &str, prompt: &serde_json::Value) {
         "workspace_roots": [tree.root()],
         "prompt": prompt
     });
-    let radius = feed(tree.root(), &["radius"], &submitted.to_string());
+    let radius = feed(tree.root(), harness::AGENT, &submitted.to_string());
     assert_eq!(radius.code, 0, "{}", radius.out);
 }
 
@@ -585,7 +583,7 @@ fn cursor_failing() -> Tree {
         "conversation_id": "s1",
         "workspace_roots": [tree.root()]
     });
-    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    let opened = feed(tree.root(), harness::AGENT, &session.to_string());
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.words("README.md", 30);
     tree
@@ -641,7 +639,7 @@ fn cursor_noted() -> Tree {
         "conversation_id": "s1",
         "workspace_roots": [tree.root()]
     });
-    let opened = feed(tree.root(), &["radius"], &session.to_string());
+    let opened = feed(tree.root(), harness::AGENT, &session.to_string());
     assert_eq!(opened.code, 0, "{}", opened.out);
     tree.write("src/new.rs", "%%% not rust %%%\n");
     tree
@@ -803,13 +801,15 @@ fn a_codex_apply_patch_judges_every_file_path_and_ignores_patch_text() {
     }
 }
 
-/// A malformed event says nothing about the turn, so the guard allows and the stop is not blocked.
+/// A malformed event says nothing about the turn, so the guard allows and the stop is not
+/// blocked. The ingress names the event it could not read on stderr alone. Spec 10.10.
 #[test]
 fn a_malformed_event_under_a_named_host_allows_and_never_blocks() {
     for event in ["", "not json", "{"] {
         let run = guard(&["--host", "claude"], event);
         assert_eq!(run.code, 0, "{event}: {}", run.out);
-        assert_eq!(run.out, "", "{event}: {}", run.out);
+        assert_eq!(run.printed, "", "{event}: {}", run.out);
+        assert!(run.says("could not read"), "{event}: {}", run.out);
 
         let stopped = stop(&failing(), event, &["--host", "claude"]);
         assert_ne!(stopped.code, 2, "{event}: {}", stopped.out);

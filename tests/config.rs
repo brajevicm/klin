@@ -168,13 +168,14 @@ fn paths_resolve_against_the_configs_own_directory() {
 #[test]
 fn an_absolute_path_in_the_config_passes_through() {
     let tree = Tree::new();
-    let doc = tree.words("outside.md", 5);
+    let outside = Tree::bare();
+    let doc = outside.words("outside.md", 5);
     tree.write(
-        "repo/klin.json",
+        "klin.json",
         &format!(r#"{{"doc_size": {{{:?}: 10}}}}"#, doc.display().to_string()),
     );
 
-    let run = run_from(&tree.path("repo"), &["check", "doc-size"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is 5 words, ceiling 10"), "{}", run.out);
 }
@@ -451,4 +452,50 @@ fn a_build_of_the_wrong_type_is_a_config_error_before_any_gate_runs() {
         assert_eq!(run.code, 2, "{config}: {}", run.out);
         assert!(run.says("\"build\" is a command"), "{config}: {}", run.out);
     }
+}
+
+/// Without a klin.json at the worktree root, `check` runs under `{}` and says so first, and its
+/// JSON says the file is not present. Spec 5.1.
+#[test]
+fn check_without_a_config_runs_under_the_empty_one_and_says_so() {
+    let tree = Tree::new();
+    tree.words("README.md", 5);
+
+    let run = tree.run(&["check"]);
+    assert_eq!(
+        run.out.lines().next(),
+        Some("config: none, running under {}"),
+        "{}",
+        run.out
+    );
+    let json = tree.run(&["check", "--json"]).json();
+    assert_eq!(json["config"]["present"], false, "{json}");
+}
+
+/// A change that deletes the worktree root's klin.json runs under `{}`, and `check` names the
+/// file the base still holds. Spec 5.1.
+#[test]
+fn check_names_a_config_the_change_deleted() {
+    let tree = Tree::new();
+    tree.write("klin.json", ONE_DOC);
+    tree.words("README.md", 5);
+    tree.base();
+    tree.remove("klin.json");
+
+    let run = tree.run(&["check"]);
+    assert!(run.says("NOTE: klin.json is deleted"), "{}", run.out);
+    let json = tree.run(&["check", "--json"]).json();
+    assert!(
+        json["notes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|note| note["kind"] == "config-deleted"),
+        "{json}"
+    );
+
+    let kept = Tree::new();
+    kept.words("README.md", 5);
+    kept.base();
+    assert!(!kept.run(&["check"]).says("is deleted"));
 }

@@ -16,6 +16,7 @@ import {
 import * as oracle from "./oracle.ts";
 import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
+import { hookArguments } from "./capability.ts";
 import * as toolchain from "./toolchain.ts";
 import { wholeRun } from "./session.ts";
 
@@ -120,7 +121,7 @@ export function wholeRunPasses(starting: string, tree: string, room: string): Me
 /**
  * The gates the production Stop hook names as failing over a tree, through the real binary.
  *
- * This runs `klin gate --hook --changed`, the command the hook runs, over a repository whose
+ * This runs the command the Stop hook runs, over a repository whose
  * base is the starting tree and whose working tree is the exemplar one. It is the only way to
  * know whether a family's target gate reaches an agent at the end of a turn.
  *
@@ -144,7 +145,7 @@ export function gatesTheHookNames(
   const reported = path.join(room, "hook-report.json");
   fs.rmSync(reported, { force: true });
   const payload = JSON.stringify({ hook_event_name: "Stop", session_id: "selftest" });
-  const ran = spawnSync(klinBinary(), ["gate", "--hook", "--changed"], {
+  const ran = spawnSync(klinBinary(), hookArguments(klinBinary(), "stop"), {
     cwd: repo,
     input: payload,
     encoding: "utf8",

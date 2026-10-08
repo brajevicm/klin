@@ -4,8 +4,25 @@ use harness::{Run, Tree, feed, feed_with};
 
 const ASK: &str = r#""permissionDecision":"ask""#;
 
+/// A pre-tool event through the ingress, in a tree that opted in: the guard answers nothing in
+/// a tree whose worktree root holds no `klin.json`. Spec 5.1, 10.8.
 fn guard(tree: &Tree, event: &str) -> Run {
-    feed(tree.root(), &["guard"], event)
+    if !tree.path("klin.json").exists() {
+        tree.write("klin.json", "{}\n");
+    }
+    feed(tree.root(), harness::AGENT, &pre_tool(event))
+}
+
+/// The event as Claude Code sends it before a tool runs. Text that is no JSON object is sent as
+/// it is.
+fn pre_tool(event: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(event) {
+        Ok(serde_json::Value::Object(mut held)) => {
+            held.insert("hook_event_name".into(), "PreToolUse".into());
+            serde_json::Value::Object(held).to_string()
+        }
+        _ => event.to_string(),
+    }
 }
 
 fn bash_in(tree: &Tree, command: &str) -> Run {
@@ -104,9 +121,24 @@ fn refuses_the_commands_only_a_person_runs() {
         "klin turn reset",
         "target/debug/klin turn reset",
         "klin setup --user --host claude",
+        "klin update",
+        "env klin update",
+        "klin __agent event",
+        "echo '{}' | klin __agent event --host claude",
+        "target/debug/klin __agent",
     ] {
         denied(&bash(command), command);
     }
+}
+
+/// A deny names the person who runs the command and never a command that accepts debt.
+/// Spec 10.8.
+#[test]
+fn the_refusal_of_update_and_the_ingress_names_who_runs_them() {
+    let update = bash("klin update");
+    assert!(update.says("Only a person runs it"), "{}", update.out);
+    let ingress = bash("klin __agent event");
+    assert!(ingress.says("Only the host runs it"), "{}", ingress.out);
 }
 
 #[test]
@@ -385,10 +417,10 @@ fn allows_an_edit_of_everything_the_configuration_is_not() {
     }
 }
 
-/// Outside a git repository klin has no state directory, so the guard answers nothing about
-/// one. The configuration beside the working directory is guarded as always. ADR 0033.
+/// Outside a git repository the opt-in walk finds no worktree root, so the guard answers
+/// nothing, about the state directory or a configuration. Spec 5.1.
 #[test]
-fn outside_a_repository_it_answers_nothing_about_the_state_directory() {
+fn outside_a_repository_it_answers_nothing() {
     let tree = Tree::bare();
     for command in ["rm -rf .git/klin", "echo x > .git/klin/turn"] {
         allowed(&bash_in(&tree, command), command);
@@ -397,7 +429,7 @@ fn outside_a_repository_it_answers_nothing_about_the_state_directory() {
         &edit_in(&tree, "Write", ".git/klin/turn"),
         "a stamp by hand",
     );
-    denied(&edit_in(&tree, "Write", "klin.json"), "the configuration");
+    allowed(&edit_in(&tree, "Write", "klin.json"), "the configuration");
 }
 
 /// klin's own state moves with `KLIN_STATE_DIR`, and the guard answers about where the state
@@ -405,13 +437,14 @@ fn outside_a_repository_it_answers_nothing_about_the_state_directory() {
 #[test]
 fn it_guards_where_the_state_is_and_not_the_name() {
     let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     let held = Tree::bare();
     let under = held.root().display().to_string();
     let run = feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", under.as_str())],
-        &["guard"],
-        r#"{"tool_name": "Bash", "tool_input": {"command": "rm -rf .git/klin"}}"#,
+        harness::AGENT,
+        &pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm -rf .git/klin"}}"#),
     );
     allowed(&run, "the default place the override left empty");
 }
@@ -421,16 +454,17 @@ fn it_guards_where_the_state_is_and_not_the_name() {
 #[test]
 fn a_relative_path_names_a_file_from_where_the_guard_runs() {
     let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     tree.write("sub/notes.md", "one\n");
-    let event = r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#;
-    let up = r#"{"tool_name": "Bash", "tool_input": {"command": "rm ../klin.json"}}"#;
+    let event = pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm klin.json"}}"#);
+    let up = pre_tool(r#"{"tool_name": "Bash", "tool_input": {"command": "rm ../klin.json"}}"#);
 
     allowed(
-        &feed(&tree.path("sub"), &["guard"], event),
+        &feed(&tree.path("sub"), harness::AGENT, &event),
         "another project's configuration one directory down",
     );
     asked(
-        &feed(&tree.path("sub"), &["guard"], up),
+        &feed(&tree.path("sub"), harness::AGENT, &up),
         "../klin.json",
         "the tree's own configuration from below",
     );

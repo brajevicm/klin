@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use super::adapter::{Adapter, Decision, Event, Hook, Stop, flag, refused, text};
+use super::adapter::{Adapter, Decision, Event, Hook, Kind, Stop, flag, refused, text};
 
 /// The field that names an event klin's own, and the one protocol version klin speaks. No host
 /// klin maintains sends the field, so it places the event before any of them. Spec 19.4.
@@ -10,8 +10,6 @@ pub const PROTOCOL: &str = "klin_protocol";
 pub const VERSION: u64 = 1;
 
 const NAME: &str = "harness";
-/// The harness protocol's own name for the event a person's prompt raises.
-const PROMPT_EVENT: &str = "prompt";
 
 const UNSUPPORTED: &str = "klin: refused — this event names a version of klin's harness \
     protocol that this klin does not speak. Send version 1, or upgrade klin.";
@@ -85,8 +83,14 @@ impl Adapter for Generic {
         None
     }
 
-    fn prompt_event(&self) -> &'static str {
-        PROMPT_EVENT
+    /// The harness names the kind itself. A version klin does not speak names no event, because
+    /// klin does not know that shape. Spec 10.9.
+    fn kind(&self, name: &str) -> Option<Kind> {
+        Kind::ALL.into_iter().find(|kind| kind.name() == name)
+    }
+
+    fn refuses(&self) -> bool {
+        !self.spoken
     }
 
     /// The harness protocol names its own event kinds under `event`. Every host klin maintains

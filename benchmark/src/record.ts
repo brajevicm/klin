@@ -129,7 +129,7 @@ export function exactStopReport(hook: HookInvocation): hook is HookInvocation & 
 }
 
 export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {
-  if (hook.event !== "Stop" || !hook.arguments.startsWith("gate")) return false;
+  if (hook.event !== "Stop") return false;
   const targets = new Set(sites.flatMap(siteIdentities));
   if (targets.size === 0 || !exactStopReport(hook)) return false;
   return reportSites(hook.report).some((site) =>

@@ -1,7 +1,6 @@
 use std::cell::OnceCell;
 use std::path::{Component, Path, PathBuf};
 
-use crate::host;
 use crate::host::adapter::{Decision, Event};
 use crate::journal;
 use crate::state;
@@ -31,11 +30,18 @@ const RESET_REFUSAL: &str = "klin: refused — `klin turn reset` reopens the win
     failed in. Only a person runs it.";
 const SETUP_REFUSAL: &str = "klin: refused — `klin setup` writes the configuration and \
     the host's hook files. Only a person runs it, in a reviewed commit.";
+const UPDATE_REFUSAL: &str = "klin: refused — `klin update` replaces the binary that judges \
+    this work. Only a person runs it.";
+const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's own hook \
+    events, and the host runs it. Only the host runs it.";
 
 /// klin's own subcommands that only a person runs, the reason each is refused, and the
-/// hyphenated tag a journal line names the refusal by. Spec 9.6.
+/// hyphenated tag a journal line names the refusal by. Spec 10.8. `turn reset` stays on the list
+/// for as long as the hidden command exists, which #503 deletes.
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["setup"], SETUP_REFUSAL, "setup"),
+    (&["update"], UPDATE_REFUSAL, "update"),
+    (&["__agent"], AGENT_REFUSAL, "agent"),
     (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 
@@ -57,22 +63,13 @@ const WRITERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "mv", "truncate", "
 /// The two that write the file they are given, and only under `-i`.
 const IN_PLACE: &[&str] = &["sed", "perl"];
 
-#[derive(clap::Args)]
-pub struct Args {
-    /// Read the hook event as this host's shape instead of the one its fields name
-    #[arg(long)]
-    host: Option<String>,
-}
-
-/// Every copy of klin's hooks the host runs for one call gives the same answer, so a copy that
-/// yields still refuses: a call's identity that matched another call would otherwise open it.
-/// Only the copy that took the call journals it. Spec 9.8.
-pub fn run(args: &Args) -> u8 {
-    let Some(event) = host::read(args.host.as_deref()) else {
-        return 0;
-    };
-    let guarded = Guarded::at(event.root.clone());
-    let (decision, reason) = decided(&guarded, &event);
+/// A `pre_tool` event of the agent ingress, in the worktree the opt-in walk found. Every copy of
+/// klin's hooks the host runs for one call gives the same answer, so a copy that yields still
+/// refuses: a call's identity that matched another call would otherwise open it. Only the copy
+/// that took the call journals it. Spec 9.8, 10.8.
+pub fn run(event: &Event, root: &Path) -> u8 {
+    let guarded = Guarded::at(event.root.clone(), root.to_path_buf());
+    let (decision, reason) = decided(&guarded, event);
     let delivered = event.host.decide(&decision);
     let refused = !matches!(decision, Decision::Allow);
     if (refused || delivered != 0)
@@ -84,7 +81,7 @@ pub fn run(args: &Args) -> u8 {
             true => reason,
             false => HOST_REFUSAL,
         };
-        journal::guard(root, at, &event, delivered, named);
+        journal::guard(root, at, event, delivered, named);
     }
     delivered
 }
@@ -134,6 +131,8 @@ fn strictest(
 struct Guarded {
     /// The tree the host's event named, for a host that does not run its hooks in it.
     named: Option<PathBuf>,
+    /// The worktree root the opt-in walk found.
+    root: PathBuf,
     paths: OnceCell<Option<Paths>>,
 }
 
@@ -151,16 +150,17 @@ enum Which {
 }
 
 impl Guarded {
-    fn at(named: Option<PathBuf>) -> Guarded {
+    fn at(named: Option<PathBuf>, root: PathBuf) -> Guarded {
         Guarded {
             named,
+            root,
             paths: OnceCell::new(),
         }
     }
 
     fn paths(&self) -> Option<&Paths> {
         self.paths
-            .get_or_init(|| Paths::at(self.named.as_deref()))
+            .get_or_init(|| Paths::at(self.named.as_deref(), &self.root))
             .as_ref()
     }
 
@@ -201,16 +201,15 @@ impl Guarded {
 }
 
 impl Paths {
-    /// The tree the event named, or the one the guard runs in.
-    fn at(named: Option<&Path>) -> Option<Paths> {
+    /// The tree the event named, or the one the guard runs in, under the worktree root.
+    fn at(named: Option<&Path>, root: &Path) -> Option<Paths> {
         let here = real(&match named {
             Some(root) => root.to_path_buf(),
             None => std::env::current_dir().ok()?,
         });
-        let root = crate::config::repository(&here).unwrap_or_else(|| here.clone());
         Some(Paths {
             config: real(&root.join(NAME)),
-            state: state::dir(&root).map(|at| real(&at)),
+            state: state::dir(root).map(|at| real(&at)),
             here,
         })
     }

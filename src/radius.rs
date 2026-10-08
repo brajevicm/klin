@@ -6,9 +6,7 @@ use serde_json::{Map, Value};
 use crate::cache;
 use crate::config::{self, Config};
 use crate::error::Error;
-use crate::key::Section;
 use crate::stamp;
-use crate::state;
 
 /// The section that pins how wide this project's usual change is. Absent, #92 derives it, and
 /// with neither the report on a prompt prints nothing. ADR 0014.
@@ -38,9 +36,6 @@ const PERCENTILE: f64 = 0.9;
 struct Usual {
     lines: u64,
     directories: u64,
-    /// One line per value, saying whether the config pinned it or history derived it, which is
-    /// what `--report` prints under the facts. Spec 5.2, 11.1.
-    said: Vec<String>,
 }
 
 /// What the last commits of this project usually changed, over the sample they were read from.
@@ -98,27 +93,6 @@ pub fn spread(
     }))
 }
 
-/// `klin radius --report`, which a person runs. It moves nothing, it raises no counter, and
-/// unlike the hook it names what it cannot read rather than staying quiet. ADR 0014.
-pub fn asked(root: &Path, sections: &[Section], out: &mut String) -> Result<u8, Error> {
-    let at = state::ready(root).map_err(Error)?;
-    let config = Config::load(None, root, sections)?;
-    let usual = usual(&config, root, Some(&at))?;
-    let opened = stamp::mark(root, &at).ok_or_else(|| {
-        Error("no prompt mark is readable, so there is no turn to measure".to_string())
-    })?;
-    let tree = stamp::tree(root, &at)
-        .ok_or_else(|| Error("git could not read this working tree".to_string()))?;
-    let spread = measured(root, &opened, &tree)
-        .ok_or_else(|| Error("git could not measure this turn".to_string()))?;
-    let _ = writeln!(out, "klin: this turn, measured against the prompt mark.");
-    describe(&spread, &usual, out);
-    for line in &usual.said {
-        let _ = writeln!(out, "{line}");
-    }
-    Ok(0)
-}
-
 /// One derived value as a run prints it: the section, the key, the number and the rule that
 /// produced it. `init` prints the same line for what it pins. Spec 11.1.
 pub fn derived_line(key: &str, value: u64, commits: usize) -> String {
@@ -126,12 +100,6 @@ pub fn derived_line(key: &str, value: u64, commits: usize) -> String {
         "derived: {SECTION} {key} {value}, the 90th percentile of the last {commits} non-merge \
          commits"
     )
-}
-
-/// A value the config pins, which prints beside the derived ones so a person reads one list.
-/// Spec 5.2.
-fn pinned_line(key: &str, value: u64) -> String {
-    format!("pinned: {SECTION} {key} {value}")
 }
 
 fn describe(spread: &Spread, usual: &Usual, out: &mut String) {
@@ -184,33 +152,18 @@ fn count(many: u64, name: &str) -> String {
 }
 
 /// The values a turn is measured against: what the config pins, and history for a key it does
-/// not pin. The hook drops the error and prints nothing, and `--report` raises it. #92. Takes
+/// not pin. The hook drops the error and prints nothing. #92. Takes
 /// the config already loaded, so a caller with one loaded for another reason reads klin.json
 /// once and not twice.
 fn usual(config: &Config, root: &Path, at: Option<&Path>) -> Result<Usual, Error> {
     let (lines, directories) = numbers(config)?;
     if let (Some(lines), Some(directories)) = (lines, directories) {
-        return Ok(Usual {
-            lines,
-            directories,
-            said: vec![
-                pinned_line(LINES, lines),
-                pinned_line(DIRECTORIES, directories),
-            ],
-        });
+        return Ok(Usual { lines, directories });
     }
     let history = history(root, at).map_err(|why| unpinned(config, lines, directories, &why))?;
-    let said = |key, pinned: Option<u64>, found| match pinned {
-        Some(value) => pinned_line(key, value),
-        None => derived_line(key, found, history.commits),
-    };
     Ok(Usual {
         lines: lines.unwrap_or(history.lines),
         directories: directories.unwrap_or(history.directories),
-        said: vec![
-            said(LINES, lines, history.lines),
-            said(DIRECTORIES, directories, history.directories),
-        ],
     })
 }
 

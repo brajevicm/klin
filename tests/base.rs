@@ -222,42 +222,56 @@ fn a_gate_that_does_not_compare_against_the_base_needs_no_base() {
     assert!(!run.says("window:"), "{}", run.out);
 }
 
-/// A repository whose klin.json sits in a subdirectory, with the debt already at the base.
-fn in_a_subdirectory() -> Tree {
-    let tree = Tree::bare();
-    tree.write("proj/klin.json", CONFIG);
-    tree.write("proj/src/lib.rs", text::WRAPPED);
-    tree.write("README.md", "the tree above the project\n");
+/// A repository whose worktree root holds one klin.json and a subdirectory holds another.
+fn in_a_subdirectory(root: Option<&str>) -> Tree {
+    let tree = Tree::new();
+    if let Some(root) = root {
+        tree.write("klin.json", root);
+    }
+    tree.write("proj/klin.json", r#"{"doc_size": false}"#);
+    tree.words("README.md", 5);
+    tree.write("proj/notes.txt", "kept\n");
     tree.base();
     tree
 }
 
-fn in_the_project(tree: &Tree, args: &[&str]) -> harness::Run {
-    harness::run_from(&tree.path("proj"), args)
-}
-
+/// Every command reads the worktree root's klin.json, wherever it starts, and names a nested one
+/// as ignored rather than reading it. Spec 5.1.
 #[test]
-fn a_config_below_the_repository_root_holds_the_debt_the_base_holds() {
-    let tree = in_a_subdirectory();
-    tree.write("proj/src/other.rs", CLEAN);
+fn a_config_below_the_worktree_root_is_ignored_and_named() {
+    let tree = in_a_subdirectory(Some(r#"{"doc_size": {"README.md": 10}}"#));
 
-    let whole = in_the_project(&tree, &["check"]);
-    assert_eq!(whole.code, 0, "{}", whole.out);
+    let run = harness::run_from(&tree.path("proj"), &["check", "doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        whole.says("NOTE: 1 dead symbol(s) the base already held"),
+        run.says("OK: README.md is 5 words, ceiling 10"),
         "{}",
-        whole.out
+        run.out
+    );
+    assert!(
+        run.says(&format!("{} is ignored", tree.at("proj/klin.json"))),
+        "{}",
+        run.out
     );
 }
 
+/// A klin.json in a subdirectory alone turns nothing on. The session start in that directory
+/// tells the person to move it, and every other event answers nothing. Spec 5.1.
 #[test]
-fn a_config_below_the_repository_root_scopes_a_changed_run_the_same_way() {
-    let tree = in_a_subdirectory();
-    tree.write("proj/src/lib.rs", text::WRAPPED_WITH_A_NOTE);
+fn a_config_below_the_worktree_root_alone_tells_the_hooks_to_move_it() {
+    let tree = in_a_subdirectory(None);
+    let at = tree.path("proj");
 
-    let scoped = in_the_project(&tree, &["check", "--changed"]);
-    assert_eq!(scoped.code, 0, "{}", scoped.out);
-    assert!(!scoped.says("src/lib.rs:2"), "{}", scoped.out);
+    let session = harness::feed(&at, harness::AGENT, harness::SESSION_START);
+    assert_eq!(session.code, 0, "{}", session.out);
+    assert!(session.says("systemMessage"), "{}", session.out);
+    assert!(session.says(&tree.at("proj/klin.json")), "{}", session.out);
+    assert!(session.says("Move the file there"), "{}", session.out);
+
+    let stop = harness::feed(&at, harness::AGENT, harness::STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert_eq!(stop.out, "", "{}", stop.out);
+    assert!(!tree.path(".git/klin").exists(), "a hook wrote state");
 }
 
 #[test]

@@ -277,7 +277,7 @@ const QUESTION: &str = "say why in your reply and stop again";
 /// that states no policy writes the empty one. ADR 0028.
 fn stop(tree: &Tree) -> harness::Run {
     opted_in(tree);
-    harness::feed(tree.root(), &["gate", "--hook"], A_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
 fn opted_in(tree: &Tree) {
@@ -330,7 +330,7 @@ fn the_stop_after_the_question_passes_and_leaves_a_green_verdict() {
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     let asked = stop(&tree);
     assert_eq!(asked.code, 2, "{}", asked.out);
-    let again = harness::feed(tree.root(), &["gate", "--hook"], A_SECOND_STOP);
+    let again = harness::feed(tree.root(), harness::AGENT, A_SECOND_STOP);
     assert_eq!(again.code, 0, "{}", again.out);
     assert_eq!(tree.field("verdict"), "green", "{}", again.out);
 }
@@ -340,7 +340,7 @@ const A_SESSION: &str = r#"{"hook_event_name": "SessionStart"}"#;
 
 fn second_stop(tree: &Tree) -> harness::Run {
     opted_in(tree);
-    harness::feed(tree.root(), &["gate", "--hook"], A_SECOND_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_SECOND_STOP)
 }
 
 /// What a stop hands the person through the host's `systemMessage`, or nothing.
@@ -373,7 +373,7 @@ fn a_prompt_between_two_stops_does_not_ask_about_the_same_test_again() {
     let tree = tree_with(&PATTERNS[0]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
     assert_eq!(stop(&tree).code, 2);
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     let after = stop(&tree);
     assert_eq!(after.code, 0, "{}", after.out);
@@ -388,7 +388,7 @@ fn a_test_deleted_after_the_question_gets_its_own_question() {
     tree.base();
     tree.remove("tests/test_one.py");
     assert_eq!(stop(&tree).code, 2);
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     tree.remove("tests/test_two.py");
     let after = stop(&tree);
     assert_eq!(after.code, 2, "{}", after.out);
@@ -456,7 +456,7 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
         third.out
     );
 
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_PROMPT).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, A_PROMPT).code, 0);
     let later = stop(&tree);
     assert_eq!(later.code, 2, "{}", later.out);
     assert!(later.says("gate block 1 of 2"), "{}", later.out);
@@ -475,7 +475,11 @@ fn a_new_deletion_spends_a_gate_block_left_and_cannot_make_a_third() {
 #[test]
 fn a_stop_whose_stamp_was_deleted_still_asks_about_a_deleted_test() {
     let tree = tree_with(&PATTERNS[0]);
-    assert_eq!(harness::feed(tree.root(), &["radius"], A_SESSION).code, 0);
+    tree.write("klin.json", "{}\n");
+    assert_eq!(
+        harness::feed(tree.root(), harness::AGENT, A_SESSION).code,
+        0
+    );
     tree.remove(".git/klin/turn");
     tree.git(&["update-ref", "-d", "refs/worktree/klin/turn"]);
     tree.write(PATTERNS[0].file, PATTERNS[0].stays);
@@ -719,20 +723,6 @@ fn a_stop_that_blocks_names_every_deleted_test_it_then_lets_through() {
     let after = second_stop(&tree);
     assert_eq!(after.code, 0, "{}", after.out);
     assert_eq!(tree.field("verdict"), "green", "{}", after.out);
-}
-
-/// Spec 16.5: a hook run whose host event klin cannot read reports to stderr and exits 1. A
-/// stop that only has something to tell takes that rule too, so a caller with no event reads
-/// the note instead of a JSON object it cannot place.
-#[test]
-fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
-    let tree = tree_with(&PATTERNS[0]);
-    tree.write(PATTERNS[0].file, PATTERNS[0].stays);
-    assert_eq!(stop(&tree).code, 2);
-    let after = harness::feed(tree.root(), &["gate", "--hook"], "");
-    assert_eq!(after.code, 1, "{}", after.out);
-    assert!(after.printed.is_empty(), "printed: {}", after.printed);
-    assert!(after.says("went in this window"), "{}", after.out);
 }
 
 #[test]

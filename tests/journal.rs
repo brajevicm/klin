@@ -29,11 +29,11 @@ fn tree(config: &str) -> Tree {
 }
 
 fn stop(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["gate", "--hook"], event)
+    harness::feed(tree.root(), harness::AGENT, event)
 }
 
 fn prompt(tree: &Tree) {
-    let run = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let run = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
@@ -149,7 +149,7 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
         "{}",
         lines[1]
     );
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
 }
 
@@ -205,7 +205,7 @@ fn a_spent_gate_block_tells_the_person_when_no_prompt_event_reached_klin() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(second.says("klin radius"), "{}", second.out);
+    assert!(second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -220,7 +220,7 @@ fn a_spent_gate_block_with_no_session_does_not_tell_the_person_to_run_radius() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP_WITHOUT_SESSION);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -234,12 +234,12 @@ fn a_new_prompt_does_not_get_the_no_prompt_note_from_an_earlier_intervention() {
     let first = stop(&tree, A_STOP);
     assert_eq!(first.code, 2, "{}", first.out);
     let session_start = r#"{"hook_event_name": "SessionStart", "session_id": "s-1"}"#;
-    let started = harness::feed(tree.root(), &["radius"], session_start);
+    let started = harness::feed(tree.root(), harness::AGENT, session_start);
     assert_eq!(started.code, 0, "{}", started.out);
 
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -254,6 +254,10 @@ fn every_gate_row_carries_ms_and_the_held_count_its_ok_line_prints() {
     tree.write("src/lib.rs", &an_escape);
     tree.base();
     prompt(&tree);
+    tree.write(
+        "src/lib.rs",
+        &format!("{an_escape}// the turn touched this file\n"),
+    );
 
     let by_hand = tree.run(&["check", "escapes"]);
     assert_eq!(by_hand.code, 0, "{}", by_hand.out);
@@ -321,7 +325,7 @@ fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() 
     let run = harness::feed_with(
         tree.root(),
         &[("KLIN_STATE_DIR", file.as_str())],
-        &["gate", "--hook"],
+        harness::AGENT,
         A_STOP,
     );
     assert_eq!(run.code, 0, "{}", run.out);
@@ -451,7 +455,7 @@ fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() 
     let tree = radius_tree();
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9",
                     "prompt": "Fix the thing\nmore context on a second line"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = harness::feed(tree.root(), harness::AGENT, event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -470,11 +474,11 @@ fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() 
 fn a_prompt_after_a_measurable_change_carries_the_radius_facts() {
     let tree = radius_tree();
     let session = r#"{"hook_event_name": "SessionStart", "session_id": "s-9"}"#;
-    assert_eq!(harness::feed(tree.root(), &["radius"], session).code, 0);
+    assert_eq!(harness::feed(tree.root(), harness::AGENT, session).code, 0);
     tree.write("src/a.rs", "// held\n// more\n");
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-9", "prompt": "go"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = harness::feed(tree.root(), harness::AGENT, event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -497,7 +501,7 @@ fn journal_prompt_false_turns_off_the_excerpt_and_keeps_the_rest() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = harness::feed(tree.root(), harness::AGENT, event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -517,7 +521,7 @@ fn a_configuration_that_will_not_load_turns_off_the_excerpt() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = harness::feed(tree.root(), harness::AGENT, event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -540,7 +544,7 @@ fn a_schedule_with_no_step_due_turns_off_the_excerpt() {
 
     let event = r#"{"hook_event_name": "UserPromptSubmit", "session_id": "s-1",
                     "prompt": "a secret plan"}"#;
-    let run = harness::feed(tree.root(), &["radius"], event);
+    let run = harness::feed(tree.root(), harness::AGENT, event);
     assert_eq!(run.code, 0, "{}", run.out);
 
     let lines = journal(&tree);
@@ -549,8 +553,11 @@ fn a_schedule_with_no_step_due_turns_off_the_excerpt() {
     assert!(line.get("text").is_none(), "{line}");
 }
 
+/// A pre-tool event as Claude Code sends it, through the ingress.
 fn guard(tree: &Tree, event: &str) -> harness::Run {
-    harness::feed(tree.root(), &["guard"], event)
+    let mut held: Value = serde_json::from_str(event).expect("a JSON event");
+    held["hook_event_name"] = "PreToolUse".into();
+    harness::feed(tree.root(), harness::AGENT, &held.to_string())
 }
 
 #[test]
@@ -726,7 +733,7 @@ fn a_spent_gate_block_finds_this_session_prompt_behind_an_old_journal() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     let last = lines.last().unwrap_or_else(|| panic!("a stop line"));
@@ -743,7 +750,7 @@ fn a_spent_gate_block_behind_an_old_journal_still_reports_a_missing_prompt() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(second.says("klin radius"), "{}", second.out);
+    assert!(second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     let last = lines.last().unwrap_or_else(|| panic!("a stop line"));

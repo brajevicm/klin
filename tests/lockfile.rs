@@ -399,7 +399,7 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_review_item_and
     let run = tree.run(&["check", "lockfile"]);
     let stop = harness::feed(
         tree.root(),
-        &["gate", "--hook"],
+        harness::AGENT,
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
     );
     assert_eq!(run.code, 0, "{}", run.out);

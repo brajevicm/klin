@@ -52,7 +52,7 @@ fn list_prints_the_state_directory_under_the_git_directory() {
 fn the_build_stamp_lands_under_the_git_directory_where_git_never_sees_it() {
     let tree = tree("\"build\": \"false\",");
 
-    let run = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(tree.state("build-blocked").is_file(), "{}", run.out);
     assert_eq!(tree.status(), "", "the run touched the working tree");
@@ -122,7 +122,7 @@ fn cache_clean_all_removes_only_the_cache_of_a_repository_that_is_gone() {
     let cache = Tree::bare();
     let under = cache.root().display().to_string();
     let environment = [("KLIN_STATE_DIR", under.as_str())];
-    let stamped = tree.run_with(&environment, &["gate", "--hook"]);
+    let stamped = tree.stop_with(&environment);
     assert_eq!(stamped.code, 0, "{}", stamped.out);
     let mine = state_line(&tree.run_with(&environment, &["policy"]));
     let mine = Path::new(mine.trim_start_matches("state: ")).to_path_buf();
@@ -149,7 +149,7 @@ fn an_unwritable_state_directory_says_why_and_blocks_nothing() {
     let file = tree.at("a-file");
     tree.write("a-file", "");
 
-    let run = tree.run_with(&[("KLIN_STATE_DIR", file.as_str())], &["gate", "--hook"]);
+    let run = tree.stop_with(&[("KLIN_STATE_DIR", file.as_str())]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
     assert!(run.says("wrote no verdict"), "{}", run.out);
@@ -175,7 +175,7 @@ fn a_build_failure_under_an_unwritable_state_directory_says_why_and_blocks_nothi
     tree.write("a-file", "");
     let file = tree.at("a-file");
 
-    let run = tree.run_with(&[("KLIN_STATE_DIR", file.as_str())], &["gate", "--hook"]);
+    let run = tree.stop_with(&[("KLIN_STATE_DIR", file.as_str())]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("does not build"), "{}", run.out);
     assert!(run.says("NOTE"), "{}", run.out);
@@ -200,7 +200,7 @@ fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
     let under = cache.root().display().to_string();
     let environment = [("KLIN_STATE_DIR", under.as_str())];
 
-    let run = tree.run_with(&environment, &["gate", "--hook"]);
+    let run = tree.stop_with(&environment);
     assert_eq!(run.code, 2, "{}", run.out);
     let mine = state_line(&tree.run_with(&environment, &["policy"]));
     let mine = Path::new(mine.trim_start_matches("state: "));
@@ -212,14 +212,14 @@ fn the_override_keeps_the_build_stamp_in_the_directory_it_names() {
 #[test]
 fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
     let tree = tree("");
-    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let first = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(first.code, 0, "{}", first.out);
     assert_eq!(tree.field("verdict"), "green", "{}", first.out);
 
     let _lock = held_lock(&tree);
     tree.words("README.md", 30);
 
-    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let held = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(held.says("held the state directory"), "{}", held.out);
     assert!(held.says("FAIL  doc-size"), "{}", held.out);
@@ -232,12 +232,12 @@ fn a_stop_that_cannot_take_the_state_directory_says_so_and_writes_no_verdict() {
 #[test]
 fn a_build_failure_at_a_stop_that_cannot_take_the_state_directory_spends_no_block() {
     let tree = tree("\"build\": \"test ! -f fails\",");
-    let first = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let first = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(first.code, 0, "{}", first.out);
 
     let _lock = held_lock(&tree);
     tree.write("fails", "");
-    let held = harness::feed(tree.root(), &["gate", "--hook"], A_STOP);
+    let held = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(held.code, 0, "{}", held.out);
     assert!(held.says("does not build"), "{}", held.out);
     assert!(held.says("held the state directory"), "{}", held.out);

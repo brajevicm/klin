@@ -305,11 +305,7 @@ fn a_stop_shares_one_whole_base_between_structural_gates() {
         "pub fn run_alpha() {}\npub fn also() {}\n",
     );
 
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     let report: Value = journal

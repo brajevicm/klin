@@ -81,7 +81,7 @@ fn two_copies_of_one_prompt_move_the_counter_once() {
     let tree = tree();
     let before = prompts(&tree);
 
-    let copies = together(&tree, &["radius"], &a_prompt("s1", "p1"));
+    let copies = together(&tree, harness::AGENT, &a_prompt("s1", "p1"));
 
     assert!(copies.iter().all(|copy| copy.code == 0));
     assert_eq!(
@@ -98,8 +98,8 @@ fn a_late_copy_of_a_prompt_yields_and_prints_nothing() {
     let tree = tree();
     let before = prompts(&tree);
 
-    run(&tree, &["radius"], &a_prompt("s1", "p1"));
-    let late = run(&tree, &["radius"], &a_prompt("s1", "p1"));
+    run(&tree, harness::AGENT, &a_prompt("s1", "p1"));
+    let late = run(&tree, harness::AGENT, &a_prompt("s1", "p1"));
 
     assert_eq!(late.code, 0, "{}", late.out);
     assert_eq!(late.out, "", "a yielding copy spoke");
@@ -123,7 +123,7 @@ fn concurrent_distinct_sessions_serialize_the_prompt_counter() {
         for event in &events {
             let sent = sent.clone();
             let tree = &tree;
-            scope.spawn(move || sent.send(run(tree, &["radius"], event)).expect("result"));
+            scope.spawn(move || sent.send(run(tree, harness::AGENT, event)).expect("result"));
         }
         // Both events must have arrived before we release the deliberately held lock.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
@@ -173,7 +173,7 @@ fn a_slow_prompt_capture_does_not_cost_a_failing_stop_its_block() {
     );
 
     std::thread::scope(|scope| {
-        let prompted = scope.spawn(|| run(&tree, &["radius"], &prompt));
+        let prompted = scope.spawn(|| run(&tree, harness::AGENT, &prompt));
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while tree.state("claims").read_dir().map_or(0, Iterator::count) == 0
             && std::time::Instant::now() < deadline
@@ -181,7 +181,7 @@ fn a_slow_prompt_capture_does_not_cost_a_failing_stop_its_block() {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         std::thread::sleep(std::time::Duration::from_millis(1500));
-        let stopped = run(&tree, &["gate", "--hook", "--changed"], &stop);
+        let stopped = run(&tree, harness::AGENT, &stop);
         capture.unlock().expect("release capture lock");
         assert_eq!(stopped.code, 2, "{}", stopped.out);
         assert!(stopped.says("doc_size"), "{}", stopped.out);
@@ -195,9 +195,9 @@ fn two_prompts_and_two_sessions_on_one_worktree_each_move_the_counter() {
     let tree = tree();
     let before = prompts(&tree);
 
-    run(&tree, &["radius"], &a_prompt("s1", "p1"));
-    run(&tree, &["radius"], &a_prompt("s1", "p2"));
-    run(&tree, &["radius"], &a_prompt("s2", "p1"));
+    run(&tree, harness::AGENT, &a_prompt("s1", "p1"));
+    run(&tree, harness::AGENT, &a_prompt("s1", "p2"));
+    run(&tree, harness::AGENT, &a_prompt("s2", "p1"));
 
     assert_eq!(prompts(&tree), before + 3);
 }
@@ -211,7 +211,7 @@ fn two_copies_of_one_failing_stop_run_one_gate_and_still_block() {
         json!({"stop_hook_active": false, "last_assistant_message": "done"}),
     );
 
-    let copies = together(&tree, &["gate", "--hook", "--changed"], &stop);
+    let copies = together(&tree, harness::AGENT, &stop);
 
     let blocked: Vec<&Run> = copies.iter().filter(|copy| copy.code == 2).collect();
     assert_eq!(blocked.len(), 1, "{:?}", copies.map(|copy| copy.out));
@@ -238,8 +238,8 @@ fn a_second_stop_under_one_prompt_is_not_a_copy_of_the_first() {
         json!({"stop_hook_active": true, "last_assistant_message": "fixed"}),
     );
 
-    run(&tree, &["gate", "--hook", "--changed"], &first);
-    run(&tree, &["gate", "--hook", "--changed"], &second);
+    run(&tree, harness::AGENT, &first);
+    run(&tree, harness::AGENT, &second);
 
     assert_eq!(journal(&tree, "stop").len(), 2);
 }
@@ -256,7 +256,7 @@ fn two_copies_of_one_refused_call_both_refuse_and_journal_once() {
         }),
     );
 
-    let copies = together(&tree, &["guard"], &call);
+    let copies = together(&tree, harness::AGENT, &call);
 
     assert!(
         copies.iter().all(|copy| copy.code == 2),
@@ -280,8 +280,8 @@ fn two_refused_calls_each_journal_a_refusal() {
         )
     };
 
-    run(&tree, &["guard"], &call("toolu_1"));
-    run(&tree, &["guard"], &call("toolu_2"));
+    run(&tree, harness::AGENT, &call("toolu_1"));
+    run(&tree, harness::AGENT, &call("toolu_2"));
 
     assert_eq!(journal(&tree, "guard").len(), 2);
 }
@@ -300,8 +300,8 @@ fn two_copies_of_one_codex_prompt_move_the_counter_once() {
     })
     .to_string();
 
-    run(&tree, &["radius"], &prompt);
-    run(&tree, &["radius"], &prompt);
+    run(&tree, harness::AGENT, &prompt);
+    run(&tree, harness::AGENT, &prompt);
 
     assert_eq!(prompts(&tree), before + 1);
 }
@@ -320,8 +320,8 @@ fn two_copies_of_one_cursor_prompt_move_the_counter_once() {
     })
     .to_string();
 
-    run(&tree, &["radius"], &prompt);
-    run(&tree, &["radius"], &prompt);
+    run(&tree, harness::AGENT, &prompt);
+    run(&tree, harness::AGENT, &prompt);
 
     assert_eq!(prompts(&tree), before + 1);
 }
@@ -336,9 +336,9 @@ fn the_same_stop_again_after_the_copies_settled_is_gated() {
         json!({"stop_hook_active": true, "last_assistant_message": "done"}),
     );
 
-    run(&tree, &["gate", "--hook", "--changed"], &stop);
+    run(&tree, harness::AGENT, &stop);
     aged(&tree, std::time::Duration::from_secs(3));
-    run(&tree, &["gate", "--hook", "--changed"], &stop);
+    run(&tree, harness::AGENT, &stop);
 
     assert_eq!(journal(&tree, "stop").len(), 2);
 }
@@ -378,8 +378,8 @@ fn a_cursor_shell_call_seen_by_a_native_and_an_imported_copy_journals_once() {
         }),
     );
 
-    let first = run(&tree, &["guard"], &imported);
-    let second = run(&tree, &["guard"], &native);
+    let first = run(&tree, harness::AGENT, &imported);
+    let second = run(&tree, harness::AGENT, &native);
 
     assert_eq!(
         (first.code, second.code),

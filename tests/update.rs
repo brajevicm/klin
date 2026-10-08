@@ -34,3 +34,27 @@ fn update_without_an_updater_says_so_and_names_the_installer() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("klin-installer.sh"), "{}", run.out);
 }
+
+/// After an update, an integration that is not `current` is named with `klin setup`, which
+/// reconciles it. Spec 11.8.
+#[test]
+fn update_names_setup_when_an_integration_is_not_current() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    fs::create_dir_all(tree.path(".claude")).expect("claude directory");
+    let updater = tree.write("bin/klin-update", "#!/bin/sh\nexit 0\n");
+    if let Err(why) = fs::set_permissions(&updater, fs::Permissions::from_mode(0o755)) {
+        panic!("chmod {}: {why}", updater.display());
+    }
+
+    let path = format!("{}:/usr/bin:/bin", tree.at("bin"));
+    let stale = tree.run_with(&[("PATH", &path)], &["update"]);
+    assert_eq!(stale.code, 0, "{}", stale.out);
+    assert!(stale.says("run klin setup"), "{}", stale.out);
+    assert!(stale.says("claude (project) is missing"), "{}", stale.out);
+
+    assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
+    let current = tree.run_with(&[("PATH", &path)], &["update"]);
+    assert_eq!(current.code, 0, "{}", current.out);
+    assert!(!current.says("klin setup"), "{}", current.out);
+}

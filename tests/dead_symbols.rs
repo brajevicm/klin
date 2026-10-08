@@ -893,18 +893,14 @@ fn a_changed_run_builds_no_state_for_the_declarations_it_does_not_judge() {
 /// judges the changed files alone.
 fn changed(tree: &Tree) -> harness::Run {
     let _ = std::fs::remove_file(tree.state("turn"));
-    harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP)
+    harness::feed(tree.root(), harness::AGENT, A_STOP)
 }
 
 /// The report of a first Stop over the tree: the one it printed or, for a green stop that
 /// prints none, the one the journal records.
 fn changed_report(tree: &Tree) -> Value {
     let _ = std::fs::remove_file(tree.state("turn"));
-    let run = harness::feed(
-        tree.root(),
-        &["gate", "--hook", "--changed", "--json"],
-        A_STOP,
-    );
+    let run = harness::feed(tree.root(), harness::AGENT, A_STOP);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     run.out
         .lines()

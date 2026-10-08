@@ -7,6 +7,7 @@ import { families, VARIANTS, type Variant } from "./catalogue.ts";
 import { detect, type Finding } from "./detectors.ts";
 import * as paths from "./paths.ts";
 import type { RunRecord } from "./record.ts";
+import { hookArguments } from "./capability.ts";
 import { klinVersion, wholeRun, wholeRunReport } from "./session.ts";
 import { sourceCommit } from "./trial.ts";
 import { copyTree, files, overlay, sha256 } from "./trees.ts";
@@ -278,7 +279,7 @@ function runWhole(base: string, final: string, gate: string, root: string): Verd
 
 function runHook(base: string, final: string, gate: string, root: string): Verdict {
   const repo = repository(base, final, root);
-  const ran = spawnSync(binary(), ["gate", "--hook", "--changed"], {
+  const ran = spawnSync(binary(), hookArguments(binary(), "stop"), {
     cwd: repo,
     input: JSON.stringify({ hook_event_name: "Stop", session_id: "benchmark-audit" }),
     encoding: "utf8",

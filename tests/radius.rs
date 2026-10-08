@@ -29,7 +29,7 @@ fn tree() -> Tree {
 }
 
 fn radius(tree: &Tree, event: &str) -> Run {
-    harness::feed(tree.root(), &["radius"], event)
+    harness::feed(tree.root(), harness::AGENT, event)
 }
 
 /// The tree as the stamp sees it, so what follows is one turn's work.
@@ -152,7 +152,7 @@ fn a_diff_setting_and_a_subdirectory_do_not_change_the_numbers() {
     tree.git(&["config", "diff.relative", "true"]);
     a_wide_turn(&tree);
 
-    let run = harness::feed(&tree.path("src"), &["radius"], A_PROMPT);
+    let run = harness::feed(&tree.path("src"), harness::AGENT, A_PROMPT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("110 lines in 3 files, under docs/, src/."),
@@ -264,7 +264,7 @@ fn a_cursor_prompt_moves_the_stamp_of_the_workspace_the_event_names() {
         "prompt": "go on"
     });
 
-    let run = harness::feed(elsewhere.root(), &["radius"], &event.to_string());
+    let run = harness::feed(elsewhere.root(), harness::AGENT, &event.to_string());
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("wider than"), "{}", run.out);
@@ -306,40 +306,6 @@ fn cursor_session_start_and_prompt_use_the_radius_events() {
 }
 
 #[test]
-fn report_measures_without_moving_the_stamp_or_the_counter() {
-    let tree = tree();
-    stamped(&tree);
-    a_wide_turn(&tree);
-    let commit = tree.field("commit");
-    let mark = tree.field("mark");
-    let prompts = tree.field("prompts");
-
-    let run = tree.run(&["radius", "--report"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says("measured against the prompt mark"), "{}", run.out);
-    assert!(run.says("110 lines in 3 files"), "{}", run.out);
-    assert_eq!(tree.field("commit"), commit, "--report moved the stamp");
-    assert_eq!(tree.field("mark"), mark, "--report moved the mark");
-    assert_eq!(
-        tree.field("prompts"),
-        prompts,
-        "--report raised the counter"
-    );
-}
-
-#[test]
-fn report_names_a_missing_radius_section() {
-    let tree = Tree::new();
-    tree.write("klin.json", "{}\n");
-    tree.base();
-    stamped(&tree);
-
-    let run = tree.run(&["radius", "--report"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"radius\" section"), "{}", run.out);
-}
-
-#[test]
 fn outside_a_repository_the_hook_says_nothing() {
     let tree = Tree::bare();
     tree.write("src/a.rs", &lines(10, "// held "));
@@ -357,9 +323,25 @@ fn history(small: usize, big: usize) -> Tree {
     tree
 }
 
+/// A turn wider than any history here, named by `tag` so each one adds files, and the prompt
+/// that reports it beside what this project usually changes.
+fn usual(tree: &Tree, tag: &str) -> Run {
+    for at in 0..5 {
+        tree.write(&format!("{tag}{at}/f.txt"), &lines(200, "line "));
+    }
+    let run = radius(tree, A_PROMPT);
+    assert_eq!(run.code, 0, "{}", run.out);
+    run
+}
+
 fn reported(tree: &Tree) -> Run {
     stamped(tree);
-    let run = tree.run(&["radius", "--report"]);
+    usual(tree, "wide")
+}
+
+/// What `klin setup --pin` says about the radius values history derives.
+fn pinned(tree: &Tree) -> Run {
+    let run = tree.run(&["setup", "--pin", "--host", "claude"]);
     assert_eq!(run.code, 0, "{}", run.out);
     run
 }
@@ -370,16 +352,6 @@ fn reported(tree: &Tree) -> Run {
 fn the_values_are_the_ninetieth_percentile_of_the_last_commits() {
     let run = reported(&history(43, 6));
 
-    assert!(
-        run.says("derived: radius lines 30, the 90th percentile of the last 50 non-merge commits"),
-        "{}",
-        run.out
-    );
-    assert!(
-        run.says("derived: radius directories 3, the 90th percentile"),
-        "{}",
-        run.out
-    );
     assert!(
         run.says("usually change about 30 lines under 3 directories."),
         "{}",
@@ -393,16 +365,18 @@ fn the_values_are_the_ninetieth_percentile_of_the_last_commits() {
 #[test]
 fn the_percentile_is_the_nearest_rank() {
     let short = reported(&history(44, 5));
-    assert!(short.says("derived: radius lines 3,"), "{}", short.out);
     assert!(
-        short.says("derived: radius directories 1,"),
+        short.says("usually change about 3 lines under 1 directory."),
         "{}",
         short.out
     );
 
     let long = reported(&history(44, 6));
-    assert!(long.says("derived: radius lines 30,"), "{}", long.out);
-    assert!(long.says("derived: radius directories 3,"), "{}", long.out);
+    assert!(
+        long.says("usually change about 30 lines under 3 directories."),
+        "{}",
+        long.out
+    );
 }
 
 /// A merge commit restates a branch the sample already holds, so it is not one of the fifty.
@@ -429,20 +403,16 @@ fn a_merge_commit_is_not_in_the_sample() {
         "side",
     ]);
 
-    stamped(&tree);
-    let run = tree.run(&["radius", "--report"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    let run = pinned(&tree);
     assert!(run.says("49 non-merge commit(s) reach"), "{}", run.out);
 }
 
 #[test]
-fn below_fifty_commits_the_report_says_why() {
+fn below_fifty_commits_setup_says_why() {
     let tree = history(42, 6);
 
-    stamped(&tree);
-    let run = tree.run(&["radius", "--report"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("\"radius\" section"), "{}", run.out);
+    let run = pinned(&tree);
+    assert!(run.says("no \"radius\" pinned"), "{}", run.out);
     assert!(run.says("49 non-merge commit(s) reach"), "{}", run.out);
     assert!(run.says("fewer than the 50"), "{}", run.out);
 }
@@ -471,8 +441,6 @@ fn a_pinned_section_names_no_derived_value() {
         "{}",
         run.out
     );
-    assert!(run.says("pinned: radius lines 50"), "{}", run.out);
-    assert!(run.says("pinned: radius directories 2"), "{}", run.out);
     assert!(!run.says("derived:"), "{}", run.out);
 }
 
@@ -488,9 +456,6 @@ fn a_half_pinned_section_derives_the_other_key() {
         "{}",
         run.out
     );
-    assert!(run.says("derived: radius directories 3,"), "{}", run.out);
-    assert!(run.says("pinned: radius lines 7"), "{}", run.out);
-    assert!(!run.says("derived: radius lines"), "{}", run.out);
 }
 
 /// A section klin cannot read two numbers out of says so, rather than deriving both in silence
@@ -500,27 +465,9 @@ fn a_radius_section_that_is_not_an_object_is_a_config_error() {
     let tree = history(43, 6);
     tree.write("klin.json", "{\n  \"radius\": 5\n}\n");
 
-    stamped(&tree);
-    let run = tree.run(&["radius", "--report"]);
+    let run = tree.run(&["check"]);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"radius\""), "{}", run.out);
-    assert!(!run.says("derived:"), "{}", run.out);
-}
-
-/// `radius --report` loads the configuration as every command does, so a schedule with no step
-/// due is the config error a gate would refuse with. Spec 14.
-#[test]
-fn report_refuses_a_schedule_with_no_step_due() {
-    let tree = history(43, 6);
-    tree.write(
-        "klin.json",
-        r#"{"doc_size": {"README.md": {"2099-01-01": 100}}}"#,
-    );
-
-    stamped(&tree);
-    let run = tree.run(&["radius", "--report"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("schedule has no step due"), "{}", run.out);
 }
 
 fn written(file: &std::path::Path, text: &str) {
@@ -546,17 +493,16 @@ fn the_sample_stops_at_two_hundred_commits() {
 
     let run = reported(&tree);
     assert!(
-        run.says("derived: radius lines 1, the 90th percentile of the last 200 non-merge commits"),
+        run.says("usually change about 1 lines under 1 directory."),
         "{}",
         run.out
     );
-    assert!(run.says("derived: radius directories 1,"), "{}", run.out);
 }
 
 #[test]
 fn the_values_are_cached_under_the_derivation_commit() {
     let tree = history(43, 6);
-    assert!(reported(&tree).says("derived: radius lines 30,"));
+    assert!(reported(&tree).says("usually change about 30 lines"));
     let file = cache(&tree);
     assert!(file.is_file(), "{} was not written", file.display());
 
@@ -567,22 +513,22 @@ fn the_values_are_cached_under_the_derivation_commit() {
             env!("CARGO_PKG_VERSION")
         ),
     );
-    let run = tree.run(&["radius", "--report"]);
-    assert!(run.says("derived: radius lines 4,"), "{}", run.out);
+    let run = usual(&tree, "again");
+    assert!(run.says("usually change about 4 lines"), "{}", run.out);
 }
 
 #[test]
 fn a_cache_another_version_wrote_is_derived_again() {
     let tree = history(43, 6);
-    assert!(reported(&tree).says("derived: radius lines 30,"));
+    assert!(reported(&tree).says("usually change about 30 lines"));
     let file = cache(&tree);
 
     written(
         &file,
         "{\"version\":\"0.0.0\",\"radius\":{\"lines\":4,\"directories\":9,\"commits\":50}}\n",
     );
-    let run = tree.run(&["radius", "--report"]);
-    assert!(run.says("derived: radius lines 30,"), "{}", run.out);
+    let run = usual(&tree, "again");
+    assert!(run.says("usually change about 30 lines"), "{}", run.out);
 }
 
 /// A commit inside an open turn does not move the derivation commit, so the values hold from
@@ -590,7 +536,7 @@ fn a_cache_another_version_wrote_is_derived_again() {
 #[test]
 fn a_commit_inside_the_turn_does_not_move_the_derivation_commit() {
     let tree = history(43, 6);
-    assert!(reported(&tree).says("derived: radius lines 30,"));
+    assert!(reported(&tree).says("usually change about 30 lines"));
     let first = cache(&tree);
 
     for at in 0..3 {
@@ -607,7 +553,7 @@ fn a_commit_inside_the_turn_does_not_move_the_derivation_commit() {
 #[test]
 fn a_moved_stamp_derives_under_the_commit_it_was_taken_over() {
     let tree = history(43, 6);
-    assert!(reported(&tree).says("derived: radius lines 30,"));
+    assert!(reported(&tree).says("usually change about 30 lines"));
     let first = cache(&tree);
 
     for at in 0..3 {
@@ -615,7 +561,7 @@ fn a_moved_stamp_derives_under_the_commit_it_was_taken_over() {
     }
     tree.commit("a commit a person keeps");
     assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    assert_eq!(tree.run(&["radius", "--report"]).code, 0);
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
 
     let second = cache(&tree);
     assert_ne!(second, first, "the derivation commit stayed behind");

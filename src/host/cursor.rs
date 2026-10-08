@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 
 use super::adapter::{
-    Adapter, Decision, Event, Filter, Hook, HookFile, Stop, input, plugin_named_klin, refused, text,
+    Adapter, Decision, Event, Filter, Hook, HookFile, Kind, Stop, input, plugin_named_klin,
+    refused, text,
 };
 
 /// Cursor's native events, not Claude Code's translated ones. `cursor_version` is the field
@@ -56,32 +57,32 @@ impl Adapter for Cursor {
         &[
             Hook {
                 event: "sessionStart",
-                arguments: "radius",
+                kind: Kind::Session,
                 filter: Filter::Every,
             },
             Hook {
                 event: "beforeSubmitPrompt",
-                arguments: "radius",
+                kind: Kind::Prompt,
                 filter: Filter::Every,
             },
             Hook {
                 event: "preToolUse",
-                arguments: "guard",
+                kind: Kind::PreTool,
                 filter: Filter::Tools,
             },
             Hook {
                 event: "beforeShellExecution",
-                arguments: "guard",
+                kind: Kind::PreTool,
                 filter: Filter::Every,
             },
             Hook {
                 event: "beforeMCPExecution",
-                arguments: "guard",
+                kind: Kind::PreTool,
                 filter: Filter::Every,
             },
             Hook {
                 event: "stop",
-                arguments: "gate --hook --changed",
+                kind: Kind::Stop,
                 filter: Filter::Every,
             },
         ]
@@ -209,6 +210,12 @@ impl Adapter for Cursor {
                 0
             }
         }
+    }
+
+    /// Cursor submits a `followup_message` as the next agent prompt, so a notice outside a
+    /// blocking Stop goes to stderr alone. Spec 10.7.
+    fn tell(&self, text: &str) {
+        eprintln!("{text}");
     }
 
     fn follows_up(&self) -> bool {

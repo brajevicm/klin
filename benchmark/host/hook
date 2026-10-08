@@ -54,7 +54,7 @@ out=$(mktemp)
 err=$(mktemp)
 report=$(mktemp)
 started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-if [ "${1-}" = "gate" ]; then
+if [ "${1-}" = "gate" ] || [ "${1-}" = "__agent" ]; then
     export KLIN_HOOK_REPORT="$report"
 fi
 printf '%s' "$payload" | "$klin" "$@" >"$out" 2>"$err"

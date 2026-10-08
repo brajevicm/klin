@@ -1234,8 +1234,8 @@ fn earlier(lines: &[Value], scope: Scope, now: u64) -> Option<Value> {
 }
 
 /// The journal a stop's telling needs and no more: back to the seven-day cutoff the week's
-/// headline reads, or to the turn stamp where the turn reaches further back. The `klin radius`
-/// run that appends a prompt line takes the stamp after it, and a journal time is a whole
+/// headline reads, or to the turn stamp where the turn reaches further back. The prompt event
+/// that appends a prompt line takes the stamp after it, and a journal time is a whole
 /// second, so the stamp's own second is not the bound and the second before it is. A worktree
 /// holding no readable stamp is the one case nothing bounds, and it reads the whole file.
 /// Spec 9.5, 11.4.

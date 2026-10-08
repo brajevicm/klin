@@ -28,7 +28,7 @@ fn a_failing_build_blocks_the_stop_and_no_gate_runs() {
     let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
     tree.words("README.md", 30);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the tree does not build"), "{}", run.out);
     assert!(run.says("the-compiler-spoke"), "{}", run.out);
@@ -39,7 +39,7 @@ fn a_failing_build_blocks_the_stop_and_no_gate_runs() {
 fn a_failing_build_blocks_the_second_stop_too() {
     let tree = tree(r#""build": "exit 1","#);
 
-    let run = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the tree does not build"), "{}", run.out);
 }
@@ -50,12 +50,12 @@ fn a_turn_that_failed_to_build_is_still_blocked_when_a_gate_fails() {
     tree.write("fails", "");
     tree.words("README.md", 30);
 
-    let first = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let first = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(first.code, 2, "{}", first.out);
     assert!(first.says("the tree does not build"), "{}", first.out);
 
     assert!(std::fs::remove_file(tree.path("fails")).is_ok());
-    let second = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let second = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(second.code, 2, "{}", second.out);
     assert!(second.says("FAIL  doc-size"), "{}", second.out);
     assert!(!second.says("not blocking again"), "{}", second.out);
@@ -65,7 +65,7 @@ fn a_turn_that_failed_to_build_is_still_blocked_when_a_gate_fails() {
 fn a_config_with_no_build_key_runs_the_gates_with_no_build_step() {
     let tree = tree("");
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!tree.path(BUILD_BLOCKED).exists());
 }
@@ -92,7 +92,7 @@ fn changed_runs_only_the_entries_whose_root_holds_a_changed_file() {
     let tree = monorepo(TWO_PROJECTS);
     tree.write("api/src/lib.rs", CLEAN);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook", "--changed"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "api\n");
 }
@@ -102,17 +102,7 @@ fn a_changed_file_under_no_root_runs_every_entry() {
     let tree = monorepo(TWO_PROJECTS);
     tree.write("src/work.rs", CLEAN);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook", "--changed"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(ran(&tree), "api\nweb\n");
-}
-
-#[test]
-fn without_changed_every_entry_runs_in_order() {
-    let tree = monorepo(TWO_PROJECTS);
-    tree.write("api/src/lib.rs", CLEAN);
-
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "api\nweb\n");
 }
@@ -125,8 +115,9 @@ fn the_first_failing_entry_blocks_and_the_ones_after_it_do_not_run() {
     {"root": "web", "run": "echo web >> ../ran"}
   ],"#,
     );
+    tree.write("src/work.rs", CLEAN);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("api-broke"), "{}", run.out);
     assert_eq!(ran(&tree), "");
@@ -139,7 +130,7 @@ fn a_rename_out_of_a_root_builds_the_root_it_left_as_well() {
     tree.base();
     tree.git(&["mv", "api/src/moves.rs", "web/moves.rs"]);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook", "--changed"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "api\nweb\n");
 }
@@ -148,7 +139,7 @@ fn a_rename_out_of_a_root_builds_the_root_it_left_as_well() {
 fn a_build_entry_without_run_is_a_config_error() {
     let tree = tree(r#""build": [{"root": "api"}],"#);
 
-    let first = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let first = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(first.code, 1, "{}", first.out);
     assert!(
         first.says("a \"build\" entry has no \"run\""),
@@ -156,7 +147,7 @@ fn a_build_entry_without_run_is_a_config_error() {
         first.out
     );
 
-    let second = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let second = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(second.code, 1, "{}", second.out);
     assert!(
         second.says("a \"build\" entry has no \"run\""),
@@ -169,12 +160,8 @@ fn a_build_entry_without_run_is_a_config_error() {
 fn a_failing_build_under_json_prints_one_json_object() {
     let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook", "--json"]);
+    let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    let report: serde_json::Value = match serde_json::from_str(run.out.trim()) {
-        Ok(report) => report,
-        Err(why) => panic!("{why} — the run printed:\n{}", run.out),
-    };
     assert_eq!(report["status"], "ERROR", "{report}");
     assert_eq!(report["exit"], serde_json::json!(2), "{report}");
     assert!(
@@ -212,7 +199,7 @@ const A_PROMPT: &str = r#"{"hook_event_name": "UserPromptSubmit"}"#;
 fn blocked(tree: &Tree, times: usize) {
     for at in 1..=times {
         tree.write("edited", &at.to_string());
-        let run = stop(tree, A_STOP, &["gate", "--hook"]);
+        let run = stop(tree, A_STOP, harness::AGENT);
         assert_eq!(run.code, 2, "stop {at} of {times}: {}", run.out);
     }
 }
@@ -221,11 +208,11 @@ fn blocked(tree: &Tree, times: usize) {
 fn a_stop_over_an_unchanged_tree_is_reported_and_not_blocked_again() {
     let tree = tree(r#""build": "echo the-compiler-spoke; exit 1","#);
 
-    let first = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let first = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(first.code, 2, "{}", first.out);
     assert!(first.says("block 1 of 8"), "{}", first.out);
 
-    let again = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let again = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(again.code, 0, "{}", again.out);
     assert!(again.says("the-compiler-spoke"), "{}", again.out);
     assert!(again.says("did not change"), "{}", again.out);
@@ -236,7 +223,7 @@ fn a_stop_over_an_unchanged_tree_is_reported_and_not_blocked_again() {
         "src/lib.rs",
         "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
     );
-    let edited = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let edited = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(edited.code, 2, "{}", edited.out);
     assert!(edited.says("block 2 of 8"), "{}", edited.out);
 }
@@ -246,7 +233,7 @@ fn a_build_whose_command_is_missing_is_a_note_and_the_gates_run() {
     let tree = tree(r#""build": "klin-no-such-tool --noEmit","#);
     tree.words("README.md", 30);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
     assert!(
@@ -274,7 +261,7 @@ fn a_missing_command_skips_its_entry_and_a_failing_entry_after_it_still_blocks()
     tree.write("api/keep", "");
     tree.write("web/keep", "");
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the tree does not build"), "{}", run.out);
     assert!(run.says("the-compiler-spoke"), "{}", run.out);
@@ -284,7 +271,7 @@ fn a_missing_command_skips_its_entry_and_a_failing_entry_after_it_still_blocks()
 fn a_missing_build_command_is_told_when_nothing_blocks() {
     let tree = tree(r#""build": "klin-no-such-tool","#);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("nothing blocks the stop"), "{}", run.out);
     assert!(run.says("could not run"), "{}", run.out);
@@ -296,7 +283,7 @@ fn a_failing_build_blocks_eight_stops_under_one_prompt_and_the_ninth_reports() {
     blocked(&tree, 8);
 
     tree.write("edited", "9");
-    let ninth = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let ninth = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(ninth.code, 0, "{}", ninth.out);
     assert!(ninth.says("the-compiler-spoke"), "{}", ninth.out);
     assert!(ninth.says("stops blocking"), "{}", ninth.out);
@@ -309,12 +296,12 @@ fn a_new_prompt_restores_the_eight_build_blocks() {
     let tree = tree(r#""build": "exit 1","#);
     blocked(&tree, 8);
     tree.write("edited", "9");
-    let spent = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let spent = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(spent.code, 0, "{}", spent.out);
 
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
-    let after = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let after = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(after.code, 2, "{}", after.out);
 }
 
@@ -325,12 +312,12 @@ fn a_passing_build_inside_one_prompt_does_not_restore_the_build_blocks() {
     blocked(&tree, 8);
 
     tree.remove("fails");
-    let green = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let green = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(green.code, 0, "{}", green.out);
 
     tree.write("fails", "");
     tree.write("edited", "9");
-    let after = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let after = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(after.code, 0, "{}", after.out);
     assert!(after.says("stops blocking"), "{}", after.out);
 }
@@ -339,12 +326,12 @@ fn a_passing_build_inside_one_prompt_does_not_restore_the_build_blocks() {
 fn a_build_failure_writes_a_red_verdict_and_the_next_prompt_keeps_the_stamp() {
     let tree = tree(r#""build": "exit 1","#);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert_eq!(tree.field("verdict"), "red", "{}", run.out);
 
     let held = tree.field("commit");
-    let prompt = harness::feed(tree.root(), &["radius"], A_PROMPT);
+    let prompt = harness::feed(tree.root(), harness::AGENT, A_PROMPT);
     assert_eq!(prompt.code, 0, "{}", prompt.out);
     assert_eq!(tree.field("commit"), held, "a red build moved the stamp");
 }
@@ -355,15 +342,15 @@ fn the_gates_one_block_is_spent_apart_from_the_build_blocks() {
     tree.write("fails", "");
     tree.words("README.md", 30);
 
-    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let build = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(build.code, 2, "{}", build.out);
 
     tree.remove("fails");
-    let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let gate = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(gate.code, 2, "{}", gate.out);
     assert!(gate.says("FAIL  doc-size"), "{}", gate.out);
 
-    let again = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let again = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(again.code, 0, "{}", again.out);
     assert!(
         again.says("the tree did not change since the last gate block"),
@@ -377,7 +364,7 @@ fn a_gate_block_klin_cannot_record_after_a_build_block_blocks_nothing() {
     let tree = tree(r#""build": "test ! -f fails","#);
     tree.write("fails", "");
     tree.words("README.md", 30);
-    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let build = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(build.code, 2, "{}", build.out);
 
     let staging = tree.path(".git/klin/build-blocked.writing");
@@ -389,7 +376,7 @@ fn a_gate_block_klin_cannot_record_after_a_build_block_blocks_nothing() {
     tree.remove("fails");
     for words in [30, 31, 32] {
         tree.words("README.md", words);
-        let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+        let gate = stop(&tree, A_SECOND_STOP, harness::AGENT);
         assert_eq!(gate.code, 0, "{words}: {}", gate.out);
         assert!(
             gate.says("klin could not record a gate block"),
@@ -409,7 +396,7 @@ fn a_gate_block_klin_cannot_record_after_a_build_block_blocks_nothing() {
         (35, "has blocked 2 stops"),
     ] {
         tree.words("README.md", words);
-        let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+        let gate = stop(&tree, A_SECOND_STOP, harness::AGENT);
         assert!(gate.says(said), "{words}: {}", gate.out);
     }
 }
@@ -419,17 +406,17 @@ fn a_build_block_between_gate_blocks_keeps_the_tree_the_first_gate_block_saw() {
     let tree = tree(r#""build": "test ! -f fails","#);
     tree.words("README.md", 30);
 
-    let gate = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let gate = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(gate.code, 2, "{}", gate.out);
     assert!(gate.says("gate block 1 of 2"), "{}", gate.out);
 
     tree.write("fails", "");
-    let build = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let build = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(build.code, 2, "{}", build.out);
     assert!(build.says("block 1 of 8"), "{}", build.out);
 
     tree.remove("fails");
-    let reverted = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let reverted = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(reverted.code, 0, "{}", reverted.out);
     assert!(
         reverted.says("the tree did not change since the last gate block"),
@@ -438,7 +425,7 @@ fn a_build_block_between_gate_blocks_keeps_the_tree_the_first_gate_block_saw() {
     );
 
     tree.words("README.md", 31);
-    let changed = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let changed = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(changed.code, 2, "{}", changed.out);
     assert!(changed.says("gate block 2 of 2"), "{}", changed.out);
 }
@@ -449,12 +436,8 @@ fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
     blocked(&tree, 8);
 
     tree.write("edited", "9");
-    let ninth = stop(&tree, A_STOP, &["gate", "--hook", "--json"]);
+    let (ninth, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(ninth.code, 0, "{}", ninth.out);
-    let report: serde_json::Value = match serde_json::from_str(ninth.out.trim()) {
-        Ok(report) => report,
-        Err(why) => panic!("{why} — the run printed:\n{}", ninth.out),
-    };
     assert!(
         report["notes"][0]["text"]
             .as_str()
@@ -473,7 +456,7 @@ fn a_build_count_klin_cannot_write_reports_the_failure_and_blocks_nothing() {
     assert!(std::fs::create_dir_all(&held).is_ok(), "{}", held.display());
 
     for at in 1..=3 {
-        let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+        let run = stop(&tree, A_STOP, harness::AGENT);
         assert_eq!(run.code, 0, "stop {at}: {}", run.out);
         assert!(run.says("the-compiler-spoke"), "stop {at}: {}", run.out);
         assert!(run.says("blocks nothing"), "stop {at}: {}", run.out);
@@ -486,15 +469,15 @@ fn a_passing_stop_leaves_the_gates_one_block_unspent() {
     let tree = tree(r#""build": "test ! -f fails","#);
     tree.write("fails", "");
 
-    let build = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let build = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(build.code, 2, "{}", build.out);
 
     tree.remove("fails");
-    let green = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let green = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(green.code, 0, "{}", green.out);
 
     tree.words("README.md", 30);
-    let gate = stop(&tree, A_SECOND_STOP, &["gate", "--hook"]);
+    let gate = stop(&tree, A_SECOND_STOP, harness::AGENT);
     assert_eq!(gate.code, 2, "{}", gate.out);
     assert!(!gate.says("not blocking again"), "{}", gate.out);
 }
@@ -543,7 +526,7 @@ fn with_no_build_key_the_hook_derives_one_command_per_project() {
         "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
     );
 
-    let run = derived(&tree, &path, &["gate", "--hook", "--json"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "cargo api\ntsc web\n", "{}", run.out);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
@@ -566,7 +549,7 @@ fn a_derived_build_that_fails_blocks_the_stop_and_names_its_command() {
         "#!/bin/sh\necho the-compiler-spoke\nexit 1\n",
     );
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("$ cargo build --all-targets"), "{}", run.out);
     assert!(run.says("the-compiler-spoke"), "{}", run.out);
@@ -588,7 +571,7 @@ fn a_derived_build_whose_tool_is_absent_names_the_manifest_and_runs_the_gates() 
     tree.write("src/index.ts", "export const a = 1;\n");
     tree.base();
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("the build `tsc --noEmit` could not run"),
@@ -611,7 +594,7 @@ fn a_build_set_to_false_builds_nothing_where_a_manifest_would_derive_one() {
     tree.write("src/lib.rs", CLEAN);
     tree.base();
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("does not build"), "{}", run.out);
 }
@@ -625,7 +608,7 @@ fn a_pinned_command_replaces_the_derived_one() {
     tree.base();
     let path = toolchain(&tree);
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "pinned\n", "{}", run.out);
 }
@@ -662,7 +645,7 @@ fn a_derived_build_runs_the_compiler_installed_beside_the_manifest() {
     );
     tree.base();
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("the-project-compiler-spoke"), "{}", run.out);
     assert!(
@@ -693,7 +676,7 @@ fn a_derived_build_runs_the_nearest_compiler_above_the_manifest() {
     tree.base();
     tree.write("web/app/src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert_eq!(ran(&tree), "web/node_modules\n", "{}", run.out);
     assert!(
@@ -714,7 +697,7 @@ fn a_derived_build_falls_back_to_the_compiler_on_the_path() {
     let path = toolchain(&tree);
     tree.write("src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(ran(&tree).starts_with("tsc "), "{}", ran(&tree));
 }
@@ -728,7 +711,7 @@ fn a_configured_build_is_not_rewritten_by_an_installed_compiler() {
     installed(&tree, "node_modules/.bin/tsc", "#!/bin/sh\nexit 1\n");
     tree.base();
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("the build `tsc --noEmit` could not run"),
@@ -738,20 +721,40 @@ fn a_configured_build_is_not_rewritten_by_an_installed_compiler() {
 }
 
 /// Resolution stops at the root klin measures: a compiler above that root is not the project's.
+/// Here the project is a repository of its own inside a directory that installed a compiler.
 /// Spec 9.3.
 #[test]
 fn a_derived_build_does_not_reach_a_compiler_above_the_root() {
-    let tree = Tree::new();
+    let tree = Tree::bare();
     tree.write("app/klin.json", "{}");
     typescript(&tree, "app/");
     installed(&tree, "node_modules/.bin/tsc", "#!/bin/sh\nexit 0\n");
-    tree.base();
+    for args in [
+        &["init", "-q", "-b", "main"][..],
+        &["add", "-A"],
+        &[
+            "-c",
+            "user.name=klin",
+            "-c",
+            "user.email=klin@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-q",
+            "-m",
+            "the project",
+        ],
+    ] {
+        tree.git(&[&["-C", "app"][..], args].concat());
+    }
+    let session = harness::feed(&tree.path("app"), harness::AGENT, harness::SESSION_START);
+    assert_eq!(session.code, 0, "{}", session.out);
     tree.write("app/src/index.ts", "export const a = 2;\n");
 
     let run = harness::feed_with(
         &tree.path("app"),
         &[("PATH", "/usr/bin:/bin")],
-        &["gate", "--hook"],
+        harness::AGENT,
         A_STOP,
     );
     assert_eq!(run.code, 0, "{}", run.out);
@@ -774,7 +777,7 @@ fn a_local_compiler_that_cannot_run_does_not_fall_through_to_the_path() {
     let path = toolchain(&tree);
     tree.write("src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert_eq!(ran(&tree), "", "{}", run.out);
 }
@@ -804,7 +807,7 @@ fn an_installed_binary_does_not_shadow_a_derived_cargo_or_go_command() {
         "pub fn simple(a: i32) -> i32 {\n    a + 2\n}\n",
     );
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "cargo api\ngo svc\n", "{}", run.out);
 }
@@ -831,7 +834,7 @@ fn an_installed_compiler_does_not_change_the_derived_value_or_the_order() {
     );
     tree.write("web/src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, &path, &["gate", "--hook", "--json"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     let ran = ran(&tree);
     let mut lines = ran.lines();
@@ -861,7 +864,7 @@ fn a_broken_install_fails_its_own_build_and_is_not_an_absent_tool() {
     let path = toolchain(&tree);
     tree.write("src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, &path, &["gate", "--hook"]);
+    let run = derived(&tree, &path, harness::AGENT);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(!run.says("could not run"), "{}", run.out);
     assert_eq!(ran(&tree), "", "{}", run.out);
@@ -915,7 +918,7 @@ fn a_derived_build_does_not_reach_a_compiler_above_the_repository() {
     let run = harness::feed_with(
         &tree.path("repo"),
         &[("PATH", "/usr/bin:/bin")],
-        &["gate", "--hook"],
+        harness::AGENT,
         A_STOP,
     );
     assert_eq!(run.code, 0, "{}", run.out);
@@ -944,7 +947,7 @@ fn a_passing_project_local_compile_tells_no_note() {
     tree.base();
     tree.write("src/index.ts", "export const a = 2;\n");
 
-    let run = derived(&tree, "/usr/bin:/bin", &["gate", "--hook", "--json"]);
+    let run = derived(&tree, "/usr/bin:/bin", harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(ran(&tree), "the project compiler\n", "{}", run.out);
     assert!(!run.says("could not run"), "{}", run.out);
@@ -957,7 +960,7 @@ fn limited(tree: &Tree, limit: &str) -> harness::Run {
     harness::feed_with(
         tree.root(),
         &[("KLIN_COMMAND_LIMIT", limit)],
-        &["gate", "--hook"],
+        harness::AGENT,
         A_STOP,
     )
 }
@@ -1003,7 +1006,7 @@ fn a_build_that_never_exits_is_stopped_at_the_limit_and_named() {
 fn a_build_that_exits_leaves_no_descendant_running() {
     let tree = tree(LEAVES_A_DESCENDANT);
 
-    let run = stop(&tree, A_STOP, &["gate", "--hook"]);
+    let run = stop(&tree, A_STOP, harness::AGENT);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(gone(&tree), "{}", run.out);
 }
@@ -1017,7 +1020,7 @@ fn ended_by(name: &str, number: i32) {
     let tree = tree(WAITS_ON_A_DESCENDANT);
     let started = std::time::Instant::now();
     let mut klin = std::process::Command::new(harness::binary())
-        .args(["gate", "--hook"])
+        .args(harness::AGENT)
         .env("HOME", harness::empty_home())
         .current_dir(tree.root())
         .stdin(std::process::Stdio::piped())

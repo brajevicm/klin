@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" radius",
+            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" __agent event",
             "timeout": 60,
             "statusMessage": "klin: opening the turn"
           }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" radius",
+            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" __agent event",
             "timeout": 60,
             "statusMessage": "klin: opening the turn"
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" guard",
+            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || exit 0; \"$k\" __agent event",
             "timeout": 60
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || { [ -f \"${CLAUDE_PROJECT_DIR:-.}/klin.json\" ] && echo '{\"systemMessage\":\"klin is not installed. Install it with: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh\"}'; exit 0; }; \"$k\" gate --hook --changed",
+            "command": "k=\"${CLAUDE_PLUGIN_ROOT}/bin/klin\"; [ -x \"$k\" ] || k=$(command -v klin) || { [ -f \"${CLAUDE_PROJECT_DIR:-.}/klin.json\" ] && echo '{\"systemMessage\":\"klin is not installed. Install it with: curl --proto =https --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh\"}'; exit 0; }; \"$k\" __agent event",
             "timeout": 900,
             "statusMessage": "klin: gating the changed files"
           }

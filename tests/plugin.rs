@@ -36,16 +36,15 @@ struct Ran {
 }
 
 #[test]
-fn the_hooks_carry_the_three_commands() {
+fn every_hook_runs_the_agent_ingress() {
     let matcher = json(HOOKS)["hooks"]["PreToolUse"][0]["matcher"]
         .as_str()
         .unwrap_or_default()
         .to_string();
 
-    assert!(hook("SessionStart").ends_with("\"$k\" radius"));
-    assert!(hook("UserPromptSubmit").ends_with("\"$k\" radius"));
-    assert!(hook("PreToolUse").ends_with("\"$k\" guard"));
-    assert!(hook("Stop").ends_with("\"$k\" gate --hook --changed"));
+    for event in ["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop"] {
+        assert!(hook(event).ends_with("\"$k\" __agent event"), "{event}");
+    }
     assert_eq!(matcher, SHARED_MATCHER);
 }
 
@@ -556,7 +555,7 @@ fn a_checksum_that_does_not_match_installs_nothing_and_lets_the_turn_end() {
 fn a_download_that_fails_prints_one_line_and_lets_the_turn_end() {
     let tree = Tree::bare();
 
-    let run = fetch(&tree, &["gate", "--hook", "--changed"]);
+    let run = fetch(&tree, harness::AGENT);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(run.out.lines().count(), 1, "{}", run.out);
@@ -710,15 +709,19 @@ fn a_fetch_removes_the_other_cached_versions_nothing_ran_this_week() {
     );
 }
 
-/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first turn
-/// whose radius printed nothing, and never again on that machine. Spec 19.2.
+/// A plugin user with no `klin` of their own hears once that the CLI exists, at the first event
+/// that printed nothing in a repository that opted in, and never again on that machine. A
+/// repository with no klin.json at its root hears nothing. Spec 5.1, 19.2.
 #[test]
 fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
     release_running(&tree, "true");
+    let silent = fetch(&tree, harness::AGENT);
+    assert_eq!(silent.printed, "", "the hint spoke where klin is off");
+    tree.write("klin.json", "{}\n");
 
-    let first = fetch(&tree, &["radius"]);
-    let second = fetch(&tree, &["radius"]);
+    let first = fetch(&tree, harness::AGENT);
+    let second = fetch(&tree, harness::AGENT);
 
     assert_eq!(first.code, 0, "{}", first.out);
     assert!(
@@ -730,16 +733,62 @@ fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
     assert_eq!(second.printed, "", "the hint came twice");
 }
 
+/// The hint costs a tool call no git process: a person with a CLI of their own ends the check
+/// before any walk, and the walk that finds the worktree root reads the filesystem alone. Each
+/// repeated call checks again, because no hint was recorded. Spec 10.2.
+#[test]
+fn the_wrapper_hint_never_runs_git() {
+    let tree = Tree::new();
+    release_running(&tree, "true");
+    let calls = tree.path("git-calls");
+    let git = tree.write(
+        "path/git",
+        &format!("#!/bin/sh\necho \"$*\" >> {}\n", calls.display()),
+    );
+    executable(&git);
+    let base = format!("file://{}", tree.path("release").display());
+    let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
+    let wrapped = |cache: &str| {
+        ran(
+            &at(WRAPPER).display().to_string(),
+            harness::AGENT,
+            tree.root(),
+            &[
+                ("PATH", &path),
+                ("KLIN_RELEASE_BASE_URL", &base),
+                ("KLIN_CACHE_DIR", &tree.path(cache).display().to_string()),
+            ],
+        )
+    };
+
+    for _ in 0..2 {
+        assert_eq!(wrapped("unconfigured").printed, "");
+    }
+    let own = tree.write("path/klin", "#!/bin/sh\n");
+    executable(&own);
+    tree.write("klin.json", "{}\n");
+    for _ in 0..2 {
+        assert_eq!(wrapped("installed").printed, "");
+    }
+
+    assert!(
+        !calls.exists(),
+        "the wrapper ran git: {:?}",
+        fs::read_to_string(&calls)
+    );
+}
+
 /// Cursor shows no message at a prompt, so under Cursor the hint waits for another host.
 #[test]
 fn the_wrapper_names_the_cli_to_nobody_under_cursor() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     release_running(&tree, "true");
     let base = format!("file://{}", tree.path("release").display());
 
     let run = ran(
         &at(WRAPPER).display().to_string(),
-        &["radius"],
+        harness::AGENT,
         tree.root(),
         &[
             ("PATH", SYSTEM_PATH),
@@ -767,7 +816,7 @@ fn a_radius_run_keeps_its_version_in_the_cache() {
     );
     assert_eq!(aged.code, 0, "{}", aged.out);
 
-    assert_eq!(fetch(&tree, &["radius"]).code, 0);
+    assert_eq!(fetch(&tree, harness::AGENT).code, 0);
 
     let used = fs::metadata(&pinned)
         .and_then(|held| held.modified())
@@ -783,9 +832,10 @@ fn a_radius_run_keeps_its_version_in_the_cache() {
 /// never hears it.
 #[test]
 fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
-    let tree = Tree::bare();
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
     release(&tree, "the-radius-note");
-    let spoke = fetch(&tree, &["radius"]);
+    let spoke = fetch(&tree, harness::AGENT);
     assert_eq!(spoke.printed.trim(), "the-radius-note", "{}", spoke.out);
 
     let decoy = tree.write("path/klin", "#!/bin/sh\n");
@@ -795,7 +845,7 @@ fn the_wrapper_names_the_cli_to_nobody_it_would_interrupt() {
     let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
     let own = ran(
         &at(WRAPPER).display().to_string(),
-        &["radius"],
+        harness::AGENT,
         tree.root(),
         &[
             ("PATH", &path),

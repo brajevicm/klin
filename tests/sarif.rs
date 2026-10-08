@@ -421,7 +421,7 @@ fn an_integration_never_runs_at_the_stop() {
 
     let run = harness::feed(
         tree.root(),
-        &["gate", "--hook"],
+        harness::AGENT,
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
     );
     assert_eq!(run.code, 0, "{}", run.out);

@@ -128,11 +128,6 @@ pub fn recorded(stamp: &Stamp) -> Value {
     Value::Object(fields)
 }
 
-/// A read-only tree capture for the spread report, retaining no first-session marker.
-pub fn tree(root: &Path, at: &Path) -> Option<String> {
-    Some(capture(root, &at.join(INDEX))?.tree)
-}
-
 /// A completed private index, retained only after the caller publishes the stamp it describes.
 pub struct Capture {
     pub tree: String,
