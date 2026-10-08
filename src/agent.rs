@@ -37,18 +37,9 @@ pub fn run() -> ExitCode {
 /// version klin does not speak is refused whole: the guard delivers the adapter's refusal and
 /// journals it, whatever kind the event meant. Spec 10.2, 10.9.
 fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
-    let words: Vec<OsString> = std::env::args_os().skip(2).collect();
-    if words.first().is_none_or(|word| word != EVENT) {
-        eprintln!("klin: NOTE: `klin {WORD}` takes `{EVENT}`, so this hook answered nothing.");
-        return ExitCode::SUCCESS;
-    }
-    let Some(event) = host::read(named_host(&words[1..]).as_deref()) else {
-        eprintln!("klin: NOTE: klin could not read this hook event, so it answered nothing.");
+    let Some(event) = invoked() else {
         return ExitCode::SUCCESS;
     };
-    if event.kind.is_none() && !event.host.refuses() {
-        return ExitCode::SUCCESS;
-    }
     placed.set(event.kind);
     let Some(start) = event.root.clone().or_else(|| std::env::current_dir().ok()) else {
         eprintln!(
@@ -70,6 +61,22 @@ fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
         (false, Some(kind)) => ExitCode::from(answered(event, kind, &start, root)),
         (false, None) => ExitCode::SUCCESS,
     }
+}
+
+/// The event this invocation carries, when it is one klin answers: `event` was named, the
+/// payload reads, and the host names a kind for it or refuses it whole. Each miss says why on
+/// stderr, except an event no hook of klin's runs on. Spec 10.1, 10.10.
+fn invoked() -> Option<Event> {
+    let words: Vec<OsString> = std::env::args_os().skip(2).collect();
+    if words.first().is_none_or(|word| word != EVENT) {
+        eprintln!("klin: NOTE: `klin {WORD}` takes `{EVENT}`, so this hook answered nothing.");
+        return None;
+    }
+    let Some(event) = host::read(named_host(&words[1..]).as_deref()) else {
+        eprintln!("klin: NOTE: klin could not read this hook event, so it answered nothing.");
+        return None;
+    };
+    (event.kind.is_some() || event.host.refuses()).then_some(event)
 }
 
 /// The value of `--host NAME` or `--host=NAME`. Every other argument is one the ingress does
