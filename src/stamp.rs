@@ -241,7 +241,7 @@ impl Here {
     }
 
     /// The same facts from git itself, for a repository that keeps its refs in a reftable.
-    // ponytail: several git processes and no reflog here; one `for-each-ref` call if reftables matter.
+    // ponytail: one git process per fact; one `for-each-ref` call if reftable Stops grow slow.
     fn through_git(root: &Path) -> Here {
         let repo = Repo::at(root);
         let symbolic = |name: &str| {
@@ -257,7 +257,9 @@ impl Here {
             remotes: repo
                 .text(&["for-each-ref", "--count=1", "refs/remotes"])
                 .is_some_and(|found| !found.trim().is_empty()),
-            reflog: None,
+            reflog: repo
+                .text(&["reflog", "show", "--format=%gs", "HEAD"])
+                .map(|log| log.lines().rev().map(str::to_string).collect()),
         }
     }
 

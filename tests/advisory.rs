@@ -584,3 +584,37 @@ fn the_fresh_stamp_is_the_tree_the_stop_measured_and_holds_no_build_output() {
     assert!(listed.contains("src/lib.rs"), "{listed}");
     assert!(!listed.contains("built.txt"), "{listed}");
 }
+
+/// A repository that keeps its refs, and HEAD's reflog with them, in a reftable, with the agent
+/// on `main` and one prompt's stamp taken.
+fn reftable() -> Remote {
+    let tree = Tree::bare();
+    tree.git(&["init", "-q", "--ref-format=reftable", "-b", "main"]);
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", CLEAN);
+    tree.commit("the base");
+    let remote = Remote::adopt(tree);
+    prompt(&remote.tree);
+    remote
+}
+
+#[test]
+fn in_a_reftable_repository_the_agents_own_push_of_main_is_not_advisory() {
+    let remote = reftable();
+    remote.tree.write("src/agent.rs", CLEAN);
+    remote.tree.commit("the agent's own commit on main");
+    remote.tree.git(&["push", "-q", "origin", "main"]);
+
+    assert_turn_blocks(&remote.tree);
+}
+
+#[test]
+fn in_a_reftable_repository_a_pull_of_main_is_advisory() {
+    let remote = reftable();
+    remote.incoming();
+    remote
+        .tree
+        .git(&["pull", "-q", "--ff-only", "origin", "main"]);
+
+    assert_advisory(&remote.tree, "incoming-commits");
+}

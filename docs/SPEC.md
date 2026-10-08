@@ -668,9 +668,10 @@ these happened:
    the agent reset onto it.
 4. **Missing state.** The stamp and its ref are both missing (0.x 6.2).
 
-The agent's own work never triggers these rules: a commit, a push, an amend,
-a `reset --soft` or an interactive rebase of the turn's commits on the same
-branch leaves the default-branch merge-base and the branch as they were. The
+Where HEAD has a reflog, the agent's own work never triggers these rules: a
+commit, a push, an amend, a `reset --soft` or an interactive rebase of the
+turn's commits on the same branch leaves the default-branch merge-base and the
+branch as they were, or moves the merge-base with no incoming reflog entry. The
 turn window then stays precise, because `before` is the stamp tree. When such
 a rewrite drops the stamp's parent from HEAD history, the stamp keeps its
 tree, and the derivation commit stays the stamp's parent, which the stamp
@@ -730,6 +731,9 @@ and 4 are advisory.
   says so.
 - An agent can make one Stop advisory by merging the default branch or by
   switching branches. Section 16.1 records this Feedback limit.
+- Where HEAD has no reflog (`core.logAllRefUpdates` off), the agent's own
+  push of the default branch moves the merge-base, so that Stop is advisory.
+  Section 16.1 records this Feedback limit too, and section 18.7 lists it.
 - A stamp restored from its ref has no recorded merge-base or reflog
   position. Its first Stop compares the default-branch merge-base of the
   stamp's parent with HEAD's. That Stop is advisory when the two differ,
@@ -741,8 +745,7 @@ and 4 are advisory.
 default-branch commit). `session`, `prompt` and `stop` read HEAD, HEAD's
 symbolic ref, the default-branch ref and HEAD's reflog as files, after one
 `git rev-parse` finds the git directory. Where the repository stores refs in
-a reftable, klin asks git for them and reads no reflog, so a moved
-default-branch merge-base alone is advisory there. `pre_tool` reads
+a reftable, klin asks git for them, HEAD's reflog included. `pre_tool` reads
 none of them. klin starts `git merge-base` only when the pair changed, which
 happens on the first Stop or prompt after each commit. An advisory Stop adds
 a stamp capture to an ordinary Stop (section 14.4).
@@ -2026,7 +2029,8 @@ open until the failure is fixed or accepted, and refuses the agent's edits to
 the guarded set. Holes, coverage notes and configuration errors are told and
 recorded locally, and CI judges them where CI runs `klin check`. An agent
 that merges incoming commits, switches branches or moves a remote-tracking
-ref by hand makes one Stop advisory (section 6.6). The debt it left before
+ref by hand makes one Stop advisory (section 6.6). Where HEAD has no reflog,
+the agent's own push of the default branch does the same. The debt it left before
 that Stop is then judged only where CI runs `klin check`, and goes unjudged
 where no CI runs it. In a repository with no remote, the branch fallback
 judges from the 0.x 6.3 base, which on the default branch can be HEAD, so a
