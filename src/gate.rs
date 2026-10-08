@@ -1013,7 +1013,7 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
-    let gone = gone_pins(args, project, &wanted, out);
+    let gone = gone_moves(args, project, &wanted, out);
     tally.told += gone.len();
     records.notes.extend(gone);
     if let Some(unbuilt) = unbuilt {
@@ -2672,10 +2672,10 @@ fn measured(
     Ok(())
 }
 
-/// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
-/// selects nothing in either tree, and of a file moved under a skipped directory. A pin whose files were all renamed is followed in silence,
-/// and `klin check` names it. Spec 7.3.
-fn gone_pins(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
+/// What the Stop notes of a moved pinned path, one whose files went with no rename or that
+/// selects nothing in either tree, and of a file moved under a skipped directory. A pin whose
+/// files were all renamed is followed in silence, and `klin check` names it. Spec 7.3.
+fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
     let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
     gone.filter_map(Moved::said)
         .map(|said| {
@@ -2916,8 +2916,8 @@ impl Report {
 
     /// What binding the window found: the window and the tree the run judges, a `moved-pin`
     /// review item per moved pinned path, a `moved-skipped` one per file moved under a skipped
-    /// directory, a note each for a rewritten push base or a base equal
-    /// to HEAD, and the hole of a local base equal to HEAD that may hide unpushed commits.
+    /// directory, a note each for a rewritten push base or a base equal to HEAD, and the hole
+    /// of a local base equal to HEAD that may hide unpushed commits.
     /// Spec 6.5, 7.3.
     fn windowed(
         &mut self,

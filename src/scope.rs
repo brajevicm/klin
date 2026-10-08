@@ -409,8 +409,8 @@ impl Moved {
         }
     }
 
-    /// What a moved pin says to a person, and nothing for a file moved out of a scope, whose
-    /// findings carry `moved_out_of_scope`. Spec 7.3.
+    /// What a moved pin or a file moved under a skipped directory says to a person, and nothing
+    /// for a file moved out of a scope, whose findings carry `moved_out_of_scope`. Spec 7.3.
     pub fn said(&self) -> Option<String> {
         let (section, path, renamed, deleted) = match self {
             Moved::Pin {
@@ -449,8 +449,8 @@ impl Moved {
         ))
     }
 
-    /// The old and new path of each file a moved pin followed, and nothing where none was
-    /// renamed. Spec 11.7.
+    /// The old and new path of each file a moved pin followed or a rename took under a skipped
+    /// directory, and nothing where none was renamed. Spec 11.7.
     pub fn reason(&self) -> Option<String> {
         let renamed = match self {
             Moved::Pin { renamed, .. } => renamed,

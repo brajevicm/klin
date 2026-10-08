@@ -194,6 +194,20 @@ fn a_file_renamed_into_a_skipped_directory_is_a_review_item_and_a_stop_note() {
     }
 }
 
+#[test]
+fn a_file_no_language_reads_renamed_into_a_skipped_directory_says_nothing() {
+    let tree = pinned(CONFIG);
+    tree.write("tests/data.json", "{}\n");
+    tree.base();
+    std::fs::create_dir_all(tree.path("tests/fixtures")).unwrap_or_default();
+    tree.git(&["mv", "tests/data.json", "tests/fixtures/data.json"]);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "pass", "{report}");
+}
+
 /// A Stop builds before it measures, so a file the build writes or rewrites is measured even
 /// where a section states an `in`. Spec 6.4.
 #[test]

@@ -19,7 +19,7 @@ use crate::error::Error;
 use crate::key::Section;
 use crate::scope::{self, Moved, Moves};
 use crate::tree::{self, Tree};
-use crate::{stamp, survey};
+use crate::{stamp, survey, syntax};
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
 pub struct Project {
@@ -131,13 +131,7 @@ impl Project {
                     .unwrap_or_default(),
                 false => Moves::default(),
             };
-            moves.extend(changes.iter().filter_map(|change| {
-                let was = change.was.as_deref()?;
-                (tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
-                    was: was.to_string(),
-                    path: change.path.clone(),
-                })
-            }));
+            moves.extend(skipped(&changes));
             moves
         })
     }
@@ -222,4 +216,19 @@ impl Run for Project {
     fn state(&self) -> Option<&Path> {
         self.facts().state.as_deref()
     }
+}
+
+/// Each source file a rename took from a path a walk reaches to one under a directory every
+/// walk skips, which no check measures in either tree. A file no language reads, such as test
+/// data moved under `fixtures/`, is left out. Spec 7.3.
+fn skipped(changes: &[Change]) -> impl Iterator<Item = Moved> + '_ {
+    let extensions = syntax::extensions(&[]);
+    changes.iter().filter_map(move |change| {
+        let was = change.was.as_deref()?;
+        let source = extensions.iter().any(|extension| was.ends_with(extension));
+        (source && tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
+            was: was.to_string(),
+            path: change.path.clone(),
+        })
+    })
 }

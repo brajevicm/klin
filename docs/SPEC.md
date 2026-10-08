@@ -1022,15 +1022,18 @@ Rules:
   finding by moving its file out of scope, without blocking a requested
   move. The kept membership holds in both trees and against an `except`
   path too, so a file renamed under an `except` path is still measured.
-- **Moved into a skipped directory.** A file that the change moved, by a
-  detected rename, from a path a walk reaches to a path under a directory of
-  the default skip set, such as `out/`, `build/` or `vendor/`, is in neither
-  tree's file list, so no capability measures it at its new path. It is a
-  note at the Stop and a review item of kind `moved-skipped` at `klin check`.
-  The review item's `file` is the new path and its `check` is null. No block
-  and no error. This holds with or without an `in` scope. A rename under a
-  directory that only a section's own `skip_dirs` names is that section's
-  policy, and this rule does not reach it.
+- **Moved into a skipped directory.** A source file, of a language klin
+  reads, that the change moved by a detected rename from a path under no
+  directory of the default skip set to a path under one, such as `out/`,
+  `build/` or `vendor/`, is in neither tree's file list, so no capability
+  measures it at its new path. It is a note at the Stop and a review item of
+  kind `moved-skipped` at `klin check`. The review item's `file` is the new
+  path and its `check` is null. No block and no error. This holds with or
+  without an `in` scope. A file of no language klin reads, such as test data
+  moved under `fixtures/`, says nothing. **Known limit:** a rename under a
+  hidden directory, or under a directory that only a section's own
+  `skip_dirs` names, is not reported. A section's `skip_dirs` is that
+  section's policy.
 - At the Stop, any other capability-scope error does not stop the other
   capabilities, and it never blocks. A FAIL beside it still spends its block.
   A run-scope configuration error writes `unjudged` (section 6.6). A klin
