@@ -2186,7 +2186,7 @@ fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
                 .iter()
                 .map(|file| seen(&file.file, Seen::Unread))
                 .collect(),
-            Told::Hole(Hole::Lost(site)) => vec![seen(&site.file, Seen::Left(site.text.clone()))],
+            Told::Hole(Hole::Lost { file, why }) => vec![seen(file, Seen::Left(*why))],
             Told::Hole(Hole::Manifest { site, class }) => vec![seen(
                 &site.file,
                 Seen::Manifest {

@@ -870,8 +870,11 @@ measured.
 - Any reason of the opened-gap table that the base holds at the same site
   with the same reason.
 - `left-scope` caused by a change to `klin.json`, which a person made in a
-  reviewed commit. A window that changes `klin.json` attributes every
-  `left-scope` file to that change.
+  reviewed commit. A capability measures the base under the base's own
+  `klin.json` scope and the working tree under today's, so a file that
+  today's `in` or `except` drops is the person's decision. Each capability's
+  reason decides its own loss: a person's exclusion in one capability never
+  covers what a manifest took from another.
 
 **The named 0.x holes.** Each case that 0.x section 8 names as a file or form
 klin could not measure falls into one class:

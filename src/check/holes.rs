@@ -10,7 +10,7 @@ use std::path::Path;
 
 use crate::changed::{self, Change};
 use crate::check::contract::{Cause, Class, Context, Hole, Located, Sink, Site, Unresolvable};
-use crate::coverage::{Lost, Unresolved, held_at, in_scope};
+use crate::coverage::{Left, Lost, Unresolved, held_at, in_scope};
 use crate::files::{self, Form};
 use crate::project::Project;
 use crate::syntax::{self, Refusal, Unparsed};
@@ -45,10 +45,10 @@ pub fn held_files(config: &crate::config::Config) -> Vec<String> {
 /// tree, and not measured now. The runner decides what each one is. Spec 7.2.
 pub fn lost_said(lost: &[Lost], out: &mut Sink) {
     for file in lost {
-        out.tell(Hole::Lost(Site {
+        out.tell(Hole::Lost {
             file: file.file.clone(),
-            text: file.why.to_string(),
-        }));
+            why: file.why,
+        });
     }
 }
 
@@ -140,7 +140,7 @@ pub enum Seen {
     /// No grammar read it.
     Unread,
     /// It left the gate's scope, for the reason the gate gives.
-    Left(String),
+    Left(Left),
     /// A manifest no parser read, which the gate that reads manifests already classed.
     Manifest { class: Class, why: String },
     /// A file the working tree's `.gitattributes` make not text, which no gate read.
@@ -230,8 +230,8 @@ fn one(
         Some(Seen::Form(form)) => formed(project.root(), against, file, *form),
         Some(Seen::Unread) => unread(project, against, file),
         Some(Seen::Manifest { class, why }) => manifest(*class, why),
-        Some(Seen::Left(why)) => left(project, against, file, why),
-        None => left(project, against, file, ""),
+        Some(Seen::Left(_)) => left(project, against, file, &whys(seen)),
+        None => left(project, against, file, &[]),
     }
 }
 
@@ -366,9 +366,28 @@ fn refusal_at(root: &Path, file: &str) -> Option<Refusal> {
 
 /// A file that left a gate's scope: lost where its working-tree path is now a symbolic link,
 /// klin's own limit where a person changed `klin.json`, and an opened gap otherwise. Spec 7.2.
-fn left(project: &Project, against: Option<(&[Change], &str)>, file: &str, why: &str) -> Sorted {
-    let root = project.root();
-    if linked(root, file) {
+/// Why each gate that reported this file says it left that gate's scope.
+fn whys(seen: &[(String, Seen)]) -> Vec<Left> {
+    seen.iter()
+        .filter_map(|(_, seen)| match seen {
+            Seen::Left(why) => Some(*why),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A file that left the scope of the gates that reported it: lost where its working-tree path is
+/// now a symbolic link, klin's own limit where every such gate's own `klin.json` scope dropped
+/// it, which a person did in a reviewed commit, and an opened gap where any gate lost it to the
+/// facts, such as a manifest. Each gate's reason decides its own loss, so a person's exclusion
+/// in one gate never covers what a manifest took from another. Spec 7.2.
+fn left(
+    project: &Project,
+    against: Option<(&[Change], &str)>,
+    file: &str,
+    whys: &[Left],
+) -> Sorted {
+    if linked(project.root(), file) {
         return (
             Class::Lost,
             Cause::Form,
@@ -376,24 +395,17 @@ fn left(project: &Project, against: Option<(&[Change], &str)>, file: &str, why: 
             "it is a symbolic link now, so it is not text".to_string(),
         );
     }
-    let configured = project
-        .config
-        .file
-        .strip_prefix(root)
-        .ok()
-        .and_then(Path::to_str)
-        .is_some_and(|config| {
-            against.is_some_and(|(changes, _)| changes.iter().any(|change| change.path == config))
-        });
-    let class = match (against, configured) {
-        (None, _) | (_, true) => Class::Limit,
-        (Some(_), false) => Class::Opened,
+    let facts = whys.iter().find(|why| **why != Left::Excluded);
+    let class = match (against, facts) {
+        (None, _) | (_, None) => Class::Limit,
+        (Some(_), Some(_)) => Class::Opened,
     };
+    let why = facts.copied().unwrap_or(Left::Excluded);
     (
         class,
         Cause::LeftScope,
         None,
-        format!("measured at the base and not now — {why}"),
+        format!("measured at the base and not now — {}", why.text()),
     )
 }
 

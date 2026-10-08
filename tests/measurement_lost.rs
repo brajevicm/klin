@@ -755,3 +755,50 @@ fn a_binary_attribute_the_change_gives_a_measured_file_blocks_the_stop() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("measurement-lost"), "{}", run.out);
 }
+
+fn left_scope(report: &Value, file: &str) -> Vec<String> {
+    list(report, "reviews")
+        .iter()
+        .filter(|review| review["reason"] == "left-scope" && review["file"] == file)
+        .filter_map(|review| review["kind"].as_str().map(str::to_string))
+        .collect()
+}
+
+#[test]
+fn an_unrelated_klin_json_edit_does_not_quiet_a_manifest_that_narrowed_a_scope() {
+    let tree = two_roots();
+    tree.write(
+        "klin.json",
+        &LAYERS.replace("\"README.md\": 10", "\"README.md\": 11"),
+    );
+
+    let (code, report) = checked(&tree, &["layering"]);
+
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(
+        left_scope(&report, "src/domain/mod.rs"),
+        ["unmeasured"],
+        "{report}"
+    );
+}
+
+#[test]
+fn an_exclusion_in_one_gate_does_not_cover_what_a_manifest_took_from_another() {
+    let tree = two_roots();
+    tree.write(
+        "klin.json",
+        &LAYERS.replace(
+            "\"layering\"",
+            "\"complexity\": {\"except\": \"src/domain\"}, \"layering\"",
+        ),
+    );
+
+    let (code, report) = checked(&tree, &["complexity", "layering"]);
+
+    assert_eq!(code, 0, "{report}");
+    assert_eq!(
+        left_scope(&report, "src/domain/mod.rs"),
+        ["unmeasured"],
+        "{report}"
+    );
+}

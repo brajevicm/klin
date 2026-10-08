@@ -15,7 +15,7 @@ use crate::base::{self, Prior, Window};
 use crate::ceiling::Ceiling;
 use crate::changed::Change;
 use crate::config::Config;
-use crate::coverage::Coverage;
+use crate::coverage::{Coverage, Left};
 use crate::error::Error;
 use crate::key::Key;
 use crate::measurement::{self, Unchanged};
@@ -590,7 +590,7 @@ impl Cause {
 /// each file once for the run against the base. Spec 7.2.
 pub enum Hole {
     /// A file `before` measured and `after` does not, though the tree still holds it, and why.
-    Lost(Site),
+    Lost { file: String, why: Left },
     /// The files in the gate's scope no grammar read, each with its grammar's name.
     Unparsed(Vec<Site>),
     /// A manifest klin could not parse, which the gate already classed against the base.

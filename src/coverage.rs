@@ -91,13 +91,13 @@ impl Files {
             .map(|file| Lost {
                 file: file.clone(),
                 why: if self.unreadable.contains(file) {
-                    "the grammar refused it"
+                    Left::Refused
                 } else if self.excluded.contains(file) {
-                    "an exclusion drops it now"
+                    Left::Excluded
                 } else if self.not_measured.contains(file) {
-                    "no structural adapter or module reads it now"
+                    Left::Unattached
                 } else {
-                    "no discovery rule places it under a root now"
+                    Left::Undiscovered
                 },
             })
             .collect()
@@ -121,7 +121,30 @@ fn still_held(project: &Project, file: &str) -> bool {
 
 pub struct Lost {
     pub file: String,
-    pub why: &'static str,
+    pub why: Left,
+}
+
+/// Why a file the base measured is not measured now. Only `Excluded` is a person's decision:
+/// the gates measure the base under the base's own `klin.json` scope and the working tree under
+/// today's, so a file today's `in` or `except` drops is one a reviewed commit dropped. Every
+/// other reason comes from the facts, such as a manifest. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Left {
+    Refused,
+    Excluded,
+    Unattached,
+    Undiscovered,
+}
+
+impl Left {
+    pub fn text(self) -> &'static str {
+        match self {
+            Left::Refused => "the grammar refused it",
+            Left::Excluded => "an exclusion drops it now",
+            Left::Unattached => "no structural adapter or module reads it now",
+            Left::Undiscovered => "no discovery rule places it under a root now",
+        }
+    }
 }
 
 /// Whether a scoped run judges this file, which is every file outside a scoped run.
