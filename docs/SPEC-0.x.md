@@ -4538,8 +4538,8 @@ and keep the same shape, so fixture generation asserts that both hold 270 to
 counts, the language split, the TSX count, exact LoC, the exact declaration
 count, an FNV-1a digest of every generated path and byte, and representative
 structure. Configured Rust and TypeScript module families exercise
-`complexity`, `dead-symbols` and `reachability` through the real binary. Run
-with the current binary, the dense rows also write a `layering` section with
+`complexity`, `dead-symbols` and `reachability` through the real binary. The
+dense rows also write a `layering` section with
 one layer per language and `acyclic` set, so every row builds both module
 graphs and finds their cycles, and each gate row prints `graph_modules`,
 `graph_sources`, `graph_dependencies`, `graph_edges`, `graph_ms` and
@@ -4548,8 +4548,13 @@ physical files they hold, and dependency sites from the distinct module pairs
 those sites join. The `public-api` row also prints
 `surface_dispatches_<language>`. The warm hook asserts that `layering`
 reads and parses no source of its own, because it takes every structural
-outcome an earlier gate of the stop already held. A binary named by
-`KLIN_BIN` reads no `layering` section, so its rows leave the section out.
+outcome an earlier gate of the stop already held. `KLIN_PERF_LAYERING`
+chooses the section: `on`, the default, writes it, and `off` leaves it out,
+for a binary before #50 that reads none. The choice does not depend on
+`KLIN_BIN`, so a row taken with and without it judges the same gates. The
+fixture line prints `layering=on` or `layering=off`. It prints `off` for the
+2k and 10k rows and for the `legacy` configuration, which never hold the
+section.
 The fixture's `web/package.json` names `./src/index.ts` under `exports`, and
 its `rust/src/lib.rs` is the implicit library root, so every row derives one
 Rust and one TypeScript public surface, and the `public-api` gate row prints
