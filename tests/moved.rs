@@ -159,6 +159,41 @@ fn a_complex_function_in_a_file_moved_out_of_an_in_scope_still_fails() {
     assert!(stop.says("src/elsewhere/a.rs"), "{}", stop.out);
 }
 
+#[test]
+fn a_file_renamed_into_a_skipped_directory_is_a_review_item_and_a_stop_note() {
+    for config in [CONFIG, r#"{"complexity": {"cc": 8, "lines": 60}}"#] {
+        let tree = pinned(config);
+        std::fs::create_dir_all(tree.path("src/out")).unwrap_or_default();
+        tree.git(&["mv", "src/core/a.rs", "src/out/a.rs"]);
+        tree.write("src/out/a.rs", &format!("{}{}", many(), complex()));
+
+        let run = tree.run(&["check", "--json"]);
+        assert_eq!(run.code, 0, "{config}: {}", run.out);
+        let report = run.json();
+        assert_eq!(report["judgement"], "review", "{config}: {report}");
+        let hidden: Vec<&Value> = report["reviews"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|review| review["kind"] == "moved-skipped")
+            .collect();
+        assert_eq!(hidden.len(), 1, "{config}: {report}");
+        assert_eq!(hidden[0]["file"], "src/out/a.rs", "{config}: {report}");
+        assert_eq!(
+            hidden[0]["reason"], "src/core/a.rs -> src/out/a.rs",
+            "{config}: {report}"
+        );
+
+        let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+        assert_eq!(stop.code, 0, "{config}: {}", stop.out);
+        assert!(
+            stop.says("NOTE: src/core/a.rs moved to src/out/a.rs"),
+            "{config}: {}",
+            stop.out
+        );
+    }
+}
+
 /// A Stop builds before it measures, so a file the build writes or rewrites is measured even
 /// where a section states an `in`. Spec 6.4.
 #[test]

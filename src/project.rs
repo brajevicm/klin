@@ -17,8 +17,8 @@ use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
-use crate::scope::{self, Moves};
-use crate::tree::Tree;
+use crate::scope::{self, Moved, Moves};
+use crate::tree::{self, Tree};
 use crate::{stamp, survey};
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
@@ -112,20 +112,33 @@ impl Project {
         self.moves.take();
     }
 
-    /// What the change did to the paths the policy names, which the run follows, and nothing
-    /// before a window is bound or where no section states a scope. Spec 7.3.
+    /// What the change did to the paths the policy names, which the run follows, and each file
+    /// it renamed under a directory every walk skips. Nothing before a window is bound, and no
+    /// scope move where no section states a scope. Spec 7.3.
     pub fn moves(&self) -> &Moves {
         self.moves.get_or_init(|| {
             let Some(base) = self.bound.as_deref() else {
                 return Moves::default();
             };
-            if !scope::states_a_scope(&self.config) {
+            let Ok(changes) = self.changes(base) else {
                 return Moves::default();
-            }
-            match (self.changes(base), self.tree.files()) {
-                (Ok(changes), Ok(files)) => scope::moved(&self.config, files, base, &changes),
-                _ => Moves::default(),
-            }
+            };
+            let mut moves = match scope::states_a_scope(&self.config) {
+                true => self
+                    .tree
+                    .files()
+                    .map(|files| scope::moved(&self.config, files, base, &changes))
+                    .unwrap_or_default(),
+                false => Moves::default(),
+            };
+            moves.extend(changes.iter().filter_map(|change| {
+                let was = change.was.as_deref()?;
+                (tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
+                    was: was.to_string(),
+                    path: change.path.clone(),
+                })
+            }));
+            moves
         })
     }
 

@@ -327,12 +327,13 @@ impl Moves {
     /// The paths this run keeps in a section's scope because the change moved them.
     fn kept(&self, section: &str) -> Vec<String> {
         let mut kept = Vec::new();
-        for moved in self.iter().filter(|moved| moved.section() == section) {
+        for moved in self.iter().filter(|moved| moved.section() == Some(section)) {
             match moved {
                 Moved::Pin { renamed, .. } => {
                     kept.extend(renamed.iter().map(|(_, path)| path.clone()))
                 }
                 Moved::Out { path, .. } => kept.push(path.clone()),
+                Moved::Skipped { .. } => {}
             }
         }
         kept
@@ -361,6 +362,12 @@ impl Moves {
     }
 }
 
+impl Extend<Moved> for Moves {
+    fn extend<T: IntoIterator<Item = Moved>>(&mut self, moves: T) {
+        self.0.extend(moves);
+    }
+}
+
 /// What a change did to a path the policy names, decided once per run against the base. Spec 7.3.
 #[derive(Clone, Debug)]
 pub enum Moved {
@@ -376,33 +383,49 @@ pub enum Moved {
     },
     /// A selected file the change renamed out of a scope that still selects other files.
     Out { section: String, path: String },
+    /// A file the change renamed from a path a walk reaches to one under a directory every walk
+    /// skips, which no check measures in either tree.
+    Skipped { was: String, path: String },
 }
 
 impl Moved {
-    /// The section whose scope the move touches.
-    pub fn section(&self) -> &str {
+    /// The section whose scope the move touches, and none for a move no scope decides.
+    pub fn section(&self) -> Option<&str> {
         match self {
-            Moved::Pin { section, .. } | Moved::Out { section, .. } => section,
+            Moved::Pin { section, .. } | Moved::Out { section, .. } => Some(section),
+            Moved::Skipped { .. } => None,
         }
     }
 
     /// Whether files of a moved pin went with no rename, or it selects nothing in either tree,
-    /// which the Stop notes. Spec 7.3.
+    /// or a file went under a skipped directory, which the Stop notes. Spec 7.3.
     pub fn gone(&self) -> bool {
-        matches!(self, Moved::Pin { renamed, deleted, .. } if renamed.is_empty() || *deleted > 0)
+        match self {
+            Moved::Pin {
+                renamed, deleted, ..
+            } => renamed.is_empty() || *deleted > 0,
+            Moved::Out { .. } => false,
+            Moved::Skipped { .. } => true,
+        }
     }
 
     /// What a moved pin says to a person, and nothing for a file moved out of a scope, whose
     /// findings carry `moved_out_of_scope`. Spec 7.3.
     pub fn said(&self) -> Option<String> {
-        let Moved::Pin {
-            section,
-            path,
-            renamed,
-            deleted,
-        } = self
-        else {
-            return None;
+        let (section, path, renamed, deleted) = match self {
+            Moved::Pin {
+                section,
+                path,
+                renamed,
+                deleted,
+            } => (section, path, renamed, deleted),
+            Moved::Out { .. } => return None,
+            Moved::Skipped { was, path } => {
+                return Some(format!(
+                    "{was} moved to {path}, under a directory every walk skips, so no check \
+                     measures it — move it back, or review the move"
+                ));
+            }
         };
         let to = renamed
             .iter()
@@ -429,8 +452,10 @@ impl Moved {
     /// The old and new path of each file a moved pin followed, and nothing where none was
     /// renamed. Spec 11.7.
     pub fn reason(&self) -> Option<String> {
-        let Moved::Pin { renamed, .. } = self else {
-            return None;
+        let renamed = match self {
+            Moved::Pin { renamed, .. } => renamed,
+            Moved::Out { .. } => return None,
+            Moved::Skipped { was, path } => return Some(format!("{was} -> {path}")),
         };
         (!renamed.is_empty()).then(|| {
             renamed
