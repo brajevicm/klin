@@ -118,8 +118,6 @@ fn refuses_the_commands_only_a_person_runs() {
         "klin setup",
         "klin setup --pin",
         "cd repo && target/debug/klin setup --pin --config klin.json",
-        "klin turn reset",
-        "target/debug/klin turn reset",
         "klin setup --user --host claude",
         "klin update",
         "env klin update",
@@ -278,12 +276,12 @@ fn refuses_a_persons_command_behind_a_prefix() {
     for command in [
         "env $(echo) klin setup",
         "sudo $(pwd) klin setup",
-        "time `echo` klin turn reset",
+        "time `echo` klin update",
         "KLIN_STATE_DIR=/tmp/x klin setup --pin",
-        "env klin turn reset",
+        "env klin setup --pin",
         "npx klin setup",
         "sudo klin setup",
-        "cd sub && klin turn reset",
+        "cd sub && klin update",
     ] {
         denied(&bash(command), command);
     }
@@ -349,7 +347,7 @@ fn a_command_that_writes_klins_own_state_is_denied_or_asked_about() {
 }
 
 #[test]
-fn an_edit_to_klins_own_state_is_refused_and_names_the_command_a_person_runs() {
+fn an_edit_to_klins_own_state_is_refused_and_names_no_command() {
     let tree = Tree::new();
     denied(
         &edit_in(&tree, "Write", ".git/klin/turn"),
@@ -360,8 +358,8 @@ fn an_edit_to_klins_own_state_is_refused_and_names_the_command_a_person_runs() {
         "an absolute state path",
     );
     assert!(
-        edit_in(&tree, "Write", ".git/klin/turn").says("klin turn reset"),
-        "the refusal names no command a person runs"
+        edit_in(&tree, "Write", ".git/klin/turn").says("No command moves it"),
+        "the refusal names a command that moves the stamp"
     );
 }
 

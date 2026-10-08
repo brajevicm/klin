@@ -239,17 +239,11 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = turn::window(root, lost, &mut log.flags, out).ok();
-    if let Some(window) = &window {
-        project.bind(window);
-    }
+    let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
     opened(root, lost, &mut log);
-    if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
-        log.flags.push("branch-fallback");
-    }
     let prior = (!lost).then(|| turn::aborting(root)).flatten();
-    let (code, verdict, asked, note) = ran(
+    let (code, leaves, asked, note) = ran(
         args,
         project,
         window.as_ref(),
@@ -264,13 +258,15 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let exit = exit_code(code, event.as_ref());
     finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
-    let (note, told) = once(root, note, log.report.as_ref());
+    let advised = matches!(leaves, Leaves::Fresh);
+    let fresh = fresh.filter(|_| advised);
+    log.advisory = log.advisory.filter(|_| advised);
     let left = turn::Left {
         prior: prior.unwrap_or_default(),
-        verdict,
+        verdict: leaves.verdict(),
         asked: asked.as_deref(),
     };
-    written(root, lost, left, &mut log);
+    let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
         let held = count(&at, &log);
@@ -290,6 +286,50 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     exit
+}
+
+/// The window this stop judges, bound to the project, and why the stop is advisory when the
+/// history moved under the turn. An advisory Stop that holds the state lock also captures the
+/// tree it measures before the build runs, so the fresh stamp it takes is that tree and holds
+/// no build output. A repository with no remote judges the branch instead, which the journal
+/// records as `branch-fallback`. Spec 6.6, 13.1.
+fn windowed(
+    project: &mut Project,
+    lost: bool,
+    log: &mut journal::Stop,
+    out: &mut String,
+) -> (Option<Window>, Option<stamp::Capture>) {
+    let Ok((window, advisory)) = turn::window(project.root(), lost, &mut log.flags, out) else {
+        return (None, None);
+    };
+    project.bind(&window);
+    log.advisory = advisory.map(turn::Reason::name);
+    if advisory.is_none() && matches!(window.kind, Kind::Branch) {
+        log.flags.push("branch-fallback");
+    }
+    let fresh = advisory
+        .filter(|_| !lost)
+        .and_then(|_| turn::capture(project.root()));
+    (Some(window), fresh)
+}
+
+/// What this stop leaves under the stamp, and the note it still tells with the records it
+/// tells: the verdict, or after an advisory Stop the fresh stamp of the tree it captured, whose
+/// empty `told` lets the whole note through. Spec 2.3, 6.6.
+fn leave(
+    root: &Path,
+    (lost, fresh): (bool, Option<stamp::Capture>),
+    note: Option<String>,
+    left: turn::Left,
+    log: &mut journal::Stop,
+) -> (Option<String>, Vec<String>) {
+    if let Some(fresh) = fresh {
+        refreshed(root, fresh, log);
+        return (note, Vec::new());
+    }
+    let kept = once(root, note, log.report.as_ref());
+    written(root, lost, left, log);
+    kept
 }
 
 /// The exit and the window, beside the report the run built. Spec 11.4.
@@ -404,6 +444,52 @@ fn written(root: &Path, lost: bool, left: turn::Left, log: &mut journal::Stop) {
     }
 }
 
+/// What a Stop's run leaves under the stamp: the verdict it reached, nothing where it measured
+/// nothing, so the `aborted` it wrote stays, or a fresh stamp where it measured in an advisory
+/// window. Spec 6.6.
+enum Leaves {
+    Verdict(Verdict),
+    Nothing,
+    Fresh,
+}
+
+impl Leaves {
+    /// What a run that measured leaves: a fresh stamp after an advisory Stop, and otherwise its
+    /// verdict, where a block that asked about every finding leaves no unasked deleted test.
+    fn measured(verdict: Option<Verdict>, asked: bool, advised: bool) -> Leaves {
+        match (verdict, advised) {
+            (_, true) => Leaves::Fresh,
+            (Some(Verdict::Red { open, .. }), false) if asked => Leaves::Verdict(Verdict::Red {
+                open,
+                unasked: Vec::new(),
+            }),
+            (Some(verdict), false) => Leaves::Verdict(verdict),
+            (None, false) => Leaves::Nothing,
+        }
+    }
+
+    fn verdict(self) -> Option<Verdict> {
+        match self {
+            Leaves::Verdict(verdict) => Some(verdict),
+            Leaves::Nothing | Leaves::Fresh => None,
+        }
+    }
+}
+
+/// The fresh stamp an advisory Stop takes in place of a verdict, so the next Stop is ordinary,
+/// and the journal's `advisory` verdict once it is written. A stamp git could not take leaves
+/// the `aborted` the Stop wrote, and the next Stop is advisory again. Spec 6.6, 13.1.
+fn refreshed(root: &Path, fresh: stamp::Capture, log: &mut journal::Stop) {
+    let mut said = String::new();
+    match turn::refreshed(root, fresh, &mut said) {
+        true => log.verdict = "advisory",
+        false => {
+            log.why = Some("git could not take a fresh stamp, so this advisory stop wrote none")
+        }
+    }
+    eprint!("{said}");
+}
+
 /// What a Stop's report tells that no later Stop under the same stamp repeats: each note and each
 /// error, keyed by its record. Spec 2.3.
 fn told_records(report: Option<&Value>) -> Vec<String> {
@@ -508,14 +594,14 @@ fn ran(
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, Option<Verdict>, Option<Vec<String>>, Option<String>) {
+) -> (u8, Leaves, Option<Vec<String>>, Option<String>) {
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
-            let (code, note) = handed(args, project, Err(problem), event, lost, log, out);
-            return (code, None, None, note);
+            let (code, note, _) = handed(args, project, Err(problem), event, lost, log, out);
+            return (code, Leaves::Nothing, None, note);
         }
     };
     match failure {
@@ -524,7 +610,7 @@ fn ran(
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             (
                 blocked_build(project.root(), event, text, code),
-                Some(Verdict::red()),
+                Leaves::Verdict(Verdict::red()),
                 None,
                 None,
             )
@@ -539,16 +625,10 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let (code, note) = handed(args, project, judged, event, lost, log, out);
+            let (code, note, advised) = handed(args, project, judged, event, lost, log, out);
             let asked = (code == BLOCKED).then_some(reported);
-            let verdict = match (verdict, &asked) {
-                (Some(Verdict::Red { open, .. }), Some(_)) => Some(Verdict::Red {
-                    open,
-                    unasked: Vec::new(),
-                }),
-                (verdict, _) => verdict,
-            };
-            (code, verdict, asked, note)
+            let leaves = Leaves::measured(verdict, asked.is_some(), advised);
+            (code, leaves, asked, note)
         }
     }
 }
@@ -584,7 +664,8 @@ fn sorted(
 }
 
 /// What the hook does with a run it finished: report it, and block the stop or let it end with
-/// the note it leaves for the person.
+/// the note it leaves for the person, and whether it was an advisory Stop that measured, which
+/// blocks nothing for a finding and tells what it found. Spec 6.6.
 fn handed(
     args: &Args,
     project: &Project,
@@ -593,14 +674,14 @@ fn handed(
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
-) -> (u8, Option<String>) {
-    let mut tally = match refused(args, outcome, out) {
-        Ok(tally) => tally,
+) -> (u8, Option<String>, bool) {
+    let (mut tally, measured) = match refused(args, outcome, out) {
+        Ok(tally) => (tally, true),
         Err(problem) => {
             let _ = writeln!(out, "ERR: {problem}");
             let mut records = Recorded::default();
             records.findings.push(record("error", &problem.to_string()));
-            Tally {
+            let tally = Tally {
                 errored: 1,
                 record: Some(as_json(
                     ERROR,
@@ -610,11 +691,16 @@ fn handed(
                     None,
                 )),
                 ..Tally::default()
-            }
+            };
+            (tally, false)
         }
     };
     log.report = tally.record.take();
-    hook(
+    if let Some(reason) = log.advisory.filter(|_| measured) {
+        let said = advised(reason, &tally, &std::mem::take(out));
+        return (0, Some(said), true);
+    }
+    let (code, note) = hook(
         args,
         tally,
         &std::mem::take(out),
@@ -622,7 +708,8 @@ fn handed(
         event,
         lost,
         log,
-    )
+    );
+    (code, note, false)
 }
 
 /// What one run came to: the gates that failed, the gates that could not run, and the notes
@@ -1849,6 +1936,20 @@ fn hook(
         log.gate_block = Some(number);
     }
     (code, None)
+}
+
+/// What an advisory Stop tells in place of a block: that the history moved, that klin blocks
+/// nothing until it settles, and what the run found, once, because the fresh stamp it takes
+/// makes the next Stop ordinary. Spec 6.6.
+fn advised(reason: &str, tally: &Tally, report: &str) -> String {
+    let line = format!(
+        "klin: the history moved under this turn ({reason}), so klin does not block until the \
+         history settles, and `klin check` judges the branch."
+    );
+    match tally.failed + tally.told + tally.errored {
+        0 => line,
+        _ => format!("{line}\n{report}"),
+    }
 }
 
 /// A stop that failed and spends no gate block: the report, why klin does not block again, and

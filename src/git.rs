@@ -165,7 +165,12 @@ impl<'a> Repo<'a> {
     /// could not answer. The three answers stay apart, because a caller that reads a refusal as
     /// a proven no acts on an answer git never gave. Spec 6.2.
     pub fn contains(&self, commit: &str) -> Option<bool> {
-        let (status, _) = self.ran(&["merge-base", "--is-ancestor", commit, "HEAD"], &[])?;
+        self.is_ancestor(commit, "HEAD")
+    }
+
+    /// Whether `ancestor` is `of` or an ancestor of it, with the same three answers.
+    pub fn is_ancestor(&self, ancestor: &str, of: &str) -> Option<bool> {
+        let (status, _) = self.ran(&["merge-base", "--is-ancestor", ancestor, of], &[])?;
         match status.code() {
             Some(0) => Some(true),
             Some(NOT_AN_ANCESTOR) => Some(false),

@@ -560,7 +560,8 @@ fn a_moved_stamp_derives_under_the_commit_it_was_taken_over() {
         tree.write(&format!("d{at}/f.txt"), &lines(200, "line "));
     }
     tree.commit("a commit a person keeps");
-    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
+    assert_eq!(tree.stop().code, 0);
+    assert_eq!(radius(&tree, A_PROMPT).code, 0);
     assert_eq!(radius(&tree, A_PROMPT).code, 0);
 
     let second = cache(&tree);

@@ -67,3 +67,7 @@ more.
 - Keep the record somewhere a person writes, such as `klin.json`. The
   `accepted` list is a person's, in a reviewed commit, and a per-turn record
   klin writes on every stop does not belong in a tracked file.
+
+Amended 2026-10-09. `klin turn reset` and `klin cache clean` no longer exist
+(#503). A refusal for the state directory names no command a person runs. It
+says that no command moves the stamp. The cache stays safe to delete by hand.

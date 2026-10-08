@@ -1123,8 +1123,9 @@ fn told(run: &harness::Run) -> String {
         .unwrap_or_default()
 }
 
+/// No command writes a `reset` line any more, and a reader still reads an old one. Spec 13.1.
 #[test]
-fn the_session_report_sets_aside_what_a_reset_left_behind() {
+fn the_session_report_sets_aside_what_an_old_reset_line_left_behind() {
     let tree = hooked();
     blocked(&tree);
 
@@ -1137,10 +1138,11 @@ fn the_session_report_sets_aside_what_a_reset_left_behind() {
     );
     assert!(before.says("klin caught 1 this session."), "{}", before.out);
 
-    let reset = tree.run(&["turn", "reset"]);
-    assert_eq!(reset.code, 0, "{}", reset.out);
-    let after = hook(&tree, A_SECOND_STOP);
-    assert_eq!(after.code, 0, "{}", after.out);
+    let journal = tree.state("journal.jsonl");
+    let mut text = std::fs::read_to_string(&journal).unwrap_or_default();
+    text.push_str(r#"{"schema":1,"version":"0.3.0","time":9999999999,"kind":"reset","session":null,"prompt":1}"#);
+    text.push('\n');
+    tree.write(".git/klin/journal.jsonl", &text);
 
     let session = tree.run(&["report"]);
     assert!(

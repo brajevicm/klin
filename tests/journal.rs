@@ -333,19 +333,6 @@ fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() 
     assert!(run.says("blocks nothing"), "{}", run.out);
 }
 
-#[test]
-fn cache_clean_leaves_the_journal_in_place() {
-    let tree = tree(EVERY_GATE);
-    prompt(&tree);
-    let run = stop(&tree, A_STOP);
-    assert_eq!(run.code, 0, "{}", run.out);
-    assert!(tree.state("journal.jsonl").is_file());
-
-    let clean = tree.run(&["cache", "clean"]);
-    assert_eq!(clean.code, 0, "{}", clean.out);
-    assert!(tree.state("journal.jsonl").is_file(), "{}", clean.out);
-}
-
 const A_SARIF_GATE: &str = r#"{
   "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
   "accepted": [
@@ -677,25 +664,6 @@ fn a_guard_allow_appends_no_line() {
     );
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(journal(&tree).is_empty(), "{:?}", journal(&tree));
-}
-
-#[test]
-fn turn_reset_appends_a_line_with_the_prompt_counter() {
-    let tree = tree(EVERY_GATE);
-    prompt(&tree);
-    prompt(&tree);
-    tree.words("README.md", 30);
-    let first = stop(&tree, A_STOP);
-    assert_eq!(first.code, 2, "{}", first.out);
-
-    let run = tree.run(&["turn", "reset"]);
-    assert_eq!(run.code, 0, "{}", run.out);
-
-    let lines = journal(&tree);
-    let line = lines.last().unwrap_or_else(|| panic!("an empty journal"));
-    assert_eq!(field(line, &["kind"]), "reset", "{line}");
-    assert_eq!(field(line, &["session"]), &Value::Null, "{line}");
-    assert_eq!(field(line, &["prompt"]), 2, "{line}");
 }
 
 /// Unrelated history in front of the lines a stop reads, dated a month back, so the bounded

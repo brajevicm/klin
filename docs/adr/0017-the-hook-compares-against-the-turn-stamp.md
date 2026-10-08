@@ -132,3 +132,17 @@ forgives nothing, and pointing the ref at the base instead would not work: a
 stamp restored from the ref reads its parent as `<commit>^`, which names the
 stamped HEAD for a synthetic stamp alone.
 `docs/SPEC.md` 6.2, 14 and 16.1 carry the rule. #238.
+
+Amended 2026-10-09, fourth amendment. `klin turn reset` no longer exists
+(#503), and no command moves the stamp. The stamp also records the
+default-branch merge-base, HEAD's symbolic ref and HEAD's reflog position.
+When incoming commits, a branch change, lost history, or a missing stamp and
+ref show that the history moved, the Stop is advisory. It measures against
+the stamp, blocks nothing for a finding, tells what it found once, and takes a
+fresh stamp itself. A build failure still blocks.
+
+The third amendment's ancestry test now needs a branch change too. An amend,
+a `reset --soft` or a rebase of the turn's commits on the same branch keeps
+the turn window. Its branch fallback, from the 0.x 6.3 base, stays only in a
+repository with no `refs/remotes/*` ref. `docs/SPEC.md` 6.6 carries the
+rules.

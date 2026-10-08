@@ -24,10 +24,8 @@ const REFUSAL: &str = "klin: refused — this would change the configuration (kl
 
 const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the turn, under \
     .git/klin. It holds the window a gate failed in and the questions this turn already put to \
-    you. Only a person moves it, with `klin turn reset`.";
+    you. No command moves it: fix what the gate names.";
 
-const RESET_REFUSAL: &str = "klin: refused — `klin turn reset` reopens the window a gate \
-    failed in. Only a person runs it.";
 const SETUP_REFUSAL: &str = "klin: refused — `klin setup` writes the configuration and \
     the host's hook files. Only a person runs it, in a reviewed commit.";
 const UPDATE_REFUSAL: &str = "klin: refused — `klin update` replaces the binary that judges \
@@ -36,13 +34,11 @@ const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's
     events, and the host runs it. Only the host runs it.";
 
 /// klin's own subcommands that only a person runs, the reason each is refused, and the
-/// hyphenated tag a journal line names the refusal by. Spec 10.8. `turn reset` stays on the list
-/// for as long as the hidden command exists, which #503 deletes.
+/// hyphenated tag a journal line names the refusal by. Spec 10.8.
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["setup"], SETUP_REFUSAL, "setup"),
     (&["update"], UPDATE_REFUSAL, "update"),
     (&["__agent"], AGENT_REFUSAL, "agent"),
-    (&["turn", "reset"], RESET_REFUSAL, "turn-reset"),
 ];
 
 /// The journal's name for a call the guard allowed and the host refused anyway, which is a host
@@ -74,14 +70,14 @@ pub fn run(event: &Event, root: &Path) -> u8 {
     let refused = !matches!(decision, Decision::Allow);
     if (refused || delivered != 0)
         && let Some(paths) = guarded.paths()
-        && let (Some(root), Some(at)) = (paths.config.parent(), paths.state.as_deref())
+        && let Some(at) = paths.state.as_deref()
         && let Some(_claim) = state::claim(at, &event.identity)
     {
         let named = match refused {
             true => reason,
             false => HOST_REFUSAL,
         };
-        journal::guard(root, at, event, delivered, named);
+        journal::guard(at, event, delivered, named);
     }
     delivered
 }

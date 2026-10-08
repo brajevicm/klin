@@ -258,19 +258,6 @@ fn a_run_by_hand_keeps_the_branch_window_the_stamp_did_not_touch() {
     );
 }
 
-#[test]
-fn a_stop_after_a_reset_compares_against_the_moved_stamp() {
-    let tree = stamped();
-    tree.write("src/lib.rs", text::WRAPPED);
-    let failed = stop(&tree);
-    assert_eq!(failed.code, 2, "{}", failed.out);
-    assert!(!failed.says("turn reset"), "{}", failed.out);
-
-    assert_eq!(tree.run(&["turn", "reset"]).code, 0);
-    let run = stop(&tree);
-    assert_eq!(run.code, 0, "{}", run.out);
-}
-
 /// A repository whose turn stamp was taken over a branch tip the current checkout does not
 /// hold: a session opened on one branch, and the worktree moved to a divergent one. #238.
 fn left_behind() -> Tree {
@@ -441,20 +428,22 @@ fn a_detached_head_outside_the_turn_history_judges_the_current_branch() {
     assert!(run.says("window: branch"), "{}", run.out);
 }
 
+/// A rewrite on the same branch is not a branch change, so with no remote to make the Stop
+/// advisory the turn window stays. Spec 6.6.
 #[test]
-fn a_reset_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
+fn a_reset_on_the_same_branch_keeps_the_turn_window() {
     let tree = stamped();
     tree.git(&["reset", "-q", "--hard", "main"]);
     tree.write("src/lib.rs", text::WRAPPED);
 
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert!(!run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
 }
 
 #[test]
-fn a_rebase_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
+fn a_rebase_on_the_same_branch_keeps_the_turn_window() {
     let tree = stamped();
     tree.git(&["config", "user.name", "klin"]);
     tree.git(&["config", "user.email", "klin@example.com"]);
@@ -470,8 +459,8 @@ fn a_rebase_that_drops_the_commit_the_turn_started_from_judges_the_branch() {
 
     let run = stop(&tree);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("HEAD no longer holds"), "{}", run.out);
-    assert!(run.says("window: branch"), "{}", run.out);
+    assert!(!run.says("HEAD no longer holds"), "{}", run.out);
+    assert!(run.says("window: turn"), "{}", run.out);
 }
 
 #[test]

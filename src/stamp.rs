@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde_json::{Map, Value};
@@ -152,6 +152,264 @@ pub struct Stamp {
     /// The notes and errors a Stop already told under this stamp, by record, so a later Stop
     /// does not repeat them. A fresh stamp holds none. Spec 2.3.
     pub told: Vec<String>,
+    /// Where the history stood when the stamp was taken, which tells a later Stop whether the
+    /// history moved under the turn. Spec 6.6.
+    pub history: History,
+}
+
+/// The default-branch merge-base, HEAD's symbolic ref (`HEAD` when detached) and the position
+/// of HEAD's reflog. A field the stamp never recorded is `None`. Spec 6.6.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct History {
+    pub merge_base: Option<String>,
+    pub head_ref: Option<String>,
+    pub reflog_position: Option<ReflogPosition>,
+}
+
+/// How many entries HEAD's reflog held, which is where a later Stop starts reading it. The
+/// reflog is compared by entry position, never by time. Spec 6.6.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReflogPosition(pub u64);
+
+impl History {
+    /// The history as this event finds it, through the merge-base cache.
+    pub fn now(root: &Path, at: &Path, here: &Here) -> History {
+        History {
+            merge_base: here
+                .pair()
+                .and_then(|(head, default)| merge_base(root, at, head, default)),
+            head_ref: here.head_ref.clone(),
+            reflog_position: here
+                .reflog
+                .as_ref()
+                .and_then(|entries| u64::try_from(entries.len()).ok())
+                .map(ReflogPosition),
+        }
+    }
+}
+
+/// HEAD, its symbolic ref, the default branch and HEAD's reflog as this event finds them, read
+/// from the git directory's files. The default branch is candidate 3 of 0.x 6.3 among
+/// remote-tracking refs alone. Spec 6.6.
+#[derive(Default)]
+pub struct Here {
+    pub head: Option<String>,
+    /// HEAD's symbolic ref, the branch an in-progress rebase works on, or `HEAD` when detached.
+    pub head_ref: Option<String>,
+    /// The default branch's ref and the commit it names.
+    pub default: Option<(String, String)>,
+    /// Whether any `refs/remotes/*` ref exists.
+    pub remotes: bool,
+    /// The message of each entry of HEAD's reflog, oldest first, and `None` without a reflog.
+    pub reflog: Option<Vec<String>>,
+}
+
+impl Here {
+    pub fn read(root: &Path) -> Here {
+        let Some(dir) = Repo::at(root).rev_parse_path("--absolute-git-dir") else {
+            return Here::default();
+        };
+        let common = std::fs::read_to_string(dir.join("commondir"))
+            .map_or_else(|_| dir.clone(), |common| dir.join(common.trim()));
+        if common.join("reftable").is_dir() {
+            return Here::through_git(root, &dir);
+        }
+        let refs = Refs {
+            packed: std::fs::read_to_string(common.join("packed-refs")).unwrap_or_default(),
+            dir,
+            common,
+        };
+        let head_ref = rebasing(&refs.dir).or_else(|| refs.symbolic("HEAD"));
+        Here {
+            head: refs.resolve("HEAD"),
+            head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
+            default: default_candidates(refs.symbolic("refs/remotes/origin/HEAD"))
+                .find_map(|name| Some((name.clone(), refs.resolve(&name)?))),
+            remotes: refs.packed.contains(" refs/remotes/")
+                || any_file(&refs.common.join("refs/remotes")),
+            reflog: std::fs::read_to_string(refs.dir.join("logs/HEAD"))
+                .ok()
+                .map(|log| {
+                    log.lines()
+                        .map(|entry| {
+                            entry
+                                .split_once('\t')
+                                .map_or("", |(_, said)| said)
+                                .to_string()
+                        })
+                        .collect()
+                }),
+        }
+    }
+
+    /// The same facts from git itself, for a repository that keeps its refs in a reftable.
+    // ponytail: one git process per fact; one `for-each-ref` call if reftable Stops grow slow.
+    fn through_git(root: &Path, dir: &Path) -> Here {
+        let repo = Repo::at(root);
+        let symbolic = |name: &str| {
+            repo.text(&["symbolic-ref", "-q", name])
+                .map(|found| found.trim().to_string())
+                .filter(|found| !found.is_empty())
+        };
+        Here {
+            head: resolve(root, "HEAD"),
+            head_ref: Some(
+                rebasing(dir)
+                    .or_else(|| symbolic("HEAD"))
+                    .unwrap_or_else(|| "HEAD".to_string()),
+            ),
+            default: default_candidates(symbolic("refs/remotes/origin/HEAD"))
+                .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
+            remotes: repo
+                .text(&["for-each-ref", "--count=1", "refs/remotes"])
+                .is_some_and(|found| !found.trim().is_empty()),
+            reflog: repo
+                .text(&["reflog", "exists", "HEAD"])
+                .and_then(|_| repo.text(&["reflog", "show", "--format=%gs", "HEAD"]))
+                .map(|log| log.lines().rev().map(str::to_string).collect()),
+        }
+    }
+
+    /// HEAD and the default branch's commit, the pair the merge-base cache is keyed by.
+    pub fn pair(&self) -> Option<(&str, &str)> {
+        Some((self.head.as_deref()?, self.default.as_ref()?.1.as_str()))
+    }
+
+    /// The reflog messages after the position a stamp recorded, and `None` where either side
+    /// has no reflog or the reflog is shorter than the position, so nothing can be compared.
+    pub fn reflog_since(&self, position: Option<ReflogPosition>) -> Option<&[String]> {
+        let entries = self.reflog.as_deref()?;
+        entries.get(usize::try_from(position?.0).ok()?..)
+    }
+}
+
+/// The branch an in-progress rebase works on, which counts as HEAD's symbolic ref while HEAD
+/// is detached under it. Git keeps the rebase state in the git directory whatever the ref
+/// format. Spec 6.6.
+fn rebasing(dir: &Path) -> Option<String> {
+    ["rebase-merge", "rebase-apply"]
+        .iter()
+        .find_map(|rebase| std::fs::read_to_string(dir.join(rebase).join("head-name")).ok())
+        .map(|name| name.trim().to_string())
+        .filter(|name| name.starts_with("refs/"))
+}
+
+fn default_candidates(named: Option<String>) -> impl Iterator<Item = String> {
+    named
+        .into_iter()
+        .chain(["refs/remotes/origin/main", "refs/remotes/origin/master"].map(String::from))
+}
+
+/// Loose refs under the git directory, and the packed refs beside them.
+struct Refs {
+    dir: PathBuf,
+    common: PathBuf,
+    packed: String,
+}
+
+impl Refs {
+    fn file(&self, name: &str) -> Option<String> {
+        let under = match name {
+            "HEAD" => &self.dir,
+            _ => &self.common,
+        };
+        std::fs::read_to_string(under.join(name)).ok()
+    }
+
+    fn symbolic(&self, name: &str) -> Option<String> {
+        let text = self.file(name)?;
+        Some(text.strip_prefix("ref: ")?.trim().to_string())
+    }
+
+    fn resolve(&self, name: &str) -> Option<String> {
+        let mut name = name.to_string();
+        for _ in 0..5 {
+            match self.symbolic(&name) {
+                Some(target) => name = target,
+                None => break,
+            }
+        }
+        let commit = self
+            .file(&name)
+            .map(|text| text.trim().to_string())
+            .or_else(|| {
+                self.packed.lines().find_map(|line| {
+                    let (commit, named) = line.split_once(' ')?;
+                    (named == name).then(|| commit.to_string())
+                })
+            })?;
+        (!commit.is_empty() && commit.bytes().all(|byte| byte.is_ascii_hexdigit()))
+            .then_some(commit)
+    }
+}
+
+fn any_file(dir: &Path) -> bool {
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .any(|entry| {
+            let path = entry.path();
+            path.is_file() || any_file(&path)
+        })
+}
+
+/// The merge-base of HEAD with the default branch, kept under the pair of commits it was
+/// computed for, so git computes it only when one of them moved. Spec 6.6.
+pub fn merge_base(root: &Path, at: &Path, head: &str, default: &str) -> Option<String> {
+    let file = at.join(MERGE_BASE);
+    if let Some(cached) = Cached::read(&file).filter(|cached| cached.keys(head, default)) {
+        return Some(cached.merge_base);
+    }
+    let found = Repo::at(root)
+        .text(&["merge-base", head, default])
+        .map(|found| found.trim().to_string())
+        .filter(|found| !found.is_empty())?;
+    let cached = Cached {
+        head: head.to_string(),
+        default: default.to_string(),
+        merge_base: found,
+    };
+    cached.write(&file);
+    Some(cached.merge_base)
+}
+
+/// Where the merge-base cache lives in the state directory.
+const MERGE_BASE: &str = "merge-base";
+
+/// The merge-base cache: one merge-base and the pair of commits it was computed for.
+struct Cached {
+    head: String,
+    default: String,
+    merge_base: String,
+}
+
+impl Cached {
+    /// The cache the file holds, and `None` for a file that is gone, torn or of another shape,
+    /// which costs one `git merge-base` and nothing else.
+    fn read(file: &Path) -> Option<Cached> {
+        let held: Value = serde_json::from_str(&std::fs::read_to_string(file).ok()?).ok()?;
+        let text = |key: &str| Some(held.get(key)?.as_str()?.to_string());
+        Some(Cached {
+            head: text("head")?,
+            default: text("default")?,
+            merge_base: text("merge_base")?,
+        })
+    }
+
+    fn keys(&self, head: &str, default: &str) -> bool {
+        self.head == head && self.default == default
+    }
+
+    /// A cache klin cannot write costs the next event one `git merge-base`.
+    fn write(&self, file: &Path) {
+        let held = serde_json::json!({
+            "head": self.head,
+            "default": self.default,
+            "merge_base": self.merge_base,
+        });
+        let _ = std::fs::write(file, held.to_string() + "\n");
+    }
 }
 
 /// Where this turn's window opened: the prompt mark the last event left, or the mark ref when
@@ -206,6 +464,14 @@ pub fn read(at: &Path) -> Option<Stamp> {
             .and_then(Value::as_bool)
             .unwrap_or_default(),
         told: strings(&held, "told"),
+        history: History {
+            merge_base: text("merge_base"),
+            head_ref: text("head_ref"),
+            reflog_position: held
+                .get("reflog_position")
+                .and_then(Value::as_u64)
+                .map(ReflogPosition),
+        },
     })
 }
 
@@ -235,6 +501,18 @@ pub fn recorded(stamp: &Stamp) -> Value {
         ("commit", stamp.commit.clone().map(Value::from)),
         ("parent", stamp.parent.clone().map(Value::from)),
         ("mark", stamp.mark.clone().map(Value::from)),
+        (
+            "merge_base",
+            stamp.history.merge_base.clone().map(Value::from),
+        ),
+        ("head_ref", stamp.history.head_ref.clone().map(Value::from)),
+        (
+            "reflog_position",
+            stamp
+                .history
+                .reflog_position
+                .map(|position| position.0.into()),
+        ),
     ];
     for (key, value) in fields_of {
         if let Some(found) = value {
