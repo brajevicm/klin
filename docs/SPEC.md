@@ -1055,9 +1055,22 @@ Rules:
   finding by moving its file out of scope, without blocking a requested
   move. The kept membership holds in both trees and against an `except`
   path too, so a file renamed under an `except` path is still measured.
-  **Known limit:** a rename into a directory every walk skips, such as
-  `out/`, `build/` or `vendor/`, takes the file out of both trees' file
-  lists, so this rule does not reach it. #523 owns that case.
+- **Moved into a skipped directory.** A source file, of a language klin
+  reads, that the change moved by a detected rename from a path under no
+  directory of the default skip set to a path under one, such as `out/`,
+  `build/` or `vendor/`, is in neither tree's file list, so no capability
+  measures it at its new path. It is a note at the Stop and a review item of
+  kind `moved-skipped` at `klin check`. The review item's `file` is the new
+  path and its `check` is null. No block and no error. This holds with or
+  without an `in` scope, and whichever capabilities the run selects. A
+  pinned `in` path whose files moved under a skipped directory does not
+  follow them there: its `moved-pin` review item counts them as moved under a
+  directory every walk skips, and never says the run measures them. A file of
+  no language klin reads, such as test data moved under `fixtures/`, says
+  nothing. **Known limit:** a rename under a
+  hidden directory, or under a directory that only a section's own
+  `skip_dirs` names, is not reported. A section's `skip_dirs` is that
+  section's policy.
 - At the Stop, any other capability-scope error does not stop the other
   capabilities, and it never blocks. A FAIL beside it still spends its block.
   A run-scope configuration error writes `unjudged` (section 6.6). A klin
@@ -1676,17 +1689,38 @@ Section 13.2.
 
 ### 11.6 `klin policy [SECTION]`
 
-- Read-only. It derives values as a run would, and it runs no check.
+- Read-only. It derives values as a run would, and it runs no check. Each
+  check has one derivation step that reads the configuration, the survey and
+  the derivation commit. `policy` calls only that step, and the check's own
+  run calls the same step before it measures, so the two cannot disagree.
+  `policy` lays out no base, measures no file of either tree, and writes
+  nothing to the state directory. It reads a cache that is already there.
 - Prints the effective policy of every capability, or of the one `SECTION`
-  names: activation, placement, state (`active`, `excluded`, `needs-policy`,
-  `not-applicable`), and each value with its provenance (`derived` with its
-  rule and derivation commit, `pinned`, dated with the step in force, or
-  `built-in`). It also prints the build policy, the accepted list and the
-  integration limitations of section 9.4.
+  names: activation (`automatic`, `policy`, `integration`), placement, state
+  (`active`, `excluded`, `needs-policy`, `not-applicable`), and each value
+  with its provenance (`derived` with its rule and derivation commit,
+  `pinned`, dated with the step in force, or `built-in`). An Automatic
+  capability whose facts the tree does not hold is `not-applicable`. A Policy
+  or Integration capability with no section is `needs-policy`. A value is
+  `built-in` when its key has a default and neither a person nor a
+  derivation gave it. Each `derived:` and `pinned:` line prints as a
+  `klin check SECTION` run prints it. In the JSON, a pinned dated schedule
+  has the step in force as its `value`, with that step's date as `step` and
+  the whole schedule as `schedule`.
+- A tree where no capability runs still has a policy: `klin policy` lists
+  each capability with the state that keeps it from running, and exits 0.
+- A whole `policy` also prints the build policy, pinned or derived from the
+  manifests, and the accepted list, one line per entry with every value the
+  entry allows. Each integration
+  lists the limitations of section 9.4: it runs at `klin check` only, its
+  coverage is unverified, and a `run` command is the project's own trust
+  choice.
 - A capability whose derived policy is more than a value per key explains it
-  in place of those lines. `public-api` lists each derived surface with its
-  items, measured or opaque, and the packages with no supported surface (ADR
-  0044). `conventions` explains each convention, or the one that
+  in place of those lines. `klin policy public-api` lists each derived
+  surface with its items, measured or opaque, and the packages with no
+  supported surface (ADR 0044). Those surfaces come from parsing the working
+  tree, so only the named form lists them. A whole `policy` prints one line
+  that points to `klin policy public-api`, and parses no source. `conventions` explains each convention, or the one that
   `klin policy conventions NAME` names: what it forbids and where, what its
   code pattern reads as and how its language was settled, any `in` or
   `except` path that matches nothing, and its remedy (ADR 0037). It counts no
@@ -1759,9 +1793,9 @@ A finding: `id`, `check` (null for `measurement-lost`), `kind` (`metric` or
 (string), and `identity` (section 8.4) when the family has one.
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
-`unmeasured`, `moved-pin`), `file`, `line`, `text`, `reason` (the agent's
-reply for a deleted test, the gap reason for `unmeasured`, the old and new
-path for `moved-pin`).
+`unmeasured`, `moved-pin`, `moved-skipped`), `file`, `line`, `text`, `reason`
+(the agent's reply for a deleted test, the gap reason for `unmeasured`, the
+old and new path for `moved-pin` and `moved-skipped`).
 
 A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
@@ -1802,8 +1836,16 @@ Section 13.3.
 
 `schema_version`, `command`, `config {path, present}`, `derivation
 {commit}`, `capabilities [{name, section, kind, activation, placement,
-state, values [{key, value, provenance, rule}], limitations}]`, `build`,
-`accepted`, `state_dir`.
+state, values [{key, entry, value, provenance, rule, description}],
+limitations}]`, `build`, `accepted`, `state_dir`.
+
+A value's `value` is typed as a pinned one would be. A `built-in` value
+carries its words for a person in `description`, and its `value` is null
+where only those words state it. `entry` names the entry a value belongs to,
+such as one convention or one `public-api` surface. `klin policy NAME ENTRY`
+carries only that entry. `klin policy --json public-api` carries each surface
+as a `surface` value with its items and holes, and each package with no
+supported surface as an `unsupported` value.
 
 ### 11.8 `klin update`
 
@@ -2001,6 +2043,7 @@ the base (section 6.5).
 | Invalid configuration | No block. Verdict `unjudged`. A notice goes to the person (section 10.7). | ERROR, exit 2, naming the file and key. |
 | A policy path whose files the change renamed or deleted | The policy follows a rename. A deletion is a note. | `moved-pin` review item. Exit unaffected. |
 | A file moved out of a scope that still selects others | Measured under its base scope. A new finding is a FAIL. | The same. |
+| A file moved under a directory every walk skips | A note. | `moved-skipped` review item. Exit unaffected. |
 | Other capability-scope configuration or git error | No block. A notice. The other capabilities report, and a FAIL beside it spends its block. | That row `execution: error`. Exit 2. The other capabilities report. |
 | No `klin.json` | No answer, no state (section 5.1). | Runs under `{}` and says so. |
 | A present base candidate does not resolve, shallow history, or a missing `GITHUB_BASE_REF` | Not applicable. | ERROR, exit 2, naming `fetch-depth`. |
@@ -2434,6 +2477,8 @@ Stop:
   item; neither blocks;
 - a complex function in a file moved out of an `in` scope that still selects
   other files still fails;
+- a file renamed under a directory every walk skips is a note at the Stop and
+  a `moved-skipped` review item at `klin check`;
 - a state directory deleted while the turn ref survives restores the stamp
   from the ref;
 - a review item that was asked about leaves the stamp green;

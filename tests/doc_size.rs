@@ -190,9 +190,9 @@ fn a_readme_that_grows_past_its_base_word_count_passes_with_no_pin() {
 }
 
 /// With `{}`, a tree whose only root document is a README holds nothing `doc-size` judges, so
-/// the gate waits for a section a person writes while `doc-citations` still runs. #382.
+/// the gate does not apply while `doc-citations` still runs. #382.
 #[test]
-fn a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section() {
+fn a_readme_alone_under_an_empty_config_leaves_doc_size_not_applicable() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.words("README.md", 120);
@@ -200,11 +200,7 @@ fn a_readme_alone_under_an_empty_config_leaves_doc_size_needing_a_section() {
 
     let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("doc-size — needs a section a person writes"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("doc-size — not-applicable"), "{}", run.out);
     assert!(run.says("doc-citations — runs"), "{}", run.out);
 }
 

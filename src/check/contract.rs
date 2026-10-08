@@ -38,6 +38,9 @@ pub const DELETED: &str = "deleted";
 /// Spec 7.3.
 pub const MOVED_PIN: &str = "moved-pin";
 
+/// The review item kind of a file renamed under a directory every walk skips. Spec 7.3.
+pub const MOVED_SKIPPED: &str = "moved-skipped";
+
 /// The note kind of what choosing the base of a `klin check` window found. Spec 6.5.
 pub const WINDOW: &str = "window";
 
@@ -174,6 +177,16 @@ pub enum Activation {
     Policy,
     /// Absence means no external tool is configured, so the check does not run.
     Integration,
+}
+
+impl Activation {
+    pub fn name(self) -> &'static str {
+        match self {
+            Activation::Automatic => "automatic",
+            Activation::Policy => "policy",
+            Activation::Integration => "integration",
+        }
+    }
 }
 
 /// The execution paths at which the engine runs a capability. The catalogue owns it, and no
@@ -725,6 +738,10 @@ impl<'a> Sink<'a> {
         self.told.push(told.into());
     }
 
+    pub fn tell_each<T: Into<Told>>(&mut self, told: impl IntoIterator<Item = T>) {
+        self.told.extend(told.into_iter().map(Into::into));
+    }
+
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         add(self.records);
     }
@@ -808,8 +825,33 @@ fn coverage_record(coverage: &Coverage) -> Value {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
+/// The values a check derives from the configuration, the survey and the derivation commit, with
+/// where each came from, and no file of either tree measured. The check's own run tells the same
+/// list, so a run and `klin policy` cannot disagree. Spec 11.6.
+pub type Derive = fn(&Project) -> Result<Vec<Provenance>, Error>;
+
 /// A check's own explanation of its derived policy, of every entry or of the one a person names.
-pub type Explain = fn(&Project, Option<&str>) -> Result<Vec<String>, Error>;
+pub type Explain = fn(&Project, Option<&str>) -> Result<Explained, Error>;
+
+/// What a check's explanation says: the lines a person reads, and the values it names beyond
+/// the ones a person pinned, which the JSON carries. Spec 11.6.
+#[derive(Default)]
+pub struct Explained {
+    pub lines: Vec<String>,
+    pub values: Vec<Value>,
+}
+
+/// How `klin policy` learns a check's values: it derives none, so only a person's pins and the
+/// built-in defaults hold; a derivation step gives them a value per key; or the check explains a
+/// derived policy that is more than a value per key. An explanation that parses the working tree
+/// runs only when `policy` names the check, so a whole `policy` parses no source. Spec 11.6.
+#[derive(Clone, Copy)]
+pub enum Derivation {
+    Nothing,
+    Values(Derive),
+    Explained(Explain),
+    ExplainedWhenNamed(Explain),
+}
 
 /// One `derived:` line of the runner's own build and the `{section, key, value, rule}` entry
 /// beside it, built together so the two cannot say different things. Spec 11.2.

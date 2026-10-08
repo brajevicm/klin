@@ -114,7 +114,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
     let today = today(project)?;
-    said(project, out);
+    out.tell_each(derive(project)?);
     let commit = contract::base_commit(config.root(), at)?;
     let mut owned = None;
     let prior = base::laid(at.prior, &mut owned, || {
@@ -211,18 +211,19 @@ fn today(project: &Project) -> Result<Scope, Error> {
 }
 
 /// The test roots this run found, as the one `derived:` line and its JSON entry.
-fn said(project: &Project, out: &mut Sink) {
+pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
     let roots = &project.facts().found.test_roots;
     if roots.is_empty() {
-        return;
+        return Ok(Vec::new());
     }
-    out.tell(contract::Derived::bare(
+    let said = contract::Derived::bare(
         SECTION,
         TEST_ROOTS,
         roots.clone().into(),
         roots.join(", "),
         ROOTS_RULE,
-    ));
+    );
+    Ok(vec![said.into()])
 }
 
 /// Every test function the base holds, with what the working tree says about it. A match is by

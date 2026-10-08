@@ -13,12 +13,13 @@ use std::cell::OnceCell;
 use std::path::{Path, PathBuf};
 
 use crate::base::{self, Prior, Run, Window};
+use crate::cache::Cache;
 use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
-use crate::scope::{self, Moves};
-use crate::tree::Tree;
+use crate::scope::{self, Moved, Moves};
+use crate::tree::{self, Tree};
 use crate::{stamp, survey};
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
@@ -31,6 +32,8 @@ pub struct Project {
     facts: OnceCell<survey::Facts>,
     derivation: OnceCell<Option<String>>,
     by_hand: bool,
+    /// Whether the run writes klin's state directory, which `klin policy` does not. Spec 11.6.
+    keeps: bool,
     /// The base the run's window names, which the moved policy paths are read against.
     bound: Option<String>,
     /// What the change did to the paths the policy names, read on the first call after the
@@ -64,8 +67,17 @@ impl Project {
             facts: OnceCell::new(),
             derivation: OnceCell::new(),
             by_hand: false,
+            keeps: true,
             bound: None,
             moves: OnceCell::new(),
+        }
+    }
+
+    /// A run that reads klin's state directory and writes nothing to it. Spec 11.6.
+    pub fn read_only(self) -> Project {
+        Project {
+            keeps: false,
+            ..self
         }
     }
 
@@ -88,7 +100,7 @@ impl Project {
     /// first call and held for the run. Spec 4.3.
     pub fn facts(&self) -> &survey::Facts {
         self.facts
-            .get_or_init(|| survey::facts(&self.tree, self.derivation().as_deref()))
+            .get_or_init(|| survey::facts(&self.tree, self.derivation().as_deref(), self.keeps))
     }
 
     fn derivation(&self) -> &Option<String> {
@@ -112,30 +124,38 @@ impl Project {
         self.moves.take();
     }
 
-    /// What the change did to the paths the policy names, which the run follows, and nothing
-    /// before a window is bound or where no section states a scope. Spec 7.3.
+    /// What the change did to the paths the policy names, which the run follows, and each file
+    /// it renamed under a directory every walk skips. Nothing before a window is bound, and no
+    /// scope move where no section states a scope. A file list that cannot be read drops the
+    /// scope moves and keeps the skipped ones. Spec 7.3.
     pub fn moves(&self) -> &Moves {
         self.moves.get_or_init(|| {
             let Some(base) = self.bound.as_deref() else {
                 return Moves::default();
             };
-            if !scope::states_a_scope(&self.config) {
+            let Ok(changes) = self.changes(base) else {
                 return Moves::default();
-            }
-            match (self.changes(base), self.tree.files()) {
-                (Ok(changes), Ok(files)) => scope::moved(&self.config, files, base, &changes),
-                _ => Moves::default(),
-            }
+            };
+            let mut moves = match scope::states_a_scope(&self.config) {
+                true => self
+                    .tree
+                    .files()
+                    .map(|files| scope::moved(&self.config, files, base, &changes, tree::reached))
+                    .unwrap_or_default(),
+                false => Moves::default(),
+            };
+            moves.extend(skipped(&changes));
+            moves
         })
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives
     /// its own policy from them.
-    pub fn source_derivation(&self) -> Option<(&survey::Survey, &str, Option<&Path>)> {
+    pub fn source_derivation(&self) -> Option<(&survey::Survey, &str, Option<Cache<'_>>)> {
         let facts = self.facts();
         facts
             .at_commit()
-            .map(|(held, commit)| (held, commit, facts.state.as_deref()))
+            .map(|(held, commit)| (held, commit, facts.cache()))
     }
 
     /// The files the working tree changed against the base, computed once for the base the run
@@ -207,6 +227,21 @@ impl Run for Project {
     }
 
     fn state(&self) -> Option<&Path> {
-        self.facts().state.as_deref()
+        let facts = self.facts();
+        facts.state.as_deref().filter(|_| facts.keeps)
     }
+}
+
+/// Each source file a rename took from a path a walk reaches to one under a directory every
+/// walk skips, which no check measures in either tree. A file no language reads, such as test
+/// data moved under `fixtures/`, is left out. Spec 7.3.
+fn skipped(changes: &[Change]) -> impl Iterator<Item = Moved> + '_ {
+    changes.iter().filter_map(|change| {
+        let was = change.was.as_deref()?;
+        let source = survey::language_of(was).is_some();
+        (source && tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
+            was: was.to_string(),
+            path: change.path.clone(),
+        })
+    })
 }
