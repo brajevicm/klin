@@ -38,7 +38,7 @@ fn a_deleted_test_file_is_a_review_item_at_klin_check() {
     assert_eq!(report["findings"], serde_json::json!([]), "{report}");
     let reviews = report["reviews"].as_array().cloned().unwrap_or_default();
     assert!(
-        reviews.iter().any(|review| review["kind"] == "deleted"
+        reviews.iter().any(|review| review["kind"] == "deleted-test"
             && review["check"] == "inventory"
             && review["file"] == "tests/test_foo.py"),
         "{report}"

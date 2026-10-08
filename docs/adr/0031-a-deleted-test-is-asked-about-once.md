@@ -99,3 +99,12 @@ entry, and leaves the stamp `red`. The next prompt keeps the stamp, so the
 question comes under that prompt. After the question, the deletion is a
 review item, which the Stop shows as a note. It is no reason for a gate block.
 `klin status` names a deletion klin has not asked about yet under `unasked`.
+
+## Amendment: a review item at `klin check` (#501)
+
+Outside the Stop, a deleted test was a NOTE. At `klin check` it is now a
+review item (spec 9.2): the JSON lists it under `reviews` with kind
+`deleted-test`, the text prints `REVIEW:`, the `inventory` row reads `REVIEW`, and
+the run's judgement is `review`. The exit code does not change. The
+repository's code review owns the decision, and klin adds no acceptance
+workflow for it. The Stop still shows the deletion as a note.

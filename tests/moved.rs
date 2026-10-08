@@ -63,6 +63,10 @@ fn renaming_the_files_a_pinned_in_names_keeps_them_measured_and_adds_a_moved_pin
     assert_eq!(pins[0]["file"], "src/core", "{report}");
     let said = pins[0]["text"].as_str().unwrap_or_default();
     assert!(said.contains("src/engine/a.rs, src/engine/b.rs"), "{said}");
+    assert_eq!(
+        pins[0]["reason"], "src/core/a.rs -> src/engine/a.rs, src/core/b.rs -> src/engine/b.rs",
+        "{report}"
+    );
 
     tree.write("src/engine/a.rs", &format!("{}{}", many(), complex()));
     let run = tree.run(&["check"]);

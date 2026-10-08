@@ -72,3 +72,24 @@ HEAD, which is the price of a report over a refusal.
 klin now reads `refs/remotes/origin/*` for a second purpose. Before this, the
 remote refs were base candidates only. Now they are also the answer to whether
 the local branch is pushed.
+
+## Amendment: `klin check` windows without `--strict` (#501)
+
+vNext has no `--strict`, so the third case above no longer splits by flag.
+Spec 6.5 decides every case of a base equal to HEAD with a clean tree:
+
+- A remote source passes, with a note that the trees are the same.
+- A local source passes when the remote default branch holds HEAD.
+- A local source with commits the remote default branch does not hold is a
+  hole, `comparison-unproven`, exit 3. It names those commits. It is no
+  longer an error: klin found nothing wrong with the run, it only cannot
+  prove the comparison.
+- With no remote default branch at all, the run passes with a note that no
+  remote proves what to compare.
+
+The shallow CI clone this ADR kept shut through `--strict` is now shut by
+spec 6.5 rule 1. A present `GITHUB_BASE_REF` that does not resolve, a push
+`before` missing from a shallow clone, or a merge-base a shallow clone cannot
+compute is exit 2, and the message names `fetch-depth: 0`. A push `before`
+that a force-push rewrote away in a full clone falls back to the merge-base
+with a note, because no fetch brings it back.

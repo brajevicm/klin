@@ -2752,8 +2752,18 @@ fn moved_pin(moved: &Moved, said: &str) -> Value {
         .iter()
         .find(|row| row.section == moved.section())
         .map(|row| row.name);
-    let path = match moved {
-        Moved::Pin { path, .. } | Moved::Out { path, .. } => path,
+    let (path, reason) = match moved {
+        Moved::Pin { path, renamed, .. } => (
+            path,
+            (!renamed.is_empty()).then(|| {
+                renamed
+                    .iter()
+                    .map(|(was, now)| format!("{was} -> {now}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }),
+        ),
+        Moved::Out { path, .. } => (path, None),
     };
     json!({
         "check": check,
@@ -2761,7 +2771,7 @@ fn moved_pin(moved: &Moved, said: &str) -> Value {
         "file": path,
         "line": null,
         "text": said,
-        "reason": null,
+        "reason": reason,
     })
 }
 

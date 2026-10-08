@@ -9,10 +9,10 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Cause, Class, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase,
-    Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured, Plain,
-    Provenance, PublicApi, Ratchet, Standing, Told, UNMATCHED_ACCEPTED, Unmatched, Unresolvable,
-    Wording,
+    self, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, Derived, Entry, Failed, Held,
+    HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured,
+    Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNMATCHED_ACCEPTED, Unmatched,
+    Unresolvable, Wording,
 };
 use crate::check::holes::{self, Unmeasured};
 use crate::config::MEASUREMENT_LOST;
@@ -785,7 +785,7 @@ fn listed_json(listed: &Listed, out: &mut Json) {
             });
             if *review {
                 out.reviews
-                    .extend(records.map(|item| kinded(item, DELETED)));
+                    .extend(records.map(|item| kinded(item, DELETED_TEST)));
                 return;
             }
             records.collect()

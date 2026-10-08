@@ -34,6 +34,9 @@ pub const UNPARSED: &str = "unparsed";
 /// hook lets end hands it to a person. Spec 8.2.
 pub const DELETED: &str = "deleted";
 
+/// The review item kind of a deleted test at `klin check`. Spec 9.2, 11.7.
+pub const DELETED_TEST: &str = "deleted-test";
+
 /// The review item kind of an accepted entry that matched nothing, which only a person acts on.
 /// Spec 7.6.
 pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
