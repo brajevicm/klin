@@ -471,3 +471,31 @@ fn check_without_a_config_runs_under_the_empty_one_and_says_so() {
     let json = tree.run(&["check", "--json"]).json();
     assert_eq!(json["config"]["present"], false, "{json}");
 }
+
+/// A change that deletes the worktree root's klin.json runs under `{}`, and `check` names the
+/// file the base still holds. Spec 5.1.
+#[test]
+fn check_names_a_config_the_change_deleted() {
+    let tree = Tree::new();
+    tree.write("klin.json", ONE_DOC);
+    tree.words("README.md", 5);
+    tree.base();
+    tree.remove("klin.json");
+
+    let run = tree.run(&["check"]);
+    assert!(run.says("NOTE: klin.json is deleted"), "{}", run.out);
+    let json = tree.run(&["check", "--json"]).json();
+    assert!(
+        json["notes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|note| note["kind"] == "config-deleted"),
+        "{json}"
+    );
+
+    let kept = Tree::new();
+    kept.words("README.md", 5);
+    kept.base();
+    assert!(!kept.run(&["check"]).says("is deleted"));
+}

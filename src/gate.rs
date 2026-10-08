@@ -2495,11 +2495,37 @@ fn measured(
         project.bind(window);
     }
     let project = &*project;
+    if let Some(note) = deleted_config(args, project, window.as_ref()) {
+        if !args.json {
+            let _ = writeln!(out, "  NOTE: {}", note["message"].as_str().unwrap_or(""));
+        }
+        report.notes.push(note);
+    }
     let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
     let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
     Ok(())
+}
+
+/// The note of a run under `{}` whose base still holds the worktree root's `klin.json`, so the
+/// change deleted the policy the base was judged under. Spec 5.1.
+fn deleted_config(args: &Args, project: &Project, window: Option<&Window>) -> Option<Value> {
+    if args.config.is_some() || project.config.written() {
+        return None;
+    }
+    let window = window?;
+    crate::git::Repo::at(project.root()).blob(&window.before, config::FILENAME)?;
+    Some(json!({
+        "check": null,
+        "kind": "config-deleted",
+        "file": config::FILENAME,
+        "message": format!(
+            "{} is deleted: the base holds it and the working tree does not, so this run is \
+             under {{}}",
+            config::FILENAME
+        ),
+    }))
 }
 
 /// The gates a run selects, and the capabilities a selector named that do not apply to this

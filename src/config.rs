@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 use crate::error::Error;
 use crate::key::{Key, Section, SectionShape, Shape};
 
-const FILENAME: &str = "klin.json";
+pub const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin policy --reference` prints them. Spec 5.2, 5.8.
