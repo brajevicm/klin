@@ -174,15 +174,23 @@ impl Scope {
 /// rename took out of a scope that still selects other files. A pinned path that selects
 /// nothing in the base either counts only where the base's own `klin.json` pins it and no path
 /// of the same `in` selects a file: a path this change wrote that names nothing stays a
-/// configuration error, and one beside a path that selects files never was one. Spec 7.3.
-pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) -> Moves {
-    let renamed: Vec<(&str, &str)> = changes
+/// configuration error, and one beside a path that selects files never was one. A rename to a
+/// path no walk reaches is not followed, and its pin counts it apart. Spec 7.3.
+pub fn moved(
+    config: &Config,
+    files: &[String],
+    base: &str,
+    changes: &[Change],
+    reached: fn(&str) -> bool,
+) -> Moves {
+    let (renamed, hidden): (Vec<_>, Vec<_>) = changes
         .iter()
         .filter_map(|change| {
             let was = change.was.as_deref().filter(|was| *was != change.path)?;
             Some((was, change.path.as_str()))
         })
-        .collect();
+        .partition(|(_, path)| reached(path));
+    let hidden: Vec<&str> = hidden.into_iter().map(|(was, _)| was).collect();
     let mut at_base = AtBase::new(config, base);
     let mut out = Vec::new();
     for (section, fields) in config.objects() {
@@ -190,7 +198,7 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
             out.extend(section_moves(
                 section,
                 &scope,
-                (files, &renamed),
+                (files, &renamed, &hidden),
                 &mut at_base,
             ));
         }
@@ -204,7 +212,7 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
 fn section_moves(
     section: &str,
     scope: &Scope,
-    (files, renamed): (&[String], &[(&str, &str)]),
+    (files, renamed, hidden): (&[String], &[(&str, &str)], &[&str]),
     at_base: &mut AtBase,
 ) -> Vec<Moved> {
     let dead: Vec<&Selector> = scope
@@ -219,7 +227,7 @@ fn section_moves(
         if held == 0 && (quiet || !at_base.pins(section, selector)) {
             continue;
         }
-        out.push(pin(section, selector, held, renamed));
+        out.push(pin(section, selector, held, (renamed, hidden)));
     }
     if files.iter().any(|file| scope.selects(file)) {
         out.extend(moved_out(section, scope, &dead, renamed));
@@ -279,18 +287,26 @@ impl<'a> AtBase<'a> {
 }
 
 /// A pinned path that selects no file of the working tree, with the files git saw renamed out
-/// of it and how many of the `held` files the base held there went with no rename.
-fn pin(section: &str, selector: &Selector, held: usize, renamed: &[(&str, &str)]) -> Moved {
+/// of it, how many a rename took under a directory every walk skips, and how many of the `held`
+/// files the base held there went with no rename.
+fn pin(
+    section: &str,
+    selector: &Selector,
+    held: usize,
+    (renamed, hidden): (&[(&str, &str)], &[&str]),
+) -> Moved {
     let gone: Vec<(String, String)> = renamed
         .iter()
         .filter(|(was, _)| selector.holds(was))
         .map(|(was, path)| (was.to_string(), path.to_string()))
         .collect();
+    let skipped = hidden.iter().filter(|was| selector.holds(was)).count();
     Moved::Pin {
         section: section.to_string(),
         path: selector.as_str().to_string(),
-        deleted: held.saturating_sub(gone.len()),
+        deleted: held.saturating_sub(gone.len() + skipped),
         renamed: gone,
+        skipped,
     }
 }
 
@@ -373,12 +389,14 @@ impl Extend<Moved> for Moves {
 pub enum Moved {
     /// A pinned `in` path that selects no file of the working tree: the files git saw renamed
     /// out of it, by the path the base held and the path they have now, and how many of the
-    /// files it selected in the base went with no rename. Nothing renamed and nothing deleted
-    /// is a pin that selected nothing in the base either.
+    /// files it selected in the base went with no rename. A rename under a directory every walk
+    /// skips is not followed and counts in `skipped`. Nothing renamed, skipped or deleted is a
+    /// pin that selected nothing in the base either.
     Pin {
         section: String,
         path: String,
         renamed: Vec<(String, String)>,
+        skipped: usize,
         deleted: usize,
     },
     /// A selected file the change renamed out of a scope that still selects other files.
@@ -417,8 +435,9 @@ impl Moved {
                 section,
                 path,
                 renamed,
+                skipped,
                 deleted,
-            } => Some(pin_said(section, path, renamed, *deleted)),
+            } => Some(pin_said(section, path, renamed, (*skipped, *deleted))),
             Moved::Out { .. } => None,
             Moved::Skipped { was, path } => Some(format!(
                 "{was} moved to {path}, under a directory every walk skips, so no check \
@@ -445,21 +464,39 @@ impl Moved {
 }
 
 /// What a moved pin says to a person: where its files went, and that the pin needs updating.
-fn pin_said(section: &str, path: &str, renamed: &[(String, String)], deleted: usize) -> String {
-    let to = renamed
-        .iter()
-        .map(|(_, path)| path.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let what = match (renamed.is_empty(), deleted) {
-        (false, 0) => format!("its files moved to {to}, and this run measures them there"),
-        (false, deleted) => format!(
-            "its files moved to {to}, and this run measures them there, and {deleted} \
-             file(s) went with no rename"
-        ),
-        (true, 0) => "it selects nothing in the base or the working tree".to_string(),
-        (true, deleted) => {
+fn pin_said(
+    section: &str,
+    path: &str,
+    renamed: &[(String, String)],
+    (skipped, deleted): (usize, usize),
+) -> String {
+    let what = match (renamed.is_empty(), skipped, deleted) {
+        (true, 0, 0) => "it selects nothing in the base or the working tree".to_string(),
+        (true, 0, deleted) => {
             format!("its {deleted} file(s) went with no rename, so the gate measures nothing there")
+        }
+        _ => {
+            let to = renamed
+                .iter()
+                .map(|(_, path)| path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let parts = [
+                (!renamed.is_empty())
+                    .then(|| format!("its files moved to {to}, and this run measures them there")),
+                (skipped > 0).then(|| {
+                    format!(
+                        "{skipped} file(s) moved under a directory every walk skips, so no check \
+                         measures them"
+                    )
+                }),
+                (deleted > 0).then(|| format!("{deleted} file(s) went with no rename")),
+            ];
+            parts
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join(", and ")
         }
     };
     format!(

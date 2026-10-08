@@ -19,7 +19,7 @@ use crate::error::Error;
 use crate::key::Section;
 use crate::scope::{self, Moved, Moves};
 use crate::tree::{self, Tree};
-use crate::{stamp, survey, syntax};
+use crate::{stamp, survey};
 
 /// One run: the configuration it loaded, the working tree, and the facts it computes once.
 pub struct Project {
@@ -128,7 +128,7 @@ impl Project {
                 true => self
                     .tree
                     .files()
-                    .map(|files| scope::moved(&self.config, files, base, &changes))
+                    .map(|files| scope::moved(&self.config, files, base, &changes, tree::reached))
                     .unwrap_or_default(),
                 false => Moves::default(),
             };
@@ -225,7 +225,7 @@ impl Run for Project {
 fn skipped(changes: &[Change]) -> impl Iterator<Item = Moved> + '_ {
     changes.iter().filter_map(|change| {
         let was = change.was.as_deref()?;
-        let source = syntax::language_of(was).is_some();
+        let source = survey::language_of(was).is_some();
         (source && tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
             was: was.to_string(),
             path: change.path.clone(),

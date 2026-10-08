@@ -2688,11 +2688,12 @@ fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String
 }
 
 /// The moves of the sections whose gates this run selected, and every move no section decides,
-/// such as a file moved under a skipped directory, when any gate runs.
+/// such as a file moved under a skipped directory, whichever gates run.
 fn selected<'a>(moves: &'a Moves, wanted: &'a [&Gate]) -> impl Iterator<Item = &'a Moved> {
-    moves.iter().filter(|moved| match moved.section() {
-        Some(section) => wanted.iter().any(|gate| gate.check.section == section),
-        None => !wanted.is_empty(),
+    moves.iter().filter(|moved| {
+        moved
+            .section()
+            .is_none_or(|section| wanted.iter().any(|gate| gate.check.section == section))
     })
 }
 

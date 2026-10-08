@@ -1029,8 +1029,12 @@ Rules:
   measures it at its new path. It is a note at the Stop and a review item of
   kind `moved-skipped` at `klin check`. The review item's `file` is the new
   path and its `check` is null. No block and no error. This holds with or
-  without an `in` scope. A file of no language klin reads, such as test data
-  moved under `fixtures/`, says nothing. **Known limit:** a rename under a
+  without an `in` scope, and whichever capabilities the run selects. A
+  pinned `in` path whose files moved under a skipped directory does not
+  follow them there: its `moved-pin` review item counts them as moved under a
+  directory every walk skips, and never says the run measures them. A file of
+  no language klin reads, such as test data moved under `fixtures/`, says
+  nothing. **Known limit:** a rename under a
   hidden directory, or under a directory that only a section's own
   `skip_dirs` names, is not reported. A section's `skip_dirs` is that
   section's policy.
