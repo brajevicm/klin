@@ -232,7 +232,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     let config = at.config();
     let found = manifests(at.project);
     let scope = scope(at, &found)?;
-    said(&found, out);
+    out.tell(said(&found));
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
     let commit = contract::base_commit(config.root(), at)?;
@@ -307,17 +307,15 @@ fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
     Ok(scope)
 }
 
+pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+    Ok(vec![said(&manifests(project)).into()])
+}
+
 /// The manifests this run judges, as the one `derived:` line and its JSON entry.
-fn said(found: &[(&str, &Format)], out: &mut Sink) {
+fn said(found: &[(&str, &Format)]) -> contract::Derived {
     let names: Vec<&str> = found.iter().map(|(path, _)| *path).collect();
     let shown = names.join(", ");
-    out.tell(contract::Derived::keyed(
-        SECTION,
-        Some("manifests"),
-        names.into(),
-        shown,
-        RULE,
-    ));
+    contract::Derived::keyed(SECTION, Some("manifests"), names.into(), shown, RULE)
 }
 
 /// Every path a judged manifest could read in one tree: the manifest, and each lockfile name its

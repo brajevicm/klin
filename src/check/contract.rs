@@ -176,6 +176,16 @@ pub enum Activation {
     Integration,
 }
 
+impl Activation {
+    pub fn name(self) -> &'static str {
+        match self {
+            Activation::Automatic => "automatic",
+            Activation::Policy => "policy",
+            Activation::Integration => "integration",
+        }
+    }
+}
+
 /// The execution paths at which the engine runs a capability. The catalogue owns it, and no
 /// configuration changes it. Spec 4.3, 6.2.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -725,6 +735,10 @@ impl<'a> Sink<'a> {
         self.told.push(told.into());
     }
 
+    pub fn tell_each<T: Into<Told>>(&mut self, told: impl IntoIterator<Item = T>) {
+        self.told.extend(told.into_iter().map(Into::into));
+    }
+
     pub fn record(&mut self, add: impl FnOnce(&mut Records)) {
         add(self.records);
     }
@@ -807,6 +821,11 @@ fn coverage_record(coverage: &Coverage) -> Value {
 }
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
+
+/// The values a check derives from the configuration, the survey and the derivation commit, with
+/// where each came from, and no file of either tree measured. The check's own run tells the same
+/// list, so a run and `klin policy` cannot disagree. Spec 11.6.
+pub type Derive = fn(&Project) -> Result<Vec<Provenance>, Error>;
 
 /// A check's own explanation of its derived policy, of every entry or of the one a person names.
 pub type Explain = fn(&Project, Option<&str>) -> Result<Vec<String>, Error>;

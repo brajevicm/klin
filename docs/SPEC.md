@@ -1643,13 +1643,27 @@ Section 13.2.
 
 ### 11.6 `klin policy [SECTION]`
 
-- Read-only. It derives values as a run would, and it runs no check.
+- Read-only. It derives values as a run would, and it runs no check. Each
+  check has one derivation step that reads the configuration, the survey and
+  the derivation commit. `policy` calls only that step, and the check's own
+  run calls the same step before it measures, so the two cannot disagree.
+  `policy` lays out no base, measures no file of either tree, and writes
+  nothing to the state directory. It reads a cache that is already there.
 - Prints the effective policy of every capability, or of the one `SECTION`
-  names: activation, placement, state (`active`, `excluded`, `needs-policy`,
-  `not-applicable`), and each value with its provenance (`derived` with its
-  rule and derivation commit, `pinned`, dated with the step in force, or
-  `built-in`). It also prints the build policy, the accepted list and the
-  integration limitations of section 9.4.
+  names: activation (`automatic`, `policy`, `integration`), placement, state
+  (`active`, `excluded`, `needs-policy`, `not-applicable`), and each value
+  with its provenance (`derived` with its rule and derivation commit,
+  `pinned`, dated with the step in force, or `built-in`). An Automatic
+  capability whose facts the tree does not hold is `not-applicable`. A Policy
+  or Integration capability with no section is `needs-policy`. A value is
+  `built-in` when its key has a default and neither a person nor a
+  derivation gave it. Each `derived:` and `pinned:` line prints as a
+  `klin check SECTION` run prints it.
+- A whole `policy` also prints the build policy, pinned or derived from the
+  manifests, and the accepted list, one line per entry. Each integration
+  lists the limitations of section 9.4: it runs at `klin check` only, its
+  coverage is unverified, and a `run` command is the project's own trust
+  choice.
 - A capability whose derived policy is more than a value per key explains it
   in place of those lines. `public-api` lists each derived surface with its
   items, measured or opaque, and the packages with no supported surface (ADR

@@ -210,7 +210,7 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     if !args.list {
         return Ok(checked(args, start, loaded, out));
     }
-    let judged = loaded.and_then(|mut project| by_hand(args, &mut project, out));
+    let judged = loaded.and_then(|project| by_hand(args, &mut project.read_only(), out));
     refused(args, judged, out).map(|tally| code(&tally))
 }
 
@@ -998,7 +998,7 @@ fn judge(
 ) -> Result<Tally, Error> {
     let plan = plan(project)?;
     if args.list {
-        return listed(args, project, &plan, window, out);
+        return listed(args, project, &plan, out);
     }
     let wanted: Vec<&Gate> = select(&args.gates, &plan, project)?
         .into_iter()
@@ -1047,7 +1047,7 @@ struct Against<'a> {
     unlaid: Option<String>,
 }
 
-/// The run as the Stop and `klin policy` take it, where a base tree klin could not lay out stops
+/// The run as the Stop takes it, where a base tree klin could not lay out stops
 /// the run.
 fn against_or_stop<'a>(
     args: &Args,
@@ -1115,30 +1115,49 @@ fn chosen(window: Option<&Window>, project: &Project) -> Result<Window, Error> {
 }
 
 /// The effective policy of every gate, or of the one `policy` names: its state, and each value
-/// it uses with where the value came from. A value the section leaves out is said by the run
-/// that derives it, so each gate that runs is run and only its provenance is kept. Spec 11.6.
-// ponytail: derives by running the gate, a derive-only seam per check if policy must stay cheap
-fn listed(
-    args: &Args,
-    project: &Project,
-    plan: &Plan,
-    window: Option<&Window>,
-    out: &mut String,
-) -> Result<Tally, Error> {
+/// it uses with where the value came from. Each check's own derivation step gives the values, so
+/// no gate runs, no base is laid out and no file is measured. Spec 11.6.
+fn listed(args: &Args, project: &Project, plan: &Plan, out: &mut String) -> Result<Tally, Error> {
+    listable(args, project, plan)?;
+    let mut capabilities = active(args, project, plan)?;
+    capabilities.extend(inactive(args, plan));
+    let shared = Shared::of(project)?;
+    match args.json {
+        true => policy_json(project, capabilities, shared, out),
+        false => policy_text(&capabilities, args.gates.is_empty(), &shared, out),
+    }
+    Ok(Tally::default())
+}
+
+/// The policy no one gate owns: the build, the accepted list and where klin keeps its state.
+struct Shared {
+    build: Value,
+    accepted: Value,
+    state: Option<PathBuf>,
+}
+
+impl Shared {
+    fn of(project: &Project) -> Result<Shared, Error> {
+        Ok(Shared {
+            build: build_policy(project)?,
+            accepted: project
+                .config
+                .pinned(config::ACCEPTED.name)
+                .cloned()
+                .unwrap_or_else(|| json!([])),
+            state: state::dir(project.root()),
+        })
+    }
+}
+
+/// A plan with a gate to list, and names `policy` takes.
+fn listable(args: &Args, project: &Project, plan: &Plan) -> Result<(), Error> {
     if plan.gates.is_empty() && plan.excluded.is_empty() {
         return Err(no_gate(project, plan));
     }
-    for name in &args.gates {
-        stated(name, plan, project)?;
-    }
-    let mut capabilities = active(args, project, plan, window)?;
-    capabilities.extend(inactive(args, plan));
-    let state = state::dir(project.root());
-    match args.json {
-        true => policy_json(project, capabilities, state.as_deref(), out),
-        false => policy_text(&capabilities, args.gates.is_empty(), state.as_deref(), out),
-    }
-    Ok(Tally::default())
+    args.gates
+        .iter()
+        .try_for_each(|name| stated(name, plan, project))
 }
 
 /// A name `policy` takes: a gate that runs, one a person excluded, or one that needs a section.
@@ -1151,29 +1170,38 @@ fn stated(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     }
 }
 
+/// The gates that do not run: the ones a person excluded, an Automatic check whose facts the
+/// tree does not hold, which does not apply, and a check that needs a section a person writes.
 fn inactive(args: &Args, plan: &Plan) -> Vec<Value> {
     let excluded = plan
         .excluded
         .iter()
         .filter(|name| named(args, name))
         .map(|name| {
-            let placement = catalogue::CATALOGUE
-                .iter()
-                .find(|check| check.name == name)
-                .map(|check| check.placement.names());
-            json!({ "name": name, "placement": placement, "state": "excluded" })
+            let check = catalogue::CATALOGUE.iter().find(|check| check.name == name);
+            json!({
+                "name": name,
+                "activation": check.map(|check| check.activation.name()),
+                "placement": check.map(|check| check.placement.names()),
+                "state": "excluded",
+            })
         });
     let needed = plan
         .needs_a_section
         .iter()
         .filter(|check| named(args, check.name))
         .map(|check| {
+            let state = match check.activation {
+                Activation::Automatic => "not-applicable",
+                Activation::Policy | Activation::Integration => "needs-policy",
+            };
             json!({
                 "name": check.name,
                 "section": check.section,
                 "kind": check.kind(),
+                "activation": check.activation.name(),
                 "placement": check.placement.names(),
-                "state": "needs-policy",
+                "state": state,
             })
         });
     excluded.chain(needed).collect()
@@ -1183,13 +1211,8 @@ fn named(args: &Args, name: &str) -> bool {
     args.gates.is_empty() || args.gates.iter().any(|one| one == name)
 }
 
-/// Each gate that runs, with the values its run used and where each came from.
-fn active(
-    args: &Args,
-    project: &Project,
-    plan: &Plan,
-    window: Option<&Window>,
-) -> Result<Vec<Value>, Error> {
+/// Each gate that runs, with the values it uses and where each came from.
+fn active(args: &Args, project: &Project, plan: &Plan) -> Result<Vec<Value>, Error> {
     let wanted: Vec<&Gate> = plan
         .gates
         .iter()
@@ -1203,84 +1226,222 @@ fn active(
             gate.name
         )));
     }
-    let quiet = Args {
-        config: args.config.clone(),
-        json: true,
-        ..Args::default()
-    };
-    let run: Vec<&Gate> = wanted
-        .iter()
-        .copied()
-        .filter(|gate| gate.check.explain.is_none())
-        .collect();
-    let against = against_or_stop(&quiet, &run, project, window, &mut String::new())?;
-    let mut capabilities = Vec::new();
-    for gate in &wanted {
-        capabilities.push(match gate.check.explain {
-            Some(explain) => capability(
-                project,
-                gate,
-                explain(project, args.entry.as_deref())?,
-                Vec::new(),
-            ),
-            None => provenance(&quiet, project, gate, &against),
-        });
-    }
-    Ok(capabilities)
+    wanted
+        .into_iter()
+        .map(|gate| capability(args, project, gate))
+        .collect()
 }
 
-/// One gate's run, kept only for the `derived:` and `pinned:` lines of the values it used.
-fn provenance(quiet: &Args, project: &Project, gate: &Gate, against: &Against) -> Value {
-    let (_, told, _, recorded) = one(quiet, gate, project, against);
+/// One gate's policy: what its derivation step derives, or what its explanation says, then the
+/// values a person pinned that the step did not name, then the values neither gave, as built in.
+fn capability(args: &Args, project: &Project, gate: &Gate) -> Result<Value, Error> {
+    let check = gate.check;
+    let fields = section_of(project, gate);
+    let (mut lines, mut values) = match (check.explain, check.derive) {
+        (Some(explain), _) => (explain(project, args.entry.as_deref())?, Vec::new()),
+        (None, Some(derive)) => said_values(check, as_told(derive(project)?), &fields),
+        (None, None) => said_values(check, Vec::new(), &fields),
+    };
+    values.extend(
+        fields
+            .iter()
+            .map(|(key, value)| json!({ "key": key, "value": value, "provenance": "pinned" })),
+    );
+    let limitations = limitations(check, &fields);
+    lines.extend(limitations.iter().map(|said| format!("limitation: {said}")));
+    Ok(json!({
+        "name": gate.name,
+        "section": check.section,
+        "kind": check.kind(),
+        "activation": check.activation.name(),
+        "placement": check.placement.names(),
+        "state": "active",
+        "values": values,
+        "limitations": limitations,
+        "lines": lines,
+    }))
+}
+
+/// The lines and values of a check with no explanation of its own: what its derivation step
+/// said, as a run prints it, then each value a person pinned that the step did not name, then
+/// each value neither gave, as built in.
+fn said_values(
+    check: &catalogue::Row,
+    told: Vec<Told>,
+    fields: &Map<String, Value>,
+) -> (Vec<String>, Vec<Value>) {
+    let keys = said_keys(&told);
     let mut lines = render::provenance(&told);
-    for line in pinned(project, gate) {
-        if !lines.contains(&line) {
-            lines.push(line);
+    let mut values: Vec<Value> = render::json(&told)
+        .derived
+        .iter()
+        .map(|entry| {
+            json!({
+                "key": entry.get("key"),
+                "value": entry.get("value"),
+                "provenance": "derived",
+                "rule": entry.get("rule"),
+            })
+        })
+        .collect();
+    let unsaid = fields
+        .iter()
+        .filter(|(key, _)| !keys.contains(&key.as_str()));
+    lines.extend(
+        unsaid.map(|(key, value)| format!("pinned: {} {key} {}", check.section, shown(value))),
+    );
+    let built_in = check.keys.iter().filter(|key| {
+        !key.default.is_empty() && !fields.contains_key(key.name) && !keys.contains(&key.name)
+    });
+    for key in built_in {
+        values.push(json!({ "key": key.name, "value": key.default, "provenance": "built-in" }));
+        lines.push(format!(
+            "built-in: {} {} {}",
+            check.section, key.name, key.default
+        ));
+    }
+    (lines, values)
+}
+
+/// The fields a person wrote for one gate: its section, or its own entry of a section that is a
+/// list of named entries, less the name.
+fn section_of(project: &Project, gate: &Gate) -> Map<String, Value> {
+    let section = project.config.pinned(gate.check.section);
+    let fields = match section {
+        Some(Value::Array(entries)) => entries
+            .iter()
+            .find(|entry| entry.get(contract::NAMED.name) == Some(&json!(gate.name))),
+        other => other,
+    };
+    let mut fields = fields
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    if gate.check.gate_per_entry {
+        fields.remove(contract::NAMED.name);
+    }
+    fields
+}
+
+/// The keys a check's derivation step already named, pinned or derived, so their lines are the
+/// ones a run prints.
+fn said_keys(told: &[Told]) -> Vec<&str> {
+    told.iter()
+        .filter_map(|item| match item {
+            Told::Provenance(contract::Provenance::Pinned { key, .. }) => Some(key.as_str()),
+            Told::Provenance(contract::Provenance::Derived(derived)) => derived.key.as_deref(),
+            _ => None,
+        })
+        .collect()
+}
+
+fn as_told(said: Vec<contract::Provenance>) -> Vec<Told> {
+    said.into_iter().map(Told::Provenance).collect()
+}
+
+/// What an integration does not claim, which `policy` lists beside its values. Spec 9.4.
+fn limitations(check: &catalogue::Row, fields: &Map<String, Value>) -> Vec<&'static str> {
+    if check.activation != Activation::Integration {
+        return Vec::new();
+    }
+    let mut said = vec![
+        "runs at klin check only, never at the Stop",
+        "coverage unverified: klin judges the report's results on the changed lines, and a \
+         file the report does not name is not proven clean",
+    ];
+    if fields.contains_key("run") {
+        said.push(
+            "the command is the project's own: klin bounds its run but does not claim it is \
+             deterministic, and any network or ambient state it reads is the project's trust \
+             choice",
+        );
+    }
+    said
+}
+
+/// The build a run makes before it measures: the one a person pinned, or the one the manifests
+/// derive. Spec 5.4, 11.6.
+fn build_policy(project: &Project) -> Result<Value, Error> {
+    let plan = build::plan(project)?;
+    if let Some(value) = project.config.pinned(config::BUILD.name) {
+        return Ok(json!({ "value": value, "provenance": "pinned", "lines": [
+            format!("pinned: {} {}", config::BUILD.name, shown(value))
+        ] }));
+    }
+    let (lines, entries): (Vec<String>, Vec<Option<Value>>) = plan.said.into_iter().unzip();
+    let entry = entries.into_iter().flatten().next();
+    Ok(json!({
+        "value": entry.as_ref().and_then(|entry| entry.get("value")),
+        "provenance": "derived",
+        "rule": entry.as_ref().and_then(|entry| entry.get("rule")),
+        "lines": lines,
+    }))
+}
+
+fn build_text(build: &Value, out: &mut String) {
+    let lines: Vec<&str> = build["lines"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let provenance = build["provenance"].as_str().unwrap_or_default();
+    match lines.is_empty() {
+        true => {
+            let _ = writeln!(
+                out,
+                "build — none, no manifest the survey found names a command"
+            );
+        }
+        false => {
+            let _ = writeln!(out, "build — {provenance}");
         }
     }
-    capability(project, gate, lines, recorded.derived)
+    for line in lines {
+        let _ = writeln!(out, "{UNDER}{line}");
+    }
 }
 
-fn capability(project: &Project, gate: &Gate, lines: Vec<String>, derived: Vec<Value>) -> Value {
-    json!({
-        "name": gate.name,
-        "section": gate.check.section,
-        "kind": gate.check.kind(),
-        "placement": gate.check.placement.names(),
-        "state": "active",
-        "values": values(project, gate, derived),
-        "lines": lines,
-    })
-}
-
-/// Each value a gate uses as the policy document names it: the ones a person pinned in the
-/// section, then the ones the run derived with their rule. Spec 11.7.
-fn values(project: &Project, gate: &Gate, derived: Vec<Value>) -> Vec<Value> {
-    let section = gate.check.section;
-    let mut values: Vec<Value> = match project.config.pinned(section) {
-        Some(Value::Object(fields)) => fields
-            .iter()
-            .map(|(key, value)| json!({ "key": key, "value": value, "provenance": "pinned" }))
-            .collect(),
-        _ => Vec::new(),
+fn accepted_text(accepted: &Value, out: &mut String) {
+    let entries = accepted.as_array().map(Vec::as_slice).unwrap_or_default();
+    let _ = match entries.len() {
+        0 => writeln!(out, "accepted — nothing is accepted"),
+        1 => writeln!(out, "accepted — 1 entry"),
+        many => writeln!(out, "accepted — {many} entries"),
     };
-    values.extend(derived.into_iter().map(|entry| {
-        json!({
-            "key": entry.get("key"),
-            "value": entry.get("value"),
-            "provenance": "derived",
-            "rule": entry.get("rule"),
-        })
-    }));
-    values
+    for entry in entries {
+        let word = |key: &str| entry.get(key).and_then(Value::as_str).unwrap_or_default();
+        let _ = writeln!(
+            out,
+            "{UNDER}{} {}: {}",
+            word("gate"),
+            word("file"),
+            word("text")
+        );
+    }
 }
 
-fn policy_text(capabilities: &[Value], whole: bool, state: Option<&Path>, out: &mut String) {
+fn policy_text(capabilities: &[Value], whole: bool, shared: &Shared, out: &mut String) {
     for capability in capabilities {
+        capability_text(capability, out);
+    }
+    if whole {
+        out.push_str(&render::lost_policy());
+        build_text(&shared.build, out);
+        accepted_text(&shared.accepted, out);
+    }
+    if let Some(at) = &shared.state {
+        let _ = writeln!(out, "state: {}", at.display());
+    }
+}
+
+fn capability_text(capability: &Value, out: &mut String) {
+    {
         let name = capability["name"].as_str().unwrap_or_default();
         let said = match capability["state"].as_str() {
             Some("active") => "runs",
             Some("excluded") => "excluded",
+            Some("not-applicable") => "not-applicable",
             _ => "needs a section a person writes",
         };
         let _ = writeln!(out, "{name} — {said}");
@@ -1293,28 +1454,28 @@ fn policy_text(capabilities: &[Value], whole: bool, state: Option<&Path>, out: &
         if !placement.is_empty() {
             let _ = writeln!(out, "{UNDER}placement: {}", placement.join(", "));
         }
+        if let Some(activation) = capability["activation"].as_str() {
+            let _ = writeln!(out, "{UNDER}activation: {activation}");
+        }
         for line in capability["lines"].as_array().into_iter().flatten() {
             let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
         }
     }
-    if whole {
-        out.push_str(&render::lost_policy());
-    }
-    if let Some(at) = state {
-        let _ = writeln!(out, "state: {}", at.display());
-    }
 }
 
-fn policy_json(
-    project: &Project,
-    mut capabilities: Vec<Value>,
-    state: Option<&Path>,
-    out: &mut String,
-) {
+fn policy_json(project: &Project, mut capabilities: Vec<Value>, shared: Shared, out: &mut String) {
+    let Shared {
+        mut build,
+        accepted,
+        state,
+    } = shared;
     for capability in &mut capabilities {
         if let Value::Object(fields) = capability {
             fields.remove("lines");
         }
+    }
+    if let Value::Object(fields) = &mut build {
+        fields.remove("lines");
     }
     let document = json!({
         "schema_version": 1,
@@ -1324,22 +1485,13 @@ fn policy_json(
             "present": project.config.written(),
             "ignored": config::ignored(project.start()),
         },
+        "derivation": { "commit": project.facts().commit },
         "capabilities": capabilities,
+        "build": build,
+        "accepted": accepted,
         "state_dir": state.map(|at| at.display().to_string()),
     });
     let _ = writeln!(out, "{document}");
-}
-
-/// The `pinned:` line of each value a person wrote into a gate's section.
-fn pinned(project: &Project, gate: &Gate) -> Vec<String> {
-    let section = gate.check.section;
-    let Some(Value::Object(fields)) = project.config.pinned(section) else {
-        return Vec::new();
-    };
-    fields
-        .iter()
-        .map(|(key, value)| format!("pinned: {section} {key} {}", shown(value)))
-        .collect()
 }
 
 /// A pinned value as a person reads it: a path or a list of paths as text, anything else as JSON.

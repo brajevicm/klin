@@ -97,6 +97,30 @@ fn gone(entry: &Path) -> bool {
     !Path::new(named.trim()).is_dir()
 }
 
+/// The cache under one state directory, as a run holds it: a run that keeps state reads and
+/// writes it, and a read-only command such as `klin policy` only reads it. Spec 11.6.
+#[derive(Clone, Copy)]
+pub struct Cache<'a> {
+    at: &'a Path,
+    keeps: bool,
+}
+
+impl<'a> Cache<'a> {
+    pub fn new(at: &'a Path, keeps: bool) -> Cache<'a> {
+        Cache { at, keeps }
+    }
+
+    pub fn read(self, commit: &str, key: &str) -> Option<Value> {
+        read(self.at, commit, key)
+    }
+
+    pub fn write(self, commit: &str, key: &str, value: Value) {
+        if self.keeps {
+            write(self.at, commit, key, value);
+        }
+    }
+}
+
 /// What one derivation commit's survey holds, under the state directory keyed by that commit.
 /// Its contents are a pure function of the commit and the binary version, so a file another
 /// version wrote reads as nothing. Spec 6.6.

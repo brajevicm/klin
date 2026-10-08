@@ -21,7 +21,7 @@ use crate::record::{self, Values};
 use crate::scope::{self, Scope};
 use crate::syntax::{self, Language, LanguageId, Parsed, ParsedFile, Unparsed};
 use crate::tree::Tree;
-use crate::{cache, changed, survey};
+use crate::{changed, survey};
 
 pub const SECTION: &str = "complexity";
 const CC_FLOOR: u64 = 10;
@@ -367,12 +367,14 @@ struct Spec {
 type Provenance = Vec<contract::Provenance>;
 type Notes = Vec<(String, String)>;
 
+pub fn derive(project: &Project) -> Result<Provenance, Error> {
+    spec(project).map(|spec| spec.provenance)
+}
+
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project)?;
-    for said in std::mem::take(&mut spec.provenance) {
-        out.tell(said);
-    }
+    out.tell_each(std::mem::take(&mut spec.provenance));
     ratchet::noted_as(contract::DERIVATION, &spec.notes, out);
     let sweep = measure(
         project.tree(),
@@ -672,12 +674,12 @@ fn derived_sample(project: &Project) -> (Sample, Option<String>) {
         return (Sample::default(), None);
     };
     let cached = at
-        .and_then(|at| cache::read(at, commit, SECTION))
+        .and_then(|cache| cache.read(commit, SECTION))
         .and_then(|value| read_sample(&value));
     let found = cached.unwrap_or_else(|| {
         let found = sample(project.root(), commit, &project.config.file);
-        if let Some(at) = at {
-            cache::write(at, commit, SECTION, kept_sample(&found));
+        if let Some(cache) = at {
+            cache.write(commit, SECTION, kept_sample(&found));
         }
         found
     });
