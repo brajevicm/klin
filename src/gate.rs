@@ -2504,7 +2504,8 @@ impl Axes {
         }
     }
 
-    /// The one state that wins: an error, then a failing finding, then a hole. Spec 7.4.
+    /// The one state that wins: an error, then a failing finding, then a hole, then a review
+    /// item. Spec 7.4, 11.3.
     fn worst(self) -> Worst {
         match self {
             Axes { error: true, .. } => Worst::Error,
@@ -2515,6 +2516,10 @@ impl Axes {
             Axes {
                 incomplete: true, ..
             } => Worst::Incomplete,
+            Axes {
+                judgement: Judgement::Review,
+                ..
+            } => Worst::Review,
             _ => Worst::Ok,
         }
     }
@@ -2525,16 +2530,17 @@ impl Axes {
             Worst::Error => 2,
             Worst::Fail => 1,
             Worst::Incomplete => 3,
-            Worst::Ok => 0,
+            Worst::Review | Worst::Ok => 0,
         }
     }
 
-    /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `ok`. Spec 11.3.
+    /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `REVIEW`, `ok`. Spec 11.3.
     fn state(self) -> &'static str {
         match self.worst() {
             Worst::Error => "ERR ",
             Worst::Fail => "FAIL",
             Worst::Incomplete => "INCOMPLETE",
+            Worst::Review => "REVIEW",
             Worst::Ok => "ok  ",
         }
     }
@@ -2560,6 +2566,7 @@ enum Worst {
     Error,
     Fail,
     Incomplete,
+    Review,
     Ok,
 }
 
@@ -2568,9 +2575,10 @@ enum Worst {
 fn axes(code: u8, recorded: &Recorded) -> Axes {
     let fails = code == 1 || recorded.findings.iter().any(failing);
     Axes {
-        judgement: match fails {
-            true => Judgement::Fail,
-            false => Judgement::Pass,
+        judgement: match (fails, recorded.reviews.is_empty()) {
+            (true, _) => Judgement::Fail,
+            (false, false) => Judgement::Review,
+            (false, true) => Judgement::Pass,
         },
         incomplete: !recorded.holes.is_empty(),
         error: code == 2,
@@ -3254,7 +3262,9 @@ fn review_record(gate: &str, review: Value) -> Value {
     };
     fields.remove("outcome");
     fields.insert("check".into(), gate.into());
-    fields.insert("kind".into(), holes::UNMEASURED.into());
+    fields
+        .entry("kind")
+        .or_insert_with(|| holes::UNMEASURED.into());
     Value::Object(fields)
 }
 

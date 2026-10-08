@@ -346,12 +346,12 @@ fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
 }
 
 #[test]
-fn an_accepted_entry_that_matched_nothing_fails_its_gate() {
+fn an_accepted_entry_that_matched_nothing_is_a_review_item_of_its_gate() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
 
-    let strict = tree.run(&["check"]);
-    assert_eq!(strict.code, 1, "{}", strict.out);
-    assert!(strict.says("FAIL  escapes"), "{}", strict.out);
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("REVIEW  escapes"), "{}", run.out);
 }
 
 #[test]
@@ -427,7 +427,7 @@ fn an_accepted_entry_for_a_file_outside_the_changed_set_is_not_judged() {
     assert!(!scoped.says("matched nothing this run"), "{}", scoped.out);
 
     let whole = tree.run(&["check"]);
-    assert_eq!(whole.code, 1, "{}", whole.out);
+    assert_eq!(whole.code, 0, "{}", whole.out);
     assert!(whole.says("matched nothing this run"), "{}", whole.out);
 }
 
@@ -959,10 +959,11 @@ fn a_json_record_names_no_column_and_no_violation() {
     let report = run.json();
     let banned = ["column", "violation", "invariant"];
     assert!(!list(&report, "findings").is_empty(), "{}", run.out);
-    assert!(!list(&report, "notes").is_empty(), "{}", run.out);
+    assert!(!list(&report, "reviews").is_empty(), "{}", run.out);
     for record in list(&report, "findings")
         .iter()
         .chain(list(&report, "notes"))
+        .chain(list(&report, "reviews"))
     {
         for key in banned {
             assert_eq!(record.get(key), None, "{key} is in {record}");
@@ -971,20 +972,19 @@ fn a_json_record_names_no_column_and_no_violation() {
 }
 
 #[test]
-fn json_notes_say_why_a_strict_run_failed_with_nothing_over_the_gate() {
+fn json_reviews_say_why_a_run_with_nothing_over_the_gate_is_judged_review() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
 
     let run = tree.run(&["check", "--json"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "judgement"), "fail", "{}", run.out);
+    assert_eq!(field(&report, "judgement"), "review", "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
-    assert_eq!(
-        outcomes(list(&report, "notes")),
-        [("escapes", "unmatched")],
-        "{}",
-        run.out
-    );
+    let reviews: Vec<(&str, &str)> = list(&report, "reviews")
+        .iter()
+        .map(|review| (field(review, "check"), field(review, "kind")))
+        .collect();
+    assert_eq!(reviews, [("escapes", "unmatched-accepted")], "{}", run.out);
 }
 
 #[test]

@@ -114,7 +114,7 @@ fn an_accepted_escape_holds_at_its_count_and_fails_above_it() {
 }
 
 #[test]
-fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_failure() {
+fn an_accepted_escape_that_matches_nothing_is_a_review_item_and_no_failure() {
     let tree = tree();
     tree.write(
         "klin.json",
@@ -126,10 +126,9 @@ fn an_accepted_escape_that_matches_nothing_is_a_note_and_a_failure() {
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(run.says("src/gone.rs"), "{}", run.out);
-    assert!(run.says("Delete the line"), "{}", run.out);
 }
 
 #[test]
@@ -693,7 +692,7 @@ fn an_accepted_entry_for_a_retired_row_names_the_row_and_where_it_went() {
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(run.says("\"todo\" is a row klin retired"), "{}", run.out);
     assert!(run.says("\"stub\": \"not implemented\""), "{}", run.out);
@@ -712,7 +711,7 @@ fn an_accepted_entry_for_the_narrowed_skipped_test_row_names_skipif() {
     tree.write("src/lib.py", "def f():\n    return 1\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("pytest.mark.skipif"), "{}", run.out);
 }
 
@@ -729,7 +728,7 @@ fn an_accepted_entry_that_matches_nothing_for_another_reason_names_no_row() {
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(!run.says("is a row klin"), "{}", run.out);
 }
@@ -747,7 +746,7 @@ fn a_live_row_of_another_language_is_not_read_as_the_retired_one() {
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("matched nothing this run"), "{}", run.out);
     assert!(!run.says("is a row klin"), "{}", run.out);
 }

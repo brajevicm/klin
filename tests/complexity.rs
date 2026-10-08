@@ -503,7 +503,7 @@ fn a_stale_accepted_entry_does_not_make_a_site_the_base_holds_worse() {
     tree.write("src/lib.rs", &body("a"));
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 1, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("worse"), "{}", run.out);
     assert!(run.says("matched nothing"), "{}", run.out);
 }
@@ -526,7 +526,7 @@ fn an_accepted_entry_whose_value_is_not_a_number_is_a_tool_error() {
 }
 
 #[test]
-fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_failure() {
+fn an_accepted_entry_that_matches_nothing_is_a_review_item_that_keeps_exit_0() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(
         "klin.json",
@@ -538,9 +538,30 @@ fn an_accepted_entry_that_matches_nothing_is_a_note_and_a_failure() {
     tree.write("src/simple.rs", "fn f() -> i32 { 1 }\n");
 
     let run = tree.run(&["check", "complexity"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("1 accepted entry matched nothing"), "{}", run.out);
-    assert!(run.says("Delete the line"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: 1 accepted entry matched nothing this run"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("REVIEW  complexity"), "{}", run.out);
+    assert!(run.says("judgement: review,"), "{}", run.out);
+    assert!(!run.says("FAIL"), "{}", run.out);
+
+    let json = tree.run(&["check", "complexity", "--json"]);
+    assert_eq!(json.code, 0, "{}", json.out);
+    let report = json.json();
+    assert_eq!(report["judgement"], "review", "{report}");
+    assert_eq!(report["exit"], 0, "{report}");
+    let reviews = report["reviews"].as_array().cloned().unwrap_or_default();
+    assert!(
+        reviews
+            .iter()
+            .any(|review| review["kind"] == "unmatched-accepted"
+                && review["check"] == "complexity"
+                && review["file"] == "src/gone.rs"),
+        "{report}"
+    );
 }
 
 #[test]

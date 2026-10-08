@@ -34,6 +34,10 @@ pub const UNPARSED: &str = "unparsed";
 /// hook lets end hands it to a person. Spec 8.2.
 pub const DELETED: &str = "deleted";
 
+/// The review item kind of an accepted entry that matched nothing, which only a person acts on.
+/// Spec 7.6.
+pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
+
 /// The outcome of a file `before` measured and `after` did not, which a run records so a report
 /// never reads a window it stopped measuring as a whole one. Spec 8.6.
 pub const LOST: &str = "lost";
@@ -614,7 +618,12 @@ pub enum Hole {
 /// window let through. Spec 8.2.
 pub enum Listed {
     DeadSymbols(Vec<(Located, String)>),
-    TestsDeleted(Vec<Located>),
+    /// The deleted tests a window let through: a review item at `klin check`, and a note at the
+    /// Stop. Spec 9.2.
+    TestsDeleted {
+        went: Vec<Located>,
+        review: bool,
+    },
     TestFunctionsOrphaned(Vec<Located>),
     TestFilesPaired {
         files: Vec<Site>,
@@ -646,12 +655,11 @@ pub enum Ratchet {
         condition: String,
         failed: Vec<Failed>,
     },
-    AcceptedUnmatched(Vec<Unmatched>),
-    /// The count of entries that matched nothing, and the file and retired row of each one a
-    /// retired row names.
-    AcceptedStale {
-        count: usize,
-        rows: Vec<Site>,
+    /// The accepted entries that matched nothing: a review item at `klin check`, and a note at
+    /// the Stop. Never a failure. Spec 7.6.
+    AcceptedUnmatched {
+        entries: Vec<Unmatched>,
+        review: bool,
     },
 }
 

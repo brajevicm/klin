@@ -11,7 +11,8 @@ use crate::ceiling::Ceiling;
 use crate::check::contract::{
     self, Cause, Class, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase,
     Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured, Plain,
-    Provenance, PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable, Wording,
+    Provenance, PublicApi, Ratchet, Standing, Told, UNMATCHED_ACCEPTED, Unmatched, Unresolvable,
+    Wording,
 };
 use crate::check::holes::{self, Unmeasured};
 use crate::config::MEASUREMENT_LOST;
@@ -138,9 +139,10 @@ fn sites(listed: &Listed, out: &mut String) {
                 .map(|(site, name)| format!("{}  {name}  {}", at(site), site.text))
                 .collect(),
         ),
-        Listed::TestsDeleted(went) => (
+        Listed::TestsDeleted { went, review } => (
             format!(
-                "NOTE: {} test site(s) the base holds went in this window:",
+                "{}: {} test site(s) the base holds went in this window:",
+                said_as(*review),
                 went.len()
             ),
             went.iter()
@@ -209,25 +211,18 @@ fn ratchet(said: &Ratchet, out: &mut String) {
             }
         }
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
-        Ratchet::AcceptedUnmatched(unmatched) => listed(
+        Ratchet::AcceptedUnmatched {
+            entries: unmatched,
+            review,
+        } => listed(
             out,
             &format!(
-                "NOTE: {} accepted entr{} matched nothing this run:",
+                "{}: {} accepted entr{} matched nothing this run:",
+                said_as(*review),
                 unmatched.len(),
                 entries(unmatched.len())
             ),
             &unmatched.iter().map(unmatched_row).collect::<Vec<_>>(),
-        ),
-        Ratchet::AcceptedStale { count, rows } => listed(
-            out,
-            &format!(
-                "FAIL: the accepted list holds {count} entr{} that matched nothing — an entry that no longer describes the code is a failure. Delete the line.",
-                entries(*count)
-            ),
-            &rows
-                .iter()
-                .map(|row| format!("{}: {}", row.file, row.text))
-                .collect::<Vec<_>>(),
         ),
     }
 }
@@ -509,6 +504,15 @@ fn against(finding: &Failed) -> String {
     }
 }
 
+/// The word a line opens with for what fails nothing: `REVIEW` at `klin check`, `NOTE` at the
+/// Stop. Spec 7.6, 9.2.
+fn said_as(review: bool) -> &'static str {
+    match review {
+        true => "REVIEW",
+        false => "NOTE",
+    }
+}
+
 fn unmatched_row(entry: &Unmatched) -> String {
     let retired = entry
         .retired
@@ -767,9 +771,8 @@ fn hole_json(hole: &Hole, out: &mut Json) {
 fn listed_json(listed: &Listed, out: &mut Json) {
     let notes: Vec<Value> = match listed {
         Listed::DeadSymbols(_) => Vec::new(),
-        Listed::TestsDeleted(went) => went
-            .iter()
-            .map(|site| {
+        Listed::TestsDeleted { went, review } => {
+            let records = went.iter().map(|site| {
                 record(
                     DELETED,
                     Some(&site.file),
@@ -779,8 +782,14 @@ fn listed_json(listed: &Listed, out: &mut Json) {
                         site.text, site.file
                     ),
                 )
-            })
-            .collect(),
+            });
+            if *review {
+                out.reviews
+                    .extend(records.map(|item| kinded(item, DELETED)));
+                return;
+            }
+            records.collect()
+        }
         Listed::TestFunctionsOrphaned(went) => went
             .iter()
             .map(|site| {
@@ -833,16 +842,30 @@ fn ratchet_json(said: &Ratchet, out: &mut Json) {
                 .iter()
                 .map(|finding| failed_json("worsened", condition, finding)),
         ),
-        Ratchet::AcceptedUnmatched(unmatched) => {
-            out.notes.extend(unmatched.iter().map(|entry| {
+        Ratchet::AcceptedUnmatched { entries, review } => {
+            let records = entries.iter().map(|entry| {
                 let site = &entry.entry;
                 let mut record = fields("unmatched", Some(&site.file), site.line, &site.text);
                 record.insert("values".into(), Value::Object(entry.entry.values.clone()));
                 Value::Object(record)
-            }));
+            });
+            match review {
+                true => out
+                    .reviews
+                    .extend(records.map(|item| kinded(item, UNMATCHED_ACCEPTED))),
+                false => out.notes.extend(records),
+            }
         }
-        Ratchet::AcceptedStale { .. } => (),
     }
+}
+
+/// A record as the review item of one kind, which keeps its outcome as its kind. Spec 11.7.
+fn kinded(record: Value, kind: &str) -> Value {
+    let Value::Object(mut fields) = record else {
+        return record;
+    };
+    fields.insert("kind".into(), kind.into());
+    Value::Object(fields)
 }
 
 /// One failure with what the ratchet held against it, so a harness sees both sides of the
@@ -1020,7 +1043,7 @@ pub fn limit_json(item: &Unmeasured) -> Value {
 pub fn unmatched_lost_json(file: &str) -> Value {
     serde_json::json!({
         "check": MEASUREMENT_LOST,
-        "kind": "unmatched-accepted",
+        "kind": UNMATCHED_ACCEPTED,
         "file": file,
         "line": null,
         "text": unmatched_lost_text(file),

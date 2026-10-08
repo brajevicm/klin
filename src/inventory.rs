@@ -141,7 +141,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         gone: went.len(),
     };
     let code = evaluator().evaluate(now, before, accepted, at, Line::new(state, said), out);
-    deleted(&went, out);
+    deleted(&went, at, out);
     noted(&paired, out);
     orphaned(&orphans, out);
     holes::unread_said(&measured.unparsed, at, out);
@@ -398,14 +398,18 @@ fn in_scope(at: &Context, file: &str) -> bool {
         .is_none_or(|only| only.iter().any(|named| named == file))
 }
 
-/// The deleted tests this run lets through, which are a NOTE and not a finding. Removing a test
-/// is ordinary work, and klin cannot tell why a test went, so outside the hook a deletion is
-/// left to the reviewer who reads the diff. Spec 8.2.
-fn deleted(went: &[Finding], out: &mut Sink) {
+/// The deleted tests this run lets through, which are a review item at `klin check` and a note
+/// at the Stop, never a finding. Removing a test is ordinary work, and klin cannot tell why a
+/// test went, so outside the hook a deletion is left to the reviewer who reads the diff.
+/// Spec 9.2.
+fn deleted(went: &[Finding], at: &Context, out: &mut Sink) {
     if went.is_empty() {
         return;
     }
-    out.tell(Listed::TestsDeleted(went.iter().map(told).collect()));
+    out.tell(Listed::TestsDeleted {
+        went: went.iter().map(told).collect(),
+        review: !at.hook(),
+    });
 }
 
 /// A finding as the site a report lists.
