@@ -1,4 +1,4 @@
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
 use crate::error::Error;
@@ -19,10 +19,10 @@ const RENAMES: &[&str] = &["-M50%", "-l1000"];
 
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
-    let unfiltered = unfiltered(&repo);
-    let listed = tracked(&repo, &unfiltered, base)
+    let quiet = Quiet::of(&repo);
+    let listed = tracked(&repo, &quiet, base)
         .map(|listed| match moved_untracked(&listed) {
-            true => staged(&repo, root, (&unfiltered, base)).unwrap_or(listed),
+            true => staged(&repo, root, (&quiet, base)).unwrap_or(listed),
             false => listed,
         })
         .ok_or_else(|| {
@@ -37,39 +37,62 @@ pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     Ok(changes)
 }
 
-/// The `-c` settings that turn off every filter driver git's configuration names, so finding
-/// changes runs no clean, smudge or process filter, and git reads each file's own bytes. A
-/// filter git runs must be configured, so this covers every attributes source. Spec 7.2.
-fn unfiltered(repo: &Repo) -> Vec<String> {
-    let configured = repo
-        .text(&["config", "--name-only", "--get-regexp", "^filter\\."])
-        .unwrap_or_default();
-    let mut drivers: Vec<&str> = configured
-        .lines()
-        .filter_map(|key| key.strip_prefix("filter.")?.rsplit_once('.'))
-        .map(|(driver, _)| driver)
-        .collect();
-    drivers.sort_unstable();
-    drivers.dedup();
-    drivers
-        .into_iter()
-        .flat_map(|driver| {
-            ["clean", "smudge", "process"]
-                .map(|key| format!("filter.{driver}.{key}="))
-                .into_iter()
-                .chain([format!("filter.{driver}.required=false")])
-        })
-        .flat_map(|setting| ["-c".to_string(), setting])
-        .collect()
+/// The settings under which finding changes starts no program of the person's: every filter
+/// driver git's configuration names turned off, and no file-system monitor. They travel as
+/// `GIT_CONFIG_KEY_n` and `GIT_CONFIG_VALUE_n` pairs, so a driver whose name holds `=` cannot
+/// split its own setting. A filter git runs must be configured, so this covers every attributes
+/// source. Spec 7.2.
+struct Quiet {
+    env: Vec<(OsString, OsString)>,
 }
 
-/// Git's arguments with the filters turned off in front of them.
-fn asking<'a>(unfiltered: &'a [String], args: &[&'a str]) -> Vec<&'a str> {
-    unfiltered
-        .iter()
-        .map(String::as_str)
-        .chain(args.iter().copied())
-        .collect()
+impl Quiet {
+    fn of(repo: &Repo) -> Quiet {
+        let configured = repo
+            .text(&["config", "--name-only", "--get-regexp", "^filter\\."])
+            .unwrap_or_default();
+        let mut drivers: Vec<&str> = configured
+            .lines()
+            .filter_map(|key| key.strip_prefix("filter.")?.rsplit_once('.'))
+            .map(|(driver, _)| driver)
+            .collect();
+        drivers.sort_unstable();
+        drivers.dedup();
+        let mut settings = vec![("core.fsmonitor".to_string(), "false".to_string())];
+        for driver in drivers {
+            for key in ["clean", "smudge", "process"] {
+                settings.push((format!("filter.{driver}.{key}"), String::new()));
+            }
+            settings.push((format!("filter.{driver}.required"), "false".to_string()));
+        }
+        let mut env = vec![("GIT_CONFIG_COUNT".into(), settings.len().to_string().into())];
+        for (at, (key, value)) in settings.into_iter().enumerate() {
+            env.push((format!("GIT_CONFIG_KEY_{at}").into(), key.into()));
+            env.push((format!("GIT_CONFIG_VALUE_{at}").into(), value.into()));
+        }
+        Quiet { env }
+    }
+
+    /// These settings beside the caller's own environment overrides.
+    fn with<'a>(&'a self, more: &[(&'a OsStr, &'a OsStr)]) -> Vec<(&'a OsStr, &'a OsStr)> {
+        self.env
+            .iter()
+            .map(|(key, value)| (key.as_os_str(), value.as_os_str()))
+            .chain(more.iter().copied())
+            .collect()
+    }
+}
+
+/// How klin asks git for the changes against the base: names and statuses only, renames
+/// pinned, and no external diff or text conversion.
+fn diffed<'a>(cached: bool, base: &'a str) -> Vec<&'a str> {
+    let mut asked = vec!["diff", "--name-status", "--no-ext-diff", "--no-textconv"];
+    if cached {
+        asked.push("--cached");
+    }
+    asked.extend_from_slice(RENAMES);
+    asked.extend(["--relative", base, "--"]);
+    asked
 }
 
 /// Every change of the working tree against the base, untracked files included, through a copy
@@ -77,7 +100,7 @@ fn asking<'a>(unfiltered: &'a [String], args: &[&'a str]) -> Vec<&'a str> {
 /// rename like any other, so a plain `mv` reads as the move it is. The person's own index is
 /// never written, and the objects the copy needs go to a scratch object directory that borrows
 /// the repository's own, so nothing is written to the repository at all. Spec 7.2.
-fn staged(repo: &Repo, root: &Path, (unfiltered, base): (&[String], &str)) -> Option<String> {
+fn staged(repo: &Repo, root: &Path, (quiet, base): (&Quiet, &str)) -> Option<String> {
     let index = root.join(repo.text(&["rev-parse", "--git-path", "index"])?.trim());
     let objects = root.join(repo.text(&["rev-parse", "--git-path", "objects"])?.trim());
     let scratch = tempfile::tempdir().ok()?;
@@ -87,19 +110,16 @@ fn staged(repo: &Repo, root: &Path, (unfiltered, base): (&[String], &str)) -> Op
     }
     let written = scratch.path().join("objects");
     std::fs::create_dir(&written).ok()?;
-    let env = [
+    let env = quiet.with(&[
         (OsStr::new("GIT_INDEX_FILE"), copy.as_os_str()),
         (OsStr::new("GIT_OBJECT_DIRECTORY"), written.as_os_str()),
         (
             OsStr::new("GIT_ALTERNATE_OBJECT_DIRECTORIES"),
             objects.as_os_str(),
         ),
-    ];
-    repo.text_with_env(&asking(unfiltered, &["add", "-A"]), &env)?;
-    let mut asked = vec!["diff", "--cached", "--name-status"];
-    asked.extend_from_slice(RENAMES);
-    asked.extend(["--relative", base, "--"]);
-    repo.text_with_env(&asking(unfiltered, &asked), &env)
+    ]);
+    repo.text_with_env(&["add", "-A"], &env)?;
+    repo.text_with_env(&diffed(true, base), &env)
 }
 
 /// Whether the change set holds a deleted path and an untracked file, which is what a plain `mv`
@@ -113,13 +133,13 @@ fn moved_untracked(listed: &str) -> bool {
 const UNTRACKED: &str = "?\t";
 
 /// The tracked changes and the untracked files apart, as git lists them without staging.
-fn tracked(repo: &Repo, unfiltered: &[String], base: &str) -> Option<String> {
-    let mut asked = vec!["diff", "--name-status"];
-    asked.extend_from_slice(RENAMES);
-    asked.extend(["--relative", base, "--"]);
-    let mut listed = repo.text(&asking(unfiltered, &asked))?;
+fn tracked(repo: &Repo, quiet: &Quiet, base: &str) -> Option<String> {
+    let mut listed = repo.text_with_env(&diffed(false, base), &quiet.with(&[]))?;
     let untracked = repo
-        .text(&["ls-files", "--others", "--exclude-standard"])
+        .text_with_env(
+            &["ls-files", "--others", "--exclude-standard"],
+            &quiet.with(&[]),
+        )
         .unwrap_or_default();
     for name in untracked.lines().filter(|name| !name.is_empty()) {
         listed.push_str(&format!("\n{UNTRACKED}{name}"));

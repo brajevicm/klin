@@ -531,68 +531,94 @@ fn attribute_matches(pattern: &str, below: &str) -> bool {
 
 /// git's wildmatch for a path: `*` and `?` stay inside one path segment, `**` between slashes
 /// spans any number of directories, `[...]` is a class, and a backslash quotes the next byte.
+/// Each position pair is decided once, so a pattern an agent writes cannot make the match take
+/// exponential time.
 fn wildmatch(pattern: &[u8], path: &[u8]) -> bool {
-    match pattern {
-        [] => path.is_empty(),
-        [b'*', b'*', rest @ ..] => any_depth(rest, path),
-        [b'*', rest @ ..] => within_segment(rest, path),
-        [b'[', ..] => classed(pattern, path),
-        _ => one_byte(pattern, path),
+    Wild {
+        pattern,
+        path,
+        decided: vec![None; (pattern.len() + 1) * (path.len() + 1)],
     }
+    .at(0, 0)
 }
 
-/// `?`, a byte a backslash quotes, or a literal byte: one byte of the path, and `?` never a slash.
-fn one_byte(pattern: &[u8], path: &[u8]) -> bool {
-    let (wanted, rest) = match pattern {
-        [b'\\', quoted, rest @ ..] => (Some(*quoted), rest),
-        [b'?', rest @ ..] => (None, rest),
-        [literal, rest @ ..] => (Some(*literal), rest),
-        [] => return path.is_empty(),
-    };
-    let Some((byte, after)) = path.split_first() else {
-        return false;
-    };
-    wanted.map_or(*byte != b'/', |wanted| wanted == *byte) && wildmatch(rest, after)
+struct Wild<'a> {
+    pattern: &'a [u8],
+    path: &'a [u8],
+    decided: Vec<Option<bool>>,
 }
 
-/// `**`: before a slash it matches no directory or any run of whole directories, and anywhere
-/// else it matches the rest of the path whatever it holds.
-fn any_depth(rest: &[u8], path: &[u8]) -> bool {
-    match rest.split_first() {
-        Some((b'/', after)) => {
-            wildmatch(after, path)
-                || path
-                    .iter()
-                    .enumerate()
-                    .any(|(at, byte)| *byte == b'/' && wildmatch(after, &path[at + 1..]))
+impl Wild<'_> {
+    /// Whether the pattern from `p` matches the path from `t`.
+    fn at(&mut self, p: usize, t: usize) -> bool {
+        let slot = p * (self.path.len() + 1) + t;
+        if let Some(known) = self.decided[slot] {
+            return known;
         }
-        _ => (0..=path.len()).any(|at| wildmatch(rest, &path[at..])),
+        let matched = match &self.pattern[p..] {
+            [] => t == self.path.len(),
+            [b'*', b'*', ..] => self.any_depth(p + 2, t),
+            [b'*', ..] => self.within_segment(p + 1, t),
+            [b'[', ..] => self.classed(p, t),
+            _ => self.one_byte(p, t),
+        };
+        self.decided[slot] = Some(matched);
+        matched
     }
-}
 
-/// `*`: any run of bytes that holds no slash.
-fn within_segment(rest: &[u8], path: &[u8]) -> bool {
-    let segment = path
-        .iter()
-        .position(|byte| *byte == b'/')
-        .unwrap_or(path.len());
-    (0..=segment).any(|at| wildmatch(rest, &path[at..]))
-}
+    /// `**`: before a slash it matches no directory or any run of whole directories, and
+    /// anywhere else it matches the rest of the path whatever it holds.
+    fn any_depth(&mut self, p: usize, t: usize) -> bool {
+        if self.pattern.get(p) == Some(&b'/') {
+            return self.at(p + 1, t)
+                || (t..self.path.len()).any(|at| self.path[at] == b'/' && self.at(p + 1, at + 1));
+        }
+        (t..=self.path.len()).any(|at| self.at(p, at))
+    }
 
-/// `[...]`: one byte, never a slash, in or, after `!` or `^`, out of the class.
-fn classed(pattern: &[u8], path: &[u8]) -> bool {
-    let negated = matches!(pattern.get(1), Some(b'!' | b'^'));
-    let opens = 1 + usize::from(negated);
-    let Some(end) = pattern[opens + 1..]
-        .iter()
-        .position(|byte| *byte == b']')
-        .map(|at| at + opens + 1)
-    else {
-        return path.first() == Some(&b'[') && wildmatch(&pattern[1..], &path[1..]);
-    };
-    path.first()
-        .is_some_and(|byte| *byte != b'/' && in_class(&pattern[opens..end], *byte) != negated)
-        && wildmatch(&pattern[end + 1..], &path[1..])
+    /// `*`: any run of bytes that holds no slash.
+    fn within_segment(&mut self, p: usize, t: usize) -> bool {
+        let segment = self.path[t..]
+            .iter()
+            .position(|byte| *byte == b'/')
+            .map_or(self.path.len(), |at| t + at);
+        (t..=segment).any(|at| self.at(p, at))
+    }
+
+    /// `[...]`: one byte, never a slash, in or, after `!` or `^`, out of the class. A `[` with
+    /// no closing `]` is a literal `[`.
+    fn classed(&mut self, p: usize, t: usize) -> bool {
+        let negated = matches!(self.pattern.get(p + 1), Some(b'!' | b'^'));
+        let opens = p + 1 + usize::from(negated);
+        let end = self
+            .pattern
+            .get(opens + 1..)
+            .and_then(|rest| rest.iter().position(|byte| *byte == b']'))
+            .map(|at| at + opens + 1);
+        let Some(end) = end else {
+            return self.path.get(t) == Some(&b'[') && self.at(p + 1, t + 1);
+        };
+        let set = &self.pattern[opens..end];
+        self.path
+            .get(t)
+            .is_some_and(|byte| *byte != b'/' && in_class(set, *byte) != negated)
+            && self.at(end + 1, t + 1)
+    }
+
+    /// `?`, a byte a backslash quotes, or a literal byte: one byte of the path, and `?` never a
+    /// slash.
+    fn one_byte(&mut self, p: usize, t: usize) -> bool {
+        let (wanted, next) = match &self.pattern[p..] {
+            [b'\\', quoted, ..] => (Some(*quoted), p + 2),
+            [b'?', ..] => (None, p + 1),
+            [literal, ..] => (Some(*literal), p + 1),
+            [] => return t == self.path.len(),
+        };
+        let Some(byte) = self.path.get(t) else {
+            return false;
+        };
+        wanted.map_or(*byte != b'/', |wanted| wanted == *byte) && self.at(next, t + 1)
+    }
 }
 
 /// The form the working tree's `.gitattributes` files give one path.

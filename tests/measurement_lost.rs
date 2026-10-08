@@ -932,3 +932,50 @@ fn finding_changes_runs_no_filter_program() {
     assert_eq!(code, 1, "{report}");
     assert_eq!(lost_for(&report, "src/moved.rs"), ["parse"], "{report}");
 }
+
+#[test]
+fn a_bracket_alone_in_an_attribute_pattern_is_a_literal() {
+    let tree = tree(CONFIG);
+    tree.write(".gitattributes", "[ binary\n[! binary\nsrc/[ binary\n");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(lost(&report).is_empty(), "{report}");
+}
+
+#[test]
+fn a_pattern_of_many_stars_is_decided_quickly() {
+    let tree = tree(CONFIG);
+    let stars = "*a".repeat(60);
+    tree.write(".gitattributes", &format!("src/{stars}b binary\n"));
+
+    let started = std::time::Instant::now();
+    let (code, report) = checked(&tree, &[]);
+
+    assert!(started.elapsed().as_secs() < 30, "{report}");
+    assert_eq!(code, 0, "{report}");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_filter_driver_named_with_an_equals_sign_does_not_run() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", CLEAN);
+    tree.write(".gitattributes", "*.txt filter=a=b\n");
+    tree.write("notes.txt", "one\n");
+    tree.base();
+    let ran = tree.path("filter-ran");
+    tree.git(&[
+        "config",
+        "filter.a=b.clean",
+        &format!("sh -c 'touch {}; cat'", ran.display()),
+    ]);
+    tree.write("notes.txt", "two\n");
+
+    let (_, report) = checked(&tree, &[]);
+
+    assert!(!ran.exists(), "a filter ran: {report}");
+}
