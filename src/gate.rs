@@ -22,7 +22,7 @@ use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
+use crate::{build, files, handoff, journal, reference, stamp, state, stats, survey, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -2154,18 +2154,26 @@ fn formless(project: &Project, wanted: &[&Gate], against: &Against) -> Vec<(Stri
     let Some(gate) = wanted.iter().find(|gate| gate.check.reads_code()) else {
         return Vec::new();
     };
-    project
-        .tree()
-        .formless()
-        .iter()
+    let attributes = |scope: &Vec<String>| {
+        scope
+            .iter()
+            .any(|file| file.rsplit('/').next() == Some(".gitattributes"))
+    };
+    let formed: Vec<(String, files::Form)> = match &against.scope {
+        Some(scope) if !attributes(scope) => scope
+            .iter()
+            .map(|file| (file.clone(), files::form_in(project.root(), file)))
+            .filter(|(_, form)| form.any())
+            .collect(),
+        _ => {
+            let _ = project.tree().files();
+            project.tree().formless().to_vec()
+        }
+    };
+    formed
+        .into_iter()
         .filter(|(file, _)| crate::syntax::language_of(file).is_some())
-        .filter(|(file, _)| {
-            against
-                .scope
-                .as_ref()
-                .is_none_or(|scope| scope.contains(file))
-        })
-        .map(|(file, form)| (gate.name.clone(), file.clone(), Seen::Form(*form)))
+        .map(|(file, form)| (gate.name.clone(), file, Seen::Form(form)))
         .collect()
 }
 

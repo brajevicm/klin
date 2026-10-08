@@ -505,6 +505,20 @@ fn attribute_matches(pattern: &str, below: &str) -> bool {
     }
 }
 
+/// The form the working tree's `.gitattributes` files give one path.
+pub fn form_in(root: &Path, path: &str) -> Form {
+    let texts: Vec<(String, String)> = attribute_files(path)
+        .into_iter()
+        .filter_map(|file| {
+            Some((
+                file.clone(),
+                std::fs::read_to_string(root.join(&file)).ok()?,
+            ))
+        })
+        .collect();
+    form(path, &texts)
+}
+
 /// The form a commit's `.gitattributes` files give one path, read out of git.
 pub fn form_at(root: &Path, commit: &str, path: &str) -> Form {
     let files = attribute_files(path);

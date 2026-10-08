@@ -744,3 +744,14 @@ fn a_run_that_reads_no_held_file_reports_no_unmatched_entry() {
     assert_eq!(code, 0, "{report}");
     assert!(list(&report, "reviews").is_empty(), "{report}");
 }
+
+#[test]
+fn a_binary_attribute_the_change_gives_a_measured_file_blocks_the_stop() {
+    let tree = tree(CONFIG);
+    tree.write(".gitattributes", "src/lib.rs binary\n");
+
+    let run = stop(&tree);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("measurement-lost"), "{}", run.out);
+}

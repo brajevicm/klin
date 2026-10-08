@@ -89,10 +89,10 @@ impl Tree {
     }
 
     /// The files the list left out because the in-tree `.gitattributes` make them not text, each
-    /// with its form, and none for a tree that reads no attributes. Spec 7.2.
+    /// with its form, and none for a tree that reads no attributes or was not listed yet. A
+    /// caller that only needs a few paths asks `files::form_in` and walks nothing. Spec 7.2.
     pub fn formless(&self) -> &[(String, files::Form)] {
-        let _ = self.files();
-        self.formless.get_or_init(Vec::new)
+        self.formless.get().map_or(&[], Vec::as_slice)
     }
 
     fn with_text_form(&self, files: Vec<String>) -> Vec<String> {

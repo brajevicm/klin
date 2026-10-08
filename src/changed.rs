@@ -19,8 +19,11 @@ const RENAMES: &[&str] = &["-M50%", "-l1000"];
 
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
-    let listed = staged(&repo, root, base)
-        .or_else(|| tracked(&repo, base))
+    let listed = tracked(&repo, base)
+        .map(|listed| match moved_untracked(&listed) {
+            true => staged(&repo, root, base).unwrap_or(listed),
+            false => listed,
+        })
         .ok_or_else(|| {
             Error(format!(
                 "--changed needs a git repository, and git could not read {}",
@@ -52,7 +55,17 @@ fn staged(repo: &Repo, root: &Path, base: &str) -> Option<String> {
     repo.text_with_env(&asked, &env)
 }
 
-/// The tracked changes and the untracked files apart, for a tree whose index klin cannot copy.
+/// Whether the change set holds a deleted path and an untracked file, which is what a plain `mv`
+/// leaves, so only such a change set pays to stage the working tree for rename detection.
+fn moved_untracked(listed: &str) -> bool {
+    let has = |status: &str| listed.lines().any(|line| line.starts_with(status));
+    has("D\t") && has(UNTRACKED)
+}
+
+/// The status klin gives an untracked file in the tracked listing.
+const UNTRACKED: &str = "?\t";
+
+/// The tracked changes and the untracked files apart, as git lists them without staging.
 fn tracked(repo: &Repo, base: &str) -> Option<String> {
     let mut asked = vec!["diff", "--name-status"];
     asked.extend_from_slice(RENAMES);
@@ -62,7 +75,7 @@ fn tracked(repo: &Repo, base: &str) -> Option<String> {
         .text(&["ls-files", "--others", "--exclude-standard"])
         .unwrap_or_default();
     for name in untracked.lines().filter(|name| !name.is_empty()) {
-        listed.push_str(&format!("\nA\t{name}"));
+        listed.push_str(&format!("\n{UNTRACKED}{name}"));
     }
     Some(listed)
 }
@@ -78,7 +91,7 @@ fn change(line: &str) -> Option<Change> {
         }),
         false => Some(Change {
             path: first.to_string(),
-            was: (status != "A").then(|| first.to_string()),
+            was: (!matches!(status, "A" | "?")).then(|| first.to_string()),
         }),
     }
 }
