@@ -425,6 +425,20 @@ pub fn attribute_files(path: &str) -> Vec<String> {
     out
 }
 
+/// The most lines klin reads of one `.gitattributes` file, and the longest pattern it matches.
+/// An attribute can only take a file out of measurement, so a line past either bound is one klin
+/// ignores and the file stays measured: a `.gitattributes` an agent writes cannot make klin read
+/// without end, nor hide a file by being large. Spec 7.2.
+const ATTRIBUTE_LINES: usize = 10_000;
+const ATTRIBUTE_PATTERN: usize = 256;
+const ATTRIBUTE_BYTES: usize = 1 << 20;
+
+/// The text of one `.gitattributes` file, up to the first mebibyte, which holds every line klin
+/// reads of any file written by hand.
+pub fn attribute_text(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(&bytes[..bytes.len().min(ATTRIBUTE_BYTES)]).into_owned()
+}
+
 /// The form these `.gitattributes` texts give one path. Each text is keyed by the file that
 /// holds it, shallowest first. klin reads only in-tree files, never `.git/info/attributes` or
 /// `core.attributesFile`, so two machines agree. Spec 7.2.
@@ -435,7 +449,7 @@ pub fn form(path: &str, texts: &[(String, String)]) -> Form {
         let Some(below) = path.strip_prefix(directory) else {
             continue;
         };
-        for line in text.lines() {
+        for line in text.lines().take(ATTRIBUTE_LINES) {
             apply(line, below, &mut states);
         }
     }
@@ -452,7 +466,11 @@ fn apply(line: &str, below: &str, states: &mut [Option<State>; 3]) {
     let Some((pattern, attributes)) = pattern_of(line.trim_start()) else {
         return;
     };
-    if pattern.starts_with('#') || pattern.starts_with('!') || !attribute_matches(&pattern, below) {
+    if pattern.len() > ATTRIBUTE_PATTERN
+        || pattern.starts_with('#')
+        || pattern.starts_with('!')
+        || !attribute_matches(&pattern, below)
+    {
         return;
     }
     for (at, state) in attributes.split_whitespace().filter_map(attribute) {
@@ -628,7 +646,7 @@ pub fn form_in(root: &Path, path: &str) -> Form {
         .filter_map(|file| {
             Some((
                 file.clone(),
-                std::fs::read_to_string(root.join(&file)).ok()?,
+                attribute_text(&std::fs::read(root.join(&file)).ok()?),
             ))
         })
         .collect();
@@ -642,10 +660,7 @@ pub fn form_at(root: &Path, commit: &str, path: &str) -> Form {
     let mut texts = Vec::new();
     crate::changed::blobs(root, commit, &named, |file, bytes| {
         if let Some(bytes) = bytes {
-            texts.push((
-                file.to_string(),
-                String::from_utf8_lossy(bytes).into_owned(),
-            ));
+            texts.push((file.to_string(), attribute_text(bytes)));
         }
     });
     form(path, &texts)

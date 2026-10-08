@@ -107,7 +107,7 @@ impl Tree {
             .iter()
             .filter(|file| file.rsplit('/').next() == Some(".gitattributes"))
             .filter_map(|file| {
-                let text = std::fs::read_to_string(self.root.join(file)).ok()?;
+                let text = files::attribute_text(&std::fs::read(self.root.join(file)).ok()?);
                 Some((file.clone(), text))
             })
             .collect();

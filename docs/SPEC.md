@@ -792,7 +792,10 @@ finding by making a file unmeasurable.
   files of each side, never from `.git/info/attributes` or
   `core.attributesFile`, so two machines agree. It matches their patterns as
   git does: `*` and `?` stay inside one directory, `**` spans directories, and
-  a pattern in double quotes may hold spaces. The working tree's file list
+  a pattern in double quotes may hold spaces. klin reads the first mebibyte
+  and the first 10,000 lines of each `.gitattributes` file and ignores a
+  pattern longer than 256 bytes. An attribute only takes a file out of
+  measurement, so what klin ignores leaves the file measured. The working tree's file list
   leaves out a path these attributes make not text, filtered or encoded, and
   the run sorts that path though no capability read it. An encoding that
   klin cannot decode is a coverage note where the base gave the path one

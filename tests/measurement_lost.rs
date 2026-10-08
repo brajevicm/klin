@@ -979,3 +979,15 @@ fn a_filter_driver_named_with_an_equals_sign_does_not_run() {
 
     assert!(!ran.exists(), "a filter ran: {report}");
 }
+
+#[test]
+fn an_attribute_pattern_past_the_bound_takes_no_file_out_of_measurement() {
+    let tree = tree(CONFIG);
+    let long = format!("src/{}*.rs", "*".repeat(300));
+    tree.write(".gitattributes", &format!("{long} binary\n"));
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(lost(&report).is_empty(), "{report}");
+}
