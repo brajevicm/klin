@@ -36,7 +36,8 @@ const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's
     events, and the host runs it. Only the host runs it.";
 
 /// klin's own subcommands that only a person runs, the reason each is refused, and the
-/// hyphenated tag a journal line names the refusal by. Spec 10.8.
+/// hyphenated tag a journal line names the refusal by. Spec 10.8. `turn reset` stays on the list
+/// for as long as the hidden command exists, which #503 deletes.
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["setup"], SETUP_REFUSAL, "setup"),
     (&["update"], UPDATE_REFUSAL, "update"),

@@ -385,14 +385,14 @@ fn add_prompt_note(
         parts.push((
             "note",
             "klin: no prompt event reached this session; klin grants no fresh gate blocks until \
-             `klin radius` runs on session start and on prompt submitted."
+             the host runs klin's session and prompt hooks."
                 .to_string(),
         ));
     }
 }
 
 /// Whether no `prompt` line of this stop's session reached the journal. The tail the stop read
-/// reaches back past the turn stamp, which the `klin radius` run that appends that line takes
+/// reaches back past the turn stamp, which the prompt event that appends that line takes
 /// after appending it, so a tail with no such line is the absence and not a short read.
 /// Spec 16.3.
 fn no_prompt_event(tail: &journal::Tail, session: Option<&str>) -> bool {

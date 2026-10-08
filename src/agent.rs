@@ -2,6 +2,7 @@
 //! places the event's host and kind before it loads configuration or walks the tree, and it
 //! exits 2 only to block a Stop or to deny a tool call. Spec 10.1, 10.2, 10.10.
 
+use std::cell::Cell;
 use std::ffi::OsString;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
@@ -22,7 +23,17 @@ pub fn called() -> bool {
     std::env::args_os().nth(1).is_some_and(|word| word == WORD)
 }
 
+/// Every answer runs under one unwind guard, so a panic anywhere is no decision either: exit 0
+/// before the kind is known and at an informing hook, and exit 1 at a Stop. Spec 10.10.
 pub fn run() -> ExitCode {
+    let placed = Cell::new(None);
+    match catch_unwind(AssertUnwindSafe(|| answer(&placed))) {
+        Ok(code) => code,
+        Err(_) => failed(placed.get()),
+    }
+}
+
+fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
     let words: Vec<OsString> = std::env::args_os().skip(2).collect();
     if words.first().is_none_or(|word| word != EVENT) {
         eprintln!("klin: NOTE: `klin {WORD}` takes `{EVENT}`, so this hook answered nothing.");
@@ -35,11 +46,12 @@ pub fn run() -> ExitCode {
     let Some(kind) = event.kind else {
         return ExitCode::SUCCESS;
     };
+    placed.set(Some(kind));
     let Some(start) = event.root.clone().or_else(|| std::env::current_dir().ok()) else {
         eprintln!(
             "klin: NOTE: the working directory could not be read, so this hook answered nothing."
         );
-        return failed(kind);
+        return failed(Some(kind));
     };
     let found = Discovered::from(&start);
     let (Some(root), Some(_)) = (&found.root, &found.config) else {
@@ -50,10 +62,7 @@ pub fn run() -> ExitCode {
         }
         return ExitCode::SUCCESS;
     };
-    match catch_unwind(AssertUnwindSafe(|| answered(event, kind, &start, root))) {
-        Ok(code) => ExitCode::from(code),
-        Err(_) => failed(kind),
-    }
+    ExitCode::from(answered(event, kind, &start, root))
 }
 
 /// The value of `--host NAME` or `--host=NAME`. Every other argument is one the ingress does
@@ -89,9 +98,9 @@ fn answered(event: Event, kind: Kind, start: &Path, root: &Path) -> u8 {
 
 /// A failure that is no decision: exit 0 where a hook only informs, and exit 1 at a Stop, so
 /// no host reads it as a block or a deny. Spec 10.10.
-fn failed(kind: Kind) -> ExitCode {
+fn failed(kind: Option<Kind>) -> ExitCode {
     match kind {
-        Kind::Stop => ExitCode::from(1),
+        Some(Kind::Stop) => ExitCode::from(1),
         _ => ExitCode::SUCCESS,
     }
 }

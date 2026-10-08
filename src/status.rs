@@ -79,7 +79,6 @@ fn window(at: &Path) -> Option<Value> {
     Some(json!({
         "verdict": if held.green { "green" } else { "red" },
         "age_seconds": now().saturating_sub(held.time),
-        "open": held.asked,
     }))
 }
 

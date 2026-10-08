@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -x target/debug/klin ]; then target/debug/klin __agent event; else cargo run --quiet -- guard; fi",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ -x target/debug/klin ]; then target/debug/klin __agent event; else cargo run --quiet -- __agent event; fi",
             "timeout": 60
           }
         ]

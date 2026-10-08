@@ -149,7 +149,7 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
         "{}",
         lines[1]
     );
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
 }
 
@@ -205,7 +205,7 @@ fn a_spent_gate_block_tells_the_person_when_no_prompt_event_reached_klin() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(second.says("klin radius"), "{}", second.out);
+    assert!(second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -220,7 +220,7 @@ fn a_spent_gate_block_with_no_session_does_not_tell_the_person_to_run_radius() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP_WITHOUT_SESSION);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -239,7 +239,7 @@ fn a_new_prompt_does_not_get_the_no_prompt_note_from_an_earlier_intervention() {
 
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     assert!(!has_flag(&lines[1], "no-prompt-event"), "{}", lines[1]);
@@ -733,7 +733,7 @@ fn a_spent_gate_block_finds_this_session_prompt_behind_an_old_journal() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(!second.says("klin radius"), "{}", second.out);
+    assert!(!second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     let last = lines.last().unwrap_or_else(|| panic!("a stop line"));
@@ -750,7 +750,7 @@ fn a_spent_gate_block_behind_an_old_journal_still_reports_a_missing_prompt() {
     assert_eq!(first.code, 2, "{}", first.out);
     let second = stop(&tree, A_SECOND_STOP);
     assert_eq!(second.code, 0, "{}", second.out);
-    assert!(second.says("klin radius"), "{}", second.out);
+    assert!(second.says("session and prompt hooks"), "{}", second.out);
 
     let lines = stops(&tree);
     let last = lines.last().unwrap_or_else(|| panic!("a stop line"));

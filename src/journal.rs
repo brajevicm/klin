@@ -163,7 +163,7 @@ pub fn line(stop: &Stop) -> Value {
     Value::Object(line)
 }
 
-/// The prompt event `klin radius` runs on: the counter, the session, the prompt's first line cut
+/// The prompt event the ingress answers: the counter, the session, the prompt's first line cut
 /// at 80 characters unless `journal.prompt` is `false`, and the radius facts when radius measured
 /// them. `enabled` is `prompt_enabled` of the config the caller already loaded for the same
 /// event, so this appends without reading klin.json a second time. Spec 9.6, 11.4.

@@ -34,6 +34,7 @@ pub fn run() -> u8 {
 fn reconcile_hint() {
     let Some(read) = std::env::current_exe()
         .ok()
+        .map(replaced)
         .and_then(|exe| Command::new(exe).args(["status", "--json"]).output().ok())
         .filter(|read| read.status.success())
     else {
@@ -61,5 +62,15 @@ fn reconcile_hint() {
             "klin: run klin setup to reconcile this repository's integration: {}.",
             stale.join(", ")
         );
+    }
+}
+
+/// The path the updated binary sits at. Linux names a running binary that was replaced on disk
+/// with a ` (deleted)` suffix, and the new binary is at the path without it.
+fn replaced(exe: PathBuf) -> PathBuf {
+    let named = exe.to_string_lossy();
+    match named.strip_suffix(" (deleted)") {
+        Some(path) => PathBuf::from(path),
+        None => exe,
     }
 }
