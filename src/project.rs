@@ -114,7 +114,8 @@ impl Project {
 
     /// What the change did to the paths the policy names, which the run follows, and each file
     /// it renamed under a directory every walk skips. Nothing before a window is bound, and no
-    /// scope move where no section states a scope. Spec 7.3.
+    /// scope move where no section states a scope. A file list that cannot be read drops the
+    /// scope moves and keeps the skipped ones. Spec 7.3.
     pub fn moves(&self) -> &Moves {
         self.moves.get_or_init(|| {
             let Some(base) = self.bound.as_deref() else {
