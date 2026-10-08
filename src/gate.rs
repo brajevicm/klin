@@ -256,7 +256,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let exit = exit_code(code, event.as_ref());
     finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
-    let fresh = fresh.filter(|_| matches!(leaves, Leaves::Fresh));
+    let advised = matches!(leaves, Leaves::Fresh);
+    let fresh = fresh.filter(|_| advised);
+    log.advisory = log.advisory.filter(|_| advised);
     let left = turn::Left {
         prior: prior.unwrap_or_default(),
         verdict: leaves.verdict(),

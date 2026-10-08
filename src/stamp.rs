@@ -212,21 +212,14 @@ impl Here {
         let common = std::fs::read_to_string(dir.join("commondir"))
             .map_or_else(|_| dir.clone(), |common| dir.join(common.trim()));
         if common.join("reftable").is_dir() {
-            return Here::through_git(root);
+            return Here::through_git(root, &dir);
         }
         let refs = Refs {
             packed: std::fs::read_to_string(common.join("packed-refs")).unwrap_or_default(),
             dir,
             common,
         };
-        let head_ref = ["rebase-merge", "rebase-apply"]
-            .iter()
-            .find_map(|rebase| {
-                std::fs::read_to_string(refs.dir.join(rebase).join("head-name")).ok()
-            })
-            .map(|name| name.trim().to_string())
-            .filter(|name| name.starts_with("refs/"))
-            .or_else(|| refs.symbolic("HEAD"));
+        let head_ref = rebasing(&refs.dir).or_else(|| refs.symbolic("HEAD"));
         Here {
             head: refs.resolve("HEAD"),
             head_ref: Some(head_ref.unwrap_or_else(|| "HEAD".to_string())),
@@ -251,7 +244,7 @@ impl Here {
 
     /// The same facts from git itself, for a repository that keeps its refs in a reftable.
     // ponytail: one git process per fact; one `for-each-ref` call if reftable Stops grow slow.
-    fn through_git(root: &Path) -> Here {
+    fn through_git(root: &Path, dir: &Path) -> Here {
         let repo = Repo::at(root);
         let symbolic = |name: &str| {
             repo.text(&["symbolic-ref", "-q", name])
@@ -260,14 +253,19 @@ impl Here {
         };
         Here {
             head: resolve(root, "HEAD"),
-            head_ref: Some(symbolic("HEAD").unwrap_or_else(|| "HEAD".to_string())),
+            head_ref: Some(
+                rebasing(dir)
+                    .or_else(|| symbolic("HEAD"))
+                    .unwrap_or_else(|| "HEAD".to_string()),
+            ),
             default: default_candidates(symbolic("refs/remotes/origin/HEAD"))
                 .find_map(|name| Some((name.clone(), resolve(root, &name)?))),
             remotes: repo
                 .text(&["for-each-ref", "--count=1", "refs/remotes"])
                 .is_some_and(|found| !found.trim().is_empty()),
             reflog: repo
-                .text(&["reflog", "show", "--format=%gs", "HEAD"])
+                .text(&["reflog", "exists", "HEAD"])
+                .and_then(|_| repo.text(&["reflog", "show", "--format=%gs", "HEAD"]))
                 .map(|log| log.lines().rev().map(str::to_string).collect()),
         }
     }
@@ -283,6 +281,17 @@ impl Here {
         let entries = self.reflog.as_deref()?;
         entries.get(usize::try_from(position?.0).ok()?..)
     }
+}
+
+/// The branch an in-progress rebase works on, which counts as HEAD's symbolic ref while HEAD
+/// is detached under it. Git keeps the rebase state in the git directory whatever the ref
+/// format. Spec 6.6.
+fn rebasing(dir: &Path) -> Option<String> {
+    ["rebase-merge", "rebase-apply"]
+        .iter()
+        .find_map(|rebase| std::fs::read_to_string(dir.join(rebase).join("head-name")).ok())
+        .map(|name| name.trim().to_string())
+        .filter(|name| name.starts_with("refs/"))
 }
 
 fn default_candidates(named: Option<String>) -> impl Iterator<Item = String> {

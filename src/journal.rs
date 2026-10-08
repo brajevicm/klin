@@ -46,7 +46,8 @@ pub struct Stop {
     pub verdict: &'static str,
     /// Why the stop wrote no verdict, beside `verdict: "none"` alone.
     pub why: Option<&'static str>,
-    /// Why the Stop was advisory, beside `verdict: "advisory"`. Spec 13.1.
+    /// Why the Stop was advisory, on a Stop that measured in an advisory window: beside
+    /// `verdict: "advisory"`, or beside `none` where it could not take the fresh stamp. Spec 13.1.
     pub advisory: Option<&'static str>,
     /// The site ids this stop asked about, as the turn stamp records them. Spec 8.2.
     pub asked: Vec<String>,
@@ -148,7 +149,7 @@ pub fn line(stop: &Stop) -> Value {
     if let Some(why) = stop.why {
         line.insert("why".into(), why.into());
     }
-    if let Some(reason) = stop.advisory.filter(|_| stop.verdict == "advisory") {
+    if let Some(reason) = stop.advisory {
         line.insert("advisory".into(), reason.into());
     }
     line.insert(

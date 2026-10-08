@@ -650,14 +650,17 @@ in-progress rebase counts as its `head-name` branch), and the position of
 HEAD's reflog. A Stop is advisory when, since the stamp was taken, one of
 these happened:
 
-1. **Incoming commits.** The default-branch merge-base moved, and HEAD's
+1. **Incoming commits.** The default-branch merge-base moved forward, so
+   the recorded one is an ancestor of it, and HEAD's
    reflog since the recorded position holds a `merge`, `pull`, `rebase` or
    `reset` entry, or the `commit (merge)` entry of a merge that stopped on a
    conflict. The default branch is found by candidate 3 of 0.x 6.3
    without the GitHub variables, and only a remote-tracking ref
    (`refs/remotes/...`) counts. The reflog is compared by entry position,
-   never by time. When HEAD has no reflog, a moved default-branch merge-base
-   alone is advisory.
+   never by time. When HEAD has no reflog, a merge-base that moved forward
+   alone is advisory. A reftable repository has no HEAD reflog when
+   `git reflog exists HEAD` says so, even where `git reflog show` prints an
+   empty log.
 2. **A branch change.** HEAD's symbolic ref differs from the recorded one,
    and the stamp's parent is no longer an ancestor of HEAD. `git switch -c`
    at the same HEAD keeps the turn window, as 0.x 6.2 did. A stamp that
@@ -665,7 +668,11 @@ these happened:
    test alone.
 3. **Lost history.** The recorded default-branch merge-base is no longer an
    ancestor of HEAD, for example after the default branch was rewritten and
-   the agent reset onto it.
+   the agent reset onto it, or after a reset onto history that shares no
+   merge-base with the default branch. A merge-base that moved back behind
+   the recorded one is the agent's own rewrite of commits the default branch
+   already holds, such as a `reset --soft` or an amend after a push of the
+   default branch, and is not lost history.
 4. **Missing state.** The stamp and its ref are both missing (0.x 6.2).
 
 Where HEAD has a reflog, the agent's own work never triggers these rules: a
@@ -700,7 +707,11 @@ An advisory Stop:
 
 A Stop that cannot take the state lock applies the same rules. When they
 make it advisory, it blocks nothing for a finding and tells what it found,
-and it takes no fresh stamp, as it writes no verdict.
+and it takes no fresh stamp, as it writes no verdict. On a host that submits
+a told message as its next prompt, such as Cursor, it tells nothing, because
+it cannot record the message (section 9.1). Its journal line keeps the
+advisory reason. It took no fresh stamp, so the next Stop that holds the lock
+is advisory again and tells what it found.
 
 An advisory Stop for a missing stamp has no stamp to measure against. It
 measures against the 0.x 6.3 base, as the branch fallback does.

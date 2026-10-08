@@ -323,33 +323,51 @@ impl Reason {
 /// merge that stopped on a conflict logs its commit as `commit (merge)`.
 const INCOMING: [&str; 5] = ["merge", "pull", "rebase", "reset", "commit (merge)"];
 
-/// Rules 1 to 3 of spec 6.6 over a stamp that resolves. A merge-base the stamp never recorded,
-/// as on a stamp restored from its ref, is the stamp parent's. The merge-base comes from the
+/// Rules 1 to 3 of spec 6.6 over a stamp that resolves. The merge-base comes from the
 /// cache, so a Stop where neither HEAD nor the default branch moved starts no git process for
-/// it. Without a reflog to read, a moved merge-base alone is advisory.
+/// it. HEAD with no merge-base at all, as after a reset onto unrelated history, can still have
+/// lost the recorded one.
 fn advisory(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<Reason> {
     if switched(root, stamp, here) {
         return Some(Reason::BranchChanged);
     }
-    let (recorded, now) = merge_bases(root, at, stamp, here)?;
-    if now == recorded {
-        return None;
+    let (head, default) = here.pair()?;
+    let recorded = recorded(root, at, stamp, default)?;
+    match stamp::merge_base(root, at, head, default) {
+        Some(now) if now == recorded => None,
+        Some(now) => moved(root, here, stamp, &recorded, &now),
+        None => lost(root, &recorded),
     }
-    if incoming(here, stamp) {
-        return Some(Reason::IncomingCommits);
-    }
-    (Repo::at(root).contains(&recorded) == Some(false)).then_some(Reason::HistoryLost)
 }
 
-/// The default-branch merge-base the stamp recorded, and HEAD's as it stands. A stamp that
-/// recorded none, as one restored from its ref, has its parent's.
-fn merge_bases(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<(String, String)> {
-    let (head, default) = here.pair()?;
-    let recorded = match &stamp.history.merge_base {
-        Some(recorded) => recorded.clone(),
-        None => stamp::merge_base(root, at, stamp.parent.as_deref()?, default)?,
-    };
-    Some((recorded, stamp::merge_base(root, at, head, default)?))
+/// The default-branch merge-base the stamp recorded. A stamp that recorded none, as one
+/// restored from its ref, has its parent's.
+fn recorded(root: &Path, at: &Path, stamp: &Stamp, default: &str) -> Option<String> {
+    match &stamp.history.merge_base {
+        Some(recorded) => Some(recorded.clone()),
+        None => stamp::merge_base(root, at, stamp.parent.as_deref()?, default),
+    }
+}
+
+/// A merge-base that moved. Forward past the recorded one, it is incoming commits when the
+/// reflog says so, and the agent's own push otherwise. Back behind it, the agent rewrote
+/// commits the default branch already holds, as a `reset --soft` or an amend after a push of
+/// the default branch does. Anywhere else, the turn lost its history when HEAD no longer holds
+/// the recorded merge-base.
+fn moved(root: &Path, here: &Here, stamp: &Stamp, recorded: &str, now: &str) -> Option<Reason> {
+    let repo = Repo::at(root);
+    if repo.is_ancestor(recorded, now) == Some(true) {
+        return incoming(here, stamp).then_some(Reason::IncomingCommits);
+    }
+    if repo.is_ancestor(now, recorded) == Some(true) {
+        return None;
+    }
+    lost(root, recorded)
+}
+
+/// Rule 3: HEAD no longer holds the recorded merge-base, on git's proven answer alone.
+fn lost(root: &Path, recorded: &str) -> Option<Reason> {
+    (Repo::at(root).contains(recorded) == Some(false)).then_some(Reason::HistoryLost)
 }
 
 /// Whether HEAD's reflog since the stamp holds an entry that brings commits in. A reflog that

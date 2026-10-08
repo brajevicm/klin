@@ -260,9 +260,22 @@ fn a_stamp_and_a_ref_that_are_both_gone_make_the_stop_advisory() {
 /// The agent's own commit after the stamp, which the stamp is then taken over, so a rewrite of
 /// that commit drops the stamp's parent from HEAD history.
 fn committed(remote: &Remote) {
-    remote.tree.write("src/agent.rs", CLEAN);
+    remote.tree.write("notes.txt", "the agent's notes\n");
     remote.tree.commit("the agent's own commit");
-    prompt(&remote.tree);
+    restamp(&remote.tree);
+}
+
+/// A green Stop and the prompt after it, which moves the stamp onto HEAD as it stands. A prompt
+/// alone keeps a stamp no Stop judged yet.
+fn restamp(tree: &Tree) {
+    let run = stop(tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    prompt(tree);
+    assert_eq!(
+        tree.field("parent"),
+        tree.revision("HEAD"),
+        "the stamp did not move"
+    );
 }
 
 /// The rewritten commit's red finding, judged against the stamp as any stop is.
@@ -355,7 +368,7 @@ fn a_push_of_the_default_branch_from_it_is_not_advisory() {
     let remote = Remote::unstamped(CONFIG);
     remote.tree.git(&["checkout", "-q", "main"]);
     prompt(&remote.tree);
-    remote.tree.write("src/agent.rs", CLEAN);
+    remote.tree.write("notes.txt", "the agent's notes\n");
     remote.tree.commit("the agent's own commit on main");
     remote.tree.git(&["push", "-q", "origin", "main"]);
 
@@ -588,8 +601,16 @@ fn the_fresh_stamp_is_the_tree_the_stop_measured_and_holds_no_build_output() {
 /// A repository that keeps its refs, and HEAD's reflog with them, in a reftable, with the agent
 /// on `main` and one prompt's stamp taken.
 fn reftable() -> Remote {
+    reftable_with(&[])
+}
+
+/// The same, with git configuration set before the first commit writes any reflog.
+fn reftable_with(config: &[(&str, &str)]) -> Remote {
     let tree = Tree::bare();
     tree.git(&["init", "-q", "--ref-format=reftable", "-b", "main"]);
+    for (key, value) in config {
+        tree.git(&["config", key, value]);
+    }
     tree.write("klin.json", CONFIG);
     tree.write("src/lib.rs", CLEAN);
     tree.commit("the base");
@@ -601,7 +622,7 @@ fn reftable() -> Remote {
 #[test]
 fn in_a_reftable_repository_the_agents_own_push_of_main_is_not_advisory() {
     let remote = reftable();
-    remote.tree.write("src/agent.rs", CLEAN);
+    remote.tree.write("notes.txt", "the agent's notes\n");
     remote.tree.commit("the agent's own commit on main");
     remote.tree.git(&["push", "-q", "origin", "main"]);
 
@@ -617,4 +638,108 @@ fn in_a_reftable_repository_a_pull_of_main_is_advisory() {
         .git(&["pull", "-q", "--ff-only", "origin", "main"]);
 
     assert_advisory(&remote.tree, "incoming-commits");
+}
+
+/// The agent on the default branch, level with `origin/main`, and one prompt's stamp taken.
+fn on_main() -> Remote {
+    let remote = Remote::unstamped(CONFIG);
+    remote.tree.git(&["checkout", "-q", "main"]);
+    prompt(&remote.tree);
+    remote
+}
+
+#[test]
+fn a_soft_reset_on_the_default_branch_keeps_the_turn_window() {
+    let remote = on_main();
+    remote.tree.git(&["reset", "-q", "--soft", "HEAD~1"]);
+
+    assert_turn_blocks(&remote.tree);
+}
+
+#[test]
+fn an_amend_after_a_push_of_the_default_branch_keeps_the_turn_window() {
+    let remote = on_main();
+    remote.tree.write("notes.txt", "the agent's notes\n");
+    remote.tree.commit("the agent's own commit on main");
+    remote.tree.git(&["push", "-q", "origin", "main"]);
+    restamp(&remote.tree);
+    remote
+        .tree
+        .git(&["commit", "-q", "--amend", "-m", "amended after the push"]);
+
+    assert_turn_blocks(&remote.tree);
+}
+
+#[test]
+fn a_reset_of_the_branch_onto_unrelated_history_is_lost_history() {
+    let remote = Remote::new();
+    remote
+        .tree
+        .git(&["checkout", "-q", "--orphan", "unrelated"]);
+    remote
+        .tree
+        .commit("history the default branch does not share");
+    remote
+        .tree
+        .git(&["checkout", "-q", "-B", "work", "unrelated"]);
+
+    assert_advisory(&remote.tree, "history-lost");
+}
+
+#[test]
+fn in_a_reftable_repository_with_no_reflog_a_pull_of_main_is_advisory() {
+    let remote = reftable_with(&[("core.logAllRefUpdates", "false")]);
+    remote.incoming();
+    remote
+        .tree
+        .git(&["pull", "-q", "--ff-only", "origin", "main"]);
+
+    assert_advisory(&remote.tree, "incoming-commits");
+}
+
+#[test]
+fn in_a_reftable_repository_a_paused_interactive_rebase_is_not_advisory() {
+    let remote = reftable();
+    committed(&remote);
+    remote
+        .tree
+        .git(&["-c", EDIT_FIRST, "rebase", "-q", "-i", "HEAD~1"]);
+    remote
+        .tree
+        .git(&["commit", "-q", "--amend", "-m", "reworded while paused"]);
+
+    assert_turn_blocks(&remote.tree);
+}
+
+fn cursor_stop(generation: &str) -> String {
+    format!(
+        r#"{{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","generation_id":"{generation}","loop_count":0}}"#
+    )
+}
+
+/// Cursor tells a note as a `followup_message` it submits as the next prompt, which a Stop
+/// without the lock cannot record, so it tells nothing. That Stop takes no fresh stamp either,
+/// so the next Stop that holds the lock is advisory again and tells it. Spec 6.6, 9.1.
+#[test]
+fn on_cursor_a_stop_that_lost_the_lock_leaves_the_advisory_note_to_the_next_stop() {
+    let remote = Remote::new();
+    remote.incoming();
+    remote
+        .tree
+        .git(&["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"]);
+    let Ok(lock) = std::fs::File::create(remote.tree.state("lock")) else {
+        panic!("the lock file could not be made")
+    };
+    assert!(lock.lock().is_ok(), "the test could not hold the lock");
+
+    let quiet = harness::feed(remote.tree.root(), harness::AGENT, &cursor_stop("g1"));
+    assert!(!quiet.printed.contains("followup_message"), "{}", quiet.out);
+    let line = last_stop(&remote.tree);
+    assert_eq!(line["advisory"], "incoming-commits", "{line}");
+    drop(lock);
+
+    let told = harness::feed(remote.tree.root(), harness::AGENT, &cursor_stop("g2"));
+    assert!(told.printed.contains("followup_message"), "{}", told.out);
+    assert!(told.says(MOVED), "{}", told.out);
+    assert_eq!(last_stop(&remote.tree)["verdict"], "advisory");
 }
