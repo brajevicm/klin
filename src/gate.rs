@@ -2147,34 +2147,29 @@ fn told(note: &Value) -> bool {
 /// unresolved one. Spec 7.2.
 const AMBIGUOUS: &str = "ambiguous";
 
-/// The files in the run's scope that the working tree's `.gitattributes` make not text, in a
-/// language a selected gate that reads code reads, so the run sorts them though no gate saw
-/// them. Spec 7.2.
+/// The new paths of the run that the working tree's `.gitattributes` make not text, under each
+/// selected gate that reads their language. No gate saw them, because the file list leaves them
+/// out and the base held none of them. A path the base measured reaches the run through the
+/// gate that lost it instead. Spec 7.2.
 fn formless(project: &Project, wanted: &[&Gate], against: &Against) -> Vec<(String, String, Seen)> {
-    let Some(gate) = wanted.iter().find(|gate| gate.check.reads_code()) else {
+    let Some(base) = &against.base else {
         return Vec::new();
     };
-    let attributes = |scope: &Vec<String>| {
-        scope
-            .iter()
-            .any(|file| file.rsplit('/').next() == Some(".gitattributes"))
-    };
-    let formed: Vec<(String, files::Form)> = match &against.scope {
-        Some(scope) if !attributes(scope) => scope
-            .iter()
-            .map(|file| (file.clone(), files::form_in(project.root(), file)))
-            .filter(|(_, form)| form.any())
-            .collect(),
-        _ => {
-            let _ = project.tree().files();
-            project.tree().formless().to_vec()
+    let changes = project.changes(&base.before).unwrap_or_default();
+    let mut out = Vec::new();
+    for change in changes.iter().filter(|change| change.was.is_none()) {
+        let form = files::form_in(project.root(), &change.path);
+        if !form.any() {
+            continue;
         }
-    };
-    formed
-        .into_iter()
-        .filter(|(file, _)| crate::syntax::language_of(file).is_some())
-        .map(|(file, form)| (gate.name.clone(), file, Seen::Form(form)))
-        .collect()
+        out.extend(
+            wanted
+                .iter()
+                .filter(|gate| read_by(&[gate], &change.path))
+                .map(|gate| (gate.name.clone(), change.path.clone(), Seen::Form(form))),
+        );
+    }
+    out
 }
 
 /// The files one gate could not measure, as it saw them, for the run to sort once. Spec 7.2.

@@ -449,15 +449,41 @@ pub fn form(path: &str, texts: &[(String, String)]) -> Form {
 
 /// One `.gitattributes` line applied to a path below its directory.
 fn apply(line: &str, below: &str, states: &mut [Option<State>; 3]) {
-    let mut words = line.split_whitespace();
-    let Some(pattern) = words.next() else {
+    let Some((pattern, attributes)) = pattern_of(line.trim_start()) else {
         return;
     };
-    if pattern.starts_with('#') || pattern.starts_with('!') || !attribute_matches(pattern, below) {
+    if pattern.starts_with('#') || pattern.starts_with('!') || !attribute_matches(&pattern, below) {
         return;
     }
-    for (at, state) in words.filter_map(attribute) {
+    for (at, state) in attributes.split_whitespace().filter_map(attribute) {
         states[at] = Some(state);
+    }
+}
+
+/// A line's pattern and the attributes after it. A pattern in double quotes may hold spaces and
+/// the escapes `\"`, `\\`, `\t` and `\n`, as git reads it.
+fn pattern_of(line: &str) -> Option<(String, &str)> {
+    let Some(quoted) = line.strip_prefix('"') else {
+        let (pattern, rest) = line.split_once(char::is_whitespace).unwrap_or((line, ""));
+        return (!pattern.is_empty()).then(|| (pattern.to_string(), rest));
+    };
+    let mut pattern = String::new();
+    let mut chars = quoted.char_indices();
+    while let Some((at, unit)) = chars.next() {
+        match unit {
+            '"' => return Some((pattern, &quoted[at + 1..])),
+            '\\' => pattern.push(unescaped(chars.next()?.1)),
+            _ => pattern.push(unit),
+        }
+    }
+    None
+}
+
+fn unescaped(unit: char) -> char {
+    match unit {
+        't' => '\t',
+        'n' => '\n',
+        other => other,
     }
 }
 
@@ -490,19 +516,83 @@ fn named(word: &str) -> (&str, State) {
 /// pattern with no slash, and by the whole path below the directory otherwise. A pattern that
 /// ends in a slash names a directory, which names no file.
 fn attribute_matches(pattern: &str, below: &str) -> bool {
-    // ponytail: `*` here crosses `/`, which git's wildmatch does not; take a wildmatch port if a
-    // tree's attributes start to disagree with git's.
     if pattern.ends_with('/') {
         return false;
     }
     let anchored = pattern.trim_start_matches('/');
     match pattern.contains('/') {
-        true => glob_matches(anchored.as_bytes(), below.as_bytes()),
+        true => wildmatch(anchored.as_bytes(), below.as_bytes()),
         false => {
             let name = below.rsplit('/').next().unwrap_or(below);
-            glob_matches(pattern.as_bytes(), name.as_bytes())
+            wildmatch(pattern.as_bytes(), name.as_bytes())
         }
     }
+}
+
+/// git's wildmatch for a path: `*` and `?` stay inside one path segment, `**` between slashes
+/// spans any number of directories, `[...]` is a class, and a backslash quotes the next byte.
+fn wildmatch(pattern: &[u8], path: &[u8]) -> bool {
+    match pattern {
+        [] => path.is_empty(),
+        [b'*', b'*', rest @ ..] => any_depth(rest, path),
+        [b'*', rest @ ..] => within_segment(rest, path),
+        [b'[', ..] => classed(pattern, path),
+        _ => one_byte(pattern, path),
+    }
+}
+
+/// `?`, a byte a backslash quotes, or a literal byte: one byte of the path, and `?` never a slash.
+fn one_byte(pattern: &[u8], path: &[u8]) -> bool {
+    let (wanted, rest) = match pattern {
+        [b'\\', quoted, rest @ ..] => (Some(*quoted), rest),
+        [b'?', rest @ ..] => (None, rest),
+        [literal, rest @ ..] => (Some(*literal), rest),
+        [] => return path.is_empty(),
+    };
+    let Some((byte, after)) = path.split_first() else {
+        return false;
+    };
+    wanted.map_or(*byte != b'/', |wanted| wanted == *byte) && wildmatch(rest, after)
+}
+
+/// `**`: before a slash it matches no directory or any run of whole directories, and anywhere
+/// else it matches the rest of the path whatever it holds.
+fn any_depth(rest: &[u8], path: &[u8]) -> bool {
+    match rest.split_first() {
+        Some((b'/', after)) => {
+            wildmatch(after, path)
+                || path
+                    .iter()
+                    .enumerate()
+                    .any(|(at, byte)| *byte == b'/' && wildmatch(after, &path[at + 1..]))
+        }
+        _ => (0..=path.len()).any(|at| wildmatch(rest, &path[at..])),
+    }
+}
+
+/// `*`: any run of bytes that holds no slash.
+fn within_segment(rest: &[u8], path: &[u8]) -> bool {
+    let segment = path
+        .iter()
+        .position(|byte| *byte == b'/')
+        .unwrap_or(path.len());
+    (0..=segment).any(|at| wildmatch(rest, &path[at..]))
+}
+
+/// `[...]`: one byte, never a slash, in or, after `!` or `^`, out of the class.
+fn classed(pattern: &[u8], path: &[u8]) -> bool {
+    let negated = matches!(pattern.get(1), Some(b'!' | b'^'));
+    let opens = 1 + usize::from(negated);
+    let Some(end) = pattern[opens + 1..]
+        .iter()
+        .position(|byte| *byte == b']')
+        .map(|at| at + opens + 1)
+    else {
+        return path.first() == Some(&b'[') && wildmatch(&pattern[1..], &path[1..]);
+    };
+    path.first()
+        .is_some_and(|byte| *byte != b'/' && in_class(&pattern[opens..end], *byte) != negated)
+        && wildmatch(&pattern[end + 1..], &path[1..])
 }
 
 /// The form the working tree's `.gitattributes` files give one path.

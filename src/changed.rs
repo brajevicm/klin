@@ -19,9 +19,10 @@ const RENAMES: &[&str] = &["-M50%", "-l1000"];
 
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
-    let listed = tracked(&repo, base)
+    let unfiltered = unfiltered(&repo);
+    let listed = tracked(&repo, &unfiltered, base)
         .map(|listed| match moved_untracked(&listed) {
-            true => staged(&repo, root, base).unwrap_or(listed),
+            true => staged(&repo, root, (&unfiltered, base)).unwrap_or(listed),
             false => listed,
         })
         .ok_or_else(|| {
@@ -36,23 +37,69 @@ pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     Ok(changes)
 }
 
+/// The `-c` settings that turn off every filter driver git's configuration names, so finding
+/// changes runs no clean, smudge or process filter, and git reads each file's own bytes. A
+/// filter git runs must be configured, so this covers every attributes source. Spec 7.2.
+fn unfiltered(repo: &Repo) -> Vec<String> {
+    let configured = repo
+        .text(&["config", "--name-only", "--get-regexp", "^filter\\."])
+        .unwrap_or_default();
+    let mut drivers: Vec<&str> = configured
+        .lines()
+        .filter_map(|key| key.strip_prefix("filter.")?.rsplit_once('.'))
+        .map(|(driver, _)| driver)
+        .collect();
+    drivers.sort_unstable();
+    drivers.dedup();
+    drivers
+        .into_iter()
+        .flat_map(|driver| {
+            ["clean", "smudge", "process"]
+                .map(|key| format!("filter.{driver}.{key}="))
+                .into_iter()
+                .chain([format!("filter.{driver}.required=false")])
+        })
+        .flat_map(|setting| ["-c".to_string(), setting])
+        .collect()
+}
+
+/// Git's arguments with the filters turned off in front of them.
+fn asking<'a>(unfiltered: &'a [String], args: &[&'a str]) -> Vec<&'a str> {
+    unfiltered
+        .iter()
+        .map(String::as_str)
+        .chain(args.iter().copied())
+        .collect()
+}
+
 /// Every change of the working tree against the base, untracked files included, through a copy
 /// of the index with the working tree added to it. An untracked file is then a candidate for a
 /// rename like any other, so a plain `mv` reads as the move it is. The person's own index is
-/// never written. Spec 7.2.
-fn staged(repo: &Repo, root: &Path, base: &str) -> Option<String> {
+/// never written, and the objects the copy needs go to a scratch object directory that borrows
+/// the repository's own, so nothing is written to the repository at all. Spec 7.2.
+fn staged(repo: &Repo, root: &Path, (unfiltered, base): (&[String], &str)) -> Option<String> {
     let index = root.join(repo.text(&["rev-parse", "--git-path", "index"])?.trim());
+    let objects = root.join(repo.text(&["rev-parse", "--git-path", "objects"])?.trim());
     let scratch = tempfile::tempdir().ok()?;
     let copy = scratch.path().join("index");
     if index.is_file() {
         std::fs::copy(&index, &copy).ok()?;
     }
-    let env = [(OsStr::new("GIT_INDEX_FILE"), copy.as_os_str())];
-    repo.text_with_env(&["add", "-A"], &env)?;
+    let written = scratch.path().join("objects");
+    std::fs::create_dir(&written).ok()?;
+    let env = [
+        (OsStr::new("GIT_INDEX_FILE"), copy.as_os_str()),
+        (OsStr::new("GIT_OBJECT_DIRECTORY"), written.as_os_str()),
+        (
+            OsStr::new("GIT_ALTERNATE_OBJECT_DIRECTORIES"),
+            objects.as_os_str(),
+        ),
+    ];
+    repo.text_with_env(&asking(unfiltered, &["add", "-A"]), &env)?;
     let mut asked = vec!["diff", "--cached", "--name-status"];
     asked.extend_from_slice(RENAMES);
     asked.extend(["--relative", base, "--"]);
-    repo.text_with_env(&asked, &env)
+    repo.text_with_env(&asking(unfiltered, &asked), &env)
 }
 
 /// Whether the change set holds a deleted path and an untracked file, which is what a plain `mv`
@@ -66,11 +113,11 @@ fn moved_untracked(listed: &str) -> bool {
 const UNTRACKED: &str = "?\t";
 
 /// The tracked changes and the untracked files apart, as git lists them without staging.
-fn tracked(repo: &Repo, base: &str) -> Option<String> {
+fn tracked(repo: &Repo, unfiltered: &[String], base: &str) -> Option<String> {
     let mut asked = vec!["diff", "--name-status"];
     asked.extend_from_slice(RENAMES);
     asked.extend(["--relative", base, "--"]);
-    let mut listed = repo.text(&asked)?;
+    let mut listed = repo.text(&asking(unfiltered, &asked))?;
     let untracked = repo
         .text(&["ls-files", "--others", "--exclude-standard"])
         .unwrap_or_default();

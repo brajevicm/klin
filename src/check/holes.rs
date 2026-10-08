@@ -222,6 +222,10 @@ fn one(
     file: &str,
     seen: &[(String, Seen)],
 ) -> Sorted {
+    let form = files::form_in(project.root(), file);
+    if form.any() {
+        return formed(project.root(), against, file, form);
+    }
     let strongest = seen
         .iter()
         .map(|(_, seen)| seen)
@@ -287,11 +291,7 @@ fn form_against(root: &Path, (changes, base): (&[Change], &str), file: &str) -> 
         Some(change) => change.was.as_deref(),
         None => Some(file),
     };
-    match was.map(|was| files::form_at(root, base, was)) {
-        None => Class::Opened,
-        Some(held) if held.any() => Class::Limit,
-        Some(_) => Class::Lost,
-    }
+    at_base(root, base, was, false)
 }
 
 /// A file no grammar read now, by what the base's own reader made of the base's bytes.
@@ -343,18 +343,33 @@ fn against_base(root: &Path, (changes, base): (&[Change], &str), file: &str) -> 
     let Some(change) = changes.iter().find(|change| change.path == file) else {
         return Class::Limit;
     };
-    let Some(was) = change.was.as_deref() else {
+    at_base(root, base, change.was.as_deref(), true)
+}
+
+/// Whether the base measured the file it held at `was`: opened where the base held no such
+/// path, or held one no grammar reads where the loss is a grammar's; klin's own limit where the
+/// base's `.gitattributes` already made it not text or its reader refused the base's bytes; and
+/// lost where the base read it as text. One predicate for every class, so a form and a parse
+/// agree on what the base measured. Spec 7.2.
+fn at_base(root: &Path, base: &str, was: Option<&str>, by_grammar: bool) -> Class {
+    let Some(was) = was else {
         return Class::Opened;
     };
-    if syntax::language_of(was).is_none() {
+    let language = syntax::language_of(was);
+    if by_grammar && language.is_none() {
         return Class::Opened;
+    }
+    if files::form_at(root, base, was).any() {
+        return Class::Limit;
     }
     let Some(bytes) = changed::blob(root, base, was) else {
         return Class::Opened;
     };
-    match syntax::refusal(was, &String::from_utf8_lossy(&bytes)) {
-        None => Class::Lost,
-        Some(_) => Class::Limit,
+    let refused =
+        language.is_some() && syntax::refusal(was, &String::from_utf8_lossy(&bytes)).is_some();
+    match refused {
+        true => Class::Limit,
+        false => Class::Lost,
     }
 }
 

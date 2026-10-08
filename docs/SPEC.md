@@ -790,7 +790,9 @@ finding by making a file unmeasurable.
   decodes UTF-8, and any other `working-tree-encoding` is an encoding klin
   cannot decode. klin reads attributes only from the in-tree `.gitattributes`
   files of each side, never from `.git/info/attributes` or
-  `core.attributesFile`, so two machines agree. The working tree's file list
+  `core.attributesFile`, so two machines agree. It matches their patterns as
+  git does: `*` and `?` stay inside one directory, `**` spans directories, and
+  a pattern in double quotes may hold spaces. The working tree's file list
   leaves out a path these attributes make not text, filtered or encoded, and
   the run sorts that path though no capability read it. An encoding that
   klin cannot decode is a coverage note where the base gave the path one
@@ -811,7 +813,9 @@ finding by making a file unmeasurable.
 - **Renames.** Every git command that klin runs to find changes pins rename
   detection to `-M50%`, exact renames without a limit and inexact renames
   under a fixed limit of 1,000 candidate files, and ignores the person's git
-  configuration for both. A
+  configuration for both. Those commands run no filter program either: klin
+  turns off every filter driver git's configuration names, and writes
+  nothing to the repository. A
   file detected as renamed is compared with its base copy. The base bytes are
   read with the base path's reader, and the working-tree bytes with the
   current path's reader.

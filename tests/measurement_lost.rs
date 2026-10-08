@@ -802,3 +802,133 @@ fn an_exclusion_in_one_gate_does_not_cover_what_a_manifest_took_from_another() {
         "{report}"
     );
 }
+
+#[test]
+fn a_single_star_attribute_stays_inside_one_directory() {
+    let tree = tree(CONFIG);
+    tree.write("src/nested/module.rs", CLEAN);
+    tree.base();
+    tree.write(".gitattributes", "src/*.rs binary\n");
+
+    let (_, report) = checked(&tree, &[]);
+
+    assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+    assert!(
+        lost_for(&report, "src/nested/module.rs").is_empty(),
+        "{report}"
+    );
+}
+
+#[test]
+fn a_double_star_attribute_reaches_nested_directories() {
+    let tree = tree(CONFIG);
+    tree.write("src/nested/module.rs", CLEAN);
+    tree.base();
+    tree.write(".gitattributes", "src/**/*.rs binary\n");
+
+    let (_, report) = checked(&tree, &[]);
+
+    assert_eq!(
+        lost_for(&report, "src/nested/module.rs"),
+        ["form"],
+        "{report}"
+    );
+}
+
+#[test]
+fn a_quoted_attribute_pattern_names_a_path_with_a_space() {
+    let tree = tree(CONFIG);
+    tree.write("src/my file.rs", CLEAN);
+    tree.base();
+    tree.write(".gitattributes", "\"src/my file.rs\" binary\n");
+
+    let (_, report) = checked(&tree, &[]);
+
+    assert_eq!(lost_for(&report, "src/my file.rs"), ["form"], "{report}");
+}
+
+#[test]
+fn a_deeper_attributes_file_overrides_a_shallower_one() {
+    let tree = tree(CONFIG);
+    tree.write(".gitattributes", "*.rs binary\n");
+    tree.write("src/.gitattributes", "*.rs diff\n");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(lost(&report).is_empty(), "{report}");
+}
+
+#[test]
+fn an_attribute_on_a_file_outside_every_scope_makes_no_lost_file() {
+    let tree = tree(r#"{"doc_size": {"README.md": 10}, "complexity": {"in": "src"}}"#);
+    tree.write("docs/x.rs", CLEAN);
+    tree.base();
+    tree.write(".gitattributes", "docs/x.rs binary\n");
+
+    let (code, report) = checked(&tree, &["complexity"]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(lost(&report).is_empty(), "{report}");
+}
+
+#[test]
+fn a_filter_added_to_a_file_the_base_could_not_parse_stays_a_coverage_note() {
+    let tree = tree(CONFIG);
+    tree.write("src/bad.rs", BROKEN);
+    tree.base();
+    tree.write(".gitattributes", "src/bad.rs filter=lfs\n");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(lost(&report).is_empty(), "{report}");
+}
+
+#[test]
+fn an_attribute_cannot_hide_a_file_from_a_convention() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"conventions": {"no-forbidden": {"code": "forbidden()", "in": "src", "remedy": "x"}}}"#,
+    );
+    tree.write("src/lib.rs", "pub fn one() {}\n");
+    tree.write("src/two.rs", "pub fn two() {}\n");
+    tree.base();
+    tree.write(".gitattributes", "src/two.rs binary\n");
+    tree.write("src/two.rs", "pub fn two() { forbidden() }\n");
+
+    let (code, report) = checked(&tree, &["conventions"]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/two.rs"), ["form"], "{report}");
+}
+
+#[cfg(unix)]
+#[test]
+fn finding_changes_runs_no_filter_program() {
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    let body: String = (0..20).map(|at| format!("pub fn f{at}() {{}}\n")).collect();
+    tree.write("src/lib.rs", &body);
+    tree.write(".gitattributes", "*.txt filter=spy\n");
+    tree.write("notes.txt", "one\n");
+    tree.base();
+    let ran = tree.path("filter-ran");
+    tree.git(&[
+        "config",
+        "filter.spy.clean",
+        &format!("sh -c 'touch {}; cat'", ran.display()),
+    ]);
+    tree.write("notes.txt", "two\n");
+    tree.write("other.txt", "new\n");
+    assert!(std::fs::rename(tree.path("src/lib.rs"), tree.path("src/moved.rs")).is_ok());
+    tree.write("src/moved.rs", &format!("{body}pub fn broken( {{\n"));
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert!(!ran.exists(), "a filter ran: {report}");
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/moved.rs"), ["parse"], "{report}");
+}
