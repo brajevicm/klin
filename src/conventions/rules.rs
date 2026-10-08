@@ -689,7 +689,7 @@ pub(super) fn at_the_base(rules: &[Rule], at: &Context) -> Result<Measured, Erro
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = contract::announced(project.root(), at)?;
+            let window = contract::announced(project.root())?;
             owned = base::materialize(project, &window.before, None)?;
             (&owned, window.before)
         }

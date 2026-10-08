@@ -80,15 +80,17 @@ fn assert_whole_tree_passes(tree: &Tree) {
     }
 }
 
-fn assert_strict_changed_passes(tree: &Tree) {
+/// `klin check --changed` takes the Stop's changed-run path, so it reads only the changed file
+/// in each tree. Spec 11.3.
+fn assert_changed_check_passes(tree: &Tree) {
     for gate in GATES {
         let run = tree.run(&["check", "--json", "--changed", gate]);
         assert_eq!(run.code, 0, "{gate}: {}", run.out);
         let report = run.json();
         let row = &harness::gate_rows(&report)[0];
         assert_eq!(row["coverage"]["found"], Value::from(1), "{gate}: {report}");
-        assert_eq!(row["work"]["reads"], Value::from(3), "{gate}: {report}");
-        assert_eq!(row["work"]["parses"], Value::from(3), "{gate}: {report}");
+        assert_eq!(row["work"]["reads"], Value::from(2), "{gate}: {report}");
+        assert_eq!(row["work"]["parses"], Value::from(2), "{gate}: {report}");
     }
 }
 
@@ -139,5 +141,5 @@ fn changed_file_local_gates_read_only_changed_current_contents() {
     assert_changed_failures(&tree);
     tree.write("src/changed.rs", "fn changed() {}\n");
     assert_whole_tree_passes(&tree);
-    assert_strict_changed_passes(&tree);
+    assert_changed_check_passes(&tree);
 }

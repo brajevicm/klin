@@ -264,7 +264,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         &spec.search,
         project.tree(),
         project.root(),
-        at.changes.filter(|_| !at.strict),
+        at.changes,
     )?;
     let sites = ratchet::scoped(&read.findings, at.only);
     let unit = kind.evaluator.unit;

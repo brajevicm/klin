@@ -378,7 +378,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         project.tree(),
         &spec.selection,
         project.root(),
-        at.changes.filter(|_| !at.strict),
+        at.changes,
         None,
     )?;
     let now = over(&sweep.functions, &spec);

@@ -103,19 +103,17 @@ fn gate_rows(report: &Value) -> &Value {
 }
 
 /// A repeated stop takes from the structural cache every base outcome the first stop extracted
-/// beyond the changed files. A build that records no `cached` is not asked.
+/// beyond the changed files, or read from the cache a `klin check --changed` before it wrote.
+/// A build that records no `cached` is not asked.
 fn read_from_the_cache(first: &Value, again: &Value) {
     let (first, again) = (&first["facts"], &again["facts"]);
-    let Some(cached) = again["cached"].as_u64() else {
+    if again["cached"].is_null() {
         return;
+    }
+    let read = |facts: &Value| {
+        facts["extracted"].as_u64().unwrap_or(0) + facts["cached"].as_u64().unwrap_or(0)
     };
-    assert_eq!(
-        first["extracted"].as_u64(),
-        again["extracted"]
-            .as_u64()
-            .map(|extracted| extracted + cached),
-        "{first} then {again}"
-    );
+    assert_eq!(read(first), read(again), "{first} then {again}");
 }
 
 /// The verdict, and the findings, notes and row of one gate, without what a run may vary.
@@ -413,6 +411,42 @@ fn an_edit_is_judged_against_every_unchanged_declaration_and_reference() {
     assert_eq!(lines(&seen["hook"])[1..], lines(&seen["whole"])[1..3]);
 }
 
+/// `klin check --changed` takes the Stop's changed-run path: a declaration that a changed caller
+/// left dead in an unchanged file is the same finding in both, and the check reads the
+/// structural cache the Stop wrote. Spec 11.3.
+#[test]
+fn changed_reports_what_the_stop_reports_and_reads_its_structural_cache() {
+    let seen = views(|tree| {
+        tree.write("src/lib.rs", "fn helper() {}\n");
+        tree.write("src/caller.rs", "fn main() { helper(); }\n");
+        tree.write("src/other.rs", "pub fn untouched() {}\n");
+        tree.base();
+        tree.write("src/caller.rs", "fn main() {}\n");
+    });
+
+    let worsened =
+        r#"worsened src/lib.rs:1 fn helper() {} {"dead":1,"lost_reference":"src/caller.rs"}"#;
+    assert_eq!(lines(&seen["changed"]), [r#""FAIL" 1"#, worsened], "{seen}");
+    assert_eq!(lines(&seen["hook"])[1..], [worsened], "{seen}");
+
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.write("src/lib.rs", "fn helper() {}\n");
+    tree.write("src/caller.rs", "fn main() { helper(); }\n");
+    tree.write("src/other.rs", "pub fn untouched() {}\n");
+    tree.base();
+    tree.write("src/caller.rs", "fn main() {}\n");
+    stop(&harness::binary(), &tree);
+    let checked = harness::feed_as(
+        &harness::binary(),
+        tree.root(),
+        &["check", "--json", "--changed", "dead-symbols"],
+        "",
+    );
+    let facts = &row(&checked, "dead-symbols")["facts"];
+    assert!(facts["cached"].as_u64().unwrap_or(0) > 0, "{facts}");
+}
+
 #[test]
 fn an_addition_exists_only_in_the_after_view_and_resolves_unchanged_references() {
     let seen = views(|tree| {
@@ -434,7 +468,7 @@ fn an_addition_exists_only_in_the_after_view_and_resolves_unchanged_references()
             "note  1 dead symbol(s) the base already held:\n  src/lib.rs:1  fn lonely() {}",
         ]
     );
-    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"])[..2]);
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
 }
 
 #[test]
@@ -456,10 +490,7 @@ fn a_deletion_exists_only_in_the_before_view_and_names_the_lost_reference() {
             "note  1 dead symbol(s) the base already held:\n  src/gone.rs:1  fn gone() {}",
         ]
     );
-    assert_eq!(
-        lines(&seen["changed"]),
-        [r#""PASS" 0"#, &lines(&seen["whole"])[2]]
-    );
+    assert_eq!(lines(&seen["changed"]), lines(&seen["whole"]));
     assert_eq!(lines(&seen["hook"])[1..], lines(&seen["whole"])[1..]);
 }
 

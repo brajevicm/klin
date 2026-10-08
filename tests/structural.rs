@@ -283,7 +283,7 @@ fn a_file_two_structural_gates_read_is_extracted_once_per_tree() {
 }
 
 #[test]
-fn a_strict_changed_run_extracts_both_trees_for_dead_symbols() {
+fn a_changed_check_extracts_what_the_stop_extracts_for_dead_symbols() {
     let tree = commands("{}");
     tree.base();
     tree.write(
@@ -293,7 +293,7 @@ fn a_strict_changed_run_extracts_both_trees_for_dead_symbols() {
 
     let report = judged(&tree, &["--changed"], &["dead-symbols"]);
 
-    assert_eq!(extracted(&report, "dead-symbols"), (8, 0), "{report}");
+    assert_eq!(extracted(&report, "dead-symbols"), (5, 3), "{report}");
 }
 
 #[test]

@@ -75,7 +75,6 @@ impl Plan {
 #[derive(Default)]
 struct Args {
     config: Option<PathBuf>,
-    strict: bool,
     gates: Vec<String>,
     list: bool,
     entry: Option<String>,
@@ -124,7 +123,6 @@ pub struct Policy {
 pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
     let args = Args {
         config: check.config.clone(),
-        strict: true,
         gates: check.checks.clone(),
         changed: check.changed,
         json: check.json,
@@ -216,7 +214,7 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
 }
 
 fn by_hand(args: &Args, project: &mut Project, out: &mut String) -> Result<Tally, Error> {
-    let window = base::choose(project.root(), args.strict).ok();
+    let window = base::choose(project.root()).ok();
     if let Some(window) = &window {
         project.bind(window);
     }
@@ -985,7 +983,7 @@ fn scoped<'a>(
     if !args.changed || entries.iter().all(|entry| entry.root.is_none()) {
         return Ok(None);
     }
-    let base = chosen(window, project, args.strict)?;
+    let base = chosen(window, project)?;
     project.changes(&base.before).map(Some)
 }
 
@@ -1096,7 +1094,7 @@ fn base(
     if !args.changed && !wanted.iter().any(|gate| gate.check.needs.the_commit()) {
         return Ok(None);
     }
-    let base = chosen(window, project, args.strict)?;
+    let base = chosen(window, project)?;
     if !args.json {
         let _ = writeln!(out, "  {}", base.line());
     }
@@ -1105,10 +1103,10 @@ fn base(
 
 /// The window the run judges: the one the hook already read, or the base a run by hand and CI
 /// choose for themselves. Spec 6.1, 6.3.
-fn chosen(window: Option<&Window>, project: &Project, strict: bool) -> Result<Window, Error> {
+fn chosen(window: Option<&Window>, project: &Project) -> Result<Window, Error> {
     match window {
         Some(window) => Ok(window.clone()),
-        None => base::choose(project.root(), strict),
+        None => base::choose(project.root()),
     }
 }
 
@@ -1374,9 +1372,6 @@ fn no_source_root(
         return Ok(None);
     }
     let said = no_source_root_said(project);
-    if args.strict {
-        return Err(Error(said));
-    }
     if !args.json {
         let _ = writeln!(out, "  NOTE: {said}");
     }
@@ -2371,7 +2366,6 @@ fn one(
             true => Caller::Hook,
             false => Caller::Gate,
         },
-        strict: args.strict && gate.check.needs.the_commit(),
     };
     let outcome = (gate.check.run)(
         &at,
@@ -2597,6 +2591,7 @@ fn failing(finding: &Value) -> bool {
 struct Report {
     config: Option<Value>,
     window: Option<Value>,
+    tree: Option<Value>,
     axes: Axes,
     /// Whether a run-scope error stopped the run before any capability measured. Spec 7.3.
     stopped: bool,
@@ -2654,7 +2649,7 @@ fn measured(
     report: &mut Report,
     out: &mut String,
 ) -> Result<(), Fault> {
-    let window = base::choose(project.root(), args.strict).ok();
+    let window = base::choose(project.root()).ok();
     if let Some(window) = &window {
         project.bind(window);
     }
@@ -2822,6 +2817,10 @@ impl Report {
         out: &mut String,
     ) {
         self.window = against.base.as_ref().map(Window::record);
+        self.tree = Some(base::tree_record(project.root()));
+        if let Some(base) = &against.base {
+            self.windowed(args, base, out);
+        }
         for gate in wanted {
             self.gate(args, gate, project, against, out);
         }
@@ -2847,6 +2846,30 @@ impl Report {
         }
         if args.gates.is_empty() {
             self.not_applicable(plan);
+        }
+    }
+
+    /// What choosing the window found: a note each for a rewritten push base or a base equal
+    /// to HEAD, and the hole of a local base equal to HEAD that may hide unpushed commits.
+    /// Spec 6.5.
+    fn windowed(&mut self, args: &Args, base: &Window, out: &mut String) {
+        for note in &base.notes {
+            if !args.json {
+                let _ = writeln!(out, "  NOTE: {note}");
+            }
+            self.notes.push(json!({
+                "check": null,
+                "kind": "window",
+                "file": null,
+                "message": note,
+            }));
+        }
+        if let Some(text) = &base.unproven {
+            self.holes.push(Incomplete {
+                reason: Reason::ComparisonUnproven,
+                detail: None,
+                text: text.clone(),
+            });
         }
     }
 
@@ -3135,7 +3158,7 @@ impl Report {
             "klin": { "version": env!("CARGO_PKG_VERSION") },
             "config": self.config,
             "window": self.window,
-            "tree": null,
+            "tree": self.tree,
             "judgement": ran.then(|| self.axes.judgement.name()),
             "measurement": ran.then(|| self.axes.measurement()),
             "execution": self.axes.execution(),

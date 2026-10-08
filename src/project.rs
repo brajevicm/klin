@@ -86,7 +86,7 @@ impl Project {
     fn derivation(&self) -> &Option<String> {
         self.derivation.get_or_init(|| {
             self.by_hand
-                .then(|| base::choose(self.root(), false).ok())
+                .then(|| base::choose(self.root()).ok())
                 .flatten()
                 .and_then(|window| window.derives)
                 .or_else(|| stamp::unwindowed(self.root()))

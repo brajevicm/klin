@@ -78,7 +78,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let affected = affected_scope(at, &before, &after, &mut names);
     let widened = at.scoped(affected.as_deref().or(at.only));
     let at = &widened;
-    let judged_scope = at.only.filter(|_| at.changes.is_some() && !at.strict);
+    let judged_scope = at.only.filter(|_| at.changes.is_some());
     let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
     let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
     let built = (before_states.len() + after_states.len()) as u64;
@@ -156,7 +156,7 @@ fn affected_scope(
     after: &measurement::Measurement,
     names: &mut structural::NameCost,
 ) -> Option<Vec<String>> {
-    let only = at.only.filter(|_| at.changes.is_some() && !at.strict)?;
+    let only = at.only.filter(|_| at.changes.is_some())?;
     structural::timed(&mut names.before.index, || before.index());
     structural::timed(&mut names.after.index, || after.index());
     let mut affected = BTreeSet::new();

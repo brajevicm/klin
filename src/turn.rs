@@ -391,12 +391,14 @@ fn turn(stamp: &Stamp) -> Window {
         before: stamp.commit.clone().unwrap_or_default(),
         how: format!("the turn stamp, taken {}", ago(stamp.time)),
         derives: stamp.parent.clone(),
+        notes: Vec::new(),
+        unproven: None,
     }
 }
 
 /// The base `klin check` would choose, and HEAD when none resolves. Spec 6.3.
 fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
-    base::choose(root, false).or_else(|problem| {
+    base::choose(root).or_else(|problem| {
         let Some(head) = stamp::resolve(root, "HEAD") else {
             return Err(problem);
         };
@@ -409,6 +411,8 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
             derives: Some(head.clone()),
             before: head,
             how: "HEAD, because no base resolves".to_string(),
+            notes: Vec::new(),
+            unproven: None,
         })
     })
 }

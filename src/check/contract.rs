@@ -193,6 +193,8 @@ pub enum Reason {
     ToolError,
     NothingMeasured,
     Unsupported,
+    /// A base equal to HEAD whose local source may hide unpushed commits. Spec 6.5.
+    ComparisonUnproven,
     /// No shipped capability has a work bound yet, so only a test reaches it. Spec 7.2.
     #[cfg_attr(not(test), allow(dead_code))]
     WorkLimit,
@@ -204,6 +206,7 @@ impl Reason {
             Reason::ToolError => "tool-error",
             Reason::NothingMeasured => "nothing-measured",
             Reason::Unsupported => "unsupported",
+            Reason::ComparisonUnproven => "comparison-unproven",
             Reason::WorkLimit => "work-limit",
         }
     }
@@ -235,7 +238,6 @@ pub struct Context<'a> {
     /// scope. Direct checks and unscoped runs have no changed-run context.
     pub changes: Option<&'a [Change]>,
     pub caller: Caller,
-    pub strict: bool,
 }
 
 impl Context<'_> {
@@ -264,7 +266,6 @@ impl Context<'_> {
             base: self.base,
             changes: self.changes,
             caller: self.caller,
-            strict: self.strict,
         }
     }
 }
@@ -738,13 +739,13 @@ impl<'a> Sink<'a> {
 pub fn base_commit(root: &Path, at: &Context) -> Result<String, Error> {
     match at.base {
         Some(commit) => Ok(commit.to_string()),
-        None => Ok(announced(root, at)?.before),
+        None => Ok(announced(root)?.before),
     }
 }
 
 /// The base a gate the runner did not lay out chooses for itself.
-pub fn announced(root: &Path, at: &Context) -> Result<Window, Error> {
-    base::choose(root, at.strict)
+pub fn announced(root: &Path) -> Result<Window, Error> {
+    base::choose(root)
 }
 
 /// The base laid out whole for this run: the runner's own when it laid the whole base out, which
@@ -767,12 +768,12 @@ pub fn unchanged_base<'a>(
 }
 
 fn shared<'a>(at: &Context<'a>) -> Option<&'a [Change]> {
-    at.changes.filter(|_| !at.strict)
+    at.changes
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
 pub fn own_base(at: &Context) -> Result<Prior, Error> {
-    let base = announced(at.project.root(), at)?;
+    let base = announced(at.project.root())?;
     base::materialize(at.project, &base.before, None)
 }
 

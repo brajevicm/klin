@@ -619,13 +619,17 @@ pub fn laid<'p>(
 }
 
 /// The pair of trees a run compares: which of the three kinds of 4.2 it is, the base commit
-/// `before` names, and how that commit was chosen. `after` is the working tree.
+/// `before` names, and how that commit was chosen. `after` is the working tree. `notes` are what
+/// choosing it found that fails nothing, and `unproven` is why a base equal to HEAD may hide
+/// unpushed commits. Spec 6.5.
 #[derive(Clone)]
 pub struct Window {
     pub kind: Kind,
     pub before: String,
     pub how: String,
     pub derives: Option<String>,
+    pub notes: Vec<String>,
+    pub unproven: Option<String>,
 }
 
 /// The three window kinds of section 4.2. The hook judges a turn, `klin check` by hand and CI
@@ -671,28 +675,48 @@ impl Window {
     }
 }
 
-pub fn choose(root: &Path, strict: bool) -> Result<Window, Error> {
+/// The base of a `branch` or `push` window: the first candidate that resolves. A candidate that
+/// is present and does not resolve is an error where more history fixes it, and a push `before`
+/// a force-push rewrote away is a note. Spec 6.5.
+pub fn choose(root: &Path) -> Result<Window, Error> {
     let head = resolve(root, "HEAD");
+    let shallow = Repo::at(root)
+        .text(&["rev-parse", "--is-shallow-repository"])
+        .is_some_and(|said| said.trim() == "true");
     let mut tried: Vec<String> = Vec::new();
-    for (reference, how, kind, source) in candidates(root) {
-        tried.push(
-            reference
-                .split("...")
-                .next()
-                .unwrap_or(&reference)
-                .to_string(),
-        );
-        let Some(commit) = resolve(root, &reference) else {
+    let mut notes = Vec::new();
+    for candidate in candidates(root) {
+        tried.push(candidate.named.clone());
+        let found = candidate
+            .references
+            .iter()
+            .find_map(|(reference, source)| Some((resolve(root, reference)?, *source)));
+        let Some((commit, source)) = found else {
+            match candidate.absent {
+                Absent::Fetch => return Err(unfetched(&candidate.named, shallow)),
+                Absent::Rewritten if shallow => return Err(unfetched(&candidate.named, true)),
+                Absent::Rewritten => notes.push(format!(
+                    "the push started from {}, which this repository no longer holds — a \
+                     force-push rewrote it away, so this run compares against the merge-base",
+                    short(&candidate.named)
+                )),
+                Absent::Unrelated(branch) if shallow && resolve(root, &branch).is_some() => {
+                    return Err(unfetched(&format!("the merge-base with {branch}"), true));
+                }
+                Absent::Unrelated(_) => (),
+            }
             continue;
         };
         let base = Window {
-            kind,
+            kind: candidate.kind,
             derives: Some(commit.clone()),
             before: commit,
-            how,
+            how: candidate.how,
+            notes,
+            unproven: None,
         };
         if head.as_deref() == Some(base.before.as_str()) && !dirty(root) {
-            return equal_to_head(root, strict, source, base);
+            return Ok(equal_to_head(root, source, base));
         }
         return Ok(base);
     }
@@ -707,6 +731,39 @@ pub fn choose(root: &Path, strict: bool) -> Result<Window, Error> {
     )))
 }
 
+/// A base candidate that is present and that only more history brings back.
+fn unfetched(named: &str, shallow: bool) -> Error {
+    let clone = match shallow {
+        true => "this shallow clone does not hold it",
+        false => "this clone does not hold it",
+    };
+    Error(format!(
+        "the base {named} does not resolve: {clone}. Fetch it, or check out the whole history, \
+         as `fetch-depth: 0` does for actions/checkout."
+    ))
+}
+
+/// One place a base can come from: the references that name it, the way a report says it, and
+/// what a candidate that is present and does not resolve means.
+struct Candidate {
+    named: String,
+    references: Vec<(String, Source)>,
+    how: String,
+    kind: Kind,
+    absent: Absent,
+}
+
+/// What a candidate that does not resolve means. Spec 6.5.
+enum Absent {
+    /// The pull request target, which CI must fetch.
+    Fetch,
+    /// A push `before`, which a force-push can rewrite away in a full clone.
+    Rewritten,
+    /// The merge-base with a default branch, which a shallow clone may lack while the branch
+    /// itself resolves.
+    Unrelated(String),
+}
+
 /// Where a base candidate came from, which decides whether a base equal to HEAD hides work.
 #[derive(Clone, Copy, PartialEq)]
 enum Source {
@@ -716,14 +773,24 @@ enum Source {
     Local,
 }
 
-/// A clean working tree whose base is HEAD measures nothing. That is a refusal only when klin
-/// can show that commits are hidden from the remote, or when it cannot tell and CI is asking.
-fn equal_to_head(root: &Path, strict: bool, source: Source, base: Window) -> Result<Window, Error> {
+/// A clean working tree whose base is HEAD measures nothing. A remote source and a local one the
+/// remote default branch holds pass. A local source that hides unpushed commits is unproven, and
+/// with no remote at all the run passes with a note. Spec 6.5.
+fn equal_to_head(root: &Path, source: Source, mut base: Window) -> Window {
     if source == Source::Remote {
-        return Ok(base);
+        base.notes.push(format!(
+            "the base is HEAD ({}) and the working tree matches it, so the trees are the same",
+            base.how
+        ));
+        return base;
     }
     let Some((name, tip)) = remote_tip(root) else {
-        return cannot_tell(strict, base, "no remote default branch resolves");
+        base.notes.push(format!(
+            "the base is HEAD ({}) and the working tree matches it, and no remote default \
+             branch resolves, so no remote proves what to compare",
+            base.how
+        ));
+        return base;
     };
     let Some(unpushed) = Repo::at(root).text(&[
         "log",
@@ -732,17 +799,18 @@ fn equal_to_head(root: &Path, strict: bool, source: Source, base: Window) -> Res
         &SHOWN.to_string(),
         &format!("{tip}..HEAD"),
     ]) else {
-        return cannot_tell(
-            strict,
-            base,
-            &format!("git could not list what {name} is missing"),
-        );
+        base.unproven = Some(format!(
+            "the base is HEAD ({}) and the working tree matches it, and git could not list what \
+             {name} is missing, so klin cannot tell whether these commits are pushed",
+            base.how
+        ));
+        return base;
     };
     let unpushed: Vec<&str> = unpushed.lines().filter(|line| !line.is_empty()).collect();
     if unpushed.is_empty() {
-        return Ok(base);
+        return base;
     }
-    Err(Error(format!(
+    base.unproven = Some(format!(
         "the base is HEAD ({}) and the working tree matches it, so a run would measure nothing, \
          and {} on this branch that {name} does not hold:\n{}\nPush this branch, or fetch the \
          remote reference the base names, so a run has a real diff to measure.",
@@ -756,22 +824,17 @@ fn equal_to_head(root: &Path, strict: bool, source: Source, base: Window) -> Res
             .map(|line| format!("  {line}"))
             .collect::<Vec<_>>()
             .join("\n")
-    )))
+    ));
+    base
 }
 
 /// How many unpushed commits an error names, so a long-lived branch is not a wall of text.
 const SHOWN: usize = 10;
 
-/// klin cannot see whether the work is pushed. CI asks for the refusal, a local run for its gates.
-fn cannot_tell(strict: bool, base: Window, why: &str) -> Result<Window, Error> {
-    if !strict {
-        return Ok(base);
-    }
-    Err(Error(format!(
-        "the base is HEAD ({}) and the working tree matches it, so a run would measure nothing, \
-         and {why}, so klin cannot tell whether these commits are pushed — fetch the remote",
-        base.how
-    )))
+/// HEAD and whether the working tree differs from it, which the check document records as the
+/// `after` tree. Spec 6.5, 11.7.
+pub fn tree_record(root: &Path) -> Value {
+    serde_json::json!({ "head": resolve(root, "HEAD"), "dirty": dirty(root) })
 }
 
 /// The tip of the remote's default branch, which says what the remote already has.
@@ -797,40 +860,41 @@ fn dirty(root: &Path) -> bool {
         .is_some_and(|listed| !listed.trim().is_empty())
 }
 
-fn candidates(root: &Path) -> Vec<(String, String, Kind, Source)> {
+fn candidates(root: &Path) -> Vec<Candidate> {
     let mut out = Vec::new();
     if let Some(target) = environment("GITHUB_BASE_REF") {
-        for (reference, source) in [
-            (format!("refs/remotes/origin/{target}"), Source::Remote),
-            (target.clone(), Source::Local),
-        ] {
-            out.push((
-                reference,
-                format!("the tip of {target}, the pull request target"),
-                Kind::Branch,
-                source,
-            ));
-        }
+        out.push(Candidate {
+            references: vec![
+                (format!("refs/remotes/origin/{target}"), Source::Remote),
+                (target.clone(), Source::Local),
+            ],
+            how: format!("the tip of {target}, the pull request target"),
+            named: target,
+            kind: Kind::Branch,
+            absent: Absent::Fetch,
+        });
     }
     if let Some(before) = pushed_from() {
-        out.push((
-            before,
-            "the commit this push started from".to_string(),
-            Kind::Push,
-            Source::Remote,
-        ));
+        out.push(Candidate {
+            references: vec![(before.clone(), Source::Remote)],
+            named: before,
+            how: "the commit this push started from".to_string(),
+            kind: Kind::Push,
+            absent: Absent::Rewritten,
+        });
     }
     for branch in default_branches(root) {
         let (reference, source) = match remote_reference(&branch) {
             Some(remote) => (remote, Source::Remote),
             None => (branch.clone(), Source::Local),
         };
-        out.push((
-            format!("{reference}...HEAD"),
-            format!("the merge-base with {branch}"),
-            Kind::Branch,
-            source,
-        ));
+        out.push(Candidate {
+            references: vec![(format!("{reference}...HEAD"), source)],
+            how: format!("the merge-base with {branch}"),
+            named: branch,
+            kind: Kind::Branch,
+            absent: Absent::Unrelated(reference),
+        });
     }
     out
 }
