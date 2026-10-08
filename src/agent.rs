@@ -34,29 +34,25 @@ pub fn run() -> ExitCode {
 }
 
 /// The event's answer. A protocol version klin does not speak is refused whole and first,
-/// wherever it runs: its payload names no tree klin can trust, so it cannot opt out. In an
-/// opted-in tree the guard delivers the adapter's refusal and journals it; elsewhere the adapter
-/// delivers it alone, and nothing is written. Every other event is answered once the opt-in walk
-/// found the worktree root's `klin.json`.
+/// wherever it runs: its payload names no tree klin can trust, so it cannot opt out. Every other
+/// event is answered once the opt-in walk found the worktree root's `klin.json`.
 /// Spec 5.1, 10.2, 10.9.
 fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
     let Some(event) = invoked() else {
         return ExitCode::SUCCESS;
     };
     placed.set(event.kind);
-    let Some(start) = event.root.clone().or_else(|| std::env::current_dir().ok()) else {
+    let start = event.root.clone().or_else(|| std::env::current_dir().ok());
+    if event.host.refuses() {
+        return ExitCode::from(refused(&event, start.as_deref()));
+    }
+    let Some(start) = start else {
         eprintln!(
             "klin: NOTE: the working directory could not be read, so this hook answered nothing."
         );
         return failed(event.kind);
     };
     let found = Discovered::from(&start);
-    if event.host.refuses() {
-        return ExitCode::from(match (&found.root, &found.config) {
-            (Some(root), Some(_)) => guard::run(&event, root),
-            _ => event.host.decide(&Decision::Allow),
-        });
-    }
     let (Some(kind), Some(root), Some(_)) = (event.kind, &found.root, &found.config) else {
         if event.kind == Some(Kind::Session)
             && let Some(nested) = found.ignored.first()
@@ -66,6 +62,17 @@ fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
         return ExitCode::SUCCESS;
     };
     ExitCode::from(answered(event, kind, &start, root))
+}
+
+/// The refusal of a protocol version klin does not speak, which fails closed even where no tree
+/// can be read. In an opted-in tree the guard delivers and journals it; anywhere else the adapter
+/// delivers it alone. Spec 10.9.
+fn refused(event: &Event, start: Option<&Path>) -> u8 {
+    let found = start.map(Discovered::from);
+    match found.as_ref().map(|found| (&found.root, &found.config)) {
+        Some((Some(root), Some(_))) => guard::run(event, root),
+        _ => event.host.decide(&Decision::Allow),
+    }
 }
 
 /// The event this invocation carries, when it is one klin answers: `event` was named, the

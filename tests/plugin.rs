@@ -733,6 +733,51 @@ fn the_wrapper_names_the_cli_once_to_a_person_without_one() {
     assert_eq!(second.printed, "", "the hint came twice");
 }
 
+/// The hint costs a tool call no git process: a person with a CLI of their own ends the check
+/// before any walk, and the walk that finds the worktree root reads the filesystem alone. Each
+/// repeated call checks again, because no hint was recorded. Spec 10.2.
+#[test]
+fn the_wrapper_hint_never_runs_git() {
+    let tree = Tree::new();
+    release_running(&tree, "true");
+    let calls = tree.path("git-calls");
+    let git = tree.write(
+        "path/git",
+        &format!("#!/bin/sh\necho \"$*\" >> {}\n", calls.display()),
+    );
+    executable(&git);
+    let base = format!("file://{}", tree.path("release").display());
+    let path = format!("{}:{SYSTEM_PATH}", tree.path("path").display());
+    let wrapped = |cache: &str| {
+        ran(
+            &at(WRAPPER).display().to_string(),
+            harness::AGENT,
+            tree.root(),
+            &[
+                ("PATH", &path),
+                ("KLIN_RELEASE_BASE_URL", &base),
+                ("KLIN_CACHE_DIR", &tree.path(cache).display().to_string()),
+            ],
+        )
+    };
+
+    for _ in 0..2 {
+        assert_eq!(wrapped("unconfigured").printed, "");
+    }
+    let own = tree.write("path/klin", "#!/bin/sh\n");
+    executable(&own);
+    tree.write("klin.json", "{}\n");
+    for _ in 0..2 {
+        assert_eq!(wrapped("installed").printed, "");
+    }
+
+    assert!(
+        !calls.exists(),
+        "the wrapper ran git: {:?}",
+        fs::read_to_string(&calls)
+    );
+}
+
 /// Cursor shows no message at a prompt, so under Cursor the hint waits for another host.
 #[test]
 fn the_wrapper_names_the_cli_to_nobody_under_cursor() {

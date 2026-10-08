@@ -202,6 +202,39 @@ fn an_unknown_protocol_version_fails_closed_outside_the_named_tree() {
     }
 }
 
+/// A working directory klin cannot read is no reason to answer nothing: an unknown version is
+/// still refused. Spec 10.9, 10.10.
+#[test]
+fn an_unknown_protocol_version_fails_closed_where_no_directory_reads() {
+    use std::io::Write;
+    let held = Tree::bare();
+    let gone = held.path("gone");
+    std::fs::create_dir(&gone).expect("directory");
+    let mut child = std::process::Command::new("/bin/sh")
+        .args([
+            "-c",
+            r#"cd "$1" && rmdir "$1" && exec "$2" __agent event"#,
+            "sh",
+        ])
+        .arg(&gone)
+        .arg(harness::binary())
+        .env("HOME", harness::empty_home())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("sh starts");
+    let unknown = json!({"klin_protocol": 2, "event": "pre_tool"}).to_string();
+    let _ = child
+        .stdin
+        .take()
+        .map(|mut stdin| stdin.write_all(unknown.as_bytes()));
+    let done = child.wait_with_output().expect("sh ends");
+    let printed = String::from_utf8_lossy(&done.stdout);
+    assert_eq!(done.status.code(), Some(2), "{printed}");
+    assert!(printed.contains(r#""action":"deny""#), "{printed}");
+}
+
 /// A host that refuses a call the guard itself allowed still leaves a journal line. It is the
 /// only record a person has of why every tool call of that session was blocked.
 #[test]
