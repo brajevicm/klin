@@ -112,15 +112,18 @@ fn a_mixed_run_names_the_base_and_the_accepted_list_with_a_count_each() {
 }
 
 #[test]
-fn an_accepted_entry_that_matches_nothing_keeps_its_note_and_fails() {
+fn an_accepted_entry_that_matches_nothing_is_a_review_item_that_fails_nothing() {
     let tree = tree();
     tree.write("klin.json", &accepted(&entry("src/gone.rs", 1)));
     tree.write("src/lib.rs", "fn f() {}\n");
 
     let run = tree.run(&["check", "escapes"]);
-    assert_eq!(run.code, 1, "{}", run.out);
-    assert!(run.says("NOTE"), "{}", run.out);
-    assert!(run.says("matched nothing"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: 1 accepted entry matched nothing"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

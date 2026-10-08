@@ -2692,7 +2692,7 @@ fn follow(project: &mut Project, window: Option<&Window>) {
     }
     let moved = match (project.changes(&window.before), project.tree().files()) {
         (Ok(changes), Ok(files)) => {
-            crate::scope::moved(&project.config, &files, &window.before, &changes)
+            crate::scope::moved(&project.config, files, &window.before, &changes)
         }
         _ => return,
     };
