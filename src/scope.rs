@@ -126,6 +126,7 @@ impl Scope {
         self.keeps(path) || self.within.is_empty() || any_holds(&self.within, path)
     }
 
+    /// Whether this run keeps the path in the scope because the change moved it. Spec 7.3.
     fn keeps(&self, path: &str) -> bool {
         self.kept.iter().any(|kept| kept == path)
     }
@@ -162,6 +163,7 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
         .collect();
     let repo = Repo::at(config.root());
     let mut listed: Option<Vec<String>> = None;
+    let mut based: Option<Option<Value>> = None;
     let mut out = Vec::new();
     for (section, fields) in config.objects() {
         let Ok(scope) = Scope::from_fields(fields) else {
@@ -176,7 +178,11 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
         for selector in &dead {
             let listed = listed.get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
             let held = listed.iter().filter(|path| selector.holds(path)).count();
-            if held == 0 && (quiet || !pinned_at_base(config, base, section, selector)) {
+            let mut pinned = || {
+                let based = based.get_or_insert_with(|| based_config(config, &repo, base));
+                pinned_at_base(based.as_ref(), section, selector)
+            };
+            if held == 0 && (quiet || !pinned()) {
                 continue;
             }
             out.push(pin(section, selector, held, &renamed));
@@ -224,17 +230,20 @@ fn moved_out(
         .collect()
 }
 
+/// Whether any of these selectors holds the path.
 fn any_holds_of(selectors: &[&Selector], path: &str) -> bool {
     selectors.iter().any(|selector| selector.holds(path))
 }
 
-/// Whether the base commit's own `klin.json` pins this path in the section's `in`.
-fn pinned_at_base(config: &Config, base: &str, section: &str, selector: &Selector) -> bool {
-    config
-        .file
-        .file_name()
-        .and_then(|name| Repo::at(config.root()).blob(base, &name.to_string_lossy()))
-        .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
+/// The base commit's own `klin.json`, read once for every pinned path that asks.
+fn based_config(config: &Config, repo: &Repo, base: &str) -> Option<Value> {
+    let name = config.file.file_name()?.to_string_lossy();
+    serde_json::from_slice(&repo.blob(base, &name)?).ok()
+}
+
+/// Whether the base's `klin.json` pins this path in the section's `in`.
+fn pinned_at_base(based: Option<&Value>, section: &str, selector: &Selector) -> bool {
+    based
         .and_then(|data| Scope::from_fields(data.get(section)?.as_object()?).ok())
         .is_some_and(|scope| scope.within.contains(selector))
 }

@@ -386,14 +386,12 @@ fn reanchored(root: &Path) {
 
 /// The window the stamp itself is, once a stop has one to read.
 fn turn(stamp: &Stamp) -> Window {
-    Window {
-        kind: Kind::Turn,
-        before: stamp.commit.clone().unwrap_or_default(),
-        how: format!("the turn stamp, taken {}", ago(stamp.time)),
-        derives: stamp.parent.clone(),
-        notes: Vec::new(),
-        unproven: None,
-    }
+    Window::new(
+        Kind::Turn,
+        stamp.commit.clone().unwrap_or_default(),
+        format!("the turn stamp, taken {}", ago(stamp.time)),
+        stamp.parent.clone(),
+    )
 }
 
 /// The base `klin check` would choose, and HEAD when none resolves. Spec 6.3.
@@ -406,14 +404,12 @@ fn branch(root: &Path, out: &mut String) -> Result<Window, Error> {
             out,
             "no base resolves, so this stop judges the tree against HEAD",
         );
-        Ok(Window {
-            kind: Kind::Branch,
-            derives: Some(head.clone()),
-            before: head,
-            how: "HEAD, because no base resolves".to_string(),
-            notes: Vec::new(),
-            unproven: None,
-        })
+        Ok(Window::new(
+            Kind::Branch,
+            head.clone(),
+            "HEAD, because no base resolves".to_string(),
+            Some(head),
+        ))
     })
 }
 

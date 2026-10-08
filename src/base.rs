@@ -652,6 +652,18 @@ impl Kind {
 }
 
 impl Window {
+    /// A window with nothing found in choosing it: no note and a proven comparison.
+    pub fn new(kind: Kind, before: String, how: String, derives: Option<String>) -> Window {
+        Window {
+            kind,
+            before,
+            how,
+            derives,
+            notes: Vec::new(),
+            unproven: None,
+        }
+    }
+
     pub fn short(&self) -> &str {
         short(&self.before)
     }
@@ -695,14 +707,8 @@ pub fn choose(root: &Path) -> Result<Window, Error> {
             notes.extend(candidate.absent(root, shallow)?);
             continue;
         };
-        let base = Window {
-            kind: candidate.kind,
-            derives: Some(commit.clone()),
-            before: commit,
-            how: candidate.how,
-            notes,
-            unproven: None,
-        };
+        let mut base = Window::new(candidate.kind, commit.clone(), candidate.how, Some(commit));
+        base.notes = notes;
         if head.as_deref() == Some(base.before.as_str()) && !changed::dirty(root) {
             return Ok(equal_to_head(root, source, base));
         }

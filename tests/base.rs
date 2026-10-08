@@ -369,3 +369,20 @@ fn a_scope_outside_the_tree_klin_compares_is_a_tool_error() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("is absolute"), "{}", run.out);
 }
+
+#[test]
+fn a_merge_base_a_shallow_clone_cannot_compute_names_fetch_depth() {
+    let tree = on_a_branch();
+    tree.commit("work on the branch");
+    let head = tree.revision("HEAD");
+    tree.write(".git/shallow", &format!("{head}\n"));
+
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("the merge-base with main does not resolve"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("fetch-depth: 0"), "{}", run.out);
+}

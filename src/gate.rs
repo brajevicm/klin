@@ -23,7 +23,7 @@ use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
 use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
+use crate::{build, handoff, journal, reference, scope, stamp, state, stats, survey, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -2684,105 +2684,51 @@ fn follow(project: &mut Project, window: Option<&Window>) {
         return;
     };
     let scoped = project.config.objects().any(|(_, fields)| {
-        fields.contains_key(crate::scope::IN.name) || fields.contains_key(crate::scope::EXCEPT.name)
+        fields.contains_key(scope::IN.name) || fields.contains_key(scope::EXCEPT.name)
     });
     if !scoped {
         return;
     }
     let moved = match (project.changes(&window.before), project.tree().files()) {
-        (Ok(changes), Ok(files)) => {
-            crate::scope::moved(&project.config, files, &window.before, &changes)
-        }
+        (Ok(changes), Ok(files)) => scope::moved(&project.config, files, &window.before, &changes),
         _ => return,
     };
     project.config.follow(moved);
-}
-
-/// What a moved pinned path says, as a `moved-pin` review item at `klin check` and as a note at
-/// the Stop where its files went with no rename. A file moved out of a scope says nothing: its
-/// findings carry `moved_out_of_scope`. Spec 7.3.
-fn moved_said(moved: &Moved) -> Option<String> {
-    let Moved::Pin {
-        section,
-        path,
-        renamed,
-        deleted,
-    } = moved
-    else {
-        return None;
-    };
-    let to = renamed
-        .iter()
-        .map(|(_, path)| path.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    let what = match (renamed.is_empty(), *deleted) {
-        (false, 0) => format!("its files moved to {to}, and this run measures them there"),
-        (false, deleted) => format!(
-            "its files moved to {to}, and this run measures them there, and {deleted} file(s) \
-             went with no rename"
-        ),
-        (true, 0) => "it selects nothing in the base or the working tree".to_string(),
-        (true, deleted) => {
-            format!("its {deleted} file(s) went with no rename, so the gate measures nothing there")
-        }
-    };
-    Some(format!(
-        "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
-         {what} — update the pin in klin.json"
-    ))
 }
 
 /// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
 /// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
 /// and `klin check` names it. Spec 7.3.
 fn gone_pins(args: &Args, project: &Project, out: &mut String) -> Vec<Value> {
-    let gone = project
-        .config
-        .moved()
-        .iter()
-        .filter_map(|moved| match moved {
-            Moved::Pin {
-                renamed, deleted, ..
-            } if renamed.is_empty() || *deleted > 0 => moved_said(moved),
-            _ => None,
-        });
-    gone.map(|said| {
-        if !args.json {
-            let _ = writeln!(out, "  NOTE: {said}");
-        }
-        record("note", &said)
-    })
-    .collect()
+    let gone = project.config.moved().iter().filter(|moved| moved.gone());
+    gone.filter_map(Moved::said)
+        .map(|said| {
+            if !args.json {
+                let _ = writeln!(out, "  NOTE: {said}");
+            }
+            record("note", &said)
+        })
+        .collect()
 }
 
-/// The review item of a moved pinned path. Spec 7.3, 11.7.
-fn moved_pin(moved: &Moved, said: &str) -> Value {
+/// The review item of a moved pinned path, and nothing for a file moved out of a scope, whose
+/// findings carry `moved_out_of_scope`. Spec 7.3, 11.7.
+fn moved_pin(moved: &Moved) -> Option<Value> {
+    let Moved::Pin { path, .. } = moved else {
+        return None;
+    };
     let check = catalogue::CATALOGUE
         .iter()
         .find(|row| row.section == moved.section())
         .map(|row| row.name);
-    let (path, reason) = match moved {
-        Moved::Pin { path, renamed, .. } => (
-            path,
-            (!renamed.is_empty()).then(|| {
-                renamed
-                    .iter()
-                    .map(|(was, now)| format!("{was} -> {now}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            }),
-        ),
-        Moved::Out { path, .. } => (path, None),
-    };
-    json!({
+    Some(json!({
         "check": check,
-        "kind": "moved-pin",
+        "kind": contract::MOVED_PIN,
         "file": path,
         "line": null,
-        "text": said,
-        "reason": reason,
-    })
+        "text": moved.said(),
+        "reason": moved.reason(),
+    }))
 }
 
 /// A finding at a file the change moved out of its gate's scope, which keeps the scope of its
@@ -2999,13 +2945,15 @@ impl Report {
     ) {
         self.window = base.map(Window::record);
         self.tree = Some(base::tree_record(project.root()));
-        for moved in project.config.moved() {
-            if let Some(said) = moved_said(moved) {
-                if !args.json {
-                    let _ = writeln!(out, "  REVIEW: {said}");
-                }
-                self.reviews.push(moved_pin(moved, &said));
+        for review in project.config.moved().iter().filter_map(moved_pin) {
+            if !args.json {
+                let _ = writeln!(
+                    out,
+                    "  REVIEW: {}",
+                    review["text"].as_str().unwrap_or_default()
+                );
             }
+            self.reviews.push(review);
         }
         let Some(base) = base else {
             return;
@@ -3016,7 +2964,7 @@ impl Report {
             }
             self.notes.push(json!({
                 "check": null,
-                "kind": "window",
+                "kind": contract::WINDOW,
                 "file": null,
                 "message": note,
             }));

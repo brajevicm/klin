@@ -34,6 +34,13 @@ pub const UNPARSED: &str = "unparsed";
 /// hook lets end hands it to a person. Spec 8.2.
 pub const DELETED: &str = "deleted";
 
+/// The review item kind of a pinned policy path that selects no file of the working tree.
+/// Spec 7.3.
+pub const MOVED_PIN: &str = "moved-pin";
+
+/// The note kind of what choosing the base of a `klin check` window found. Spec 6.5.
+pub const WINDOW: &str = "window";
+
 /// The review item kind of a deleted test at `klin check`. Spec 9.2, 11.7.
 pub const DELETED_TEST: &str = "deleted-test";
 
