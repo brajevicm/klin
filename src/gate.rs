@@ -8,14 +8,15 @@ use serde_json::{Map, Value, json};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
-use crate::check::contract::Class;
 use crate::check::contract::{
     self, Activation, Caller, Context, DELETED, DERIVATION, Hole, Incomplete, Plain, Reason,
     Records, Sink, Told, UNBUILT, UNRESOLVED,
 };
-use crate::check::holes::{self, MEASUREMENT_LOST, Seen, Unmeasured};
+use crate::check::contract::{Cause, Class};
+use crate::check::holes::{self, Seen, Unmeasured};
 use crate::check::{catalogue, render};
 use crate::config;
+use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
@@ -1850,7 +1851,13 @@ fn each(
     let base = against.base.as_ref().map(|base| base.before.as_str());
     reported.extend(formless(project, wanted, against));
     let sorted = holes::sorted(project, base, reported);
-    stop_unmeasured(args, project, &sorted, (&mut tally, &mut totals), out);
+    stop_unmeasured(
+        args,
+        (project, wanted),
+        &sorted,
+        (&mut tally, &mut totals),
+        out,
+    );
     tally.told += totals.notes.iter().filter(|note| told(note)).count();
     tally.reported = totals
         .findings
@@ -1865,17 +1872,17 @@ fn each(
 /// the change did not open says nothing here. Spec 7.2.
 fn stop_unmeasured(
     args: &Args,
-    project: &Project,
+    (project, wanted): (&Project, &[&Gate]),
     sorted: &[Unmeasured],
     (tally, totals): (&mut Tally, &mut Recorded),
     out: &mut String,
 ) {
     let held = holes::held_files(&project.config);
     let failing = failing_lost(sorted, &held);
-    let unmatched: Vec<String> = unmatched_lost(&held, sorted).collect();
+    let unmatched: Vec<String> = unmatched_lost(&held, sorted, wanted).collect();
     if !failing.is_empty() {
         tally.failed += 1;
-        tally.grammar_lag = failing.iter().any(|item| item.reason == "parse");
+        tally.grammar_lag = failing.iter().any(|item| item.reason == Cause::Parse);
     }
     totals
         .findings
@@ -1919,7 +1926,7 @@ fn stop_finding(item: &Unmeasured) -> Value {
 /// counts: a file no reader read, or a file that left a scope or its text form. Spec 7.2, 13.2.
 fn journal_note(item: &Unmeasured) -> Value {
     let outcome = match item.reason {
-        "left-scope" | "form" | "filtered" => contract::LOST,
+        Cause::LeftScope | Cause::Form | Cause::Filtered => contract::LOST,
         _ => contract::UNPARSED,
     };
     json!({
@@ -2679,7 +2686,12 @@ impl Report {
         let base = against.base.as_ref().map(|base| base.before.as_str());
         let mut reported = std::mem::take(&mut self.reported);
         reported.extend(formless(project, wanted, against));
-        self.unmeasured(args, project, &holes::sorted(project, base, reported), out);
+        self.unmeasured(
+            args,
+            (project, wanted),
+            &holes::sorted(project, base, reported),
+            out,
+        );
         self.not_read(wanted, &by_extension(project, against));
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
@@ -2735,7 +2747,7 @@ impl Report {
     fn unmeasured(
         &mut self,
         args: &Args,
-        project: &Project,
+        (project, wanted): (&Project, &[&Gate]),
         sorted: &[Unmeasured],
         out: &mut String,
     ) {
@@ -2747,8 +2759,9 @@ impl Report {
             }
         }
         self.reviewed(sorted);
-        self.reviews
-            .extend(unmatched_lost(&held, sorted).map(|file| render::unmatched_lost_json(&file)));
+        self.reviews.extend(
+            unmatched_lost(&held, sorted, wanted).map(|file| render::unmatched_lost_json(&file)),
+        );
         if !args.json {
             out.push_str(&render::unmeasured_lines(sorted, false));
         }
@@ -2761,7 +2774,7 @@ impl Report {
             self.not_measured.insert(item.file.clone());
             match item.class {
                 Class::Lost => (),
-                Class::Opened if item.reason == "left-scope" && self.fails_at(&item.file) => (),
+                Class::Opened if item.reason == Cause::LeftScope && self.fails_at(&item.file) => (),
                 Class::Opened => self.reviews.push(render::opened_json(item)),
                 Class::Limit => self.notes.push(render::limit_json(item)),
             }
@@ -3049,10 +3062,22 @@ fn reads(check: &catalogue::Row, extension: &str) -> bool {
 fn unmatched_lost<'a>(
     held: &'a [String],
     sorted: &'a [Unmeasured],
+    wanted: &'a [&Gate],
 ) -> impl Iterator<Item = String> + 'a {
     held.iter()
+        .filter(move |file| read_by(wanted, file))
         .filter(|file| !sorted.iter().any(|item| &item.file == *file))
         .cloned()
+}
+
+/// Whether a selected gate reads this file's language, so a run that measured it can say an
+/// accepted entry for it matches nothing.
+fn read_by(wanted: &[&Gate], file: &str) -> bool {
+    let Some((_, extension)) = file.rsplit_once('.') else {
+        return false;
+    };
+    let extension = format!(".{extension}");
+    wanted.iter().any(|gate| reads(gate.check, &extension))
 }
 
 /// A gate's coverage as the check document names it, with the files of a language it does not

@@ -9,13 +9,13 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::changed::{self, Change};
-use crate::check::contract::{Class, Context, Hole, Located, Sink, Site, Unresolvable};
+use crate::check::contract::{Cause, Class, Context, Hole, Located, Sink, Site, Unresolvable};
 use crate::coverage::{Lost, Unresolved, held_at, in_scope};
 use crate::files::{self, Form};
 use crate::project::Project;
 use crate::syntax::{self, Refusal, Unparsed};
 
-pub use crate::config::MEASUREMENT_LOST;
+use crate::config::MEASUREMENT_LOST;
 
 /// The kind of review item an opened gap is. Spec 7.2, 11.7.
 pub const UNMEASURED: &str = "unmeasured";
@@ -154,7 +154,7 @@ pub struct Unmeasured {
     pub file: String,
     pub language: Option<&'static str>,
     pub class: Class,
-    pub reason: &'static str,
+    pub reason: Cause,
     pub at: Option<(u64, u64)>,
     pub text: String,
     pub gates: Vec<String>,
@@ -172,7 +172,7 @@ pub fn sorted(
     for (gate, file, seen) in reported {
         by_file.entry(file).or_default().push((gate, seen));
     }
-    let changes = base.and_then(|base| project.changes(base).ok());
+    let changes = base.map(|base| in_place(project, base, by_file.keys()));
     let against = changes.as_deref().zip(base);
     by_file
         .into_iter()
@@ -193,7 +193,26 @@ pub fn sorted(
         .collect()
 }
 
-type Sorted = (Class, &'static str, Option<(u64, u64)>, String);
+/// The run's changes against the base, or where git cannot list them, every reported file as
+/// changed in place, so each one is still read against the base's copy and none passes as
+/// unchanged. Spec 7.2.
+fn in_place<'a>(
+    project: &Project,
+    base: &str,
+    files: impl Iterator<Item = &'a String>,
+) -> Vec<Change> {
+    match project.changes(base) {
+        Ok(changes) => changes.into_owned(),
+        Err(_) => files
+            .map(|file| Change {
+                path: file.clone(),
+                was: Some(file.clone()),
+            })
+            .collect(),
+    }
+}
+
+type Sorted = (Class, Cause, Option<(u64, u64)>, String);
 
 /// One file, by the strongest thing a gate saw: a read that failed, then a manifest, then a
 /// file that left a scope.
@@ -232,46 +251,46 @@ impl Seen {
 /// A manifest or lockfile the gate that reads it already classed against the base.
 fn manifest(class: Class, why: &str) -> Sorted {
     let reason = match class {
-        Class::Lost => "manifest",
-        Class::Opened | Class::Limit => "unreadable",
+        Class::Lost => Cause::Manifest,
+        Class::Opened | Class::Limit => Cause::Unreadable,
     };
     (class, reason, None, why.to_string())
 }
 
 /// A file the working tree's `.gitattributes` make not text: klin's own limit where the base's
-/// gave its path the same form, lost where the base measured the path as text and the change
-/// gave it `binary`, `-diff` or a `filter`, and opened for a new path or a new encoding klin
-/// cannot decode. Spec 7.2.
+/// gave its path a form too, lost where the base measured the path as text and the change gave
+/// it `binary`, `-diff`, a `filter` or an encoding klin cannot decode, and opened for a new path.
+/// Spec 7.2.
 fn formed(root: &Path, against: Option<(&[Change], &str)>, file: &str, form: Form) -> Sorted {
     let (reason, said) = match (form.binary, form.filter) {
-        (true, _) => ("not-text", "its attributes make it binary"),
-        (false, true) => ("filtered", "its attributes run a filter klin does not run"),
+        (true, _) => (Cause::NotText, "its attributes make it binary"),
+        (false, true) => (
+            Cause::Filtered,
+            "its attributes run a filter klin does not run",
+        ),
         (false, false) => (
-            "filtered",
+            Cause::Filtered,
             "its attributes name an encoding klin does not decode",
         ),
     };
-    let class = against.map_or(Class::Limit, |against| {
-        form_against(root, against, file, form)
-    });
+    let class = against.map_or(Class::Limit, |against| form_against(root, against, file));
     let reason = match class {
-        Class::Lost => "form",
+        Class::Lost => Cause::Form,
         Class::Opened | Class::Limit => reason,
     };
     (class, reason, None, said.to_string())
 }
 
 /// What the base's own `.gitattributes` gave the path the base held this file at.
-fn form_against(root: &Path, (changes, base): (&[Change], &str), file: &str, form: Form) -> Class {
+fn form_against(root: &Path, (changes, base): (&[Change], &str), file: &str) -> Class {
     let was = match changes.iter().find(|change| change.path == file) {
         Some(change) => change.was.as_deref(),
         None => Some(file),
     };
     match was.map(|was| files::form_at(root, base, was)) {
         None => Class::Opened,
-        Some(held) if held == form => Class::Limit,
-        Some(_) if form.binary || form.filter => Class::Lost,
-        Some(_) => Class::Opened,
+        Some(held) if held.any() => Class::Limit,
+        Some(_) => Class::Lost,
     }
 }
 
@@ -285,17 +304,17 @@ fn unread(project: &Project, against: Option<(&[Change], &str)>, file: &str) -> 
     let language = syntax::language_of(file).map_or("its", |language| language.name);
     let (reason, at, said) = match now {
         Refusal::Parse { line, column } => (
-            "parse",
+            Cause::Parse,
             Some((line, column)),
             format!("the {language} grammar finds an error at line {line}, column {column}"),
         ),
         Refusal::LineCeiling { line } => (
-            "line-ceiling",
+            Cause::LineCeiling,
             None,
             format!("line {line} is over the source-line ceiling of 65536 bytes"),
         ),
         Refusal::NotText => (
-            "form",
+            Cause::Form,
             None,
             "it holds a NUL byte, so it is not text".to_string(),
         ),
@@ -308,11 +327,11 @@ fn unread(project: &Project, against: Option<(&[Change], &str)>, file: &str) -> 
 }
 
 /// The reason an opened gap or a coverage note names a read that failed by. Spec 7.2.
-fn opened_reason(refusal: Refusal) -> &'static str {
+fn opened_reason(refusal: Refusal) -> Cause {
     match refusal {
-        Refusal::Parse { .. } => "unreadable",
-        Refusal::LineCeiling { .. } => "resource-limit",
-        Refusal::NotText => "not-text",
+        Refusal::Parse { .. } => Cause::Unreadable,
+        Refusal::LineCeiling { .. } => Cause::ResourceLimit,
+        Refusal::NotText => Cause::NotText,
     }
 }
 
@@ -352,7 +371,7 @@ fn left(project: &Project, against: Option<(&[Change], &str)>, file: &str, why: 
     if linked(root, file) {
         return (
             Class::Lost,
-            "form",
+            Cause::Form,
             None,
             "it is a symbolic link now, so it is not text".to_string(),
         );
@@ -372,7 +391,7 @@ fn left(project: &Project, against: Option<(&[Change], &str)>, file: &str, why: 
     };
     (
         class,
-        "left-scope",
+        Cause::LeftScope,
         None,
         format!("measured at the base and not now — {why}"),
     )

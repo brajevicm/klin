@@ -9,11 +9,12 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Class, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole,
-    Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured, Plain, Provenance,
-    PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable, Wording,
+    self, Cause, Class, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase,
+    Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured, Plain,
+    Provenance, PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable, Wording,
 };
-use crate::check::holes::{self, MEASUREMENT_LOST, Unmeasured};
+use crate::check::holes::{self, Unmeasured};
+use crate::config::MEASUREMENT_LOST;
 use crate::coverage::Coverage;
 
 /// How many rows a listed block prints before it says how many more there are.
@@ -932,7 +933,9 @@ pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
 fn unmeasured_said(item: &Unmeasured) -> String {
     format!(
         "{} is not measured ({}) — {}",
-        item.file, item.reason, item.text
+        item.file,
+        item.reason.name(),
+        item.text
     )
 }
 
@@ -947,14 +950,14 @@ fn lost_condition(item: &Unmeasured) -> String {
 /// error node, and for the other reasons, the reason. Spec 7.2.
 fn lost_remedy(item: &Unmeasured) -> String {
     match (item.reason, item.at) {
-        ("parse", Some((line, column))) => format!(
+        (Cause::Parse, Some((line, column))) => format!(
             "Make the file valid {} again from line {line}, column {column}.",
             item.language.unwrap_or("source")
         ),
-        ("line-ceiling", _) => {
+        (Cause::LineCeiling, _) => {
             "Keep every line under the source-line ceiling of 65536 bytes.".to_string()
         }
-        ("manifest", _) => "Make the manifest parse again.".to_string(),
+        (Cause::Manifest, _) => "Make the manifest parse again.".to_string(),
         _ => "Keep the file a regular text file.".to_string(),
     }
 }
@@ -963,7 +966,7 @@ fn lost_remedy(item: &Unmeasured) -> String {
 /// value, held where an accepted entry names the file. Spec 7.2, 11.7.
 pub fn lost_json(item: &Unmeasured, held: bool) -> Value {
     let mut values = Map::new();
-    values.insert("reason".into(), item.reason.into());
+    values.insert("reason".into(), item.reason.name().into());
     if let Some((line, column)) = item.at {
         values.insert("line".into(), line.into());
         values.insert("column".into(), column.into());
@@ -997,7 +1000,7 @@ pub fn opened_json(item: &Unmeasured) -> Value {
         "file": item.file,
         "line": null,
         "text": item.text,
-        "reason": item.reason,
+        "reason": item.reason.name(),
     })
 }
 
@@ -1005,7 +1008,7 @@ pub fn opened_json(item: &Unmeasured) -> Value {
 pub fn limit_json(item: &Unmeasured) -> Value {
     serde_json::json!({
         "check": null,
-        "kind": item.reason,
+        "kind": item.reason.name(),
         "coverage": true,
         "file": item.file,
         "message": unmeasured_said(item),

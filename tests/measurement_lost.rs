@@ -687,3 +687,60 @@ fn rename_detection_ignores_the_persons_rename_limit() {
     assert_eq!(code, 1, "{report}");
     assert_eq!(lost_for(&report, "src/c.rs"), ["parse"], "{report}");
 }
+
+#[test]
+fn an_encoding_the_change_gives_a_measured_file_is_a_lost_form() {
+    let tree = tree(CONFIG);
+    tree.write(
+        ".gitattributes",
+        "src/lib.rs working-tree-encoding=SHIFT-JIS\n",
+    );
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/lib.rs"), ["form"], "{report}");
+}
+
+#[test]
+fn a_file_lost_to_its_attributes_makes_no_other_capability_fail() {
+    let tree = tree(CONFIG);
+    tree.write(".gitattributes", "src/lib.rs binary\n");
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 1, "{report}");
+    let failing: Vec<&Value> = list(&report, "findings")
+        .iter()
+        .filter(|finding| finding["kind"] != "measurement-lost")
+        .collect();
+    assert!(failing.is_empty(), "{report}");
+}
+
+#[test]
+fn a_plain_move_of_a_file_the_change_breaks_is_still_a_lost_file() {
+    let body: String = (0..20).map(|at| format!("pub fn f{at}() {{}}\n")).collect();
+    let tree = Tree::new();
+    tree.write("klin.json", CONFIG);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", &body);
+    tree.base();
+    assert!(std::fs::rename(tree.path("src/lib.rs"), tree.path("src/moved.rs")).is_ok());
+    tree.write("src/moved.rs", &format!("{body}pub fn broken( {{\n"));
+
+    let (code, report) = checked(&tree, &[]);
+
+    assert_eq!(code, 1, "{report}");
+    assert_eq!(lost_for(&report, "src/moved.rs"), ["parse"], "{report}");
+}
+
+#[test]
+fn a_run_that_reads_no_held_file_reports_no_unmatched_entry() {
+    let tree = tree(HELD);
+    tree.write("src/lib.rs", BROKEN);
+
+    let (code, report) = checked(&tree, &["doc-size"]);
+
+    assert_eq!(code, 0, "{report}");
+    assert!(list(&report, "reviews").is_empty(), "{report}");
+}

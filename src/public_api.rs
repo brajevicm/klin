@@ -168,6 +168,9 @@ fn breaks(was: &Derived, now: &Derived, unread: impl Fn(&str) -> bool) -> Vec<Fi
                 && held.language == surface.language
                 && held.manifest == surface.manifest
         }) else {
+            if surface.files.iter().any(|file| unread(file)) {
+                continue;
+            }
             out.push(finding(
                 surface,
                 None,

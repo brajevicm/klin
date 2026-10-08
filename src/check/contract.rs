@@ -554,6 +554,38 @@ pub enum Class {
     Limit,
 }
 
+/// Why klin cannot measure a file, which names the finding, review item or coverage note of
+/// its class. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Cause {
+    Parse,
+    LineCeiling,
+    Manifest,
+    Form,
+    Unreadable,
+    NotText,
+    ResourceLimit,
+    Filtered,
+    LeftScope,
+}
+
+impl Cause {
+    pub fn name(self) -> &'static str {
+        const NAMES: [&str; 9] = [
+            "parse",
+            "line-ceiling",
+            "manifest",
+            "form",
+            "unreadable",
+            "not-text",
+            "resource-limit",
+            "filtered",
+            "left-scope",
+        ];
+        NAMES[self as usize]
+    }
+}
+
 /// What a gate could not measure. The gate names the file and what it saw, and the runner sorts
 /// each file once for the run against the base. Spec 7.2.
 pub enum Hole {

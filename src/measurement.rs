@@ -147,6 +147,7 @@ pub fn measure(
             Outcome::Foreign => {}
         }
     }
+    unparsed.extend(formless(tree));
     let excluded = found
         .excluded
         .iter()
@@ -168,6 +169,22 @@ pub fn measure(
         },
         cost,
     })
+}
+
+/// The files a structural grammar reads that the working tree's `.gitattributes` make not text,
+/// which no gate reads now, so a structural gate counts them unread rather than gone and reports
+/// no finding that depends only on their contents. Spec 7.2.
+fn formless(tree: &Tree) -> Vec<Unparsed> {
+    tree.formless()
+        .iter()
+        .filter_map(|(file, _)| {
+            let language = crate::syntax::language_of(file)?;
+            crate::syntax::structural::supports(language.id).then(|| Unparsed {
+                file: file.clone(),
+                language: language.name,
+            })
+        })
+        .collect()
 }
 
 /// The base's view of the working tree's unchanged files, for a changed run that is not strict,

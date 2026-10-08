@@ -780,7 +780,8 @@ finding by making a file unmeasurable.
 - **Form.** A file is lost when the base read it as text and the working
   tree's copy is not text: it holds a NUL byte, the working-tree path is a
   symbolic link by `lstat` (the stamp tree records the same mode), or a
-  `.gitattributes` change gives it `binary` or `-diff`. `-text` alone is not
+  `.gitattributes` change gives it `binary`, `-diff`, or an encoding klin
+  cannot decode. `-text` alone is not
   a lost form, because it only turns off end-of-line conversion.
 - **Decoding.** The base side is the stored blob, which needs no decoding.
   For the working-tree side, klin applies the path's `working-tree-encoding`
@@ -792,8 +793,9 @@ finding by making a file unmeasurable.
   `core.attributesFile`, so two machines agree. The working tree's file list
   leaves out a path these attributes make not text, filtered or encoded, and
   the run sorts that path though no capability read it. An encoding that
-  klin cannot decode is a coverage note, or an opened gap when the change
-  added it. Invalid UTF-8 alone is not a lost form, because 0.x readers
+  klin cannot decode is a coverage note where the base gave the path one
+  too, a lost form where the change added it to a path the base measured,
+  and an opened gap on a new path. Invalid UTF-8 alone is not a lost form, because 0.x readers
   decode it lossily and still measure.
 - **Filters.** klin runs no filter program. A `filter` attribute that the
   base already gave a path, such as an LFS path, makes that path a coverage
@@ -854,7 +856,7 @@ the exit code.
 | --- | --- |
 | `unreadable` | A file in a language klin reads, which the base did not hold and git did not detect as a rename, whose strict parse has an error node. |
 | `not-text` | A file in a language klin reads, which the base did not hold, and which is not text by the form rule above. |
-| `filtered` | A new path with a `filter` attribute, or a new encoding klin cannot decode. |
+| `filtered` | A new path with a `filter` attribute or an encoding klin cannot decode. |
 | `resource-limit` | A file that the base did not hold, with a line over the source-line ceiling. |
 | `unresolved` | A form that a resolver supports and could not resolve, which the base did not hold at that site. |
 | `ambiguous` | Evidence whose claim needs a resolution the facts do not prove, which the base did not hold at that site. |

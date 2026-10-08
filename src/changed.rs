@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::Path;
 
 use crate::error::Error;
@@ -18,31 +19,52 @@ const RENAMES: &[&str] = &["-M50%", "-l1000"];
 
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
-    let mut asked = vec!["diff", "--name-status"];
-    asked.extend_from_slice(RENAMES);
-    asked.extend(["--relative", base, "--"]);
-    let listed = repo.text(&asked).ok_or_else(|| {
-        Error(format!(
-            "--changed needs a git repository, and git could not read {}",
-            root.display()
-        ))
-    })?;
+    let listed = staged(&repo, root, base)
+        .or_else(|| tracked(&repo, base))
+        .ok_or_else(|| {
+            Error(format!(
+                "--changed needs a git repository, and git could not read {}",
+                root.display()
+            ))
+        })?;
     let mut changes: Vec<Change> = listed.lines().filter_map(change).collect();
-    let untracked = repo
-        .text(&["ls-files", "--others", "--exclude-standard"])
-        .unwrap_or_default();
-    changes.extend(
-        untracked
-            .lines()
-            .filter(|name| !name.is_empty())
-            .map(|name| Change {
-                path: name.to_string(),
-                was: None,
-            }),
-    );
     changes.sort_by(|a, b| a.path.cmp(&b.path));
     changes.dedup_by(|a, b| a.path == b.path);
     Ok(changes)
+}
+
+/// Every change of the working tree against the base, untracked files included, through a copy
+/// of the index with the working tree added to it. An untracked file is then a candidate for a
+/// rename like any other, so a plain `mv` reads as the move it is. The person's own index is
+/// never written. Spec 7.2.
+fn staged(repo: &Repo, root: &Path, base: &str) -> Option<String> {
+    let index = root.join(repo.text(&["rev-parse", "--git-path", "index"])?.trim());
+    let scratch = tempfile::tempdir().ok()?;
+    let copy = scratch.path().join("index");
+    if index.is_file() {
+        std::fs::copy(&index, &copy).ok()?;
+    }
+    let env = [(OsStr::new("GIT_INDEX_FILE"), copy.as_os_str())];
+    repo.text_with_env(&["add", "-A"], &env)?;
+    let mut asked = vec!["diff", "--cached", "--name-status"];
+    asked.extend_from_slice(RENAMES);
+    asked.extend(["--relative", base, "--"]);
+    repo.text_with_env(&asked, &env)
+}
+
+/// The tracked changes and the untracked files apart, for a tree whose index klin cannot copy.
+fn tracked(repo: &Repo, base: &str) -> Option<String> {
+    let mut asked = vec!["diff", "--name-status"];
+    asked.extend_from_slice(RENAMES);
+    asked.extend(["--relative", base, "--"]);
+    let mut listed = repo.text(&asked)?;
+    let untracked = repo
+        .text(&["ls-files", "--others", "--exclude-standard"])
+        .unwrap_or_default();
+    for name in untracked.lines().filter(|name| !name.is_empty()) {
+        listed.push_str(&format!("\nA\t{name}"));
+    }
+    Some(listed)
 }
 
 fn change(line: &str) -> Option<Change> {
