@@ -1359,7 +1359,10 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
     let check = gate.check;
     let fields = section_of(project, gate);
     let (mut lines, mut values) = match check.derivation {
-        Derivation::Explained(explain) => (explain(project, args.entry.as_deref())?, Vec::new()),
+        Derivation::Explained(explain) => {
+            let explained = explain(project, args.entry.as_deref())?;
+            (explained.lines, explained.values)
+        }
         Derivation::Values(derive) => said_values(check, as_told(derive(project)?), &fields),
         Derivation::Nothing => said_values(check, Vec::new(), &fields),
     };

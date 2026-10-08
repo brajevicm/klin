@@ -828,7 +828,15 @@ pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 pub type Derive = fn(&Project) -> Result<Vec<Provenance>, Error>;
 
 /// A check's own explanation of its derived policy, of every entry or of the one a person names.
-pub type Explain = fn(&Project, Option<&str>) -> Result<Vec<String>, Error>;
+pub type Explain = fn(&Project, Option<&str>) -> Result<Explained, Error>;
+
+/// What a check's explanation says: the lines a person reads, and the values it names beyond
+/// the ones a person pinned, which the JSON carries. Spec 11.6.
+#[derive(Default)]
+pub struct Explained {
+    pub lines: Vec<String>,
+    pub values: Vec<Value>,
+}
 
 /// How `klin policy` learns a check's values: it derives none, so only a person's pins and the
 /// built-in defaults hold; a derivation step gives them a value per key; or the check explains a

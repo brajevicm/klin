@@ -219,3 +219,35 @@ fn policy_prints_the_limitations_of_an_integration_no_section_names_yet() {
         run.out
     );
 }
+
+/// A convention that leaves a scope key out runs under its default, which `policy` names as
+/// built in under the convention. Spec 11.6.
+#[test]
+fn policy_names_a_scope_key_a_convention_leaves_out_as_built_in() {
+    let tree = tree(
+        r#"{"conventions": {
+            "no-flags": {"text": "config::Flags", "in": "src", "remedy": "Use the context."}
+        }}"#,
+    );
+
+    let run = tree.run(&["policy", "conventions", "no-flags"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("built-in: except nothing is taken out"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("built-in: in "), "{}", run.out);
+
+    let json = tree.run(&["policy", "--json", "conventions"]).json();
+    let values = capability(&json, "conventions")["values"].clone();
+    let except = values
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|value| value["key"] == "except")
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(except["provenance"], "built-in", "{json}");
+    assert_eq!(except["entry"], "no-flags", "{json}");
+}

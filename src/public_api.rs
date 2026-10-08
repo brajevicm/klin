@@ -444,7 +444,7 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 
 /// The derived contract of the working tree, item by item, so automatic derivation is
 /// inspectable. Nothing is judged and no base is read. ADR 0044.
-pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Error> {
+pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Explained, Error> {
     if let Some(named) = named {
         return Err(Error(format!(
             "{NAME} explains every surface at once, so drop {named}"
@@ -477,7 +477,10 @@ pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Er
     for held in &derived.inapplicable {
         let _ = writeln!(out, "not applicable: {}: {}", held.what, held.why);
     }
-    Ok(out.lines().map(str::to_string).collect())
+    Ok(contract::Explained {
+        lines: out.lines().map(str::to_string).collect(),
+        values: Vec::new(),
+    })
 }
 
 fn report_surface(surface: &Surface, out: &mut String) {
