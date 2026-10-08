@@ -188,6 +188,9 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         asked: None,
     };
     written(root, false, left, &mut log);
+    let mut records = Recorded::default();
+    records.findings.push(record("error", &problem.to_string()));
+    log.report = Some(as_json(ERROR, 0, &said, records, None));
     let said =
         Some(said).filter(|said| fresh && !keeps_quiet(root, Some(event), false, said, &mut log));
     journal::stop(root, &log);
@@ -1599,9 +1602,26 @@ fn not_blocked(
         "klin: not blocking again; {why}, and the window stays open until a person \
          fixes, accepts or resets it."
     );
-    let person = (tally.grammar_lag && !args.json && !event.host.follows_up())
-        .then(|| render::LOST_TO_A_PERSON.to_string());
+    let person = (!args.json && !event.host.follows_up())
+        .then(|| person_note(tally, report))
+        .flatten();
     (event.host.stop(&Stop::Pass), person)
+}
+
+/// What a failing Stop that spends no gate block still tells the person: the run's notes and
+/// errors, which the told-once record filters, and how to hold a file lost to a parse. A spent
+/// budget never keeps a new limitation from the person. Spec 2.3, 7.2.
+fn person_note(tally: &Tally, report: &str) -> Option<String> {
+    let mut parts = Vec::new();
+    if tally.told + tally.errored > 0 {
+        parts.push(format!(
+            "klin: this stop is not blocked, and the run left a note:\n{report}"
+        ));
+    }
+    if tally.grammar_lag {
+        parts.push(render::LOST_TO_A_PERSON.to_string());
+    }
+    (!parts.is_empty()).then(|| parts.join("\n"))
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for

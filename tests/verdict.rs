@@ -322,11 +322,15 @@ fn a_notice_klin_could_not_hand_to_cursor_is_told_at_a_later_stop() {
     let quiet = feed(tree.root(), AGENT, A_CURSOR_STOP);
     assert_eq!(quiet.code, 0, "{}", quiet.out);
     assert!(!quiet.says("followup_message"), "{}", quiet.out);
+    assert_eq!(
+        tree.field("told"),
+        "",
+        "an undelivered notice was recorded as told"
+    );
 
     tree.remove(".git/klin/handed");
     let told = feed(tree.root(), AGENT, A_CURSOR_STOP);
     assert_eq!(told.code, 0, "{}", told.out);
-    assert!(told.says("followup_message"), "{}", told.out);
     assert!(told.says("escapes"), "{}", told.out);
 }
 
@@ -346,4 +350,47 @@ fn a_stop_in_a_tree_with_no_source_root_tells_it_once() {
 
     let again = second_stop(&tree);
     assert_eq!(told(&again), "", "{}", again.out);
+}
+
+/// A capability error that arrives after the gate blocks are spent is still told to the person,
+/// once. Spec 2.3, 10.4.
+#[test]
+fn a_new_error_after_the_last_gate_block_is_told_once() {
+    let tree = tree(DOC_SIZE);
+    tree.words("README.md", 30);
+    assert!(stop(&tree).says("gate block 1 of 2"));
+    tree.words("README.md", 31);
+    assert!(second_stop(&tree).says("gate block 2 of 2"));
+
+    tree.write("klin.json", A_BROKEN_GATE);
+    let run = second_stop(&tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(told(&run).contains("ERR   escapes"), "{}", run.out);
+    no_repair(&told(&run));
+
+    let again = second_stop(&tree);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(!told(&again).contains("escapes"), "{}", again.out);
+}
+
+/// The journal keeps why an `unjudged` Stop measured nothing, after the configuration is fixed.
+/// Spec 6.6, 13.1.
+#[test]
+fn the_journal_keeps_the_error_of_an_unjudged_stop() {
+    let tree = tree(DOC_SIZE);
+    tree.words("README.md", 30);
+    assert_eq!(stop(&tree).code, 2);
+    tree.write("klin.json", "not json");
+    assert_eq!(second_stop(&tree).code, 0);
+    tree.write("klin.json", DOC_SIZE);
+
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let unjudged = journal
+        .lines()
+        .rev()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|line| line["kind"] == "stop")
+        .unwrap_or_default();
+    assert_eq!(unjudged["verdict"], "red", "{unjudged}");
+    assert!(unjudged.to_string().contains("klin.json"), "{unjudged}");
 }
