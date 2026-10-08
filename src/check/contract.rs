@@ -633,7 +633,7 @@ pub enum Listed {
     /// Stop. Spec 9.2.
     TestsDeleted {
         went: Vec<Located>,
-        review: bool,
+        caller: Caller,
     },
     TestFunctionsOrphaned(Vec<Located>),
     TestFilesPaired {
@@ -670,7 +670,7 @@ pub enum Ratchet {
     /// the Stop. Never a failure. Spec 7.6.
     AcceptedUnmatched {
         entries: Vec<Unmatched>,
-        review: bool,
+        caller: Caller,
     },
 }
 

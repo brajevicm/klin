@@ -16,14 +16,15 @@ use crate::check::contract::{Cause, Class};
 use crate::check::holes::{self, Seen, Unmeasured};
 use crate::check::{catalogue, render};
 use crate::config;
-use crate::config::{MEASUREMENT_LOST, Moved};
+use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::project::Project;
+use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, reference, scope, stamp, state, stats, survey, turn, write};
+use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -237,7 +238,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
     let window = turn::window(root, lost, &mut log.flags, out).ok();
-    bound(project, window.as_ref());
+    if let Some(window) = &window {
+        project.bind(window);
+    }
     let project = &*project;
     opened(root, lost, &mut log);
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
@@ -2384,7 +2387,7 @@ fn one(
         }
     };
     let mut recorded = Recorded::from(render::json(&told));
-    moved_out(&project.config, gate.check.section, &mut recorded.findings);
+    moved_out(project.moves(), gate.check.section, &mut recorded.findings);
     errored(code, &mut records.errors, &mut recorded);
     (code, told, records, recorded)
 }
@@ -2652,7 +2655,9 @@ fn measured(
     out: &mut String,
 ) -> Result<(), Fault> {
     let window = base::choose(project.root()).ok();
-    bound(project, window.as_ref());
+    if let Some(window) = &window {
+        project.bind(window);
+    }
     let project = &*project;
     if let Some(note) = deleted_config(args, project, window.as_ref()) {
         if !args.json {
@@ -2667,40 +2672,11 @@ fn measured(
     Ok(())
 }
 
-/// The run bound to its window: the derivation commit it names, and the moved policy paths the
-/// run follows. Spec 4.3, 7.3.
-fn bound(project: &mut Project, window: Option<&Window>) {
-    if let Some(window) = window {
-        project.bind(window);
-    }
-    follow(project, window);
-}
-
-/// The moved policy paths of this window, which the run follows: a pinned `in` path whose files
-/// were renamed is measured at the new paths, and a file renamed out of a scope keeps the scope
-/// of its base path. Spec 7.3.
-fn follow(project: &mut Project, window: Option<&Window>) {
-    let Some(window) = window else {
-        return;
-    };
-    let scoped = project.config.objects().any(|(_, fields)| {
-        fields.contains_key(scope::IN.name) || fields.contains_key(scope::EXCEPT.name)
-    });
-    if !scoped {
-        return;
-    }
-    let moved = match (project.changes(&window.before), project.tree().files()) {
-        (Ok(changes), Ok(files)) => scope::moved(&project.config, files, &window.before, &changes),
-        _ => return,
-    };
-    project.config.follow(moved);
-}
-
 /// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
 /// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
 /// and `klin check` names it. Spec 7.3.
 fn gone_pins(args: &Args, project: &Project, out: &mut String) -> Vec<Value> {
-    let gone = project.config.moved().iter().filter(|moved| moved.gone());
+    let gone = project.moves().iter().filter(|moved| moved.gone());
     gone.filter_map(Moved::said)
         .map(|said| {
             if !args.json {
@@ -2733,17 +2709,8 @@ fn moved_pin(moved: &Moved) -> Option<Value> {
 
 /// A finding at a file the change moved out of its gate's scope, which keeps the scope of its
 /// base path, carries `moved_out_of_scope`, which no ratchet compares. Spec 7.3.
-fn moved_out(config: &config::Config, section: &str, findings: &mut [Value]) {
-    let out: Vec<&str> = config
-        .moved()
-        .iter()
-        .filter_map(|moved| match moved {
-            Moved::Out {
-                section: of, path, ..
-            } if of == section => Some(path.as_str()),
-            _ => None,
-        })
-        .collect();
+fn moved_out(moves: &Moves, section: &str, findings: &mut [Value]) {
+    let out = moves.out_of(section);
     for finding in findings
         .iter_mut()
         .filter(|finding| out.contains(&finding["file"].as_str().unwrap_or_default()))
@@ -2945,7 +2912,7 @@ impl Report {
     ) {
         self.window = base.map(Window::record);
         self.tree = Some(base::tree_record(project.root()));
-        for review in project.config.moved().iter().filter_map(moved_pin) {
+        for review in project.moves().iter().filter_map(moved_pin) {
             if !args.json {
                 let _ = writeln!(
                     out,

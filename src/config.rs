@@ -82,89 +82,6 @@ pub struct Config {
     pub file: PathBuf,
     root: PathBuf,
     data: Value,
-    /// What the change did to the paths the policy names, which this run follows. Spec 7.3.
-    moved: Vec<Moved>,
-}
-
-/// What a change did to a path the policy names, decided once per run against the base. Spec 7.3.
-#[derive(Clone, Debug)]
-pub enum Moved {
-    /// A pinned `in` path that selects no file of the working tree: the files git saw renamed
-    /// out of it, by the path the base held and the path they have now, and how many of the
-    /// files it selected in the base went with no rename. Nothing renamed and nothing deleted
-    /// is a pin that selected nothing in the base either.
-    Pin {
-        section: String,
-        path: String,
-        renamed: Vec<(String, String)>,
-        deleted: usize,
-    },
-    /// A selected file the change renamed out of a scope that still selects other files.
-    Out { section: String, path: String },
-}
-
-impl Moved {
-    /// The section whose scope the move touches.
-    pub fn section(&self) -> &str {
-        match self {
-            Moved::Pin { section, .. } | Moved::Out { section, .. } => section,
-        }
-    }
-
-    /// Whether files of a moved pin went with no rename, or it selects nothing in either tree,
-    /// which the Stop notes. Spec 7.3.
-    pub fn gone(&self) -> bool {
-        matches!(self, Moved::Pin { renamed, deleted, .. } if renamed.is_empty() || *deleted > 0)
-    }
-
-    /// What a moved pin says to a person, and nothing for a file moved out of a scope, whose
-    /// findings carry `moved_out_of_scope`. Spec 7.3.
-    pub fn said(&self) -> Option<String> {
-        let Moved::Pin {
-            section,
-            path,
-            renamed,
-            deleted,
-        } = self
-        else {
-            return None;
-        };
-        let to = renamed
-            .iter()
-            .map(|(_, path)| path.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let what = match (renamed.is_empty(), *deleted) {
-            (false, 0) => format!("its files moved to {to}, and this run measures them there"),
-            (false, deleted) => format!(
-                "its files moved to {to}, and this run measures them there, and {deleted} \
-                 file(s) went with no rename"
-            ),
-            (true, 0) => "it selects nothing in the base or the working tree".to_string(),
-            (true, deleted) => format!(
-                "its {deleted} file(s) went with no rename, so the gate measures nothing there"
-            ),
-        };
-        Some(format!(
-            "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
-             {what} — update the pin in klin.json"
-        ))
-    }
-
-    /// The old and new path of each file a moved pin followed, and nothing where none was
-    /// renamed. Spec 11.7.
-    pub fn reason(&self) -> Option<String> {
-        let Moved::Pin { renamed, .. } = self else {
-            return None;
-        };
-        (!renamed.is_empty()).then(|| {
-            renamed
-                .iter()
-                .map(|(was, now)| format!("{was} -> {now}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        })
-    }
 }
 
 impl Config {
@@ -183,12 +100,7 @@ impl Config {
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
         well_formed(&file, &data, sections)?;
-        Ok(Config {
-            file,
-            root,
-            data,
-            moved: Vec::new(),
-        })
+        Ok(Config { file, root, data })
     }
 
     /// A tree with no configuration at all. The file it names is the one `init` would write, so
@@ -201,7 +113,6 @@ impl Config {
             file: root.join(FILENAME),
             root,
             data: Value::Object(serde_json::Map::new()),
-            moved: Vec::new(),
         }
     }
 
@@ -211,7 +122,6 @@ impl Config {
             file: file.to_path_buf(),
             root: file.parent().unwrap_or(Path::new("")).to_path_buf(),
             data: Value::Object(Map::new()),
-            moved: Vec::new(),
         }
     }
 
@@ -233,33 +143,6 @@ impl Config {
             .into_iter()
             .flatten()
             .filter_map(|(name, value)| Some((name.as_str(), value.as_object()?)))
-    }
-
-    /// The moved policy paths this run follows. Spec 7.3.
-    pub fn follow(&mut self, moved: Vec<Moved>) {
-        self.moved = moved;
-    }
-
-    /// The moved policy paths this run follows, in the order the config states its sections.
-    pub fn moved(&self) -> &[Moved] {
-        &self.moved
-    }
-
-    /// The paths this run keeps in a section's scope because the change moved them, and whether
-    /// a pinned `in` path of the section moved, so its scope may select nothing. Spec 7.3.
-    pub fn kept(&self, section: &str) -> (Vec<String>, bool) {
-        let mut kept = Vec::new();
-        let mut pinned = false;
-        for moved in self.moved.iter().filter(|moved| moved.section() == section) {
-            match moved {
-                Moved::Pin { renamed, .. } => {
-                    pinned = true;
-                    kept.extend(renamed.iter().map(|(_, path)| path.clone()));
-                }
-                Moved::Out { path, .. } => kept.push(path.clone()),
-            }
-        }
-        (kept, pinned)
     }
 
     /// A section the file must state, because nothing derives it: the value, or the error that

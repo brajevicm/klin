@@ -17,6 +17,7 @@ use crate::changed::{self, Change};
 use crate::config::Config;
 use crate::error::Error;
 use crate::key::Section;
+use crate::scope::{self, Moves};
 use crate::tree::Tree;
 use crate::{stamp, survey};
 
@@ -30,6 +31,9 @@ pub struct Project {
     facts: OnceCell<survey::Facts>,
     derivation: OnceCell<Option<String>>,
     by_hand: bool,
+    /// What the change did to the paths the policy names, set once when the run binds its
+    /// window. Spec 7.3.
+    moves: Moves,
 }
 
 impl Project {
@@ -58,6 +62,7 @@ impl Project {
             facts: OnceCell::new(),
             derivation: OnceCell::new(),
             by_hand: false,
+            moves: Moves::default(),
         }
     }
 
@@ -100,6 +105,15 @@ impl Project {
             .or_else(|| stamp::unwindowed(self.root()));
         self.derivation = OnceCell::from(commit);
         self.facts.take();
+        self.moves = match (self.changes(&window.before), self.tree.files()) {
+            (Ok(changes), Ok(files)) => scope::moved(&self.config, files, &window.before, &changes),
+            _ => Moves::default(),
+        };
+    }
+
+    /// What the change did to the paths the policy names, which the run follows. Spec 7.3.
+    pub fn moves(&self) -> &Moves {
+        &self.moves
     }
 
     /// The derivation commit's factual survey and cache directory, for a check that derives

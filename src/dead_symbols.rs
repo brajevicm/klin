@@ -21,7 +21,7 @@ use crate::measurement;
 use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
-use crate::scope::{self, Scope};
+use crate::scope::{self, Moves, Scope};
 use crate::syntax::{self, structural};
 use crate::tree::Tree;
 
@@ -273,7 +273,7 @@ fn reports(
 fn spec(project: &Project) -> Result<Spec, Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
-    let selection = selection(config, &values)?;
+    let selection = selection(config, project.moves(), &values)?;
     if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
         return Err(Error(format!(
             "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
@@ -286,10 +286,10 @@ fn spec(project: &Project) -> Result<Spec, Error> {
     })
 }
 
-fn selection(config: &Config, values: &Values) -> Result<Selection, Error> {
+fn selection(config: &Config, moves: &Moves, values: &Values) -> Result<Selection, Error> {
     Ok(Selection {
         extensions: structural::selected_extensions(&[]).unwrap_or_default(),
-        scope: Scope::read(config, SECTION, values)?,
+        scope: Scope::read(config, moves, SECTION, values)?,
     })
 }
 

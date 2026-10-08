@@ -297,7 +297,7 @@ fn renamed<'a>(
 fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
     let config = at.config();
     let values = config.policy(SECTION, KEYS)?;
-    let scope = Scope::read(config, SECTION, &values)?;
+    let scope = Scope::read(config, at.project.moves(), SECTION, &values)?;
     if scope.has_in() && !found.iter().any(|(path, _)| scope.selects(path)) {
         return Err(Error(format!(
             "{}: \"{SECTION}\" has an \"in\" scope with no applicable manifest",

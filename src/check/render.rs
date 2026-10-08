@@ -9,8 +9,8 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, Derived, Entry, Failed, Held,
-    HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured,
+    self, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, Derived, Entry, Failed,
+    Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured,
     Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNMATCHED_ACCEPTED, Unmatched,
     Unresolvable, Wording,
 };
@@ -139,10 +139,10 @@ fn sites(listed: &Listed, out: &mut String) {
                 .map(|(site, name)| format!("{}  {name}  {}", at(site), site.text))
                 .collect(),
         ),
-        Listed::TestsDeleted { went, review } => (
+        Listed::TestsDeleted { went, caller } => (
             format!(
                 "{}: {} test site(s) the base holds went in this window:",
-                said_as(*review),
+                said_as(*caller),
                 went.len()
             ),
             went.iter()
@@ -213,12 +213,12 @@ fn ratchet(said: &Ratchet, out: &mut String) {
         Ratchet::Worse { unit, failed, .. } => worse(unit, failed, out),
         Ratchet::AcceptedUnmatched {
             entries: unmatched,
-            review,
+            caller,
         } => listed(
             out,
             &format!(
                 "{}: {} accepted entr{} matched nothing this run:",
-                said_as(*review),
+                said_as(*caller),
                 unmatched.len(),
                 entries(unmatched.len())
             ),
@@ -506,10 +506,10 @@ fn against(finding: &Failed) -> String {
 
 /// The word a line opens with for what fails nothing: `REVIEW` at `klin check`, `NOTE` at the
 /// Stop. Spec 7.6, 9.2.
-fn said_as(review: bool) -> &'static str {
-    match review {
-        true => "REVIEW",
-        false => "NOTE",
+fn said_as(caller: Caller) -> &'static str {
+    match caller {
+        Caller::Gate => "REVIEW",
+        Caller::Hook => "NOTE",
     }
 }
 
@@ -771,7 +771,7 @@ fn hole_json(hole: &Hole, out: &mut Json) {
 fn listed_json(listed: &Listed, out: &mut Json) {
     let notes: Vec<Value> = match listed {
         Listed::DeadSymbols(_) => Vec::new(),
-        Listed::TestsDeleted { went, review } => {
+        Listed::TestsDeleted { went, caller } => {
             let records = went.iter().map(|site| {
                 record(
                     DELETED,
@@ -783,7 +783,7 @@ fn listed_json(listed: &Listed, out: &mut Json) {
                     ),
                 )
             });
-            if *review {
+            if *caller == Caller::Gate {
                 out.reviews
                     .extend(records.map(|item| kinded(item, DELETED_TEST)));
                 return;
@@ -842,18 +842,18 @@ fn ratchet_json(said: &Ratchet, out: &mut Json) {
                 .iter()
                 .map(|finding| failed_json("worsened", condition, finding)),
         ),
-        Ratchet::AcceptedUnmatched { entries, review } => {
+        Ratchet::AcceptedUnmatched { entries, caller } => {
             let records = entries.iter().map(|entry| {
                 let site = &entry.entry;
                 let mut record = fields("unmatched", Some(&site.file), site.line, &site.text);
                 record.insert("values".into(), Value::Object(entry.entry.values.clone()));
                 Value::Object(record)
             });
-            match review {
-                true => out
+            match caller {
+                Caller::Gate => out
                     .reviews
                     .extend(records.map(|item| kinded(item, UNMATCHED_ACCEPTED))),
-                false => out.notes.extend(records),
+                Caller::Hook => out.notes.extend(records),
             }
         }
     }

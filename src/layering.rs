@@ -28,7 +28,7 @@ use crate::modules::resolver::{Attachment, Dependency, Hole};
 use crate::modules::{self, Cycles, GraphCost, ModuleGraph};
 use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
-use crate::scope::{self, Scope, Selector};
+use crate::scope::{self, Moves, Scope, Selector};
 use crate::syntax::{self, structural};
 use crate::tree::Tree;
 
@@ -164,7 +164,7 @@ impl Placed<'_> {
 }
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
-    let policy = policy(at.config())?;
+    let policy = policy(at.config(), at.project.moves())?;
     let commit = contract::base_commit(at.project.root(), at)?;
     let (was, now, base_scoped) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
@@ -357,7 +357,7 @@ impl Side {
     }
 }
 
-fn policy(config: &Config) -> Result<Policy, Error> {
+fn policy(config: &Config, moves: &Moves) -> Result<Policy, Error> {
     let fields = config
         .required(SECTION)?
         .as_object()
@@ -367,7 +367,7 @@ fn policy(config: &Config) -> Result<Policy, Error> {
     let layers = layers(config, fields)?;
     names_layers(config, &layers)?;
     Ok(Policy {
-        scope: Scope::read(config, SECTION, fields)?,
+        scope: Scope::read(config, moves, SECTION, fields)?,
         acyclic: acyclic(config, fields)?,
         layers,
     })

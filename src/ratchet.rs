@@ -667,7 +667,7 @@ fn notes(comparison: &Comparison, evaluator: &Evaluator, at: &Context, out: &mut
                 retired: retired_row(at.gate, entry),
             })
             .collect(),
-        review: !at.hook(),
+        caller: at.caller,
     });
 }
 

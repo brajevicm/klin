@@ -522,7 +522,7 @@ fn spec(project: &Project) -> Result<Spec, Error> {
     let values = config.policy(SECTION, KEYS)?;
     let selection = Selection {
         languages: syntax::LANGUAGES.iter().collect(),
-        scope: Scope::read(config, SECTION, &values)?,
+        scope: Scope::read(config, project.moves(), SECTION, &values)?,
     };
     if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
         return Err(Error(format!(

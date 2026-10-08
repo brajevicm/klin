@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use crate::changed::Change;
-use crate::config::{Config, Moved};
+use crate::config::Config;
 use crate::error::Error;
 use crate::git::Repo;
 use crate::key::Key;
@@ -51,10 +51,18 @@ impl PartialEq for Scope {
 }
 
 impl Scope {
-    pub fn read(config: &Config, section: &str, fields: &Values) -> Result<Scope, Error> {
+    /// The scope a section states, with the paths this run keeps in it because the change moved
+    /// them. Spec 7.3.
+    pub fn read(
+        config: &Config,
+        moves: &Moves,
+        section: &str,
+        fields: &Values,
+    ) -> Result<Scope, Error> {
         let mut scope = Scope::from_fields(fields)
             .map_err(|why| Error(format!("{}: \"{section}\" {why}", config.file.display())))?;
-        (scope.kept, scope.moved) = config.kept(section);
+        scope.kept = moves.kept(section);
+        scope.moved = moves.pinned(section);
         Ok(scope)
     }
 
@@ -132,7 +140,8 @@ impl Scope {
     }
 
     /// The scope recorded by the base commit, or today's scope when that commit has no readable
-    /// compact policy. Checks decide when this historical scope matters to their comparison.
+    /// compact policy, with the paths today's run keeps. Checks decide when this historical
+    /// scope matters to their comparison.
     pub fn at_base(config: &Config, section: &str, prior: &Path, today: &Scope) -> Scope {
         config
             .file
@@ -141,7 +150,12 @@ impl Scope {
             .and_then(|text| serde_json::from_str::<Value>(&text).ok())
             .and_then(|data| match data.get(section) {
                 None => Some(Scope::default()),
-                Some(value) => Scope::read(config, section, value.as_object()?).ok(),
+                Some(value) => Scope::from_fields(value.as_object()?).ok(),
+            })
+            .map(|stated| Scope {
+                kept: today.kept.clone(),
+                moved: today.moved,
+                ..stated
             })
             .unwrap_or_else(|| today.clone())
     }
@@ -153,7 +167,10 @@ impl Scope {
 /// nothing in the base either counts only where the base's own `klin.json` pins it and no path
 /// of the same `in` selects a file: a path this change wrote that names nothing stays a
 /// configuration error, and one beside a path that selects files never was one. Spec 7.3.
-pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) -> Vec<Moved> {
+pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) -> Moves {
+    if !states_a_scope(config) {
+        return Moves::default();
+    }
     let renamed: Vec<(&str, &str)> = changes
         .iter()
         .filter_map(|change| {
@@ -161,37 +178,99 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
             Some((was, change.path.as_str()))
         })
         .collect();
-    let repo = Repo::at(config.root());
-    let mut listed: Option<Vec<String>> = None;
-    let mut based: Option<Option<Value>> = None;
+    let mut at_base = AtBase::new(config, base);
     let mut out = Vec::new();
     for (section, fields) in config.objects() {
-        let Ok(scope) = Scope::from_fields(fields) else {
-            continue;
-        };
-        let dead: Vec<&Selector> = scope
-            .within
-            .iter()
-            .filter(|selector| !files.iter().any(|file| selector.holds(file)))
-            .collect();
-        let quiet = dead.len() < scope.within.len();
-        for selector in &dead {
-            let listed = listed.get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
-            let held = listed.iter().filter(|path| selector.holds(path)).count();
-            let mut pinned = || {
-                let based = based.get_or_insert_with(|| based_config(config, &repo, base));
-                pinned_at_base(based.as_ref(), section, selector)
-            };
-            if held == 0 && (quiet || !pinned()) {
-                continue;
-            }
-            out.push(pin(section, selector, held, &renamed));
-        }
-        if files.iter().any(|file| scope.selects(file)) {
-            out.extend(moved_out(section, &scope, &dead, &renamed));
+        if let Ok(scope) = Scope::from_fields(fields) {
+            out.extend(section_moves(
+                section,
+                &scope,
+                (files, &renamed),
+                &mut at_base,
+            ));
         }
     }
+    Moves(out)
+}
+
+/// What the change did to one section's scope: a `Pin` per pinned path that selects no file
+/// now and is not quiet, and an `Out` per file a rename took out of a scope that still selects
+/// files.
+fn section_moves(
+    section: &str,
+    scope: &Scope,
+    (files, renamed): (&[String], &[(&str, &str)]),
+    at_base: &mut AtBase,
+) -> Vec<Moved> {
+    let dead: Vec<&Selector> = scope
+        .within
+        .iter()
+        .filter(|selector| !files.iter().any(|file| selector.holds(file)))
+        .collect();
+    let quiet = dead.len() < scope.within.len();
+    let mut out = Vec::new();
+    for selector in &dead {
+        let held = at_base.held(selector);
+        if held == 0 && (quiet || !at_base.pins(section, selector)) {
+            continue;
+        }
+        out.push(pin(section, selector, held, renamed));
+    }
+    if files.iter().any(|file| scope.selects(file)) {
+        out.extend(moved_out(section, scope, &dead, renamed));
+    }
     out
+}
+
+/// Whether any section states an `in` or an `except`, so a path the change moved can matter.
+fn states_a_scope(config: &Config) -> bool {
+    config
+        .objects()
+        .any(|(_, fields)| fields.contains_key(IN.name) || fields.contains_key(EXCEPT.name))
+}
+
+/// What the base commit holds, read only when a pinned path selects nothing now: its file list
+/// and its own `klin.json`, each read once for every path that asks.
+struct AtBase<'a> {
+    config: &'a Config,
+    repo: Repo<'a>,
+    base: &'a str,
+    listed: Option<Vec<String>>,
+    based: Option<Option<Value>>,
+}
+
+impl<'a> AtBase<'a> {
+    fn new(config: &'a Config, base: &'a str) -> AtBase<'a> {
+        AtBase {
+            config,
+            repo: Repo::at(config.root()),
+            base,
+            listed: None,
+            based: None,
+        }
+    }
+
+    /// How many files of the base the path selects.
+    fn held(&mut self, selector: &Selector) -> usize {
+        let (repo, base) = (&self.repo, self.base);
+        let listed = self
+            .listed
+            .get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
+        listed.iter().filter(|path| selector.holds(path)).count()
+    }
+
+    /// Whether the base's `klin.json` pins this path in the section's `in`.
+    fn pins(&mut self, section: &str, selector: &Selector) -> bool {
+        let (config, repo, base) = (self.config, &self.repo, self.base);
+        self.based
+            .get_or_insert_with(|| {
+                let name = config.file.file_name()?.to_string_lossy();
+                serde_json::from_slice(&repo.blob(base, &name)?).ok()
+            })
+            .as_ref()
+            .and_then(|data| Scope::from_fields(data.get(section)?.as_object()?).ok())
+            .is_some_and(|scope| scope.within.contains(selector))
+    }
 }
 
 /// A pinned path that selects no file of the working tree, with the files git saw renamed out
@@ -230,22 +309,131 @@ fn moved_out(
         .collect()
 }
 
+/// What the change did to the paths the policy names, decided once per run against the base
+/// and followed by every scope the run reads. Spec 7.3.
+#[derive(Default)]
+pub struct Moves(Vec<Moved>);
+
+impl Moves {
+    pub fn iter(&self) -> impl Iterator<Item = &Moved> {
+        self.0.iter()
+    }
+
+    /// The paths this run keeps in a section's scope because the change moved them.
+    fn kept(&self, section: &str) -> Vec<String> {
+        let mut kept = Vec::new();
+        for moved in self.iter().filter(|moved| moved.section() == section) {
+            match moved {
+                Moved::Pin { renamed, .. } => {
+                    kept.extend(renamed.iter().map(|(_, path)| path.clone()))
+                }
+                Moved::Out { path, .. } => kept.push(path.clone()),
+            }
+        }
+        kept
+    }
+
+    /// Whether a pinned `in` path of the section moved, so its scope may select nothing.
+    fn pinned(&self, section: &str) -> bool {
+        self.iter()
+            .any(|moved| matches!(moved, Moved::Pin { .. }) && moved.section() == section)
+    }
+
+    /// The paths of the files a rename took out of the section's scope.
+    pub fn out_of(&self, section: &str) -> Vec<&str> {
+        self.iter()
+            .filter_map(|moved| match moved {
+                Moved::Out { section: of, path } if of == section => Some(path.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+/// What a change did to a path the policy names, decided once per run against the base. Spec 7.3.
+#[derive(Clone, Debug)]
+pub enum Moved {
+    /// A pinned `in` path that selects no file of the working tree: the files git saw renamed
+    /// out of it, by the path the base held and the path they have now, and how many of the
+    /// files it selected in the base went with no rename. Nothing renamed and nothing deleted
+    /// is a pin that selected nothing in the base either.
+    Pin {
+        section: String,
+        path: String,
+        renamed: Vec<(String, String)>,
+        deleted: usize,
+    },
+    /// A selected file the change renamed out of a scope that still selects other files.
+    Out { section: String, path: String },
+}
+
+impl Moved {
+    /// The section whose scope the move touches.
+    pub fn section(&self) -> &str {
+        match self {
+            Moved::Pin { section, .. } | Moved::Out { section, .. } => section,
+        }
+    }
+
+    /// Whether files of a moved pin went with no rename, or it selects nothing in either tree,
+    /// which the Stop notes. Spec 7.3.
+    pub fn gone(&self) -> bool {
+        matches!(self, Moved::Pin { renamed, deleted, .. } if renamed.is_empty() || *deleted > 0)
+    }
+
+    /// What a moved pin says to a person, and nothing for a file moved out of a scope, whose
+    /// findings carry `moved_out_of_scope`. Spec 7.3.
+    pub fn said(&self) -> Option<String> {
+        let Moved::Pin {
+            section,
+            path,
+            renamed,
+            deleted,
+        } = self
+        else {
+            return None;
+        };
+        let to = renamed
+            .iter()
+            .map(|(_, path)| path.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let what = match (renamed.is_empty(), *deleted) {
+            (false, 0) => format!("its files moved to {to}, and this run measures them there"),
+            (false, deleted) => format!(
+                "its files moved to {to}, and this run measures them there, and {deleted} \
+                 file(s) went with no rename"
+            ),
+            (true, 0) => "it selects nothing in the base or the working tree".to_string(),
+            (true, deleted) => format!(
+                "its {deleted} file(s) went with no rename, so the gate measures nothing there"
+            ),
+        };
+        Some(format!(
+            "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
+             {what} — update the pin in klin.json"
+        ))
+    }
+
+    /// The old and new path of each file a moved pin followed, and nothing where none was
+    /// renamed. Spec 11.7.
+    pub fn reason(&self) -> Option<String> {
+        let Moved::Pin { renamed, .. } = self else {
+            return None;
+        };
+        (!renamed.is_empty()).then(|| {
+            renamed
+                .iter()
+                .map(|(was, now)| format!("{was} -> {now}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+    }
+}
+
 /// Whether any of these selectors holds the path.
 fn any_holds_of(selectors: &[&Selector], path: &str) -> bool {
     selectors.iter().any(|selector| selector.holds(path))
-}
-
-/// The base commit's own `klin.json`, read once for every pinned path that asks.
-fn based_config(config: &Config, repo: &Repo, base: &str) -> Option<Value> {
-    let name = config.file.file_name()?.to_string_lossy();
-    serde_json::from_slice(&repo.blob(base, &name)?).ok()
-}
-
-/// Whether the base's `klin.json` pins this path in the section's `in`.
-fn pinned_at_base(based: Option<&Value>, section: &str, selector: &Selector) -> bool {
-    based
-        .and_then(|data| Scope::from_fields(data.get(section)?.as_object()?).ok())
-        .is_some_and(|scope| scope.within.contains(selector))
 }
 
 /// The repository root, which every path is relative to and which holds every path.

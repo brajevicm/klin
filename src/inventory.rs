@@ -196,7 +196,7 @@ fn findings(judged: &[Site], functions: &[Function]) -> Vec<Finding> {
 fn today(project: &Project) -> Result<Scope, Error> {
     let config = &project.config;
     let values = config.policy(SECTION, KEYS)?;
-    let scope = Scope::read(config, SECTION, &values)?;
+    let scope = Scope::read(config, project.moves(), SECTION, &values)?;
     let tests = Tests {
         roots: Roots::new(&project.facts().found.test_roots),
         scope,
@@ -408,7 +408,7 @@ fn deleted(went: &[Finding], at: &Context, out: &mut Sink) {
     }
     out.tell(Listed::TestsDeleted {
         went: went.iter().map(told).collect(),
-        review: !at.hook(),
+        caller: at.caller,
     });
 }
 
