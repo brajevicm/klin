@@ -1125,3 +1125,21 @@ fn a_move_git_cannot_stage_is_a_git_error_and_never_a_new_file() {
         "{report}"
     );
 }
+
+#[test]
+fn macros_that_name_each_other_many_times_are_decided_quickly() {
+    let tree = tree(CONFIG);
+    let mut attributes = String::new();
+    for level in 0..8 {
+        let next = format!("m{} ", level + 1).repeat(64);
+        attributes.push_str(&format!("[attr]m{level} {next}\n"));
+    }
+    attributes.push_str("src/lib.rs m0\n");
+    tree.write(".gitattributes", &attributes);
+
+    let started = std::time::Instant::now();
+    let (code, report) = checked(&tree, &[]);
+
+    assert!(started.elapsed().as_secs() < 30, "{report}");
+    assert_ne!(code, 2, "{report}");
+}

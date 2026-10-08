@@ -476,8 +476,9 @@ fn apply(line: &str, below: &str, (macros, states): (&Macros, &mut [Option<State
         return;
     }
     let mut set = Vec::new();
+    let mut budget = MACRO_WORDS;
     for word in attributes.split_whitespace() {
-        expand(word, macros, MACRO_DEPTH, &mut set);
+        expand(word, (macros, MACRO_DEPTH), &mut budget, &mut set);
     }
     for (at, state) in set {
         states[at] = Some(state);
@@ -486,8 +487,11 @@ fn apply(line: &str, below: &str, (macros, states): (&Macros, &mut [Option<State
 
 /// What starts a line that defines a macro, which only the top-level `.gitattributes` may do.
 const MACRO: &str = "[attr]";
-/// How deep one macro may name another, so a cycle of macros ends.
+/// How deep one macro may name another, so a cycle of macros ends, and how many words one line
+/// may expand to in all, so macros that name each other many times over cannot grow without end.
+/// A word past the budget is ignored, which only reports a form less often. Spec 7.2.
 const MACRO_DEPTH: usize = 8;
+const MACRO_WORDS: usize = 256;
 
 /// The macros the top-level `.gitattributes` defines, each by name with the words it stands for,
 /// beside git's own `binary`, which unsets `diff`.
@@ -513,12 +517,21 @@ fn macros(texts: &[(String, String)]) -> Macros {
 
 /// The attributes klin reads that one word sets, with a macro the word sets expanded into the
 /// words it stands for.
-fn expand(word: &str, macros: &Macros, depth: usize, into: &mut Vec<(usize, State)>) {
+fn expand(
+    word: &str,
+    (macros, depth): (&Macros, usize),
+    budget: &mut usize,
+    into: &mut Vec<(usize, State)>,
+) {
+    if *budget == 0 {
+        return;
+    }
+    *budget -= 1;
     if let (name, State::Set) = named(word)
         && let Some(words) = macros.get(name).filter(|_| depth > 0)
     {
         for word in words.split_whitespace() {
-            expand(word, macros, depth - 1, into);
+            expand(word, (macros, depth - 1), budget, into);
         }
         return;
     }

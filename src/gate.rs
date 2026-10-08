@@ -1849,17 +1849,10 @@ fn each(
         gather(&mut totals, recorded, &gate.name);
     }
     let base = against.base.as_ref().map(|base| base.before.as_str());
-    let (sorted, failed) = holes::sorted(project, base, reported);
-    if let Some(why) = failed {
-        tally.errored += 1;
-        if !args.json {
-            let _ = writeln!(out, "  ERR: {why}");
-        }
-    }
     stop_unmeasured(
         args,
         (project, wanted),
-        &sorted,
+        holes::sorted(project, base, reported),
         (&mut tally, &mut totals),
         out,
     );
@@ -1878,10 +1871,17 @@ fn each(
 fn stop_unmeasured(
     args: &Args,
     (project, wanted): (&Project, &[&Gate]),
-    sorted: &[Unmeasured],
+    (sorted, failed): (Vec<Unmeasured>, Option<String>),
     (tally, totals): (&mut Tally, &mut Recorded),
     out: &mut String,
 ) {
+    if let Some(why) = failed {
+        tally.errored += 1;
+        if !args.json {
+            let _ = writeln!(out, "  ERR: {why}");
+        }
+    }
+    let sorted = sorted.as_slice();
     let held = holes::held_files(&project.config);
     let failing = failing_lost(sorted, &held);
     let unmatched: Vec<String> = unmatched_lost(&held, sorted, wanted).collect();
