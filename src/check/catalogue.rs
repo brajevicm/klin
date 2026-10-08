@@ -302,7 +302,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(public_api::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: public_api::gate,
-        derivation: Derivation::Explained(public_api::explain),
+        derivation: Derivation::ExplainedWhenNamed(public_api::explain),
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {

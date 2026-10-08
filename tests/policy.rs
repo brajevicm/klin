@@ -290,3 +290,31 @@ fn policy_lists_every_capability_where_none_applies() {
         run.out
     );
 }
+
+/// Deriving the public surfaces parses the working tree, so a whole `policy` names where to read
+/// them and parses nothing, and `klin policy public-api` lists them. Spec 11.6, ADR 0044.
+#[test]
+fn a_whole_policy_parses_no_source_for_the_public_surfaces() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\npath = \"src/lib.rs\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn exposed() {}\n");
+    tree.base();
+
+    let whole = tree.run(&["policy"]);
+    assert_eq!(whole.code, 0, "{}", whole.out);
+    let public_api = block(&whole.out, "public-api — runs");
+    assert!(
+        public_api.contains("which `klin policy public-api` lists"),
+        "{}",
+        whole.out
+    );
+    assert!(!public_api.contains("surface core"), "{}", whole.out);
+
+    let named = tree.run(&["policy", "public-api"]);
+    assert_eq!(named.code, 0, "{}", named.out);
+    assert!(named.says("surface "), "{}", named.out);
+}

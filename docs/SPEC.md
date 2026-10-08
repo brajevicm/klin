@@ -1670,9 +1670,11 @@ Section 13.2.
   coverage is unverified, and a `run` command is the project's own trust
   choice.
 - A capability whose derived policy is more than a value per key explains it
-  in place of those lines. `public-api` lists each derived surface with its
-  items, measured or opaque, and the packages with no supported surface (ADR
-  0044). `conventions` explains each convention, or the one that
+  in place of those lines. `klin policy public-api` lists each derived
+  surface with its items, measured or opaque, and the packages with no
+  supported surface (ADR 0044). Those surfaces come from parsing the working
+  tree, so only the named form lists them. A whole `policy` prints one line
+  that points to `klin policy public-api`, and parses no source. `conventions` explains each convention, or the one that
   `klin policy conventions NAME` names: what it forbids and where, what its
   code pattern reads as and how its language was settled, any `in` or
   `except` path that matches nothing, and its remedy (ADR 0037). It counts no

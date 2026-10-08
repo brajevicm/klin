@@ -1340,7 +1340,10 @@ fn active<'a>(
         .filter(|gate| named(args, &gate.name))
         .collect();
     if let (Some(entry), [gate]) = (&args.entry, wanted.as_slice())
-        && !matches!(gate.check.derivation, Derivation::Explained(_))
+        && !matches!(
+            gate.check.derivation,
+            Derivation::Explained(_) | Derivation::ExplainedWhenNamed(_)
+        )
     {
         return Err(Error(format!(
             "{} has no entries to explain one by one, so drop {entry}",
@@ -1359,10 +1362,17 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
     let check = gate.check;
     let fields = section_of(project, gate);
     let (mut lines, mut values) = match check.derivation {
-        Derivation::Explained(explain) => {
-            let explained = explain(project, args.entry.as_deref())?;
-            (explained.lines, explained.values)
+        Derivation::Explained(explain) => explained(explain, project, args)?,
+        Derivation::ExplainedWhenNamed(explain) if !args.gates.is_empty() => {
+            explained(explain, project, args)?
         }
+        Derivation::ExplainedWhenNamed(_) => (
+            vec![format!(
+                "derived from the source of the working tree, which `klin policy {}` lists",
+                gate.name
+            )],
+            Vec::new(),
+        ),
         Derivation::Values(derive) => said_values(check, as_told(derive(project)?), &fields),
         Derivation::Nothing => said_values(check, Vec::new(), &fields),
     };
@@ -1381,6 +1391,15 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
         values,
         limitations,
     })
+}
+
+fn explained(
+    explain: contract::Explain,
+    project: &Project,
+    args: &Args,
+) -> Result<(Vec<String>, Vec<Value>), Error> {
+    let explained = explain(project, args.entry.as_deref())?;
+    Ok((explained.lines, explained.values))
 }
 
 /// A value a person pinned, and for a dated schedule the step in force as the value, with the

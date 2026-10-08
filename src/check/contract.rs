@@ -840,12 +840,14 @@ pub struct Explained {
 
 /// How `klin policy` learns a check's values: it derives none, so only a person's pins and the
 /// built-in defaults hold; a derivation step gives them a value per key; or the check explains a
-/// derived policy that is more than a value per key. Spec 11.6.
+/// derived policy that is more than a value per key. An explanation that parses the working tree
+/// runs only when `policy` names the check, so a whole `policy` parses no source. Spec 11.6.
 #[derive(Clone, Copy)]
 pub enum Derivation {
     Nothing,
     Values(Derive),
     Explained(Explain),
+    ExplainedWhenNamed(Explain),
 }
 
 /// One `derived:` line of the runner's own build and the `{section, key, value, rule}` entry
