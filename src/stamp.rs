@@ -157,14 +157,19 @@ pub struct Stamp {
     pub history: History,
 }
 
-/// The default-branch merge-base, HEAD's symbolic ref (`HEAD` when detached) and how many
-/// entries HEAD's reflog held. A field the stamp never recorded is `None`. Spec 6.6.
+/// The default-branch merge-base, HEAD's symbolic ref (`HEAD` when detached) and the position
+/// of HEAD's reflog. A field the stamp never recorded is `None`. Spec 6.6.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct History {
     pub merge_base: Option<String>,
     pub head_ref: Option<String>,
-    pub reflog: Option<u64>,
+    pub reflog_position: Option<ReflogPosition>,
 }
+
+/// How many entries HEAD's reflog held, which is where a later Stop starts reading it. The
+/// reflog is compared by entry position, never by time. Spec 6.6.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReflogPosition(pub u64);
 
 impl History {
     /// The history as this event finds it, through the merge-base cache.
@@ -174,7 +179,11 @@ impl History {
                 .pair()
                 .and_then(|(head, default)| merge_base(root, at, head, default)),
             head_ref: here.head_ref.clone(),
-            reflog: here.reflog.as_ref().map(|entries| entries.len() as u64),
+            reflog_position: here
+                .reflog
+                .as_ref()
+                .and_then(|entries| u64::try_from(entries.len()).ok())
+                .map(ReflogPosition),
         }
     }
 }
@@ -270,9 +279,9 @@ impl Here {
 
     /// The reflog messages after the position a stamp recorded, and `None` where either side
     /// has no reflog or the reflog is shorter than the position, so nothing can be compared.
-    pub fn reflog_since(&self, position: Option<u64>) -> Option<&[String]> {
+    pub fn reflog_since(&self, position: Option<ReflogPosition>) -> Option<&[String]> {
         let entries = self.reflog.as_deref()?;
-        entries.get(usize::try_from(position?).ok()?..)
+        entries.get(usize::try_from(position?.0).ok()?..)
     }
 }
 
@@ -340,24 +349,59 @@ fn any_file(dir: &Path) -> bool {
 /// computed for, so git computes it only when one of them moved. Spec 6.6.
 pub fn merge_base(root: &Path, at: &Path, head: &str, default: &str) -> Option<String> {
     let file = at.join(MERGE_BASE);
-    let cached: Value = std::fs::read_to_string(&file)
-        .ok()
-        .and_then(|text| serde_json::from_str(&text).ok())
-        .unwrap_or_default();
-    if cached["head"] == head && cached["default"] == default {
-        return cached["merge_base"].as_str().map(str::to_string);
+    if let Some(cached) = Cached::read(&file).filter(|cached| cached.keys(head, default)) {
+        return Some(cached.merge_base);
     }
     let found = Repo::at(root)
         .text(&["merge-base", head, default])
         .map(|found| found.trim().to_string())
         .filter(|found| !found.is_empty())?;
-    let kept = serde_json::json!({"head": head, "default": default, "merge_base": found});
-    let _ = std::fs::write(file, kept.to_string() + "\n");
-    Some(found)
+    let cached = Cached {
+        head: head.to_string(),
+        default: default.to_string(),
+        merge_base: found,
+    };
+    cached.write(&file);
+    Some(cached.merge_base)
 }
 
 /// Where the merge-base cache lives in the state directory.
 const MERGE_BASE: &str = "merge-base";
+
+/// The merge-base cache: one merge-base and the pair of commits it was computed for.
+struct Cached {
+    head: String,
+    default: String,
+    merge_base: String,
+}
+
+impl Cached {
+    /// The cache the file holds, and `None` for a file that is gone, torn or of another shape,
+    /// which costs one `git merge-base` and nothing else.
+    fn read(file: &Path) -> Option<Cached> {
+        let held: Value = serde_json::from_str(&std::fs::read_to_string(file).ok()?).ok()?;
+        let text = |key: &str| Some(held.get(key)?.as_str()?.to_string());
+        Some(Cached {
+            head: text("head")?,
+            default: text("default")?,
+            merge_base: text("merge_base")?,
+        })
+    }
+
+    fn keys(&self, head: &str, default: &str) -> bool {
+        self.head == head && self.default == default
+    }
+
+    /// A cache klin cannot write costs the next event one `git merge-base`.
+    fn write(&self, file: &Path) {
+        let held = serde_json::json!({
+            "head": self.head,
+            "default": self.default,
+            "merge_base": self.merge_base,
+        });
+        let _ = std::fs::write(file, held.to_string() + "\n");
+    }
+}
 
 /// Where this turn's window opened: the prompt mark the last event left, or the mark ref when
 /// the turn file is gone. It writes nothing back, because the report judges nothing. ADR 0024.
@@ -414,7 +458,10 @@ pub fn read(at: &Path) -> Option<Stamp> {
         history: History {
             merge_base: text("merge_base"),
             head_ref: text("head_ref"),
-            reflog: held.get("reflog").and_then(Value::as_u64),
+            reflog_position: held
+                .get("reflog_position")
+                .and_then(Value::as_u64)
+                .map(ReflogPosition),
         },
     })
 }
@@ -450,7 +497,13 @@ pub fn recorded(stamp: &Stamp) -> Value {
             stamp.history.merge_base.clone().map(Value::from),
         ),
         ("head_ref", stamp.history.head_ref.clone().map(Value::from)),
-        ("reflog", stamp.history.reflog.map(Value::from)),
+        (
+            "reflog_position",
+            stamp
+                .history
+                .reflog_position
+                .map(|position| position.0.into()),
+        ),
     ];
     for (key, value) in fields_of {
         if let Some(found) = value {

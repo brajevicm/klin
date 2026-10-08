@@ -355,7 +355,7 @@ fn merge_bases(root: &Path, at: &Path, stamp: &Stamp, here: &Here) -> Option<(St
 /// Whether HEAD's reflog since the stamp holds an entry that brings commits in. A reflog that
 /// cannot be compared, because HEAD has none or the stamp recorded no position, counts as one.
 fn incoming(here: &Here, stamp: &Stamp) -> bool {
-    here.reflog_since(stamp.history.reflog)
+    here.reflog_since(stamp.history.reflog_position)
         .is_none_or(|entries| {
             entries
                 .iter()
@@ -392,17 +392,17 @@ fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
 /// stands, none of the window's records, the prompt counter carried on, and the prompt mark
 /// moved with it. The caller holds the state lock, so the verdict and the stamp describe the
 /// same tree. Spec 6.6.
-pub fn refreshed(root: &Path, capture: Option<stamp::Capture>, out: &mut String) -> bool {
+pub fn refreshed(root: &Path, capture: stamp::Capture, out: &mut String) -> bool {
     let Ok(at) = state::ready(root) else {
         return false;
     };
-    let tree = capture.as_ref().map(|capture| capture.tree.as_str());
+    let tree = Some(capture.tree.as_str());
     let Some(stamp) = taken(root, &at, tree, prompts(&at), out) else {
         return false;
     };
     let mark = tree.and_then(|tree| marked(root, tree));
     let wrote = write(&at, &Stamp { mark, ..stamp }, out);
-    if wrote && let Some(capture) = capture {
+    if wrote {
         let _ = capture.retain(&at.join(stamp::INDEX));
     }
     wrote
