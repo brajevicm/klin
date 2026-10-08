@@ -342,15 +342,6 @@ fn a_section_named_after_the_command_is_a_tool_error() {
 }
 
 #[test]
-fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
-    let tree = nothing_to_survey(r#"{}"#);
-
-    let run = tree.run(&["policy"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("configures no gate"), "{}", run.out);
-}
-
-#[test]
 fn an_accepted_entry_that_matched_nothing_is_a_review_item_of_its_gate() {
     let tree = tree(AN_UNMATCHED_ACCEPTED);
 

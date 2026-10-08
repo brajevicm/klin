@@ -24,7 +24,9 @@ use crate::project::Project;
 use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
-use crate::{build, handoff, journal, reference, stamp, state, stats, survey, turn, write};
+use crate::{
+    build, ceiling, handoff, journal, reference, stamp, state, stats, survey, turn, write,
+};
 
 /// Where klin records what one prompt already spent, so the stop that follows knows how many
 /// build blocks and gate blocks are left. In the state directory, which an agent does not
@@ -1277,11 +1279,9 @@ impl Build {
     }
 }
 
-/// A plan with a gate to list, and names `policy` takes.
+/// The names `policy` takes. A plan with no gate is still listed, because each capability that
+/// does not run says why. Spec 11.6.
 fn listable(args: &Args, project: &Project, plan: &Plan) -> Result<(), Error> {
-    if plan.gates.is_empty() && plan.excluded.is_empty() {
-        return Err(no_gate(project, plan));
-    }
     args.gates
         .iter()
         .try_for_each(|name| stated(name, plan, project))
@@ -1369,7 +1369,7 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
     values.extend(
         fields
             .iter()
-            .map(|(key, value)| json!({ "key": key, "value": value, "provenance": "pinned" })),
+            .map(|(key, value)| pinned_value(project, check.section, key, value)),
     );
     let limitations = limitations(check, &fields);
     lines.extend(limitation_lines(&limitations));
@@ -1381,6 +1381,25 @@ fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capa
         values,
         limitations,
     })
+}
+
+/// A value a person pinned, and for a dated schedule the step in force as the value, with the
+/// date of that step and the whole schedule beside it. Spec 5.4, 11.6.
+fn pinned_value(project: &Project, section: &str, key: &str, value: &Value) -> Value {
+    let step = value
+        .as_object()
+        .filter(|steps| ceiling::is_schedule(steps))
+        .and_then(|_| ceiling::read(&project.config.file, section, key, value, "a number").ok());
+    match step {
+        Some(ceiling) => json!({
+            "key": key,
+            "value": ceiling.value,
+            "step": ceiling.step,
+            "schedule": value,
+            "provenance": "pinned",
+        }),
+        None => json!({ "key": key, "value": value, "provenance": "pinned" }),
+    }
 }
 
 /// The lines and values of a check with no explanation of its own: what its derivation step
@@ -1497,11 +1516,28 @@ fn accepted_text(accepted: &[Value], out: &mut String) {
         let word = |key: &str| entry.get(key).and_then(Value::as_str).unwrap_or_default();
         let _ = writeln!(
             out,
-            "{UNDER}{} {}: {}",
+            "{UNDER}{} {}: {}{}",
             word("gate"),
             word("file"),
-            word("text")
+            word("text"),
+            accepted_values(entry)
         );
+    }
+}
+
+/// The values an accepted entry allows, such as `(count 1)`, which tell two entries at one site
+/// apart.
+fn accepted_values(entry: &Value) -> String {
+    let said: Vec<String> = entry
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(key, _)| !["gate", "file", "text"].contains(&key.as_str()))
+        .map(|(key, value)| format!("{key} {}", shown(value)))
+        .collect();
+    match said.is_empty() {
+        true => String::new(),
+        false => format!(" ({})", said.join(", ")),
     }
 }
 

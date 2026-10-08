@@ -1658,9 +1658,14 @@ Section 13.2.
   or Integration capability with no section is `needs-policy`. A value is
   `built-in` when its key has a default and neither a person nor a
   derivation gave it. Each `derived:` and `pinned:` line prints as a
-  `klin check SECTION` run prints it.
+  `klin check SECTION` run prints it. In the JSON, a pinned dated schedule
+  has the step in force as its `value`, with that step's date as `step` and
+  the whole schedule as `schedule`.
+- A tree where no capability runs still has a policy: `klin policy` lists
+  each capability with the state that keeps it from running, and exits 0.
 - A whole `policy` also prints the build policy, pinned or derived from the
-  manifests, and the accepted list, one line per entry. Each integration
+  manifests, and the accepted list, one line per entry with every value the
+  entry allows. Each integration
   lists the limitations of section 9.4: it runs at `klin check` only, its
   coverage is unverified, and a `run` command is the project's own trust
   choice.

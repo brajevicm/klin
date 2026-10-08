@@ -145,7 +145,7 @@ fn policy_prints_the_build_and_the_accepted_list() {
         run.out
     );
     assert!(
-        run.says("accepted — 1 entry\n      escapes src/old.rs: x.unwrap()"),
+        run.says("accepted — 1 entry\n      escapes src/old.rs: x.unwrap() (count 1)"),
         "{}",
         run.out
     );
@@ -250,4 +250,43 @@ fn policy_names_a_scope_key_a_convention_leaves_out_as_built_in() {
         .unwrap_or_default();
     assert_eq!(except["provenance"], "built-in", "{json}");
     assert_eq!(except["entry"], "no-flags", "{json}");
+}
+
+/// A dated schedule is pinned, and the JSON names the step in force as the value, so a reader
+/// resolves no dates. Spec 11.6.
+#[test]
+fn policy_json_names_the_step_in_force_of_a_dated_schedule() {
+    let tree = tree(r#"{"complexity": {"cc": {"2020-01-01": 12, "2099-01-01": 8}}}"#);
+
+    let json = tree.run(&["policy", "--json", "complexity"]).json();
+    let values = capability(&json, "complexity")["values"].clone();
+    let cc = values
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|value| value["key"] == "cc")
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(cc["provenance"], "pinned", "{json}");
+    assert_eq!(cc["value"], 12, "{json}");
+    assert_eq!(cc["step"], "2020-01-01", "{json}");
+    assert_eq!(cc["schedule"]["2099-01-01"], 8, "{json}");
+}
+
+/// A tree where nothing applies still has a policy to read: each capability and why it does
+/// not run. Spec 11.6.
+#[test]
+fn policy_lists_every_capability_where_none_applies() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.base();
+
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("escapes — not-applicable"), "{}", run.out);
+    assert!(
+        run.says("layering — needs a section a person writes"),
+        "{}",
+        run.out
+    );
 }
