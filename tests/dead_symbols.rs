@@ -804,15 +804,19 @@ fn unsupported_structural_files_are_outside_dead_symbol_coverage() {
 }
 
 #[test]
-fn a_grammar_rejection_keeps_the_existing_unparsed_error() {
+fn a_new_file_the_grammar_rejects_is_an_unreadable_review_item() {
     let tree = Tree::new();
     tree.write("klin.json", RUST);
     tree.write("src/broken.rs", "fn broken( {\n");
 
     let run = tree.run(&["check", "dead-symbols"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("grammar could not parse"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/broken.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1137,8 +1141,8 @@ fn a_changed_caller_the_grammar_cannot_read_guesses_no_deadness() {
 
     let run = tree.run(&["check", "--changed", "dead-symbols"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("the grammar could not parse"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  measurement-lost"), "{}", run.out);
     assert!(!run.says("src/service.rs:1"), "{}", run.out);
 }
 

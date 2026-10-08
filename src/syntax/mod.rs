@@ -3,8 +3,6 @@
 //! read. A check keeps its own policy — what it counts and what it refuses — and holds no
 //! Tree-sitter node kinds of another language's grammar. ADR 0003, ADR 0035.
 
-use std::collections::HashSet;
-
 use tree_sitter::{Node, Parser, Tree};
 
 use crate::error::Error;
@@ -255,14 +253,17 @@ pub fn parse<'a>(path: &'a str, source: &'a str) -> Result<Option<Parsed<'a>>, E
 }
 
 /// The parse of one path under a language the caller already chose, which is what a check that
-/// selects its own language set does.
+/// selects its own language set does. A text that is not text, or holds a line over the
+/// source-line ceiling, is refused like a text the grammar rejects. Spec 7.2.
 pub fn read<'a>(
     path: &'a str,
     source: &'a str,
     language: &'static Language,
 ) -> Result<Parsed<'a>, Error> {
-    source_lines(path, source)?;
-    let read = tree_of(source, language)?.filter(|tree| !tree.root_node().has_error());
+    let read = match measurable(source) {
+        true => tree_of(source, language)?.filter(|tree| !tree.root_node().has_error()),
+        false => None,
+    };
     Ok(match read {
         Some(tree) => Parsed::Read(ParsedFile {
             path,
@@ -282,7 +283,7 @@ pub fn read<'a>(
 /// belongs to `read`, and a reader that comes this way says so in its own words.
 pub(crate) fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<'a>> {
     let language = language_of(path)?;
-    source_lines(path, source).ok()?;
+    over_the_ceiling(source).is_none().then_some(())?;
     Some(ParsedFile {
         path,
         source,
@@ -291,23 +292,54 @@ pub(crate) fn tolerant<'a>(path: &'a str, source: &'a str) -> Option<ParsedFile<
     })
 }
 
-/// Defense in depth against oversized site text, with the same deterministic ceiling
-/// before parsing in both trees, including survey and tolerant readers.
-fn source_lines(path: &str, source: &str) -> Result<(), Error> {
-    const CEILING: usize = 65_536;
-    if let Some((row, line)) = source
-        .lines()
-        .enumerate()
-        .find(|(_, line)| line.len() > CEILING)
-    {
-        return Err(Error(format!(
-            "{path}:{}: source-line resource ceiling exceeded ({} bytes; ceiling {CEILING} bytes); \
-             split the source into shorter lines or exclude the file from the check's scope",
-            row + 1,
-            line.len()
-        )));
+/// The deterministic ceiling on one source line, the same in both trees, so oversized site
+/// text never reaches a grammar. Spec 7.2.
+const CEILING: usize = 65_536;
+
+/// Why a strict read refuses a text: a NUL byte, a line over the ceiling, or an error node.
+/// Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Refusal {
+    NotText,
+    LineCeiling { line: u64 },
+    Parse { line: u64, column: u64 },
+}
+
+/// Why `read` refuses this text under this path's language, and `None` when it reads it or no
+/// grammar reads the path.
+pub fn refusal(path: &str, source: &str) -> Option<Refusal> {
+    let language = language_of(path)?;
+    if source.contains('\0') {
+        return Some(Refusal::NotText);
     }
-    Ok(())
+    if let Some(line) = over_the_ceiling(source) {
+        return Some(Refusal::LineCeiling { line });
+    }
+    let tree = tree_of(source, language).ok().flatten()?;
+    let mut first = None;
+    walk(tree.root_node(), &mut |node| {
+        if first.is_none() && (node.is_error() || node.is_missing()) {
+            first = Some(node.start_position());
+        }
+    });
+    let at = first.unwrap_or_else(|| tree.root_node().start_position());
+    tree.root_node().has_error().then_some(Refusal::Parse {
+        line: at.row as u64 + 1,
+        column: at.column as u64 + 1,
+    })
+}
+
+fn measurable(source: &str) -> bool {
+    !source.contains('\0') && over_the_ceiling(source).is_none()
+}
+
+/// The first line, counted from 1, longer than the ceiling once carriage returns are removed,
+/// so a CRLF checkout never trips it.
+fn over_the_ceiling(source: &str) -> Option<u64> {
+    source
+        .lines()
+        .position(|line| line.trim_end_matches('\r').len() > CEILING)
+        .map(|row| row as u64 + 1)
 }
 
 fn tree_of(source: &str, language: &Language) -> Result<Option<Tree>, Error> {
@@ -354,34 +386,6 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
             .iter()
             .map(|language| (language.names, language.extensions)),
     )
-}
-
-/// The files no grammar read in a run's scope, split by whether the base could not read them
-/// either: a file the base held unread opened no hole. ADR 0003, ADR 0021, spec 8.6, 14.
-pub struct Rejected<'a> {
-    pub held: Vec<&'a Unparsed>,
-    pub new: Vec<&'a Unparsed>,
-}
-
-/// Which files in scope no grammar read, split against the base. `base` names the base's
-/// unread files under today's paths, and is asked only when a file in scope needs it. `None`
-/// holds every file.
-pub fn rejected<'a>(
-    unparsed: &'a [Unparsed],
-    only: Option<&[String]>,
-    base: Option<impl FnOnce() -> Vec<String>>,
-) -> Rejected<'a> {
-    let named: Vec<&Unparsed> = unparsed
-        .iter()
-        .filter(|file| only.is_none_or(|only| only.contains(&file.file)))
-        .collect();
-    let base: Option<HashSet<String>> = base
-        .filter(|_| !named.is_empty())
-        .map(|base| base().into_iter().collect());
-    let (held, new) = named
-        .into_iter()
-        .partition(|file| base.as_ref().is_none_or(|base| base.contains(&file.file)));
-    Rejected { held, new }
 }
 
 /// The line at this row, trimmed, which is the text every site in klin is named by.

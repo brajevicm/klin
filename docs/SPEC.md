@@ -758,7 +758,7 @@ and never keeps the stamp. Only `work-limit` can occur there.
 | --- | --- | --- |
 | `tool-error` | An integration command wrote no report, the report is stale or not SARIF, the command reached its limit, or the command was not found (detail `command-not-found`). | the gate |
 | `comparison-unproven` | Section 6.5 rule 3. | the run |
-| `nothing-measured` | A whole-tree run in which no capability applies to the tree, so klin measured nothing. The text says that the repository holds no language or document klin measures. A tree whose documents were measured and that holds no source is complete. Until #500 classifies lost source, a whole-tree run is this hole too when the derivation commit held a source root that no source file of the working tree sits under (a file of no language klin reads does not count) and no check that reads code measured a file, so a tree does not pass on its documents after its source went. It never applies to a changed scope. | the run |
+| `nothing-measured` | A whole-tree run in which no capability applies to the tree, so klin measured nothing. The text says that the repository holds no language or document klin measures. A tree whose documents were measured and that holds no source is complete. A whole-tree run is this hole too when the derivation commit held a source root that no source file of the working tree sits under (a file of no language klin reads does not count) and no check that reads code measured a file, so a tree does not pass on its documents after its source went. It never applies to a changed scope. | the run |
 | `unsupported` | A selector named a capability that does not apply to the tree, or one that needs a policy section the configuration does not hold. | the gate |
 | `work-limit` | A capability stopped at a deterministic bound on its own work before it covered its scope (#354 section 11). The text names the bound and the person's action: narrow the capability's scope with `except`, or set it to `false`. A capability with a work bound MUST show that the controlled 1M row does not reach it. | the gate |
 
@@ -786,11 +786,15 @@ finding by making a file unmeasurable.
   For the working-tree side, klin applies the path's `working-tree-encoding`
   attribute natively and removes carriage returns before it measures lines,
   so a CRLF checkout or `core.autocrlf` never trips the line ceiling. klin
-  reads attributes only from the in-tree `.gitattributes` files of each side,
-  never from `.git/info/attributes` or `core.attributesFile`, so two machines
-  agree. An encoding that klin cannot decode is a coverage note, or an
-  opened gap when the change added it. Invalid UTF-8 alone is not a lost
-  form, because 0.x readers decode it lossily and still measure.
+  decodes UTF-8, and any other `working-tree-encoding` is an encoding klin
+  cannot decode. klin reads attributes only from the in-tree `.gitattributes`
+  files of each side, never from `.git/info/attributes` or
+  `core.attributesFile`, so two machines agree. The working tree's file list
+  leaves out a path these attributes make not text, filtered or encoded, and
+  the run sorts that path though no capability read it. An encoding that
+  klin cannot decode is a coverage note, or an opened gap when the change
+  added it. Invalid UTF-8 alone is not a lost form, because 0.x readers
+  decode it lossily and still measure.
 - **Filters.** klin runs no filter program. A `filter` attribute that the
   base already gave a path, such as an LFS path, makes that path a coverage
   note with reason `filtered`. A `filter` attribute that the change added to
@@ -817,16 +821,20 @@ finding by making a file unmeasurable.
   and its `text` is the file path. Its `values` hold the reason and, for a
   parse, the line and column of the first error node. No value is ratcheted.
   It renders as its own row, named `measurement-lost`, whose `kind` in the
-  JSON is `built-in`.
+  JSON is `built-in`. The row appears in a run that holds a lost file.
 - **Other rows.** The capabilities that read the file count it as not
-  measured and add no note for it.
+  measured and add no note for it. A capability reports no finding that
+  depends only on the contents it could not read, such as a `public-api`
+  item that the file declared at the base.
 - **Remedy.** For a parse, the remedy names the line and column of the first
   error node and says to make the file valid in its language. For the other
   reasons, it names the reason.
 - **Grammar lag.** A valid construct that klin's grammar does not read yet is
   the one false positive. The Stop text says to the person that a person can
   hold the file in `accepted`, and that `klin policy` shows how. It never
-  says so to the agent. The entry is `{"gate": "measurement-lost", "file":
+  says so to the agent: the Stop says it only when it does not block, through
+  the host's person channel, and never on a host that submits a told message
+  to the agent as its next prompt. The entry is `{"gate": "measurement-lost", "file":
   PATH}`, and it matches by file alone, for every capability (an amendment
   of 0.x 4.8, which otherwise requires `text` and values). The entry counts
   as matched while the file is still lost for any reason, so it never
@@ -850,7 +858,7 @@ the exit code.
 | `resource-limit` | A file that the base did not hold, with a line over the source-line ceiling. |
 | `unresolved` | A form that a resolver supports and could not resolve, which the base did not hold at that site. |
 | `ambiguous` | Evidence whose claim needs a resolution the facts do not prove, which the base did not hold at that site. |
-| `left-scope` | A file both trees hold, measured in `before`, not in `after`, because a file other than `klin.json` changed the facts or a discovery rule. klin measures the file once under the base's scope: a new or worsened finding there stays a FAIL, and only a clean file is the review item. |
+| `left-scope` | A file both trees hold, measured in `before`, not in `after`, because a file other than `klin.json` changed the facts or a discovery rule. klin measures the file once under the base's scope: a new or worsened finding there stays a FAIL, and only a clean file is the review item. Today `layering` is the one capability whose scope a manifest narrows, because its module graph attaches files through manifests: it resolves the working tree's facts under the base's manifests. A file the working tree no longer holds at the exact path the base held, such as one a case-only rename left behind on a file system that ignores case, did not leave a scope. |
 
 **4. A coverage note** is klin's own limit that the change did not open. It
 never makes the measurement incomplete, never blocks and never keeps the
@@ -860,7 +868,8 @@ measured.
 - Any reason of the opened-gap table that the base holds at the same site
   with the same reason.
 - `left-scope` caused by a change to `klin.json`, which a person made in a
-  reviewed commit.
+  reviewed commit. A window that changes `klin.json` attributes every
+  `left-scope` file to that change.
 
 **The named 0.x holes.** Each case that 0.x section 8 names as a file or form
 klin could not measure falls into one class:
@@ -1642,8 +1651,8 @@ A capability row: `name`, `kind` (`check`, `integration`, or `built-in` for
 the `measurement-lost` row), `placement` (list),
 `state` (`active`, `not-applicable`), `judgement`, `measurement`,
 `execution`, `coverage` (`{found, measured, not_read, excluded, gaps,
-limits}` or null, where `not_read` counts files of a language the capability
-does not read, `gaps` files with an opened gap, and `limits` files with a
+limits}` or null, where `not_read` counts the files of the run's scope in a
+language the survey knows and the capability does not read, `gaps` files with an opened gap, and `limits` files with a
 coverage note), `coverage_claim` (`verified`, `unverified`), `held`,
 `accepted`. Rows list the selected gates, and a whole run also lists the
 capabilities that do not apply, with state `not-applicable`.
@@ -1671,11 +1680,9 @@ A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail}`;
 every hole's site is the run or the gate).
 
-An error: `kind` (section 7.3), `check` (null for the run), `message`. Until
-#500 sorts each 0.x hole of section 8 into its class of section 7.2, a file
-or form that one of them names is an `internal` error with that site's
-`file`, its `line` where it has one, and `reason`, the 0.x outcome
-(`unparsed`, `not-measured`, `unresolved`).
+An error: `kind` (section 7.3), `check` (null for the run), `message`. A
+file or form klin could not measure is never an error: section 7.2 sorts it
+into a `measurement-lost` finding, a review item or a coverage note.
 
 #### The `status` document
 
@@ -2251,6 +2258,15 @@ Result model and exit codes:
   one that left a scope narrowed by a manifest is an `unmeasured` review
   item when it is clean and a FAIL when the base's scope finds a new
   finding in it;
+- `* -text` in `.gitattributes` makes no file `measurement-lost`;
+- a path with an inherited `filter` attribute is a coverage note, and a
+  `filter` attribute that the change added to a base-measured path is a
+  `measurement-lost` FAIL;
+- a CRLF working tree does not trip the line ceiling;
+- a case-only rename on a case-insensitive file system is not a lost file;
+- rename detection ignores the person's `diff.renameLimit`;
+- `measurement-lost` is a reserved name, and a Stop that does not block
+  tells the person, never the agent, how to hold a lost file;
 - a capability that stops at its work bound is a `work-limit` hole, exit 3.
   No shipped capability has a work bound yet, so this is a `#[cfg(test)]`
   pin under the AGENTS.md exception until one ships. The pins are

@@ -193,9 +193,11 @@ fn a_file_the_grammar_rejects_is_unparsed_in_each_gate_that_reads_it() {
 
     let report = together(&tree, &[]);
 
-    assert_eq!(row(&report, "complexity")["status"], "ERR", "{report}");
-    assert_eq!(row(&report, "dead-symbols")["status"], "ERR", "{report}");
-    assert_eq!(row(&report, "reachability")["status"], "ok", "{report}");
+    let unreadable = |gate| row(&report, gate)["coverage"]["unreadable"].clone();
+    assert_eq!(unreadable("complexity"), 1, "{report}");
+    assert_eq!(unreadable("dead-symbols"), 1, "{report}");
+    assert_eq!(unreadable("reachability"), 0, "{report}");
+    assert_eq!(row(&report, "complexity")["status"], "ok", "{report}");
 }
 
 #[test]

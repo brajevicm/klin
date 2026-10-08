@@ -308,15 +308,16 @@ fn an_unrecognized_lockfile_format_is_a_note_and_judges_no_manifest() {
 }
 
 #[test]
-fn a_malformed_lockfile_is_a_tool_error_naming_the_file() {
+fn a_malformed_lockfile_the_base_held_too_is_a_coverage_note_naming_the_file() {
     let tree = Tree::new();
     tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
     tree.write("package-lock.json", "{ not json");
     tree.base();
     let run = tree.run(&["check", "lockfile"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("package-lock.json is not valid JSON"),
+        run.says("NOTE: package-lock.json is not measured (unreadable)")
+            && run.says("package-lock.json is not valid JSON"),
         "{}",
         run.out
     );
@@ -331,7 +332,7 @@ fn derived_tree() -> Tree {
 }
 
 #[test]
-fn a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged() {
+fn a_derived_manifest_klin_cannot_parse_is_a_coverage_note_and_every_other_manifest_is_judged() {
     let tree = derived_tree();
     tree.write("testdata/broken/package.json", "{ not json");
     tree.base();
@@ -342,7 +343,7 @@ fn a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_ju
     let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("NOTE: testdata/broken/package.json is not valid JSON"),
+        run.says("NOTE: testdata/broken/package.json is not measured (unreadable)"),
         "{}",
         run.out
     );
@@ -354,15 +355,15 @@ fn a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_ju
 }
 
 #[test]
-fn a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error() {
+fn a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_measurement_lost_fail() {
     let tree = derived_tree();
     tree.write("tools/package.json", r#"{"dependencies": {}}"#);
     tree.base();
     tree.write("tools/package.json", "{ not json");
     let run = tree.run(&["check", "lockfile"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("tools/package.json is not valid JSON"),
+        run.says("FAIL  measurement-lost") && run.says("tools/package.json is not valid JSON"),
         "{}",
         run.out
     );
@@ -391,7 +392,7 @@ fn a_derived_manifest_that_did_not_parse_at_the_base_is_judged_once_it_parses() 
 }
 
 #[test]
-fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_passes_the_hook() {
+fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_review_item_and_passes_the_hook() {
     let tree = derived_tree();
     tree.base();
     tree.write("testdata/broken/package.json", "{ not json");
@@ -401,10 +402,10 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_
         &["gate", "--hook"],
         r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#,
     );
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("testdata/broken/package.json is not valid JSON")
-            && run.says("add it to the section's `except`"),
+        run.says("REVIEW: testdata/broken/package.json is not measured (unreadable)")
+            && run.says("testdata/broken/package.json is not valid JSON"),
         "{}",
         run.out
     );
@@ -412,7 +413,7 @@ fn a_derived_manifest_the_change_adds_and_klin_cannot_parse_is_a_tool_error_and_
 }
 
 #[test]
-fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note() {
+fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_coverage_note() {
     let tree = derived_tree();
     tree.write("tools/a/package.json", "{ not json");
     tree.base();
@@ -421,7 +422,7 @@ fn a_derived_manifest_klin_cannot_parse_that_the_change_only_renamed_is_a_note()
     let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: tools/b/package.json is not valid JSON"),
+        run.says("NOTE: tools/b/package.json is not measured (unreadable)"),
         "{}",
         run.out
     );
@@ -497,17 +498,17 @@ fn a_manifest_renamed_to_another_format_has_no_base_to_hide_behind() {
     tree.base();
     tree.git(&["mv", "Cargo.toml", "package.json"]);
     let run = tree.run(&["check", "lockfile"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("package.json is not valid JSON")
-            && run.says("the base did not hold package.json"),
+        run.says("REVIEW: package.json is not measured (unreadable)")
+            && run.says("package.json is not valid JSON"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
+fn a_manifest_klin_could_never_parse_is_a_coverage_note_and_no_tool_error() {
     let tree = Tree::new();
     tree.write("package.json", "{ not json");
     tree.write("package-lock.json", NPM_V3);
@@ -515,7 +516,7 @@ fn a_manifest_klin_could_never_parse_is_a_note_and_no_tool_error() {
     let run = tree.run(&["check", "lockfile"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: package.json is not valid JSON"),
+        run.says("NOTE: package.json is not measured (unreadable)"),
         "{}",
         run.out
     );

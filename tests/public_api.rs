@@ -236,9 +236,9 @@ fn an_unresolved_form_moved_to_a_namesake_surface_is_new() {
                 continue;
             }
             for run in [by_hand(&tree), changed(&tree)] {
-                assert_eq!(run.code, 2, "{}", run.out);
+                assert_eq!(run.code, 0, "{}", run.out);
                 assert!(
-                    run.says("FAIL: 1 form(s) inside a supported public surface"),
+                    run.says("REVIEW: 1 form(s) inside a supported public surface"),
                     "{}",
                     run.out
                 );
@@ -786,7 +786,7 @@ fn a_private_extern_crate_alias_of_a_sibling_is_followed() {
 }
 
 #[test]
-fn a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it() {
+fn a_name_two_globs_provide_is_a_review_item_where_a_re_export_names_it() {
     let tree = Tree::new();
     crate_of(&tree, "pub struct Mode;\n");
     tree.write("src/lib.rs", "mod inner;\npub use inner::Mode;\n");
@@ -799,9 +799,10 @@ fn a_name_two_globs_provide_is_a_hole_where_a_re_export_names_it() {
 
     let run = by_hand(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
     assert!(
-        run.says("Mode is provided by this glob and by the glob at src/inner.rs:3"),
+        run.says("REVIEW: 1 form(s)")
+            && run.says("Mode is provided by this glob and by the glob at src/inner.rs:3"),
         "{}",
         run.out
     );
@@ -1173,7 +1174,7 @@ fn a_break_by_hand_names_person_acceptance_and_no_second_stop() {
 }
 
 #[test]
-fn a_glob_of_another_crate_is_a_hole_by_hand_and_a_note_in_the_hook() {
+fn a_glob_of_another_crate_is_a_review_item_by_hand_and_a_note_in_the_hook() {
     let tree = Tree::new();
     library(&tree);
     tree.write("klin.json", r#"{"build": []}"#);
@@ -1183,9 +1184,9 @@ fn a_glob_of_another_crate_is_a_hole_by_hand_and_a_note_in_the_hook() {
     let run = by_hand(&tree);
     let stop = hook(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("FAIL: 1 form(s) inside a supported public surface could not be resolved")
+        run.says("REVIEW: 1 form(s) inside a supported public surface could not be resolved")
             && run.says("serde::* globs another crate"),
         "{}",
         run.out
@@ -1195,7 +1196,7 @@ fn a_glob_of_another_crate_is_a_hole_by_hand_and_a_note_in_the_hook() {
 }
 
 #[test]
-fn a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict() {
+fn a_glob_the_base_holds_too_is_a_note_and_a_second_glob_is_a_review_item() {
     let tree = Tree::new();
     library(&tree);
     tree.write("klin.json", r#"{"build": []}"#);
@@ -1217,9 +1218,9 @@ fn a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict() {
         &format!("{LIB}pub use serde::*;\npub use tokio::*;\n"),
     );
     let run = by_hand(&tree);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("FAIL: 1 form(s) inside a supported public surface could not be resolved")
+        run.says("REVIEW: 1 form(s) inside a supported public surface could not be resolved")
             && run.says("tokio::* globs another crate"),
         "{}",
         run.out
@@ -1227,14 +1228,15 @@ fn a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict() {
 }
 
 #[test]
-fn a_module_no_file_answers_inside_a_library_is_a_hole_of_this_gate() {
+fn a_module_no_file_answers_inside_a_library_is_a_review_item_of_this_gate() {
     let tree = Tree::new();
     library(&tree);
     tree.write("src/lib.rs", &format!("{LIB}pub mod missing;\n"));
 
     let run = by_hand(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert!(run.says("REVIEW: 1 form(s)"), "{}", run.out);
     assert!(run.says("names no file the tree holds"), "{}", run.out);
 }
 
@@ -1432,7 +1434,7 @@ fn an_exported_file_outside_the_entry_traversal_is_not_package_api() {
 }
 
 #[test]
-fn an_ambiguous_star_export_is_a_hole() {
+fn an_ambiguous_star_export_is_an_ambiguous_review_item() {
     let tree = Tree::new();
     package(&tree);
     tree.write("web/src/util.ts", "export function helper(): number {\n    return 1;\n}\nexport const VERSION: string = \"2\";\n");
@@ -1445,16 +1447,17 @@ fn an_ambiguous_star_export_is_a_hole() {
     );
     let run = by_hand(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("VERSION is provided by this star export and by the one at line 3"),
+        run.says("REVIEW: 1 form(s)")
+            && run.says("VERSION is provided by this star export and by the one at line 3"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn an_external_package_re_export_is_opaque_and_a_star_over_one_is_a_hole() {
+fn an_external_package_re_export_is_opaque_and_a_star_over_one_is_a_review_item() {
     let tree = Tree::new();
     package(&tree);
     tree.write(
@@ -1474,9 +1477,10 @@ fn an_external_package_re_export_is_opaque_and_a_star_over_one_is_a_hole() {
         "{}",
         shown.out
     );
-    assert_eq!(starred.code, 2, "{}", starred.out);
+    assert_eq!(starred.code, 1, "{}", starred.out);
     assert!(
-        starred.says("a star export of another package, lodash"),
+        starred.says("REVIEW: 1 form(s)")
+            && starred.says("a star export of another package, lodash"),
         "{}",
         starred.out
     );
@@ -2672,7 +2676,7 @@ fn an_exported_namespace_hides_the_name_a_star_export_provides() {
 }
 
 #[test]
-fn export_equals_and_an_ambient_module_are_still_holes() {
+fn export_equals_and_an_ambient_module_are_still_review_items() {
     let tree = Tree::new();
     package_of(&tree, "export type A = string;\n");
     tree.write(
@@ -2682,9 +2686,9 @@ fn export_equals_and_an_ambient_module_are_still_holes() {
 
     let run = by_hand(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
     assert!(
-        run.says("FAIL: 2 form(s) inside a supported public surface could not be resolved"),
+        run.says("REVIEW: 2 form(s) inside a supported public surface could not be resolved"),
         "{}",
         run.out
     );
@@ -2704,7 +2708,7 @@ fn export_equals_and_an_ambient_module_are_still_holes() {
 }
 
 #[test]
-fn a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths() {
+fn a_module_re_export_cycle_is_a_named_review_item_instead_of_unbounded_paths() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("Cargo.toml", PACKAGE);
@@ -2712,14 +2716,20 @@ fn a_module_re_export_cycle_is_a_named_hole_instead_of_unbounded_paths() {
 
     let run = tree.run(&["check", "--json"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert_eq!(
+        run.json()["reviews"][0]["kind"],
+        "unmeasured",
+        "{}",
+        run.out
+    );
     assert!(run.says("cyclic module re-export"), "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
     run.json();
 }
 
 #[test]
-fn a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever() {
+fn a_named_re_export_cycle_is_a_named_review_item_instead_of_recursing_forever() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("Cargo.toml", PACKAGE);
@@ -2730,7 +2740,13 @@ fn a_named_re_export_cycle_is_a_named_hole_instead_of_recursing_forever() {
 
     let run = tree.run(&["check", "--json"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert_eq!(
+        run.json()["reviews"][0]["kind"],
+        "unmeasured",
+        "{}",
+        run.out
+    );
     assert!(run.says("cyclic named re-export"), "{}", run.out);
     assert!(run.says("src/lib.rs"), "{}", run.out);
     run.json();
@@ -2768,13 +2784,15 @@ fn a_module_cycle_names_the_export_that_closes_it() {
 
     let run = tree.run(&["check", "public-api", "--json"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
     let json = run.json();
-    let hole = &json["errors"][0];
+    let hole = &json["reviews"][0];
+    assert_eq!(hole["kind"], "unmeasured", "{}", run.out);
+    assert_eq!(hole["reason"], "ambiguous", "{}", run.out);
     assert_eq!(hole["file"], "src/nested/deeper.rs", "{}", run.out);
     assert_eq!(hole["line"], 3, "{}", run.out);
     assert_eq!(
-        hole["message"],
+        hole["text"],
         "pub use crate::nested; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
         "{}",
         run.out
@@ -2829,13 +2847,15 @@ fn a_cycle_through_a_private_parent_names_the_module_export() {
 
     let run = tree.run(&["check", "public-api", "--json"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
     let json = run.json();
-    let hole = &json["errors"][0];
+    let hole = &json["reviews"][0];
+    assert_eq!(hole["kind"], "unmeasured", "{}", run.out);
+    assert_eq!(hole["reason"], "ambiguous", "{}", run.out);
     assert_eq!(hole["file"], "src/outer.rs", "{}", run.out);
     assert_eq!(hole["line"], 2, "{}", run.out);
     assert_eq!(
-        hole["message"],
+        hole["text"],
         "pub use crate::outer as again; — core (Cargo.toml) — cyclic module re-export gives unbounded public paths",
         "{}",
         run.out
@@ -2861,9 +2881,9 @@ fn unresolved_implementation_aliases_do_not_poison_a_surface_but_re_exports_do()
     assert_eq!(implementation.code, 0, "{}", implementation.out);
     tree.write("index.ts", "export { Foo } from \"@/foo\";\n");
     let contract = by_hand(&tree);
-    assert_eq!(contract.code, 2, "{}", contract.out);
+    assert_eq!(contract.code, 1, "{}", contract.out);
     assert!(
-        contract.says("resolves to no TypeScript module"),
+        contract.says("REVIEW: 1 form(s)") && contract.says("resolves to no TypeScript module"),
         "{}",
         contract.out
     );
@@ -2946,8 +2966,12 @@ fn same_line_alias_holes_stay_distinct_sites() {
         "import { hidden } from \"@/missing\"; export { Foo } from \"@/missing\";\n",
     );
     let run = by_hand(&tree);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not be resolved"), "{}", run.out);
+    assert_ne!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("REVIEW: 1 form(s)") && run.says("could not be resolved"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]

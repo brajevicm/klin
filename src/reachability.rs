@@ -172,15 +172,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    let prior = contract::whole_base(at, &commit)?;
-    let unread_at_base = || prior.unread_either(&before.files.unreadable);
-    let code = coverage_result(
-        code,
-        at,
-        (&before, &before_families, unread_at_base),
-        (&after, &families),
-        out,
-    );
+    coverage_result(at, (&before, &before_families), (&after, &families), out);
     base_note(&held_before, out);
     Ok(code)
 }
@@ -624,28 +616,13 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
 }
 
 fn coverage_result(
-    code: u8,
     at: &Context,
-    (before, before_families, unread_at_base): (
-        &Measurement,
-        &[Family],
-        impl FnOnce() -> Vec<String>,
-    ),
+    (before, before_families): (&Measurement, &[Family]),
     (after, families): (&Measurement, &[Family]),
     out: &mut Sink,
-) -> u8 {
-    let unsupported: Vec<structural::facts::Unsupported> = after
-        .unsupported
-        .iter()
-        .filter(|file| family_of(families, &file.file).is_some())
-        .map(|file| structural::facts::Unsupported {
-            file: file.file.clone(),
-            language: file.language,
-        })
-        .collect();
-    let code = holes::not_measured_said(&unsupported, at, code, out);
+) {
     let lost = covered(after, families).lost(&covered(before, before_families), at.project, None);
-    let code = holes::lost_said(&lost, at, code, out);
+    holes::lost_said(&lost, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
         .iter()
@@ -655,7 +632,7 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    holes::unread_said(&unparsed, unread_at_base, at, code, out)
+    holes::unread_said(&unparsed, at, out);
 }
 
 fn evaluator() -> Evaluator<'static> {

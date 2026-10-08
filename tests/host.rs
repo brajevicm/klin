@@ -643,7 +643,7 @@ fn cursor_noted() -> Tree {
     });
     let opened = feed(tree.root(), &["radius"], &session.to_string());
     assert_eq!(opened.code, 0, "{}", opened.out);
-    tree.write("src/flow.rs", "%%% not rust %%%\n");
+    tree.write("src/new.rs", "%%% not rust %%%\n");
     tree
 }
 

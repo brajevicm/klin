@@ -314,6 +314,7 @@ dependencies = [
  "serde_json",
  "signal-hook",
  "tempfile",
+ "toml",
  "tree-sitter",
  "tree-sitter-go",
  "tree-sitter-java",

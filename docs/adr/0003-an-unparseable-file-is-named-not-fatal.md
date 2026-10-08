@@ -2,6 +2,10 @@
 
 > ADR 0021 amends this record. In `--hook` mode an unreadable file is a note
 > and does not block. Under `--strict` the exit 2 below stands.
+>
+> The amendment below (#500) ends the exit 2. Spec 7.2 sorts a file klin
+> cannot read into a `measurement-lost` FAIL, an opened gap or a coverage
+> note.
 
 A grammar rejects a file more often than it looks. Flow-typed `.js` is ordinary
 in a React Native tree and the JavaScript grammar refuses it. A grammar one
@@ -45,3 +49,27 @@ A tree holding a file no grammar can read cannot accept new complexity debt
 until a person excludes that file. This is the intended pressure: the exclusion
 is a reviewed decision, and the entry in `quality.json` is where the next reader
 finds out that nothing measures the file.
+
+## Amendment: lost, opened or klin's own limit (#500)
+
+The exit 2 above treated every file klin could not read as one hole. It is
+three different things, and spec 7.2 now tells them apart once for the whole
+run, against the base.
+
+- A file the base measured and the change made unmeasurable is a
+  `measurement-lost` FAIL, exit 1. The reasons are a new error node, a line
+  over the source-line ceiling, a manifest or lockfile that no longer parses,
+  and a form change: a NUL byte, a symbolic link, or a `binary`, `-diff` or
+  `filter` attribute. The agent caused it and can fix it, so it fails and
+  blocks the Stop. This closes the route of hiding a finding by making its
+  file unmeasurable.
+- A file the change made unmeasurable with no clear agent cause, such as a
+  new file the grammar rejects, is an `unmeasured` review item, exit 0.
+- A file the base could not measure either is a coverage note.
+
+None of the three is exit 2, which is now for errors only (spec 7.3). The
+pressure this record wanted stays: the coverage counts and `not_measured`
+still name every file nothing measured. A valid construct that klin's grammar
+does not read yet is the one false positive, and a person holds that file
+with the accepted entry `{"gate": "measurement-lost", "file": PATH}` in a
+reviewed commit.

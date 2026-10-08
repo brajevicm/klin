@@ -13,6 +13,10 @@ use crate::{files, scope};
 /// 4.3, ADR 0038.
 pub struct Tree {
     root: PathBuf,
+    /// Whether the list leaves out the files the in-tree `.gitattributes` make not text, which
+    /// only the working tree does. Spec 7.2.
+    attributes: bool,
+    formless: OnceCell<Vec<(String, files::Form)>>,
     files: OnceCell<Result<Vec<String>, String>>,
     listing: Cell<files::Listing>,
     extracted: Extracted,
@@ -24,10 +28,22 @@ impl Tree {
     pub fn at(root: &Path) -> Tree {
         Tree {
             root: root.to_path_buf(),
+            attributes: false,
+            formless: OnceCell::new(),
             files: OnceCell::new(),
             listing: Cell::new(files::Listing::default()),
             extracted: Extracted::default(),
             test_roots: OnceCell::new(),
+        }
+    }
+
+    /// The working tree at this root, whose list leaves out every file the in-tree
+    /// `.gitattributes` give `binary`, `-diff`, a `filter` or an encoding klin does not decode.
+    /// The base is read from git's stored bytes, which need none of that. Spec 7.2.
+    pub fn working(root: &Path) -> Tree {
+        Tree {
+            attributes: true,
+            ..Tree::at(root)
         }
     }
 
@@ -64,12 +80,46 @@ impl Tree {
                 files::listing(&self.root)
                     .map(|(files, cost)| {
                         self.listing.set(cost);
-                        files
+                        self.with_text_form(files)
                     })
                     .map_err(|why| why.to_string())
             })
             .as_deref()
             .map_err(|why| Error(why.clone()))
+    }
+
+    /// The files the list left out because the in-tree `.gitattributes` make them not text, each
+    /// with its form, and none for a tree that reads no attributes. Spec 7.2.
+    pub fn formless(&self) -> &[(String, files::Form)] {
+        let _ = self.files();
+        self.formless.get_or_init(Vec::new)
+    }
+
+    fn with_text_form(&self, files: Vec<String>) -> Vec<String> {
+        let attributed = self.attributes
+            && files
+                .iter()
+                .any(|file| file.rsplit('/').next() == Some(".gitattributes"));
+        if !attributed {
+            return files;
+        }
+        let texts: Vec<(String, String)> = files
+            .iter()
+            .filter(|file| file.rsplit('/').next() == Some(".gitattributes"))
+            .filter_map(|file| {
+                let text = std::fs::read_to_string(self.root.join(file)).ok()?;
+                Some((file.clone(), text))
+            })
+            .collect();
+        let (kept, formless): (Vec<_>, Vec<_>) = files
+            .into_iter()
+            .map(|file| {
+                let form = files::form(&file, &texts);
+                (file, form)
+            })
+            .partition(|(_, form)| !form.any());
+        let _ = self.formless.set(formless);
+        kept.into_iter().map(|(file, _)| file).collect()
     }
 
     /// What reading the file list cost, handed over once: a second call, or a call before the

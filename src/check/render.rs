@@ -9,24 +9,15 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete,
-    Judged, LOST, Layering, Line, Listed, Located, Matched, Measured, NOT_MEASURED, Plain,
-    Provenance, PublicApi, Ratchet, Site, Standing, Told, UNPARSED, UNRESOLVED, Unmatched,
-    Unresolvable, Wording,
+    self, Class, Complexity, Counted, DELETED, Derived, Entry, Failed, Held, HeldAtBase, Hole,
+    Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured, Plain, Provenance,
+    PublicApi, Ratchet, Standing, Told, Unmatched, Unresolvable, Wording,
 };
+use crate::check::holes::{self, MEASUREMENT_LOST, Unmeasured};
 use crate::coverage::Coverage;
 
 /// How many rows a listed block prints before it says how many more there are.
 const SHOWN: usize = 20;
-
-const LOST_REMEDY: &str = "Drop the exclusion or restore the rule that reached it, or exclude it \
-                           on purpose and accept that nothing measures it.";
-
-const NOT_MEASURED_REMEDY: &str = "Add a structural adapter for the language, or exclude the file \
-                                   and accept that nothing measures it.";
-
-const UNPARSED_REMEDY: &str = "A file klin cannot read is a hole in the ratchet. Update the \
-                               grammar, or exclude the file and accept that nothing measures it.";
 
 /// The report text `klin check` prints of one gate's result.
 pub fn text(told: &[Told]) -> String {
@@ -94,78 +85,48 @@ pub fn incomplete(hole: &Incomplete, out: &mut String) {
     let _ = writeln!(out, "HOLE: {}{detail} — {}", hole.reason.name(), hole.text);
 }
 
+/// The forms a gate could not resolve, under its row. A file a gate could not measure prints
+/// once for the run, where the runner sorts it. Spec 7.2.
 fn holed(hole: &Hole, out: &mut String) {
-    match hole {
-        Hole::Lost(site) => {
-            let _ = writeln!(
-                out,
-                "NOTE: {} was measured at the base and is not measured now — {}",
-                site.file, site.text
-            );
-        }
-        Hole::LeftScrutiny(count) => {
-            let _ = writeln!(
-                out,
-                "FAIL: {count} file(s) left scrutiny — a file klin measured at the base and \
-                 does not measure now, though it is still in the tree, is a failure. {LOST_REMEDY}"
-            );
-        }
-        Hole::NotMeasured { fail, files } => block(
-            out,
-            &format!(
-                "{}: {} file(s) in unsupported structural languages were not measured:",
-                word(*fail),
-                files.len()
-            ),
-            files
-                .iter()
-                .map(|file| format!("{}  {}", file.file, file.text)),
-            NOT_MEASURED_REMEDY,
-        ),
-        Hole::Unresolved { fail, kind, forms } => block(
-            out,
-            &format!("{}: {} {}:", word(*fail), forms.len(), unresolved(*kind).0),
-            forms
-                .iter()
-                .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
-            unresolved(*kind).1,
-        ),
-        Hole::Unparsed { fail, files } => block(
-            out,
-            &format!(
-                "{}: {} file(s) the grammar could not parse, so nothing in them was measured:",
-                word(*fail),
-                files.len()
-            ),
-            files
-                .iter()
-                .map(|file| format!("{}  {}", file.file, file.text)),
-            UNPARSED_REMEDY,
-        ),
-    }
+    let Hole::Unresolved {
+        opened,
+        kind,
+        forms,
+    } = hole
+    else {
+        return;
+    };
+    let word = match opened {
+        true => "REVIEW",
+        false => "NOTE",
+    };
+    block(
+        out,
+        &format!("{word}: {} {}:", forms.len(), unresolved(*kind)),
+        forms
+            .iter()
+            .map(|(form, why)| format!("{}  {}  — {why}", at(form), form.text)),
+    );
 }
 
-/// What a block of unresolved forms of one kind says they are, and how to close them.
-fn unresolved(kind: Unresolvable) -> (&'static str, &'static str) {
+/// What a block of unresolved forms of one kind says they are.
+fn unresolved(kind: Unresolvable) -> &'static str {
     match kind {
-        Unresolvable::Dependency => (
-            "dependency form(s) klin resolves could not be resolved, so what they reach was not judged",
-            "Make each one name exactly one module file the tree holds, or take its file out of the section's scope.",
-        ),
-        Unresolvable::PublicSurface => (
-            "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured",
-            "Write the export or re-export in a form klin lists, or make each path name exactly one module file the tree holds.",
-        ),
+        Unresolvable::Dependency => {
+            "dependency form(s) klin resolves could not be resolved, so what they reach was not judged"
+        }
+        Unresolvable::PublicSurface => {
+            "form(s) inside a supported public surface could not be resolved, so the surface is not completely measured"
+        }
     }
 }
 
-/// A heading, its rows indented under it, and the line that closes the block.
-fn block(out: &mut String, heading: &str, rows: impl Iterator<Item = String>, close: &str) {
+/// A heading and its rows indented under it.
+fn block(out: &mut String, heading: &str, rows: impl Iterator<Item = String>) {
     let _ = writeln!(out, "{heading}");
     for row in rows {
         let _ = writeln!(out, "  {row}");
     }
-    let _ = writeln!(out, "{close}");
 }
 
 fn sites(listed: &Listed, out: &mut String) {
@@ -315,10 +276,6 @@ fn worse(unit: &str, failed: &[Failed], out: &mut String) {
             against(finding)
         );
     }
-}
-
-fn word(fail: bool) -> &'static str {
-    if fail { "FAIL" } else { "NOTE" }
 }
 
 fn at(site: &Located) -> String {
@@ -665,6 +622,8 @@ pub struct Json {
     pub derived: Vec<Value>,
     /// The `{reason, detail, text}` of each hole the gate told. Spec 7.2, 11.7.
     pub holes: Vec<Value>,
+    /// The review items of forms the change opened, each under its gap reason. Spec 7.2, 11.7.
+    pub reviews: Vec<Value>,
 }
 
 /// The findings, notes and derived entries of one gate's result, in the order the result says
@@ -781,44 +740,27 @@ fn document_json((name, words, ceiling): (&str, u64, u64), standing: &Standing, 
     }
 }
 
+/// The forms a gate could not resolve: a review item each where the change opened them, and a
+/// coverage note each where the base held them too. Spec 7.2, 11.7.
 fn hole_json(hole: &Hole, out: &mut Json) {
-    match hole {
-        Hole::Lost(site) => out.notes.push(site_json(LOST, site)),
-        Hole::LeftScrutiny(_) => (),
-        Hole::NotMeasured { fail, files } => sited(out, *fail).extend(files.iter().map(|file| {
-            record(
-                NOT_MEASURED,
-                Some(&file.file),
-                None,
-                &format!("{} has no structural adapter", file.text),
-            )
-        })),
-        Hole::Unresolved { fail, forms, .. } => {
-            sited(out, *fail).extend(forms.iter().map(|(form, why)| {
-                record(
-                    UNRESOLVED,
-                    Some(&form.file),
-                    Some(form.line),
-                    &format!("{} — {why}", form.text),
-                )
-            }));
-        }
-        Hole::Unparsed { fail, files } => {
-            sited(out, *fail).extend(files.iter().map(|file| site_json(UNPARSED, file)));
+    let Hole::Unresolved { opened, forms, .. } = hole else {
+        return;
+    };
+    for (form, why) in forms {
+        let reason = holes::form_reason(why);
+        let text = format!("{} — {why}", form.text);
+        let mut record = fields(reason, Some(&form.file), Some(form.line), &text);
+        match opened {
+            true => {
+                record.insert("reason".into(), reason.into());
+                out.reviews.push(Value::Object(record));
+            }
+            false => {
+                record.insert("coverage".into(), true.into());
+                out.notes.push(Value::Object(record));
+            }
         }
     }
-}
-
-/// Where a hole's records go: its findings where it fails, and its notes where it does not.
-fn sited(out: &mut Json, fail: bool) -> &mut Vec<Value> {
-    match fail {
-        true => &mut out.findings,
-        false => &mut out.notes,
-    }
-}
-
-fn site_json(outcome: &str, site: &Site) -> Value {
-    record(outcome, Some(&site.file), None, &site.text)
 }
 
 fn listed_json(listed: &Listed, out: &mut Json) {
@@ -942,4 +884,170 @@ fn matched_json(entry: &Entry, accepted: bool) -> Value {
 
 fn clip(text: &str) -> String {
     text.chars().take(70).collect()
+}
+
+/// The `measurement-lost` row of one run and the line under it per lost file, `None` for a run
+/// that lost none. A file an accepted entry holds prints as held. Spec 7.2.
+pub fn lost_row(sorted: &[Unmeasured], held: &[String]) -> Option<String> {
+    let lost: Vec<&Unmeasured> = sorted
+        .iter()
+        .filter(|item| item.class == Class::Lost)
+        .collect();
+    if lost.is_empty() {
+        return None;
+    }
+    let failing = lost.iter().any(|item| !held.contains(&item.file));
+    let mut out = format!(
+        "  {}  {MEASUREMENT_LOST}\n",
+        if failing { "FAIL" } else { "ok  " }
+    );
+    for item in lost {
+        let line = match held.contains(&item.file) {
+            true => format!(
+                "held: {} — {}, matched the accepted entry for it",
+                item.file, item.text
+            ),
+            false => format!("FAIL: {} {}", lost_condition(item), lost_remedy(item)),
+        };
+        let _ = writeln!(out, "        {line}");
+    }
+    Some(out)
+}
+
+/// The line of each opened gap and coverage note `klin check` prints, or at the Stop, of each
+/// opened gap alone as a note the agent sees. Spec 7.2.
+pub fn unmeasured_lines(sorted: &[Unmeasured], at_stop: bool) -> String {
+    let mut out = String::new();
+    for item in sorted {
+        let word = match (item.class, at_stop) {
+            (Class::Lost, _) | (Class::Limit, true) => continue,
+            (Class::Opened, false) => "REVIEW",
+            (Class::Opened, true) | (Class::Limit, false) => "NOTE",
+        };
+        let _ = writeln!(out, "  {word}: {}", unmeasured_said(item));
+    }
+    out
+}
+
+fn unmeasured_said(item: &Unmeasured) -> String {
+    format!(
+        "{} is not measured ({}) — {}",
+        item.file, item.reason, item.text
+    )
+}
+
+fn lost_condition(item: &Unmeasured) -> String {
+    format!(
+        "{} was measured at the base and klin cannot measure it now: {}, so nothing in it is judged.",
+        item.file, item.text
+    )
+}
+
+/// What to do about a lost file: for a parse, make it valid in its language from its first
+/// error node, and for the other reasons, the reason. Spec 7.2.
+fn lost_remedy(item: &Unmeasured) -> String {
+    match (item.reason, item.at) {
+        ("parse", Some((line, column))) => format!(
+            "Make the file valid {} again from line {line}, column {column}.",
+            item.language.unwrap_or("source")
+        ),
+        ("line-ceiling", _) => {
+            "Keep every line under the source-line ceiling of 65536 bytes.".to_string()
+        }
+        ("manifest", _) => "Make the manifest parse again.".to_string(),
+        _ => "Keep the file a regular text file.".to_string(),
+    }
+}
+
+/// The finding of one lost file: keyed by the file, with no check, no line and no ratcheted
+/// value, held where an accepted entry names the file. Spec 7.2, 11.7.
+pub fn lost_json(item: &Unmeasured, held: bool) -> Value {
+    let mut values = Map::new();
+    values.insert("reason".into(), item.reason.into());
+    if let Some((line, column)) = item.at {
+        values.insert("line".into(), line.into());
+        values.insert("column".into(), column.into());
+    }
+    let matched = held.then(|| {
+        serde_json::json!({
+            "file": item.file, "line": null, "text": "", "accepted": true, "values": {},
+        })
+    });
+    serde_json::json!({
+        "id": holes::lost_id(&item.file),
+        "check": null,
+        "kind": MEASUREMENT_LOST,
+        "outcome": if held { "held" } else { "new" },
+        "file": item.file,
+        "line": null,
+        "text": item.file,
+        "values": values,
+        "ceiling": {},
+        "matched": matched,
+        "condition": lost_condition(item),
+        "remedy": lost_remedy(item),
+    })
+}
+
+/// The review item of one opened gap. Spec 7.2, 11.7.
+pub fn opened_json(item: &Unmeasured) -> Value {
+    serde_json::json!({
+        "check": null,
+        "kind": holes::UNMEASURED,
+        "file": item.file,
+        "line": null,
+        "text": item.text,
+        "reason": item.reason,
+    })
+}
+
+/// The coverage note of one file klin's own limit leaves unmeasured. Spec 7.2, 11.7.
+pub fn limit_json(item: &Unmeasured) -> Value {
+    serde_json::json!({
+        "check": null,
+        "kind": item.reason,
+        "coverage": true,
+        "file": item.file,
+        "message": unmeasured_said(item),
+    })
+}
+
+/// The review item of an accepted entry of gate `measurement-lost` whose file klin measures
+/// again. Spec 7.2, 7.6, 11.7.
+pub fn unmatched_lost_json(file: &str) -> Value {
+    serde_json::json!({
+        "check": MEASUREMENT_LOST,
+        "kind": "unmatched-accepted",
+        "file": file,
+        "line": null,
+        "text": unmatched_lost_text(file),
+        "reason": null,
+    })
+}
+
+/// How `klin policy` tells a person to hold a file klin's grammar does not read yet. The Stop
+/// points a person here and never tells the agent. Spec 7.2.
+pub fn lost_policy() -> String {
+    format!(
+        "{MEASUREMENT_LOST} — built-in\n{UNDER}a file the base measured that klin cannot \
+         measure now fails here, for every capability that reads it.\n{UNDER}where klin's \
+         grammar does not read a valid construct yet, a person holds the file in a reviewed \
+         commit with the accepted entry {{\"gate\": \"{MEASUREMENT_LOST}\", \"file\": PATH}}, \
+         which stays matched while klin cannot measure the file.\n"
+    )
+}
+
+/// What the Stop tells the person, never the agent, when a file it did not block on is lost
+/// to a grammar that may lag. Spec 7.2.
+pub const LOST_TO_A_PERSON: &str = "klin: a file klin's grammar cannot read is a \
+    measurement-lost failure. If the file is valid and klin's grammar lags, a person can hold it \
+    in the accepted list — `klin policy` shows how.";
+
+const UNDER: &str = "      ";
+
+/// What an accepted entry of gate `measurement-lost` that matches nothing says.
+pub fn unmatched_lost_text(file: &str) -> String {
+    format!(
+        "the accepted entry of {MEASUREMENT_LOST} for {file} matches nothing: klin measures the file now"
+    )
 }

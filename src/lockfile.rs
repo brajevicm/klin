@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use serde_json::Value;
 
 use crate::changed;
-use crate::check::contract::{self, Context, Counted, Line, Sink};
+use crate::check::contract::{self, Class, Context, Counted, Hole, Line, Sink, Site};
 use crate::coverage::Coverage;
 use crate::error::Error;
 use crate::key::Key;
@@ -217,6 +217,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         out,
     );
     ratchet::noted(&sites.notes, out);
+    for (file, why, class) in sites.unmeasurable {
+        out.tell(Hole::Manifest {
+            site: Site { file, text: why },
+            class,
+        });
+    }
     Ok(code)
 }
 
@@ -253,7 +259,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
         ..Sites::default()
     };
     for (manifest, was, format) in &judged {
-        sites.add((&mut now, &mut before), (manifest, was), format, at.hook())?;
+        sites.add((&mut now, &mut before), (manifest, was), format)?;
     }
     Ok(sites)
 }
@@ -369,11 +375,16 @@ impl Side {
         let found = beside(&self.bytes, manifest, format.lockfiles);
         let none = Locked::default();
         let mut unreadable = None;
+        let mut broken = None;
         let names = match &found {
-            Some(at) => match locked(&mut self.locked, &self.bytes, at, format)? {
-                Some(names) => names,
-                None => {
+            Some(at) => match locked(&mut self.locked, &self.bytes, at, format) {
+                Ok(Some(names)) => names,
+                Ok(None) => {
                     unreadable = Some(at.clone());
+                    &none
+                }
+                Err(Error(why)) => {
+                    broken = Some(why);
                     &none
                 }
             },
@@ -390,6 +401,7 @@ impl Side {
             deps,
             unparsed,
             unreadable,
+            broken,
             lockfile: found,
         }))
     }
@@ -456,6 +468,9 @@ struct Sites {
     findings: Vec<Finding>,
     prior: Vec<Finding>,
     notes: Vec<(String, String)>,
+    /// The manifests and lockfiles no parser read now, each with why and its class against
+    /// the base. Spec 7.2.
+    unmeasurable: Vec<(String, String, Class)>,
     judged: usize,
     manifests: usize,
     /// What the gate's coverage counts beside `manifests`, the manifests it judged: how many
@@ -474,7 +489,7 @@ impl Sites {
             measured: self.manifests,
             not_measured: 0,
             excluded: self.excluded,
-            unreadable: self.notes.len(),
+            unreadable: self.notes.len() + self.unmeasurable.len(),
         }
     }
 
@@ -483,19 +498,18 @@ impl Sites {
         (now, before): (&mut Side, &mut Side),
         (manifest, was): (&str, &str),
         format: &Format,
-        hook: bool,
     ) -> Result<(), Error> {
-        let (now, before) = match reading((now, before), (manifest, was), format, hook)? {
-            Reading::Judged(now, before) => (now, before),
-            Reading::Noted(at, why) => {
-                self.notes.push((at, why));
-                return Ok(());
-            }
-            Reading::Absent => {
-                self.absent += 1;
-                return Ok(());
-            }
-        };
+        match reading((now, before), (manifest, was), format)? {
+            Reading::Judged(now, before) => self.judge(manifest, &now, &before),
+            Reading::Noted(at, why) => self.notes.push((at, why)),
+            Reading::Unmeasurable(at, why, class) => self.unmeasurable.push((at, why, class)),
+            Reading::Absent => self.absent += 1,
+        }
+        Ok(())
+    }
+
+    /// One manifest both trees read: its dependencies now, and the base's beside them.
+    fn judge(&mut self, manifest: &str, now: &State, before: &State) {
         self.manifests += 1;
         self.judged += now.deps.len();
         for (name, values) in &now.deps {
@@ -509,7 +523,6 @@ impl Sites {
                 .iter()
                 .map(|(name, values)| finding(manifest, name, values.clone())),
         );
-        Ok(())
     }
 }
 
@@ -536,13 +549,17 @@ struct State {
     lockfile: Option<String>,
     unreadable: Option<String>,
     unparsed: Option<String>,
+    /// Why klin could not parse the lockfile beside the manifest.
+    broken: Option<String>,
 }
 
-/// Whether klin judges this manifest, and the NOTE that says why not. A manifest the working
-/// tree no longer holds has no dependencies to judge and says nothing.
+/// Whether klin judges this manifest, the NOTE that says why not, or the manifest or lockfile no
+/// parser read, with why and its class. A manifest the working tree no longer holds has no
+/// dependencies to judge and says nothing.
 enum Reading {
     Judged(State, State),
     Noted(String, String),
+    Unmeasurable(String, String, Class),
     Absent,
 }
 
@@ -552,14 +569,13 @@ fn reading(
     (now, before): (&mut Side, &mut Side),
     (manifest, was): (&str, &str),
     format: &Format,
-    hook: bool,
 ) -> Result<Reading, Error> {
     let Some(now) = now.state(manifest, format)? else {
         return Ok(Reading::Absent);
     };
     let before = before.state(was, format)?;
-    if let Some(noted) = unparseable(&now, before.as_ref(), manifest, hook)? {
-        return Ok(noted);
+    if let Some(unmeasurable) = unparseable(&now, before.as_ref(), manifest) {
+        return Ok(unmeasurable);
     }
     let before = before.unwrap_or_default();
     if let Some(noted) = unreadable(&now, &before, manifest) {
@@ -595,30 +611,31 @@ fn unreadable(now: &State, before: &State, manifest: &str) -> Option<Reading> {
     ))
 }
 
-/// A manifest klin cannot parse now is a tool error when it parsed at the base, because the work
-/// broke it. One the base did not hold is a tool error outside the hook, because the work added
-/// the hole, and a NOTE in the hook, where the agent cannot edit `except`. One that did not parse
-/// at the base either is a fixture, and a NOTE. Spec 8.2.1, 8.6.
-fn unparseable(
-    now: &State,
-    before: Option<&State>,
-    manifest: &str,
-    hook: bool,
-) -> Result<Option<Reading>, Error> {
-    let Some(why) = &now.unparsed else {
-        return Ok(None);
-    };
-    match before.map(|before| before.unparsed.is_none()) {
-        Some(true) => Err(Error(why.clone())),
-        None if !hook => Err(Error(format!(
-            "{why}, and the base did not hold {manifest}. Make it parse, or add it to the \
-             section's `except` if it is invalid on purpose"
-        ))),
-        _ => Ok(Some(Reading::Noted(
+/// A manifest, or the lockfile beside it, that klin cannot parse now: lost where the base parsed
+/// it, opened where the base did not hold it, and klin's own limit where the base could not
+/// parse it either. Spec 7.2.
+fn unparseable(now: &State, before: Option<&State>, manifest: &str) -> Option<Reading> {
+    if let Some(why) = &now.unparsed {
+        let class = match before.map(|before| before.unparsed.is_none()) {
+            Some(true) => Class::Lost,
+            Some(false) => Class::Limit,
+            None => Class::Opened,
+        };
+        return Some(Reading::Unmeasurable(
             manifest.to_string(),
-            format!("{why}, so the dependencies of {manifest} are not judged"),
-        ))),
+            why.clone(),
+            class,
+        ));
     }
+    let (Some(why), Some(at)) = (&now.broken, &now.lockfile) else {
+        return None;
+    };
+    let class = match before.map(|before| (before.lockfile.is_some(), before.broken.is_none())) {
+        Some((true, true)) => Class::Lost,
+        Some((true, false)) => Class::Limit,
+        Some((false, _)) | None => Class::Opened,
+    };
+    Some(Reading::Unmeasurable(at.clone(), why.clone(), class))
 }
 
 /// Every value of every dependency, taken against the names and versions the lockfile holds.
@@ -772,8 +789,8 @@ impl Cargo {
 }
 
 /// Every dependency the four tables of spec 8.2.1 name, read by a line scan.
-fn cargo_dependencies(_at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
-    let text = String::from_utf8_lossy(bytes);
+fn cargo_dependencies(at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
+    let text = toml_text(at, bytes)?;
     let mut scan = Cargo::default();
     for line in text.lines() {
         scan.line(line);
@@ -885,6 +902,15 @@ fn field_line(name: &str, line: &str, found: &mut BTreeMap<String, Dependency>) 
     }
 }
 
+/// The text of a TOML file, refused where it is not valid TOML, so a manifest or lockfile the
+/// change broke is never read as one that names nothing. Spec 7.2.
+fn toml_text<'a>(at: &str, bytes: &'a [u8]) -> Result<std::borrow::Cow<'a, str>, Error> {
+    let text = String::from_utf8_lossy(bytes);
+    text.parse::<toml::Table>()
+        .map_err(|why| Error(format!("{at} is not valid TOML: {}", why.message())))?;
+    Ok(text)
+}
+
 fn entry_of<'a>(
     name: &str,
     found: &'a mut BTreeMap<String, Dependency>,
@@ -909,8 +935,8 @@ fn unquoted(text: &str) -> &str {
 
 /// Every package a `Cargo.lock` holds: the `name` and `version` of each `[[package]]` block, in
 /// whichever order the block states them.
-fn cargo_locked(_at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
-    let text = String::from_utf8_lossy(bytes);
+fn cargo_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
+    let text = toml_text(at, bytes)?;
     let mut out = Vec::new();
     let mut package: Option<(Option<&str>, Option<&str>)> = None;
     for line in text.lines().map(str::trim) {

@@ -284,5 +284,4 @@ pub enum Outcome {
 
 pub struct Unsupported {
     pub file: String,
-    pub language: &'static str,
 }

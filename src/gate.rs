@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -7,11 +8,13 @@ use serde_json::{Map, Value, json};
 
 use crate::base::{self, Kind, Prior, Window};
 use crate::changed::Change;
+use crate::check::contract::Class;
 use crate::check::contract::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, Hole, Incomplete, LOST, NOT_MEASURED,
-    Plain, Reason, Records, Sink, Told, UNBUILT, UNPARSED, UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, Hole, Incomplete, Plain, Reason,
+    Records, Sink, Told, UNBUILT, UNRESOLVED,
 };
-use crate::check::{catalogue, holes, render};
+use crate::check::holes::{self, MEASUREMENT_LOST, Seen, Unmeasured};
+use crate::check::{catalogue, render};
 use crate::config;
 use crate::error::Error;
 use crate::host;
@@ -566,6 +569,9 @@ struct Tally {
     failed: usize,
     errored: usize,
     told: usize,
+    /// Whether a file the base parsed is lost to a parse, which a person may hold where the
+    /// grammar lags. Spec 7.2.
+    grammar_lag: bool,
     /// The site id of every finding the run reported, which a stop that blocks records as asked.
     reported: Vec<String>,
     /// The 11.2 object the run built, which the journal writes as the stop's line. Spec 11.4.
@@ -1048,7 +1054,7 @@ fn listed(
     let state = state::dir(project.root());
     match args.json {
         true => policy_json(project, capabilities, state.as_deref(), out),
-        false => policy_text(&capabilities, state.as_deref(), out),
+        false => policy_text(&capabilities, args.gates.is_empty(), state.as_deref(), out),
     }
     Ok(Tally::default())
 }
@@ -1187,7 +1193,7 @@ fn values(project: &Project, gate: &Gate, derived: Vec<Value>) -> Vec<Value> {
     values
 }
 
-fn policy_text(capabilities: &[Value], state: Option<&Path>, out: &mut String) {
+fn policy_text(capabilities: &[Value], whole: bool, state: Option<&Path>, out: &mut String) {
     for capability in capabilities {
         let name = capability["name"].as_str().unwrap_or_default();
         let said = match capability["state"].as_str() {
@@ -1208,6 +1214,9 @@ fn policy_text(capabilities: &[Value], state: Option<&Path>, out: &mut String) {
         for line in capability["lines"].as_array().into_iter().flatten() {
             let _ = writeln!(out, "{UNDER}{}", line.as_str().unwrap_or_default());
         }
+    }
+    if whole {
+        out.push_str(&render::lost_policy());
     }
     if let Some(at) = state {
         let _ = writeln!(out, "state: {}", at.display());
@@ -1426,6 +1435,7 @@ struct Recorded {
     notes: Vec<Value>,
     derived: Vec<Value>,
     holes: Vec<Value>,
+    reviews: Vec<Value>,
     gates: Vec<Value>,
 }
 
@@ -1436,6 +1446,7 @@ impl From<render::Json> for Recorded {
             notes: rendered.notes,
             derived: rendered.derived,
             holes: rendered.holes,
+            reviews: rendered.reviews,
             gates: Vec::new(),
         }
     }
@@ -1473,18 +1484,7 @@ fn hook(
     };
     let number = match spend(held, next, log) {
         GateBlock::Take { number, .. } => number,
-        GateBlock::Pass(why) => {
-            eprintln!(
-                "klin: {} — this stop is not blocked:",
-                lead(failed, errored)
-            );
-            eprint!("{report}");
-            eprintln!(
-                "klin: not blocking again; {why}, and the window stays open until a person \
-                 fixes, accepts or resets it."
-            );
-            return (event.host.stop(&Stop::Pass), None);
-        }
+        GateBlock::Pass(why) => return not_blocked(args, &tally, report, event, &why),
     };
     let lead = format!(
         "klin: {} — fix what each names, then stop again (gate block {number} of {GATE_BLOCKS} \
@@ -1498,6 +1498,30 @@ fn hook(
         log.gate_block = Some(number);
     }
     (code, None)
+}
+
+/// A stop that failed and spends no gate block: the report, why klin does not block again, and
+/// where a file is lost to a parse, the words that tell the person how to hold it. The person
+/// hears them only through a channel the agent does not read. Spec 7.2, ADR 0052.
+fn not_blocked(
+    args: &Args,
+    tally: &Tally,
+    report: &str,
+    event: &Event,
+    why: &str,
+) -> (u8, Option<String>) {
+    eprintln!(
+        "klin: {} — this stop is not blocked:",
+        lead(tally.failed, tally.errored)
+    );
+    eprint!("{report}");
+    eprintln!(
+        "klin: not blocking again; {why}, and the window stays open until a person \
+         fixes, accepts or resets it."
+    );
+    let person = (tally.grammar_lag && !args.json && !event.host.follows_up())
+        .then(|| render::LOST_TO_A_PERSON.to_string());
+    (event.host.stop(&Stop::Pass), person)
 }
 
 /// What the hook says about a stop nothing blocks: nothing at all, or the notes the run left for
@@ -1774,6 +1798,13 @@ fn distinct(project: &Project, plan: &Plan) -> Result<(), Error> {
         .map(|gate| gate.name.as_str())
         .chain(plan.excluded.iter().map(String::as_str));
     for name in named {
+        if name == MEASUREMENT_LOST {
+            return Err(Error(format!(
+                "{}: {MEASUREMENT_LOST} is the name of klin's own row of files it can no longer \
+                 measure, so no gate may take it — name the gate otherwise",
+                project.config.file.display()
+            )));
+        }
         if seen.contains(&name) {
             return Err(Error(format!(
                 "{}: two gates are named {name} — a name selects one gate, so each must differ",
@@ -1794,6 +1825,7 @@ fn each(
 ) -> (Tally, Recorded) {
     let mut tally = Tally::default();
     let mut totals = Recorded::default();
+    let mut reported = Vec::new();
     for gate in wanted {
         let ((code, told, records, recorded), ms) =
             journal::timed(|| one(args, gate, project, against));
@@ -1812,15 +1844,90 @@ fn each(
         totals
             .gates
             .push(row(gate, code, (&records, &recorded), ms));
+        reported.extend(unmeasured_by(&gate.name, &told));
         gather(&mut totals, recorded, &gate.name);
     }
-    tally.told = totals.notes.iter().filter(|note| told(note)).count();
+    let base = against.base.as_ref().map(|base| base.before.as_str());
+    reported.extend(formless(project, wanted, against));
+    let sorted = holes::sorted(project, base, reported);
+    stop_unmeasured(args, project, &sorted, (&mut tally, &mut totals), out);
+    tally.told += totals.notes.iter().filter(|note| told(note)).count();
     tally.reported = totals
         .findings
         .iter()
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
     (tally, totals)
+}
+
+/// What the Stop says of the files the run could not measure: a lost file the accepted list does
+/// not hold fails like any gate, and an opened gap is a note the agent sees. A coverage limit
+/// the change did not open says nothing here. Spec 7.2.
+fn stop_unmeasured(
+    args: &Args,
+    project: &Project,
+    sorted: &[Unmeasured],
+    (tally, totals): (&mut Tally, &mut Recorded),
+    out: &mut String,
+) {
+    let held = holes::held_files(&project.config);
+    let failing = failing_lost(sorted, &held);
+    let unmatched: Vec<String> = unmatched_lost(&held, sorted).collect();
+    if !failing.is_empty() {
+        tally.failed += 1;
+        tally.grammar_lag = failing.iter().any(|item| item.reason == "parse");
+    }
+    totals
+        .findings
+        .extend(failing.iter().map(|item| stop_finding(item)));
+    tally.told += unmatched.len()
+        + sorted
+            .iter()
+            .filter(|item| item.class == Class::Opened)
+            .count();
+    totals.notes.extend(sorted.iter().map(journal_note));
+    if args.json {
+        return;
+    }
+    if !failing.is_empty() {
+        out.push_str(&render::lost_row(sorted, &held).unwrap_or_default());
+    }
+    for file in &unmatched {
+        let _ = writeln!(out, "  NOTE: {}", render::unmatched_lost_text(file));
+    }
+    out.push_str(&render::unmeasured_lines(sorted, true));
+}
+
+/// The lost files no accepted entry holds, which fail. Spec 7.2.
+fn failing_lost<'a>(sorted: &'a [Unmeasured], held: &[String]) -> Vec<&'a Unmeasured> {
+    sorted
+        .iter()
+        .filter(|item| item.class == Class::Lost && !held.contains(&item.file))
+        .collect()
+}
+
+/// The finding of a lost file as the Stop's journal line records it, under the built-in row.
+fn stop_finding(item: &Unmeasured) -> Value {
+    let mut finding = render::lost_json(item, false);
+    if let Some(fields) = finding.as_object_mut() {
+        fields.insert("gate".into(), MEASUREMENT_LOST.into());
+    }
+    finding
+}
+
+/// The journal note of one file the Stop could not measure, under the outcome `klin report`
+/// counts: a file no reader read, or a file that left a scope or its text form. Spec 7.2, 13.2.
+fn journal_note(item: &Unmeasured) -> Value {
+    let outcome = match item.reason {
+        "left-scope" | "form" | "filtered" => contract::LOST,
+        _ => contract::UNPARSED,
+    };
+    json!({
+        "outcome": outcome,
+        "file": item.file,
+        "text": item.text,
+        "gate": item.gates.first(),
+    })
 }
 
 /// One gate's block of the text report: its provenance, its status row, and its rendered result.
@@ -2025,8 +2132,56 @@ fn told(note: &Value) -> bool {
     let outcome = note.get("outcome").and_then(Value::as_str);
     matches!(
         outcome,
-        Some(UNPARSED | DELETED | NOT_MEASURED | DERIVATION | UNRESOLVED | UNBUILT)
-    ) || holes::is_lost(note)
+        Some(DELETED | DERIVATION | UNRESOLVED | AMBIGUOUS | UNBUILT)
+    )
+}
+
+/// The reason of a form a resolver found two answers for, which the Stop tells as it tells an
+/// unresolved one. Spec 7.2.
+const AMBIGUOUS: &str = "ambiguous";
+
+/// The files in the run's scope that the working tree's `.gitattributes` make not text, in a
+/// language a selected gate that reads code reads, so the run sorts them though no gate saw
+/// them. Spec 7.2.
+fn formless(project: &Project, wanted: &[&Gate], against: &Against) -> Vec<(String, String, Seen)> {
+    let Some(gate) = wanted.iter().find(|gate| gate.check.reads_code()) else {
+        return Vec::new();
+    };
+    project
+        .tree()
+        .formless()
+        .iter()
+        .filter(|(file, _)| crate::syntax::language_of(file).is_some())
+        .filter(|(file, _)| {
+            against
+                .scope
+                .as_ref()
+                .is_none_or(|scope| scope.contains(file))
+        })
+        .map(|(file, form)| (gate.name.clone(), file.clone(), Seen::Form(*form)))
+        .collect()
+}
+
+/// The files one gate could not measure, as it saw them, for the run to sort once. Spec 7.2.
+fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
+    let seen = |file: &str, seen| (gate.to_string(), file.to_string(), seen);
+    told.iter()
+        .flat_map(|item| match item {
+            Told::Hole(Hole::Unparsed(files)) => files
+                .iter()
+                .map(|file| seen(&file.file, Seen::Unread))
+                .collect(),
+            Told::Hole(Hole::Lost(site)) => vec![seen(&site.file, Seen::Left(site.text.clone()))],
+            Told::Hole(Hole::Manifest { site, class }) => vec![seen(
+                &site.file,
+                Seen::Manifest {
+                    class: *class,
+                    why: site.text.clone(),
+                },
+            )],
+            _ => Vec::new(),
+        })
+        .collect()
 }
 
 fn gather(totals: &mut Recorded, mut records: Recorded, name: &str) {
@@ -2199,12 +2354,12 @@ fn fault(kind: ErrorKind) -> impl Fn(Error) -> Fault {
     move |error| Fault { kind, error }
 }
 
-/// A judgement of spec 7.1, in the order aggregation takes the worst of. No capability makes a
-/// review item yet, so `review` is not here yet.
+/// A judgement of spec 7.1, in the order aggregation takes the worst of.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
 enum Judgement {
     #[default]
     Pass,
+    Review,
     Fail,
 }
 
@@ -2212,6 +2367,7 @@ impl Judgement {
     fn name(self) -> &'static str {
         match self {
             Judgement::Pass => "pass",
+            Judgement::Review => "review",
             Judgement::Fail => "fail",
         }
     }
@@ -2331,6 +2487,9 @@ struct Report {
     /// measured, which decide the hole of a whole run that measured nothing. Spec 7.2.
     measured: Measured,
     not_measured: std::collections::BTreeSet<String>,
+    /// What each gate could not measure, as it saw it, for the run to sort once. Spec 7.2.
+    reported: Vec<(String, String, Seen)>,
+    reviews: Vec<Value>,
     errors: Vec<Value>,
     gates: Vec<Value>,
 }
@@ -2517,6 +2676,11 @@ impl Report {
         for gate in wanted {
             self.gate(args, gate, project, against, out);
         }
+        let base = against.base.as_ref().map(|base| base.before.as_str());
+        let mut reported = std::mem::take(&mut self.reported);
+        reported.extend(formless(project, wanted, against));
+        self.unmeasured(args, project, &holes::sorted(project, base, reported), out);
+        self.not_read(wanted, &by_extension(project, against));
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
         {
@@ -2561,7 +2725,112 @@ impl Report {
             (&recorded.holes, &recorded.derived),
         ));
         self.errors.extend(gate_errors(&gate.name, code, &told));
+        self.reported.extend(unmeasured_by(&gate.name, &told));
         self.gathered(&gate.name, recorded);
+    }
+
+    /// The files the run could not measure, sorted once: the `measurement-lost` row and its
+    /// findings, a review item per opened gap, a coverage note per limit, and the gap and limit
+    /// counts on the row of each gate that reported one. Spec 7.2, 11.7.
+    fn unmeasured(
+        &mut self,
+        args: &Args,
+        project: &Project,
+        sorted: &[Unmeasured],
+        out: &mut String,
+    ) {
+        let held = holes::held_files(&project.config);
+        if let Some(row) = render::lost_row(sorted, &held) {
+            self.lost(sorted, &held);
+            if !args.json {
+                out.push_str(&row);
+            }
+        }
+        self.reviewed(sorted);
+        self.reviews
+            .extend(unmatched_lost(&held, sorted).map(|file| render::unmatched_lost_json(&file)));
+        if !args.json {
+            out.push_str(&render::unmeasured_lines(sorted, false));
+        }
+    }
+
+    /// A review item per opened gap and a coverage note per limit, every sorted file counted as
+    /// not measured, and each gate's gap and limit counts. Spec 7.2, 11.7.
+    fn reviewed(&mut self, sorted: &[Unmeasured]) {
+        for item in sorted {
+            self.not_measured.insert(item.file.clone());
+            match item.class {
+                Class::Lost => (),
+                Class::Opened if item.reason == "left-scope" && self.fails_at(&item.file) => (),
+                Class::Opened => self.reviews.push(render::opened_json(item)),
+                Class::Limit => self.notes.push(render::limit_json(item)),
+            }
+        }
+        for row in &mut self.capabilities {
+            sort_counted(row, sorted);
+        }
+    }
+
+    /// Whether a gate failed a finding at this file, which a file that left a scope keeps under
+    /// the base's scope, so the file is that FAIL and not also a review item. Spec 7.2.
+    fn fails_at(&self, file: &str) -> bool {
+        self.findings
+            .iter()
+            .any(|finding| finding["file"] == file && failing(finding))
+    }
+
+    /// The files in the run's scope in a language each gate that reads code does not read, on
+    /// that gate's row. Spec 7.2, 11.7.
+    fn not_read(&mut self, wanted: &[&Gate], counted: &BTreeMap<String, usize>) {
+        for gate in wanted.iter().filter(|gate| gate.check.reads_code()) {
+            let not_read: usize = counted
+                .iter()
+                .filter(|(extension, _)| !reads(gate.check, extension))
+                .map(|(_, count)| count)
+                .sum();
+            let row = self
+                .capabilities
+                .iter_mut()
+                .find(|row| row["name"] == gate.name.as_str());
+            if let Some(coverage) = row.and_then(|row| row["coverage"].as_object_mut()) {
+                coverage.insert("not_read".into(), not_read.into());
+            }
+        }
+    }
+
+    /// The built-in row of the lost files and their findings, held where an accepted entry names
+    /// the file. Spec 7.2, 11.7.
+    fn lost(&mut self, sorted: &[Unmeasured], held: &[String]) {
+        let lost: Vec<&Unmeasured> = sorted
+            .iter()
+            .filter(|item| item.class == Class::Lost)
+            .collect();
+        let accepted = lost.iter().filter(|item| held.contains(&item.file)).count();
+        let axes = Axes {
+            judgement: match accepted < lost.len() {
+                true => Judgement::Fail,
+                false => Judgement::Pass,
+            },
+            ..Axes::default()
+        };
+        self.axes = self.axes.and(axes);
+        self.findings.extend(
+            lost.iter()
+                .map(|item| render::lost_json(item, held.contains(&item.file))),
+        );
+        self.capabilities.push(json!({
+            "name": MEASUREMENT_LOST,
+            "kind": "built-in",
+            "placement": ["stop", "check"],
+            "state": "active",
+            "judgement": axes.judgement.name(),
+            "measurement": axes.measurement(),
+            "execution": axes.execution(),
+            "coverage": null,
+            "coverage_claim": "verified",
+            "held": accepted,
+            "accepted": accepted,
+        }));
     }
 
     /// The row of a gate that reads the base tree klin could not lay out. The other gates still
@@ -2590,18 +2859,11 @@ impl Report {
 
     /// The findings and notes of one gate, under the names the check document gives them.
     fn gathered(&mut self, gate: &str, recorded: Recorded) {
-        let unmeasured = recorded
-            .findings
-            .iter()
-            .chain(&recorded.notes)
-            .filter(|record| {
-                matches!(
-                    record.get("outcome").and_then(Value::as_str),
-                    Some(UNPARSED | NOT_MEASURED | LOST)
-                )
-            });
-        self.not_measured.extend(
-            unmeasured.filter_map(|record| Some(record.get("file")?.as_str()?.to_string())),
+        self.reviews.extend(
+            recorded
+                .reviews
+                .into_iter()
+                .map(|review| review_record(gate, review)),
         );
         self.findings.extend(
             recorded
@@ -2668,6 +2930,9 @@ impl Report {
 
     fn finish(mut self, args: &Args, out: &mut String) -> u8 {
         self.axes.incomplete |= !self.holes.is_empty();
+        if !self.reviews.is_empty() {
+            self.axes.judgement = self.axes.judgement.max(Judgement::Review);
+        }
         let exit = self.axes.exit();
         let (judgement, measurement) = match self.stopped {
             true => ("none", "none"),
@@ -2720,7 +2985,7 @@ impl Report {
             "exit": exit,
             "capabilities": self.capabilities,
             "findings": self.findings,
-            "reviews": [],
+            "reviews": self.reviews,
             "notes": self.notes,
             "measurements": measurements,
             "not_measured": self.not_measured.len(),
@@ -2740,11 +3005,96 @@ fn active_row(gate: &Gate, axes: Axes, records: &Records) -> Value {
         "judgement": axes.judgement.name(),
         "measurement": axes.measurement(),
         "execution": axes.execution(),
-        "coverage": records.coverage,
+        "coverage": records.coverage.as_ref().map(checked_coverage),
         "coverage_claim": coverage_claim(gate.check),
         "held": records.held,
         "accepted": records.accepted,
     })
+}
+
+/// How many files of the run's scope each extension names, of the files in a language the
+/// survey knows, counted once for every gate. A whole run's scope is every surveyed file, and a
+/// changed run's is its changed files. Spec 7.2.
+fn by_extension(project: &Project, against: &Against) -> BTreeMap<String, usize> {
+    let listed = project.tree().files().unwrap_or_default();
+    let files: Vec<&String> = match &against.scope {
+        Some(scope) => scope.iter().collect(),
+        None => listed.iter().collect(),
+    };
+    let mut counted = BTreeMap::new();
+    for file in files {
+        if !survey::surveyed(file) || survey::language_of(file).is_none() {
+            continue;
+        }
+        if let Some((_, extension)) = file.rsplit_once('.') {
+            *counted.entry(format!(".{extension}")).or_insert(0) += 1;
+        }
+    }
+    counted
+}
+
+/// Whether a gate reads files of this extension, by the extensions its languages name.
+fn reads(check: &catalogue::Row, extension: &str) -> bool {
+    let quoted = format!("`{extension}`");
+    check.languages.is_some_and(|languages| {
+        languages()
+            .iter()
+            .any(|(_, listed)| listed.contains(&quoted))
+    })
+}
+
+/// The files the accepted list holds as lost that the run did not find unmeasurable for any
+/// reason, so their entries match nothing. An entry stays matched while its file is lost, a gap
+/// or a limit, so it never goes stale while the grammar still lags. Spec 7.2, 7.6.
+fn unmatched_lost<'a>(
+    held: &'a [String],
+    sorted: &'a [Unmeasured],
+) -> impl Iterator<Item = String> + 'a {
+    held.iter()
+        .filter(|file| !sorted.iter().any(|item| &item.file == *file))
+        .cloned()
+}
+
+/// A gate's coverage as the check document names it, with the files of a language it does not
+/// read and the gaps and limits that the run fills in once it has sorted them. Spec 11.7.
+fn checked_coverage(coverage: &Value) -> Value {
+    let count = |key: &str| coverage.get(key).cloned().unwrap_or(Value::from(0));
+    json!({
+        "found": count("found"),
+        "measured": count("measured"),
+        "not_read": 0,
+        "excluded": count("excluded"),
+        "gaps": 0,
+        "limits": 0,
+    })
+}
+
+/// How many of the files the run sorted this gate reported as opened gaps and as limits.
+fn sort_counted(row: &mut Value, sorted: &[Unmeasured]) {
+    let Some(name) = row.get("name").and_then(Value::as_str).map(str::to_string) else {
+        return;
+    };
+    let Some(coverage) = row.get_mut("coverage").and_then(Value::as_object_mut) else {
+        return;
+    };
+    for (key, class) in [("gaps", Class::Opened), ("limits", Class::Limit)] {
+        let count = sorted
+            .iter()
+            .filter(|item| item.class == class && item.gates.contains(&name))
+            .count();
+        coverage.insert(key.into(), count.into());
+    }
+}
+
+/// A review item a gate told, under the gate that told it. Spec 11.7.
+fn review_record(gate: &str, review: Value) -> Value {
+    let Value::Object(mut fields) = review else {
+        return review;
+    };
+    fields.remove("outcome");
+    fields.insert("check".into(), gate.into());
+    fields.insert("kind".into(), holes::UNMEASURED.into());
+    Value::Object(fields)
 }
 
 fn hole_record(hole: &Incomplete) -> Value {
@@ -2824,34 +3174,8 @@ fn erred(gate: &str, item: &Told) -> Vec<Value> {
             ErrorKind::Configuration,
             &format!("{named} — correct the path, or take it out of \"in\"."),
         ),
-        Told::Hole(Hole::LeftScrutiny(count)) => one(
-            ErrorKind::Internal,
-            &format!("{count} file(s) left scrutiny, measured at the base and not now"),
-        ),
-        Told::Hole(
-            Hole::NotMeasured { fail: true, .. }
-            | Hole::Unresolved { fail: true, .. }
-            | Hole::Unparsed { fail: true, .. },
-        ) => render::json(std::slice::from_ref(item))
-            .findings
-            .into_iter()
-            .map(|site| sited_error(gate, site))
-            .collect(),
         _ => Vec::new(),
     }
-}
-
-fn sited_error(gate: &str, site: Value) -> Value {
-    let Value::Object(mut fields) = site else {
-        return site;
-    };
-    let reason = fields.remove("outcome").unwrap_or(Value::Null);
-    let message = fields.remove("text").unwrap_or(Value::Null);
-    fields.insert("kind".into(), ErrorKind::Internal.name().into());
-    fields.insert("check".into(), gate.into());
-    fields.insert("reason".into(), reason);
-    fields.insert("message".into(), message);
-    Value::Object(fields)
 }
 
 fn error_record(kind: ErrorKind, check: Option<&str>, message: &str) -> Value {
@@ -2883,7 +3207,7 @@ fn note_record(gate: &str, note: Value) -> Value {
     }
     fields.insert("check".into(), gate.into());
     fields.insert("kind".into(), kind);
-    fields.insert("coverage".into(), false.into());
+    fields.entry("coverage").or_insert(false.into());
     fields.insert("message".into(), message);
     Value::Object(fields)
 }

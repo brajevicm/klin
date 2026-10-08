@@ -12,16 +12,21 @@ pub struct Change {
     pub was: Option<String>,
 }
 
+/// How every change klin finds is matched across a rename: 50% similar, and at most 1,000
+/// inexact candidates, whatever the person's git configuration says. Spec 7.2.
+const RENAMES: &[&str] = &["-M50%", "-l1000"];
+
 pub fn files(root: &Path, base: &str) -> Result<Vec<Change>, Error> {
     let repo = Repo::at(root);
-    let listed = repo
-        .text(&["diff", "--name-status", "-M", "--relative", base, "--"])
-        .ok_or_else(|| {
-            Error(format!(
-                "--changed needs a git repository, and git could not read {}",
-                root.display()
-            ))
-        })?;
+    let mut asked = vec!["diff", "--name-status"];
+    asked.extend_from_slice(RENAMES);
+    asked.extend(["--relative", base, "--"]);
+    let listed = repo.text(&asked).ok_or_else(|| {
+        Error(format!(
+            "--changed needs a git repository, and git could not read {}",
+            root.display()
+        ))
+    })?;
     let mut changes: Vec<Change> = listed.lines().filter_map(change).collect();
     let untracked = repo
         .text(&["ls-files", "--others", "--exclude-standard"])

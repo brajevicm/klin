@@ -87,7 +87,7 @@ impl Files {
             .iter()
             .filter(|file| only.is_none_or(|only| only.contains(file)))
             .filter(|file| !measured.contains(file) && project.was_held(file))
-            .filter(|file| project.root().join(file).is_file())
+            .filter(|file| still_held(project, file))
             .map(|file| Lost {
                 file: file.clone(),
                 why: if self.unreadable.contains(file) {
@@ -95,13 +95,28 @@ impl Files {
                 } else if self.excluded.contains(file) {
                     "an exclusion drops it now"
                 } else if self.not_measured.contains(file) {
-                    "no structural adapter measures its language"
+                    "no structural adapter or module reads it now"
                 } else {
                     "no discovery rule places it under a root now"
                 },
             })
             .collect()
     }
+}
+
+/// Whether the working tree still holds this exact path: in its file list, left out of it for
+/// its attributes, or as a symbolic link. The list names each file as the directory holds it,
+/// so a path a case-only rename left behind is not held on a file system that ignores case,
+/// where asking for the path itself finds the renamed file. Spec 7.2.
+fn still_held(project: &Project, file: &str) -> bool {
+    let tree = project.tree();
+    tree.files().is_ok_and(|files| {
+        files
+            .binary_search_by(|held| held.as_str().cmp(file))
+            .is_ok()
+    }) || tree.formless().iter().any(|(held, _)| held == file)
+        || std::fs::symlink_metadata(project.root().join(file))
+            .is_ok_and(|held| held.file_type().is_symlink())
 }
 
 pub struct Lost {

@@ -80,9 +80,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         records.graph = Some(was.graph.cost() + now.graph.cost());
         records.surface = Some(was.derived.cost() + now.derived.cost());
     });
-    let findings = breaks(&was.derived, &now.derived);
+    let findings = breaks(&was.derived, &now.derived, |file| {
+        was.unread_now(file, &now)
+    });
     let code = judged(at, &now, findings, out)?;
-    let code = holes_said((&was, &now), at, code, out);
+    holes_said((&was, &now), at, out);
     inapplicable_note(&now.derived, out);
     let inside: Vec<syntax::Unparsed> = now
         .unparsed
@@ -95,12 +97,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         })
         .cloned()
         .collect();
-    let prior = contract::whole_base(at, &commit)?;
-    let unread_at_base = || {
-        let unreadable: Vec<String> = was.unparsed.into_iter().map(|file| file.file).collect();
-        prior.unread_either(&unreadable)
-    };
-    Ok(holes::unread_said(&inside, unread_at_base, at, code, out))
+    holes::unread_said(&inside, at, out);
+    Ok(code)
 }
 
 /// The base and the working tree, each measured, resolved and derived. A changed run that is
@@ -144,15 +142,25 @@ fn side(
     })
 }
 
+impl Side {
+    /// Whether a file this base side names by its base path is one no grammar read in the
+    /// working tree, so an item it declared is not measured now rather than removed. Spec 7.2.
+    fn unread_now(&self, file: &str, now: &Side) -> bool {
+        let current = self.current.get(file).map_or(file, String::as_str);
+        now.unparsed.iter().any(|unread| unread.file == current)
+    }
+}
+
 pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
 /// Every break the working tree makes against the base: a base surface the working tree lacks,
-/// once at the surface; and for every item of a surface both hold, an item gone, a measured
+/// once at the surface; and for every item of a surface both hold, an item gone where the file
+/// that declared it is still read, a measured
 /// contract changed or no longer declared, or an opaque clause changed. An addition is never a
 /// break, and an opaque item that became measured is not one either.
-fn breaks(was: &Derived, now: &Derived) -> Vec<Finding> {
+fn breaks(was: &Derived, now: &Derived, unread: impl Fn(&str) -> bool) -> Vec<Finding> {
     let mut out = Vec::new();
     for surface in &was.surfaces {
         let Some(after) = now.surfaces.iter().find(|held| {
@@ -170,27 +178,41 @@ fn breaks(was: &Derived, now: &Derived) -> Vec<Finding> {
             ));
             continue;
         };
-        for item in &surface.items {
-            let text = format!("{} ({})", item.path, item.kind);
-            match after.item(&item.path, item.kind) {
-                None => out.push(finding(surface, Some(item), &text, REMOVED, None, None)),
-                Some(current) => {
-                    if let Some((was, now)) = changed(&item.contract, &current.contract) {
-                        out.push(finding(
-                            surface,
-                            Some(current),
-                            &text,
-                            CHANGED,
-                            Some(was),
-                            Some(now),
-                        ));
-                    }
-                }
-            }
-        }
+        out.extend(
+            surface
+                .items
+                .iter()
+                .filter_map(|item| item_break((surface, after), item, &unread)),
+        );
     }
     out.sort_by(|a, b| (&a.file, &a.text).cmp(&(&b.file, &b.text)));
     out
+}
+
+/// The break one base item makes against the surface the working tree holds: gone, or its
+/// contract changed. An item whose declaring file no grammar reads now is not measured, so it
+/// is not gone. Spec 7.2.
+fn item_break(
+    (surface, after): (&Surface, &Surface),
+    item: &Item,
+    unread: impl Fn(&str) -> bool,
+) -> Option<Finding> {
+    let text = format!("{} ({})", item.path, item.kind);
+    match after.item(&item.path, item.kind) {
+        None if item.origin.as_ref().is_some_and(|(file, _)| unread(file)) => None,
+        None => Some(finding(surface, Some(item), &text, REMOVED, None, None)),
+        Some(current) => {
+            let (was, now) = changed(&item.contract, &current.contract)?;
+            Some(finding(
+                surface,
+                Some(current),
+                &text,
+                CHANGED,
+                Some(was),
+                Some(now),
+            ))
+        }
+    }
 }
 
 /// The two contracts of one item where the working tree's breaks the base's, in the words a
@@ -340,14 +362,14 @@ fn show(values: &Values) -> String {
 /// resolution holes of #50 inside one, and the surfaces whose entry klin could not measure,
 /// beside the ones the base held too, because a green run must not imply a surface was completely
 /// measured. ADR 0021, spec 8.6.
-fn holes_said((was, now): (&Side, &Side), at: &Context, code: u8, out: &mut Sink) -> u8 {
+fn holes_said((was, now): (&Side, &Side), at: &Context, out: &mut Sink) {
     let named = holes_of(now);
     holes::unresolved_said(
         (&named, || holes_of(was)),
         Unresolvable::PublicSurface,
-        (at, code),
+        at,
         out,
-    )
+    );
 }
 
 /// Every hole inside a surface under today's paths, each once, in one order: the surface's own

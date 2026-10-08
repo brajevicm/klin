@@ -302,13 +302,6 @@ pub fn language_of(path: &str) -> Option<LanguageId> {
     crate::syntax::language_of(path).map(|language| language.id)
 }
 
-/// Whether one grammar reads both paths, so the base's bytes of a file renamed between them were
-/// read under the grammar the base's own path selects.
-pub fn same_grammar(was: &str, now: &str) -> bool {
-    let grammar = |path| crate::syntax::language_of(path).map(|language| language.name);
-    grammar(was) == grammar(now)
-}
-
 /// Whether any adapter reads this language, which is what a consumer asks before it counts a
 /// file as one it could have measured.
 pub fn supports(id: LanguageId) -> bool {

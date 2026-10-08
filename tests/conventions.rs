@@ -798,19 +798,22 @@ fn the_language_comes_from_the_scope_and_never_from_the_grammar_that_reads_the_p
 }
 
 #[test]
-fn a_source_file_the_grammar_rejects_is_named_and_not_measured() {
+fn a_new_source_file_the_grammar_rejects_is_an_unreadable_review_item() {
     let tree = tree(GIT);
     tree.write("src/broken.rs", "fn broken( {\n");
 
     let run = tree.run(&["check", "conventions"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("src/broken.rs"), "{}", run.out);
-    assert!(run.says("grammar rejected it"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/broken.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
-fn a_source_file_the_grammar_rejected_at_the_base_too_is_a_note() {
+fn a_source_file_the_grammar_rejected_at_the_base_too_is_a_coverage_note() {
     let tree = tree(GIT);
     tree.write("src/broken.rs", "fn broken( {\n");
     tree.base();
@@ -819,7 +822,7 @@ fn a_source_file_the_grammar_rejected_at_the_base_too_is_a_note() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.rs"),
+        run.says("NOTE: src/broken.rs is not measured (unreadable)"),
         "{}",
         run.out
     );

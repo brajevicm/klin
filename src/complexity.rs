@@ -414,14 +414,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    let code = holes::lost_said(&lost, at, code, out);
-    Ok(holes::unread_said(
-        &sweep.unparsed,
-        || laid.unread_either(&before.unreadable),
-        at,
-        code,
-        out,
-    ))
+    holes::lost_said(&lost, out);
+    holes::unread_said(&sweep.unparsed, at, out);
+    Ok(code)
 }
 
 fn at_the_base(

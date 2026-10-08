@@ -615,15 +615,19 @@ fn a_swift_accessor_is_not_a_test_site() {
 }
 
 #[test]
-fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
+fn a_test_file_the_change_made_unparseable_is_a_measurement_lost_fail() {
     let tree = Tree::new();
     tree.write("tests/suite.rs", PATTERNS[0].base);
     tree.base();
     tree.write("tests/suite.rs", "%%% not rust %%%\n");
     let run = tree.run(&["check", "inventory"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("could not parse"), "{}", run.out);
-    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  measurement-lost"), "{}", run.out);
+    assert!(
+        run.says("tests/suite.rs was measured at the base"),
+        "{}",
+        run.out
+    );
     assert!(
         run.says("(1 file(s) found, 0 measured, 0 excluded, 1 unreadable)"),
         "{}",
@@ -632,7 +636,7 @@ fn a_test_file_no_grammar_reads_is_named_and_exits_two() {
 }
 
 #[test]
-fn a_test_file_no_grammar_read_at_the_base_either_is_a_note() {
+fn a_test_file_no_grammar_read_at_the_base_either_is_a_coverage_note() {
     let tree = Tree::new();
     tree.write("tests/suite.rs", "%%% not rust %%%\n");
     tree.base();
@@ -640,7 +644,7 @@ fn a_test_file_no_grammar_read_at_the_base_either_is_a_note() {
         let run = tree.run(args);
         assert_eq!(run.code, 0, "{args:?}: {}", run.out);
         assert!(
-            run.says("NOTE: 1 file(s) the grammar could not parse"),
+            run.says("NOTE: tests/suite.rs is not measured (unreadable)"),
             "{args:?}: {}",
             run.out
         );
@@ -732,7 +736,7 @@ fn a_stop_with_no_host_event_writes_its_note_to_stderr_and_blocks_nothing() {
 }
 
 #[test]
-fn an_oversized_test_source_preserves_the_named_resource_error() {
+fn an_oversized_new_test_source_is_a_resource_limit_review_item() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write(
@@ -740,12 +744,17 @@ fn an_oversized_test_source_preserves_the_named_resource_error() {
         &"test('works',()=>{});".repeat(4_000),
     );
     let run = tree.run(&["check", "inventory", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    assert!(report["errors"].as_array().expect("errors").iter().any(|error| {
-        error["check"] == "inventory"
-            && error["message"].as_str().is_some_and(|text| text.contains(
-                "tests/test_bundle.js:1: source-line resource ceiling exceeded (84000 bytes; ceiling 65536 bytes)"
-            ))
-    }), "{}", run.out);
+    assert!(
+        report["reviews"]
+            .as_array()
+            .expect("reviews")
+            .iter()
+            .any(|review| {
+                review["file"] == "tests/test_bundle.js" && review["reason"] == "resource-limit"
+            }),
+        "{}",
+        run.out
+    );
 }

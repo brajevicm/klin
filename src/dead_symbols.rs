@@ -109,9 +109,8 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         Line::new(Measured::DeadSymbols { judged, dead }, said),
         out,
     );
-    let prior = contract::whole_base(at, &commit)?;
-    let unread_at_base = || prior.unread_either(&before.files.unreadable);
-    let code = coverage_result(code, at, (&before, unread_at_base), &after, out);
+    holes::lost_said(&after.files.lost(&before.files, at.project, at.only), out);
+    holes::unread_said(&after.unparsed, at, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
 }
@@ -255,23 +254,6 @@ fn dead_findings(
         .filter(|state| state.dead)
         .map(|state| finding_with_lost_reference(state, before, after, held_before))
         .collect()
-}
-
-fn coverage_result(
-    code: u8,
-    at: &Context,
-    (before, unread_at_base): (&measurement::Measurement, impl FnOnce() -> Vec<String>),
-    after: &measurement::Measurement,
-    out: &mut Sink,
-) -> u8 {
-    let code = holes::not_measured_said(&after.unsupported, at, code, out);
-    let code = holes::lost_said(
-        &after.files.lost(&before.files, at.project, at.only),
-        at,
-        code,
-        out,
-    );
-    holes::unread_said(&after.unparsed, unread_at_base, at, code, out)
 }
 
 fn reports(

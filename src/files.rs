@@ -379,3 +379,144 @@ pub fn relative(path: &Path, repo_root: &Path) -> String {
         .display()
         .to_string()
 }
+
+/// What the in-tree `.gitattributes` files say of one path's form: `binary` or `-diff`, a
+/// `filter`, or a `working-tree-encoding` other than UTF-8. `-text` alone says nothing, because
+/// it only turns off end-of-line conversion. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub struct Form {
+    pub binary: bool,
+    pub filter: bool,
+    pub encoding: bool,
+}
+
+impl Form {
+    pub fn any(self) -> bool {
+        self.binary || self.filter || self.encoding
+    }
+}
+
+/// One attribute's state as the last line that names it left it.
+#[derive(Clone, PartialEq, Eq)]
+enum State {
+    Set,
+    Unset,
+    Unspecified,
+    Value(String),
+}
+
+/// The `.gitattributes` files that can name a path: the one at the tree root and one in each
+/// directory above the path, shallowest first, so a deeper file wins.
+pub fn attribute_files(path: &str) -> Vec<String> {
+    let mut out = vec![".gitattributes".to_string()];
+    let mut at = String::new();
+    for directory in path
+        .split('/')
+        .rev()
+        .skip(1)
+        .collect::<Vec<&str>>()
+        .into_iter()
+        .rev()
+    {
+        at.push_str(directory);
+        at.push('/');
+        out.push(format!("{at}.gitattributes"));
+    }
+    out
+}
+
+/// The form these `.gitattributes` texts give one path. Each text is keyed by the file that
+/// holds it, shallowest first. klin reads only in-tree files, never `.git/info/attributes` or
+/// `core.attributesFile`, so two machines agree. Spec 7.2.
+pub fn form(path: &str, texts: &[(String, String)]) -> Form {
+    let mut states: [Option<State>; 3] = [None, None, None];
+    for (file, text) in texts {
+        let directory = file.trim_end_matches(".gitattributes");
+        let Some(below) = path.strip_prefix(directory) else {
+            continue;
+        };
+        for line in text.lines() {
+            apply(line, below, &mut states);
+        }
+    }
+    let [diff, filter, encoding] = states;
+    Form {
+        binary: diff == Some(State::Unset),
+        filter: matches!(filter, Some(State::Set | State::Value(_))),
+        encoding: matches!(encoding, Some(State::Value(name)) if !name.eq_ignore_ascii_case("utf-8") && !name.eq_ignore_ascii_case("utf8")),
+    }
+}
+
+/// One `.gitattributes` line applied to a path below its directory.
+fn apply(line: &str, below: &str, states: &mut [Option<State>; 3]) {
+    let mut words = line.split_whitespace();
+    let Some(pattern) = words.next() else {
+        return;
+    };
+    if pattern.starts_with('#') || pattern.starts_with('!') || !attribute_matches(pattern, below) {
+        return;
+    }
+    for (at, state) in words.filter_map(attribute) {
+        states[at] = Some(state);
+    }
+}
+
+/// Which of the three attributes klin reads one word sets, and to what. The `binary` macro
+/// unsets `diff`, which is the one part of it klin reads.
+fn attribute(word: &str) -> Option<(usize, State)> {
+    match named(word) {
+        ("binary", State::Set) => Some((0, State::Unset)),
+        ("diff", state) => Some((0, state)),
+        ("filter", state) => Some((1, state)),
+        ("working-tree-encoding", state) => Some((2, state)),
+        _ => None,
+    }
+}
+
+/// The attribute one word names and the state it gives it: `name=value`, `-name`, `!name` or
+/// `name`.
+fn named(word: &str) -> (&str, State) {
+    if let Some((name, value)) = word.split_once('=') {
+        return (name, State::Value(value.to_string()));
+    }
+    match word.as_bytes().first() {
+        Some(b'-') => (&word[1..], State::Unset),
+        Some(b'!') => (&word[1..], State::Unspecified),
+        _ => (word, State::Set),
+    }
+}
+
+/// Whether a `.gitattributes` pattern names a path below its directory: by the basename for a
+/// pattern with no slash, and by the whole path below the directory otherwise. A pattern that
+/// ends in a slash names a directory, which names no file.
+fn attribute_matches(pattern: &str, below: &str) -> bool {
+    // ponytail: `*` here crosses `/`, which git's wildmatch does not; take a wildmatch port if a
+    // tree's attributes start to disagree with git's.
+    if pattern.ends_with('/') {
+        return false;
+    }
+    let anchored = pattern.trim_start_matches('/');
+    match pattern.contains('/') {
+        true => glob_matches(anchored.as_bytes(), below.as_bytes()),
+        false => {
+            let name = below.rsplit('/').next().unwrap_or(below);
+            glob_matches(pattern.as_bytes(), name.as_bytes())
+        }
+    }
+}
+
+/// The form a commit's `.gitattributes` files give one path, read out of git.
+pub fn form_at(root: &Path, commit: &str, path: &str) -> Form {
+    let files = attribute_files(path);
+    let named: Vec<&str> = files.iter().map(String::as_str).collect();
+    let mut texts = Vec::new();
+    crate::changed::blobs(root, commit, &named, |file, bytes| {
+        if let Some(bytes) = bytes {
+            texts.push((
+                file.to_string(),
+                String::from_utf8_lossy(bytes).into_owned(),
+            ));
+        }
+    });
+    form(path, &texts)
+}

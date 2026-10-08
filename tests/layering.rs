@@ -176,8 +176,12 @@ fn a_path_attribute_that_retargets_an_unchanged_file_is_new_debt_in_a_changed_ru
 
     let run = changed(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("1 file(s) left scrutiny"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/domain/shared.rs is not measured (left-scope)"),
+        "{}",
+        run.out
+    );
     assert!(
         run.says("src/domain/mod.rs:1") && run.says("domain → ui: src/ui/shared.rs"),
         "{}",
@@ -203,8 +207,13 @@ fn a_manifest_that_moves_the_library_root_changes_what_an_unchanged_file_reaches
 
     let run = changed(&tree);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("2 file(s) left scrutiny"), "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("REVIEW: src/domain/shared.rs is not measured (left-scope)")
+            && run.says("REVIEW: src/lib.rs is not measured (left-scope)"),
+        "{}",
+        run.out
+    );
     assert!(run.says("domain → ui: src/ui/shared.rs"), "{}", run.out);
 }
 
@@ -279,7 +288,7 @@ fn a_module_two_files_answered_at_the_base_too_is_a_note_by_hand_and_under_stric
 }
 
 #[test]
-fn a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook() {
+fn a_module_two_files_answer_is_a_review_item_by_hand_and_a_note_in_the_hook() {
     let tree = Tree::new();
     two_layers(&tree, "pub fn rule() {}\n");
     tree.base();
@@ -288,9 +297,10 @@ fn a_module_two_files_answer_is_unresolved_by_hand_and_a_note_in_the_hook() {
     let run = tree.run(&["check", "layering"]);
     let hook = harness::feed(tree.root(), &["gate", "--hook", "--changed"], A_STOP);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("names more than one file: src/ui.rs, src/ui/mod.rs"),
+        run.says("REVIEW: 1 dependency form(s) klin resolves could not be resolved")
+            && run.says("names more than one file: src/ui.rs, src/ui/mod.rs"),
         "{}",
         run.out
     );
@@ -334,7 +344,7 @@ fn typescript_relative_imports_resolve_and_package_imports_are_counted_not_guess
 }
 
 #[test]
-fn two_typescript_files_one_specifier_names_are_unresolved() {
+fn two_typescript_files_one_specifier_names_are_a_review_item() {
     let tree = Tree::new();
     tree.write("klin.json", WEB);
     tree.write("web/model/index.ts", "export const model = 1;\n");
@@ -344,9 +354,10 @@ fn two_typescript_files_one_specifier_names_are_unresolved() {
 
     let run = tree.run(&["check", "layering"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("names more than one TypeScript file: web/view/x.ts, web/view/x/index.ts"),
+        run.says("REVIEW: 1 dependency form(s)")
+            && run.says("names more than one TypeScript file: web/view/x.ts, web/view/x/index.ts"),
         "{}",
         run.out
     );
@@ -368,10 +379,10 @@ fn a_second_copy_of_a_form_the_base_could_not_resolve_is_new() {
 
     let run = tree.run(&["check", "layering"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says("NOTE: 1 dependency form(s) klin resolves could not be resolved")
-            && run.says("FAIL: 1 dependency form(s) klin resolves could not be resolved"),
+            && run.says("REVIEW: 1 dependency form(s) klin resolves could not be resolved"),
         "{}",
         run.out
     );
@@ -502,7 +513,7 @@ fn a_package_renamed_with_its_manifest_keeps_its_base_debt() {
 }
 
 #[test]
-fn a_missing_target_root_a_manifest_names_is_unresolved_whatever_the_scope() {
+fn a_missing_target_root_a_manifest_names_is_a_review_item_whatever_the_scope() {
     let tree = Tree::new();
     two_layers(&tree, "pub fn rule() {}\n");
     tree.write(
@@ -516,8 +527,12 @@ fn a_missing_target_root_a_manifest_names_is_unresolved_whatever_the_scope() {
 
     let run = tree.run(&["check", "layering"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("src/gone.rs"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW: 1 dependency form(s)") && run.says("src/gone.rs"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1058,9 +1073,11 @@ fn unsupported_local_paths_are_located_and_inherited_holes_stay_notes() {
         tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
         tree.write("web/view/x.ts", "export const x = 1;\n");
         let new = tree.run(&["check", "layering"]);
-        assert_eq!(new.code, 2, "{}", new.out);
+        assert_eq!(new.code, 0, "{}", new.out);
         assert!(
-            new.says("web/model/index.ts:1") && new.says("local paths alias"),
+            new.says("REVIEW:")
+                && new.says("web/model/index.ts:1")
+                && new.says("local paths alias"),
             "{}",
             new.out
         );
@@ -1107,8 +1124,12 @@ fn nested_configs_and_ambiguous_alias_candidates_are_not_guessed() {
             tree.write("web/view/x/index.ts", "export const x = 2;\n");
         }
         let run = tree.run(&["check", "layering"]);
-        assert_eq!(run.code, 2, "{}", run.out);
-        assert!(run.says("web/model/index.ts:1"), "{}", run.out);
+        assert_eq!(run.code, 0, "{}", run.out);
+        assert!(
+            run.says("REVIEW:") && run.says("web/model/index.ts:1"),
+            "{}",
+            run.out
+        );
     }
 }
 
@@ -1152,8 +1173,12 @@ fn local_extends_aliases_are_recognized_without_guessing_inheritance() {
     tree.write("web/model/index.ts", "import { x } from \"@/view/x\";\n");
     tree.write("web/view/x.ts", "export const x = 1;\n");
     let run = tree.run(&["check", "layering"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("local paths alias"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW:") && run.says("local paths alias"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1205,8 +1230,12 @@ fn equally_specific_typescript_wildcards_remain_unproved() {
     tree.write("web/model/tail.ts", "export const x = 1;\n");
     tree.write("web/view/index.ts", "import { x } from \"@/tail\";\n");
     let run = tree.run(&["check", "layering"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("configuration klin cannot prove"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("REVIEW:") && run.says("configuration klin cannot prove"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1220,9 +1249,11 @@ fn a_paths_config_does_not_prove_aliases_for_a_file_outside_its_project_roots() 
     tree.write("web/view/dep.ts", "export const x = 1;\n");
     tree.write("web/model/tool.ts", "import { x } from \"dep\";\n");
     let run = tree.run(&["check", "layering"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("web/model/tool.ts:1") && run.says("configuration klin cannot prove"),
+        run.says("REVIEW:")
+            && run.says("web/model/tool.ts:1")
+            && run.says("configuration klin cannot prove"),
         "{}",
         run.out
     );
@@ -1260,18 +1291,18 @@ fn files_and_include_roots_do_not_turn_exclude_into_a_program_ban() {
             r#""files":["web/model/index.ts"],"exclude":["web/model"]"#,
             1,
         ),
-        (r#""files":["web/view/x.ts"]"#, 2),
+        (r#""files":["web/view/x.ts"]"#, 0),
         (r#""files":[],"include":["web/model"]"#, 1),
         (r#""include":["."]"#, 1),
         (r#""include":["**/*"]"#, 1),
-        (r#""include":["web/**/*"],"exclude":["web/model"]"#, 2),
-        (r#""include":["web/model/*.ts"]"#, 2),
+        (r#""include":["web/**/*"],"exclude":["web/model"]"#, 0),
+        (r#""include":["web/model/*.ts"]"#, 0),
         (r#""include":["web/**/*.ts","unhandled/*/*.ts"]"#, 1),
         (
             r#""include":["web/**/*.ts"],"exclude":["web/model/*.ts"]"#,
-            2,
+            0,
         ),
-        (r#""include":["web"],"exclude":["web/model/*.ts"]"#, 2),
+        (r#""include":["web"],"exclude":["web/model/*.ts"]"#, 0),
         (
             r#""files":["web/model/index.ts"],"exclude":["web/model/*.ts"]"#,
             1,
@@ -1307,9 +1338,11 @@ fn imported_files_outside_project_roots_stay_unproved() {
     tree.write("web/view/x.ts", "import { x } from \"../model\";\n");
     tree.write("web/model/index.ts", "import { x } from \"dep\";\n");
     let run = tree.run(&["check", "layering"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("web/model/index.ts:1") && run.says("configuration klin cannot prove"),
+        run.says("REVIEW:")
+            && run.says("web/model/index.ts:1")
+            && run.says("configuration klin cannot prove"),
         "{}",
         run.out
     );
@@ -1358,9 +1391,11 @@ fn a_config_only_edit_changes_root_proof_for_an_unchanged_import() {
         r#"{"include":["web/view"],"compilerOptions":{"paths":{"dep":["./web/view/x"]}}}"#,
     );
     let run = tree.run(&["check", "--changed", "layering"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("web/model/index.ts:1") && run.says("configuration klin cannot prove"),
+        run.says("REVIEW:")
+            && run.says("web/model/index.ts:1")
+            && run.says("configuration klin cannot prove"),
         "{}",
         run.out
     );
@@ -1381,7 +1416,8 @@ fn output_and_dot_sources_need_explicit_files_for_root_proof() {
         tree.write(file, "import { x } from \"dep\";\n");
         tree.write("web/view/x.ts", "export const x = 1;\n");
         let unproved = tree.run(&["check", "layering"]);
-        assert_eq!(unproved.code, 2, "{file}: {}", unproved.out);
+        assert_eq!(unproved.code, 0, "{file}: {}", unproved.out);
+        assert!(unproved.says("REVIEW:"), "{file}: {}", unproved.out);
         tree.write(
             "tsconfig.json",
             &format!(r#"{{"files":["{file}"],{compiler}}}"#),
@@ -1418,8 +1454,12 @@ fn local_extends_recognition_uses_the_nearest_paths_object() {
         "import { x } from \"@middle/view/x\";\n",
     );
     let recognized = tree.run(&["check", "layering"]);
-    assert_eq!(recognized.code, 2, "{}", recognized.out);
-    assert!(recognized.says("local paths alias"), "{}", recognized.out);
+    assert_eq!(recognized.code, 0, "{}", recognized.out);
+    assert!(
+        recognized.says("REVIEW:") && recognized.says("local paths alias"),
+        "{}",
+        recognized.out
+    );
 }
 
 #[test]
@@ -1442,7 +1482,11 @@ fn openstock_style_recursive_roots_prove_typescript_sources() {
 
 #[test]
 fn a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external() {
-    for (import, code) in [("react", 0), ("@scope/pkg/sub", 0), ("@/missing", 2)] {
+    for (import, reviewed) in [
+        ("react", false),
+        ("@scope/pkg/sub", false),
+        ("@/missing", true),
+    ] {
         let tree = Tree::new();
         tree.write("klin.json", WEB);
         tree.write(
@@ -1455,6 +1499,7 @@ fn a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external
         );
         tree.write("web/view/x.ts", "export const x = 1;\n");
         let run = tree.run(&["check", "layering"]);
-        assert_eq!(run.code, code, "{import}: {}", run.out);
+        assert_eq!(run.code, 0, "{import}: {}", run.out);
+        assert_eq!(run.says("REVIEW:"), reviewed, "{import}: {}", run.out);
     }
 }

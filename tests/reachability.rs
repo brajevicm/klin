@@ -572,7 +572,7 @@ fn one_unreached_member_derives_no_broad_family() {
 }
 
 #[test]
-fn a_file_the_grammar_rejects_keeps_the_unparsed_rule() {
+fn a_new_file_the_grammar_rejects_is_an_unreadable_review_item() {
     let tree = three_reached_commands();
     tree.base();
     tree.write("src/commands/delta_command.rs", "pub fn broken( {\n");
@@ -580,10 +580,15 @@ fn a_file_the_grammar_rejects_keeps_the_unparsed_rule() {
     let run = tree.run(&["check", "reachability"]);
     let changed = tree.run(&["check", "--changed", "reachability"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("1 unreadable"), "{}", run.out);
-    assert_eq!(changed.code, 2, "{}", changed.out);
-    assert!(changed.says("1 unreadable"), "{}", changed.out);
+    let review = "REVIEW: src/commands/delta_command.rs is not measured (unreadable)";
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("1 unreadable") && run.says(review), "{}", run.out);
+    assert_eq!(changed.code, 0, "{}", changed.out);
+    assert!(
+        changed.says("1 unreadable") && changed.says(review),
+        "{}",
+        changed.out
+    );
 }
 
 #[test]
@@ -602,7 +607,7 @@ fn changed_mode_still_resolves_against_unchanged_callers() {
 }
 
 #[test]
-fn excepting_a_file_measured_at_the_base_reports_lost_coverage() {
+fn excepting_a_file_measured_at_the_base_is_a_left_scope_coverage_note() {
     let tree = three_reached_commands();
     tree.base();
     tree.write(
@@ -613,18 +618,11 @@ fn excepting_a_file_measured_at_the_base_reports_lost_coverage() {
     let run = tree.run(&["check", "reachability"]);
     let changed = tree.run(&["check", "--changed", "reachability"]);
 
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("1 file(s) left scrutiny"), "{}", run.out);
-    assert!(
-        run.says("src/commands/alpha_command.rs was measured at the base"),
-        "{}",
-        run.out
-    );
-    assert!(
-        changed.says("src/commands/alpha_command.rs was measured at the base"),
-        "{}",
-        changed.out
-    );
+    let note = "NOTE: src/commands/alpha_command.rs is not measured (left-scope)";
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(note), "{}", run.out);
+    assert_eq!(changed.code, 0, "{}", changed.out);
+    assert!(changed.says(note), "{}", changed.out);
 }
 
 #[test]

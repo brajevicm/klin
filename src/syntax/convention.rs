@@ -194,12 +194,16 @@ const ABSTRACT_BASES: &[&str] = &["Protocol", "ABC"];
 /// Every placeholder body shape one source text holds, at the declaration line of the function
 /// that holds it. Nothing for a path no grammar here reads, and nothing for a text the grammar
 /// rejects. Spec 8.2.
-pub fn stubs(path: &str, source: &str) -> Result<Vec<Stub>, Error> {
+pub fn stubs(path: &str, source: &str, unparsed: &mut Vec<Unparsed>) -> Result<Vec<Stub>, Error> {
     let Some(language) = language_of(path) else {
         return Ok(Vec::new());
     };
-    let Parsed::Read(file) = read(path, source, language)? else {
-        return Ok(Vec::new());
+    let file = match read(path, source, language)? {
+        Parsed::Read(file) => file,
+        Parsed::Rejected(refused) => {
+            unparsed.push(refused);
+            return Ok(Vec::new());
+        }
     };
     let lines = file.lines();
     let mut out: Vec<Stub> = file

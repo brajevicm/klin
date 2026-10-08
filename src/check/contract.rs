@@ -22,6 +22,7 @@ use crate::measurement::{self, Unchanged};
 use crate::project::Project;
 use crate::record::Values;
 use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
+
 use crate::{modules, surface};
 
 /// The outcome of a file no grammar reads. The hook counts these to report the holes a
@@ -542,23 +543,31 @@ pub enum Plain {
     Error(String),
 }
 
-/// A hole in what a gate measured. Whether it fails is decided by the check, and `fail` carries
-/// it. Spec 8.6.
+/// What the change did to a file klin cannot measure. Spec 7.2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Class {
+    /// The base measured the file and the change made it unmeasurable: a FAIL.
+    Lost,
+    /// The change made it unmeasurable with no clear agent cause: a review item.
+    Opened,
+    /// klin's own limit, which the change did not open: a coverage note.
+    Limit,
+}
+
+/// What a gate could not measure. The gate names the file and what it saw, and the runner sorts
+/// each file once for the run against the base. Spec 7.2.
 pub enum Hole {
+    /// A file `before` measured and `after` does not, though the tree still holds it, and why.
     Lost(Site),
-    LeftScrutiny(usize),
-    NotMeasured {
-        fail: bool,
-        files: Vec<Site>,
-    },
+    /// The files in the gate's scope no grammar read, each with its grammar's name.
+    Unparsed(Vec<Site>),
+    /// A manifest klin could not parse, which the gate already classed against the base.
+    Manifest { site: Site, class: Class },
+    /// Forms the gate supports and could not resolve, `opened` where the base held none of them.
     Unresolved {
-        fail: bool,
+        opened: bool,
         kind: Unresolvable,
         forms: Vec<(Located, String)>,
-    },
-    Unparsed {
-        fail: bool,
-        files: Vec<Site>,
     },
 }
 

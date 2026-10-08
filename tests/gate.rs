@@ -227,7 +227,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
-         sarif — needs a section a person writes\n",
+         sarif — needs a section a person writes\n\
+         measurement-lost — built-in\n",
         "{:?}",
         run.out
     );
@@ -252,7 +253,8 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
          layering — needs a section a person writes\n\
          public-api — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
-         sarif — needs a section a person writes\n",
+         sarif — needs a section a person writes\n\
+         measurement-lost — built-in\n",
         "{:?}",
         run.out
     );
@@ -554,9 +556,11 @@ fn hook_keeps_the_note_a_passing_gate_left_beside_the_failure() {
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
-    assert!(run.says("NOTE:"), "{}", run.out);
-    assert!(run.says("src/flow.rs"), "{}", run.out);
-    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(
+        run.says("src/flow.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("OK:"), "{}", run.out);
 }
 
@@ -1071,21 +1075,22 @@ fn a_config_the_run_cannot_read_is_a_json_object_too() {
 }
 
 #[test]
-fn a_file_the_grammar_rejected_is_a_json_error_at_its_own_file() {
+fn a_new_file_the_grammar_rejected_is_one_review_item_at_its_own_file() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
     let run = tree.run(&["check", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
+    assert!(list(&report, "errors").is_empty(), "{}", run.out);
     assert_eq!(
-        outcomes(list(&report, "errors")),
-        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
+        outcomes(list(&report, "reviews")),
+        [("", "unreadable")],
         "{}",
         run.out
     );
     assert_eq!(
-        field(&list(&report, "errors")[0], "file"),
+        field(&list(&report, "reviews")[0], "file"),
         "src/broken.rs",
         "{}",
         run.out
@@ -1093,28 +1098,27 @@ fn a_file_the_grammar_rejected_is_a_json_error_at_its_own_file() {
 }
 
 #[test]
-fn a_file_no_grammar_read_at_the_base_either_is_a_note_by_hand_and_under_strict() {
+fn a_file_no_grammar_read_at_the_base_either_is_a_coverage_note() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
     tree.base();
 
-    for args in [&["check"][..], &["check"]] {
-        let run = tree.run(args);
-        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
-        assert!(
-            run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.rs"),
-            "{args:?}: {}",
-            run.out
-        );
-    }
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("NOTE: src/broken.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
     let run = tree.run(&["check", "--json"]);
     let report = run.json();
     assert_eq!(
         outcomes(list(&report, "notes")),
-        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
+        [("", "unreadable")],
         "{}",
         run.out
     );
+    assert_eq!(list(&report, "notes")[0]["coverage"], true, "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
 }
 
@@ -1128,7 +1132,7 @@ fn a_file_no_grammar_read_at_the_base_either_is_a_note_after_a_rename() {
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/moved.rs"),
+        run.says("NOTE: src/moved.rs is not measured (unreadable)"),
         "{}",
         run.out
     );
@@ -1144,23 +1148,24 @@ fn a_rename_one_grammar_reads_at_both_paths_keeps_the_note() {
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: 1 file(s) the grammar could not parse") && run.says("src/broken.mjs"),
+        run.says("NOTE: src/broken.mjs is not measured (unreadable)"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_file_the_base_parsed_and_the_change_broke_is_exit_two_by_hand() {
+fn a_file_the_base_parsed_and_the_change_broke_is_a_measurement_lost_fail_by_hand() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn fine() -> i32 { 1 }\n");
     tree.base();
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("FAIL  measurement-lost"), "{}", run.out);
     assert!(
-        run.says("FAIL: 1 file(s) the grammar could not parse"),
+        run.says("src/broken.rs was measured at the base"),
         "{}",
         run.out
     );
@@ -1296,7 +1301,8 @@ fn list_names_the_excluded_gates() {
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
-         sarif — needs a section a person writes\n",
+         sarif — needs a section a person writes\n\
+         measurement-lost — built-in\n",
         "{:?}",
         run.out
     );
@@ -1514,7 +1520,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
          inventory — needs a section a person writes\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
-         sarif — needs a section a person writes\n",
+         sarif — needs a section a person writes\n\
+         measurement-lost — built-in\n",
         "{:?}",
         run.out
     );
@@ -1539,9 +1546,11 @@ fn hook_notes_a_file_no_grammar_reads_and_does_not_block_the_stop() {
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says(r#"{"systemMessage":"#), "{}", run.out);
-    assert!(run.says("NOTE:"), "{}", run.out);
-    assert!(run.says("src/flow.rs"), "{}", run.out);
-    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(
+        run.says("src/flow.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
     assert!(!run.says("stop again"), "{}", run.out);
 }
 
@@ -1555,8 +1564,11 @@ fn hook_still_blocks_on_a_gate_failure_beside_the_note() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("a quality gate failed"), "{}", run.out);
     assert!(run.says("FAIL  doc-size"), "{}", run.out);
-    assert!(run.says("src/flow.rs"), "{}", run.out);
-    assert!(run.says("the Rust grammar rejected it"), "{}", run.out);
+    assert!(
+        run.says("src/flow.rs is not measured (unreadable)"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -1576,12 +1588,10 @@ fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
     let run = harness::feed(tree.root(), &["gate", "--hook", "--json"], A_STOP);
     assert_eq!(run.code, 1, "{}", run.out);
     let report = object(run.out.lines().last().unwrap_or_default(), &run);
-    assert_eq!(
-        outcomes(list(&report, "notes")),
-        [("complexity", "unparsed"), ("dead-symbols", "unparsed")],
-        "{}",
-        run.out
-    );
+    let notes = list(&report, "notes");
+    assert_eq!(notes.len(), 1, "{}", run.out);
+    assert_eq!(field(&notes[0], "outcome"), "unparsed", "{}", run.out);
+    assert_eq!(field(&notes[0], "file"), "src/broken.rs", "{}", run.out);
     assert!(list(&report, "findings").is_empty(), "{}", run.out);
 }
 
@@ -1684,67 +1694,69 @@ fn lost_file() -> Tree {
 }
 
 #[test]
-fn a_coverage_loss_is_a_note_under_the_gate_in_the_json() {
+fn a_file_klin_json_drops_is_a_left_scope_coverage_note_in_the_json() {
     let tree = lost_file();
 
     let run = tree.run(&["check", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
     assert_eq!(
         outcomes(list(&report, "notes")),
-        [("complexity", "lost")],
+        [("", "left-scope")],
         "{}",
         run.out
     );
     let note = &list(&report, "notes")[0];
     assert_eq!(field(note, "file"), "src/gone.rs", "{}", run.out);
-    let gates = harness::gate_rows(&report)
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    let gate = gates
+    assert_eq!(note["coverage"], true, "{}", run.out);
+    let complexity = list(&report, "capabilities")
         .iter()
-        .find(|gate| field(gate, "name") == "complexity")
+        .find(|row| field(row, "name") == "complexity")
         .unwrap_or_else(|| panic!("no complexity row: {}", run.out));
-    assert_eq!(gate["notes"], 1, "{}", run.out);
+    assert_eq!(complexity["coverage"]["limits"], 1, "{}", run.out);
 }
 
 #[test]
-fn a_coverage_loss_in_the_hook_is_a_note_and_the_turn_ends() {
+fn a_file_klin_json_drops_does_not_block_the_stop() {
     let tree = lost_file();
 
     let run = stop(&tree, A_STOP);
     assert_ne!(run.code, 2, "{}", run.out);
+    assert!(!run.says("stop again"), "{}", run.out);
+}
+
+#[test]
+fn a_file_klin_json_drops_passes_a_check_with_a_coverage_note() {
+    let tree = lost_file();
+
+    let run = tree.run(&["check"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("NOTE: src/gone.rs was measured at the base"),
+        run.says("NOTE: src/gone.rs is not measured (left-scope)"),
         "{}",
         run.out
     );
 }
 
 #[test]
-fn a_coverage_loss_under_strict_fails_the_run() {
-    let tree = lost_file();
-
-    let run = tree.run(&["check"]);
-
-    assert_ne!(run.code, 0, "{}", run.out);
-    assert!(run.says("FAIL: 1 file(s) left scrutiny"), "{}", run.out);
-}
-
-#[test]
-fn a_minified_bundle_reports_a_resource_error_in_json() {
+fn a_minified_bundle_is_a_resource_limit_review_item_in_json() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");
     tree.write("bundle.js", &"function bundled(){};".repeat(4_000));
     let run = tree.run(&["check", "--json"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     let report = run.json();
-    assert_eq!(field(&report, "execution"), "error", "{}", run.out);
-    assert!(
-        list(&report, "errors").iter().any(|error| {
-            field(error, "message").contains("bundle.js:1: source-line resource ceiling exceeded")
-        }),
+    assert_eq!(field(&report, "execution"), "ok", "{}", run.out);
+    assert_eq!(
+        outcomes(list(&report, "reviews")),
+        [("", "resource-limit")],
+        "{}",
+        run.out
+    );
+    assert_eq!(
+        field(&list(&report, "reviews")[0], "file"),
+        "bundle.js",
         "{}",
         run.out
     );

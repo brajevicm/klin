@@ -1011,7 +1011,7 @@ fn a_pre_compact_recorded_scope_falls_back_to_the_whole_repository() {
     tree.write("klin.json", r#"{ "complexity": { "in": "src/clean.rs" } }"#);
 
     let run = gate(&tree);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("derived: complexity cc 12 ("), "{}", run.out);
     assert!(run.says("recorded scope: whole repository"), "{}", run.out);
 }
@@ -1063,7 +1063,7 @@ fn an_in_of_the_repository_root_is_the_whole_repository() {
 }
 
 #[test]
-fn narrowing_today_keeps_the_recorded_ceiling_and_strict_lost_coverage() {
+fn narrowing_today_keeps_the_recorded_ceiling_and_notes_the_left_scope() {
     let tree = Tree::new();
     tree.write("src/a.rs", &many(CLEAN, 25));
     tree.write("src/b.rs", &many(CLEAN, 25));
@@ -1075,10 +1075,14 @@ fn narrowing_today_keeps_the_recorded_ceiling_and_strict_lost_coverage() {
     );
 
     let run = tree.run(&["check"]);
-    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("derived: complexity cc 10"), "{}", run.out);
     assert!(run.says("today's complexity scope"), "{}", run.out);
-    assert!(run.says("src/a.rs was measured at the base"), "{}", run.out);
+    assert!(
+        run.says("NOTE: src/a.rs is not measured (left-scope) — measured at the base and not now"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
