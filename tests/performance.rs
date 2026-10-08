@@ -75,6 +75,7 @@ struct Fixture {
     profile: Profile,
     scope: &'static str,
     config: &'static str,
+    layering: bool,
     /// A directory of stand-in `cargo` and `tsc` commands and the `PATH` that puts it first,
     /// so a configuration that derives the build measures its preparation and no compiler.
     toolchain: Option<(Tree, String)>,
@@ -264,7 +265,9 @@ impl Fixture {
         let tsx = files_per_language / 100;
         let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
         let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
-        let layering = profile.units.is_some() && std::env::var_os("KLIN_BIN").is_none();
+        let layering = profile.units.is_some()
+            && config != "legacy"
+            && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
         write_project_files(&tree, scope, config, layering);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
@@ -300,6 +303,7 @@ impl Fixture {
             profile,
             scope,
             config,
+            layering,
             toolchain: (config == "empty").then(toolchain),
         }
     }
@@ -322,13 +326,11 @@ impl Fixture {
         if !self.current_dense() {
             return;
         }
-        for name in [
-            "complexity",
-            "dead-symbols",
-            "reachability",
-            "layering",
-            "public-api",
-        ] {
+        let layering = self.layering.then_some("layering");
+        for name in ["complexity", "dead-symbols", "reachability", "public-api"]
+            .into_iter()
+            .chain(layering)
+        {
             assert!(
                 samples.gates.contains_key(&format!("{name}_ms")),
                 "{name} gate timing is missing: {:?}",
@@ -358,15 +360,19 @@ impl Fixture {
         assert_eq!(median_counter("escapes_work_parses"), changed as u64);
         assert_eq!(median_counter("dead-symbols_facts_cached"), unchanged);
         assert_eq!(median_counter("dead-symbols_facts_shared"), unchanged);
-        for name in [
-            "layering_facts_reads",
-            "layering_facts_parses",
-            "public-api_facts_reads",
-            "public-api_facts_parses",
-        ] {
+        let layering: &[&str] = match self.layering {
+            true => &["layering_facts_reads", "layering_facts_parses"],
+            false => &[],
+        };
+        for name in ["public-api_facts_reads", "public-api_facts_parses"]
+            .iter()
+            .chain(layering)
+        {
             assert_eq!(median_counter(name), 0, "{name}");
         }
-        assert!(median_counter("layering_graph_modules") > 0);
+        if self.layering {
+            assert!(median_counter("layering_graph_modules") > 0);
+        }
         assert_eq!(median_counter("public-api_surface_surfaces"), 4);
         assert!(median_counter("public-api_surface_items") > 0);
         assert_eq!(median_counter("public-api_surface_holes"), 0);
@@ -776,11 +782,15 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
     let changed = rows.changed;
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}, complexity_scope={}, config={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
+        "fixture {} ({}, complexity_scope={}, config={}, layering={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
         size,
         fixture.profile.name,
         fixture.scope,
         fixture.config,
+        match fixture.layering {
+            true => "on",
+            false => "off",
+        },
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,
