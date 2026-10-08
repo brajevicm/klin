@@ -318,3 +318,77 @@ fn a_whole_policy_parses_no_source_for_the_public_surfaces() {
     assert_eq!(named.code, 0, "{}", named.out);
     assert!(named.says("surface "), "{}", named.out);
 }
+
+fn value(json: &Value, name: &str, key: &str) -> Value {
+    capability(json, name)["values"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|value| value["key"] == key)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// The JSON of `klin policy public-api` carries each derived surface and its items, so two
+/// contracts never read alike. Spec 11.6, 11.7.
+#[test]
+fn policy_json_carries_each_public_surface_and_its_items() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"core\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\npath = \"src/lib.rs\"\n",
+    );
+    tree.write("src/lib.rs", "pub fn exposed() {}\n");
+    tree.base();
+
+    let json = tree.run(&["policy", "--json", "public-api"]).json();
+    let surface = value(&json, "public-api", "surface");
+    assert_eq!(surface["provenance"], "derived", "{json}");
+    assert_eq!(surface["entry"], "core (Cargo.toml)", "{json}");
+    assert_eq!(surface["value"]["items"][0]["path"], "exposed", "{json}");
+}
+
+/// A named convention is the whole scope of the JSON, as it is of the text.
+#[test]
+fn policy_json_of_one_convention_names_no_other() {
+    let tree = tree(
+        r#"{"conventions": {
+            "no-todo": {"text": "TODO", "remedy": "Do it."},
+            "no-fixme": {"text": "FIXME", "remedy": "Fix it."}
+        }}"#,
+    );
+
+    let json = tree
+        .run(&["policy", "--json", "conventions", "no-todo"])
+        .json();
+    let values = capability(&json, "conventions")["values"].to_string();
+    assert!(values.contains("no-todo"), "{json}");
+    assert!(!values.contains("no-fixme"), "{json}");
+}
+
+/// A built-in value is typed as a pinned one would be, and its words for a person sit apart.
+#[test]
+fn policy_json_types_a_built_in_value_as_a_pinned_one() {
+    let tree = tree(r#"{"sarif": [{"name": "scan", "report": "scan.sarif"}]}"#);
+    let omitted = value(
+        &tree.run(&["policy", "--json", "scan"]).json(),
+        "scan",
+        "differential",
+    );
+    assert_eq!(omitted["provenance"], "built-in", "{omitted}");
+    assert_eq!(omitted["value"], false, "{omitted}");
+    assert_eq!(omitted["description"], "`false`", "{omitted}");
+
+    tree.write(
+        "klin.json",
+        r#"{"sarif": [{"name": "scan", "report": "scan.sarif", "differential": false}]}"#,
+    );
+    let pinned = value(
+        &tree.run(&["policy", "--json", "scan"]).json(),
+        "scan",
+        "differential",
+    );
+    assert_eq!(pinned["provenance"], "pinned", "{pinned}");
+    assert_eq!(pinned["value"], omitted["value"], "{pinned}");
+}

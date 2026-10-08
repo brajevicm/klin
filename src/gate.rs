@@ -1360,7 +1360,7 @@ fn active<'a>(
 /// values a person pinned that the step did not name, then the values neither gave, as built in.
 fn capability<'a>(args: &Args, project: &Project, gate: &'a Gate) -> Result<Capability<'a>, Error> {
     let check = gate.check;
-    let fields = section_of(project, gate);
+    let fields = section_of(project, gate, args.entry.as_deref());
     let (mut lines, mut values) = said_by(gate, project, args, &fields)?;
     values.extend(
         fields
@@ -1467,7 +1467,7 @@ fn said_values(
         !key.default.is_empty() && !fields.contains_key(key.name) && !keys.contains(&key.name)
     });
     for key in built_in {
-        values.push(json!({ "key": key.name, "value": key.default, "provenance": "built-in" }));
+        values.push(key.built_in());
         lines.push(format!(
             "built-in: {} {} {}",
             check.section, key.name, key.default
@@ -1477,8 +1477,9 @@ fn said_values(
 }
 
 /// The fields a person wrote for one gate: its section, or its own entry of a section that is a
-/// list of named entries, less the name.
-fn section_of(project: &Project, gate: &Gate) -> Map<String, Value> {
+/// list of named entries, less the name. With an entry named, such as one convention, only that
+/// entry's field.
+fn section_of(project: &Project, gate: &Gate, entry: Option<&str>) -> Map<String, Value> {
     let section = project.config.pinned(gate.check.section);
     let fields = match section {
         Some(Value::Array(entries)) => entries
@@ -1493,6 +1494,7 @@ fn section_of(project: &Project, gate: &Gate) -> Map<String, Value> {
     if gate.check.gate_per_entry {
         fields.remove(contract::NAMED.name);
     }
+    fields.retain(|key, _| entry.is_none_or(|entry| entry == key));
     fields
 }
 

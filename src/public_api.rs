@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::check::contract::{self, Context, Line, Listed, Measured, Sink, Site, Unresolvable};
 use crate::check::holes;
@@ -479,7 +479,53 @@ pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Expla
     }
     Ok(contract::Explained {
         lines: out.lines().map(str::to_string).collect(),
-        values: Vec::new(),
+        values: surface_values(&derived),
+    })
+}
+
+/// Each derived surface with its items and holes, and each package with no supported surface,
+/// as the JSON of `klin policy public-api` carries them. Spec 11.6.
+fn surface_values(derived: &Derived) -> Vec<Value> {
+    let surfaces = derived.surfaces.iter().map(|surface| {
+        json!({
+            "key": "surface",
+            "entry": surface.identity(),
+            "provenance": "derived",
+            "value": {
+                "language": surface.language,
+                "source": surface.source,
+                "items": surface.items.iter().map(item_value).collect::<Vec<_>>(),
+                "holes": surface.holes.iter().map(|hole| json!({
+                    "file": hole.file,
+                    "line": hole.line,
+                    "text": hole.text,
+                    "why": hole.why,
+                })).collect::<Vec<_>>(),
+            },
+        })
+    });
+    let unsupported = derived.inapplicable.iter().map(|held| {
+        json!({
+            "key": "unsupported",
+            "entry": held.what,
+            "provenance": "derived",
+            "value": held.why,
+        })
+    });
+    surfaces.chain(unsupported).collect()
+}
+
+fn item_value(item: &Item) -> Value {
+    let (contract, said) = match &item.contract {
+        Contract::Measured(signature) => ("measured", Some(signature)),
+        Contract::Opaque(clause) => ("opaque", clause.as_ref()),
+    };
+    json!({
+        "path": item.path,
+        "kind": item.kind,
+        "contract": contract,
+        "signature": said,
+        "origin": item.origin.as_ref().map(|(file, line)| json!({ "file": file, "line": line })),
     })
 }
 

@@ -41,12 +41,9 @@ pub fn explain(project: &Project, named: Option<&str>) -> Result<Explained, Erro
             .iter()
             .flat_map(|convention| {
                 built_in(convention).map(|key| {
-                    json!({
-                        "key": key.name,
-                        "entry": convention.name,
-                        "value": key.default,
-                        "provenance": "built-in",
-                    })
+                    let mut value = key.built_in();
+                    value["entry"] = json!(convention.name);
+                    value
                 })
             })
             .collect(),

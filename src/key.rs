@@ -68,6 +68,26 @@ pub struct Key {
     pub shape: Shape,
 }
 
+impl Key {
+    /// The `built-in` entry of `klin policy --json` for a key no one pinned or derived: the
+    /// value a run uses, typed as a pinned one would be, or null where `default` only describes
+    /// it, with those words beside it. Spec 11.6.
+    pub fn built_in(&self) -> serde_json::Value {
+        let typed: Option<serde_json::Value> = match self.shape {
+            Shape::Boolean | Shape::WholeNumber | Shape::Ceiling => {
+                serde_json::from_str(self.default.trim_matches('`')).ok()
+            }
+            _ => None,
+        };
+        serde_json::json!({
+            "key": self.name,
+            "value": typed,
+            "description": self.default,
+            "provenance": "built-in",
+        })
+    }
+}
+
 /// The vocabulary of spec 5.3: the keys every section spells the same way and means the same
 /// by. A section takes a row and states only what differs, so one meaning is written once.
 pub const ROOTS: Key = Key {

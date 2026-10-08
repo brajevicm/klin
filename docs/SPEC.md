@@ -1790,8 +1790,16 @@ Section 13.3.
 
 `schema_version`, `command`, `config {path, present}`, `derivation
 {commit}`, `capabilities [{name, section, kind, activation, placement,
-state, values [{key, value, provenance, rule}], limitations}]`, `build`,
-`accepted`, `state_dir`.
+state, values [{key, entry, value, provenance, rule, description}],
+limitations}]`, `build`, `accepted`, `state_dir`.
+
+A value's `value` is typed as a pinned one would be. A `built-in` value
+carries its words for a person in `description`, and its `value` is null
+where only those words state it. `entry` names the entry a value belongs to,
+such as one convention or one `public-api` surface. `klin policy NAME ENTRY`
+carries only that entry. `klin policy --json public-api` carries each surface
+as a `surface` value with its items and holes, and each package with no
+supported surface as an `unsupported` value.
 
 ### 11.8 `klin update`
 
