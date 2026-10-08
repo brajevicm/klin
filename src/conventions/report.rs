@@ -2,19 +2,23 @@
 //! pattern, and the fix. It reads the configuration and walks the tree's paths, and it parses no
 //! source and compares nothing with the base, so it runs no check. Spec 8.4, 11.6, ADR 0037.
 
+use serde_json::json;
+
+use crate::check::contract::Explained;
 use crate::config::Config;
 use crate::error::Error;
+use crate::key::Key;
 use crate::project::Project;
 use crate::scope::Selector;
 use crate::syntax::pattern;
 
 use super::rules::{
-    Code, Convention, Hole, Matcher, Place, Unresolved, conventions, holes, joined, resolved,
-    walked,
+    Code, Convention, EXCEPT, Hole, IN, Matcher, Place, Unresolved, conventions, holes, joined,
+    resolved, walked,
 };
 
 /// Every convention explained, or only the one `NAME` names.
-pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Error> {
+pub fn explain(project: &Project, named: Option<&str>) -> Result<Explained, Error> {
     let config = &project.config;
     let conventions = conventions(config)?;
     let places = walked(config, project.tree())?;
@@ -24,11 +28,37 @@ pub fn explain(project: &Project, named: Option<&str>) -> Result<Vec<String>, Er
     {
         return Err(unknown(config, name, &conventions));
     }
-    Ok(conventions
+    let chosen: Vec<&Convention> = conventions
         .iter()
         .filter(|convention| named.is_none_or(|name| name == convention.name))
-        .flat_map(|convention| explained(config, convention, &places, &holes))
-        .collect())
+        .collect();
+    Ok(Explained {
+        lines: chosen
+            .iter()
+            .flat_map(|convention| explained(config, convention, &places, &holes))
+            .collect(),
+        values: chosen
+            .iter()
+            .flat_map(|convention| {
+                built_in(convention).map(|key| {
+                    let mut value = key.built_in();
+                    value["entry"] = json!(convention.name);
+                    value
+                })
+            })
+            .collect(),
+    })
+}
+
+/// The scope keys a convention leaves out, which it runs under at their default. Its language
+/// is not here: the explanation says how that was settled. Spec 11.6.
+fn built_in(convention: &Convention) -> impl Iterator<Item = &'static Key> {
+    [
+        (&IN, convention.within.is_empty()),
+        (&EXCEPT, convention.except.is_empty()),
+    ]
+    .into_iter()
+    .filter_map(|(key, left_out)| left_out.then_some(key))
 }
 
 fn explained(
@@ -50,6 +80,7 @@ fn explained(
         Err(problem) => out.push(format!("  {}", Unresolved::told(&problem))),
     }
     out.extend(empty(holes, convention).map(|line| format!("  {line}")));
+    out.extend(built_in(convention).map(|key| format!("  built-in: {} {}", key.name, key.default)));
     out.push(format!("  Fix: {}", convention.remedy));
     out
 }

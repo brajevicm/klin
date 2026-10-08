@@ -9,9 +9,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use crate::cache::Cache;
 use crate::scope::{self, ROOT, ancestors, under_or_at};
 use crate::tree::Tree;
-use crate::{cache, files, git, state};
+use crate::{files, git, state};
 
 /// The key one derivation commit's survey is cached under, beside the other derivations of that
 /// commit. Spec 6.6.
@@ -46,6 +47,8 @@ pub struct Survey {
 pub struct Facts {
     /// The state directory the caches sit in, and `None` where klin keeps none.
     pub state: Option<PathBuf>,
+    /// Whether the run writes the state directory, which a read-only command does not.
+    pub keeps: bool,
     pub commit: Option<String>,
     /// The derivation commit's own survey, and `None` where there is no commit to survey.
     pub held: Option<Survey>,
@@ -68,15 +71,24 @@ impl Facts {
     pub fn at_commit(&self) -> Option<(&Survey, &str)> {
         self.held.as_ref().zip(self.commit.as_deref())
     }
+
+    pub fn cache(&self) -> Option<Cache<'_>> {
+        self.state.as_deref().map(|at| Cache::new(at, self.keeps))
+    }
 }
 
 /// The facts of a tree, read from the derivation commit's cached survey and the tree's one file
-/// list. Nothing expensive is computed here. Spec 4.3.
-pub fn facts(tree: &Tree, commit: Option<&str>) -> Facts {
+/// list. Nothing expensive is computed here. A run that does not keep state reads the state
+/// directory only where it already is. Spec 4.3, 11.6.
+pub fn facts(tree: &Tree, commit: Option<&str>, keeps: bool) -> Facts {
     let root = tree.root();
-    let directory = state::ready(root).ok();
+    let directory = match keeps {
+        true => state::ready(root).ok(),
+        false => state::dir(root).filter(|at| at.is_dir()),
+    };
     let commit = commit.map(str::to_string);
-    let held = at_commit(root, directory.as_deref(), commit.as_deref());
+    let cache = directory.as_deref().map(|at| Cache::new(at, keeps));
+    let held = at_commit(root, cache, commit.as_deref());
     let found = union(&held.clone().unwrap_or_default(), &walked(tree), root);
     let unheld = match &held {
         Some(held) => found
@@ -89,6 +101,7 @@ pub fn facts(tree: &Tree, commit: Option<&str>) -> Facts {
     };
     Facts {
         state: directory,
+        keeps,
         commit,
         held,
         found,
@@ -98,17 +111,17 @@ pub fn facts(tree: &Tree, commit: Option<&str>) -> Facts {
 
 /// The derivation commit's own survey, from the cache when this binary wrote it and from one
 /// listing of that commit otherwise. Outside a repository there is no commit and no survey.
-fn at_commit(root: &Path, at: Option<&Path>, commit: Option<&str>) -> Option<Survey> {
+fn at_commit(root: &Path, cache: Option<Cache>, commit: Option<&str>) -> Option<Survey> {
     let commit = commit?;
-    if let Some(held) = at
-        .and_then(|at| cache::read(at, commit, KEY))
+    if let Some(held) = cache
+        .and_then(|cache| cache.read(commit, KEY))
         .and_then(|held| read(&held))
     {
         return Some(held);
     }
     let found = of(&listed(root, commit)?);
-    if let Some(at) = at {
-        cache::write(at, commit, KEY, kept(&found));
+    if let Some(cache) = cache {
+        cache.write(commit, KEY, kept(&found));
     }
     Some(found)
 }

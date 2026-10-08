@@ -59,7 +59,7 @@ pub(super) const REMEDY: Key = Key {
 };
 
 pub(super) const IN: Key = scope::IN;
-const EXCEPT: Key = scope::EXCEPT;
+pub(super) const EXCEPT: Key = scope::EXCEPT;
 
 pub(super) const LANGUAGE: Key = Key {
     name: "language",

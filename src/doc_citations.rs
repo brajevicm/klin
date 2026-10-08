@@ -18,6 +18,7 @@ use crate::error::Error;
 use crate::files;
 use crate::git::Repo;
 use crate::key::Key;
+use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::tree::Tree;
@@ -83,7 +84,7 @@ fn evaluate(
 ) -> Result<u8, Error> {
     let listing = listing(at, named, roots);
     if named.is_none() {
-        said(&listing, out);
+        out.tell_each(derive(at.project)?);
     }
     let commit = contract::base_commit(&listing.root, at)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
@@ -103,24 +104,15 @@ fn evaluate(
     ))
 }
 
-/// The documents a run read, as the one `derived:` line and its JSON entry.
-fn said(listing: &Listing, out: &mut Sink) {
-    if listing.documents.is_empty() {
-        return;
+/// The documents a run reads, as the one `derived:` line and its JSON entry.
+pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+    let names = &project.facts().found.documents;
+    if names.is_empty() {
+        return Ok(Vec::new());
     }
-    let names: Vec<&str> = listing
-        .documents
-        .iter()
-        .map(|document| document.name.as_str())
-        .collect();
-    let shown = names.join(", ");
-    out.tell(contract::Derived::keyed(
-        SECTION,
-        None,
-        names.into(),
-        shown,
-        RULE,
-    ));
+    let said =
+        contract::Derived::keyed(SECTION, None, names.clone().into(), names.join(", "), RULE);
+    Ok(vec![said.into()])
 }
 
 /// What this gate discovered: one document per entry, and the ones it read. A document the

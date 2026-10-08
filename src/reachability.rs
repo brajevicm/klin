@@ -12,6 +12,8 @@ use std::path::Path;
 use serde_json::{Map, Value};
 
 use crate::base;
+use crate::cache::Cache;
+use crate::changed;
 use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
@@ -29,7 +31,6 @@ use crate::syntax::structural::facts::{Declaration, DeclarationKind};
 use crate::syntax::structural::{self, Declared, SourceIndex};
 use crate::syntax::{self, LanguageId};
 use crate::tree::Tree;
-use crate::{cache, changed};
 
 pub const SECTION: &str = "reachability";
 
@@ -128,7 +129,9 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let config = &project.config;
     let families = families(project)?;
-    said_families(&families, out);
+    if let Some(said) = said_families(&families) {
+        out.tell(said);
+    }
     let commit = contract::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
@@ -334,10 +337,18 @@ fn measure(
     measurement::measure(found, tree, unchanged)
 }
 
+pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+    let families = families(project)?;
+    Ok(said_families(&families)
+        .into_iter()
+        .map(Into::into)
+        .collect())
+}
+
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.
-fn said_families(families: &[Family], out: &mut Sink) {
+fn said_families(families: &[Family]) -> Option<contract::Derived> {
     if families.is_empty() {
-        return;
+        return None;
     }
     let names = families
         .iter()
@@ -346,7 +357,7 @@ fn said_families(families: &[Family], out: &mut Sink) {
         .join(", ");
     let value = Value::Array(families.iter().map(Family::record).collect());
     let rule = "the file families the derivation commit proves reached";
-    out.tell(contract::Derived::keyed(SECTION, None, value, names, rule));
+    Some(contract::Derived::keyed(SECTION, None, value, names, rule))
 }
 
 /// The base tree measured, with the families under the scope the base commit recorded, so a
@@ -698,18 +709,18 @@ struct Candidate {
 /// The families the derivation commit proves, as the section the survey supplies when the
 /// config names none, and `None` when it proves none, so no empty list is pinned. Cached under
 /// the commit, and nothing of the working tree reaches it. Spec 4.3, 5.4, 6.6.
-pub fn derived(root: &Path, at: Option<&Path>, commit: &str, held: &Survey) -> Option<Value> {
+pub fn derived(root: &Path, at: Option<Cache>, commit: &str, held: &Survey) -> Option<Value> {
     if held.roots.is_empty() {
         return None;
     }
-    let families = match at.and_then(|at| cache::read(at, commit, SECTION)) {
+    let families = match at.and_then(|cache| cache.read(commit, SECTION)) {
         Some(Value::Array(cached)) => cached,
         _ => {
             let paths = members_at(root, commit, held)?;
             let evidence = evidence(root, commit, &paths);
             let families = families_of(&paths, &evidence);
-            if let Some(at) = at {
-                cache::write(at, commit, SECTION, Value::Array(families.clone()));
+            if let Some(cache) = at {
+                cache.write(commit, SECTION, Value::Array(families.clone()));
             }
             families
         }

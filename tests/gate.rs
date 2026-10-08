@@ -201,12 +201,17 @@ fn a_tool_error_alone_exits_two() {
     );
 }
 
-/// The one row per gate --list prints, without the per-key lines under each and without the
-/// state directory line that follows them all.
+/// The one row per gate `policy` prints, without the per-key lines under each and without the
+/// build, accepted and state directory lines that follow them all.
 fn rows(run: &harness::Run) -> String {
     run.out
         .lines()
-        .filter(|line| !line.starts_with("state: ") && !line.starts_with(' '))
+        .filter(|line| !line.starts_with(' '))
+        .filter(|line| {
+            !["state: ", "build — ", "accepted — "]
+                .iter()
+                .any(|at| line.starts_with(at))
+        })
         .map(|line| line.to_string() + "\n")
         .collect()
 }
@@ -223,8 +228,8 @@ fn list_prints_the_configured_gates_and_runs_none_of_them() {
         "doc-size — runs\ndoc-citations — runs\nescapes — runs\nstubs — runs\n\
          complexity — runs\ndead-symbols — runs\nreachability — runs\n\
          public-api — runs\n\
-         lockfile — needs a section a person writes\n\
-         inventory — needs a section a person writes\n\
+         lockfile — not-applicable\n\
+         inventory — not-applicable\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n\
@@ -244,14 +249,14 @@ fn list_puts_the_excluded_gates_before_the_ones_that_need_a_section() {
     assert_eq!(
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\ncomplexity — excluded\n\
-         lockfile — needs a section a person writes\n\
-         escapes — needs a section a person writes\n\
-         stubs — needs a section a person writes\n\
-         inventory — needs a section a person writes\n\
-         dead-symbols — needs a section a person writes\n\
-         reachability — needs a section a person writes\n\
+         lockfile — not-applicable\n\
+         escapes — not-applicable\n\
+         stubs — not-applicable\n\
+         inventory — not-applicable\n\
+         dead-symbols — not-applicable\n\
+         reachability — not-applicable\n\
          layering — needs a section a person writes\n\
-         public-api — needs a section a person writes\n\
+         public-api — not-applicable\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n\
          measurement-lost — built-in\n",
@@ -334,15 +339,6 @@ fn a_section_named_after_the_command_is_a_tool_error() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("\"doc-size\" is what the command"), "{}", run.out);
     assert!(run.says("\"doc_size\""), "{}", run.out);
-}
-
-#[test]
-fn list_says_no_gate_is_configured_rather_than_printing_nothing() {
-    let tree = nothing_to_survey(r#"{}"#);
-
-    let run = tree.run(&["policy"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("configures no gate"), "{}", run.out);
 }
 
 #[test]
@@ -1275,8 +1271,8 @@ fn list_names_the_excluded_gates() {
         rows(&run),
         "doc-size — runs\ndoc-citations — runs\nstubs — runs\ncomplexity — runs\n\
          dead-symbols — runs\nreachability — runs\npublic-api — runs\n\
-         escapes — excluded\nlockfile — needs a section a person writes\n\
-         inventory — needs a section a person writes\n\
+         escapes — excluded\nlockfile — not-applicable\n\
+         inventory — not-applicable\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n\
@@ -1287,16 +1283,12 @@ fn list_names_the_excluded_gates() {
 }
 
 #[test]
-fn list_names_an_available_gate_the_survey_cannot_supply_either() {
+fn list_names_an_available_gate_the_survey_cannot_supply_as_not_applicable() {
     let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
 
     let run = tree.run(&["policy"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(
-        run.says("escapes — needs a section a person writes"),
-        "{}",
-        run.out
-    );
+    assert!(run.says("escapes — not-applicable"), "{}", run.out);
 }
 
 #[test]
@@ -1494,8 +1486,8 @@ fn list_names_the_exclusions_when_every_gate_is_excluded() {
          stubs — excluded\ncomplexity — excluded\n\
          dead-symbols — excluded\nreachability — excluded\n\
          public-api — excluded\n\
-         lockfile — needs a section a person writes\n\
-         inventory — needs a section a person writes\n\
+         lockfile — not-applicable\n\
+         inventory — not-applicable\n\
          layering — needs a section a person writes\n\
          conventions — needs a section a person writes\n\
          sarif — needs a section a person writes\n\

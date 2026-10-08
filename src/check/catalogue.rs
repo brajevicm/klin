@@ -3,7 +3,7 @@
 //! is one row here, which `klin check` selects by its name. The catalogue names every check, and
 //! no check names the catalogue. ADR 0036.
 
-use crate::check::contract::{Activation, Explain, Needs, Placement, Run};
+use crate::check::contract::{Activation, Derivation, Needs, Placement, Run};
 use crate::key::{Key, Languages, Section, SectionShape};
 use crate::project::Project;
 use crate::{
@@ -68,9 +68,8 @@ pub struct Row {
     /// answered from facts alone and never from a derived number. Spec 4.6, ADR 0040.
     pub available: fn(&Project) -> bool,
     pub run: Run,
-    /// What `klin policy` prints for this check in place of a run's provenance lines, for a
-    /// check whose derived policy is more than a value per key. Spec 11.6.
-    pub explain: Option<Explain>,
+    /// What `klin policy` prints for this check without a run. Spec 11.6.
+    pub derivation: Derivation,
     pub needs: Needs,
     pub takes_scope: bool,
     /// Whether the section is a list of entries a person writes, each its own gate under its
@@ -93,7 +92,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: doc_size::applies,
         run: doc_size::gate,
-        explain: None,
+        derivation: Derivation::Values(doc_size::derive),
         needs: Needs::Nothing,
         takes_scope: false,
         labels: Labels {
@@ -114,7 +113,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
-        explain: None,
+        derivation: Derivation::Values(doc_citations::derive),
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -135,7 +134,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: lockfile::applies,
         run: lockfile::gate,
-        explain: None,
+        derivation: Derivation::Values(lockfile::derive),
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -156,7 +155,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(escapes::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: escapes::gate,
-        explain: None,
+        derivation: Derivation::Nothing,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -177,7 +176,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(stubs::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: stubs::gate,
-        explain: None,
+        derivation: Derivation::Nothing,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -198,7 +197,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: inventory::applies,
         run: inventory::gate,
-        explain: None,
+        derivation: Derivation::Values(inventory::derive),
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -219,7 +218,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(syntax::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: complexity::gate,
-        explain: None,
+        derivation: Derivation::Values(complexity::derive),
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -240,7 +239,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(dead_symbols::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: dead_symbols::gate,
-        explain: None,
+        derivation: Derivation::Nothing,
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -261,7 +260,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(reachability::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: reachability::gate,
-        explain: None,
+        derivation: Derivation::Values(reachability::derive),
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -282,7 +281,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(layering::language_extensions),
         available: |_| false,
         run: layering::gate,
-        explain: None,
+        derivation: Derivation::Nothing,
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -303,7 +302,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(public_api::language_extensions),
         available: |project| !project.found_no_source_root(),
         run: public_api::gate,
-        explain: Some(public_api::explain),
+        derivation: Derivation::ExplainedWhenNamed(public_api::explain),
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -324,7 +323,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: Some(syntax::pattern::language_extensions),
         available: |_| false,
         run: conventions::gate,
-        explain: Some(conventions::report::explain),
+        derivation: Derivation::Explained(conventions::report::explain),
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -345,7 +344,7 @@ pub const CATALOGUE: &[Row] = &[
         languages: None,
         available: |_| false,
         run: sarif::gate,
-        explain: None,
+        derivation: Derivation::Nothing,
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {

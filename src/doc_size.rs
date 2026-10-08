@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::base;
-use crate::cache;
 use crate::ceiling::{self, Ceiling};
 use crate::changed;
 use crate::check::contract::{Context, Counted, Derived, Line, Provenance, Sink, Standing, Told};
@@ -293,9 +292,7 @@ fn documents(
     }
     let listing = listing(at.project)?;
     let Some(named) = named else {
-        for said in listing.said {
-            out.tell(said);
-        }
+        out.tell_each(listing.said);
         return Ok(listing.documents);
     };
     let wanted = identity(named);
@@ -312,6 +309,10 @@ fn documents(
                 named.display()
             ))
         })
+}
+
+pub fn derive(project: &Project) -> Result<Vec<Provenance>, Error> {
+    listing(project).map(|listing| listing.said)
 }
 
 /// Every pinned document under its pin, then every instruction file the config does not pin
@@ -427,7 +428,7 @@ pub fn derived_ceilings(project: &Project) -> Option<BTreeMap<String, u64>> {
         return Some(BTreeMap::new());
     };
     if let Some(cached) = at
-        .and_then(|at| cache::read(at, commit, CACHE_KEY))
+        .and_then(|cache| cache.read(commit, CACHE_KEY))
         .and_then(|cached| read_ceilings(&cached))
         .filter(|cached| cached.keys().eq(held.instructions.iter()))
     {
@@ -442,12 +443,12 @@ pub fn derived_ceilings(project: &Project) -> Option<BTreeMap<String, u64>> {
     if read.is_none() || out.len() != names.len() {
         return None;
     }
-    if let Some(at) = at {
+    if let Some(cache) = at {
         let kept = out
             .iter()
             .map(|(name, ceiling)| (name.clone(), Value::from(*ceiling)))
             .collect();
-        cache::write(at, commit, CACHE_KEY, Value::Object(kept));
+        cache.write(commit, CACHE_KEY, Value::Object(kept));
     }
     Some(out)
 }

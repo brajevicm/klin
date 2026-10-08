@@ -1656,17 +1656,38 @@ Section 13.2.
 
 ### 11.6 `klin policy [SECTION]`
 
-- Read-only. It derives values as a run would, and it runs no check.
+- Read-only. It derives values as a run would, and it runs no check. Each
+  check has one derivation step that reads the configuration, the survey and
+  the derivation commit. `policy` calls only that step, and the check's own
+  run calls the same step before it measures, so the two cannot disagree.
+  `policy` lays out no base, measures no file of either tree, and writes
+  nothing to the state directory. It reads a cache that is already there.
 - Prints the effective policy of every capability, or of the one `SECTION`
-  names: activation, placement, state (`active`, `excluded`, `needs-policy`,
-  `not-applicable`), and each value with its provenance (`derived` with its
-  rule and derivation commit, `pinned`, dated with the step in force, or
-  `built-in`). It also prints the build policy, the accepted list and the
-  integration limitations of section 9.4.
+  names: activation (`automatic`, `policy`, `integration`), placement, state
+  (`active`, `excluded`, `needs-policy`, `not-applicable`), and each value
+  with its provenance (`derived` with its rule and derivation commit,
+  `pinned`, dated with the step in force, or `built-in`). An Automatic
+  capability whose facts the tree does not hold is `not-applicable`. A Policy
+  or Integration capability with no section is `needs-policy`. A value is
+  `built-in` when its key has a default and neither a person nor a
+  derivation gave it. Each `derived:` and `pinned:` line prints as a
+  `klin check SECTION` run prints it. In the JSON, a pinned dated schedule
+  has the step in force as its `value`, with that step's date as `step` and
+  the whole schedule as `schedule`.
+- A tree where no capability runs still has a policy: `klin policy` lists
+  each capability with the state that keeps it from running, and exits 0.
+- A whole `policy` also prints the build policy, pinned or derived from the
+  manifests, and the accepted list, one line per entry with every value the
+  entry allows. Each integration
+  lists the limitations of section 9.4: it runs at `klin check` only, its
+  coverage is unverified, and a `run` command is the project's own trust
+  choice.
 - A capability whose derived policy is more than a value per key explains it
-  in place of those lines. `public-api` lists each derived surface with its
-  items, measured or opaque, and the packages with no supported surface (ADR
-  0044). `conventions` explains each convention, or the one that
+  in place of those lines. `klin policy public-api` lists each derived
+  surface with its items, measured or opaque, and the packages with no
+  supported surface (ADR 0044). Those surfaces come from parsing the working
+  tree, so only the named form lists them. A whole `policy` prints one line
+  that points to `klin policy public-api`, and parses no source. `conventions` explains each convention, or the one that
   `klin policy conventions NAME` names: what it forbids and where, what its
   code pattern reads as and how its language was settled, any `in` or
   `except` path that matches nothing, and its remedy (ADR 0037). It counts no
@@ -1782,8 +1803,16 @@ Section 13.3.
 
 `schema_version`, `command`, `config {path, present}`, `derivation
 {commit}`, `capabilities [{name, section, kind, activation, placement,
-state, values [{key, value, provenance, rule}], limitations}]`, `build`,
-`accepted`, `state_dir`.
+state, values [{key, entry, value, provenance, rule, description}],
+limitations}]`, `build`, `accepted`, `state_dir`.
+
+A value's `value` is typed as a pinned one would be. A `built-in` value
+carries its words for a person in `description`, and its `value` is null
+where only those words state it. `entry` names the entry a value belongs to,
+such as one convention or one `public-api` surface. `klin policy NAME ENTRY`
+carries only that entry. `klin policy --json public-api` carries each surface
+as a `surface` value with its items and holes, and each package with no
+supported surface as an `unsupported` value.
 
 ### 11.8 `klin update`
 

@@ -201,6 +201,7 @@ fn every_catalogue_check_is_accounted_for_in_the_plan() {
         assert!(
             run.says(&format!("{check} — runs"))
                 || run.says(&format!("{check} — excluded"))
+                || run.says(&format!("{check} — not-applicable"))
                 || run.says(&format!("{check} — needs a section a person writes")),
             "the plan says nothing about {check}: {}",
             run.out
