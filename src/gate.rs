@@ -237,7 +237,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
-    let window = windowed(project, lost, &mut log, out);
+    let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
     opened(root, lost, &mut log);
     let prior = (!lost).then(|| turn::aborting(root)).flatten();
@@ -261,7 +261,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         verdict,
         asked: asked.as_deref(),
     };
-    let (note, told) = leave(root, lost, note, left, &mut log);
+    let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
     if let Ok(at) = state::ready(root) {
         let held = count(&at, &log);
@@ -284,21 +284,28 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
 }
 
 /// The window this stop judges, bound to the project, and why the stop is advisory when the
-/// history moved under the turn. A repository with no remote judges the branch instead, which
-/// the journal records as `branch-fallback`. Spec 6.6, 13.1.
+/// history moved under the turn. An advisory Stop that holds the state lock also captures the
+/// tree it measures before the build runs, so the fresh stamp it takes is that tree and holds
+/// no build output. A repository with no remote judges the branch instead, which the journal
+/// records as `branch-fallback`. Spec 6.6, 13.1.
 fn windowed(
     project: &mut Project,
     lost: bool,
     log: &mut journal::Stop,
     out: &mut String,
-) -> Option<Window> {
-    let (window, advisory) = turn::window(project.root(), lost, &mut log.flags, out).ok()?;
+) -> (Option<Window>, Option<stamp::Capture>) {
+    let Ok((window, advisory)) = turn::window(project.root(), lost, &mut log.flags, out) else {
+        return (None, None);
+    };
     project.bind(&window);
     log.advisory = advisory.map(turn::Reason::name);
     if advisory.is_none() && matches!(window.kind, Kind::Branch) {
         log.flags.push("branch-fallback");
     }
-    Some(window)
+    let fresh = advisory
+        .filter(|_| !lost)
+        .and_then(|_| turn::capture(project.root()));
+    (Some(window), fresh)
 }
 
 /// What this stop leaves under the stamp, and the note it still tells with the records it
@@ -306,13 +313,13 @@ fn windowed(
 /// whole note through. Spec 2.3, 6.6.
 fn leave(
     root: &Path,
-    lost: bool,
+    (lost, fresh): (bool, Option<stamp::Capture>),
     note: Option<String>,
     left: turn::Left,
     log: &mut journal::Stop,
 ) -> (Option<String>, Vec<String>) {
-    if log.verdict == ADVISORY {
-        refreshed(root, log);
+    if log.verdict == ADVISORY && !lost {
+        refreshed(root, fresh, log);
         return (note, Vec::new());
     }
     let kept = once(root, note, log.report.as_ref());
@@ -438,9 +445,9 @@ const ADVISORY: &str = "advisory";
 /// The fresh stamp an advisory Stop takes in place of a verdict, so the next Stop is ordinary.
 /// A stamp git could not take leaves the `aborted` the Stop wrote, and the next Stop is
 /// advisory again. Spec 6.6.
-fn refreshed(root: &Path, log: &mut journal::Stop) {
+fn refreshed(root: &Path, fresh: Option<stamp::Capture>, log: &mut journal::Stop) {
     let mut said = String::new();
-    if !turn::refreshed(root, &mut said) {
+    if !turn::refreshed(root, fresh, &mut said) {
         log.verdict = "none";
         log.why = Some("git could not take a fresh stamp, so this advisory stop wrote none");
     }

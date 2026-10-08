@@ -59,6 +59,11 @@ impl Remote {
 
     /// A commit someone else pushes to `main`, holding a finding of its own.
     fn incoming(&self) {
+        self.pushed("src/theirs.rs", text::ONE);
+    }
+
+    /// A commit someone else pushes to `main` that writes one file.
+    fn pushed(&self, file: &str, contents: &str) {
         let other = tempfile::tempdir().expect("temporary directory");
         let at = other.path().join("clone");
         git(
@@ -70,7 +75,7 @@ impl Remote {
                 "clone",
             ],
         );
-        std::fs::write(at.join("src/theirs.rs"), text::ONE).expect("write");
+        std::fs::write(at.join(file), contents).expect("write");
         git(&at, &["add", "-A"]);
         git(
             &at,
@@ -102,6 +107,17 @@ fn git(at: &Path, args: &[&str]) {
         args.join(" "),
         String::from_utf8_lossy(&done.stderr)
     );
+}
+
+/// What a git command printed, whether or not it succeeded.
+fn output(at: &Path, args: &[&str]) -> String {
+    let done = Command::new("git")
+        .arg("-C")
+        .arg(at)
+        .args(args)
+        .output()
+        .expect("git");
+    String::from_utf8_lossy(&done.stdout).to_string()
 }
 
 fn stop(tree: &Tree) -> Run {
@@ -493,4 +509,78 @@ fn the_reset_the_cache_clean_and_the_radius_report_commands_are_gone() {
         assert_eq!(run.code, 2, "{args:?}: {}", run.out);
         assert!(run.says("unrecognized subcommand"), "{args:?}: {}", run.out);
     }
+}
+
+#[test]
+fn a_merge_that_stopped_on_a_conflict_is_advisory_once_committed() {
+    let remote = Remote::new();
+    remote
+        .tree
+        .write("src/lib.rs", "fn mine(a: i32) -> i32 {\n    a + 2\n}\n");
+    remote.tree.commit("the agent's own change");
+    remote.pushed("src/lib.rs", "fn theirs(a: i32) -> i32 {\n    a + 3\n}\n");
+    output(
+        remote.tree.root(),
+        &["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"],
+    );
+    remote
+        .tree
+        .write("src/lib.rs", "fn both(a: i32) -> i32 {\n    a + 5\n}\n");
+    remote.tree.git(&["add", "-A"]);
+    remote.tree.git(&["commit", "-q", "--no-edit"]);
+
+    assert_advisory(&remote.tree, "incoming-commits");
+}
+
+#[test]
+fn a_stop_that_lost_the_lock_blocks_nothing_on_a_history_move_and_writes_nothing() {
+    let remote = Remote::new();
+    remote.incoming();
+    remote
+        .tree
+        .git(&["pull", "-q", "--no-rebase", "--no-edit", "origin", "main"]);
+    let before = std::fs::read_to_string(remote.tree.state("turn")).unwrap_or_default();
+    let Ok(lock) = std::fs::File::create(remote.tree.state("lock")) else {
+        panic!("the lock file could not be made")
+    };
+    assert!(lock.lock().is_ok(), "the test could not hold the lock");
+
+    let run = stop(&remote.tree);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says(MOVED), "{}", run.out);
+    let after = std::fs::read_to_string(remote.tree.state("turn")).unwrap_or_default();
+    assert_eq!(after, before, "a stop without the lock replaced the stamp");
+}
+
+#[test]
+fn a_journal_line_names_an_advisory_reason_only_when_the_stop_was_advisory() {
+    let remote = Remote::unstamped(r#"{ "build": "exit 1", "escapes": { "in": "src" } }"#);
+    prompt(&remote.tree);
+    remote.tree.git(&["checkout", "-q", "main"]);
+
+    assert_eq!(stop(&remote.tree).code, 2);
+    let line = last_stop(&remote.tree);
+    assert_eq!(line["verdict"], "red", "{line}");
+    assert_eq!(line.get("advisory"), None, "{line}");
+}
+
+#[test]
+fn the_fresh_stamp_is_the_tree_the_stop_measured_and_holds_no_build_output() {
+    let remote = Remote::unstamped(r#"{ "build": "touch built.txt", "escapes": { "in": "src" } }"#);
+    prompt(&remote.tree);
+    remote.tree.git(&["checkout", "-q", "main"]);
+
+    assert_eq!(stop(&remote.tree).code, 0);
+    assert_eq!(last_stop(&remote.tree)["verdict"], "advisory");
+    assert!(
+        remote.tree.path("built.txt").is_file(),
+        "the build did not run"
+    );
+    let commit = remote.tree.field("commit");
+    let listed = output(
+        remote.tree.root(),
+        &["ls-tree", "-r", "--name-only", &commit],
+    );
+    assert!(listed.contains("src/lib.rs"), "{listed}");
+    assert!(!listed.contains("built.txt"), "{listed}");
 }

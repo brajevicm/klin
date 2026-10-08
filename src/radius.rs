@@ -188,7 +188,7 @@ fn numbers(config: &Config) -> Result<(Option<u64>, Option<u64>), Error> {
     Ok((number(LINES)?, number(DIRECTORIES)?))
 }
 
-/// What `--report` says when the config pins a value short and history cannot supply it either.
+/// What the prompt report says when the config pins a value short and history cannot supply it either.
 fn unpinned(config: &Config, lines: Option<u64>, directories: Option<u64>, why: &str) -> Error {
     let key = match (lines, directories) {
         (None, None) => "section".to_string(),

@@ -148,7 +148,7 @@ pub fn line(stop: &Stop) -> Value {
     if let Some(why) = stop.why {
         line.insert("why".into(), why.into());
     }
-    if let Some(reason) = stop.advisory {
+    if let Some(reason) = stop.advisory.filter(|_| stop.verdict == "advisory") {
         line.insert("advisory".into(), reason.into());
     }
     line.insert(

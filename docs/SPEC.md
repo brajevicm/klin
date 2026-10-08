@@ -652,7 +652,8 @@ these happened:
 
 1. **Incoming commits.** The default-branch merge-base moved, and HEAD's
    reflog since the recorded position holds a `merge`, `pull`, `rebase` or
-   `reset` entry. The default branch is found by candidate 3 of 0.x 6.3
+   `reset` entry, or the `commit (merge)` entry of a merge that stopped on a
+   conflict. The default branch is found by candidate 3 of 0.x 6.3
    without the GitHub variables, and only a remote-tracking ref
    (`refs/remotes/...`) counts. The reflog is compared by entry position,
    never by time. When HEAD has no reflog, a moved default-branch merge-base
@@ -690,9 +691,15 @@ An advisory Stop:
 - takes a fresh stamp of the tree it measured, with the current records and
   empty `asked`, `told` and `intervened`, and moves the prompt mark, unless
   the build failed. It captures the tree while it holds the Stop's state
-  lock, because the verdict and the stamp must describe the same tree;
+  lock, because the verdict and the stamp must describe the same tree. It
+  captures it before the build runs, so the fresh stamp holds no build
+  output;
 - writes its journal line with the verdict `advisory` and its reason:
   `incoming-commits`, `branch-changed`, `history-lost` or `stamp-missing`.
+
+A Stop that cannot take the state lock applies the same rules. When they
+make it advisory, it blocks nothing for a finding and tells what it found,
+and it takes no fresh stamp, as it writes no verdict.
 
 An advisory Stop for a missing stamp has no stamp to measure against. It
 measures against the 0.x 6.3 base, as the branch fallback does.

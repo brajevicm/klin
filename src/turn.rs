@@ -269,7 +269,7 @@ pub fn window(
 ) -> Result<(Window, Option<Reason>), Error> {
     let at = state::ready(root).ok().filter(|_| !lost);
     let Some(at) = at else {
-        return read_only(root, out).map(|window| (window, None));
+        return read_only(root, out);
     };
     let here = Here::read(root);
     let held = held(root, &at, flags, out);
@@ -319,8 +319,9 @@ impl Reason {
     }
 }
 
-/// The reflog entries that bring other people's commits in or take the turn's history away.
-const INCOMING: [&str; 4] = ["merge", "pull", "rebase", "reset"];
+/// The reflog entries that bring other people's commits in or take the turn's history away. A
+/// merge that stopped on a conflict logs its commit as `commit (merge)`.
+const INCOMING: [&str; 5] = ["merge", "pull", "rebase", "reset", "commit (merge)"];
 
 /// Rules 1 to 3 of spec 6.6 over a stamp that resolves. A merge-base the stamp never recorded,
 /// as on a stamp restored from its ref, is the stamp parent's. The merge-base comes from the
@@ -391,11 +392,10 @@ fn switched(root: &Path, stamp: &Stamp, here: &Here) -> bool {
 /// stands, none of the window's records, the prompt counter carried on, and the prompt mark
 /// moved with it. The caller holds the state lock, so the verdict and the stamp describe the
 /// same tree. Spec 6.6.
-pub fn refreshed(root: &Path, out: &mut String) -> bool {
+pub fn refreshed(root: &Path, capture: Option<stamp::Capture>, out: &mut String) -> bool {
     let Ok(at) = state::ready(root) else {
         return false;
     };
-    let capture = stamp::capture(root, &at.join(stamp::INDEX));
     let tree = capture.as_ref().map(|capture| capture.tree.as_str());
     let Some(stamp) = taken(root, &at, tree, prompts(&at), out) else {
         return false;
@@ -408,21 +408,38 @@ pub fn refreshed(root: &Path, out: &mut String) -> bool {
     wrote
 }
 
-/// The window as the stamp on disk names it, from the `turn` file or else the ref, with no
-/// restore, no re-anchor, no replacement and no fresh stamp written. Spec 6.5, 14.
-fn read_only(root: &Path, out: &mut String) -> Result<Window, Error> {
-    let file = state::dir(root)
-        .and_then(|at| stamp::read(&at))
+/// The tree an advisory Stop measures, captured through the stamp's own index for the fresh
+/// stamp it takes. Spec 6.6.
+pub fn capture(root: &Path) -> Option<stamp::Capture> {
+    let at = state::ready(root).ok()?;
+    stamp::capture(root, &at.join(stamp::INDEX))
+}
+
+/// The window as the stamp on disk names it, from the `turn` file or else the ref, and why the
+/// Stop is advisory, with no restore, no re-anchor, no replacement and no fresh stamp written.
+/// So a Stop that lost the lock blocks nothing on a history move either. Spec 6.5, 6.6, 14.
+fn read_only(root: &Path, out: &mut String) -> Result<(Window, Option<Reason>), Error> {
+    let at = state::dir(root);
+    let file = at
+        .as_deref()
+        .and_then(stamp::read)
         .filter(|stamp| stamp.commit.is_some() && resolves(root, stamp));
     let here = Here::read(root);
-    match file.or_else(|| kept(root)) {
-        Some(stamp) if !here.remotes && switched(root, &stamp, &here) => {
-            note(out, LEFT_BEHIND);
-            branch(root, out)
-        }
-        Some(stamp) => Ok(turn(&stamp)),
-        None => branch(root, out),
+    let Some(stamp) = file.or_else(|| kept(root)) else {
+        return Ok((
+            branch(root, out)?,
+            here.remotes.then_some(Reason::StampMissing),
+        ));
+    };
+    if here.remotes {
+        let reason = at.and_then(|at| advisory(root, &at, &stamp, &here));
+        return Ok((turn(&stamp), reason));
     }
+    if !switched(root, &stamp, &here) {
+        return Ok((turn(&stamp), None));
+    }
+    note(out, LEFT_BEHIND);
+    Ok((branch(root, out)?, None))
 }
 
 /// Whether the commit the stamp was taken over has left current HEAD history, which is what a
