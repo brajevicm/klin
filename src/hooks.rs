@@ -712,10 +712,60 @@ fn read(file: &Path) -> Result<Map<String, Value>, Error> {
 /// One copy of klin's integration for a host, as `klin status` reports it. Spec 11.4.
 pub struct Integration {
     pub host: &'static str,
-    pub scope: &'static str,
-    pub route: &'static str,
-    pub state: &'static str,
+    pub scope: Owner,
+    pub route: Route,
+    pub state: State,
     pub detail: String,
+}
+
+/// Whose files hold a copy: the repository's, or one person's on this machine.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Owner {
+    Project,
+    User,
+}
+
+/// How a copy reaches the host: hook lines in its file, or klin's plugin.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Route {
+    Hooks,
+    Plugin,
+}
+
+/// The integration states of spec 11.4.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum State {
+    Current,
+    Missing,
+    Conflict,
+}
+
+impl Owner {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Owner::Project => "project",
+            Owner::User => "user",
+        }
+    }
+}
+
+impl Route {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Route::Hooks => "hooks",
+            Route::Plugin => "plugin",
+        }
+    }
+}
+
+impl State {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            State::Current => "current",
+            State::Missing => "missing",
+            State::Conflict => "conflict",
+        }
+    }
 }
 
 /// Every copy of klin's integration the repository at `root` and the person's home hold, and a
@@ -725,17 +775,18 @@ pub fn integrations(root: &Path) -> Vec<Integration> {
     let home = std::env::home_dir();
     let mut found = Vec::new();
     for host in ADAPTERS.iter().copied() {
-        let mut rows: Vec<Integration> = [("project", Some(root)), ("user", home.as_deref())]
-            .into_iter()
-            .filter_map(|(scope, at)| Some((scope, at?)))
-            .flat_map(|(scope, at)| copies(host, scope, at))
-            .collect();
+        let mut rows: Vec<Integration> =
+            [(Owner::Project, Some(root)), (Owner::User, home.as_deref())]
+                .into_iter()
+                .filter_map(|(scope, at)| Some((scope, at?)))
+                .flat_map(|(scope, at)| copies(host, scope, at))
+                .collect();
         if rows.is_empty() && root.join(host.marker()).is_dir() {
             rows.push(Integration {
                 host: host.name(),
-                scope: "project",
-                route: "hooks",
-                state: "missing",
+                scope: Owner::Project,
+                route: Route::Hooks,
+                state: State::Missing,
                 detail: format!(
                     "{} proves the host, and no copy of klin's hooks is installed",
                     host.marker()
@@ -749,16 +800,15 @@ pub fn integrations(root: &Path) -> Vec<Integration> {
 
 /// The copies of klin's integration one scope holds for one host: its plugin, and its hook file
 /// when that file holds klin's entries.
-fn copies(host: &'static dyn Adapter, scope: &'static str, at: &Path) -> Vec<Integration> {
-    let user = scope == "user";
+fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integration> {
     let plugin = host
-        .plugin_enabled(at, user)
+        .plugin_enabled(at, scope == Owner::User)
         .filter(|proof| proof.starts_with(at))
         .map(|proof| Integration {
             host: host.name(),
             scope,
-            route: "plugin",
-            state: "current",
+            route: Route::Plugin,
+            state: State::Current,
             detail: format!("{} enables klin's plugin", proof.display()),
         });
     let file = at.join(host.hook_file());
@@ -767,7 +817,7 @@ fn copies(host: &'static dyn Adapter, scope: &'static str, at: &Path) -> Vec<Int
         Integration {
             host: host.name(),
             scope,
-            route: "hooks",
+            route: Route::Hooks,
             state,
             detail,
         }
@@ -776,12 +826,12 @@ fn copies(host: &'static dyn Adapter, scope: &'static str, at: &Path) -> Vec<Int
 }
 
 /// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Spec 11.4.
-fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (&'static str, String) {
+fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, String) {
     let held = read(file).unwrap_or_default();
     let current = canonical(host, held.clone(), file).is_ok_and(|wanted| wanted == held);
     if !current {
         return (
-            "conflict",
+            State::Conflict,
             format!(
                 "{} holds hook lines this klin's setup does not write",
                 file.display()
@@ -791,9 +841,9 @@ fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (&'static s
     let skill = at.join(host.skill_file());
     match std::fs::read(&skill) {
         Ok(text) if text != SKILL.as_bytes() => (
-            "conflict",
+            State::Conflict,
             format!("{} differs from klin's skill", skill.display()),
         ),
-        _ => ("current", file.display().to_string()),
+        _ => (State::Current, file.display().to_string()),
     }
 }

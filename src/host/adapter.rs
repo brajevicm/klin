@@ -142,6 +142,11 @@ pub trait Adapter: Sync {
     fn identity(&self, payload: &Value) -> String {
         named(payload, CLAUDE_CODE_AND_CODEX_IDENTITY)
     }
+    /// Whether this adapter refuses every event it reads, whatever its kind: a harness protocol
+    /// version klin does not speak fails closed. Spec 10.9.
+    fn refuses(&self) -> bool {
+        false
+    }
     /// Whether an event with no `--host` has this host's shape.
     fn placed(&self, payload: &Value) -> bool;
     /// The tree the event names, for a host that runs its hooks somewhere else. A host that

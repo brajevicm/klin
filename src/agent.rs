@@ -33,6 +33,9 @@ pub fn run() -> ExitCode {
     }
 }
 
+/// The event's answer once the opt-in walk found the worktree root's `klin.json`. A protocol
+/// version klin does not speak is refused whole: the guard delivers the adapter's refusal and
+/// journals it, whatever kind the event meant. Spec 10.2, 10.9.
 fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
     let words: Vec<OsString> = std::env::args_os().skip(2).collect();
     if words.first().is_none_or(|word| word != EVENT) {
@@ -43,26 +46,30 @@ fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
         eprintln!("klin: NOTE: klin could not read this hook event, so it answered nothing.");
         return ExitCode::SUCCESS;
     };
-    let Some(kind) = event.kind else {
+    if event.kind.is_none() && !event.host.refuses() {
         return ExitCode::SUCCESS;
-    };
-    placed.set(Some(kind));
+    }
+    placed.set(event.kind);
     let Some(start) = event.root.clone().or_else(|| std::env::current_dir().ok()) else {
         eprintln!(
             "klin: NOTE: the working directory could not be read, so this hook answered nothing."
         );
-        return failed(Some(kind));
+        return failed(event.kind);
     };
     let found = Discovered::from(&start);
     let (Some(root), Some(_)) = (&found.root, &found.config) else {
-        if kind == Kind::Session
+        if event.kind == Some(Kind::Session)
             && let Some(nested) = found.ignored.first()
         {
             event.host.tell(&moved(nested, found.root.as_deref()));
         }
         return ExitCode::SUCCESS;
     };
-    ExitCode::from(answered(event, kind, &start, root))
+    match (event.host.refuses(), event.kind) {
+        (true, _) => ExitCode::from(guard::run(&event, root)),
+        (false, Some(kind)) => ExitCode::from(answered(event, kind, &start, root)),
+        (false, None) => ExitCode::SUCCESS,
+    }
 }
 
 /// The value of `--host NAME` or `--host=NAME`. Every other argument is one the ingress does

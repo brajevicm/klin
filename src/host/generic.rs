@@ -83,13 +83,14 @@ impl Adapter for Generic {
         None
     }
 
-    /// The harness names the kind itself. A version klin does not speak is refused whole, so it
-    /// takes the guard's route, whose answer on this adapter is the refusal. Spec 10.9.
+    /// The harness names the kind itself. A version klin does not speak names no event, because
+    /// klin does not know that shape. Spec 10.9.
     fn kind(&self, name: &str) -> Option<Kind> {
-        match self.spoken {
-            true => Kind::ALL.into_iter().find(|kind| kind.name() == name),
-            false => Some(Kind::PreTool),
-        }
+        Kind::ALL.into_iter().find(|kind| kind.name() == name)
+    }
+
+    fn refuses(&self) -> bool {
+        !self.spoken
     }
 
     /// The harness protocol names its own event kinds under `event`. Every host klin maintains

@@ -1,8 +1,12 @@
 //! `klin update` runs the `klin-update` program the installer puts beside this binary, which
 //! installs the newest release over it. Spec 19.5.
 
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::process::Command;
+
+use crate::hooks;
 
 const INSTALL: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                        https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh";
@@ -47,7 +51,7 @@ fn reconcile_hint() {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|row| row["state"] != "current")
+        .filter(|row| row["state"] != hooks::State::Current.as_str())
         .map(|row| {
             format!(
                 "{} ({}) is {}",
@@ -68,9 +72,8 @@ fn reconcile_hint() {
 /// The path the updated binary sits at. Linux names a running binary that was replaced on disk
 /// with a ` (deleted)` suffix, and the new binary is at the path without it.
 fn replaced(exe: PathBuf) -> PathBuf {
-    let named = exe.to_string_lossy();
-    match named.strip_suffix(" (deleted)") {
-        Some(path) => PathBuf::from(path),
+    match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
+        Some(path) => PathBuf::from(OsStr::from_bytes(path)),
         None => exe,
     }
 }

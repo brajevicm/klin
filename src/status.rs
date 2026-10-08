@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Value, json};
 
 use crate::check::catalogue;
-use crate::config::{self, Config, Discovered};
+use crate::config::{Config, Discovered};
 use crate::error::Error;
 use crate::hooks::{self, Integration};
 use crate::{journal, stamp, state};
@@ -32,7 +32,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         true => {
             let _ = writeln!(out, "{document}");
         }
-        false => text(&document, &config::notes(None, start), out),
+        false => text(&document, &found.said(), out),
     }
     Ok(0)
 }
@@ -52,7 +52,7 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
             "present": found.config.is_some(),
             "valid": error.is_none(),
             "error": error.map(|error| error.to_string()),
-            "ignored": config::ignored(start),
+            "ignored": found.ignored_paths(),
         },
         "integrations": hooks::integrations(root).iter().map(integration).collect::<Vec<Value>>(),
         "state_dir": at.as_ref().map(|at| at.display().to_string()),
@@ -65,9 +65,9 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
 fn integration(one: &Integration) -> Value {
     json!({
         "host": one.host,
-        "scope": one.scope,
-        "route": one.route,
-        "state": one.state,
+        "scope": one.scope.as_str(),
+        "route": one.route.as_str(),
+        "state": one.state.as_str(),
         "detail": one.detail,
     })
 }

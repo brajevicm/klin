@@ -1060,24 +1060,15 @@ pub fn no_retired_key(file: &Path, name: &str, values: &Map<String, Value>) -> R
 /// the worktree root, and each one below it that klin ignores. A `--config` names its own file,
 /// so it has none. Spec 5.1.
 pub fn notes(explicit: Option<&Path>, start: &Path) -> Vec<String> {
-    if explicit.is_some() {
-        return Vec::new();
+    match explicit {
+        Some(_) => Vec::new(),
+        None => Discovered::from(start).said(),
     }
-    let found = Discovered::from(start);
-    let none = found
-        .config
-        .is_none()
-        .then(|| "config: none, running under {}".to_string());
-    none.into_iter().chain(found.notes()).collect()
 }
 
 /// The paths of every `klin.json` the walk from `start` passed and never read. Spec 5.1.
 pub fn ignored(start: &Path) -> Vec<String> {
-    Discovered::from(start)
-        .ignored
-        .iter()
-        .map(|file| file.display().to_string())
-        .collect()
+    Discovered::from(start).ignored_paths()
 }
 
 /// The configuration a run names or finds, whether or not it exists or reads.
@@ -1188,17 +1179,27 @@ impl Discovered {
         }
     }
 
-    /// The note `check`, `status` and `policy` print for each file the walk passed and never
-    /// read. Spec 5.1.
-    pub fn notes(&self) -> Vec<String> {
+    /// The lines `check`, `status` and `policy` print about this walk: that it found no
+    /// `klin.json` to read, and each file it passed and never read. Spec 5.1.
+    pub fn said(&self) -> Vec<String> {
+        let none = self
+            .config
+            .is_none()
+            .then(|| "config: none, running under {}".to_string());
+        let ignored = self.ignored.iter().map(|file| {
+            format!(
+                "NOTE: {} is ignored — klin reads only the klin.json at the worktree root.",
+                file.display()
+            )
+        });
+        none.into_iter().chain(ignored).collect()
+    }
+
+    /// The paths of every `klin.json` the walk passed and never read.
+    pub fn ignored_paths(&self) -> Vec<String> {
         self.ignored
             .iter()
-            .map(|file| {
-                format!(
-                    "NOTE: {} is ignored — klin reads only the klin.json at the worktree root.",
-                    file.display()
-                )
-            })
+            .map(|file| file.display().to_string())
             .collect()
     }
 }
