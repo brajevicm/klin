@@ -38,6 +38,9 @@ pub const DELETED: &str = "deleted";
 /// Spec 7.3.
 pub const MOVED_PIN: &str = "moved-pin";
 
+/// The review item kind of a file renamed under a directory every walk skips. Spec 7.3.
+pub const MOVED_SKIPPED: &str = "moved-skipped";
+
 /// The note kind of what choosing the base of a `klin check` window found. Spec 6.5.
 pub const WINDOW: &str = "window";
 

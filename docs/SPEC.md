@@ -1022,9 +1022,22 @@ Rules:
   finding by moving its file out of scope, without blocking a requested
   move. The kept membership holds in both trees and against an `except`
   path too, so a file renamed under an `except` path is still measured.
-  **Known limit:** a rename into a directory every walk skips, such as
-  `out/`, `build/` or `vendor/`, takes the file out of both trees' file
-  lists, so this rule does not reach it. #523 owns that case.
+- **Moved into a skipped directory.** A source file, of a language klin
+  reads, that the change moved by a detected rename from a path under no
+  directory of the default skip set to a path under one, such as `out/`,
+  `build/` or `vendor/`, is in neither tree's file list, so no capability
+  measures it at its new path. It is a note at the Stop and a review item of
+  kind `moved-skipped` at `klin check`. The review item's `file` is the new
+  path and its `check` is null. No block and no error. This holds with or
+  without an `in` scope, and whichever capabilities the run selects. A
+  pinned `in` path whose files moved under a skipped directory does not
+  follow them there: its `moved-pin` review item counts them as moved under a
+  directory every walk skips, and never says the run measures them. A file of
+  no language klin reads, such as test data moved under `fixtures/`, says
+  nothing. **Known limit:** a rename under a
+  hidden directory, or under a directory that only a section's own
+  `skip_dirs` names, is not reported. A section's `skip_dirs` is that
+  section's policy.
 - At the Stop, any other capability-scope error does not stop the other
   capabilities, and it never blocks. A FAIL beside it still spends its block.
   A run-scope configuration error writes `unjudged` (section 6.6). A klin
@@ -1747,9 +1760,9 @@ A finding: `id`, `check` (null for `measurement-lost`), `kind` (`metric` or
 (string), and `identity` (section 8.4) when the family has one.
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
-`unmeasured`, `moved-pin`), `file`, `line`, `text`, `reason` (the agent's
-reply for a deleted test, the gap reason for `unmeasured`, the old and new
-path for `moved-pin`).
+`unmeasured`, `moved-pin`, `moved-skipped`), `file`, `line`, `text`, `reason`
+(the agent's reply for a deleted test, the gap reason for `unmeasured`, the
+old and new path for `moved-pin` and `moved-skipped`).
 
 A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
@@ -1996,6 +2009,7 @@ the base (section 6.5).
 | Invalid configuration | No block. Verdict `unjudged`. A notice goes to the person (section 10.7). | ERROR, exit 2, naming the file and key. |
 | A policy path whose files the change renamed or deleted | The policy follows a rename. A deletion is a note. | `moved-pin` review item. Exit unaffected. |
 | A file moved out of a scope that still selects others | Measured under its base scope. A new finding is a FAIL. | The same. |
+| A file moved under a directory every walk skips | A note. | `moved-skipped` review item. Exit unaffected. |
 | Other capability-scope configuration or git error | No block. A notice. The other capabilities report, and a FAIL beside it spends its block. | That row `execution: error`. Exit 2. The other capabilities report. |
 | No `klin.json` | No answer, no state (section 5.1). | Runs under `{}` and says so. |
 | A present base candidate does not resolve, shallow history, or a missing `GITHUB_BASE_REF` | Not applicable. | ERROR, exit 2, naming `fetch-depth`. |
@@ -2428,6 +2442,8 @@ Stop:
   item; neither blocks;
 - a complex function in a file moved out of an `in` scope that still selects
   other files still fails;
+- a file renamed under a directory every walk skips is a note at the Stop and
+  a `moved-skipped` review item at `klin check`;
 - a state directory deleted while the turn ref survives restores the stamp
   from the ref;
 - a review item that was asked about leaves the stamp green;

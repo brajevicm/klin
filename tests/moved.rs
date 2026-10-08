@@ -159,6 +159,125 @@ fn a_complex_function_in_a_file_moved_out_of_an_in_scope_still_fails() {
     assert!(stop.says("src/elsewhere/a.rs"), "{}", stop.out);
 }
 
+#[test]
+fn a_file_renamed_into_a_skipped_directory_is_a_review_item_and_a_stop_note() {
+    for config in [CONFIG, r#"{"complexity": {"cc": 8, "lines": 60}}"#] {
+        let tree = pinned(config);
+        std::fs::create_dir_all(tree.path("src/out")).unwrap_or_default();
+        tree.git(&["mv", "src/core/a.rs", "src/out/a.rs"]);
+        tree.write("src/out/a.rs", &format!("{}{}", many(), complex()));
+
+        let run = tree.run(&["check", "--json"]);
+        assert_eq!(run.code, 0, "{config}: {}", run.out);
+        let report = run.json();
+        assert_eq!(report["judgement"], "review", "{config}: {report}");
+        let hidden: Vec<&Value> = report["reviews"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|review| review["kind"] == "moved-skipped")
+            .collect();
+        assert_eq!(hidden.len(), 1, "{config}: {report}");
+        assert_eq!(hidden[0]["file"], "src/out/a.rs", "{config}: {report}");
+        assert_eq!(
+            hidden[0]["reason"], "src/core/a.rs -> src/out/a.rs",
+            "{config}: {report}"
+        );
+
+        let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+        assert_eq!(stop.code, 0, "{config}: {}", stop.out);
+        assert!(
+            stop.says("NOTE: src/core/a.rs moved to src/out/a.rs"),
+            "{config}: {}",
+            stop.out
+        );
+    }
+}
+
+#[test]
+fn a_file_no_language_reads_renamed_into_a_skipped_directory_says_nothing() {
+    let tree = pinned(CONFIG);
+    tree.write("tests/data.json", "{}\n");
+    tree.base();
+    std::fs::create_dir_all(tree.path("tests/fixtures")).unwrap_or_default();
+    tree.git(&["mv", "tests/data.json", "tests/fixtures/data.json"]);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "pass", "{report}");
+}
+
+fn reviews<'a>(report: &'a Value, kind: &str) -> Vec<&'a Value> {
+    report["reviews"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|review| review["kind"] == kind)
+        .collect()
+}
+
+#[test]
+fn a_shell_script_renamed_into_a_skipped_directory_is_a_review_item() {
+    for extension in ["sh", "bash", "zsh"] {
+        let tree = pinned(CONFIG);
+        tree.write(
+            &format!("scripts/deploy.{extension}"),
+            "set +e\necho deployed\n",
+        );
+        tree.base();
+        std::fs::create_dir_all(tree.path("scripts/out")).unwrap_or_default();
+        let to = format!("scripts/out/deploy.{extension}");
+        tree.git(&["mv", &format!("scripts/deploy.{extension}"), &to]);
+
+        let report = tree.run(&["check", "--json"]).json();
+        let hidden = reviews(&report, "moved-skipped");
+        assert_eq!(hidden.len(), 1, "{extension}: {report}");
+        assert_eq!(hidden[0]["file"], to.as_str(), "{extension}: {report}");
+    }
+}
+
+#[test]
+fn the_last_source_file_renamed_into_a_skipped_directory_is_still_reported() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write("lib/a.rs", &many());
+    tree.base();
+    std::fs::create_dir_all(tree.path("out")).unwrap_or_default();
+    tree.git(&["mv", "lib/a.rs", "out/a.rs"]);
+
+    let report = tree.run(&["check", "--json"]).json();
+    let hidden = reviews(&report, "moved-skipped");
+    assert_eq!(hidden.len(), 1, "{report}");
+    assert_eq!(hidden[0]["file"], "out/a.rs", "{report}");
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert!(
+        stop.says("NOTE: lib/a.rs moved to out/a.rs"),
+        "{}",
+        stop.out
+    );
+}
+
+#[test]
+fn a_pin_whose_files_moved_into_a_skipped_directory_does_not_claim_they_are_measured() {
+    let tree = pinned(CONFIG);
+    std::fs::create_dir_all(tree.path("src/out")).unwrap_or_default();
+    tree.git(&["mv", "src/core/a.rs", "src/out/a.rs"]);
+    tree.git(&["mv", "src/core/b.rs", "src/out/b.rs"]);
+
+    let report = tree.run(&["check", "--json"]).json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    let said = pins[0]["text"].as_str().unwrap_or_default();
+    assert!(!said.contains("measures them there"), "{said}");
+    assert!(
+        said.contains("2 file(s) moved under a directory every walk skips"),
+        "{said}"
+    );
+    assert_eq!(reviews(&report, "moved-skipped").len(), 2, "{report}");
+}
+
 /// A Stop builds before it measures, so a file the build writes or rewrites is measured even
 /// where a section states an `in`. Spec 6.4.
 #[test]

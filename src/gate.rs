@@ -1015,7 +1015,7 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
-    let gone = gone_pins(args, project, &wanted, out);
+    let gone = gone_moves(args, project, &wanted, out);
     tally.told += gone.len();
     records.notes.extend(gone);
     if let Some(unbuilt) = unbuilt {
@@ -2938,10 +2938,10 @@ fn measured(
     Ok(())
 }
 
-/// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
-/// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
-/// and `klin check` names it. Spec 7.3.
-fn gone_pins(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
+/// What the Stop notes of a moved pinned path, one whose files went with no rename or that
+/// selects nothing in either tree, and of a file moved under a skipped directory. A pin whose
+/// files were all renamed is followed in silence, and `klin check` names it. Spec 7.3.
+fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
     let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
     gone.filter_map(Moved::said)
         .map(|said| {
@@ -2953,28 +2953,36 @@ fn gone_pins(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String)
         .collect()
 }
 
-/// The moves of the sections whose gates this run selected.
+/// The moves of the sections whose gates this run selected, and every move no section decides,
+/// such as a file moved under a skipped directory, whichever gates run.
 fn selected<'a>(moves: &'a Moves, wanted: &'a [&Gate]) -> impl Iterator<Item = &'a Moved> {
     moves.iter().filter(|moved| {
-        wanted
-            .iter()
-            .any(|gate| gate.check.section == moved.section())
+        moved
+            .section()
+            .is_none_or(|section| wanted.iter().any(|gate| gate.check.section == section))
     })
 }
 
-/// The review item of a moved pinned path, and nothing for a file moved out of a scope, whose
-/// findings carry `moved_out_of_scope`. Spec 7.3, 11.7.
-fn moved_pin(moved: &Moved) -> Option<Value> {
-    let Moved::Pin { path, .. } = moved else {
-        return None;
+/// The review item of a moved pinned path or of a file moved under a skipped directory, and
+/// nothing for a file moved out of a scope, whose findings carry `moved_out_of_scope`.
+/// Spec 7.3, 11.7.
+fn moved_review(moved: &Moved) -> Option<Value> {
+    let (kind, path) = match moved {
+        Moved::Pin { path, .. } => (contract::MOVED_PIN, path),
+        Moved::Skipped { path, .. } => (contract::MOVED_SKIPPED, path),
+        Moved::Out { .. } => return None,
     };
-    let check = catalogue::CATALOGUE
-        .iter()
-        .find(|row| row.section == moved.section())
+    let check = moved
+        .section()
+        .and_then(|section| {
+            catalogue::CATALOGUE
+                .iter()
+                .find(|row| row.section == section)
+        })
         .map(|row| row.name);
     Some(json!({
         "check": check,
-        "kind": contract::MOVED_PIN,
+        "kind": kind,
         "file": path,
         "line": null,
         "text": moved.said(),
@@ -3175,8 +3183,9 @@ impl Report {
     }
 
     /// What binding the window found: the window and the tree the run judges, a `moved-pin`
-    /// review item per moved pinned path, a note each for a rewritten push base or a base equal
-    /// to HEAD, and the hole of a local base equal to HEAD that may hide unpushed commits.
+    /// review item per moved pinned path, a `moved-skipped` one per file moved under a skipped
+    /// directory, a note each for a rewritten push base or a base equal to HEAD, and the hole
+    /// of a local base equal to HEAD that may hide unpushed commits.
     /// Spec 6.5, 7.3.
     fn windowed(
         &mut self,
@@ -3187,7 +3196,7 @@ impl Report {
     ) {
         self.window = base.map(Window::record);
         self.tree = Some(base::tree_record(project.root()));
-        for review in selected(project.moves(), wanted).filter_map(moved_pin) {
+        for review in selected(project.moves(), wanted).filter_map(moved_review) {
             if !args.json {
                 let _ = writeln!(
                     out,
