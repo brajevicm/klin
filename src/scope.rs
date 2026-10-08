@@ -172,38 +172,56 @@ pub fn moved(config: &Config, files: &[String], base: &str, changes: &[Change]) 
             .iter()
             .filter(|selector| !files.iter().any(|file| selector.holds(file)))
             .collect();
+        let quiet = dead.len() < scope.within.len();
         for selector in &dead {
             let listed = listed.get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
             let held = listed.iter().filter(|path| selector.holds(path)).count();
-            let quiet = dead.len() < scope.within.len();
             if held == 0 && (quiet || !pinned_at_base(config, base, section, selector)) {
                 continue;
             }
-            let gone: Vec<(String, String)> = renamed
-                .iter()
-                .filter(|(was, _)| selector.holds(was))
-                .map(|(was, path)| (was.to_string(), path.to_string()))
-                .collect();
-            out.push(Moved::Pin {
-                section: section.to_string(),
-                path: selector.as_str().to_string(),
-                deleted: held.saturating_sub(gone.len()),
-                renamed: gone,
-            });
+            out.push(pin(section, selector, held, &renamed));
         }
-        if !files.iter().any(|file| scope.selects(file)) {
-            continue;
-        }
-        for (was, path) in &renamed {
-            if scope.selects(was) && !scope.selects(path) && !any_holds_of(&dead, was) {
-                out.push(Moved::Out {
-                    section: section.to_string(),
-                    path: path.to_string(),
-                });
-            }
+        if files.iter().any(|file| scope.selects(file)) {
+            out.extend(moved_out(section, &scope, &dead, &renamed));
         }
     }
     out
+}
+
+/// A pinned path that selects no file of the working tree, with the files git saw renamed out
+/// of it and how many of the `held` files the base held there went with no rename.
+fn pin(section: &str, selector: &Selector, held: usize, renamed: &[(&str, &str)]) -> Moved {
+    let gone: Vec<(String, String)> = renamed
+        .iter()
+        .filter(|(was, _)| selector.holds(was))
+        .map(|(was, path)| (was.to_string(), path.to_string()))
+        .collect();
+    Moved::Pin {
+        section: section.to_string(),
+        path: selector.as_str().to_string(),
+        deleted: held.saturating_sub(gone.len()),
+        renamed: gone,
+    }
+}
+
+/// The selected files a rename took out of the scope, other than those of a pinned path that
+/// selects nothing now, which `pin` follows.
+fn moved_out(
+    section: &str,
+    scope: &Scope,
+    dead: &[&Selector],
+    renamed: &[(&str, &str)],
+) -> Vec<Moved> {
+    renamed
+        .iter()
+        .filter(|(was, path)| {
+            scope.selects(was) && !scope.selects(path) && !any_holds_of(dead, was)
+        })
+        .map(|(_, path)| Moved::Out {
+            section: section.to_string(),
+            path: path.to_string(),
+        })
+        .collect()
 }
 
 fn any_holds_of(selectors: &[&Selector], path: &str) -> bool {

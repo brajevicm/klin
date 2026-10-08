@@ -692,19 +692,7 @@ pub fn choose(root: &Path) -> Result<Window, Error> {
             .iter()
             .find_map(|(reference, source)| Some((resolve(root, reference)?, *source)));
         let Some((commit, source)) = found else {
-            match candidate.absent {
-                Absent::Fetch => return Err(unfetched(&candidate.named, shallow)),
-                Absent::Rewritten if shallow => return Err(unfetched(&candidate.named, true)),
-                Absent::Rewritten => notes.push(format!(
-                    "the push started from {}, which this repository no longer holds — a \
-                     force-push rewrote it away, so this run compares against the merge-base",
-                    short(&candidate.named)
-                )),
-                Absent::Unrelated(branch) if shallow && resolve(root, &branch).is_some() => {
-                    return Err(unfetched(&format!("the merge-base with {branch}"), true));
-                }
-                Absent::Unrelated(_) => (),
-            }
+            notes.extend(candidate.absent(root, shallow)?);
             continue;
         };
         let base = Window {
@@ -751,6 +739,27 @@ struct Candidate {
     how: String,
     kind: Kind,
     absent: Absent,
+}
+
+impl Candidate {
+    /// A candidate that does not resolve: an error where more history fixes it, a note for a
+    /// push base a force-push rewrote away, and nothing for a merge-base a full clone lacks.
+    /// Spec 6.5.
+    fn absent(&self, root: &Path, shallow: bool) -> Result<Option<String>, Error> {
+        match &self.absent {
+            Absent::Fetch => Err(unfetched(&self.named, shallow)),
+            Absent::Rewritten if shallow => Err(unfetched(&self.named, true)),
+            Absent::Rewritten => Ok(Some(format!(
+                "the push started from {}, which this repository no longer holds — a \
+                 force-push rewrote it away, so this run compares against the merge-base",
+                short(&self.named)
+            ))),
+            Absent::Unrelated(branch) if shallow && resolve(root, branch).is_some() => Err(
+                unfetched(&format!("the merge-base with {}", self.named), true),
+            ),
+            Absent::Unrelated(_) => Ok(None),
+        }
+    }
 }
 
 /// What a candidate that does not resolve means. Spec 6.5.

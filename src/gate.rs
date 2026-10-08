@@ -237,10 +237,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
     let window = turn::window(root, lost, &mut log.flags, out).ok();
-    if let Some(window) = &window {
-        project.bind(window);
-    }
-    follow(project, window.as_ref());
+    bound(project, window.as_ref());
     let project = &*project;
     opened(root, lost, &mut log);
     if matches!(&window, Some(window) if matches!(window.kind, Kind::Branch)) {
@@ -1013,13 +1010,9 @@ fn judge(
     let (mut tally, mut records) = each(args, &wanted, project, &against, out);
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
-    for said in project.config.moved().iter().filter_map(gone_pin) {
-        if !args.json {
-            let _ = writeln!(out, "  NOTE: {said}");
-        }
-        records.notes.push(record("note", &said));
-        tally.told += 1;
-    }
+    let gone = gone_pins(args, project, out);
+    tally.told += gone.len();
+    records.notes.extend(gone);
     if let Some(unbuilt) = unbuilt {
         records.notes.push(record(UNBUILT, unbuilt));
         tally.told += 1;
@@ -2659,10 +2652,7 @@ fn measured(
     out: &mut String,
 ) -> Result<(), Fault> {
     let window = base::choose(project.root()).ok();
-    if let Some(window) = &window {
-        project.bind(window);
-    }
-    follow(project, window.as_ref());
+    bound(project, window.as_ref());
     let project = &*project;
     if let Some(note) = deleted_config(args, project, window.as_ref()) {
         if !args.json {
@@ -2675,6 +2665,15 @@ fn measured(
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
     Ok(())
+}
+
+/// The run bound to its window: the derivation commit it names, and the moved policy paths the
+/// run follows. Spec 4.3, 7.3.
+fn bound(project: &mut Project, window: Option<&Window>) {
+    if let Some(window) = window {
+        project.bind(window);
+    }
+    follow(project, window);
 }
 
 /// The moved policy paths of this window, which the run follows: a pinned `in` path whose files
@@ -2737,13 +2736,24 @@ fn moved_said(moved: &Moved) -> Option<String> {
 /// What the Stop notes of a moved pinned path: one whose files went with no rename, or that
 /// selects nothing in either tree. A pin whose files were all renamed is followed in silence,
 /// and `klin check` names it. Spec 7.3.
-fn gone_pin(moved: &Moved) -> Option<String> {
-    match moved {
-        Moved::Pin {
-            renamed, deleted, ..
-        } if renamed.is_empty() || *deleted > 0 => moved_said(moved),
-        _ => None,
-    }
+fn gone_pins(args: &Args, project: &Project, out: &mut String) -> Vec<Value> {
+    let gone = project
+        .config
+        .moved()
+        .iter()
+        .filter_map(|moved| match moved {
+            Moved::Pin {
+                renamed, deleted, ..
+            } if renamed.is_empty() || *deleted > 0 => moved_said(moved),
+            _ => None,
+        });
+    gone.map(|said| {
+        if !args.json {
+            let _ = writeln!(out, "  NOTE: {said}");
+        }
+        record("note", &said)
+    })
+    .collect()
 }
 
 /// The review item of a moved pinned path. Spec 7.3, 11.7.
@@ -2947,19 +2957,7 @@ impl Report {
         against: &Against,
         out: &mut String,
     ) {
-        self.window = against.base.as_ref().map(Window::record);
-        self.tree = Some(base::tree_record(project.root()));
-        if let Some(base) = &against.base {
-            self.windowed(args, base, out);
-        }
-        for moved in project.config.moved() {
-            if let Some(said) = moved_said(moved) {
-                if !args.json {
-                    let _ = writeln!(out, "  REVIEW: {said}");
-                }
-                self.reviews.push(moved_pin(moved, &said));
-            }
-        }
+        self.windowed(args, project, against.base.as_ref(), out);
         for gate in wanted {
             self.gate(args, gate, project, against, out);
         }
@@ -2988,10 +2986,30 @@ impl Report {
         }
     }
 
-    /// What choosing the window found: a note each for a rewritten push base or a base equal
+    /// What binding the window found: the window and the tree the run judges, a `moved-pin`
+    /// review item per moved pinned path, a note each for a rewritten push base or a base equal
     /// to HEAD, and the hole of a local base equal to HEAD that may hide unpushed commits.
-    /// Spec 6.5.
-    fn windowed(&mut self, args: &Args, base: &Window, out: &mut String) {
+    /// Spec 6.5, 7.3.
+    fn windowed(
+        &mut self,
+        args: &Args,
+        project: &Project,
+        base: Option<&Window>,
+        out: &mut String,
+    ) {
+        self.window = base.map(Window::record);
+        self.tree = Some(base::tree_record(project.root()));
+        for moved in project.config.moved() {
+            if let Some(said) = moved_said(moved) {
+                if !args.json {
+                    let _ = writeln!(out, "  REVIEW: {said}");
+                }
+                self.reviews.push(moved_pin(moved, &said));
+            }
+        }
+        let Some(base) = base else {
+            return;
+        };
         for note in &base.notes {
             if !args.json {
                 let _ = writeln!(out, "  NOTE: {note}");
