@@ -258,19 +258,19 @@ fn applied(components: &[Component], out: &mut String) -> Result<(), Error> {
 }
 
 fn written(target: &Target) -> Result<(), Error> {
-    if let Some(parent) = target.file.parent() {
-        std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
-    }
-    let held = std::fs::canonicalize(&target.file);
     if let Some(agreed) = &target.agreed
-        && held.as_ref().ok() != Some(agreed)
+        && resolved(&target.file).as_ref().ok() != Some(agreed)
     {
         return Err(Error(format!(
-            "{} no longer reaches {}, the file setup was to replace, so klin did not write it",
+            "{} no longer reaches {}, the file setup planned to write, so klin did not write it",
             target.file.display(),
             agreed.display()
         )));
     }
+    if let Some(parent) = target.file.parent() {
+        std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
+    }
+    let held = std::fs::canonicalize(&target.file);
     let path = held.as_deref().unwrap_or(&target.file);
     write::atomic_write(write::AtomicWrite {
         target: path,
@@ -495,8 +495,8 @@ fn reconciled(host: &'static dyn Adapter, file: &Path) -> Result<Component, Erro
 /// The standalone skill is one canonical text. A missing file is klin's to write, the exact
 /// current text is already current, and an earlier text is klin's to replace. Any other text is
 /// a person's: on a terminal the person says whether to replace it, and without one it is
-/// replaced and named, unless a link sends it to another file. Shared Codex and Cursor paths
-/// are planned once. Section B.19.3.
+/// replaced and named. A link that sends any write outside the skill's own path is followed
+/// only on a yes at a terminal. Shared Codex and Cursor paths are planned once. Section B.19.3.
 fn skill(
     host: &dyn Adapter,
     scope: &Scope,
@@ -512,82 +512,102 @@ fn skill(
         .canonicalize()
         .map_err(|why| Error::unreadable(&scope.at, why))?
         .join(host.skill_file());
-    let Some((said, agreed)) = rewritten(&file, &own)? else {
+    let reached = resolved(&file).map_err(|why| Error::unreadable(&file, why))?;
+    let linked = (reached != own).then_some(reached.as_path());
+    let Some(said) = rewritten(&file, linked)? else {
         return Ok((None, Some(format!("{} is already current", file.display()))));
     };
     let target = Target {
         file,
         bytes: SKILL.as_bytes().to_vec(),
-        agreed,
+        agreed: Some(reached),
     };
     Ok((Some(target), Some(said)))
 }
 
-/// What `setup` says it did to a skill file it writes, and the file a person agreed to replace,
-/// or `None` where the file is current. `own` is where the skill's path resolves with no link.
-fn rewritten(file: &Path, own: &Path) -> Result<Option<(String, Option<PathBuf>)>, Error> {
-    match held_skill(file) {
-        Ok(Held::Current) => Ok(None),
-        Ok(Held::Earlier) => Ok(Some((
-            format!("replaced {}, an earlier klin skill", file.display()),
-            None,
-        ))),
-        Ok(Held::Other) => consented(file, own).map(|(said, agreed)| Some((said, Some(agreed)))),
+/// Where a path resolves through every link, for a file that does not exist yet too: its
+/// nearest existing directory resolved, and the rest of the path joined on.
+fn resolved(path: &Path) -> std::io::Result<PathBuf> {
+    match path.canonicalize() {
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
-            Ok(Some((format!("wrote {}", file.display()), None)))
+            match (path.parent(), path.file_name()) {
+                (Some(parent), Some(name)) => Ok(resolved(parent)?.join(name)),
+                _ => Err(why),
+            }
         }
-        Err(why) => Err(Error::unreadable(file, why)),
+        held => held,
     }
 }
 
-/// A skill a person may have changed, replaced only where they agree or nobody can answer.
-/// A link that sends the skill to another file, such as `.git/config`, is followed only on a
-/// yes. Section B.19.3.
-fn consented(file: &Path, own: &Path) -> Result<(String, PathBuf), Error> {
-    let reached = file
-        .canonicalize()
-        .map_err(|why| Error::unreadable(file, why))?;
-    let linked = (reached != own).then_some(reached.as_path());
-    if replace_agreed(file, linked)? {
-        let said = match linked {
-            Some(to) => format!(
-                "replaced {}, which {} links to and which differed from klin's skill",
-                to.display(),
-                file.display()
-            ),
-            None => format!(
+/// What `setup` says it did to a skill file it writes, or `None` where the file is current. A
+/// changed skill, or any write a link sends to `linked`, needs consent.
+fn rewritten(file: &Path, linked: Option<&Path>) -> Result<Option<String>, Error> {
+    let Some((said, differs)) = write_of(file)? else {
+        return Ok(None);
+    };
+    if (differs || linked.is_some()) && !write_agreed(file, linked)? {
+        return Err(kept(file, linked));
+    }
+    Ok(Some(match linked {
+        Some(to) => format!("{said}, through a link to {}", to.display()),
+        None => said,
+    }))
+}
+
+/// The write a skill file needs, and whether it replaces a text a person may have changed, or
+/// `None` where the file is current.
+fn write_of(file: &Path) -> Result<Option<(String, bool)>, Error> {
+    Ok(Some(match held_skill(file) {
+        Ok(Held::Current) => return Ok(None),
+        Ok(Held::Earlier) => (
+            format!("replaced {}, an earlier klin skill", file.display()),
+            false,
+        ),
+        Ok(Held::Other) => (
+            format!(
                 "replaced {}, which differed from klin's skill",
                 file.display()
             ),
-        };
-        return Ok((said, reached));
-    }
-    let kept = match linked {
+            true,
+        ),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
+            (format!("wrote {}", file.display()), false)
+        }
+        Err(why) => return Err(Error::unreadable(file, why)),
+    }))
+}
+
+/// The refusal for a skill write nobody agreed to: the run writes nothing.
+fn kept(file: &Path, linked: Option<&Path>) -> Error {
+    let why = match linked {
         Some(to) => format!(
-            "{} links to {}, and klin replaces a file a skill links to only on a yes at a \
-             terminal",
+            "{} reaches {} through a link, and klin writes a skill through a link only on a \
+             yes at a terminal",
             file.display(),
             to.display()
         ),
-        None => format!("{}: kept the existing skill", file.display()),
+        None => format!(
+            "{}: kept the existing skill, which differs from klin's canonical skill",
+            file.display()
+        ),
     };
-    Err(Error(format!(
-        "{kept}. It differs from klin's canonical skill, and klin wrote nothing. Move it aside \
-         or reconcile it, then rerun klin setup"
-    )))
+    Error(format!(
+        "{why}. klin wrote nothing. Move the file or the link aside, or reconcile it, then \
+         rerun klin setup"
+    ))
 }
 
-/// Whether a person agrees to replace a skill they may have changed. Without a terminal nobody
-/// can answer: the skill's own file is replaced and printed, and a file a link reaches is kept.
+/// Whether a person agrees to a skill write that needs consent. Without a terminal nobody can
+/// answer: the skill's own file is replaced and printed, and a link is not followed.
 /// Section B.19.3.
-fn replace_agreed(file: &Path, linked: Option<&Path>) -> Result<bool, Error> {
+fn write_agreed(file: &Path, linked: Option<&Path>) -> Result<bool, Error> {
     let stdin = std::io::stdin();
     if !stdin.is_terminal() {
         return Ok(linked.is_none());
     }
     match linked {
         Some(to) => eprint!(
-            "{} links to {}, which differs from klin's canonical skill. Replace {}? [y/N] ",
+            "{} reaches {} through a link. Write klin's skill at {}? [y/N] ",
             file.display(),
             to.display(),
             to.display()

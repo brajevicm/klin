@@ -927,6 +927,39 @@ fn install_keeps_a_changed_skill_under_a_linked_directory_without_a_terminal() {
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
 }
 
+/// An earlier klin skill a link sends outside its own path is kept too: without a terminal,
+/// setup writes a skill only at the skill's own path. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_keeps_an_earlier_skill_that_is_a_link_without_a_terminal() {
+    let tree = a_repository();
+    let outside = Tree::bare();
+    let held = outside.write("SKILL.md", &harness::earlier_skills()[0]);
+    assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin")).is_ok());
+    assert!(std::os::unix::fs::symlink(&held, tree.path(".claude/skills/klin/SKILL.md")).is_ok());
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(skill_at(&held), harness::earlier_skills()[0]);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+}
+
+/// A missing skill under a linked directory would be a new file outside the scope, which no
+/// `git diff` shows, so without a terminal setup writes nothing. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_writes_no_missing_skill_under_a_linked_directory_without_a_terminal() {
+    let tree = a_repository();
+    let outside = Tree::bare();
+    assert!(std::fs::create_dir_all(tree.path(".claude")).is_ok());
+    assert!(std::os::unix::fs::symlink(outside.root(), tree.path(".claude/skills")).is_ok());
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(!outside.path("klin").exists(), "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+}
+
 /// On a terminal the question names the file the link reaches, and a yes replaces it.
 /// Spec B.19.3.
 #[cfg(unix)]
