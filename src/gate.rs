@@ -7,6 +7,7 @@ use std::time::Duration;
 use serde_json::{Map, Value, json};
 
 use crate::base::{self, Kind, Prior, Window};
+use crate::budget::{self, Budget, BuildBlock, GateBlock};
 use crate::changed::Change;
 use crate::check::contract::{
     self, Activation, Caller, Context, DELETED, DERIVATION, Derivation, Hole, Incomplete, Plain,
@@ -25,22 +26,8 @@ use crate::project::Project;
 use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
-use crate::{
-    build, ceiling, handoff, journal, reference, stamp, state, stats, survey, turn, write,
-};
+use crate::{build, ceiling, handoff, journal, reference, stamp, state, stats, survey, turn};
 
-/// Where klin records what one prompt already spent, so the stop that follows knows how many
-/// build blocks and gate blocks are left. In the state directory, which an agent does not
-/// empty. ADR 0019, ADR 0022, ADR 0052.
-const BUILD_BLOCKED: &str = "build-blocked";
-/// The index the build stamp hashes the tree through, apart from the turn stamp's own.
-const BUILD_INDEX: &str = "build-index";
-/// How many stops one prompt's build failures may block. klin bounds this itself, because the
-/// host documents no cap of its own. ADR 0022, spec 9.3.
-const BLOCKS: u64 = 8;
-/// How many stops one prompt's gate failures may block. The second needs a tree that changed
-/// since the first. ADR 0052, spec 9.3.
-const GATE_BLOCKS: u64 = 2;
 /// What `--list` indents a gate's own lines by, under the row that names it.
 const UNDER: &str = "      ";
 /// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
@@ -237,7 +224,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let lost = matches!(&lock, Some(None));
     let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
-    opened(root, lost, &mut log);
+    budgeted(root, lost, &mut log, Budget::open);
     let prior = (!lost).then(|| turn::aborting(root)).flatten();
     let (code, leaves, asked, note) = ran(
         args,
@@ -264,11 +251,10 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
-    if let Ok(at) = state::ready(root) {
-        let held = count(&at, &log);
-        log.gate_blocks = held.gate_blocks;
-        log.build_blocks = held.builds;
-        log.prompt = held.prompt;
+    if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
+        log.gate_blocks = spent.gate_blocks;
+        log.build_blocks = spent.builds;
+        log.prompt = spent.prompt;
     }
     let said = tell(args, root, code, note, &mut log);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
@@ -356,6 +342,23 @@ fn once(
 /// The host session an event names, and none for a stop no event placed.
 fn session(event: Option<&Event>) -> &str {
     event.map_or("", |event| event.session.as_str())
+}
+
+/// Asks the block budget of the stop this journal line records, which adds its flags to the
+/// line.
+fn budgeted<'a, T>(
+    root: &'a Path,
+    lost: bool,
+    log: &'a mut journal::Stop,
+    ask: impl FnOnce(&Budget<'a>, &mut Vec<&'static str>) -> T,
+) -> T {
+    let budget = Budget {
+        root,
+        session: log.session.as_deref(),
+        continued: log.continued,
+        lost,
+    };
+    ask(&budget, &mut log.flags)
 }
 
 /// The exit code a stop ends with: the host's own code for a block where the run blocked, and
@@ -573,7 +576,7 @@ fn ran(
     };
     match failure {
         Some(failure) => {
-            let blocks = build_block(project.root(), lost, log);
+            let blocks = budgeted(project.root(), lost, log, Budget::build_block);
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             log.result = Some(Report::unbuilt(
                 Report::config_of(project),
@@ -740,42 +743,8 @@ impl Tally {
     }
 }
 
-/// What the hook says about a tree that does not build. The messages name the bound from
-/// `BLOCKS`, so the cap and the words for it cannot drift apart, and the block this stop spends,
-/// so the agent reads how many are left. Spec 9.3.
-fn does_not_build_said(block: Option<u64>) -> String {
-    match block {
-        Some(block) => format!(
-            "the tree does not build, so no gate ran (a stop that changed the tree blocks until \
-             it does, block {block} of {BLOCKS} in this turn)"
-        ),
-        None => "the tree does not build, so no gate ran".to_string(),
-    }
-}
-
 /// Who builds a tree outside the hook: `klin gate` outside it runs no build. ADR 0012, spec 9.3.
 const OWN_CI: &str = "`klin check` runs no build, so the project's own CI must run it";
-
-fn stopped_blocking() -> String {
-    format!(
-        "the build has blocked {BLOCKS} stops under this prompt, so klin stops blocking; the \
-         failure stands. {OWN_CI}."
-    )
-}
-
-fn unchanged() -> String {
-    format!(
-        "the tree did not change since the stop klin last blocked, so klin does not block again; \
-         the failure stands. {OWN_CI}."
-    )
-}
-
-fn unbounded_note() -> String {
-    format!(
-        "klin could not safely spend a build block, so this build failure blocks nothing. \
-         {OWN_CI}."
-    )
-}
 
 /// The note for a build whose command the shell could not find. It names the command, quotes
 /// the shell, and says the one action left, because the failing output alone told the agent
@@ -788,149 +757,18 @@ fn unbuilt_said(run: &str, output: &str) -> String {
     )
 }
 
-/// The build stamp: one record per prompt. The prompt counter of the turn file it was taken
-/// under, the host session that took it, how many stops a build failure and a gate failure
-/// already blocked, and the tree each kind of block last saw. The two kinds never share a count
-/// or a tree. A record taken under an earlier prompt reads as zero, so every prompt gets the
-/// whole budget. Spec 16.3, ADR 0052.
-struct Count {
-    prompt: u64,
-    session: Option<String>,
-    builds: u64,
-    /// The working tree the last build block was taken over, so a stop that changed nothing
-    /// since is reported and not blocked again. ADR 0048.
-    build_tree: Option<String>,
-    gate_blocks: u64,
-    /// The working tree the last gate block was taken over. Only a tree klin recorded here can
-    /// prove that a later stop changed it. ADR 0052.
-    gate_tree: Option<String>,
-}
-
-/// The record as this prompt left it. A stop that `continued` a chain of messages its host
-/// submitted by itself keeps its own session's record whatever prompt it was taken under:
-/// another hook's message may have won the host's merge, and klin read it as a person's prompt,
-/// but the chain belongs to the prompt that opened it, and the stop that opened it wrote the
-/// record (`opened`). The record is written back under the current counter, so every later stop
-/// of the chain reads it too. A record an older klin wrote names its build tree `tree` and its
-/// one gate block `gate_spent`, and names no gate tree or session, so it can never prove a
-/// second gate block or carry into a chain. Spec 9.3, ADR 0052.
-fn count(at: &Path, log: &journal::Stop) -> Count {
-    let prompt = turn::prompts(at);
-    let held = held(at)
-        .filter(|held| taken_under(held, prompt) || log.continued && taken_by(held, log))
-        .unwrap_or_default();
-    let text = |key: &str| held.get(key)?.as_str().map(str::to_string);
-    let legacy_spent = held.get("gate_spent").and_then(Value::as_bool) == Some(true);
-    Count {
-        prompt,
-        session: log.session.clone(),
-        builds: held
-            .get("builds")
-            .and_then(Value::as_u64)
-            .unwrap_or_default(),
-        build_tree: text("build_tree").or_else(|| text("tree")),
-        gate_blocks: held
-            .get("gate_blocks")
-            .and_then(Value::as_u64)
-            .unwrap_or(u64::from(legacy_spent)),
-        gate_tree: text("gate_tree"),
-    }
-}
-
-fn held(at: &Path) -> Option<Value> {
-    std::fs::read_to_string(at.join(BUILD_BLOCKED))
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-}
-
-fn taken_under(held: &Value, prompt: u64) -> bool {
-    held.get("prompt").and_then(Value::as_u64) == Some(prompt)
-}
-
-fn taken_by(held: &Value, log: &journal::Stop) -> bool {
-    log.session
-        .as_deref()
-        .is_some_and(|session| held.get("session").and_then(Value::as_str) == Some(session))
-}
-
-/// A stop that no automatic message came before opens its prompt's budget, even where it
-/// spends none, so a later stop of the chain it opens inherits that budget and never one this
-/// session left under an earlier prompt. A record another session left stays: no chain of this
-/// session inherits it, and its own chain still may. Spec 9.3, ADR 0052.
-fn opened(root: &Path, lost: bool, log: &mut journal::Stop) {
-    let Ok(at) = state::ready(root) else {
-        return;
-    };
-    let prompt = turn::prompts(&at);
-    let stale = held(&at).is_some_and(|held| taken_by(&held, log) && !taken_under(&held, prompt));
-    if lost || log.continued || !stale {
-        return;
-    }
-    if !counted(&at, &count(&at, log)) {
-        log.flags.push("count-unwritable");
-    }
-}
-
-/// Whether the record reached the disk. A count klin cannot write bounds nothing, so the
-/// caller reports the build failure and does not block on it. Spec 14.
-fn counted(at: &Path, count: &Count) -> bool {
-    let text = serde_json::json!({
-        "prompt": count.prompt,
-        "session": count.session,
-        "builds": count.builds,
-        "build_tree": count.build_tree,
-        "gate_blocks": count.gate_blocks,
-        "gate_tree": count.gate_tree,
-    })
-    .to_string()
-        + "\n";
-    let target = at.join(BUILD_BLOCKED);
-    if write::atomic_write(write::AtomicWrite {
-        target: &target,
-        bytes: text.as_bytes(),
-        keep_mode_from: None,
-    })
-    .is_ok()
-    {
-        return true;
-    }
-    false
-}
-
 fn does_not_build(
     args: &Args,
     failure: &str,
     said: &[contract::Said],
     window: Option<&Window>,
-    blocks: &Blocks,
+    blocks: &BuildBlock,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, String) {
     let (code, report, text) = reported(args, failure, said, window, blocks, out);
     log.report = Some(report);
     (code, text)
-}
-
-/// What a build failure at this stop spends: the block it took and its number in this turn, no
-/// block because the tree did not change since the last one, or no block because klin could
-/// not record one.
-enum Blocks {
-    Spent(u64),
-    Unchanged,
-    Unbounded,
-}
-
-impl Blocks {
-    /// The exit code, the block's number when the stop blocks, and the note that says why it
-    /// does not.
-    fn outcome(&self) -> (u8, Option<u64>, Option<String>) {
-        match self {
-            Blocks::Spent(builds) if *builds <= BLOCKS => (2, Some(*builds), None),
-            Blocks::Spent(_) => (0, None, Some(stopped_blocking())),
-            Blocks::Unchanged => (0, None, Some(unchanged())),
-            Blocks::Unbounded => (0, None, Some(unbounded_note())),
-        }
-    }
 }
 
 /// A host that cannot read stderr still has to show the build failure. An adapter whose stop
@@ -942,54 +780,6 @@ fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> 
     }
 }
 
-/// The build block a failing build may spend. None at a stop that lost the state lock, because
-/// another stop may be writing the count; the lock's own NOTE tells it. The build twin of the
-/// gate's `next`. Spec 6.5.
-fn build_block(root: &Path, lost: bool, log: &mut journal::Stop) -> Blocks {
-    match lost {
-        true => Blocks::Unbounded,
-        false => raised(root, log),
-    }
-}
-
-/// The block this build failure spends. `Unchanged` when the working tree is the one the last
-/// block was taken over, because blocking again on a tree the agent did not touch teaches it
-/// nothing. `Unbounded` when klin could not record the block, either because the state
-/// directory is gone or because the record itself would not write: neither count could bound
-/// the blocks, so the NOTE names the write that failed and the stop is not blocked. Spec 14.
-fn raised(root: &Path, log: &mut journal::Stop) -> Blocks {
-    let at = match state::ready(root) {
-        Ok(at) => at,
-        Err(why) => return unbounded(&why, log),
-    };
-    let held = count(&at, log);
-    let tree = working_tree(root, &at);
-    if held.builds > 0 && tree.is_some() && tree == held.build_tree {
-        return Blocks::Unchanged;
-    }
-    let count = Count {
-        builds: held.builds + 1,
-        build_tree: tree,
-        ..held
-    };
-    match counted(&at, &count) {
-        true => Blocks::Spent(count.builds),
-        false => unbounded(
-            &format!("{} could not be written", at.join(BUILD_BLOCKED).display()),
-            log,
-        ),
-    }
-}
-
-fn unbounded(why: &str, log: &mut journal::Stop) -> Blocks {
-    log.flags.push("count-unwritable");
-    eprintln!(
-        "klin: NOTE: {why} — so no count could bound the build blocks, and this build failure \
-         blocks nothing."
-    );
-    Blocks::Unbounded
-}
-
 /// The build failure as a person and an agent read it, and as `--json` records it. The text
 /// opens with where each command came from, so a derived build is never a command with no
 /// origin, and the note says why klin did not block, because the exit code alone no longer
@@ -999,11 +789,12 @@ fn reported(
     failure: &str,
     built: &[contract::Said],
     window: Option<&Window>,
-    blocks: &Blocks,
+    blocks: &BuildBlock,
     out: &mut String,
 ) -> (u8, Value, String) {
-    let (code, block, note) = blocks.outcome();
-    let said = does_not_build_said(block);
+    let (blocking, said, note) = blocks.outcome();
+    let code = if blocking { BLOCKED } else { 0 };
+    let note = note.map(|note| format!("{note} {OWN_CI}."));
     let mut records = Recorded {
         derived: built
             .iter()
@@ -1880,7 +1671,6 @@ fn hook(
     lost: bool,
     log: &mut journal::Stop,
 ) -> (u8, Option<String>) {
-    let held = state::ready(root).ok().map(|at| (count(&at, log), at));
     unwritable(root);
     if tally.failed == 0 {
         return nothing_blocks(args, tally.told + tally.errored, report, event);
@@ -1889,22 +1679,21 @@ fn hook(
         eprint!("{report}");
         return (1, None);
     };
-    let next = match lost {
-        true => GateBlock::Pass(LOCKED.to_string()),
-        false => next(root, held.as_ref(), event.blocked_before),
+    let gate_block =
+        |budget: &Budget, flags: &mut _| budget.gate_block(event.blocked_before, flags);
+    let number = match budgeted(root, lost, log, gate_block) {
+        GateBlock::Spent(number) => number,
+        GateBlock::Passed(why) => return not_blocked(args, &tally, report, event, &why),
     };
-    let number = match spend(held, next, log) {
-        GateBlock::Take { number, .. } => number,
-        GateBlock::Pass(why) => return not_blocked(args, &tally, report, event, &why),
-    };
+    let numbered = budget::gate_numbered(number);
     let lead = match tally.errored {
         0 => format!(
-            "klin: a quality gate failed — fix what each names, then stop again (gate block \
-             {number} of {GATE_BLOCKS} in this turn):"
+            "klin: a quality gate failed — fix what each names, then stop again \
+             ({numbered}):"
         ),
         _ => format!(
-            "klin: a quality gate failed — fix what each FAIL names, then stop again (gate block \
-             {number} of {GATE_BLOCKS} in this turn). A capability that could not run is a \
+            "klin: a quality gate failed — fix what each FAIL names, then stop again \
+             ({numbered}). A capability that could not run is a \
              limitation of this stop and asks for no change to the source:"
         ),
     };
@@ -1987,101 +1776,6 @@ fn nothing_blocks(
         return (1, None);
     }
     (0, Some(said))
-}
-
-/// What a gate failure at this stop spends: the gate block it takes, with its number under this
-/// prompt and the tree it is taken over, or no block and the reason the report gives.
-enum GateBlock {
-    Take { number: u64, tree: Option<String> },
-    Pass(String),
-}
-
-/// The gate block this failure may take. The first is free. The second needs a tree that
-/// differs from the one klin recorded for the first, so a stop over the tree the agent left
-/// alone reports and lets the turn end. None comes after the second, and none at all without a
-/// state directory to record it in. The host's flag says a block happened, never which tree it
-/// saw: where klin's record holds no gate block, the flag counts as one klin never recorded, so
-/// the stop spends none, and it never proves a second. After a build block that flag is true
-/// while no gate block is spent, so it counts only where no build block was spent either.
-/// Spec 16.3, ADR 0052.
-fn next(root: &Path, held: Option<&(Count, PathBuf)>, blocked_before: bool) -> GateBlock {
-    let Some((count, at)) = held else {
-        return GateBlock::Pass(UNRECORDED.to_string());
-    };
-    if count.gate_blocks >= GATE_BLOCKS {
-        return GateBlock::Pass(capped());
-    }
-    let flagged = count.builds == 0 && blocked_before;
-    if count.gate_blocks == 0 && !flagged {
-        return GateBlock::Take {
-            number: 1,
-            tree: working_tree(root, at),
-        };
-    }
-    changed_since(root, count, at)
-}
-
-/// The next gate block after one that already happened, which only a tree klin recorded for
-/// that block and a current tree that differs from it can prove.
-fn changed_since(root: &Path, count: &Count, at: &Path) -> GateBlock {
-    let Some(before) = count.gate_tree.as_deref() else {
-        return GateBlock::Pass(UNPROVEN.to_string());
-    };
-    match working_tree(root, at) {
-        Some(tree) if tree == before => GateBlock::Pass(UNCHANGED_SINCE_GATE.to_string()),
-        Some(tree) => GateBlock::Take {
-            number: count.gate_blocks + 1,
-            tree: Some(tree),
-        },
-        None => GateBlock::Pass(UNPROVEN.to_string()),
-    }
-}
-
-/// The gate block recorded before it is delivered. A block klin cannot record could not be
-/// bounded, because the next stop would read it as never spent and take it again, so it
-/// becomes a report. ADR 0052.
-fn spend(held: Option<(Count, PathBuf)>, next: GateBlock, log: &mut journal::Stop) -> GateBlock {
-    let (number, tree) = match &next {
-        GateBlock::Take { number, tree } => (*number, tree.clone()),
-        GateBlock::Pass(_) => return next,
-    };
-    let Some((count, at)) = held else {
-        return GateBlock::Pass(UNRECORDED.to_string());
-    };
-    let recorded = Count {
-        gate_blocks: number,
-        gate_tree: tree,
-        ..count
-    };
-    if counted(&at, &recorded) {
-        return next;
-    }
-    log.flags.push("count-unwritable");
-    GateBlock::Pass(UNRECORDED.to_string())
-}
-
-/// Why a stop after a gate block spends none: klin has no tree of its own to compare against.
-const UNPROVEN: &str = "klin holds no record of the tree the last gate block saw, so it cannot \
-    tell whether this stop changed it";
-/// Why a stop spends no gate block when its record would not write. ADR 0052.
-const UNRECORDED: &str = "klin could not record a gate block, so nothing would bound it";
-/// Why a stop that lost the state lock spends no gate block. Spec 6.5.
-const LOCKED: &str = "another klin event held the state directory, so this stop could not count a \
-    gate block";
-/// Why a stop over the tree the last gate block saw spends none. ADR 0052.
-const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";
-
-/// Why a stop after the prompt's last gate block spends none, with the bound from
-/// `GATE_BLOCKS`, so the cap and the words for it cannot drift apart.
-fn capped() -> String {
-    format!(
-        "the gate has blocked {GATE_BLOCKS} stops under this prompt, which is the most it blocks"
-    )
-}
-
-/// The working tree as the build stamp records it, hashed through the build stamp's own index.
-fn working_tree(root: &Path, at: &Path) -> Option<String> {
-    stamp::tree_through(root, &at.join(BUILD_INDEX))
 }
 
 /// Record the exact report a follow-up host will echo under the event's session, then deliver

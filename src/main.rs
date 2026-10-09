@@ -1,5 +1,6 @@
 mod agent;
 mod base;
+mod budget;
 mod build;
 mod cache;
 mod ceiling;
