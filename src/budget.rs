@@ -103,11 +103,11 @@ impl Budget<'_> {
         }
     }
 
-    /// The block this build failure spends. `Unchanged` when the working tree is the one the last block was taken over, because
-    /// blocking again on a tree the agent did not touch teaches it nothing. `Unbounded` when klin
-    /// could not record the block, either because the state directory is gone or because the
-    /// record itself would not write: neither count could bound the blocks, so the NOTE names
-    /// the write that failed and the stop is not blocked. Spec 14.
+    /// The block this build failure spends. `Unchanged` when the working tree is the one the last
+    /// block was taken over, because blocking again on a tree the agent did not touch teaches it
+    /// nothing. `Unbounded` when klin could not record the block, either because the state
+    /// directory is gone or because the record itself would not write: neither count could bound
+    /// the blocks, so the NOTE names the write that failed and the stop is not blocked. Spec 14.
     fn raised(&self, flags: &mut Vec<&'static str>) -> BuildBlock {
         let at = match state::ready(self.root) {
             Ok(at) => at,

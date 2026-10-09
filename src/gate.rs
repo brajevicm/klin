@@ -784,8 +784,8 @@ fn reported(
     blocks: &BuildBlock,
     out: &mut String,
 ) -> (u8, Value, String) {
-    let (blocks, said, note) = blocks.outcome();
-    let code = if blocks { BLOCKED } else { 0 };
+    let (blocking, said, note) = blocks.outcome();
+    let code = if blocking { BLOCKED } else { 0 };
     let note = note.map(|note| format!("{note} {OWN_CI}."));
     let mut records = Recorded {
         derived: built
