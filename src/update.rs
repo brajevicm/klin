@@ -88,6 +88,8 @@ fn described(rows: &[&serde_json::Value]) -> String {
         .join(", ")
 }
 
+/// The path the updated binary sits at. Linux names a running binary that was replaced on disk
+/// with a ` (deleted)` suffix, and the new binary is at the path without it.
 fn replaced(exe: PathBuf) -> PathBuf {
     match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
         Some(path) => PathBuf::from(OsStr::from_bytes(path)),

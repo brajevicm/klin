@@ -857,26 +857,41 @@ fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integratio
     plugin.into_iter().chain(hooks).collect()
 }
 
-/// klin's skill at a scope that proves the host, where no host that reads that skill holds a
-/// copy of klin's integration: an install whose hook lines are gone. Spec 11.4.
+/// klin's skill at a scope where this host is the one host that reads it and the scope proves,
+/// and no such reader holds a copy of klin's integration: an install whose hook lines are gone.
+/// A skill two proven hosts share names neither, so the row never asks for a host nobody used.
+/// Spec 11.4.
 fn skill_alone(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Option<Integration> {
+    let readers: Vec<&'static dyn Adapter> = ADAPTERS
+        .iter()
+        .copied()
+        .filter(|reader| reader.skill_file() == host.skill_file())
+        .collect();
+    let proven: Vec<&str> = readers
+        .iter()
+        .filter(|reader| at.join(reader.marker()).is_dir())
+        .map(|reader| reader.name())
+        .collect();
     let skill = at.join(host.skill_file());
-    let alone = at.join(host.marker()).is_dir()
+    let alone = proven == [host.name()]
         && std::fs::read(&skill).is_ok_and(|text| text == SKILL.as_bytes())
-        && ADAPTERS
+        && readers
             .iter()
-            .filter(|reader| reader.skill_file() == host.skill_file())
             .all(|reader| copies(*reader, scope, at).is_empty());
-    alone.then(|| Integration {
+    if !alone {
+        return None;
+    }
+    let file = at.join(host.hook_file());
+    let wrong = match read(&file) {
+        Ok(_) => format!("{} holds none of klin's hook lines", file.display()),
+        Err(why) => why.0,
+    };
+    Some(Integration {
         host: host.name(),
         scope,
         route: Route::Hooks,
         state: State::Conflict,
-        detail: format!(
-            "{} is klin's skill, and {} holds none of klin's hook lines",
-            skill.display(),
-            at.join(host.hook_file()).display()
-        ),
+        detail: format!("{} is klin's skill, and {wrong}", skill.display()),
     })
 }
 
