@@ -224,7 +224,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let lost = matches!(&lock, Some(None));
     let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
-    budget_of(root, &log).open(lost, &mut log.flags);
+    budgeted(root, lost, &mut log, Budget::open);
     let prior = (!lost).then(|| turn::aborting(root)).flatten();
     let (code, leaves, asked, note) = ran(
         args,
@@ -251,7 +251,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
-    if let Some(spent) = budget_of(root, &log).spent() {
+    if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
         log.gate_blocks = spent.gate_blocks;
         log.build_blocks = spent.builds;
         log.prompt = spent.prompt;
@@ -344,13 +344,21 @@ fn session(event: Option<&Event>) -> &str {
     event.map_or("", |event| event.session.as_str())
 }
 
-/// The block budget of the stop this journal line records.
-fn budget_of<'a>(root: &'a Path, log: &journal::Stop) -> Budget<'a> {
-    Budget {
+/// Asks the block budget of the stop this journal line records, which adds its flags to the
+/// line.
+fn budgeted<'a, T>(
+    root: &'a Path,
+    lost: bool,
+    log: &'a mut journal::Stop,
+    ask: impl FnOnce(&Budget<'a>, &mut Vec<&'static str>) -> T,
+) -> T {
+    let budget = Budget {
         root,
-        session: log.session.clone(),
+        session: log.session.as_deref(),
         continued: log.continued,
-    }
+        lost,
+    };
+    ask(&budget, &mut log.flags)
 }
 
 /// The exit code a stop ends with: the host's own code for a block where the run blocked, and
@@ -568,7 +576,7 @@ fn ran(
     };
     match failure {
         Some(failure) => {
-            let blocks = budget_of(project.root(), log).build_block(lost, &mut log.flags);
+            let blocks = budgeted(project.root(), lost, log, Budget::build_block);
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
             log.result = Some(Report::unbuilt(
                 Report::config_of(project),
@@ -1671,7 +1679,9 @@ fn hook(
         eprint!("{report}");
         return (1, None);
     };
-    let number = match budget_of(root, log).gate_block(lost, event.blocked_before, &mut log.flags) {
+    let gate_block =
+        |budget: &Budget, flags: &mut _| budget.gate_block(event.blocked_before, flags);
+    let number = match budgeted(root, lost, log, gate_block) {
         GateBlock::Spent(number) => number,
         GateBlock::Passed(why) => return not_blocked(args, &tally, report, event, &why),
     };

@@ -30,13 +30,15 @@ const LOCKED: &str = "another klin event held the state directory, so this stop 
 /// Why a stop over the tree the last gate block saw spends none. ADR 0052.
 const UNCHANGED_SINCE_GATE: &str = "the tree did not change since the last gate block";
 
-/// One stop's per-prompt block budget: the host session that asks, and whether the stop
-/// `continued` a chain of messages its host submitted by itself. Every block is recorded before
-/// it is delivered, and a block klin cannot record is not spent. Spec 9.3, 16.3, ADR 0052.
+/// One stop's per-prompt block budget: the host session that asks, whether the stop
+/// `continued` a chain of messages its host submitted by itself, and whether it `lost` the state
+/// lock, so another stop may be writing the count. Every block is recorded before it is
+/// delivered, and a block klin cannot record is not spent. Spec 6.5, 9.3, 16.3, ADR 0052.
 pub struct Budget<'a> {
     pub root: &'a Path,
-    pub session: Option<String>,
+    pub session: Option<&'a str>,
     pub continued: bool,
+    pub lost: bool,
 }
 
 /// What this prompt already spent, as the journal line records it. Spec 13.1.
@@ -67,15 +69,14 @@ impl Budget<'_> {
     /// spends none, so a later stop of the chain it opens inherits that budget and never one this
     /// session left under an earlier prompt. A record another session left stays: no chain of
     /// this session inherits it, and its own chain still may. Spec 9.3, ADR 0052.
-    pub fn open(&self, lost: bool, flags: &mut Vec<&'static str>) {
+    pub fn open(&self, flags: &mut Vec<&'static str>) {
         let Ok(at) = state::ready(self.root) else {
             return;
         };
         let prompt = turn::prompts(&at);
-        let stale = Record::read(&at).is_some_and(|held| {
-            held.taken_by(self.session.as_deref()) && !held.taken_under(prompt)
-        });
-        if lost || self.continued || !stale {
+        let stale = Record::read(&at)
+            .is_some_and(|held| held.taken_by(self.session) && !held.taken_under(prompt));
+        if self.lost || self.continued || !stale {
             return;
         }
         if !counted(&at, &self.count(&at)) {
@@ -96,8 +97,8 @@ impl Budget<'_> {
 
     /// The build block a failing build may spend. None at a stop that lost the state lock,
     /// because another stop may be writing the count; the lock's own NOTE tells it. Spec 6.5.
-    pub fn build_block(&self, lost: bool, flags: &mut Vec<&'static str>) -> BuildBlock {
-        match lost {
+    pub fn build_block(&self, flags: &mut Vec<&'static str>) -> BuildBlock {
+        match self.lost {
             true => BuildBlock::Unbounded,
             false => self.raised(flags),
         }
@@ -143,13 +144,8 @@ impl Budget<'_> {
     /// no gate block, the flag counts as one klin never recorded, so the stop spends none, and
     /// it never proves a second. After a build block that flag is true while no gate block is
     /// spent, so it counts only where no build block was spent either. Spec 16.3, ADR 0052.
-    pub fn gate_block(
-        &self,
-        lost: bool,
-        blocked_before: bool,
-        flags: &mut Vec<&'static str>,
-    ) -> GateBlock {
-        if lost {
+    pub fn gate_block(&self, blocked_before: bool, flags: &mut Vec<&'static str>) -> GateBlock {
+        if self.lost {
             return GateBlock::Passed(LOCKED.to_string());
         }
         let Ok(at) = state::ready(self.root) else {
@@ -182,12 +178,12 @@ impl Budget<'_> {
         let prompt = turn::prompts(at);
         let held = Record::read(at)
             .filter(|held| {
-                held.taken_under(prompt) || self.continued && held.taken_by(self.session.as_deref())
+                held.taken_under(prompt) || self.continued && held.taken_by(self.session)
             })
             .unwrap_or_default();
         Count {
             prompt,
-            session: self.session.clone(),
+            session: self.session.map(str::to_string),
             builds: held.builds.unwrap_or_default(),
             build_tree: held.build_tree.or(held.tree),
             gate_blocks: held.gate_blocks.unwrap_or(u64::from(held.gate_spent)),
