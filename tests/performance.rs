@@ -80,6 +80,9 @@ struct Fixture {
     config: &'static str,
     layering: bool,
     integration: bool,
+    /// Whether `refs/remotes/origin/main` names the base, so the Stop's history check has a
+    /// default branch to read. Spec 6.6, 14.4.
+    origin: bool,
     /// A directory of stand-in `cargo` and `tsc` commands and the `PATH` that puts it first,
     /// so a configuration that derives the build measures its preparation and no compiler.
     toolchain: Option<(Tree, String)>,
@@ -298,6 +301,10 @@ impl Fixture {
             alias_sources(&tree);
         }
         tree.base();
+        let origin = profile.units.is_some() && chosen("KLIN_PERF_ORIGIN", &["off", "on"]) == "on";
+        if origin {
+            tree.git(&["update-ref", "refs/remotes/origin/main", "main"]);
+        }
         if config == "legacy" {
             pin_legacy(&tree);
         }
@@ -320,6 +327,7 @@ impl Fixture {
             config,
             layering,
             integration,
+            origin,
             toolchain: (config == "empty").then(toolchain),
         }
     }
@@ -520,7 +528,7 @@ impl Fixture {
                     .into_iter()
                     .flatten()
                     .any(|gate| gate["name"] == INTEGRATION),
-                "the Stop planned the {{check}}-placed integration: {line}"
+                "the Stop reported the {{check}}-placed integration: {line}"
             );
         }
         let mut gates = gate_times(line);
@@ -821,13 +829,14 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
     let changed = rows.changed;
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}, complexity_scope={}, config={}, layering={}, sarif={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
+        "fixture {} ({}, complexity_scope={}, config={}, layering={}, sarif={}, origin={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
         size,
         fixture.profile.name,
         fixture.scope,
         fixture.config,
         on_off(fixture.layering),
         on_off(fixture.integration),
+        on_off(fixture.origin),
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,
