@@ -3272,7 +3272,9 @@ normal commands never read or validate against the schema artifact.
 The schema accepts a file exactly when klin's structural rules accept it,
 except for the disagreements below and the `measurement-lost` entry that #500
 owns. A structural rule is a rule that `klin.json` alone decides.
-A `remedy` with no character other than whitespace is refused. A step date
+A `remedy` with no character other than whitespace is refused, and
+`the_remedy_pattern_refuses_exactly_the_characters_klin_trims` pins the
+whitespace set to the set that `str::trim` removes. A step date
 takes a month from 01 to 12 and a day from 01 to 31, and the schema adds no
 calendar rule. `the_schema_accepts_a_configuration_exactly_when_klin_does` in
 `tests/schema.rs` pins this with a valid and an invalid file for each shape

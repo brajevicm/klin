@@ -379,6 +379,23 @@ fn every_known_disagreement_still_disagrees() {
     }
 }
 
+#[test]
+fn the_remedy_pattern_refuses_exactly_the_characters_klin_trims() {
+    let schema = schema();
+    let remedy = &schema["properties"]["conventions"]["anyOf"][1]["additionalProperties"]["properties"]
+        ["remedy"];
+    let pattern = regex::Regex::new(remedy["pattern"].as_str().unwrap_or_default())
+        .unwrap_or_else(|why| panic!("{remedy} has no pattern: {why}"));
+    for character in char::MIN..=char::MAX {
+        assert_eq!(
+            pattern.is_match(&character.to_string()),
+            !character.is_whitespace(),
+            "U+{:04X}",
+            u32::from(character)
+        );
+    }
+}
+
 fn klin_accepts(tree: &Tree, config: &str) -> bool {
     tree.write("klin.json", config);
     let run = tree.run(&["policy"]);
@@ -404,113 +421,130 @@ fn valid(schema: &Value, value: &Value) -> bool {
     }
 }
 
-fn holds(
-    rules: &serde_json::Map<String, Value>,
-    keyword: &str,
-    rule: &Value,
-    value: &Value,
-) -> bool {
-    match keyword {
-        "$schema" | "$id" | "title" | "description" => true,
-        "type" => typed(rule, value),
-        "anyOf" => listed(rule).iter().any(|shape| valid(shape, value)),
-        "oneOf" => {
-            listed(rule)
-                .iter()
-                .filter(|shape| valid(shape, value))
-                .count()
-                == 1
-        }
-        "not" => !valid(rule, value),
-        keyword => scalar_holds(rules, keyword, rule, value),
-    }
-}
+type Rules = serde_json::Map<String, Value>;
 
-fn scalar_holds(
-    rules: &serde_json::Map<String, Value>,
-    keyword: &str,
-    rule: &Value,
-    value: &Value,
-) -> bool {
-    match keyword {
-        "const" => value == rule,
-        "enum" => listed(rule).contains(value),
-        "minimum" => value
+type Keyword = fn(&Rules, &Value, &Value) -> bool;
+
+const KEYWORDS: &[(&str, Keyword)] = &[
+    ("$schema", |_, _, _| true),
+    ("$id", |_, _, _| true),
+    ("title", |_, _, _| true),
+    ("description", |_, _, _| true),
+    ("type", |_, rule, value| typed(rule, value)),
+    ("const", |_, rule, value| value == rule),
+    ("enum", |_, rule, value| listed(rule).contains(value)),
+    ("anyOf", |_, rule, value| {
+        listed(rule).iter().any(|shape| valid(shape, value))
+    }),
+    ("oneOf", |_, rule, value| {
+        listed(rule)
+            .iter()
+            .filter(|shape| valid(shape, value))
+            .count()
+            == 1
+    }),
+    ("not", |_, rule, value| !valid(rule, value)),
+    ("minimum", |_, rule, value| {
+        value
             .as_f64()
-            .is_none_or(|number| number >= count(rule) as f64),
-        "minLength" => value
+            .is_none_or(|number| number >= count(rule) as f64)
+    }),
+    ("minLength", |_, rule, value| {
+        value
             .as_str()
-            .is_none_or(|text| text.chars().count() as u64 >= count(rule)),
-        "pattern" => value.as_str().is_none_or(|text| matches(rule, text)),
-        keyword => collection_holds(rules, keyword, rule, value),
-    }
-}
-
-fn collection_holds(
-    rules: &serde_json::Map<String, Value>,
-    keyword: &str,
-    rule: &Value,
-    value: &Value,
-) -> bool {
-    match keyword {
-        "minItems" => value
+            .is_none_or(|text| text.chars().count() as u64 >= count(rule))
+    }),
+    ("pattern", |_, rule, value| {
+        value.as_str().is_none_or(|text| matches(rule, text))
+    }),
+    ("minItems", |_, rule, value| {
+        value
             .as_array()
-            .is_none_or(|items| items.len() as u64 >= count(rule)),
-        "items" => value
+            .is_none_or(|items| items.len() as u64 >= count(rule))
+    }),
+    ("items", |_, rule, value| {
+        value
             .as_array()
-            .is_none_or(|items| items.iter().all(|item| valid(rule, item))),
-        keyword if OBJECT_KEYWORDS.contains(&keyword) => value
+            .is_none_or(|items| items.iter().all(|item| valid(rule, item)))
+    }),
+    ("minProperties", |_, rule, value| {
+        value
             .as_object()
-            .is_none_or(|fields| object_holds(rules, keyword, rule, fields)),
-        keyword => panic!("the test validator does not know \"{keyword}\""),
-    }
-}
-
-const OBJECT_KEYWORDS: &[&str] = &[
-    "minProperties",
-    "required",
-    "propertyNames",
-    "properties",
-    "patternProperties",
-    "additionalProperties",
+            .is_none_or(|fields| fields.len() as u64 >= count(rule))
+    }),
+    ("required", required),
+    ("propertyNames", property_names),
+    ("properties", properties),
+    ("patternProperties", pattern_properties),
+    ("additionalProperties", additional_properties),
 ];
 
-fn object_holds(
-    rules: &serde_json::Map<String, Value>,
-    keyword: &str,
-    rule: &Value,
-    fields: &serde_json::Map<String, Value>,
-) -> bool {
-    let shapes = |name: &str| -> Vec<&Value> {
-        let named = rules
-            .get("properties")
-            .and_then(|properties| properties.get(name));
-        let patterned = rules
-            .get("patternProperties")
-            .and_then(Value::as_object)
-            .into_iter()
-            .flatten()
-            .filter(|(pattern, _)| matches(&Value::from(pattern.as_str()), name))
-            .map(|(_, shape)| shape);
-        named.into_iter().chain(patterned).collect()
-    };
-    match keyword {
-        "minProperties" => fields.len() as u64 >= count(rule),
-        "required" => listed(rule)
+fn holds(rules: &Rules, keyword: &str, rule: &Value, value: &Value) -> bool {
+    let (_, check) = KEYWORDS
+        .iter()
+        .find(|(name, _)| *name == keyword)
+        .unwrap_or_else(|| panic!("the test validator does not know \"{keyword}\""));
+    check(rules, rule, value)
+}
+
+fn required(_: &Rules, rule: &Value, value: &Value) -> bool {
+    value.as_object().is_none_or(|fields| {
+        listed(rule)
             .iter()
-            .all(|name| name.as_str().is_some_and(|name| fields.contains_key(name))),
-        "propertyNames" => fields
+            .all(|name| name.as_str().is_some_and(|name| fields.contains_key(name)))
+    })
+}
+
+fn property_names(_: &Rules, rule: &Value, value: &Value) -> bool {
+    value.as_object().is_none_or(|fields| {
+        fields
             .keys()
-            .all(|name| valid(rule, &Value::from(name.as_str()))),
-        "properties" | "patternProperties" => fields
+            .all(|name| valid(rule, &Value::from(name.as_str())))
+    })
+}
+
+fn properties(_: &Rules, rule: &Value, value: &Value) -> bool {
+    value.as_object().is_none_or(|fields| {
+        fields
             .iter()
-            .all(|(name, value)| shapes(name).iter().all(|shape| valid(shape, value))),
-        "additionalProperties" => fields
+            .all(|(name, field)| rule.get(name).is_none_or(|shape| valid(shape, field)))
+    })
+}
+
+fn pattern_properties(_: &Rules, rule: &Value, value: &Value) -> bool {
+    let patterns = rule.as_object().into_iter().flatten();
+    value.as_object().is_none_or(|fields| {
+        fields.iter().all(|(name, field)| {
+            patterns
+                .clone()
+                .filter(|(pattern, _)| matches(&Value::from(pattern.as_str()), name))
+                .all(|(_, shape)| valid(shape, field))
+        })
+    })
+}
+
+fn additional_properties(rules: &Rules, rule: &Value, value: &Value) -> bool {
+    value.as_object().is_none_or(|fields| {
+        fields
             .iter()
-            .filter(|(name, _)| shapes(name).is_empty())
-            .all(|(_, value)| valid(rule, value)),
-        _ => unreachable!("{keyword} is one of OBJECT_KEYWORDS"),
-    }
+            .filter(|(name, _)| !covered(rules, name))
+            .all(|(_, field)| valid(rule, field))
+    })
+}
+
+fn covered(rules: &Rules, name: &str) -> bool {
+    let named = rules
+        .get("properties")
+        .is_some_and(|properties| properties.get(name).is_some());
+    let patterned = rules
+        .get("patternProperties")
+        .and_then(Value::as_object)
+        .is_some_and(|patterns| {
+            patterns
+                .keys()
+                .any(|pattern| matches(&Value::from(pattern.as_str()), name))
+        });
+    named || patterned
 }
 
 fn typed(rule: &Value, value: &Value) -> bool {
