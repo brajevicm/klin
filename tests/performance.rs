@@ -6,11 +6,14 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
 use std::sync::OnceLock;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 const ITERATIONS: usize = 5;
 const EVENTS: usize = 1_000;
 const STRUCTURAL_CACHE: &str = "cache/structural";
+/// The `{check}`-placed integration of `KLIN_PERF_SARIF=on`, and the file its command writes.
+const INTEGRATION: &str = "scanner";
+const INTEGRATION_RAN: &str = "integration-ran";
 
 #[derive(Clone, Copy, PartialEq)]
 enum PerfCase {
@@ -76,6 +79,10 @@ struct Fixture {
     scope: &'static str,
     config: &'static str,
     layering: bool,
+    integration: bool,
+    /// Whether `refs/remotes/origin/main` names the base, so the Stop's history check has a
+    /// default branch to read. Spec 6.6, 14.4.
+    origin: bool,
     /// A directory of stand-in `cargo` and `tsc` commands and the `PATH` that puts it first,
     /// so a configuration that derives the build measures its preparation and no compiler.
     toolchain: Option<(Tree, String)>,
@@ -164,12 +171,16 @@ fn perf_case() -> PerfCase {
 fn base_rows() {
     let small = Fixture::new(1_000);
     let small_rows = small.measure(PerfCase::Full);
-    let guard_rows = guard(&small.tree);
+    let (guard_rows, events) = guard(&small.tree);
+    let event_ms = |at: usize| events[at].as_secs_f64() * 1_000.0;
     print_rows(&small, &small_rows, PerfCase::Full);
     println!(
-        "guard 1000 events: cache=separate, iterations={ITERATIONS}, median_ms={}, per_event_ms={:.3}",
+        "guard 1000 events: cache=separate, iterations={ITERATIONS}, median_ms={}, per_event_ms={:.3}, event_p50_ms={:.3}, event_p99_ms={:.3}, event_max_ms={:.3}",
         median(&guard_rows),
-        median(&guard_rows) as f64 / EVENTS as f64
+        median(&guard_rows) as f64 / EVENTS as f64,
+        event_ms(events.len() / 2),
+        event_ms((events.len() * 99).div_ceil(100) - 1),
+        event_ms(events.len() - 1)
     );
 
     let large = Fixture::new(5_000);
@@ -265,10 +276,12 @@ impl Fixture {
         let tsx = files_per_language / 100;
         let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
         let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
-        let layering = profile.units.is_some()
-            && config != "legacy"
-            && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
-        write_project_files(&tree, scope, config, layering);
+        let Switches {
+            layering,
+            integration,
+            origin,
+        } = switches(profile, config);
+        write_project_files(&tree, scope, config, layering, integration);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
             assert_eq!(generated, expected, "{} generated sources", profile.name);
@@ -283,6 +296,9 @@ impl Fixture {
             alias_sources(&tree);
         }
         tree.base();
+        if origin {
+            tree.git(&["update-ref", "refs/remotes/origin/main", "main"]);
+        }
         if config == "legacy" {
             pin_legacy(&tree);
         }
@@ -304,6 +320,8 @@ impl Fixture {
             scope,
             config,
             layering,
+            integration,
+            origin,
             toolchain: (config == "empty").then(toolchain),
         }
     }
@@ -389,7 +407,10 @@ impl Fixture {
     }
 
     fn prime(&self) {
-        let primed = self.tree.session();
+        let primed = match knows_agent() {
+            true => self.tree.session(),
+            false => self.tree.run(&["radius"]),
+        };
         assert_eq!(primed.code, 0, "prime state: {}", primed.out);
         let primed = self.hook();
         assert_eq!(primed.code, 0, "prime survey: {}", primed.out);
@@ -490,6 +511,20 @@ impl Fixture {
         let lines = journal(&self.tree);
         assert!(lines.len() > stops, "warm hook wrote no journal line");
         let line = &lines[lines.len() - 1];
+        if self.integration {
+            assert!(
+                !self.tree.path(INTEGRATION_RAN).exists(),
+                "the Stop ran the {{check}}-placed integration"
+            );
+            assert!(
+                !harness::gate_rows(line)
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|gate| gate["name"] == INTEGRATION),
+                "the Stop reported the {{check}}-placed integration: {line}"
+            );
+        }
         let mut gates = gate_times(line);
         counters(&mut gates, "stop", &line["timing"], "", &STOP_TIMING);
         Sample { total, gates }
@@ -552,6 +587,29 @@ impl Fixture {
     }
 }
 
+/// The switches only the source-dense rows take. The legacy configuration pins its own
+/// `klin.json` after the base, so the two that write to it stay off under it.
+struct Switches {
+    layering: bool,
+    integration: bool,
+    origin: bool,
+}
+
+fn switches(profile: Profile, config: &str) -> Switches {
+    let dense = profile.units.is_some();
+    let configured = dense && config != "legacy";
+    let integration = configured && chosen("KLIN_PERF_SARIF", &["off", "on"]) == "on";
+    assert!(
+        !integration || perf_case() != PerfCase::Full,
+        "KLIN_PERF_SARIF=on requires KLIN_PERF_CASE=warm20 or warm100"
+    );
+    Switches {
+        layering: configured && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on",
+        integration,
+        origin: dense && chosen("KLIN_PERF_ORIGIN", &["off", "on"]) == "on",
+    }
+}
+
 /// The fixture's configuration: the build switched off, the empty opt-in marker, or the one the
 /// running binary's `init --force` pins after the base, which only a pre-#180 binary reads.
 /// The value an environment variable names from a fixed set, and the first when it is unset.
@@ -585,7 +643,7 @@ fn layering_policy() -> Value {
     })
 }
 
-fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool) {
+fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool, integration: bool) {
     let complexity = match scope {
         "rust" => r#""complexity":{"in":"rust"}"#,
         _ => "",
@@ -599,6 +657,13 @@ fn write_project_files(tree: &Tree, scope: &str, config: &str, layering: bool) {
     assert!(config.is_object(), "{config}");
     if layering {
         config["layering"] = layering_policy();
+    }
+    if integration {
+        config["sarif"] = json!([{
+            "name": INTEGRATION,
+            "report": "scanner.sarif",
+            "run": format!("touch {INTEGRATION_RAN}"),
+        }]);
     }
     tree.write("klin.json", &config.to_string());
     tree.write(
@@ -781,15 +846,14 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
     let changed = rows.changed;
     let size = fixture.files_per_language * 2;
     println!(
-        "fixture {} ({}, complexity_scope={}, config={}, layering={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
+        "fixture {} ({}, complexity_scope={}, config={}, layering={}, sarif={}, origin={}): loc={}, declarations={}, digest={:016x}, rust_files={}, typescript_files={}, tsx_files={}, changed_files={} ({} rust, {} typescript)",
         size,
         fixture.profile.name,
         fixture.scope,
         fixture.config,
-        match fixture.layering {
-            true => "on",
-            false => "off",
-        },
+        on_off(fixture.layering),
+        on_off(fixture.integration),
+        on_off(fixture.origin),
         fixture.generated.loc,
         fixture.generated.declarations,
         fixture.generated.digest,
@@ -826,6 +890,13 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
         std::env::consts::OS,
         std::env::consts::ARCH
     );
+}
+
+fn on_off(switched: bool) -> &'static str {
+    match switched {
+        true => "on",
+        false => "off",
+    }
 }
 
 fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
@@ -984,17 +1055,22 @@ fn median<T: Copy + Ord>(values: &[T]) -> T {
 /// `KLIN_BIN` built before #498, so the benchmark's base side still measures. Either reads the
 /// Stop event on stdin.
 fn hooked() -> &'static [&'static str] {
+    match knows_agent() {
+        true => harness::AGENT,
+        false => &["gate", "--hook", "--changed"],
+    }
+}
+
+/// Whether the binary under test has the agent ingress, which a `KLIN_BIN` built before #498
+/// lacks; that binary primes its state with `klin radius`.
+fn knows_agent() -> bool {
     static KNOWS_AGENT: OnceLock<bool> = OnceLock::new();
-    let knows = *KNOWS_AGENT.get_or_init(|| {
+    *KNOWS_AGENT.get_or_init(|| {
         Command::new(binary())
             .args(["status", "--help"])
             .output()
             .is_ok_and(|output| output.status.success())
-    });
-    match knows {
-        true => harness::AGENT,
-        false => &["gate", "--hook", "--changed"],
-    }
+    })
 }
 
 /// The whole run of the binary under test: `klin check`, or `klin gate --strict` for a `KLIN_BIN`
@@ -1631,12 +1707,17 @@ fn typescript_complex(index: usize, tsx: usize) -> String {
     )
 }
 
-fn guard(tree: &Tree) -> Vec<u128> {
+/// The `pre_tool` events of each iteration, timed together, and each single event's time, fastest
+/// first.
+fn guard(tree: &Tree) -> (Vec<u128>, Vec<Duration>) {
     let events: Vec<String> = (0..EVENTS).map(guard_event).collect();
-    repeat_totals(|| {
+    let mut each = Vec::with_capacity(EVENTS * ITERATIONS);
+    let totals = repeat_totals(|| {
         let started = Instant::now();
         for (index, event) in events.iter().enumerate() {
+            let fed = Instant::now();
             let run = feed(tree.root(), harness::AGENT, event);
+            each.push(fed.elapsed());
             match index % 10 {
                 2 | 9 => {
                     assert_eq!(run.code, 2, "guard deny: {}", run.out);
@@ -1655,7 +1736,9 @@ fn guard(tree: &Tree) -> Vec<u128> {
             }
         }
         started.elapsed().as_millis()
-    })
+    });
+    each.sort_unstable();
+    (totals, each)
 }
 
 fn guard_event(index: usize) -> String {
@@ -1698,6 +1781,7 @@ fn claude(tool: &str, input: Value) -> String {
 
 fn codex(tool: &str, command: String) -> String {
     json!({
+        "hook_event_name": "PreToolUse",
         "turn_id": "performance",
         "session_id": "performance",
         "tool_name": tool,
