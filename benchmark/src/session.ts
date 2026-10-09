@@ -320,9 +320,10 @@ function slurp(file: string): string {
   return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
 }
 
+/** The check document a Stop wrote to `KLIN_HOOK_REPORT`, in the report shape this harness reads. */
 function reportOf(text: string): GateReport | null {
   try {
-    const held = JSON.parse(text);
+    const held = wholeRunReport(JSON.parse(text));
     return isGateReport(held) ? held : null;
   } catch {
     return null;
@@ -420,7 +421,11 @@ export function wholeRunReport(parsed: unknown): unknown {
     exit: document.exit,
     derived: records(document.measurements).flatMap((one) => records((one.basis as Fields | undefined)?.policy)),
     gates,
-    findings: records(document.findings).map(({ check, remedy, ...finding }) => ({ ...finding, gate: check, fix_advice: remedy })),
+    findings: records(document.findings).map(({ check, remedy, ...finding }) => ({
+      ...finding,
+      gate: check,
+      ...(remedy === undefined ? {} : { fix_advice: remedy }),
+    })),
     notes: records(document.notes).map(({ check, kind, message, ...note }) => ({ ...note, gate: check, outcome: kind, text: message })),
   };
 }

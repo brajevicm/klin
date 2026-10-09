@@ -18,7 +18,7 @@ import * as workspace from "./workspace.ts";
 import * as integrity from "./integrity.ts";
 import { hookArguments } from "./capability.ts";
 import * as toolchain from "./toolchain.ts";
-import { wholeRun } from "./session.ts";
+import { wholeRun, wholeRunReport } from "./session.ts";
 
 /**
  * The deterministic fixture and oracle self-tests.
@@ -165,8 +165,8 @@ export function gatesTheHookNames(
  * every other exit code, a spawn error and a signal are the same kind of answer: none. A blocked
  * stop is read from the gate's own row, so an `ERR` on the gate this family measures is
  * indeterminate and a block another gate raised is not this gate firing. The hook's text prints
- * only the gates that did not pass, so the row comes from the report object the hook wrote to
- * `KLIN_HOOK_REPORT`, which holds every gate, and from the text only when no object was written.
+ * only the gates that did not pass, so the row comes from the check document the hook wrote to
+ * `KLIN_HOOK_REPORT`, which holds every gate, and from the text only when no document was written.
  */
 export function hookVerdict(
   ran: {
@@ -208,13 +208,14 @@ export function hookVerdict(
   };
 }
 
-/** The gate's status in the 11.2 object the hook wrote, or null where it wrote none or no row. */
+/** The gate's status in the check document the hook wrote, or null where it wrote none or no row. */
 function recordedRow(report: string | undefined, gate: string): string | null {
   if (!report) {
     return null;
   }
   try {
-    const gates: { name?: string; status?: string }[] = JSON.parse(report).gates ?? [];
+    const read = wholeRunReport(JSON.parse(report)) as { gates?: { name?: string; status?: string }[] };
+    const gates = read.gates ?? [];
     return gates.find((row) => row.name === gate)?.status ?? null;
   } catch {
     return null;

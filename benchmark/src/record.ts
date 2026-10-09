@@ -124,8 +124,10 @@ function reportSites(report: GateReport): unknown[] {
   ];
 }
 
+/** Whether the Stop left its own report. The wrapper gives each call a fresh file, so a report
+ * is this call's. Its `exit` is the check's exit, which a host's block code does not equal. */
 export function exactStopReport(hook: HookInvocation): hook is HookInvocation & { report: GateReport } {
-  return isGateReport(hook.report) && hook.report.exit === hook.status;
+  return isGateReport(hook.report);
 }
 
 export function targetStop(hook: HookInvocation, sites: unknown[]): boolean {

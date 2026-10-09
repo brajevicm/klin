@@ -49,7 +49,7 @@ function reportStub(into: string): string {
     [
       "#!/bin/sh",
       'if [ -n "${KLIN_HOOK_REPORT-}" ]; then',
-      "  printf '%s' '{\"status\":\"PASS\",\"summary\":\"hook\",\"derived\":[],\"gates\":[],\"findings\":[],\"notes\":[],\"exit\":0}' >\"$KLIN_HOOK_REPORT\"",
+      "  printf '%s' '{\"command\":\"check\",\"exit\":0,\"execution\":\"ok\",\"capabilities\":[],\"findings\":[],\"notes\":[],\"measurements\":[]}' >\"$KLIN_HOOK_REPORT\"",
       "fi",
       "printf '%s\\n' \"$*\" >> " + JSON.stringify(calls),
       "printf '%s' 'hook'",
@@ -119,7 +119,8 @@ test("the wrapper keeps a structured production report for each gate hook", () =
   });
   assert.deepEqual(hookEvidence(path.join(plane, "hooks"))[0].report, {
     status: "PASS",
-    summary: "hook",
+    summary: "",
+    window: undefined,
     derived: [],
     gates: [],
     findings: [],

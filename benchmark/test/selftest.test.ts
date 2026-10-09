@@ -162,9 +162,10 @@ test("a stop klin let through is the gate not firing, and every other answer is 
   assert.equal(hookVerdict(ran({ stderr: "  ERR   dead-symbols\n" }), "dead-symbols").passed, null);
   assert.equal(hookVerdict(ran({ stderr: "  FAIL  stubs\n" }), "dead-symbols").passed, null);
   const report = JSON.stringify({
-    gates: [
-      { name: "dead-symbols", status: "ok" },
-      { name: "stubs", status: "FAIL" },
+    command: "check",
+    capabilities: [
+      { name: "dead-symbols", state: "active", judgement: "pass", measurement: "complete", execution: "ok" },
+      { name: "stubs", state: "active", judgement: "fail", measurement: "complete", execution: "ok" },
     ],
   });
   assert.equal(
