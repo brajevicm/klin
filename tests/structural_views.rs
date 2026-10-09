@@ -65,10 +65,17 @@ fn stop(klin: &str, tree: &Tree) -> Run {
         .or_else(|| journal.lines().last())
         .and_then(|line| serde_json::from_str(line).ok())
         .unwrap_or_else(|| panic!("no report in {}", run.out));
-    let report: serde_json::Map<String, Value> = ["findings", "gates", "notes", "status"]
-        .into_iter()
-        .map(|key| (key.to_string(), line[key].clone()))
-        .collect();
+    let document = match line["result"].is_object() {
+        true => &line["result"],
+        false => &line,
+    };
+    let mut report: serde_json::Map<String, Value> =
+        ["findings", "notes", "status", "execution", "judgement"]
+            .into_iter()
+            .filter(|key| !document[*key].is_null())
+            .map(|key| (key.to_string(), document[key].clone()))
+            .collect();
+    report.insert("gates".to_string(), harness::gate_rows(&line).clone());
     let out = Value::Object(report).to_string();
     Run {
         code: run.code,
