@@ -31,6 +31,7 @@ mod lockfile;
 mod markers;
 mod measurement;
 mod modules;
+mod plan;
 mod project;
 mod public_api;
 mod radius;
