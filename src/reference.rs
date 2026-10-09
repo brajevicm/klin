@@ -62,7 +62,7 @@ fn schema_value() -> Value {
         "$schema": SCHEMA,
         "$id": SCHEMA_ID,
         "title": "klin.json",
-        "description": "Human policy for klin; repository facts and semantic validation remain native to klin. klin reads only the klin.json at the worktree root, and no file runs under `{}`.",
+        "description": "Human policy for klin; repository facts and semantic validation remain native to klin. klin reads the klin.json at the worktree root, or in the starting directory outside a worktree, and never one below the root; `--config PATH` names another file. Without a file, `klin check`, `klin status` and `klin policy` run under `{}`, and the hooks stay silent.",
         "type": "object",
         "properties": properties,
         "additionalProperties": false

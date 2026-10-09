@@ -3275,8 +3275,9 @@ derivation rule and its default, as its reference row does. A section's
 description states its check, its activation of section 4.6 and what
 absence means, that `false` excludes the gate, the policy text of a section
 that reads no keys, and the reference text of its check. The root
-description states that klin reads only the `klin.json` at the worktree
-root and that no file runs under `{}` (section 5.1).
+description states the discovery of section 5.1: the `klin.json` at the
+worktree root, `--config PATH`, and `{}` with the hooks silent when there is
+no file.
 `the_schema_descriptions_carry_the_policy_metadata` in `tests/schema.rs`
 pins representative descriptions.
 

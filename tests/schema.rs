@@ -132,15 +132,22 @@ fn accepted_schema(properties: &serde_json::Map<String, Value>) {
 #[test]
 fn the_schema_descriptions_carry_the_policy_metadata() {
     let schema = schema();
-    let described = |at: &Value| at["description"].as_str().unwrap_or_default().to_string();
+    let described = |at: &Value| {
+        at["description"]
+            .as_str()
+            .unwrap_or_else(|| panic!("a description: {at}"))
+            .to_string()
+    };
     let root = described(&schema);
-    assert!(root.contains("worktree root"), "{root}");
-    assert!(root.contains("`{}`"), "{root}");
+    assert!(root.contains("at the worktree root"), "{root}");
+    assert!(root.contains("run under `{}`"), "{root}");
+    assert!(root.contains("the hooks stay silent"), "{root}");
 
     let properties = &schema["properties"];
     let complexity = described(&properties["complexity"]);
     assert!(
-        complexity.contains("automatic: when the section is absent, the check runs"),
+        complexity
+            .contains("automatic: when the section is absent, the check runs when the tree holds"),
         "{complexity}"
     );
     assert!(
