@@ -158,7 +158,7 @@ fn object(keys: &[Key], minimum: bool) -> Value {
 }
 
 fn field(key: &Key) -> Value {
-    let mut text = format!("{}. Source: {}.", key.holds, source(key));
+    let mut text = format!("{}. Source: {}.", key.holds, key.source());
     if let Some(rule) = key.rule {
         let _ = write!(text, " Derivation rule: {rule}.");
     }
@@ -173,13 +173,6 @@ fn described(mut value: Value, text: String) -> Value {
         fields.insert("description".into(), Value::from(text));
     }
     value
-}
-
-fn source(key: &Key) -> &'static str {
-    match key.rule {
-        None => "pinned only",
-        Some(_) => "derived when absent",
-    }
 }
 
 fn shape(shape: Shape) -> Value {
@@ -371,7 +364,7 @@ fn table(keys: &[Key], out: &mut String) {
             key.name,
             cell(key.holds),
             yes(key.required),
-            source(key),
+            key.source(),
             cell(key.rule.unwrap_or_default()),
             cell(key.default)
         );
