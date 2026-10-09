@@ -135,7 +135,7 @@ fn identity(site: &Value) -> Identity {
 /// same site over four blocked stops is one of these, with its latest outcome.
 struct Regression {
     identity: Identity,
-    gate: String,
+    check: String,
     id: Option<String>,
     file: String,
     line: Option<u64>,
@@ -163,7 +163,7 @@ impl Regression {
     fn opened(site: &Value, stop: &Value, chapter: u64, prompt: Option<String>) -> Regression {
         Regression {
             identity: identity(site),
-            gate: check_of(site).to_string(),
+            check: check_of(site).to_string(),
             id: site
                 .get("id")
                 .and_then(Value::as_str)
@@ -221,9 +221,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let (lines, skipped) = journal::read(start);
     let now = clock();
     let held = scoped(&lines, scope, start, now);
-    let notices = open_notices(&lines, turn::taken_at(start));
-    let mut report = Report::read(&held, scope, now, skipped, notices);
-    report.empty = lines.is_empty() && skipped == 0;
+    let notices = journal::open_notices(&lines, turn::stamp_commit(start).as_deref());
+    let empty = lines.is_empty() && skipped == 0;
+    let mut report = Report::read(&held, scope, now, skipped, notices, empty);
     report.confidence.unscoped = unscoped(&lines, scope, start);
     if !args.json && report.confidence.unscoped.is_some() && matches!(scope, Scope::Session) {
         let _ = writeln!(
@@ -454,15 +454,17 @@ impl Pass {
                 one.close(Outcome::AskedOnce, time);
                 return false;
             }
-            if !measured(line, &one.gate) {
+            if !measured(line, &one.check) {
                 return true;
             }
             one.tries += 1;
+            let measured_under = semantics(line, &one.check);
             if carries(line, &one.identity) {
                 one.last = time;
+                one.semantics = measured_under;
                 return true;
             }
-            let outcome = match semantics(line, &one.gate) == one.semantics {
+            let outcome = match measured_under == one.semantics {
                 true => one.resolved(hash),
                 false => Outcome::NotCompared,
             };
@@ -540,7 +542,7 @@ fn measured(line: &Value, check: &str) -> bool {
 /// Spec 8.2.
 fn let_through(line: &Value, one: &Regression) -> bool {
     held(line, "notes").iter().any(|note| {
-        word(note, "check") == one.gate
+        word(note, "check") == one.check
             && match word(note, "kind") {
                 "deleted" => true,
                 "note" => note.get("line").is_some(),
@@ -686,6 +688,7 @@ struct Evidence {
 }
 
 impl Evidence {
+    /// The evidence of the scope's Stop lines, beside the open window's notices. Spec 13.2.
     fn read(lines: &[Value], notices: Vec<(u64, String)>) -> Evidence {
         let mut out = Evidence {
             notices,
@@ -703,6 +706,7 @@ impl Evidence {
         out
     }
 
+    /// The review items a Stop reported, each kept once with the last time a Stop saw it.
     fn reviewed(&mut self, line: &Value, time: u64) {
         for item in held(line, "reviews") {
             let same = |one: &&mut Review| {
@@ -728,6 +732,7 @@ impl Evidence {
         }
     }
 
+    /// The holes a Stop's measurements left, each kept once by check and reason. Spec 8.1.
     fn holed(&mut self, line: &Value, time: u64) {
         for record in held(line, "measurements") {
             for hole in list(record, "holes") {
@@ -782,31 +787,6 @@ impl Evidence {
             }
         }
     }
-}
-
-/// The non-blocking notices of the open window that only the journal holds: those a Stop under
-/// the current stamp left on a host with no channel for them. A notice expires when its window
-/// closes, so the stamp's time bounds them. Spec 10.7.
-pub fn open_notices(lines: &[Value], since: Option<u64>) -> Vec<(u64, String)> {
-    let Some(since) = since else {
-        return Vec::new();
-    };
-    let mut out: Vec<(u64, String)> = Vec::new();
-    for line in lines
-        .iter()
-        .filter(|line| kind(line) == "stop" && at(line) >= since)
-    {
-        let notice = &line["notice"];
-        if notice["delivered"] != false {
-            continue;
-        }
-        let message = word(notice, "message").to_string();
-        match out.iter_mut().find(|(_, held)| *held == message) {
-            Some(held) => held.0 = at(line),
-            None => out.push((at(line), message)),
-        }
-    }
-    out
 }
 
 fn plural(count: usize, one: &str, many: &str) -> String {
@@ -988,6 +968,7 @@ impl Report {
         now: u64,
         skipped: u64,
         notices: Vec<(u64, String)>,
+        empty: bool,
     ) -> Report {
         let regressions = regressions(lines);
         let evidence = Evidence::read(lines, notices);
@@ -1010,7 +991,7 @@ impl Report {
                 .iter()
                 .filter_map(|line| line.get("timing")?.get("klin_ms")?.as_u64())
                 .sum(),
-            empty: false,
+            empty,
         }
     }
 
@@ -1092,6 +1073,13 @@ fn evidence_lines(evidence: &Evidence) -> Vec<String> {
         0 => {}
         1 => said.push("1 review item is open.".into()),
         many => said.push(format!("{many} review items are open.")),
+    }
+    match evidence.advisory.len() {
+        0 => {}
+        1 => said.push("1 Stop was advisory: the history moved, so klin blocked nothing.".into()),
+        many => said.push(format!(
+            "{many} Stops were advisory: the history moved, so klin blocked nothing."
+        )),
     }
     for (_, message) in &evidence.notices {
         said.push(format!("klin left you a notice in this window:\n{message}"));
@@ -1214,7 +1202,7 @@ fn describe(one: &Regression) -> String {
     }
     match measures(&one.values) {
         Some(said) => said,
-        None => label(&one.gate, 1).to_string(),
+        None => label(&one.check, 1).to_string(),
     }
 }
 
@@ -1297,7 +1285,7 @@ fn turn_chapter(out: &mut String, report: &Report, held: &[&Regression], offset:
     }
     let _ = writeln!(out);
     for gate in gates_of(held) {
-        let sites: Vec<&&Regression> = held.iter().filter(|one| one.gate == gate).collect();
+        let sites: Vec<&&Regression> = held.iter().filter(|one| one.check == gate).collect();
         let _ = writeln!(out, "  {} {}", sites.len(), label(&gate, sites.len()));
         for one in sites {
             let _ = writeln!(out, "    {}  {}", one.site(), describe(one));
@@ -1312,8 +1300,8 @@ fn turn_chapter(out: &mut String, report: &Report, held: &[&Regression], offset:
 fn gates_of(held: &[&Regression]) -> Vec<String> {
     let mut named: Vec<String> = Vec::new();
     for one in held {
-        if !named.contains(&one.gate) {
-            named.push(one.gate.clone());
+        if !named.contains(&one.check) {
+            named.push(one.check.clone());
         }
     }
     named
@@ -1421,10 +1409,11 @@ fn json(out: &mut String, report: &Report) {
     let _ = writeln!(out, "{record}");
 }
 
+/// One regression as the report document names it. Spec 13.3.
 fn regression(one: &Regression) -> Value {
     serde_json::json!({
         "id": one.id,
-        "check": one.gate,
+        "check": one.check,
         "file": one.file,
         "text": one.text,
         "state": one.outcome.state(),
@@ -1436,11 +1425,11 @@ fn regression(one: &Regression) -> Value {
 
 fn episode(one: &Regression) -> Value {
     serde_json::json!({
-        "gate": one.gate,
-        "label": label(&one.gate, 1),
+        "gate": one.check,
+        "label": label(&one.check, 1),
         "id": one.id,
         "key": {
-            "gate": one.gate,
+            "gate": one.check,
             "file": one.file,
             "line": one.line,
             "text": one.text,
@@ -1503,7 +1492,7 @@ fn turn_line(held: &[Regression]) -> Option<String> {
     let public_api = held
         .iter()
         .filter(|one| one.outcome == Outcome::Open)
-        .all(|one| one.gate == catalogue::PUBLIC_API);
+        .all(|one| one.check == catalogue::PUBLIC_API);
     match (counts.open, counts.caught) {
         (0, 0) => None,
         (0, caught) => Some(caught_this("this turn", caught, counts.fixed)),

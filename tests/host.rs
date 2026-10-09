@@ -664,10 +664,6 @@ fn a_cursor_notice_lands_in_the_journal_status_and_report_until_its_window_close
     let stamped = tree.field("commit");
     submit(&tree, "s1", &"the next task".into());
     assert_ne!(tree.field("commit"), stamped, "the prompt kept the stamp");
-    let held = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
-    let mut held: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
-    held["time"] = (held["time"].as_u64().unwrap_or_default() + 5).into();
-    tree.write(".git/klin/turn", &held.to_string());
 
     let status = tree.run(&["status", "--json"]).json();
     assert_eq!(

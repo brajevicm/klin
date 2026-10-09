@@ -323,6 +323,29 @@ fn a_regression_gone_under_another_semantics_version_is_not_compared_and_not_fix
     assert!(!run.says("fixed"), "{}", run.out);
 }
 
+/// A later measurement that still holds the site under the new semantics version makes that
+/// version the one a fix compares with. Spec 8.3.
+#[test]
+fn a_regression_held_under_a_new_semantics_version_and_gone_under_it_is_fixed() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let mut held = stop(300, false, vec![site.clone()], vec![]);
+    let mut gone = stop(200, false, vec![], vec![]);
+    for line in [&mut held, &mut gone] {
+        for record in line["result"]["measurements"]
+            .as_array_mut()
+            .into_iter()
+            .flatten()
+        {
+            record["basis"]["producer"]["semantics_version"] = json!(2);
+        }
+    }
+    let tree = tree(&[stop(400, true, vec![site], vec![]), held, gone]);
+
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(json["counts"]["fixed"], 1, "{json}");
+    assert_eq!(json["counts"]["not_compared"], 0, "{json}");
+}
+
 #[test]
 fn a_regression_that_goes_after_the_config_changed_is_not_reported_as_a_code_fix() {
     let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);

@@ -202,7 +202,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     };
     log.result = Some(Report::stopped_by(config, None, fault));
     let said = fresh.then_some(said);
-    log.notice = noticed(said.as_deref(), Some(event));
+    log.notice = noticed(root, said.as_deref(), Some(event));
     journal::stop(root, &log);
     if let Some(said) = said {
         turn::heard(root, &told);
@@ -213,10 +213,11 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
 
 /// The notice a Stop that blocks nothing leaves for the person, and whether the host has a
 /// channel that delivers it. Spec 10.7, 13.1.
-fn noticed(said: Option<&str>, event: Option<&Event>) -> Option<journal::Notice> {
+fn noticed(root: &Path, said: Option<&str>, event: Option<&Event>) -> Option<journal::Notice> {
     said.map(|message| journal::Notice {
         message: message.to_string(),
         delivered: host::answering(event).delivers_notices(),
+        stamp: turn::stamp_commit(root),
     })
 }
 
@@ -293,7 +294,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         log.prompt = held.prompt;
     }
     let said = tell(args, root, code, note, &mut log);
-    log.notice = noticed(said.as_deref(), event.as_ref());
+    log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || log.told.contains(&"note")) {
         turn::heard(root, &told);
     }
@@ -3298,6 +3299,7 @@ impl Report {
         doc
     }
 
+    /// The configuration a run judged under, as the check document names it. Spec 11.7.
     fn config_of(project: &Project) -> Value {
         json!({
             "path": project.config.file.display().to_string(),

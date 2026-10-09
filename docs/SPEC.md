@@ -1524,7 +1524,8 @@ them."), a configuration error, the turn-end line or the weekly line.
   Cursor submits it as the next agent prompt. The journal records it, and
   `klin status` and `klin report` show it while its window is open. A notice
   expires when the window it belongs to closes, so notices never pile up: a
-  reader holds a notice open while its Stop line is no older than the stamp.
+  reader holds a notice open while the stamp commit its Stop left, which the
+  notice records as `stamp`, is the current one.
   The stamp records the notes and errors of the notice as told (section 6.6),
   so a later Stop under the same stamp leaves no second notice for them.
 - On the harness protocol, the notice is a `tell` decision.
@@ -1936,8 +1937,9 @@ vNext writes journal `schema` 2:
 In the `result` of a `stop` line, `tree` is null, because the Stop starts no
 git process to describe the working tree, and `window.kind` names the window
 the Stop judged: `turn`, or `branch` for the 0.x branch fallback. `notice` is
-null or `{message, delivered}`. `delivered` is false on Cursor, where only the
-journal holds the notice (section 10.7).
+null or `{message, delivered, stamp}`. `delivered` is false on Cursor, where
+only the journal holds the notice, and `stamp` is the stamp commit the Stop
+left, which names the window the notice belongs to (section 10.7).
 
 klin is not released, so a reader reads schema 2 lines only. A line of
 another schema counts in `skipped_lines`.

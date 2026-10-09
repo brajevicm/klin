@@ -12,7 +12,7 @@ use crate::config::{Config, Discovered};
 use crate::error::Error;
 use crate::hooks::{self, Integration};
 use crate::stamp::{Here, Verdict};
-use crate::{journal, stamp, state, stats};
+use crate::{journal, stamp, state};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
 
@@ -89,7 +89,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "aborted_since": null,
         "default_branch": Here::read(root).default.map(|(name, _)| name),
         "last_advisory": last_advisory(lines),
-        "notices": stats::open_notices(lines, Some(held.time))
+        "notices": journal::open_notices(lines, held.commit.as_deref())
             .into_iter()
             .map(|(time, message)| json!({"time": time, "message": message}))
             .collect::<Vec<Value>>(),

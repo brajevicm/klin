@@ -138,6 +138,14 @@ pub fn prompts(at: &Path) -> u64 {
     stamp::read(at).map_or(0, |held| held.prompts)
 }
 
+/// The commit of the current turn stamp, which names the open window, and `None` when no stamp
+/// is readable or it names none. Spec 10.7.
+pub fn stamp_commit(root: &Path) -> Option<String> {
+    state::dir(root)
+        .and_then(|at| stamp::read(&at))
+        .and_then(|held| held.commit)
+}
+
 /// When the current turn stamp was taken, and `None` when no stamp is readable. Spec 11.5.
 pub fn taken_at(root: &Path) -> Option<u64> {
     state::dir(root)
