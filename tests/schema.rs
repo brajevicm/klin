@@ -2,6 +2,7 @@ mod harness;
 
 use std::fs;
 
+use Holds::{Named, Nothing, Schema, Schemas};
 use harness::Tree;
 use serde_json::Value;
 
@@ -348,6 +349,14 @@ const KNOWN: &[(&str, bool)] = &[
         r#"{"sarif": [{"name": "measurement-lost", "report": "a.sarif"}]}"#,
         false,
     ),
+    (
+        r#"{"conventions": {"a": {"files": "/tmp/scratch", "remedy": "Do."}}}"#,
+        false,
+    ),
+    (
+        r#"{"conventions": {"a": {"text": "x", "remedy": "Do."}}, "accepted": [{"gate": "conventions/b", "file": "src/a.rs", "text": "x"}]}"#,
+        false,
+    ),
 ];
 
 #[test]
@@ -377,6 +386,11 @@ fn every_known_disagreement_still_disagrees() {
             "schema on {config}"
         );
     }
+}
+
+#[test]
+fn the_validator_knows_every_keyword_the_schema_uses() {
+    vocabulary(&schema());
 }
 
 #[test]
@@ -425,66 +439,99 @@ type Rules = serde_json::Map<String, Value>;
 
 type Keyword = fn(&Rules, &Value, &Value) -> bool;
 
-const KEYWORDS: &[(&str, Keyword)] = &[
-    ("$schema", |_, _, _| true),
-    ("$id", |_, _, _| true),
-    ("title", |_, _, _| true),
-    ("description", |_, _, _| true),
-    ("type", |_, rule, value| typed(rule, value)),
-    ("const", |_, rule, value| value == rule),
-    ("enum", |_, rule, value| listed(rule).contains(value)),
-    ("anyOf", |_, rule, value| {
+/// Where a keyword's value holds subschemas, so the vocabulary walk reaches every node.
+enum Holds {
+    Nothing,
+    Schema,
+    Schemas,
+    Named,
+}
+
+const KEYWORDS: &[(&str, Holds, Keyword)] = &[
+    ("$schema", Nothing, |_, _, _| true),
+    ("$id", Nothing, |_, _, _| true),
+    ("title", Nothing, |_, _, _| true),
+    ("description", Nothing, |_, _, _| true),
+    ("type", Nothing, |_, rule, value| typed(rule, value)),
+    ("const", Nothing, |_, rule, value| value == rule),
+    ("enum", Nothing, |_, rule, value| {
+        listed(rule).contains(value)
+    }),
+    ("anyOf", Schemas, |_, rule, value| {
         listed(rule).iter().any(|shape| valid(shape, value))
     }),
-    ("oneOf", |_, rule, value| {
+    ("oneOf", Schemas, |_, rule, value| {
         listed(rule)
             .iter()
             .filter(|shape| valid(shape, value))
             .count()
             == 1
     }),
-    ("not", |_, rule, value| !valid(rule, value)),
-    ("minimum", |_, rule, value| {
+    ("not", Schema, |_, rule, value| !valid(rule, value)),
+    ("minimum", Nothing, |_, rule, value| {
         value
             .as_f64()
             .is_none_or(|number| number >= count(rule) as f64)
     }),
-    ("minLength", |_, rule, value| {
+    ("minLength", Nothing, |_, rule, value| {
         value
             .as_str()
             .is_none_or(|text| text.chars().count() as u64 >= count(rule))
     }),
-    ("pattern", |_, rule, value| {
+    ("pattern", Nothing, |_, rule, value| {
         value.as_str().is_none_or(|text| matches(rule, text))
     }),
-    ("minItems", |_, rule, value| {
+    ("minItems", Nothing, |_, rule, value| {
         value
             .as_array()
             .is_none_or(|items| items.len() as u64 >= count(rule))
     }),
-    ("items", |_, rule, value| {
+    ("items", Schema, |_, rule, value| {
         value
             .as_array()
             .is_none_or(|items| items.iter().all(|item| valid(rule, item)))
     }),
-    ("minProperties", |_, rule, value| {
+    ("minProperties", Nothing, |_, rule, value| {
         value
             .as_object()
             .is_none_or(|fields| fields.len() as u64 >= count(rule))
     }),
-    ("required", required),
-    ("propertyNames", property_names),
-    ("properties", properties),
-    ("patternProperties", pattern_properties),
-    ("additionalProperties", additional_properties),
+    ("required", Nothing, required),
+    ("propertyNames", Schema, property_names),
+    ("properties", Named, properties),
+    ("patternProperties", Named, pattern_properties),
+    ("additionalProperties", Schema, additional_properties),
 ];
 
 fn holds(rules: &Rules, keyword: &str, rule: &Value, value: &Value) -> bool {
-    let (_, check) = KEYWORDS
-        .iter()
-        .find(|(name, _)| *name == keyword)
-        .unwrap_or_else(|| panic!("the test validator does not know \"{keyword}\""));
+    let (_, _, check) = keyword_named(keyword);
     check(rules, rule, value)
+}
+
+fn keyword_named(keyword: &str) -> &'static (&'static str, Holds, Keyword) {
+    KEYWORDS
+        .iter()
+        .find(|(name, _, _)| *name == keyword)
+        .unwrap_or_else(|| panic!("the test validator does not know \"{keyword}\""))
+}
+
+/// Every keyword of every node the schema holds, whether or not a fixture reaches the node.
+fn vocabulary(schema: &Value) {
+    let Value::Object(rules) = schema else {
+        return;
+    };
+    for (keyword, rule) in rules {
+        match keyword_named(keyword).1 {
+            Nothing => {}
+            Schema => vocabulary(rule),
+            Schemas => listed(rule).iter().for_each(vocabulary),
+            Named => rule
+                .as_object()
+                .unwrap_or_else(|| panic!("not a map of schemas: {rule}"))
+                .values()
+                .for_each(vocabulary),
+        }
+    }
 }
 
 fn required(_: &Rules, rule: &Value, value: &Value) -> bool {

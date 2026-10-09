@@ -3270,8 +3270,10 @@ guidance only: `klin` remains the authority for semantic validation, and
 normal commands never read or validate against the schema artifact.
 
 The schema accepts a file exactly when klin's structural rules accept it,
-except for the disagreements below and the `measurement-lost` entry that #500
-owns. A structural rule is a rule that `klin.json` alone decides.
+except for the known disagreements below and the `measurement-lost` entry
+that #500 owns. The lists hold every disagreement a test pins, and a
+disagreement that no test pins yet may exist. A structural rule is a rule
+that `klin.json` alone decides.
 A `remedy` with no character other than whitespace is refused, and
 `the_remedy_pattern_refuses_exactly_the_characters_klin_trims` pins the
 whitespace set to the set that `str::trim` removes. A step date
@@ -3302,7 +3304,10 @@ and the schema accepts it:
 
 - Two `sarif` entries with the same `name`.
 - A `sarif` entry named `measurement-lost`, the name that section 7.2 reserves.
-- A `files` glob that does not parse, such as `[`.
+- A `files` glob that does not parse, such as `[`, or that is absolute, such
+  as `/tmp/scratch`.
+- An accepted entry for a `conventions/<name>` gate whose name the
+  `conventions` section does not define.
 
 The reference MUST also state what the key tables alone do not say:
 
