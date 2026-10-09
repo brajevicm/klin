@@ -13,7 +13,8 @@ use crate::{init, state, write};
 const HOOKS: &str = "hooks";
 const MARKER: &str = "klin.json";
 const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
-/// The `state::hash` of every earlier text of `SKILL`, the newest first. A file that holds one
+/// The `state::hash` of every earlier text of `SKILL`. A change to the skill adds the hash of
+/// the text it replaced, or the status test that reads git history fails. A file that holds one
 /// of them is klin's, written by an earlier `setup` and changed by nobody. Spec B.19.3.
 const EARLIER_SKILLS: &[u64] = &[
     0x5c53_ac81_e30d_2e9b,
@@ -520,17 +521,17 @@ fn rewritten(file: &Path) -> Result<Option<String>, Error> {
 
 /// A skill a person may have changed, replaced only where they agree or nobody can answer.
 fn consented(file: &Path) -> Result<String, Error> {
-    match replace_agreed(file)? {
-        true => Ok(format!(
+    if replace_agreed(file)? {
+        return Ok(format!(
             "replaced {}, which differed from klin's skill",
             file.display()
-        )),
-        false => Err(Error(format!(
-            "{}: kept the existing skill, which differs from klin's canonical skill, and wrote \
-             nothing. Move it aside or reconcile it, then rerun klin setup",
-            file.display()
-        ))),
+        ));
     }
+    Err(Error(format!(
+        "{}: kept the existing skill, which differs from klin's canonical skill, and wrote \
+             nothing. Move it aside or reconcile it, then rerun klin setup",
+        file.display()
+    )))
 }
 
 /// Whether a person agrees to replace a skill they may have changed. Without a terminal nobody
@@ -548,7 +549,8 @@ fn replace_agreed(file: &Path) -> Result<bool, Error> {
     stdin
         .read_line(&mut answer)
         .map_err(|why| Error(format!("the answer could not be read: {why}")))?;
-    Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "Yes"))
+    let answer = answer.trim();
+    Ok(answer.eq_ignore_ascii_case("y") || answer.eq_ignore_ascii_case("yes"))
 }
 
 /// What a skill file holds, judged against the skill this klin writes.

@@ -620,6 +620,8 @@ fn install_replaces_a_changed_skill_without_a_terminal_and_names_it() {
     );
 }
 
+/// The matcher of an older klin is stale, and the reconciler brings it to today's contract
+/// rather than leaving the host with the entry it already holds. #214.
 #[test]
 fn install_replaces_a_stale_matcher_of_klins_own() {
     let tree = a_repository();

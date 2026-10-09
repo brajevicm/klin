@@ -414,18 +414,8 @@ fn spawn_binary(
     stdin: &str,
     environment: &[(&str, &str)],
 ) -> Run {
-    let mut command = Command::new(klin);
-    command
-        .args(args)
-        .env("HOME", empty_home())
-        .current_dir(cwd)
+    let mut child = command(klin, cwd, args)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
-        command.env_remove(name);
-    }
-    let mut child = command
         .envs(environment.iter().copied())
         .spawn()
         .expect("run klin");
@@ -435,7 +425,25 @@ fn spawn_binary(
         .expect("stdin")
         .write_all(stdin.as_bytes())
         .expect("write stdin");
-    let done = child.wait_with_output().expect("wait for klin");
+    ran(child.wait_with_output().expect("wait for klin"))
+}
+
+/// klin run from `cwd` with an empty home and no CI variables, its output captured.
+fn command(klin: &str, cwd: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new(klin);
+    command
+        .args(args)
+        .env("HOME", empty_home())
+        .current_dir(cwd)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
+        command.env_remove(name);
+    }
+    command
+}
+
+fn ran(done: std::process::Output) -> Run {
     let printed = String::from_utf8_lossy(&done.stdout).to_string();
     Run {
         code: done.status.code().unwrap_or(-1),
@@ -460,19 +468,11 @@ fn on_terminal(cwd: &Path, args: &[&str], typed: &str) -> Run {
     terminal
         .write_all(typed.as_bytes())
         .expect("type the answer");
-    let done = Command::new(binary())
-        .args(args)
-        .env("HOME", empty_home())
-        .current_dir(cwd)
+    let done = command(&binary(), cwd, args)
         .stdin(Stdio::from(reader))
         .output()
         .expect("run klin");
-    let printed = String::from_utf8_lossy(&done.stdout).to_string();
-    Run {
-        code: done.status.code().unwrap_or(-1),
-        out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
-        printed,
-    }
+    ran(done)
 }
 
 /// Every text the skill at `plugins/klin/skills/klin/SKILL.md` held in this repository's history
@@ -491,19 +491,27 @@ pub fn earlier_skills() -> Vec<String> {
     let log = git(&[
         "log",
         "--follow",
-        "--format=%H",
+        "--format=commit %H",
         "--name-only",
         "--",
         "plugins/klin/skills/klin/SKILL.md",
     ]);
-    let lines: Vec<&str> = log.lines().filter(|line| !line.is_empty()).collect();
+    let mut commit = "";
     let mut texts: Vec<String> = Vec::new();
-    for pair in lines.chunks(2) {
-        let text = git(&["show", &format!("{}:{}", pair[0], pair[1])]);
+    for line in log.lines().filter(|line| !line.is_empty()) {
+        if let Some(hash) = line.strip_prefix("commit ") {
+            commit = hash;
+            continue;
+        }
+        let text = git(&["show", &format!("{commit}:{line}")]);
         if text != current && !texts.contains(&text) {
             texts.push(text);
         }
     }
+    assert!(
+        !texts.is_empty(),
+        "no earlier skill in git history; the tests need a checkout with full history"
+    );
     texts
 }
 

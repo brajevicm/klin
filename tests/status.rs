@@ -198,9 +198,7 @@ fn status_names_every_earlier_skill_as_one_setup_replaces() {
     assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
     let skill = ".claude/skills/klin/SKILL.md";
 
-    let earlier = harness::earlier_skills();
-    assert!(!earlier.is_empty());
-    for text in earlier {
+    for text in harness::earlier_skills() {
         tree.write(skill, &text);
         let run = tree.run(&["status"]);
         assert!(run.says("klin setup replaces it"), "{text}\n{}", run.out);
