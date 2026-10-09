@@ -229,10 +229,10 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 
 klin has two trust levels:
 
-- **Feedback:** hooks and a local `klin check`. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks the result.
+- **Feedback:** hooks and a local `klin check`. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks it.
 - **Enforced:** Feedback plus a required `klin check` on a protected branch, from a checkout the agent never touched, with full history and pinned klin and Action versions. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and itself.
 
-The Quick start reaches Feedback. The CI check below reaches Enforced.
+The Quick start reaches Feedback. Enforced needs the workflow below and every protection above.
 
 The CI check does **not** build, type-check, or test your project. Keep those as separate required checks.
 
@@ -245,7 +245,7 @@ GitHub Actions, as its own job:
 - uses: brajevicm/klin@v0.5.1
 ```
 
-It fails on any non-zero exit and annotates findings and review items on the pull request.
+It fails on any non-zero exit and annotates findings and review items in pull requests.
 
 Other CI: install klin, fetch full history, run `klin check`.
 

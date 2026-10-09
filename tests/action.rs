@@ -113,15 +113,20 @@ impl Gated {
 }
 
 fn gated(tree: &Tree, args: &str) -> Gated {
-    let runner = tree.path(".runner");
-    std::fs::create_dir_all(&runner).unwrap();
     let klin = std::path::PathBuf::from(harness::binary());
     let path = format!(
         "{}:{}",
         klin.parent().unwrap().display(),
         std::env::var("PATH").unwrap()
     );
-    let run = Command::new("bash")
+    gated_on(tree, args, &path)
+}
+
+/// A run of the gate step whose shell finds its tools only on `path`.
+fn gated_on(tree: &Tree, args: &str, path: &str) -> Gated {
+    let runner = tree.path(".runner");
+    std::fs::create_dir_all(&runner).unwrap();
+    let run = Command::new(tool("bash"))
         .arg("-c")
         .arg(step(2))
         .current_dir(tree.root())
@@ -202,7 +207,7 @@ fn a_green_job_still_annotates_its_review_items() {
         gated.summary
     );
     assert!(
-        gated.summary.contains("Files not measured: 1"),
+        gated.summary.contains("files not measured: 1"),
         "{}",
         gated.summary
     );
@@ -242,5 +247,137 @@ fn the_action_annotates_failing_findings_before_review_items_and_counts_the_rest
             .contains("Not annotated: 2 failing finding(s) and 2 review item(s)"),
         "{}",
         gated.summary
+    );
+}
+
+/// Where the test's own PATH finds `name`.
+fn tool(name: &str) -> std::path::PathBuf {
+    std::env::split_paths(&std::env::var_os("PATH").unwrap())
+        .map(|dir| dir.join(name))
+        .find(|path| path.is_file())
+        .unwrap_or_else(|| panic!("no {name} on PATH"))
+}
+
+/// A directory in `tree` that holds a link to each of `tools` and the scripts of `scripts`,
+/// so a gate step whose PATH names it alone finds those and nothing else.
+fn bin(tree: &Tree, tools: &[&str], scripts: &[(&str, &str)]) -> String {
+    let bin = tree.path(".runner/bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    for name in tools {
+        std::os::unix::fs::symlink(tool(name), bin.join(name)).unwrap();
+    }
+    for (name, script) in scripts {
+        let path = bin.join(name);
+        std::fs::write(&path, script).unwrap();
+        Command::new("chmod").arg("+x").arg(&path).status().unwrap();
+    }
+    bin.display().to_string()
+}
+
+/// A `klin` script that runs the binary under test, for a PATH that holds nothing else of
+/// the test's own.
+fn klin_script() -> String {
+    format!("#!/bin/sh\nexec '{}' \"$@\"\n", harness::binary())
+}
+
+#[test]
+fn an_incomplete_run_fails_the_job_and_the_summary_tells_its_hole() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(".gitignore", ".runner/\n");
+    tree.write("notes.txt", "nothing klin measures");
+    tree.base();
+
+    let gated = gated(&tree, "");
+
+    assert_eq!(gated.code, 3, "{}", gated.printed);
+    assert!(
+        gated
+            .summary
+            .contains("- run: nothing-measured — the repository holds no language or document"),
+        "{}",
+        gated.summary
+    );
+    assert!(!gated.summary.contains("null"), "{}", gated.summary);
+}
+
+#[test]
+fn a_report_the_action_cannot_write_fails_the_job_and_keeps_a_failing_exit() {
+    let green = tree();
+    green.write("src/new.rs", BROKEN);
+    let failing = tree();
+    failing.write("src/lib.rs", BROKEN);
+    let broken_jq = ("jq", "#!/bin/sh\nexit 5\n");
+
+    for (tree, code) in [(&green, 2), (&failing, 1)] {
+        let path = bin(
+            tree,
+            &["cat", "git", "tee"],
+            &[("klin", &klin_script()), broken_jq],
+        );
+        let gated = gated_on(tree, "", &path);
+
+        assert_eq!(gated.code, code, "{}", gated.printed);
+        assert_eq!(gated.annotations("error").len(), 1, "{}", gated.printed);
+        assert!(
+            gated.printed.contains("::error title=klin::"),
+            "{}",
+            gated.printed
+        );
+    }
+}
+
+#[test]
+fn the_action_without_jq_fails_a_green_job() {
+    let tree = tree();
+    tree.write("src/new.rs", BROKEN);
+    let path = bin(&tree, &["cat", "git", "tee"], &[("klin", &klin_script())]);
+
+    let gated = gated_on(&tree, "", &path);
+
+    assert_eq!(gated.code, 2, "{}", gated.printed);
+    assert!(
+        gated
+            .printed
+            .contains("::error title=klin::the Action needs jq"),
+        "{}",
+        gated.printed
+    );
+}
+
+#[test]
+fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
+    let tree = tree();
+    let review = serde_json::json!({
+        "check": null, "kind": "unmeasured", "file": "src/a.rs", "line": null,
+        "text": "x".repeat(200), "reason": "unreadable",
+    });
+    let document = serde_json::json!({
+        "judgement": "review", "measurement": "complete", "execution": "ok", "exit": 0,
+        "findings": [], "reviews": vec![review; 20_000], "measurements": [], "errors": [],
+        "not_measured": 20_000,
+    });
+    tree.write(".runner/check.json", &document.to_string());
+    let printed = tree.path(".runner/check.json");
+    let fake = format!("#!/bin/sh\ncat '{}'\n", printed.display());
+    let path = format!(
+        "{}:{}",
+        bin(&tree, &[], &[("klin", &fake)]),
+        std::env::var("PATH").unwrap()
+    );
+
+    let gated = gated_on(&tree, "", &path);
+
+    assert_eq!(gated.code, 0, "{}", gated.printed);
+    assert!(gated.summary.len() < 1024 * 1024, "{}", gated.summary.len());
+    assert!(
+        gated.summary.contains("review items: 20000"),
+        "{}",
+        &gated.summary[..500]
+    );
+    assert!(
+        gated.summary.contains("line(s) left out"),
+        "{}",
+        &gated.summary[gated.summary.len() - 500..]
     );
 }

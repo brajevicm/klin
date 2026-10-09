@@ -94,9 +94,12 @@ checksum, fails the job instead of skipping the gate.
 The gate step runs `klin check --json` and ends the job with its exit code,
 so every non-zero exit fails the job (SPEC 12.3). It writes failing findings
 as `error` annotations and review items as `warning` annotations, at most ten
-of each, and the job summary lists every finding, review item, hole and
-error, the count of files not measured, and what it did not annotate. A green
-job still shows its review items on the pull request.
+of each. The job summary counts every finding, review item, hole and error,
+the files not measured and what it did not annotate, and lists the items up to
+a budget under GitHub's 1 MiB step summary limit. A green job still shows its
+review items on the pull request. When the step cannot report, because `jq` is
+missing or a write fails, it fails the job, so a report no one sees never
+leaves a green check.
 
 This is the first enforcement boundary for klin's measurements. It is not the
 project's build boundary: the project's own CI owns its build, type-check and

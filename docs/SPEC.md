@@ -1825,7 +1825,8 @@ note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `config`, and `window` for what choosing the base found (section 6.5).
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
-`state` (`complete`, `incomplete`), `holes` (list of `{reason, detail}`;
+`state` (`complete`, `incomplete`), `holes` (list of `{reason, detail, text}`,
+where `text` says what is missing and how to repair it;
 every hole's site is the run or the gate).
 
 An error: `kind` (section 7.3), `check` (null for the run), `message`. A
@@ -1900,9 +1901,17 @@ the project's commands ran. No message, document or hook text may claim that
   non-zero exit fails the job. When the run prints no JSON document, the
   Action prints what the run printed. The Action adds `--json` itself, so
   `args` holds selectors and flags other than `--json`.
+- When the Action cannot report, because `jq` is missing, the run printed no
+  JSON document, or writing the annotations or the summary failed, it writes
+  one `error` annotation that says so and fails the job: with the exit of
+  `klin check` when that is non-zero, else with 2. A report the person cannot
+  see never leaves a green job.
 - It writes review items, holes, errors, failing findings, the count of
   files not measured, and the count of what it did not annotate to the job
-  summary. It writes failing findings and review
+  summary. The summary gives every count first, then lists the items up to
+  a budget under GitHub's step summary limit of 1 MiB, and says how many
+  lines it left out past it. A hole's line gives its reason and its text. It
+  writes failing findings and review
   items, including `unmeasured` gaps, as file-and-line annotations, so a
   green job still shows them in the pull request.
 - The Action writes annotations as workflow commands: `error` for a failing

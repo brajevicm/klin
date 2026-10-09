@@ -40,12 +40,16 @@ runs:
       run: |
         set -fuo pipefail
         report="$RUNNER_TEMP/klin-check.json"
-        klin check --json $ARGS > "$report"
-        code=$?
-        if jq -e 'type == "object"' "$report" > /dev/null 2>&1; then
-          jq -r --arg part annotations -f "$GITHUB_ACTION_PATH/action/report.jq" "$report"
-          jq -r --arg part summary -f "$GITHUB_ACTION_PATH/action/report.jq" "$report" | tee -a "$GITHUB_STEP_SUMMARY"
-        else
+        code=0
+        klin check --json $ARGS > "$report" || code=$?
+        fail() {
+          echo "::error title=klin::$1"
           cat "$report"
-        fi
+          [ "$code" -ne 0 ] || code=2
+          exit "$code"
+        }
+        command -v jq > /dev/null || fail "the Action needs jq to report klin check"
+        jq -e 'type == "object"' "$report" > /dev/null 2>&1 || fail "klin check printed no JSON document"
+        jq -r --arg part annotations -f "$GITHUB_ACTION_PATH/action/report.jq" "$report" || fail "the Action could not write its annotations"
+        jq -r --arg part summary -f "$GITHUB_ACTION_PATH/action/report.jq" "$report" | tee -a "$GITHUB_STEP_SUMMARY" || fail "the Action could not write the job summary"
         exit "$code"

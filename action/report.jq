@@ -33,24 +33,34 @@ def annotations:
   (failing[:per_level][] | annotation("error"; "klin: \(.check // .kind)"; finding_said)),
   (.reviews[:per_level][] | annotation("warning"; "klin review: \(.kind)"; review_said));
 
+def summary_budget: 900000;
+
 def section(heading; items):
   if (items | length) == 0 then empty
   else "", "### \(heading) (\(items | length))", "", (items[] | "- \(flat)")
   end;
 
-def holes: [.measurements[] | .check as $check | .holes[] | "\($check // "run"): \(.reason) — \(.detail)"];
+def holes: [.measurements[] | .check as $check | .holes[]
+  | "\($check // "run"): " + ([.reason, .text // .detail] | map(select(. != null and . != "")) | join(" — "))];
+
+def capped(budget):
+  reduce .[] as $line ({lines: [], bytes: 0, left: 0};
+    ($line | utf8bytelength + 1) as $size
+    | if .left == 0 and .bytes + $size <= budget then .lines += [$line] | .bytes += $size
+      else .left += 1 end)
+  | .lines[], (if .left > 0 then "", "The summary stops here to stay under GitHub's step summary limit: \(.left) line(s) left out. Run `klin check` for the full report." else empty end);
 
 def summary:
   "## klin check",
   "",
   "judgement: \(.judgement // "none"), measurement: \(.measurement // "none"), execution: \(.execution), exit \(.exit)",
-  section("Failing findings"; [failing[] | "`\(site)` \(.check // .kind): \(finding_said)"]),
-  section("Review items"; [.reviews[] | "`\(site)` \(.kind): \(review_said)"]),
-  section("Holes"; holes),
-  section("Errors"; [.errors[] | "\(.check // "run") \(.kind): \(.message)"]),
   "",
-  "Files not measured: \(.not_measured)",
+  "failing findings: \(failing | length), review items: \(.reviews | length), holes: \(holes | length), errors: \(.errors | length), files not measured: \(.not_measured)",
   "",
-  "Not annotated: \([(failing | length) - per_level, 0] | max) failing finding(s) and \([(.reviews | length) - per_level, 0] | max) review item(s) over GitHub's limit of \(per_level) annotations per level, and every hole and error. This summary lists them all.";
+  "Not annotated: \([(failing | length) - per_level, 0] | max) failing finding(s) and \([(.reviews | length) - per_level, 0] | max) review item(s) over GitHub's limit of \(per_level) annotations per level, and every hole and error. This summary lists them below.",
+  ([section("Failing findings"; [failing[] | "`\(site)` \(.check // .kind): \(finding_said)"]),
+    section("Review items"; [.reviews[] | "`\(site)` \(.kind): \(review_said)"]),
+    section("Holes"; holes),
+    section("Errors"; [.errors[] | "\(.check // "run") \(.kind): \(.message)"])] | capped(summary_budget));
 
 if $part == "annotations" then annotations else summary end
