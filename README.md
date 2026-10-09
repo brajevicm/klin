@@ -227,16 +227,16 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 
 ## CI
 
-klin works at two levels:
+klin has two trust levels:
 
-- **Feedback:** hooks only. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks the result.
-- **Enforced:** hooks plus a required CI check on a protected branch. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and `CODEOWNERS` itself.
+- **Feedback:** hooks and a local `klin check`. klin returns findings to the agent and refuses its edits to `klin.json`. Nothing outside the agent's environment checks the result.
+- **Enforced:** Feedback plus a required `klin check` on a protected branch, from a checkout the agent never touched, with full history and pinned klin and Action versions. `CODEOWNERS` covers `klin.json`, the workflow, the hook files, and itself.
 
-The Quick start gets you to Feedback. Add the required klin CI check to get klin's quality policy to Enforced.
+The Quick start reaches Feedback. The CI check below reaches Enforced.
 
-The klin CI check does **not** compile, type-check, or test your project, and it does not run the `build` entry from `klin.json`. Keep your project's normal build, type-check, and test steps in CI as separate required checks.
+The CI check does **not** build, type-check, or test your project. Keep those as separate required checks.
 
-GitHub Actions:
+GitHub Actions, as its own job:
 
 ```yaml
 - uses: actions/checkout@v5
@@ -245,11 +245,9 @@ GitHub Actions:
 - uses: brajevicm/klin@v0.5.1
 ```
 
-Other CI: install klin, fetch the full Git history, then run:
+It fails on any non-zero exit and annotates findings and review items on the pull request.
 
-```sh
-klin check
-```
+Other CI: install klin, fetch full history, run `klin check`.
 
 ## Learn more
 
