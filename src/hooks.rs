@@ -477,11 +477,9 @@ fn skill(
         return Ok((None, None));
     }
     seen.push(file.clone());
-    match std::fs::read(&file) {
-        Ok(held) if held == SKILL.as_bytes() => {
-            Ok((None, Some(format!("{} is already current", file.display()))))
-        }
-        Ok(_) => Err(Error(format!(
+    match holds_klins_skill(&file) {
+        Ok(true) => Ok((None, Some(format!("{} is already current", file.display())))),
+        Ok(false) => Err(Error(format!(
             "{}: existing skill differs from klin's canonical skill; refusing to overwrite it. \
              Move it aside or reconcile it, then rerun klin setup",
             file.display()
@@ -495,6 +493,12 @@ fn skill(
         )),
         Err(why) => Err(Error::unreadable(&file, why)),
     }
+}
+
+/// Whether the file holds exactly the skill this klin writes. The one place that judges a skill
+/// file, so every reader of it agrees.
+fn holds_klins_skill(file: &Path) -> std::io::Result<bool> {
+    std::fs::read(file).map(|text| text == SKILL.as_bytes())
 }
 
 /// klin's own entries brought to the current contract: one entry per event klin writes, with
@@ -801,14 +805,41 @@ impl State {
 /// host files and writes nothing. Spec 11.4.
 pub fn integrations(root: &Path) -> Vec<Integration> {
     let home = std::env::home_dir();
+    let scopes: Vec<(Owner, &Path)> =
+        [(Owner::Project, Some(root)), (Owner::User, home.as_deref())]
+            .into_iter()
+            .filter_map(|(scope, at)| Some((scope, at?)))
+            .collect();
+    let mut held: Vec<Vec<Vec<Integration>>> = scopes
+        .iter()
+        .map(|&(scope, at)| {
+            ADAPTERS
+                .iter()
+                .map(|host| copies(*host, scope, at))
+                .collect()
+        })
+        .collect();
+    let mut alone: Vec<Vec<Option<Integration>>> = scopes
+        .iter()
+        .zip(&held)
+        .map(|(&(scope, at), copies)| {
+            ADAPTERS
+                .iter()
+                .map(|host| skill_alone(*host, scope, at, copies))
+                .collect()
+        })
+        .collect();
     let mut found = Vec::new();
-    for host in ADAPTERS.iter().copied() {
-        let mut rows: Vec<Integration> =
-            [(Owner::Project, Some(root)), (Owner::User, home.as_deref())]
-                .into_iter()
-                .filter_map(|(scope, at)| Some((scope, at?)))
-                .flat_map(|(scope, at)| copies(host, scope, at))
-                .collect();
+    for (at_host, host) in ADAPTERS.iter().copied().enumerate() {
+        let mut rows: Vec<Integration> = held
+            .iter_mut()
+            .zip(&mut alone)
+            .flat_map(|(copies, alone)| {
+                std::mem::take(&mut copies[at_host])
+                    .into_iter()
+                    .chain(alone[at_host].take())
+            })
+            .collect();
         if rows.is_empty() && root.join(host.marker()).is_dir() {
             rows.push(Integration {
                 host: host.name(),
@@ -853,6 +884,46 @@ fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integratio
     plugin.into_iter().chain(hooks).collect()
 }
 
+/// klin's skill at a scope where this host is the one host that reads it and the scope proves,
+/// and no such reader holds a copy of klin's integration: an install whose hook lines are gone.
+/// A skill two proven hosts share names neither, so the row never asks for a host nobody used.
+/// Spec 11.4.
+fn skill_alone(
+    host: &'static dyn Adapter,
+    scope: Owner,
+    at: &Path,
+    copies: &[Vec<Integration>],
+) -> Option<Integration> {
+    let readers = || {
+        ADAPTERS
+            .iter()
+            .zip(copies)
+            .filter(|(reader, _)| reader.skill_file() == host.skill_file())
+    };
+    let skill = at.join(host.skill_file());
+    let alone = readers()
+        .filter(|(reader, _)| at.join(reader.marker()).is_dir())
+        .map(|(reader, _)| reader.name())
+        .eq([host.name()])
+        && readers().all(|(_, held)| held.is_empty())
+        && holds_klins_skill(&skill).is_ok_and(|ours| ours);
+    if !alone {
+        return None;
+    }
+    let file = at.join(host.hook_file());
+    let wrong = match read(&file) {
+        Ok(_) => format!("{} holds none of klin's hook lines", file.display()),
+        Err(why) => why.0,
+    };
+    Some(Integration {
+        host: host.name(),
+        scope,
+        route: Route::Hooks,
+        state: State::Conflict,
+        detail: format!("{} is klin's skill, and {wrong}", skill.display()),
+    })
+}
+
 /// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Only the
 /// exact skill reads as current: a skill that is missing, unreadable or changed is a conflict
 /// `setup` names. Spec 11.4.
@@ -869,11 +940,9 @@ fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, Str
         );
     }
     let skill = at.join(host.skill_file());
-    let wrong = match std::fs::read(&skill) {
-        Ok(text) if text == SKILL.as_bytes() => {
-            return (State::Current, file.display().to_string());
-        }
-        Ok(_) => "differs from klin's skill".to_string(),
+    let wrong = match holds_klins_skill(&skill) {
+        Ok(true) => return (State::Current, file.display().to_string()),
+        Ok(false) => "differs from klin's skill".to_string(),
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
             "is missing, and klin setup writes it".to_string()
         }

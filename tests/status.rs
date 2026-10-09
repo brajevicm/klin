@@ -187,3 +187,94 @@ fn status_reads_a_missing_or_unreadable_skill_as_a_conflict() {
         "{unreadable}"
     );
 }
+
+/// klin's skill at a scope whose hook file lost klin's lines is the rest of an install, and reads
+/// as a conflict with its own detail. A skill another host's hooks still use is not alone.
+/// Spec 11.4.
+#[test]
+fn status_reads_klins_skill_without_hook_lines_as_a_conflict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    let home = Tree::bare();
+    let at = home.root().display().to_string();
+    std::fs::create_dir_all(home.path(".cursor")).expect("cursor directory");
+    let setup = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude", "--host", "codex"],
+    );
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    home.remove(".claude/settings.json");
+
+    let run = tree.run_with(&[("HOME", at.as_str())], &["status", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let document = run.json();
+    assert_eq!(
+        state(&document, "claude"),
+        ["user hooks conflict"],
+        "{document}"
+    );
+    assert_eq!(
+        state(&document, "codex"),
+        ["user hooks current"],
+        "{document}"
+    );
+    assert!(state(&document, "cursor").is_empty(), "{document}");
+
+    let text = tree.run_with(&[("HOME", at.as_str())], &["status"]);
+    assert!(text.says("holds none of klin's hook lines"), "{}", text.out);
+}
+
+/// The same skill alone in a repository reads as a conflict too, not as `missing`: the skill is
+/// part of a copy, and that copy lost its hook lines. Spec 11.4.
+#[test]
+fn status_reads_klins_skill_without_hook_lines_in_a_repository_as_a_conflict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
+    tree.remove(".claude/settings.json");
+
+    let document = status(&tree);
+    assert_eq!(
+        state(&document, "claude"),
+        ["project hooks conflict"],
+        "{document}"
+    );
+    let text = tree.run(&["status"]);
+    assert!(text.says("holds none of klin's hook lines"), "{}", text.out);
+}
+
+/// Codex and Cursor read one skill. Alone beside one proven host it names that host; beside two
+/// it names neither, so no hint asks for a host the person never used. A hook file klin cannot
+/// read is named as such. Spec 11.4.
+#[test]
+fn status_names_a_shared_skill_only_for_its_one_proven_host() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    let home = Tree::bare();
+    let at = home.root().display().to_string();
+    let setup = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "codex"],
+    );
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    home.remove(".codex/hooks.json");
+    let rows = |document: &Value| [state(document, "codex"), state(document, "cursor")];
+
+    let run = tree.run_with(&[("HOME", at.as_str())], &["status", "--json"]);
+    let alone = run.json();
+    assert_eq!(
+        rows(&alone),
+        [vec!["user hooks conflict".to_string()], vec![]],
+        "{alone}"
+    );
+
+    std::fs::create_dir_all(home.path(".cursor")).expect("cursor directory");
+    let run = tree.run_with(&[("HOME", at.as_str())], &["status", "--json"]);
+    let shared = run.json();
+    assert_eq!(rows(&shared), [Vec::<String>::new(), vec![]], "{shared}");
+
+    std::fs::remove_dir(home.path(".cursor")).expect("cursor directory");
+    home.write(".codex/hooks.json", "{,}");
+    let text = tree.run_with(&[("HOME", at.as_str())], &["status"]);
+    assert!(text.says("could not be read"), "{}", text.out);
+}

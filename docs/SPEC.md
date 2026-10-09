@@ -1697,8 +1697,8 @@ Text output:
 | State | Test on the host files |
 | --- | --- |
 | `current` | The host files hold the hook lines and owned files that this klin's `setup` writes. |
-| `missing` | The repository proves the host, and no copy of klin's hooks is installed for it. |
-| `conflict` | A klin-owned file was changed, deleted or cannot be read, or two copies disagree in a way B.9.8 cannot settle. |
+| `missing` | The repository proves the host, and no copy of klin's hooks, and no skill of klin's that only this host reads, is installed for it. |
+| `conflict` | A klin-owned file was changed, deleted or cannot be read, or two copies disagree in a way B.9.8 cannot settle. klin's own skill at a scope where its host is the only host that reads it and the scope proves, and no host that reads it has a copy of klin's integration, is a conflict at that scope. A skill that two proven hosts share makes no row. |
 
 - `--json` prints the document of section 11.7.
 - Exit 0 when it could read what it reports, whatever it found. Exit 2 on an
@@ -1873,7 +1873,9 @@ supported surface as an `unsupported` value.
 
 Unchanged from B.19.6. It uses the network to fetch the release. When
 repository integration needs reconciliation after an update, it says to run
-`klin setup`.
+`klin setup`. For a copy in one person's home it names
+`klin setup --user --host HOST`, because a plain `klin setup` writes the
+repository's files and leaves that copy as it was.
 
 ## 12. CI and Enforcement
 
