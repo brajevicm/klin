@@ -176,7 +176,7 @@ fn base_rows() {
         median(&guard_rows),
         median(&guard_rows) as f64 / EVENTS as f64,
         event_ms(events.len() / 2),
-        event_ms(events.len() * 99 / 100),
+        event_ms((events.len() * 99).div_ceil(100) - 1),
         event_ms(events.len() - 1)
     );
 
@@ -276,8 +276,9 @@ impl Fixture {
         let layering = profile.units.is_some()
             && config != "legacy"
             && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
-        let integration =
-            profile.units.is_some() && chosen("KLIN_PERF_SARIF", &["off", "on"]) == "on";
+        let integration = profile.units.is_some()
+            && config != "legacy"
+            && chosen("KLIN_PERF_SARIF", &["off", "on"]) == "on";
         assert!(
             !integration || perf_case() != PerfCase::Full,
             "KLIN_PERF_SARIF=on requires KLIN_PERF_CASE=warm20 or warm100"

@@ -38,8 +38,11 @@ alternated. Each run builds its own fixture.
 
 ```sh
 KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture
-KLIN_BIN=<748d01fc build>/klin KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture
+KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture
 ```
+
+The baseline runs are the same commands with `KLIN_BIN` set to the
+`748d01fc` release binary.
 
 | Run, in order | Binary | Changed files | Hook median (ms) | `stop_total_ms` | Peak RSS (KB) |
 | --- | --- | --- | --- | --- | --- |
@@ -52,9 +55,9 @@ KLIN_BIN=<748d01fc build>/klin KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm
 
 The 300k relative change of the vNext Stop is within noise: 765 and 775 ms
 against 766 and 777 ms at 20 files, and 950 ms against 960 ms at 100 files.
-The gate times agree to within a few milliseconds in each pair. For example,
-`dead-symbols` is 219 and 220 ms against 231 and 232 ms, and `reachability`
-is 128 and 129 ms against 133 and 135 ms.
+Most gate times agree to within 2 ms in each pair. Two gates are slightly
+faster on vNext: `dead-symbols` is 219 and 220 ms against 231 and 232 ms, and
+`reachability` is 128 and 129 ms against 133 and 135 ms.
 
 The warm rows make no commit between Stops. The `git merge-base` of section
 6.6 runs on the first event after a commit, which is the session event that
@@ -74,6 +77,8 @@ fails the row.
 ```sh
 KLIN_PERF_SARIF=on KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo test --release --test performance -- --ignored perf --nocapture
 ```
+
+All three runs use the vNext binary.
 
 | Run, in order | `sarif` | Hook median (ms) | `stop_total_ms` |
 | --- | --- | --- | --- |
@@ -97,14 +102,24 @@ single events.
 cargo test --release --test performance -- --ignored perf --nocapture
 ```
 
-| Run | Mean per event (ms) | p50 (ms) | p99 (ms) | Max (ms) |
-| --- | --- | --- | --- | --- |
-| 1 | 6.32 | not printed | not printed | 62 |
-| 2 | 6.41 | 7.83 | 16.80 | 24.60 |
+Section 14.4 sets the limit: `pre_tool` within 50 ms.
 
-Run 1 printed only the maximum, in whole milliseconds. One event of its 5,000
-took 62 ms. Run 2 printed the distribution, and its slowest event took
-24.6 ms. The time includes the process start, which is outside klin.
+| Run | Mean per event (ms) | p50 (ms) | p99 (ms) | Max (ms) | Machine |
+| --- | --- | --- | --- | --- | --- |
+| A | 6.41 | 7.83 | 16.80 | 24.60 | quiet |
+| B | 11.68 | 9.59 | 19.85 | 67.26 | load average 16 |
+
+On the quiet machine, all 5,000 events completed within 50 ms. Run B ran while
+other processes loaded the machine: its 10,000-file cold survey took 30,709 ms,
+against 15,302 ms on a quieter run. The p99 of run B stays within 50 ms, and
+its maximum does not. The time includes the process start, which is outside
+klin, and the first event of the row starts a binary that macOS had not run
+before.
+
+Run A took its p99 at rank `len * 99 / 100`. Run B used the final harness,
+which takes the nearest rank, `ceil(0.99 * len) - 1`. Two runs are left out:
+one from an intermediate harness that printed only the maximum, and one that a
+Stop hook of this repository disturbed while it ran.
 
 ## Harness changes
 
