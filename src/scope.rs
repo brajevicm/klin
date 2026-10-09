@@ -12,7 +12,7 @@ use crate::changed::Change;
 use crate::config::Config;
 use crate::error::Error;
 use crate::git::Repo;
-use crate::key::Key;
+use crate::key::{Key, SectionShape};
 use crate::record::Values;
 
 pub const IN: Key = Key {
@@ -170,12 +170,13 @@ impl Scope {
 }
 
 /// What the change did to the paths the policy names, by a deterministic test on both trees:
-/// each pinned `in` path that selects no file of the working tree, and each selected file a
-/// rename took out of a scope that still selects other files. A pinned path that selects
-/// nothing in the base either counts only where the base's own `klin.json` pins it and no path
-/// of the same `in` selects a file: a path this change wrote that names nothing stays a
-/// configuration error, and one beside a path that selects files never was one. A rename to a
-/// path no walk reaches is not followed, and its pin counts it apart. Spec 7.3.
+/// each pinned `in` path, convention `in` path or pinned document that selects no file of the
+/// working tree, and each selected file a rename took out of a scope that still selects other
+/// files. A pinned path that selects nothing in the base either counts only where the base's own
+/// `klin.json` pins it and no path of the same list selects a file: a path this change wrote
+/// that names nothing stays a configuration error, and one beside a path that selects files
+/// never was one. A rename to a path no walk reaches is not followed, and its pin counts it
+/// apart. Spec 7.3.
 pub fn moved(
     config: &Config,
     files: &[String],
@@ -183,63 +184,118 @@ pub fn moved(
     changes: &[Change],
     reached: fn(&str) -> bool,
 ) -> Moves {
-    let (renamed, hidden): (Vec<_>, Vec<_>) = changes
+    let renames: Vec<(&str, &str)> = changes
         .iter()
         .filter_map(|change| {
             let was = change.was.as_deref().filter(|was| *was != change.path)?;
             Some((was, change.path.as_str()))
         })
-        .partition(|(_, path)| reached(path));
-    let hidden: Vec<&str> = hidden.into_iter().map(|(was, _)| was).collect();
+        .collect();
+    let renamed: Vec<(&str, &str)> = renames
+        .iter()
+        .copied()
+        .filter(|(_, path)| Pinned::In.follows(path, reached))
+        .collect();
     let mut at_base = AtBase::new(config, base);
     let mut out = Vec::new();
-    for (section, fields) in config.objects() {
-        if let Ok(scope) = Scope::from_fields(fields) {
-            out.extend(section_moves(
+    let changed = Changed {
+        files,
+        renames: &renames,
+        reached,
+    };
+    for (section, shape, fields) in config.shaped() {
+        for (pinned, selectors) in pinned_paths(shape, fields) {
+            let of = (section, shape, &pinned);
+            out.extend(pins(of, &selectors, &changed, &mut at_base));
+        }
+        if let (SectionShape::Object, Ok(scope)) = (shape, Scope::from_fields(fields))
+            && files.iter().any(|file| scope.selects(file))
+        {
+            out.extend(moved_out(
                 section,
                 &scope,
-                (files, &renamed, &hidden),
-                &mut at_base,
+                &dead(&Pinned::In, &scope.within, files),
+                &renamed,
             ));
         }
     }
     Moves(out)
 }
 
-/// What the change did to one section's scope: a `Pin` per pinned path that selects no file
-/// now and is not quiet, and an `Out` per file a rename took out of a scope that still selects
-/// files.
-fn section_moves(
-    section: &str,
-    scope: &Scope,
-    (files, renamed, hidden): (&[String], &[(&str, &str)], &[&str]),
+/// The paths of one section that a change can move, each list with what pins it: the section's
+/// own `in`, each convention's `in` as written, since a convention judges every path it states,
+/// and each pinned document on its own.
+fn pinned_paths(shape: SectionShape, fields: &Map<String, Value>) -> Vec<(Pinned, Vec<Selector>)> {
+    match shape {
+        SectionShape::Object => Scope::from_fields(fields)
+            .map(|scope| vec![(Pinned::In, scope.within)])
+            .unwrap_or_default(),
+        SectionShape::Conventions(_) => fields
+            .iter()
+            .filter_map(|(name, rule)| {
+                let selectors = selectors(rule.as_object()?, IN).ok()?;
+                Some((Pinned::Convention(name.clone()), selectors))
+            })
+            .collect(),
+        SectionShape::DocumentMap(_) => fields
+            .keys()
+            .filter_map(|path| Some((Pinned::Document, vec![Selector::parse(IN, path).ok()?])))
+            .collect(),
+        SectionShape::FalseOnly(_) | SectionShape::Sarif => Vec::new(),
+    }
+}
+
+/// A `Pin` per path of one list that selects no file now and is not quiet: a path that selected
+/// nothing in the base either counts only where the base pins it and no path of the list
+/// selects a file. A pinned document is a file, which a walk need not reach, so one the working
+/// tree holds is never moved, and a rename of it is followed wherever it goes.
+fn pins(
+    (section, shape, pinned): (&str, SectionShape, &Pinned),
+    selectors: &[Selector],
+    changed: &Changed,
     at_base: &mut AtBase,
 ) -> Vec<Moved> {
-    let dead: Vec<&Selector> = scope
-        .within
-        .iter()
-        .filter(|selector| !files.iter().any(|file| selector.holds(file)))
-        .collect();
-    let quiet = dead.len() < scope.within.len();
+    let mut dead = dead(pinned, selectors, changed.files);
+    if *pinned == Pinned::Document {
+        dead.retain(|document| !at_base.config.path(document.as_str()).is_file());
+    }
+    let quiet = dead.len() < selectors.len();
     let mut out = Vec::new();
-    for selector in &dead {
-        let held = at_base.held(selector);
-        if held == 0 && (quiet || !at_base.pins(section, selector)) {
+    for selector in dead {
+        let held = at_base.held(pinned, selector);
+        if held == 0 && (quiet || !at_base.pins((section, shape, pinned), selector)) {
             continue;
         }
-        out.push(pin(section, selector, held, (renamed, hidden)));
-    }
-    if files.iter().any(|file| scope.selects(file)) {
-        out.extend(moved_out(section, scope, &dead, renamed));
+        out.push(pin(section, pinned, selector, held, changed));
     }
     out
 }
 
-/// Whether any section states an `in` or an `except`, so a path the change moved can matter.
-pub fn states_a_scope(config: &Config) -> bool {
-    config
-        .objects()
-        .any(|(_, fields)| fields.contains_key(IN.name) || fields.contains_key(EXCEPT.name))
+/// The working tree's files, every rename git saw from the base, and whether a walk reaches a
+/// path, which is what a pinned path is decided by.
+struct Changed<'a> {
+    files: &'a [String],
+    renames: &'a [(&'a str, &'a str)],
+    reached: fn(&str) -> bool,
+}
+
+/// The paths of a list that select no file of the working tree.
+fn dead<'a>(pinned: &Pinned, selectors: &'a [Selector], files: &[String]) -> Vec<&'a Selector> {
+    selectors
+        .iter()
+        .filter(|selector| !files.iter().any(|file| pinned.selects(selector, file)))
+        .collect()
+}
+
+/// Whether any section names a path a change can move: an `in` or an `except`, a convention's
+/// `in`, or a pinned document.
+pub fn names_a_path(config: &Config) -> bool {
+    config.shaped().any(|(_, shape, fields)| {
+        fields.contains_key(EXCEPT.name)
+            || pinned_paths(shape, fields)
+                .iter()
+                .any(|(_, selectors)| !selectors.is_empty())
+    })
 }
 
 /// What the base commit holds, read only when a pinned path selects nothing now: its file list
@@ -264,16 +320,23 @@ impl<'a> AtBase<'a> {
     }
 
     /// How many files of the base the path selects.
-    fn held(&mut self, selector: &Selector) -> usize {
+    fn held(&mut self, pinned: &Pinned, selector: &Selector) -> usize {
         let (repo, base) = (&self.repo, self.base);
         let listed = self
             .listed
             .get_or_insert_with(|| repo.ls_tree_paths(base).unwrap_or_default());
-        listed.iter().filter(|path| selector.holds(path)).count()
+        listed
+            .iter()
+            .filter(|path| pinned.selects(selector, path))
+            .count()
     }
 
-    /// Whether the base's `klin.json` pins this path in the section's `in`.
-    fn pins(&mut self, section: &str, selector: &Selector) -> bool {
+    /// Whether the base's `klin.json` pins this path where the working tree's pins it.
+    fn pins(
+        &mut self,
+        (section, shape, pinned): (&str, SectionShape, &Pinned),
+        selector: &Selector,
+    ) -> bool {
         let (config, repo, base) = (self.config, &self.repo, self.base);
         self.based
             .get_or_insert_with(|| {
@@ -281,28 +344,38 @@ impl<'a> AtBase<'a> {
                 serde_json::from_slice(&repo.blob(base, &name)?).ok()
             })
             .as_ref()
-            .and_then(|data| Scope::from_fields(data.get(section)?.as_object()?).ok())
-            .is_some_and(|scope| scope.within.contains(selector))
+            .and_then(|data| data.get(section)?.as_object())
+            .is_some_and(|fields| {
+                pinned_paths(shape, fields)
+                    .into_iter()
+                    .any(|(of, stated)| of == *pinned && stated.contains(selector))
+            })
     }
 }
 
 /// A pinned path that selects no file of the working tree, with the files git saw renamed out
-/// of it, how many a rename took under a directory every walk skips, and how many of the `held`
-/// files the base held there went with no rename.
+/// of it to a path the pin follows, how many a rename took under a directory every walk skips,
+/// which it does not, and how many of the `held` files the base held there went with no rename.
 fn pin(
     section: &str,
+    pinned: &Pinned,
     selector: &Selector,
     held: usize,
-    (renamed, hidden): (&[(&str, &str)], &[&str]),
+    changed: &Changed,
 ) -> Moved {
-    let gone: Vec<(String, String)> = renamed
+    let (gone, hidden): (Vec<_>, Vec<_>) = changed
+        .renames
         .iter()
-        .filter(|(was, _)| selector.holds(was))
+        .filter(|(was, _)| pinned.selects(selector, was))
+        .partition(|(_, path)| pinned.follows(path, changed.reached));
+    let gone: Vec<(String, String)> = gone
+        .into_iter()
         .map(|(was, path)| (was.to_string(), path.to_string()))
         .collect();
-    let skipped = hidden.iter().filter(|was| selector.holds(was)).count();
+    let skipped = hidden.len();
     Moved::Pin {
         section: section.to_string(),
+        pinned: pinned.clone(),
         path: selector.as_str().to_string(),
         deleted: held.saturating_sub(gone.len() + skipped),
         renamed: gone,
@@ -342,29 +415,36 @@ impl Moves {
 
     /// The paths this run keeps in a section's scope because the change moved them.
     fn kept(&self, section: &str) -> Vec<String> {
-        let mut kept = Vec::new();
-        for moved in self.iter().filter(|moved| moved.section() == Some(section)) {
-            match moved {
-                Moved::Pin { renamed, .. } => {
-                    kept.extend(renamed.iter().map(|(_, path)| path.clone()))
-                }
-                Moved::Out { path, .. } => kept.push(path.clone()),
-                Moved::Skipped { .. } => {}
-            }
-        }
-        kept
+        self.pinned_where(section, |kind| *kind == Pinned::In)
+            .flat_map(|(_, renamed)| renamed.iter().map(|(_, now)| now.clone()))
+            .chain(self.out_of(section).into_iter().map(str::to_owned))
+            .collect()
     }
 
     /// The pinned `in` paths of the section the change moved, which may select nothing.
     fn pinned(&self, section: &str) -> Vec<String> {
-        self.iter()
-            .filter_map(|moved| match moved {
-                Moved::Pin {
-                    section: of, path, ..
-                } if of == section => Some(path.clone()),
-                _ => None,
-            })
+        self.pinned_where(section, |kind| *kind == Pinned::In)
+            .map(|(path, _)| path.to_owned())
             .collect()
+    }
+
+    /// Each path of the section that the change moved and whose kind of pin `is` accepts, with
+    /// the files git saw renamed out of it, by the path the base held and the path they have now.
+    pub fn pinned_where<'a>(
+        &'a self,
+        section: &'a str,
+        is: impl Fn(&Pinned) -> bool + 'a,
+    ) -> impl Iterator<Item = (&'a str, &'a [(String, String)])> {
+        self.iter().filter_map(move |moved| match moved {
+            Moved::Pin {
+                section: of,
+                pinned,
+                path,
+                renamed,
+                ..
+            } if of == section && is(pinned) => Some((path.as_str(), renamed.as_slice())),
+            _ => None,
+        })
     }
 
     /// The paths of the files a rename took out of the section's scope.
@@ -394,6 +474,7 @@ pub enum Moved {
     /// pin that selected nothing in the base either.
     Pin {
         section: String,
+        pinned: Pinned,
         path: String,
         renamed: Vec<(String, String)>,
         skipped: usize,
@@ -404,6 +485,37 @@ pub enum Moved {
     /// A file the change renamed from a path a walk reaches to one under a directory every walk
     /// skips, which no check measures in either tree.
     Skipped { was: String, path: String },
+}
+
+/// What pins a moved path: a section's own `in`, the `in` of the named convention, or a pinned
+/// document, which names one file. Spec 7.3.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Pinned {
+    In,
+    Convention(String),
+    Document,
+}
+
+impl Pinned {
+    /// Whether the pinned path selects the file: a document is that one file, and an `in` path
+    /// holds itself and everything below it.
+    fn selects(&self, selector: &Selector, file: &str) -> bool {
+        match self {
+            Pinned::Document => selector.as_str() == file,
+            Pinned::In | Pinned::Convention(_) => selector.holds(file),
+        }
+    }
+
+    /// Whether the pin follows a rename to this path: a document is read wherever it goes, and
+    /// an `in` path follows no file under a directory every walk skips.
+    fn follows(&self, path: &str, reached: fn(&str) -> bool) -> bool {
+        *self == Pinned::Document || reached(path)
+    }
+
+    /// Whether this pins the `in` of the convention with this name.
+    pub fn convention(&self, named: &str) -> bool {
+        matches!(self, Pinned::Convention(name) if name == named)
+    }
 }
 
 impl Moved {
@@ -433,11 +545,17 @@ impl Moved {
         match self {
             Moved::Pin {
                 section,
+                pinned,
                 path,
                 renamed,
                 skipped,
                 deleted,
-            } => Some(pin_said(section, path, renamed, (*skipped, *deleted))),
+            } => Some(pin_said(
+                (section, pinned),
+                path,
+                renamed,
+                (*skipped, *deleted),
+            )),
             Moved::Out { .. } => None,
             Moved::Skipped { was, path } => Some(format!(
                 "{was} moved to {path}, under a directory every walk skips, so no check \
@@ -465,7 +583,7 @@ impl Moved {
 
 /// What a moved pin says to a person: where its files went, and that the pin needs updating.
 fn pin_said(
-    section: &str,
+    (section, pinned): (&str, &Pinned),
     path: &str,
     renamed: &[(String, String)],
     (skipped, deleted): (usize, usize),
@@ -499,10 +617,14 @@ fn pin_said(
                 .join(", and ")
         }
     };
-    format!(
-        "the pinned \"in\" path {path} of \"{section}\" selects no file of the working tree: \
-         {what} — update the pin in klin.json"
-    )
+    let pin = match pinned {
+        Pinned::In => format!("the pinned \"in\" path {path} of \"{section}\""),
+        Pinned::Convention(name) => {
+            format!("the pinned \"in\" path {path} of convention \"{name}\"")
+        }
+        Pinned::Document => format!("the pinned document {path} of \"{section}\""),
+    };
+    format!("{pin} selects no file of the working tree: {what} — update the pin in klin.json")
 }
 
 /// Whether any of these selectors holds the path.

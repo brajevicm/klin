@@ -82,6 +82,8 @@ pub struct Config {
     pub file: PathBuf,
     root: PathBuf,
     data: Value,
+    /// The sections the file was judged against, which say how each section names its paths.
+    sections: Vec<Section>,
 }
 
 impl Config {
@@ -100,7 +102,12 @@ impl Config {
         let data = serde_json::from_str(&text).map_err(|why| Error::unreadable(&file, why))?;
         let root = file.parent().unwrap_or(Path::new("")).to_path_buf();
         well_formed(&file, &data, sections)?;
-        Ok(Config { file, root, data })
+        Ok(Config {
+            file,
+            root,
+            data,
+            sections: sections.to_vec(),
+        })
     }
 
     /// A tree with no configuration at all. The file it names is the one `init` would write, so
@@ -113,6 +120,7 @@ impl Config {
             file: root.join(FILENAME),
             root,
             data: Value::Object(serde_json::Map::new()),
+            sections: Vec::new(),
         }
     }
 
@@ -122,6 +130,7 @@ impl Config {
             file: file.to_path_buf(),
             root: file.parent().unwrap_or(Path::new("")).to_path_buf(),
             data: Value::Object(Map::new()),
+            sections: Vec::new(),
         }
     }
 
@@ -143,6 +152,14 @@ impl Config {
             .into_iter()
             .flatten()
             .filter_map(|(name, value)| Some((name.as_str(), value.as_object()?)))
+    }
+
+    /// Every section the config states as an object, with the shape the file was judged by.
+    pub fn shaped(&self) -> impl Iterator<Item = (&str, SectionShape, &Map<String, Value>)> {
+        self.objects().filter_map(|(name, fields)| {
+            let section = self.sections.iter().find(|section| section.name == name)?;
+            Some((name, section.shape, fields))
+        })
     }
 
     /// A section the file must state, because nothing derives it: the value, or the error that

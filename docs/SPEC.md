@@ -1020,9 +1020,11 @@ Rules:
 - **Moved and deleted policy paths.** A path that the policy names (an `in`
   path, a pinned document, a convention's `in`) and that selects files in the
   base and none in the working tree is decided by what happened to those
-  files, by a deterministic test on both trees. The shipped binary applies
-  these rules to a section's `in` and `except` paths only. A pinned document
-  and a convention's own `in` keep their earlier handling until #524:
+  files, by a deterministic test on both trees. A pinned document names
+  exactly one file, never a directory below it. One that the working tree
+  holds did not move, even where no walk reaches it. A rename of it is
+  followed wherever it goes, under a skipped directory too, and an
+  instruction file it was renamed to is judged once, under the pin:
   - **Renamed.** When git detects every selected file as renamed (`-M50%`),
     the policy follows the rename for this run. The capability measures the
     new paths under the pinned values, so it stays switched on. `klin check`
@@ -1031,7 +1033,8 @@ Rules:
     Stop follows the rename without a note.
   - **Deleted.** When the selected files are gone and not renamed, it is a
     note at the Stop and a review item of kind `moved-pin` at `klin check`.
-    No error.
+    No error. A convention whose every `in` path the change deleted measures
+    nothing, so it derives no language and is no error.
   - **Mixed.** When some selected files were renamed and the rest deleted,
     the renamed files are measured at their new paths under the pin, and one
     `moved-pin` review item names the path.
@@ -1057,6 +1060,9 @@ Rules:
   finding by moving its file out of scope, without blocking a requested
   move. The kept membership holds in both trees and against an `except`
   path too, so a file renamed under an `except` path is still measured.
+  **Known limit:** `conventions` reads the path each tree holds, so a file
+  renamed out of a convention's `in` keeps no membership there, and the
+  convention does not measure it at its new path.
 - **Moved into a skipped directory.** A source file, of a language klin
   reads, that the change moved by a detected rename from a path under no
   directory of the default skip set to a path under one, such as `out/`,
@@ -2500,6 +2506,12 @@ Stop:
 - renaming the files a pinned `in` names keeps the capability measuring them
   and adds a `moved-pin` review item; deleting them is a note and a review
   item; neither blocks;
+- renaming a pinned `doc_size` document keeps it measured at its new path,
+  against the base's copy at the old path, and adds a `moved-pin` review
+  item; deleting it is a note and a review item, not an exit 2;
+- renaming the files a convention's `in` names keeps the convention measuring
+  them and adds a `moved-pin` review item; deleting them is a note and a
+  review item, not an exit 2;
 - a complex function in a file moved out of an `in` scope that still selects
   other files still fails;
 - a file renamed under a directory every walk skips is a note at the Stop and

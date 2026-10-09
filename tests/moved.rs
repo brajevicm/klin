@@ -1,6 +1,6 @@
-//! Moved and deleted policy paths: a pinned `in` path whose files the change renamed, deleted,
-//! or that selects nothing in either tree, and a file renamed out of a scope that still selects
-//! other files. Spec 7.3.
+//! Moved and deleted policy paths: a pinned `in` path, a pinned document or a convention's `in`
+//! path whose files the change renamed, deleted, or that selects nothing in either tree, and a
+//! file renamed out of a scope that still selects other files. Spec 7.3.
 
 mod harness;
 
@@ -335,4 +335,282 @@ fn a_selected_check_reports_no_moved_pin_of_a_check_it_did_not_select() {
     let report = run.json();
     assert_eq!(report["judgement"], "pass", "{report}");
     assert!(moved_pins(&report).is_empty(), "{report}");
+}
+
+const DOCUMENT: &str = r#"{"doc_size": {"docs/guide.md": 100}}"#;
+
+/// A document of one word per line, so git still detects a rename after a few words are added.
+fn document(words: usize) -> String {
+    "word\n".repeat(words)
+}
+
+/// A base whose `doc_size` pins `docs/guide.md` at 100 words, which it is under, beside source.
+fn documented(words: usize) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", DOCUMENT);
+    tree.write("docs/guide.md", &document(words));
+    tree.write("src/lib.rs", SIMPLE);
+    tree.base();
+    tree
+}
+
+#[test]
+fn renaming_a_pinned_document_keeps_it_measured_and_adds_a_moved_pin() {
+    let tree = documented(90);
+    tree.git(&["mv", "docs/guide.md", "docs/manual.md"]);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "review", "{report}");
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(pins[0]["check"], "doc-size", "{report}");
+    assert_eq!(pins[0]["file"], "docs/guide.md", "{report}");
+    assert_eq!(
+        pins[0]["reason"], "docs/guide.md -> docs/manual.md",
+        "{report}"
+    );
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(!stop.says("NOTE: the pinned document"), "{}", stop.out);
+
+    tree.write("docs/manual.md", &document(110));
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("docs/manual.md"), "{}", run.out);
+    assert!(
+        run.says("REVIEW: the pinned document docs/guide.md"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_renamed_pinned_document_over_its_ceiling_in_the_base_is_held() {
+    let tree = documented(150);
+    tree.git(&["mv", "docs/guide.md", "docs/manual.md"]);
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("docs/manual.md is 150 words, over its ceiling of 100, held at the base"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn deleting_a_pinned_document_is_a_moved_pin_and_no_error() {
+    let tree = documented(90);
+    tree.remove("docs/guide.md");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["execution"], "ok", "{report}");
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    let said = pins[0]["text"].as_str().unwrap_or_default();
+    assert!(said.contains("1 file(s) went with no rename"), "{said}");
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(
+        stop.says("NOTE: the pinned document docs/guide.md"),
+        "{}",
+        stop.out
+    );
+}
+
+#[test]
+fn a_pinned_document_this_change_wrote_that_names_no_file_stays_an_error() {
+    let tree = documented(90);
+    tree.write("klin.json", r#"{"doc_size": {"docs/typo.md": 100}}"#);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(moved_pins(&run.json()).is_empty(), "{}", run.out);
+}
+
+const CONVENTION: &str = r#"{"conventions": {"no-spawn": {
+    "code": "Command::new($$$ARGS)",
+    "in": "src/core",
+    "remedy": "Use the shared boundary."
+}}}"#;
+
+const SPAWN: &str = "pub fn spawn() {\n    Command::new(\"git\");\n}\n";
+
+#[test]
+fn renaming_the_files_a_convention_in_names_keeps_them_measured_and_adds_a_moved_pin() {
+    let tree = pinned(CONVENTION);
+    std::fs::create_dir_all(tree.path("src/engine")).unwrap_or_default();
+    tree.git(&["mv", "src/core/a.rs", "src/engine/a.rs"]);
+    tree.git(&["mv", "src/core/b.rs", "src/engine/b.rs"]);
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["judgement"], "review", "{report}");
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(pins[0]["check"], "conventions", "{report}");
+    assert_eq!(pins[0]["file"], "src/core", "{report}");
+    let said = pins[0]["text"].as_str().unwrap_or_default();
+    assert!(said.contains("convention \"no-spawn\""), "{said}");
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(!stop.says("NOTE: the pinned"), "{}", stop.out);
+
+    tree.write("src/engine/a.rs", &format!("{}{SPAWN}", many()));
+    let run = tree.run(&["check"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("src/engine/a.rs"), "{}", run.out);
+    assert!(run.says("Use the shared boundary."), "{}", run.out);
+}
+
+#[test]
+fn deleting_the_files_a_convention_in_names_is_a_moved_pin_and_no_error() {
+    let tree = pinned(CONVENTION);
+    tree.remove("src/core/a.rs");
+    tree.remove("src/core/b.rs");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    assert_eq!(report["execution"], "ok", "{report}");
+    assert_eq!(moved_pins(&report).len(), 1, "{report}");
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(
+        stop.says("NOTE: the pinned \\\"in\\\" path src/core of convention"),
+        "{}",
+        stop.out
+    );
+}
+
+#[test]
+fn a_pinned_document_under_a_skipped_directory_is_still_measured() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"doc_size": {"build/notes.md": 100}}"#);
+    tree.write("build/notes.md", &document(90));
+    tree.write("src/lib.rs", SIMPLE);
+    tree.base();
+    tree.write("build/notes.md", &document(110));
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(moved_pins(&run.json()).is_empty(), "{}", run.out);
+}
+
+#[test]
+fn a_convention_in_path_the_base_holds_that_selects_nothing_in_either_tree_is_a_moved_pin() {
+    let tree = pinned(&CONVENTION.replace("src/core", "src/gone"));
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(pins[0]["file"], "src/gone", "{report}");
+}
+
+#[test]
+fn a_pinned_document_renamed_into_a_skipped_directory_is_measured_under_its_pin() {
+    let tree = documented(90);
+    std::fs::create_dir_all(tree.path("build")).unwrap_or_default();
+    tree.git(&["mv", "docs/guide.md", "build/guide.md"]);
+    tree.write("build/guide.md", &document(150));
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("build/guide.md"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_pinned_instruction_file_is_judged_once_under_its_pin() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"doc_size": {"AGENTS.md": 100}}"#);
+    tree.write("AGENTS.md", &document(90));
+    tree.write("src/lib.rs", SIMPLE);
+    tree.base();
+    std::fs::create_dir_all(tree.path("docs")).unwrap_or_default();
+    tree.git(&["mv", "AGENTS.md", "docs/AGENTS.md"]);
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        run.out.matches("docs/AGENTS.md is 90 words").count(),
+        1,
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("docs/AGENTS.md is 90 words, ceiling 100"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_renamed_pinned_document_is_followed_beside_a_directory_at_its_old_path() {
+    let tree = documented(90);
+    tree.git(&["mv", "docs/guide.md", "docs/manual.md"]);
+    tree.write("docs/guide.md/notes.txt", "notes\n");
+
+    let run = tree.run(&["check", "doc-size", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(
+        pins[0]["reason"], "docs/guide.md -> docs/manual.md",
+        "{report}"
+    );
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert!(run.says("docs/manual.md is 90 words"), "{}", run.out);
+}
+
+#[test]
+fn deleting_every_file_of_overlapping_convention_in_paths_is_a_moved_pin_and_no_error() {
+    let tree = pinned(&CONVENTION.replace(
+        r#""in": "src/core""#,
+        r#""in": ["src/core", "src/core/internal"]"#,
+    ));
+    tree.write("src/core/internal/c.rs", SIMPLE);
+    tree.base();
+    for file in ["src/core/a.rs", "src/core/b.rs", "src/core/internal/c.rs"] {
+        tree.remove(file);
+    }
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let files: Vec<&str> = moved_pins(&report)
+        .iter()
+        .filter_map(|pin| pin["file"].as_str())
+        .collect();
+    assert_eq!(files, ["src/core", "src/core/internal"], "{report}");
+}
+
+#[test]
+fn deleting_the_files_of_a_nested_convention_in_path_is_a_moved_pin_and_no_error() {
+    let tree = pinned(&CONVENTION.replace(
+        r#""in": "src/core""#,
+        r#""in": ["src/core", "src/core/internal"]"#,
+    ));
+    tree.write("src/core/internal/c.rs", SIMPLE);
+    tree.base();
+    tree.remove("src/core/internal/c.rs");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(pins[0]["file"], "src/core/internal", "{report}");
 }

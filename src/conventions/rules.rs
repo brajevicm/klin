@@ -14,7 +14,7 @@ use crate::error::Error;
 use crate::key::Key;
 use crate::ratchet::Finding;
 use crate::record::Values;
-use crate::scope::{self, Selector};
+use crate::scope::{self, Moves, Selector};
 use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
 use crate::tree::Tree;
@@ -107,6 +107,10 @@ pub(super) struct Convention {
     pub(super) except: Vec<Selector>,
     language: Option<&'static str>,
     pub(super) remedy: String,
+    /// The `in` paths the change moved, which may select nothing. Spec 7.3.
+    moved: Vec<String>,
+    /// The paths the change renamed the files of a moved `in` path to, which this run measures.
+    kept: Vec<String>,
 }
 
 impl Convention {
@@ -124,7 +128,33 @@ impl Convention {
     }
 
     pub(super) fn applies(&self, file: &str) -> bool {
-        self.selects(file) && !scope::any_holds(&self.except, file)
+        self.kept.iter().any(|kept| kept == file)
+            || (self.selects(file) && !scope::any_holds(&self.except, file))
+    }
+
+    /// Whether the change moved every `in` path and took no file along, so the convention
+    /// measures nothing and has no source to derive its language from. Spec 7.3.
+    pub(super) fn gone(&self) -> bool {
+        self.kept.is_empty()
+            && !self.within.is_empty()
+            && self.within.iter().all(|within| self.moved_in(within))
+    }
+
+    /// Whether the change moved this `in` path. Spec 7.3.
+    fn moved_in(&self, within: &Selector) -> bool {
+        self.moved.iter().any(|moved| moved == within.as_str())
+    }
+
+    /// The convention following the `in` paths the change moved. Spec 7.3.
+    fn followed(mut self, moves: &Moves) -> Convention {
+        let followed: Vec<_> = moves
+            .pinned_where(SECTION, |kind| kind.convention(&self.name))
+            .collect();
+        for (path, renamed) in followed {
+            self.moved.push(path.to_string());
+            self.kept.extend(renamed.iter().map(|(_, now)| now.clone()));
+        }
+        self
     }
 }
 
@@ -242,7 +272,8 @@ pub(super) struct Place {
     path: PathBuf,
 }
 
-pub(super) fn conventions(config: &Config) -> Result<Vec<Convention>, Error> {
+/// Every convention the configuration states, each following the `in` paths the change moved.
+pub(super) fn conventions(config: &Config, moves: &Moves) -> Result<Vec<Convention>, Error> {
     let listed = config.required(SECTION)?.as_object().ok_or_else(|| {
         Error(format!(
             "{}: \"{SECTION}\" is an object of convention names, each with a \"remedy\" and one of: \
@@ -259,12 +290,14 @@ pub(super) fn conventions(config: &Config) -> Result<Vec<Convention>, Error> {
     listed
         .iter()
         .map(|(name, rule)| {
-            convention(name, rule).map_err(|why| {
-                Error(format!(
-                    "{}: convention \"{name}\" {why}",
-                    config.file.display()
-                ))
-            })
+            convention(name, rule)
+                .map(|convention| convention.followed(moves))
+                .map_err(|why| {
+                    Error(format!(
+                        "{}: convention \"{name}\" {why}",
+                        config.file.display()
+                    ))
+                })
         })
         .collect()
 }
@@ -287,6 +320,8 @@ fn convention(name: &str, rule: &Value) -> Result<Convention, String> {
         within,
         except,
         remedy: remedy(fields)?,
+        moved: Vec::new(),
+        kept: Vec::new(),
     })
 }
 
@@ -740,9 +775,10 @@ pub(super) fn holes<'a>(conventions: &'a [Convention], places: &[Place]) -> Vec<
     let mut out = Vec::new();
     for convention in conventions {
         for (key, listed) in [(IN, &convention.within), (EXCEPT, &convention.except)] {
-            let empty = listed
-                .iter()
-                .filter(|at| !places.iter().any(|place| at.holds(&place.file)));
+            let empty = listed.iter().filter(|at| {
+                !places.iter().any(|place| at.holds(&place.file))
+                    && !(key.name == IN.name && convention.moved_in(at))
+            });
             out.extend(empty.map(|path| Hole {
                 convention: &convention.name,
                 key: key.name,

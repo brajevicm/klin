@@ -21,6 +21,7 @@ use crate::error::Error;
 use crate::key::Key;
 use crate::project::Project;
 use crate::ratchet;
+use crate::scope::{Moves, Pinned, Selector};
 use crate::survey;
 
 pub const SECTION: &str = "doc_size";
@@ -325,16 +326,15 @@ fn listing(project: &Project) -> Result<Listing, Error> {
         Some(Value::Object(fields)) => fields,
         _ => &none,
     };
-    let mut listing = pinned(config, pins)?;
+    let mut listing = pinned(config, project.moves(), pins)?;
     let unpinned: Vec<&String> = project
         .facts()
         .found
         .instructions
         .iter()
         .filter(|name| {
-            !pins
-                .keys()
-                .any(|pin| config.path(pin) == config.root().join(name))
+            let path = config.root().join(name);
+            !listing.documents.iter().any(|pinned| pinned.path == path)
         })
         .collect();
     if !unpinned.is_empty() {
@@ -343,8 +343,10 @@ fn listing(project: &Project) -> Result<Listing, Error> {
     Ok(listing)
 }
 
-/// Every document a person pinned, under its pin.
-fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> {
+/// Every document a person pinned, under its pin. A pinned document the change renamed is
+/// measured at its new path and compared with the base's copy at the old one, and one the
+/// change deleted, or that names nothing in either tree, is measured nowhere. Spec 7.3.
+fn pinned(config: &Config, moves: &Moves, pins: &Map<String, Value>) -> Result<Listing, Error> {
     let mut listing = Listing {
         documents: Vec::new(),
         said: Vec::new(),
@@ -362,9 +364,21 @@ fn pinned(config: &Config, pins: &Map<String, Value>) -> Result<Listing, Error> 
             key: name.clone(),
             shown: ceiling.to_string(),
         });
-        listing
-            .documents
-            .push(document(config, name, ceiling, false));
+        let moved = Selector::parse(DOCUMENT, name).ok().and_then(|pin| {
+            moves
+                .pinned_where(SECTION, |kind| *kind == Pinned::Document)
+                .find(|(path, _)| *path == pin.as_str())
+        });
+        match moved {
+            None => listing
+                .documents
+                .push(document(config, name, ceiling, false)),
+            Some((_, [(was, now), ..])) => listing.documents.push(Document {
+                relative: Some(PathBuf::from(was)),
+                ..document(config, now, ceiling, false)
+            }),
+            Some(_) => {}
+        }
     }
     Ok(listing)
 }
