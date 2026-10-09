@@ -188,6 +188,30 @@ fn status_reads_a_missing_or_unreadable_skill_as_a_conflict() {
     );
 }
 
+/// An earlier text of klin's skill is a conflict `setup` replaces, which reads apart from a skill
+/// a person changed. Every text the skill held in git history is one klin knows, so a release
+/// that changes the skill cannot leave the one before it behind. Spec 11.4, B.19.3.
+#[test]
+fn status_names_every_earlier_skill_as_one_setup_replaces() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
+    let skill = ".claude/skills/klin/SKILL.md";
+
+    let earlier = harness::earlier_skills();
+    assert!(!earlier.is_empty());
+    for text in earlier {
+        tree.write(skill, &text);
+        let run = tree.run(&["status"]);
+        assert!(run.says("klin setup replaces it"), "{text}\n{}", run.out);
+    }
+
+    tree.write(skill, "a person's skill\n");
+    let changed = tree.run(&["status"]);
+    assert!(changed.says("differs from klin's skill"), "{}", changed.out);
+    assert!(!changed.says("klin setup replaces it"), "{}", changed.out);
+}
+
 /// klin's skill at a scope whose hook file lost klin's lines is the rest of an install, and reads
 /// as a conflict with its own detail. A skill another host's hooks still use is not alone.
 /// Spec 11.4.

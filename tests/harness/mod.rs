@@ -95,6 +95,13 @@ impl Tree {
         spawn(self.root(), args, "", environment)
     }
 
+    /// A run whose stdin is a terminal, answered with `typed`, so a command that asks a person
+    /// reads the answer.
+    #[cfg(unix)]
+    pub fn run_on_terminal(&self, args: &[&str], typed: &str) -> Run {
+        on_terminal(self.root(), args, typed)
+    }
+
     /// A session start through the ingress.
     pub fn session(&self) -> Run {
         feed(self.root(), AGENT, SESSION_START)
@@ -435,6 +442,69 @@ fn spawn_binary(
         out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
         printed,
     }
+}
+
+#[cfg(unix)]
+fn on_terminal(cwd: &Path, args: &[&str], typed: &str) -> Run {
+    use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
+    let terminal = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY).expect("open a terminal");
+    grantpt(&terminal).expect("grant the terminal");
+    unlockpt(&terminal).expect("unlock the terminal");
+    let name = ptsname(&terminal, Vec::new()).expect("name the terminal");
+    let reader = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(name.to_str().expect("terminal path"))
+        .expect("open the terminal's reader");
+    let mut terminal = fs::File::from(terminal);
+    terminal
+        .write_all(typed.as_bytes())
+        .expect("type the answer");
+    let done = Command::new(binary())
+        .args(args)
+        .env("HOME", empty_home())
+        .current_dir(cwd)
+        .stdin(Stdio::from(reader))
+        .output()
+        .expect("run klin");
+    let printed = String::from_utf8_lossy(&done.stdout).to_string();
+    Run {
+        code: done.status.code().unwrap_or(-1),
+        out: printed.clone() + &String::from_utf8_lossy(&done.stderr),
+        printed,
+    }
+}
+
+/// Every text the skill at `plugins/klin/skills/klin/SKILL.md` held in this repository's history
+/// before the one this build embeds, each once.
+pub fn earlier_skills() -> Vec<String> {
+    let current = include_str!("../../plugins/klin/skills/klin/SKILL.md");
+    let repository = env!("CARGO_MANIFEST_DIR");
+    let git = |args: &[&str]| {
+        let done = Command::new("git")
+            .args(args)
+            .current_dir(repository)
+            .output()
+            .expect("run git");
+        String::from_utf8_lossy(&done.stdout).to_string()
+    };
+    let log = git(&[
+        "log",
+        "--follow",
+        "--format=%H",
+        "--name-only",
+        "--",
+        "plugins/klin/skills/klin/SKILL.md",
+    ]);
+    let lines: Vec<&str> = log.lines().filter(|line| !line.is_empty()).collect();
+    let mut texts: Vec<String> = Vec::new();
+    for pair in lines.chunks(2) {
+        let text = git(&["show", &format!("{}:{}", pair[0], pair[1])]);
+        if text != current && !texts.contains(&text) {
+            texts.push(text);
+        }
+    }
+    texts
 }
 
 /// One Stop event through the ingress from `cwd`, and the report it recorded. A Stop that wrote

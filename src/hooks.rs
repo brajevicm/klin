@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
@@ -7,11 +8,24 @@ use crate::config;
 use crate::error::Error;
 use crate::host::ADAPTERS;
 use crate::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
-use crate::{init, write};
+use crate::{init, state, write};
 
 const HOOKS: &str = "hooks";
 const MARKER: &str = "klin.json";
 const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
+/// The `state::hash` of every earlier text of `SKILL`, the newest first. A file that holds one
+/// of them is klin's, written by an earlier `setup` and changed by nobody. Spec B.19.3.
+const EARLIER_SKILLS: &[u64] = &[
+    0x5c53_ac81_e30d_2e9b,
+    0x38ce_1765_4060_07d6,
+    0x2392_3714_0eaf_6407,
+    0xb3f2_7336_a44d_2718,
+    0x326d_c80b_49d4_dee2,
+    0x3f39_2001_cec3_bf63,
+    0x82ce_b777_ce4c_3978,
+    0x234d_4187_3cef_7ffb,
+    0x51c1_5f02_ab11_3294,
+];
 
 /// The klin commands a host hook runs: the ingress, and the 0.x commands it replaced. An entry
 /// that runs one of them is klin's own, whatever shape the klin that wrote it used, so `setup`
@@ -465,8 +479,9 @@ fn reconciled(host: &'static dyn Adapter, file: &Path) -> Result<Component, Erro
 }
 
 /// The standalone skill is one canonical text. A missing file is klin's to write, the exact
-/// current text is already current, and any other text belongs to a person and is a conflict.
-/// Shared Codex and Cursor paths are planned once. Section 19.3.
+/// current text is already current, and an earlier text is klin's to replace. Any other text is
+/// a person's: on a terminal the person says whether to replace it, and without one it is
+/// replaced and named. Shared Codex and Cursor paths are planned once. Section B.19.3.
 fn skill(
     host: &dyn Adapter,
     scope: &Scope,
@@ -477,28 +492,83 @@ fn skill(
         return Ok((None, None));
     }
     seen.push(file.clone());
-    match holds_klins_skill(&file) {
-        Ok(true) => Ok((None, Some(format!("{} is already current", file.display())))),
-        Ok(false) => Err(Error(format!(
-            "{}: existing skill differs from klin's canonical skill; refusing to overwrite it. \
-             Move it aside or reconcile it, then rerun klin setup",
+    let Some(said) = rewritten(&file)? else {
+        return Ok((None, Some(format!("{} is already current", file.display()))));
+    };
+    let target = Target {
+        file,
+        bytes: SKILL.as_bytes().to_vec(),
+    };
+    Ok((Some(target), Some(said)))
+}
+
+/// What `setup` says it did to a skill file it writes, or `None` where the file is current.
+fn rewritten(file: &Path) -> Result<Option<String>, Error> {
+    match held_skill(file) {
+        Ok(Held::Current) => Ok(None),
+        Ok(Held::Earlier) => Ok(Some(format!(
+            "replaced {}, an earlier klin skill",
             file.display()
         ))),
-        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok((
-            Some(Target {
-                file: file.clone(),
-                bytes: SKILL.as_bytes().to_vec(),
-            }),
-            Some(format!("wrote {}", file.display())),
-        )),
-        Err(why) => Err(Error::unreadable(&file, why)),
+        Ok(Held::Other) => consented(file).map(Some),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
+            Ok(Some(format!("wrote {}", file.display())))
+        }
+        Err(why) => Err(Error::unreadable(file, why)),
     }
 }
 
-/// Whether the file holds exactly the skill this klin writes. The one place that judges a skill
-/// file, so every reader of it agrees.
-fn holds_klins_skill(file: &Path) -> std::io::Result<bool> {
-    std::fs::read(file).map(|text| text == SKILL.as_bytes())
+/// A skill a person may have changed, replaced only where they agree or nobody can answer.
+fn consented(file: &Path) -> Result<String, Error> {
+    match replace_agreed(file)? {
+        true => Ok(format!(
+            "replaced {}, which differed from klin's skill",
+            file.display()
+        )),
+        false => Err(Error(format!(
+            "{}: kept the existing skill, which differs from klin's canonical skill, and wrote \
+             nothing. Move it aside or reconcile it, then rerun klin setup",
+            file.display()
+        ))),
+    }
+}
+
+/// Whether a person agrees to replace a skill they may have changed. Without a terminal nobody
+/// can answer, and the replacement is printed. Section B.19.3.
+fn replace_agreed(file: &Path) -> Result<bool, Error> {
+    let stdin = std::io::stdin();
+    if !stdin.is_terminal() {
+        return Ok(true);
+    }
+    eprint!(
+        "{} differs from klin's canonical skill. Replace it? [y/N] ",
+        file.display()
+    );
+    let mut answer = String::new();
+    stdin
+        .read_line(&mut answer)
+        .map_err(|why| Error(format!("the answer could not be read: {why}")))?;
+    Ok(matches!(answer.trim(), "y" | "Y" | "yes" | "Yes"))
+}
+
+/// What a skill file holds, judged against the skill this klin writes.
+#[derive(PartialEq)]
+enum Held {
+    Current,
+    Earlier,
+    Other,
+}
+
+/// The one place that judges a skill file, so every reader of it agrees.
+fn held_skill(file: &Path) -> std::io::Result<Held> {
+    let text = std::fs::read(file)?;
+    Ok(if text == SKILL.as_bytes() {
+        Held::Current
+    } else if EARLIER_SKILLS.contains(&state::hash(&text)) {
+        Held::Earlier
+    } else {
+        Held::Other
+    })
 }
 
 /// klin's own entries brought to the current contract: one entry per event klin writes, with
@@ -906,7 +976,7 @@ fn skill_alone(
         .map(|(reader, _)| reader.name())
         .eq([host.name()])
         && readers().all(|(_, held)| held.is_empty())
-        && holds_klins_skill(&skill).is_ok_and(|ours| ours);
+        && held_skill(&skill).is_ok_and(|held| held != Held::Other);
     if !alone {
         return None;
     }
@@ -940,9 +1010,10 @@ fn hook_state(host: &'static dyn Adapter, at: &Path, file: &Path) -> (State, Str
         );
     }
     let skill = at.join(host.skill_file());
-    let wrong = match holds_klins_skill(&skill) {
-        Ok(true) => return (State::Current, file.display().to_string()),
-        Ok(false) => "differs from klin's skill".to_string(),
+    let wrong = match held_skill(&skill) {
+        Ok(Held::Current) => return (State::Current, file.display().to_string()),
+        Ok(Held::Earlier) => "is an earlier klin skill, and klin setup replaces it".to_string(),
+        Ok(Held::Other) => "differs from klin's skill".to_string(),
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
             "is missing, and klin setup writes it".to_string()
         }

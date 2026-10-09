@@ -504,16 +504,53 @@ fn install_user_writes_the_canonical_shared_skill() {
     );
 }
 
+/// A skill that holds an earlier text of klin's skill is klin's, and nobody changed it, so
+/// `setup` replaces it without asking, even on a terminal. Spec B.19.3.
+#[cfg(unix)]
 #[test]
-fn install_refuses_a_different_skill_before_writing_anything() {
+fn install_replaces_an_earlier_skill_without_asking() {
+    let tree = a_repository();
+    let earlier = harness::earlier_skills();
+    tree.write(".claude/skills/klin/SKILL.md", &earlier[0]);
+
+    let run = tree.run_on_terminal(&["setup", "--host", "claude"], "n\n");
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("Replace it?"), "{}", run.out);
+    assert!(run.says("an earlier klin skill"), "{}", run.out);
+    assert_eq!(
+        skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+}
+
+/// On a terminal, a skill a person changed is replaced only on a yes. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_asks_before_replacing_a_changed_skill_on_a_terminal() {
+    let tree = a_repository();
+    tree.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
+
+    let run = tree.run_on_terminal(&["setup", "--host", "claude"], "y\n");
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(run.out.matches("Replace it?").count(), 1, "{}", run.out);
+    assert!(run.says("replaced"), "{}", run.out);
+    assert_eq!(
+        skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+}
+
+/// A no keeps the skill, and the run writes no file at all. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_keeps_a_changed_skill_on_a_no_and_writes_nothing() {
     let tree = a_repository();
     tree.write(".claude/settings.json", "{}\n");
     tree.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
 
-    let run = tree.run(&["setup", "--host", "claude"]);
+    let run = tree.run_on_terminal(&["setup", "--host", "claude"], "n\n");
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("SKILL.md"), "{}", run.out);
-    assert!(run.says("refusing to overwrite"), "{}", run.out);
+    assert!(run.says("Replace it?"), "{}", run.out);
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
     assert_eq!(
         skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
@@ -522,14 +559,16 @@ fn install_refuses_a_different_skill_before_writing_anything() {
     assert_eq!(skill_at(&tree.path(".claude/settings.json")), "{}\n");
 }
 
+/// Codex and Cursor share one skill, so a changed one is asked about once. Spec B.19.3.
+#[cfg(unix)]
 #[test]
-fn install_refuses_a_shared_skill_conflict_before_writing_either_host() {
+fn install_asks_once_for_a_shared_skill_and_writes_neither_host_on_a_no() {
     let tree = a_repository();
     tree.write(".agents/skills/klin/SKILL.md", "a person's shared skill\n");
 
-    let run = tree.run(&["setup", "--host", "codex", "--host", "cursor"]);
+    let run = tree.run_on_terminal(&["setup", "--host", "codex", "--host", "cursor"], "n\n");
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says(".agents/skills/klin/SKILL.md"), "{}", run.out);
+    assert_eq!(run.out.matches("Replace it?").count(), 1, "{}", run.out);
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
     assert!(!tree.path(".codex/hooks.json").exists(), "{}", run.out);
     assert!(!tree.path(".cursor/hooks.json").exists(), "{}", run.out);
@@ -539,8 +578,48 @@ fn install_refuses_a_shared_skill_conflict_before_writing_either_host() {
     );
 }
 
-/// The matcher of an older klin is stale, and the reconciler brings it to today's contract
-/// rather than leaving the host with the entry it already holds. #214.
+/// User scope follows the same rule, though no `git diff` shows the change: the printed path is
+/// the record. Spec B.19.3.
+#[test]
+fn install_user_replaces_a_changed_skill_without_a_terminal_and_names_it() {
+    let tree = a_repository();
+    let home = Tree::bare();
+    let at = home_of(&home);
+    home.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
+
+    let run = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude"],
+    );
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("replaced"), "{}", run.out);
+    assert_eq!(
+        skill_at(&home.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+}
+
+/// Without a terminal nobody can answer, so `setup` replaces a changed skill and names the file
+/// it replaced. Spec B.19.3.
+#[test]
+fn install_replaces_a_changed_skill_without_a_terminal_and_names_it() {
+    let tree = a_repository();
+    tree.write(".claude/skills/klin/SKILL.md", "a person's skill\n");
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("Replace it?"), "{}", run.out);
+    assert!(
+        run.says("replaced") && run.says(".claude/skills/klin/SKILL.md"),
+        "{}",
+        run.out
+    );
+    assert_eq!(
+        skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+}
+
 #[test]
 fn install_replaces_a_stale_matcher_of_klins_own() {
     let tree = a_repository();

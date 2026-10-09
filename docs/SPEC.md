@@ -7283,7 +7283,14 @@ At project scope the selected hosts receive:
 
 At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that serves the selected host and scope carries the skill too, and klin writes the standalone copy all the same, so a teammate without the plugin has it.
 
-Skill targets participate in the same preflight as hooks. A missing file is written, a byte-identical file is already current, and a different existing file is an explicit conflict that is never overwritten. A later binary may reconcile an older standalone file only when klin can prove it owns that file; without that proof, the different file is preserved and refused. The conflict is found before the marker or any host integration is written. Rerunning `klin install` is the reconciliation step after a binary update.
+Skill targets participate in the same preflight as hooks. A missing file is written, and a byte-identical file is already current. A file that holds, byte for byte, a text that `plugins/klin/skills/klin/SKILL.md` held earlier in klin's history is klin's: klin wrote it and nobody changed it, so `setup` replaces it without asking. The binary carries a hash of every such earlier text, and a CLI test fails when that list misses a version from git history.
+
+Any other existing skill text needs consent, at project scope and at user scope alike:
+
+- When stdin is a terminal, `setup` asks once per skill path, naming the path. A yes replaces the file. Any other answer keeps the file, and the run writes no file at all.
+- When stdin is not a terminal, `setup` replaces the file and prints the path it replaced. At project scope `git diff` shows the change. At user scope the printed line is the only record.
+
+`setup` asks during preflight, before the marker or any host integration is written. Rerunning `klin setup` is the reconciliation step after a binary update. `klin status` (11.4) reports an earlier text of klin's skill as a conflict whose detail says that `klin setup` replaces it, apart from a skill that differs from klin's skill.
 
 The standalone route copies the skill only. Slash commands and other host-specific command surfaces remain plugin-owned. User scope is local to one machine and does not reach a cloud or remote agent.
 
