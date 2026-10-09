@@ -109,7 +109,7 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ```sh
 d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.5.1 https://github.com/brajevicm/klin "$d" &&
+  git clone --depth 1 --branch v0.5.2 https://github.com/brajevicm/klin "$d" &&
   mkdir -p ~/.cursor/plugins/local &&
   rm -rf ~/.cursor/plugins/local/klin &&
   cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
@@ -242,7 +242,7 @@ GitHub Actions, as its own job:
 - uses: actions/checkout@v5
   with:
     fetch-depth: 0
-- uses: brajevicm/klin@v0.5.1
+- uses: brajevicm/klin@v0.5.2
 ```
 
 It fails on any non-zero exit and annotates findings and review items in pull requests.
