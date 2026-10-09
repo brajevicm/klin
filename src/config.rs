@@ -505,6 +505,15 @@ fn build_error(file: &Path, key: &str) -> Error {
 /// capability, `sarif` entry or other accepted entry may take it. Spec 7.2.
 pub const MEASUREMENT_LOST: &str = "measurement-lost";
 
+pub const ACCEPTED_REASON: &str = "reason";
+
+type FieldShape = (&'static str, fn(&Value) -> bool, &'static str);
+
+const ACCEPTED_OPTIONAL: &[FieldShape] = &[
+    ("line", Value::is_u64, "a whole number"),
+    (ACCEPTED_REASON, Value::is_string, "a string"),
+];
+
 fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
     let Some(entries) = value.as_array() else {
         return Err(shape_error(
@@ -523,23 +532,33 @@ fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Resul
                 "a list of accepted entries",
             ));
         };
-        let by_file = fields.get("gate").and_then(Value::as_str) == Some(MEASUREMENT_LOST);
-        let required: &[&str] = match by_file {
-            true => &["gate", "file"],
-            false => &["gate", "file", "text"],
-        };
-        for name in required {
-            if !fields.get(*name).is_some_and(Value::is_string) {
-                return missing(file, section, name);
-            }
-        }
-        if let Some(line) = fields.get("line")
-            && !line.is_u64()
-        {
-            return Err(shape_error(file, section, "line", "a whole number"));
-        }
+        accepted_entry_shape(file, section, fields)?;
     }
     Ok(())
+}
+
+fn accepted_entry_shape(
+    file: &Path,
+    section: &str,
+    fields: &Map<String, Value>,
+) -> Result<(), Error> {
+    let by_file = fields.get("gate").and_then(Value::as_str) == Some(MEASUREMENT_LOST);
+    let required: &[&str] = match by_file {
+        true => &["gate", "file"],
+        false => &["gate", "file", "text"],
+    };
+    for name in required {
+        if !fields.get(*name).is_some_and(Value::is_string) {
+            return missing(file, section, name);
+        }
+    }
+    match ACCEPTED_OPTIONAL
+        .iter()
+        .find(|(name, fits, _)| fields.get(*name).is_some_and(|value| !fits(value)))
+    {
+        Some((name, _, must_be)) => Err(shape_error(file, section, name, must_be)),
+        None => Ok(()),
+    }
 }
 
 fn radius_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {

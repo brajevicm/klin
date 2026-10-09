@@ -134,7 +134,7 @@ fn policy_prints_the_build_and_the_accepted_list() {
     let tree = tree(
         r#"{"build": "make",
             "accepted": [{"gate": "escapes", "file": "src/old.rs", "text": "x.unwrap()",
-                          "count": 1}]}"#,
+                          "count": 1, "reason": "Legacy code."}]}"#,
     );
 
     let run = tree.run(&["policy"]);
@@ -154,6 +154,7 @@ fn policy_prints_the_build_and_the_accepted_list() {
     assert_eq!(json["build"]["provenance"], "pinned", "{json}");
     assert_eq!(json["build"]["value"], "make", "{json}");
     assert_eq!(json["accepted"][0]["file"], "src/old.rs", "{json}");
+    assert_eq!(json["accepted"][0]["reason"], "Legacy code.", "{json}");
 }
 
 #[test]

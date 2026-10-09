@@ -1683,7 +1683,9 @@ fn accepted_values(entry: &Value) -> String {
         .as_object()
         .into_iter()
         .flatten()
-        .filter(|(key, _)| !["gate", "file", "text"].contains(&key.as_str()))
+        .filter(|(key, _)| {
+            !["gate", "file", "text", config::ACCEPTED_REASON].contains(&key.as_str())
+        })
         .map(|(key, value)| format!("{key} {}", shown(value)))
         .collect();
     match said.is_empty() {
