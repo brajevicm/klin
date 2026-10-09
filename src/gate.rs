@@ -20,7 +20,7 @@ use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
-use crate::plan::{Gate, Plan, State, every_check, known, no_gate, plan, select};
+use crate::plan::{Gate, Plan, State, every_check};
 use crate::project::Project;
 use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
@@ -1080,11 +1080,12 @@ fn judge(
     unbuilt: Option<&str>,
     out: &mut String,
 ) -> Result<Tally, Fault> {
-    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
+    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     if args.list {
         return listed(args, project, &plan, out).map_err(fault(ErrorKind::Configuration));
     }
-    let wanted: Vec<&Gate> = select(&args.gates, &plan, project)
+    let wanted: Vec<&Gate> = plan
+        .select(&args.gates, project)
         .map_err(fault(ErrorKind::Invocation))?
         .into_iter()
         .filter(|gate| gate.check.placement.at_stop())
@@ -1356,7 +1357,7 @@ fn stated(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
         || plan.needs_a_section.iter().any(|check| check.name == name);
     match inactive {
         true => Ok(()),
-        false => known(name, plan, project),
+        false => plan.known(name, project),
     }
 }
 
@@ -2892,7 +2893,7 @@ fn measured(
         }
         report.notes.push(note);
     }
-    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
+    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
@@ -2996,7 +2997,7 @@ fn chosen_gates<'a>(
     if named.is_empty() && plan.gates.is_empty() && !plan.excluded.is_empty() {
         return Err(Fault {
             kind: ErrorKind::Configuration,
-            error: no_gate(project, plan),
+            error: plan.no_gate(project),
         });
     }
     let mut unsupported = Vec::new();
@@ -3006,7 +3007,9 @@ fn chosen_gates<'a>(
             Some(check) if !plan.gates.iter().any(|gate| &gate.name == name) => {
                 unsupported.push(*check)
             }
-            _ => known(name, plan, project).map_err(fault(ErrorKind::Invocation))?,
+            _ => plan
+                .known(name, project)
+                .map_err(fault(ErrorKind::Invocation))?,
         }
     }
     let wanted = plan

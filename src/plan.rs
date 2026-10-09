@@ -21,12 +21,85 @@ pub struct Plan {
 }
 
 impl Plan {
+    pub fn of(project: &Project) -> Result<Plan, Error> {
+        let mut plan = Plan::default();
+        for check in catalogue::CATALOGUE {
+            add(project, check, &mut plan)?;
+        }
+        distinct(project, &plan)?;
+        Ok(plan)
+    }
+
     /// The one gate a check runs as when its section is not a list of named entries.
     fn one(&mut self, check: &'static catalogue::Row) {
         self.gates.push(Gate {
             name: check.name.to_string(),
             check,
         });
+    }
+
+    pub fn select(&self, named: &[String], project: &Project) -> Result<Vec<&Gate>, Error> {
+        for name in named {
+            self.known(name, project)?;
+        }
+        let wanted: Vec<&Gate> = self
+            .gates
+            .iter()
+            .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == &gate.name))
+            .collect();
+        if wanted.is_empty() {
+            return Err(self.no_gate(project));
+        }
+        Ok(wanted)
+    }
+
+    pub fn known(&self, name: &str, project: &Project) -> Result<(), Error> {
+        let config = &project.config;
+        if self.gates.iter().any(|gate| gate.name == name) {
+            return Ok(());
+        }
+        if self.excluded.iter().any(|excluded| excluded == name) {
+            return Err(Error(format!(
+                "the gate named {name} is excluded in {} — naming a gate is a claim that \
+                 it runs, so lift the exclusion or drop {name}",
+                config.file.display()
+            )));
+        }
+        Err(Error(format!(
+            "no gate named {name} — {} configures: {}",
+            config.file.display(),
+            match self.gates.is_empty() {
+                true => "nothing".to_string(),
+                false => names(self.gates.iter().map(|gate| gate.name.as_str())),
+            }
+        )))
+    }
+
+    pub fn no_gate(&self, project: &Project) -> Error {
+        let config = &project.config;
+        if !self.excluded.is_empty() {
+            return Error(format!(
+                "{} excludes every gate it names: {} — a run that measures nothing cannot pass, \
+                 so lift one exclusion",
+                config.file.display(),
+                names(self.excluded.iter().map(String::as_str))
+            ));
+        }
+        if !config.written() {
+            return Error(format!(
+                "{} does not exist and the survey of {} found no source root, no document and no \
+                 manifest, so there is nothing to gate — run klin from the tree you mean \
+                 to measure, or write the file naming one of: {}",
+                config.file.display(),
+                config.root().display(),
+                every_check()
+            ));
+        }
+        Error(format!(
+            "{} configures no gate — name at least one of: {}",
+            config.file.display(),
+            every_check()
+        ))
     }
 }
 
@@ -66,42 +139,6 @@ fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
 
 pub fn every_check() -> String {
     names(catalogue::names())
-}
-
-pub fn no_gate(project: &Project, plan: &Plan) -> Error {
-    let config = &project.config;
-    if !plan.excluded.is_empty() {
-        return Error(format!(
-            "{} excludes every gate it names: {} — a run that measures nothing cannot pass, \
-             so lift one exclusion",
-            config.file.display(),
-            names(plan.excluded.iter().map(String::as_str))
-        ));
-    }
-    if !config.written() {
-        return Error(format!(
-            "{} does not exist and the survey of {} found no source root, no document and no \
-             manifest, so there is nothing to gate — run klin from the tree you mean to measure, \
-             or write the file naming one of: {}",
-            config.file.display(),
-            config.root().display(),
-            every_check()
-        ));
-    }
-    Error(format!(
-        "{} configures no gate — name at least one of: {}",
-        config.file.display(),
-        every_check()
-    ))
-}
-
-pub fn plan(project: &Project) -> Result<Plan, Error> {
-    let mut plan = Plan::default();
-    for check in catalogue::CATALOGUE {
-        add(project, check, &mut plan)?;
-    }
-    distinct(project, &plan)?;
-    Ok(plan)
 }
 
 /// A check's gates, from what the config states for its section and, where it states nothing,
@@ -158,45 +195,4 @@ fn distinct(project: &Project, plan: &Plan) -> Result<(), Error> {
         seen.push(name);
     }
     Ok(())
-}
-
-pub fn select<'a>(
-    named: &[String],
-    plan: &'a Plan,
-    project: &Project,
-) -> Result<Vec<&'a Gate>, Error> {
-    for name in named {
-        known(name, plan, project)?;
-    }
-    let wanted: Vec<&Gate> = plan
-        .gates
-        .iter()
-        .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == &gate.name))
-        .collect();
-    if wanted.is_empty() {
-        return Err(no_gate(project, plan));
-    }
-    Ok(wanted)
-}
-
-pub fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
-    let config = &project.config;
-    if plan.gates.iter().any(|gate| gate.name == name) {
-        return Ok(());
-    }
-    if plan.excluded.iter().any(|excluded| excluded == name) {
-        return Err(Error(format!(
-            "the gate named {name} is excluded in {} — naming a gate is a claim that it runs, \
-             so lift the exclusion or drop {name}",
-            config.file.display()
-        )));
-    }
-    Err(Error(format!(
-        "no gate named {name} — {} configures: {}",
-        config.file.display(),
-        match plan.gates.is_empty() {
-            true => "nothing".to_string(),
-            false => names(plan.gates.iter().map(|gate| gate.name.as_str())),
-        }
-    )))
 }
