@@ -348,7 +348,7 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
     let review = "review src/commands/delta_command.rs unreadable";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, review], "{seen}");
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, review], "{seen}");
-    assert_eq!(lines(&seen["hook"])[0], r#""PASS" 0"#);
+    assert_eq!(lines(&seen["hook"])[0], r#""REVIEW" 0"#);
     assert_eq!(
         ["whole", "changed", "hook"].map(|view| {
             gate_rows(&seen[view]["report"])[0]["coverage"]["not_measured"]
