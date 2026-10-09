@@ -1,6 +1,9 @@
 mod harness;
 
-use harness::{AGENT, Run, Tree, feed};
+use std::io::Write;
+use std::process::{Command, Stdio};
+
+use harness::{AGENT, Run, Tree, binary, empty_home, feed};
 
 const SESSION: &str =
     r#"{"hook_event_name": "SessionStart", "session_id": "s1", "source": "startup"}"#;
@@ -134,6 +137,52 @@ fn an_ingress_failure_in_an_opted_in_tree_writes_a_journal_note() {
     assert!(
         !off.path(".git/klin").exists(),
         "a tree that did not opt in kept state"
+    );
+}
+
+/// A Stop that panics, here because the host closed stdout before klin told the person, answers
+/// nothing: it exits 1, never 2, and leaves a journal note in a tree that opted in. Spec 10.10.
+#[test]
+fn a_stop_that_panics_exits_1_and_writes_a_journal_note() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{not json at all");
+
+    let mut command = Command::new(binary());
+    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
+        command.env_remove(name);
+    }
+    let mut child = command
+        .args(AGENT)
+        .env("HOME", empty_home())
+        .current_dir(tree.root())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("run klin");
+    drop(child.stdout.take());
+    child
+        .stdin
+        .take()
+        .expect("stdin")
+        .write_all(STOP.as_bytes())
+        .expect("write stdin");
+    let done = child.wait_with_output().expect("wait for klin");
+    let said = String::from_utf8_lossy(&done.stderr);
+    assert_eq!(done.status.code(), Some(1), "{said}");
+
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let note = journal
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .find(|line| line["kind"] == "note")
+        .unwrap_or_else(|| panic!("no journal note: {journal}"));
+    assert_eq!(note["event"], "stop", "{journal}");
+    assert!(
+        note["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("failed while it answered")),
+        "{journal}"
     );
 }
 
