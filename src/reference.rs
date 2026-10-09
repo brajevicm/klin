@@ -38,7 +38,11 @@ fn reference(out: &mut String) {
 
 const SCHEMA: &str = "https://json-schema.org/draft/2020-12/schema";
 const SCHEMA_ID: &str = "https://raw.githubusercontent.com/brajevicm/klin/main/schemas/klin.json";
-const DATE: &str = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
+const DATE: &str = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+/// One character Rust's `str::trim` keeps, spelled out because an ECMAScript `\S` disagrees
+/// with Unicode `White_Space` on U+0085 and U+FEFF.
+const NOT_BLANK: &str =
+    "[^\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
 
 fn schema(out: &mut String) {
     if let Ok(schema) = serde_json::to_string_pretty(&schema_value()) {
@@ -155,6 +159,7 @@ fn shape(shape: Shape) -> Value {
 
 fn schema_for_shape(shape: Shape) -> Value {
     match shape {
+        Shape::Text => json!({"type": "string", "pattern": NOT_BLANK}),
         Shape::Language(languages) => language_schema(languages),
         Shape::Build => build_schema(),
         Shape::Accepted => accepted_schema(),
