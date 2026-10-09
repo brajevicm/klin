@@ -447,6 +447,13 @@ fn complex_value_shape(
                 .is_some_and(|name| languages().iter().any(|(known, _)| *known == name)),
             "a supported language name",
         ),
+        Shape::Text => require(
+            file,
+            section,
+            key.name,
+            is_text(value),
+            "a string that is not blank",
+        ),
         Shape::Build => build_shape(file, section, key, value),
         Shape::Accepted => accepted_shape(file, section, key, value),
         Shape::Radius => radius_shape(file, section, key, value),
@@ -841,11 +848,7 @@ fn convention_language(
 }
 
 fn convention_remedy(file: &Path, name: &str, fields: &Map<String, Value>) -> Result<(), Error> {
-    if fields
-        .get("remedy")
-        .and_then(Value::as_str)
-        .is_some_and(|remedy| !remedy.trim().is_empty())
-    {
+    if fields.get("remedy").is_some_and(is_text) {
         return Ok(());
     }
     Err(Error(format!(
@@ -857,6 +860,7 @@ fn convention_remedy(file: &Path, name: &str, fields: &Map<String, Value>) -> Re
 fn convention_shape(key: &Key, value: &Value) -> bool {
     match key.shape {
         Shape::String => value.is_string(),
+        Shape::Text => is_text(value),
         Shape::StringOrList => string_or_list(value),
         Shape::Language(languages) => value
             .as_str()
@@ -924,6 +928,10 @@ fn named_entries_shape(file: &Path, check: &Section, value: &Value) -> Result<()
         return Ok(());
     };
     Ok(())
+}
+
+fn is_text(value: &Value) -> bool {
+    value.as_str().is_some_and(|text| !text.trim().is_empty())
 }
 
 fn string_or_list(value: &Value) -> bool {

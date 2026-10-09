@@ -3269,6 +3269,47 @@ an inline `$schema`, editor setting or extension. The schema is editor
 guidance only: `klin` remains the authority for semantic validation, and
 normal commands never read or validate against the schema artifact.
 
+The schema accepts a file exactly when klin's structural rules accept it,
+except for the known disagreements below and the `measurement-lost` entry
+that #500 owns. The lists hold every disagreement a test pins, and a
+disagreement that no test pins yet may exist. A structural rule is a rule
+that `klin.json` alone decides.
+A `remedy` with no character other than whitespace is refused, and
+`the_remedy_pattern_refuses_exactly_the_characters_klin_trims` pins the
+whitespace set to the set that `str::trim` removes. A step date
+takes a month from 01 to 12 and a day from 01 to 31, and the schema adds no
+calendar rule. `the_schema_accepts_a_configuration_exactly_when_klin_does` in
+`tests/schema.rs` pins this with a valid and an invalid file for each shape
+that the schema generates separately.
+
+klin and the schema disagree on the files in the two lists below.
+`every_known_disagreement_still_disagrees` in `tests/schema.rs` pins each
+one. For the files in this first list, no decision says which side is
+intended, so each one waits for an owner to decide:
+
+- A convention whose name holds only whitespace: klin refuses it, and the
+  schema accepts it.
+- A `text`, `code` or `files` matcher that is empty or holds only
+  whitespace: klin refuses it, and the schema accepts it.
+- A `text` matcher with a line break: klin refuses it, and the schema
+  accepts it.
+- An accepted entry with an extra field that is not a number: klin accepts
+  it, and the schema refuses it.
+- A whole number written with a fraction, such as `5.0`: klin refuses it, and
+  the schema accepts it as an `integer`.
+
+The schema does not state these rules, which compare one value with another
+entry, with a reserved name or with a parsed pattern. klin refuses each file,
+and the schema accepts it:
+
+- Two `sarif` entries with the same `name`.
+- A `sarif` entry named `measurement-lost`, the name that section 7.2 reserves.
+- A `files` glob that does not parse, such as `[`, or that is absolute, such
+  as `/tmp/scratch`.
+- An accepted entry for a `conventions/<name>` gate when the file has a
+  `conventions` section that does not define the name. With no section, klin
+  accepts the entry too.
+
 The reference MUST also state what the key tables alone do not say:
 
 - the built-in source extensions each check discovers, printed from the

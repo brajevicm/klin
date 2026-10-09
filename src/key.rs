@@ -11,6 +11,8 @@ pub type Languages = fn() -> Vec<(&'static str, String)>;
 #[derive(Clone, Copy)]
 pub enum Shape {
     String,
+    /// A string that holds a character other than whitespace.
+    Text,
     Boolean,
     WholeNumber,
     Ceiling,

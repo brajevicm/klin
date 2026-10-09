@@ -55,7 +55,7 @@ pub(super) const REMEDY: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::key::Shape::String,
+    shape: crate::key::Shape::Text,
 };
 
 pub(super) const IN: Key = scope::IN;
