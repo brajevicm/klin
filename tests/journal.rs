@@ -357,6 +357,37 @@ fn an_unwritable_state_directory_still_reports_the_failure_and_blocks_nothing() 
     assert!(run.says("blocks nothing"), "{}", run.out);
 }
 
+/// A gate block whose record will not write bounds nothing, so the stop blocks nothing and its
+/// line names the record it could not write. ADR 0052.
+#[test]
+fn a_stop_whose_block_record_will_not_write_blocks_nothing_and_says_so_in_its_line() {
+    let tree = tree(EVERY_GATE);
+    tree.words("README.md", 30);
+    let staging = tree.state("build-blocked.writing");
+    assert!(
+        std::fs::create_dir_all(&staging).is_ok(),
+        "{}",
+        staging.display()
+    );
+
+    let run = stop(&tree, A_STOP);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin could not record a gate block"),
+        "{}",
+        run.out
+    );
+    let lines = stops(&tree);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert!(has_flag(&lines[0], "count-unwritable"), "{}", lines[0]);
+    assert_eq!(
+        field(&lines[0], &["hook", "blocked"]),
+        false,
+        "{}",
+        lines[0]
+    );
+}
+
 const A_SARIF_GATE: &str = r#"{
   "sarif": [{"name": "eslint", "report": "eslint.sarif"}],
   "accepted": [
