@@ -3269,6 +3269,17 @@ an inline `$schema`, editor setting or extension. The schema is editor
 guidance only: `klin` remains the authority for semantic validation, and
 normal commands never read or validate against the schema artifact.
 
+The hover text comes from the same declarations, in standard `description`
+fields only. A key's description states what it holds, its source, its
+derivation rule and its default, as its reference row does. A section's
+description states its check, its activation of section 4.6 and what
+absence means, that `false` excludes the gate, the policy text of a section
+that reads no keys, and the reference text of its check. The root
+description states that klin reads only the `klin.json` at the worktree
+root and that no file runs under `{}` (section 5.1).
+`the_schema_descriptions_carry_the_policy_metadata` in `tests/schema.rs`
+pins representative descriptions.
+
 The schema accepts a file exactly when klin's structural rules accept it,
 except for the known disagreements below and the `measurement-lost` entry
 that #500 owns. The lists hold every disagreement a test pins, and a
