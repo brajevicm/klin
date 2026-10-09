@@ -28,6 +28,17 @@ fn journal(tree: &Tree, lines: &[Value]) {
     assert!(std::fs::write(&at, text).is_ok(), "the journal");
 }
 
+/// How many episodes of the report ended this way. Spec 13.3 keeps the episodes beside the
+/// document.
+fn outcomes(json: &Value, outcome: &str) -> usize {
+    json["episodes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|episode| episode["outcome"] == outcome)
+        .count()
+}
+
 fn now() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -35,7 +46,7 @@ fn now() -> u64 {
         .unwrap_or_default()
 }
 
-/// A finding with the `id` of spec 11.2, which is what a real ratchet gate records and what
+/// A finding with the `id` of spec 11.7, which is what a real ratchet check records and what
 /// keys one regression across stops.
 fn found(id: &str, gate: &str, file: &str, line: u64, text: &str, remedy: &str) -> Value {
     let mut site = finding(gate, file, line, text, remedy);
@@ -43,20 +54,27 @@ fn found(id: &str, gate: &str, file: &str, line: u64, text: &str, remedy: &str) 
     site
 }
 
-/// A finding with no `id`, which is the shape a gate such as `doc-size` records.
+/// A finding with no `id`.
 fn finding(gate: &str, file: &str, line: u64, text: &str, remedy: &str) -> Value {
     json!({
-        "gate": gate,
+        "check": gate,
+        "kind": "metric",
         "outcome": "new",
         "file": file,
         "line": line,
         "text": text,
-        "fix_advice": remedy,
+        "remedy": remedy,
     })
 }
 
-/// Every gate these fixtures use. A stop runs them all, and a gate a finding names is the one
-/// that failed, which is the shape spec 11.2 gives a real stop's row.
+/// A note of the check document, as a Stop's `result` holds it.
+fn note(gate: &str, kind: &str, file: &str, line: u64, message: &str) -> Value {
+    json!({"check": gate, "kind": kind, "coverage": false, "file": file, "line": line,
+           "message": message})
+}
+
+/// Every check these fixtures use. A stop runs them all, each under semantics version 1, which
+/// is the shape spec 11.7 gives a real stop's document.
 const GATES: [&str; 5] = [
     "escapes",
     "stubs",
@@ -65,19 +83,30 @@ const GATES: [&str; 5] = [
     "a-gate-from-the-future",
 ];
 
-fn gates(findings: &[Value]) -> Vec<Value> {
+fn capabilities(findings: &[Value]) -> Vec<Value> {
     GATES
         .iter()
         .map(|name| {
-            let failed = findings.iter().any(|site| site["gate"] == *name);
-            json!({"name": name, "status": if failed { "FAIL" } else { "ok" }, "ms": 1})
+            let failed = findings.iter().any(|site| site["check"] == *name);
+            json!({"name": name, "state": "active", "execution": "ok",
+                   "judgement": if failed { "fail" } else { "pass" }})
+        })
+        .collect()
+}
+
+fn measurements() -> Vec<Value> {
+    GATES
+        .iter()
+        .map(|name| {
+            json!({"check": name, "state": "complete", "holes": [],
+                   "basis": {"producer": {"capability": name, "semantics_version": 1}}})
         })
         .collect()
 }
 
 fn stop(ago: u64, blocked: bool, findings: Vec<Value>, notes: Vec<Value>) -> Value {
     json!({
-        "schema": 1,
+        "schema": 2,
         "version": "0.0.0",
         "kind": "stop",
         "time": now() - ago,
@@ -87,14 +116,25 @@ fn stop(ago: u64, blocked: bool, findings: Vec<Value>, notes: Vec<Value>) -> Val
         "hook": {"blocked": blocked, "delivery": "none", "gate_spent": true,
                  "build_blocks": 0, "blocked_before": false},
         "verdict": if blocked { "red" } else { "green" },
-        "findings": findings,
-        "notes": notes,
-        "gates": gates(&findings),
+        "result": {
+            "schema_version": 1,
+            "command": "stop",
+            "judgement": if blocked { "fail" } else { "pass" },
+            "measurement": "complete",
+            "execution": "ok",
+            "exit": null,
+            "capabilities": capabilities(&findings),
+            "findings": findings,
+            "reviews": [],
+            "notes": notes,
+            "measurements": measurements(),
+        },
         "timing": {"total_ms": 20, "build_ms": 0, "lock_ms": 0, "klin_ms": 20},
         "asked": [],
         "flags": [],
+        "told": [],
         "config_hash": "c-1",
-        "exit": if blocked { 2 } else { 0 },
+        "notice": null,
     })
 }
 
@@ -109,7 +149,7 @@ const UNWRAP: &str = "Handle the error, or accept it in klin.json, before you pu
 
 /// The prompt line the stops of `stop` ran under, with the excerpt spec 11.4 records.
 fn prompt_line(ago: u64, text: &str) -> Value {
-    json!({"schema": 1, "version": "0.0.0", "kind": "prompt", "time": now() - ago,
+    json!({"schema": 2, "version": "0.0.0", "kind": "prompt", "time": now() - ago,
            "session": "s-1", "prompt": 1, "text": text})
 }
 
@@ -218,7 +258,7 @@ fn two_sites_under_one_failing_gate_resolve_independently() {
 
     let json = tree.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 2, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 1, "{json}");
     assert_eq!(json["counts"]["open"], 1, "{json}");
 }
 
@@ -226,14 +266,15 @@ fn two_sites_under_one_failing_gate_resolve_independently() {
 fn a_gate_that_measured_nothing_never_makes_an_earlier_regression_read_as_fixed() {
     let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
     let mut errored = stop(300, false, vec![], vec![]);
-    errored["gates"] = json!([{"name": "escapes", "status": "ERR", "ms": 1}]);
+    errored["result"]["capabilities"] =
+        json!([{"name": "escapes", "state": "active", "execution": "error"}]);
     let mut nothing_ran = stop(250, true, vec![], vec![]);
-    nothing_ran["gates"] = json!([]);
+    nothing_ran["result"]["capabilities"] = json!([]);
 
     let open = tree(&[stop(400, true, vec![site.clone()], vec![]), errored]);
     let json = open.run(&["report", "--since", "7d", "--json"]).json();
     assert_eq!(json["counts"]["open"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
 
     let build = tree(&[stop(400, true, vec![site.clone()], vec![]), nothing_ran]);
     let json = build.run(&["report", "--since", "7d", "--json"]).json();
@@ -243,14 +284,66 @@ fn a_gate_that_measured_nothing_never_makes_an_earlier_regression_read_as_fixed(
         stop(400, true, vec![site], vec![]),
         {
             let mut line = stop(300, true, vec![], vec![]);
-            line["gates"] = json!([]);
+            line["result"]["capabilities"] = json!([]);
             line
         },
         stop(200, false, vec![], vec![]),
     ]);
     let json = later.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-later"], 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 1, "{json}");
+    assert_eq!(outcomes(&json, "fixed-later"), 0, "{json}");
+}
+
+/// Two measurements compare only under one semantics version, so a regression gone from a
+/// measurement under another is not compared, and never a fix. Spec 8.3, 13.2.
+#[test]
+fn a_regression_gone_under_another_semantics_version_is_not_compared_and_not_fixed() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let mut later = stop(300, false, vec![], vec![]);
+    for record in later["result"]["measurements"]
+        .as_array_mut()
+        .into_iter()
+        .flatten()
+    {
+        record["basis"]["producer"]["semantics_version"] = json!(2);
+    }
+    let tree = tree(&[stop(400, true, vec![site], vec![]), later]);
+
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(json["counts"]["not_compared"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed"], 0, "{json}");
+    assert_eq!(json["regressions"][0]["state"], "not-compared", "{json}");
+
+    let run = tree.run(&["report", "--since", "7d"]);
+    assert!(
+        run.says("1 regression went under a changed measurement, so klin did not compare it."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("fixed"), "{}", run.out);
+}
+
+/// A later measurement that still holds the site under the new semantics version makes that
+/// version the one a fix compares with. Spec 8.3.
+#[test]
+fn a_regression_held_under_a_new_semantics_version_and_gone_under_it_is_fixed() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let mut held = stop(300, false, vec![site.clone()], vec![]);
+    let mut gone = stop(200, false, vec![], vec![]);
+    for line in [&mut held, &mut gone] {
+        for record in line["result"]["measurements"]
+            .as_array_mut()
+            .into_iter()
+            .flatten()
+        {
+            record["basis"]["producer"]["semantics_version"] = json!(2);
+        }
+    }
+    let tree = tree(&[stop(400, true, vec![site], vec![]), held, gone]);
+
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(json["counts"]["fixed"], 1, "{json}");
+    assert_eq!(json["counts"]["not_compared"], 0, "{json}");
 }
 
 #[test]
@@ -262,8 +355,8 @@ fn a_regression_that_goes_after_the_config_changed_is_not_reported_as_a_code_fix
     ]);
 
     let json = tree.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["counts"]["config-changed"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+    assert_eq!(outcomes(&json, "config-changed"), 1, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
     assert_eq!(json["episodes"][0]["config_changed"], true, "{json}");
 
     let run = tree.run(&["report", "--since", "7d"]);
@@ -409,7 +502,7 @@ fn the_default_report_names_three_open_sites_and_points_at_all_for_the_rest() {
 }
 
 #[test]
-fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tree() {
+fn an_advisory_stop_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tree() {
     let tree = tree(&[
         stop(
             400,
@@ -420,14 +513,16 @@ fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tre
             ],
             vec![],
         ),
-        reset(300),
+        advisory(300),
         stop(200, false, vec![], vec![]),
     ]);
 
     let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("2 regressions were set aside when you restarted."),
+        run.says(
+            "2 regressions were set aside, because the window moved before klin judged it again."
+        ),
         "{}",
         run.out
     );
@@ -437,14 +532,38 @@ fn a_reset_sets_regressions_aside_and_never_calls_them_fixed_or_still_in_the_tre
 
     let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(
-        all.says("You restarted, and 2 regressions were set aside."),
+        all.says("the history moved (incoming-commits), so klin blocked nothing"),
         "{}",
         all.out
     );
 
     let json = tree.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["counts"]["set-aside"], 2, "{json}");
+    assert_eq!(json["counts"]["set_aside"], 2, "{json}");
+    assert_eq!(json["counts"]["fixed"], 0, "{json}");
     assert_eq!(json["counts"]["caught"], 2, "{json}");
+    assert_eq!(json["counts"]["advisory"], 1, "{json}");
+    assert_eq!(json["regressions"][0]["state"], "set-aside", "{json}");
+    assert_eq!(json["advisory"][0]["reason"], "incoming-commits", "{json}");
+}
+
+/// A Stop that wrote `unjudged` lets the next prompt move the stamp, so a regression still open
+/// then is set aside and never fixed. Spec 6.6, 13.2.
+#[test]
+fn a_prompt_that_moves_an_unjudged_stamp_sets_open_regressions_aside() {
+    let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
+    let mut unjudged = stop(300, false, vec![], vec![]);
+    unjudged["verdict"] = json!("unjudged");
+    unjudged["result"]["capabilities"] = json!([]);
+    let tree = tree(&[
+        stop(400, true, vec![site], vec![]),
+        unjudged,
+        prompt_line(200, "go on"),
+        stop(100, false, vec![], vec![]),
+    ]);
+
+    let json = tree.run(&["report", "--since", "7d", "--json"]).json();
+    assert_eq!(json["counts"]["set_aside"], 1, "{json}");
+    assert_eq!(json["counts"]["fixed"], 0, "{json}");
 }
 
 #[test]
@@ -463,7 +582,7 @@ fn open_attention_comes_before_the_uncertainty_a_reset_left() {
             )],
             vec![],
         ),
-        reset(400),
+        advisory(400),
         stop(
             300,
             true,
@@ -486,7 +605,7 @@ fn open_attention_comes_before_the_uncertainty_a_reset_left() {
         .find("1 regression needs your attention.")
         .unwrap_or_else(|| panic!("{said}"));
     let aside = said
-        .find("1 more was set aside when you restarted.")
+        .find("1 more was set aside, because the window moved before klin judged it again.")
         .unwrap_or_else(|| panic!("{said}"));
     assert!(open < aside, "{said}");
 }
@@ -495,8 +614,7 @@ fn open_attention_comes_before_the_uncertainty_a_reset_left() {
 /// the regressions it knows are open, and the set-aside uncertainty follows both.
 #[test]
 fn measurement_doubt_opens_the_report_above_the_open_regressions_it_knows_of() {
-    let unparsed = json!({"gate": "complexity", "outcome": "unparsed", "file": "src/odd.rs",
-                          "text": "no grammar reads it"});
+    let unparsed = coverage("src/odd.rs");
     let tree = tree(&[
         stop(
             500,
@@ -511,7 +629,7 @@ fn measurement_doubt_opens_the_report_above_the_open_regressions_it_knows_of() {
             )],
             vec![],
         ),
-        reset(400),
+        advisory(400),
         stop(
             300,
             true,
@@ -534,19 +652,17 @@ fn measurement_doubt_opens_the_report_above_the_open_regressions_it_knows_of() {
         said.find(text)
             .unwrap_or_else(|| panic!("{text} missing from: {said}"))
     };
-    let gap = at("Stats may be incomplete: 1 source file couldn't be parsed.");
+    let gap = at("Stats may be incomplete: 1 file wasn't measured.");
     let open = at("1 regression needs your attention.");
-    let aside = at("1 more was set aside when you restarted.");
+    let aside = at("1 more was set aside, because the window moved before klin judged it again.");
     assert!(gap < open && open < aside, "{said}");
     assert!(!run.says("Nothing needs your attention."), "{said}");
 }
 
 #[test]
 fn measurement_doubt_outranks_the_value_story_and_forbids_nothing_needs_your_attention() {
-    let unparsed = json!({"gate": "complexity", "outcome": "unparsed", "file": "src/odd.rs",
-                          "text": "no grammar reads it"});
-    let other = json!({"gate": "complexity", "outcome": "unparsed", "file": "src/odder.rs",
-                       "text": "no grammar reads it"});
+    let unparsed = coverage("src/odd.rs");
+    let other = coverage("src/odder.rs");
     let tree = tree(&[
         stop(
             400,
@@ -567,7 +683,7 @@ fn measurement_doubt_outranks_the_value_story_and_forbids_nothing_needs_your_att
     let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
-        run.says("Stats may be incomplete: 2 source files couldn't be parsed."),
+        run.says("Stats may be incomplete: 2 files weren't measured."),
         "{}",
         run.out
     );
@@ -581,9 +697,13 @@ fn measurement_doubt_outranks_the_value_story_and_forbids_nothing_needs_your_att
 
 #[test]
 fn a_quiet_window_klin_did_not_measure_whole_never_says_everything_is_clear() {
-    let lost = json!({"gate": "dead-symbols", "outcome": "lost", "file": "src/gone.rs",
-                      "text": "the base measured it and this tree did not"});
-    let tree = tree(&[stop(300, false, vec![], vec![lost])]);
+    let mut quiet = stop(300, false, vec![], vec![]);
+    quiet["result"]["findings"] = json!([{
+        "id": "lost-1", "check": null, "kind": "measurement-lost", "outcome": "held",
+        "file": "src/gone.rs", "line": null, "text": "src/gone.rs",
+        "values": {"reason": "parse"},
+    }]);
+    let tree = tree(&[quiet]);
 
     let run = tree.run(&["report", "--since", "7d"]);
     assert_eq!(run.code, 0, "{}", run.out);
@@ -602,7 +722,7 @@ fn a_quiet_window_klin_did_not_measure_whole_never_says_everything_is_clear() {
     let all = tree.run(&["report", "--since", "7d", "--details"]);
     assert!(all.says("Measurement"), "{}", all.out);
     assert!(
-        all.says("1 file(s) the base measured and this tree did not: src/gone.rs"),
+        all.says("1 file(s) no capability measured: src/gone.rs"),
         "{}",
         all.out
     );
@@ -611,7 +731,7 @@ fn a_quiet_window_klin_did_not_measure_whole_never_says_everything_is_clear() {
 #[test]
 fn a_journal_line_the_reader_cannot_take_lowers_confidence_and_fails_nothing() {
     let mut newer = stop(100, true, vec![], vec![]);
-    newer["schema"] = json!(2);
+    newer["schema"] = json!(99);
     let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
 
     let run = tree.run(&["report", "--since", "7d"]);
@@ -623,8 +743,7 @@ fn a_journal_line_the_reader_cannot_take_lowers_confidence_and_fails_nothing() {
     );
 
     let json = tree.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["skipped"], 1, "{json}");
-    assert_eq!(json["confidence"]["whole"], false, "{json}");
+    assert_eq!(json["skipped_lines"], 1, "{json}");
 }
 
 #[test]
@@ -738,20 +857,20 @@ fn a_deleted_test_klin_let_through_is_a_question_and_stays_out_of_the_count() {
             300,
             false,
             vec![],
-            vec![json!({
-                "gate": "inventory",
-                "outcome": "deleted",
-                "file": "tests/pay.rs",
-                "line": 20,
-                "text": "the test site refund_twice went in this window",
-            })],
+            vec![note(
+                "inventory",
+                "deleted",
+                "tests/pay.rs",
+                20,
+                "the test site refund_twice went in this window",
+            )],
         ),
     ]);
 
     let json = tree.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["counts"]["asked-once"], 1, "{json}");
+    assert_eq!(outcomes(&json, "asked-once"), 1, "{json}");
     assert_eq!(json["counts"]["caught"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 1, "{json}");
 
     let run = tree.run(&["report", "--since", "7d"]);
     assert!(
@@ -769,7 +888,7 @@ fn a_deleted_test_klin_let_through_is_a_question_and_stays_out_of_the_count() {
 }
 
 #[test]
-fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
+fn a_guard_deny_asks_the_person_nothing_and_a_guard_ask_does() {
     let tree = tree(&[
         guard(500, "deny", "config-write"),
         guard(450, "ask", "state-mention"),
@@ -786,7 +905,6 @@ fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
             )],
             vec![],
         ),
-        reset(300),
     ]);
 
     let all = tree.run(&["report", "--since", "7d", "--details"]);
@@ -794,11 +912,6 @@ fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
     assert!(all.says("klin refused an edit to klin.json"), "{}", all.out);
     assert!(
         all.says("klin asked you before a command that named klin's own state"),
-        "{}",
-        all.out
-    );
-    assert!(
-        all.says("You restarted, and 1 regression was set aside."),
         "{}",
         all.out
     );
@@ -815,7 +928,7 @@ fn a_reset_and_a_guard_deny_ask_the_person_nothing_and_a_guard_ask_does() {
         .iter()
         .filter_map(|one| one["kind"].as_str())
         .collect();
-    assert_eq!(kinds, ["reset", "guard", "guard"], "{json}");
+    assert_eq!(kinds, ["guard", "guard"], "{json}");
 }
 
 // The catalogue owns the words, and a gate klin no longer has stays readable.
@@ -976,7 +1089,7 @@ fn json_prints_one_episode_per_regression_identity_and_no_grouped_more() {
     );
     assert_eq!(json["counts"]["caught"], 2, "{json}");
     assert_eq!(json["counts"]["open"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 1, "{json}");
     assert_eq!(json["activity"]["stops"], 3, "{json}");
     let escapes = episodes
         .iter()
@@ -1038,13 +1151,24 @@ fn in_session(mut line: Value, session: &str) -> Value {
 }
 
 fn guard(ago: u64, decision: &str, reason: &str) -> Value {
-    json!({"schema": 1, "version": "0.0.0", "kind": "guard", "time": now() - ago,
+    json!({"schema": 2, "version": "0.0.0", "kind": "guard", "time": now() - ago,
            "session": "s-1", "decision": decision, "reason": reason})
 }
 
-fn reset(ago: u64) -> Value {
-    json!({"schema": 1, "version": "0.0.0", "kind": "reset", "time": now() - ago,
-           "session": null, "prompt": 1})
+/// An advisory Stop as one that took a fresh stamp after the history moved records it: it
+/// measured every check and found nothing, which proves no fix, because other people's commits
+/// came into the window it measured. Spec 6.6, 13.1, 13.2.
+fn advisory(ago: u64) -> Value {
+    let mut line = stop(ago, false, vec![], vec![]);
+    line["verdict"] = json!("advisory");
+    line["advisory"] = json!("incoming-commits");
+    line
+}
+
+/// The coverage note of a file a capability did not measure. Spec 7.2.
+fn coverage(file: &str) -> Value {
+    json!({"check": "complexity", "kind": "parse", "coverage": true, "file": file,
+           "message": "no grammar reads it"})
 }
 
 #[test]
@@ -1121,44 +1245,6 @@ fn told(run: &harness::Run) -> String {
             held.get("systemMessage")?.as_str().map(str::to_string)
         })
         .unwrap_or_default()
-}
-
-/// No command writes a `reset` line any more, and a reader still reads an old one. Spec 13.1.
-#[test]
-fn the_session_report_sets_aside_what_an_old_reset_line_left_behind() {
-    let tree = hooked();
-    blocked(&tree);
-
-    let before = tree.run(&["report"]);
-    assert_eq!(before.code, 0, "{}", before.out);
-    assert!(
-        before.says("1 regression needs your attention."),
-        "{}",
-        before.out
-    );
-    assert!(before.says("klin caught 1 this session."), "{}", before.out);
-
-    let journal = tree.state("journal.jsonl");
-    let mut text = std::fs::read_to_string(&journal).unwrap_or_default();
-    text.push_str(r#"{"schema":1,"version":"0.3.0","time":9999999999,"kind":"reset","session":null,"prompt":1}"#);
-    text.push('\n');
-    tree.write(".git/klin/journal.jsonl", &text);
-
-    let session = tree.run(&["report"]);
-    assert!(
-        session.says("1 regression was set aside when you restarted."),
-        "{}",
-        session.out
-    );
-    assert!(!session.says("needs your attention"), "{}", session.out);
-
-    let week = tree.run(&["report", "--since", "7d"]);
-    assert!(
-        week.says("1 regression was set aside when you restarted."),
-        "{}",
-        week.out
-    );
-    assert!(!week.says("still in your code"), "{}", week.out);
 }
 
 #[test]
@@ -1261,10 +1347,10 @@ fn a_deleted_test_klin_let_through_after_asking_counts_only_as_asked_once() {
     assert_eq!(through.code, 0, "{}", through.out);
 
     let json = tree.run(&["report", "--json"]).json();
-    assert_eq!(json["counts"]["asked-once"], 1, "{json}");
+    assert_eq!(outcomes(&json, "asked-once"), 1, "{json}");
     assert_eq!(json["counts"]["caught"], 0, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
-    assert_eq!(json["counts"]["fixed-later"], 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-later"), 0, "{json}");
 }
 
 #[test]
@@ -1294,8 +1380,8 @@ fn a_deleted_test_restored_after_the_block_counts_as_caught_and_fixed_next() {
 
     let json = tree.run(&["report", "--json"]).json();
     assert_eq!(json["counts"]["caught"], 1, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 1, "{json}");
-    assert_eq!(json["counts"]["asked-once"], 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 1, "{json}");
+    assert_eq!(outcomes(&json, "asked-once"), 0, "{json}");
 }
 
 #[test]
@@ -1309,9 +1395,9 @@ fn a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression() {
     assert!(!told(&through).contains("regression"), "{}", through.out);
 
     let json = tree.run(&["report", "--json"]).json();
-    assert_eq!(json["counts"]["asked-once"], 2, "{json}");
+    assert_eq!(outcomes(&json, "asked-once"), 2, "{json}");
     assert_eq!(json["counts"]["caught"], 0, "{json}");
-    assert_eq!(json["counts"]["fixed-next"], 0, "{json}");
+    assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
 }
 
 /// A library crate with `lib` as its root, hooked and committed as the base.
@@ -1465,10 +1551,13 @@ fn a_deleted_test_file_reads_as_the_file_deleted() {
             200,
             false,
             vec![],
-            vec![
-                json!({"gate": "inventory", "outcome": "deleted", "file": "tests/test_two.py",
-                        "line": 0, "text": "the test file went in this window"}),
-            ],
+            vec![note(
+                "inventory",
+                "deleted",
+                "tests/test_two.py",
+                0,
+                "the test file went in this window",
+            )],
         ),
     ]);
 
@@ -1480,15 +1569,18 @@ fn a_deleted_test_file_reads_as_the_file_deleted() {
         all.out
     );
     assert_eq!(
-        tree.run(&["report", "--since", "7d", "--json"]).json()["counts"]["asked-once"],
+        outcomes(
+            &tree.run(&["report", "--since", "7d", "--json"]).json(),
+            "asked-once"
+        ),
         1
     );
 }
 
-/// The facts the default report stopped printing are still facts. `--json` keeps the previous
-/// window and klin's own time, which is the `klin_ms` of spec 11.4 and never the project's build.
+/// The facts the default report stopped printing are still facts. `--json` keeps klin's own
+/// time, which is the `klin_ms` of spec 13.1 and never the project's build.
 #[test]
-fn json_keeps_the_previous_window_and_klins_own_time_the_default_no_longer_prints() {
+fn json_keeps_klins_own_time_the_default_no_longer_prints() {
     let site = found("id-a", "escapes", "src/io.rs", 12, "unwrap()", UNWRAP);
     let other = found("id-b", "stubs", "src/pay.rs", 41, "todo!()", "Do the work.");
     let this_week = [
@@ -1508,18 +1600,11 @@ fn json_keeps_the_previous_window_and_klins_own_time_the_default_no_longer_print
 
     let both = tree(&two);
     let json = both.run(&["report", "--since", "7d", "--json"]).json();
-    assert_eq!(json["earlier"], json!({"caught": 2, "open": 1}), "{json}");
     assert_eq!(json["activity"]["klin_ms"], 3_000, "{json}");
 
     let run = both.run(&["report", "--since", "7d"]);
     assert!(!run.says("Last week"), "{}", run.out);
     assert!(!run.says("seconds in total"), "{}", run.out);
-
-    let alone = tree(&this_week);
-    assert_eq!(
-        alone.run(&["report", "--since", "7d", "--json"]).json()["earlier"],
-        Value::Null
-    );
 }
 
 fn timed(mut line: Value, total_ms: u64, build_ms: u64) -> Value {

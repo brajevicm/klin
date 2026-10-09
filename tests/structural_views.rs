@@ -65,10 +65,17 @@ fn stop(klin: &str, tree: &Tree) -> Run {
         .or_else(|| journal.lines().last())
         .and_then(|line| serde_json::from_str(line).ok())
         .unwrap_or_else(|| panic!("no report in {}", run.out));
-    let report: serde_json::Map<String, Value> = ["findings", "gates", "notes", "status"]
-        .into_iter()
-        .map(|key| (key.to_string(), line[key].clone()))
-        .collect();
+    let document = match line["result"].is_object() {
+        true => &line["result"],
+        false => &line,
+    };
+    let mut report: serde_json::Map<String, Value> =
+        ["findings", "notes", "status", "execution", "judgement"]
+            .into_iter()
+            .filter(|key| !document[*key].is_null())
+            .map(|key| (key.to_string(), document[key].clone()))
+            .collect();
+    report.insert("gates".to_string(), harness::gate_rows(&line).clone());
     let out = Value::Object(report).to_string();
     Run {
         code: run.code,
@@ -341,7 +348,7 @@ fn reachability_keeps_unparsed_and_unsupported_coverage_stable() {
     let review = "review src/commands/delta_command.rs unreadable";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, review], "{seen}");
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, review], "{seen}");
-    assert_eq!(lines(&seen["hook"])[0], r#""PASS" 0"#);
+    assert_eq!(lines(&seen["hook"])[0], r#""REVIEW" 0"#);
     assert_eq!(
         ["whole", "changed", "hook"].map(|view| {
             gate_rows(&seen[view]["report"])[0]["coverage"]["not_measured"]
@@ -598,7 +605,7 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
     let old = "note src/old_broken.rs src/old_broken.rs is not measured (unreadable) — the Rust grammar finds an error at line 1, column 1";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, new, old]);
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, new]);
-    assert_eq!(lines(&seen["hook"]), [r#""PASS" 0"#]);
+    assert_eq!(lines(&seen["hook"]), [r#""REVIEW" 0"#]);
 }
 
 #[test]

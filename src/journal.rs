@@ -15,19 +15,26 @@ use crate::state;
 /// clean` leaves the file alone. Spec 9.6, 11.4.
 pub const FILE: &str = "journal.jsonl";
 
-/// The line format's version. A reader skips a line whose schema it does not know. A bump adds
-/// a variant, and `known` does not compile until it has an arm for it. Spec 11.4.
+/// The line format's version. A reader takes only the lines of this version and counts every
+/// other line as skipped, because klin keeps no reader for the lines an older klin wrote. A bump
+/// adds a variant, and `known` does not compile until it has an arm for it. Spec 13.1.
 enum Schema {
-    One = 1,
+    Two = 2,
 }
 
-const SCHEMA: Schema = Schema::One;
+const SCHEMA: Schema = Schema::Two;
 
-/// What one stop knew beyond the 11.2 object its run built: gathered as the stop goes, written
-/// as one line at its end.
+/// What one stop knew beyond the check document its run built: gathered as the stop goes,
+/// written as one line at its end.
 pub struct Stop {
-    /// The 11.2 object, whichever path built it: the gates, a build failure, or an error.
+    /// The 0.x object the hook tells from, which the benchmark wrapper reads and the journal
+    /// does not hold.
     pub report: Option<Value>,
+    /// The check document of spec 11.7 the Stop's run built, which the line holds under
+    /// `result`. Spec 13.1.
+    pub result: Option<Value>,
+    /// The non-blocking notice this Stop left for the person. Spec 10.7.
+    pub notice: Option<Notice>,
     pub host: Option<String>,
     pub session: Option<String>,
     pub prompt: u64,
@@ -63,6 +70,16 @@ pub struct Stop {
     pub config_hash: String,
 }
 
+/// A non-blocking notice for the person, and whether a host channel delivered it. A notice no
+/// host channel delivered is one only the journal holds, which `klin status` and `klin report`
+/// show while its window is open. Spec 10.7.
+pub struct Notice {
+    pub message: String,
+    pub delivered: bool,
+    /// The stamp commit the Stop left, which names the window the notice belongs to.
+    pub stamp: Option<String>,
+}
+
 #[derive(Default)]
 pub struct Timing {
     pub total_ms: u64,
@@ -76,6 +93,8 @@ impl Stop {
     pub fn begun(event: Option<&Event>, config_hash: String) -> Stop {
         Stop {
             report: None,
+            result: None,
+            notice: None,
             host: event.map(|event| event.host.name().to_string()),
             session: event
                 .map(|event| event.session.clone())
@@ -99,14 +118,22 @@ impl Stop {
     }
 }
 
-/// The fields of 11.4 every kind of line carries, so a fifth verb cannot forget one. Spec 9.6.
-fn base(kind: &'static str) -> Map<String, Value> {
+/// The fields every kind of line carries, so a fifth kind cannot forget one. Spec 13.1.
+fn base(kind: &'static str, session: Option<String>) -> Map<String, Value> {
     let mut line = Map::new();
     line.insert("schema".into(), (SCHEMA as u64).into());
     line.insert("version".into(), env!("CARGO_PKG_VERSION").into());
     line.insert("time".into(), now().into());
     line.insert("kind".into(), kind.into());
+    line.insert("session".into(), session.into());
     line
+}
+
+/// The session an event names, and none where it names none.
+fn session_of(event: Option<&Event>) -> Option<String> {
+    event
+        .map(|event| event.session.clone())
+        .filter(|session| !session.is_empty())
 }
 
 /// Appends the stop's line. Spec 11.4.
@@ -117,17 +144,18 @@ pub fn stop(root: &Path, stop: &Stop) {
     append(&at, &line(stop));
 }
 
-/// The stop's line: the 11.2 object the run built, plus what only the hook knew. A reader can
-/// take it before it is appended, as the turn end does to count the stop it ends on.
+/// The stop's line: the check document the run built under `result`, as a Stop names it, plus
+/// what only the hook knew. A reader can take it before it is appended, as the turn end does to
+/// count the stop it ends on. Spec 13.1.
 pub fn line(stop: &Stop) -> Value {
-    let mut line = base("stop");
-    if let Some(Value::Object(fields)) = &stop.report {
-        for (key, value) in fields {
-            line.entry(key.clone()).or_insert(value.clone());
-        }
+    let mut line = base("stop", stop.session.clone());
+    let mut result = stop.result.clone().unwrap_or(Value::Null);
+    if let Some(fields) = result.as_object_mut() {
+        fields.insert("command".into(), "stop".into());
+        fields.insert("exit".into(), Value::Null);
     }
+    line.insert("result".into(), result);
     line.insert("host".into(), stop.host.clone().into());
-    line.insert("session".into(), stop.session.clone().into());
     line.insert("prompt".into(), stop.prompt.into());
     line.insert(
         "hook".into(),
@@ -167,7 +195,59 @@ pub fn line(stop: &Stop) -> Value {
     line.insert("flags".into(), stop.flags.clone().into());
     line.insert("told".into(), stop.told.clone().into());
     line.insert("config_hash".into(), stop.config_hash.clone().into());
+    line.insert(
+        "notice".into(),
+        stop.notice.as_ref().map_or(Value::Null, |notice| {
+            serde_json::json!({
+                "message": notice.message,
+                "delivered": notice.delivered,
+                "stamp": notice.stamp,
+            })
+        }),
+    );
     Value::Object(line)
+}
+
+/// The notices of the open window that only the journal holds: those a Stop left under the
+/// current stamp on a host with no channel for them, newest time per message. A notice expires
+/// when the stamp moves, so the stamp commit, not a clock, bounds them. Spec 10.7.
+pub fn open_notices(lines: &[Value], stamp: Option<&str>) -> Vec<Dated> {
+    let Some(stamp) = stamp else {
+        return Vec::new();
+    };
+    let mut out: Vec<Dated> = Vec::new();
+    for line in lines.iter().rev().filter(|line| line["kind"] == "stop") {
+        let notice = &line["notice"];
+        let text = notice["message"].as_str().unwrap_or_default();
+        let open = notice["delivered"] == false && notice["stamp"] == stamp;
+        if open && !out.iter().any(|held| held.text == text) {
+            out.push(Dated {
+                time: line["time"].as_u64().unwrap_or_default(),
+                text: text.to_string(),
+            });
+        }
+    }
+    out.reverse();
+    out
+}
+
+/// A line's time and the words it records, such as a notice's message or an advisory reason.
+pub struct Dated {
+    pub time: u64,
+    pub text: String,
+}
+
+/// The note of an ingress that failed without a decision: a usage error, an event klin cannot
+/// read, or a panic. `kind` is the event's kind where klin placed one. Best-effort like every
+/// line, and only where the state directory allows one. Spec 10.10.
+pub fn failed(root: &Path, kind: Option<&'static str>, message: &str) {
+    let Ok(at) = state::ready(root) else {
+        return;
+    };
+    let mut line = base("note", None);
+    line.insert("event".into(), kind.into());
+    line.insert("message".into(), message.into());
+    append(&at, &Value::Object(line));
 }
 
 /// The prompt event the ingress answers: the counter, the session, the prompt's first line cut
@@ -184,15 +264,8 @@ pub fn prompt(
     let Ok(at) = state::ready(root) else {
         return;
     };
-    let mut line = base("prompt");
+    let mut line = base("prompt", session_of(event));
     line.insert("prompt".into(), counter.into());
-    line.insert(
-        "session".into(),
-        event
-            .map(|event| event.session.clone())
-            .filter(|session| !session.is_empty())
-            .into(),
-    );
     let text = event
         .filter(|_| enabled)
         .map(|event| excerpt(&event.prompt))
@@ -244,13 +317,7 @@ pub fn guard(at: &Path, event: &Event, delivered: u8, reason: &'static str) {
     let Ok(at) = state::prepared(at) else {
         return;
     };
-    let mut line = base("guard");
-    line.insert(
-        "session".into(),
-        (!event.session.is_empty())
-            .then(|| event.session.clone())
-            .into(),
-    );
+    let mut line = base("guard", session_of(Some(event)));
     line.insert("decision".into(), kind.into());
     line.insert("reason".into(), reason.into());
     append(&at, &Value::Object(line));
@@ -288,9 +355,9 @@ fn now() -> u64 {
 }
 
 /// Every line of this worktree's journal, newest last, and how many the reader skipped. A line
-/// it cannot parse is a truncated last write, and a line whose `schema` it does not know is a
-/// record a newer klin wrote: both are skipped and counted, so a report can say its numbers are
-/// short. Spec 11.4.
+/// it cannot parse is a truncated last write, and a line of another `schema` is a record an
+/// older or a newer klin wrote: both are skipped and counted, so a report can say its numbers
+/// are short. Spec 13.1.
 pub fn read(root: &Path) -> (Vec<Value>, u64) {
     let Some(at) = state::dir(root) else {
         return (Vec::new(), 0);
@@ -317,7 +384,7 @@ pub fn read(root: &Path) -> (Vec<Value>, u64) {
 }
 
 /// The line both readers take, and `None` for the one neither does: a line that will not parse,
-/// which is a truncated last write, or a line whose `schema` a newer klin wrote. Spec 11.4.
+/// which is a truncated last write, or a line of another `schema`. Spec 13.1.
 fn understood(text: &[u8]) -> Option<Value> {
     serde_json::from_slice::<Value>(text).ok().filter(known)
 }
@@ -327,7 +394,7 @@ fn understood(text: &[u8]) -> Option<Value> {
 fn known(line: &Value) -> bool {
     let schema = line.get("schema").and_then(Value::as_u64);
     match SCHEMA {
-        Schema::One => schema == Some(Schema::One as u64),
+        Schema::Two => schema == Some(Schema::Two as u64),
     }
 }
 
@@ -434,7 +501,7 @@ mod tests {
     const CUTOFF: u64 = 50_000;
 
     fn row(time: u64, kind: &str) -> String {
-        format!("{{\"schema\":1,\"time\":{time},\"kind\":\"{kind}\",\"session\":\"s\"}}\n")
+        format!("{{\"schema\":2,\"time\":{time},\"kind\":\"{kind}\",\"session\":\"s\"}}\n")
     }
 
     fn recent() -> String {
@@ -481,7 +548,7 @@ mod tests {
 
     #[test]
     fn a_truncated_last_write_is_skipped_and_is_not_the_bound() {
-        let tail = read_back(10, &(recent() + "{\"schema\":1,\"tim"));
+        let tail = read_back(10, &(recent() + "{\"schema\":2,\"tim"));
         assert_eq!(tail.lines.len(), 5);
         assert_eq!(tail.skipped, 1);
         assert!(tail.older);

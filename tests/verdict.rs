@@ -311,27 +311,34 @@ fn an_unjudged_stop_over_a_pending_window_keeps_the_work_in_it() {
 
 const A_CURSOR_STOP: &str = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
 
-/// A notice the host never took is not recorded as told, so a later Stop under the same stamp
-/// tells it. Spec 2.3, 10.7.
+/// On Cursor the journal holds a notice that blocks nothing, which records it as told, so a later
+/// Stop under the same stamp leaves no second notice. Spec 2.3, 10.7.
 #[test]
-fn a_notice_klin_could_not_hand_to_cursor_is_told_at_a_later_stop() {
+fn a_cursor_notice_the_journal_holds_is_told_once_per_stamp() {
     let tree = tree(A_BROKEN_GATE);
     tree.write("src/work.rs", "pub fn work() {}\n");
-    tree.write(".git/klin/handed", "");
 
-    let quiet = feed(tree.root(), AGENT, A_CURSOR_STOP);
-    assert_eq!(quiet.code, 0, "{}", quiet.out);
-    assert!(!quiet.says("followup_message"), "{}", quiet.out);
-    assert_eq!(
-        tree.field("told"),
-        "",
-        "an undelivered notice was recorded as told"
+    let first = feed(tree.root(), AGENT, A_CURSOR_STOP);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(!first.says("followup_message"), "{}", first.out);
+    assert!(first.says("escapes"), "{}", first.out);
+    assert!(
+        tree.field("told").starts_with("[\""),
+        "the journal's notice was not recorded as told"
     );
 
-    tree.remove(".git/klin/handed");
-    let told = feed(tree.root(), AGENT, A_CURSOR_STOP);
-    assert_eq!(told.code, 0, "{}", told.out);
-    assert!(told.says("escapes"), "{}", told.out);
+    let again = feed(tree.root(), AGENT, A_CURSOR_STOP);
+    assert_eq!(again.code, 0, "{}", again.out);
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let notices: Vec<serde_json::Value> = journal
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|line| line["kind"] == "stop")
+        .map(|line| line["notice"].clone())
+        .collect();
+    assert_eq!(notices.len(), 2, "{journal}");
+    assert_eq!(notices[0]["delivered"], false, "{journal}");
+    assert_eq!(notices[1], serde_json::Value::Null, "{journal}");
 }
 
 /// A tree the survey finds no source root in is a limitation the Stop tells, once. Spec 2.3.

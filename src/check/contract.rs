@@ -55,10 +55,6 @@ pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
 /// never reads a window it stopped measuring as a whole one. Spec 8.6.
 pub const LOST: &str = "lost";
 
-/// The outcome of a parser-readable file for which no semantic adapter exists. It is a hole in
-/// a structural gate, not a green measurement. Spec 8.4, 8.6.
-pub const NOT_MEASURED: &str = "not-measured";
-
 /// The outcome of a derived ceiling whose recorded scope fell back to the whole repository or
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";

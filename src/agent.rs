@@ -2,17 +2,17 @@
 //! places the event's host and kind before it loads configuration or walks the tree, and it
 //! exits 2 only to block a Stop or to deny a tool call. Spec 10.1, 10.2, 10.10.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ffi::OsString;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use crate::check::catalogue;
 use crate::config::Discovered;
 use crate::host;
 use crate::host::adapter::{Decision, Event, Kind};
-use crate::{gate, guard, turn};
+use crate::{gate, guard, journal, turn};
 
 const WORD: &str = "__agent";
 const EVENT: &str = "event";
@@ -26,23 +26,45 @@ pub fn called() -> bool {
 /// Every answer runs under one unwind guard, so a panic anywhere is no decision either: exit 0
 /// before the kind is known and at an informing hook, and exit 1 at a Stop. Spec 10.10.
 pub fn run() -> ExitCode {
-    let placed = Cell::new(None);
+    let placed = Placed::default();
     match catch_unwind(AssertUnwindSafe(|| answer(&placed))) {
         Ok(code) => code,
-        Err(_) => failed(placed.get()),
+        Err(_) => {
+            let kind = placed.kind.get();
+            noted(
+                placed.start.take().as_deref(),
+                kind,
+                "klin failed while it answered this hook event, so it answered nothing",
+            );
+            failed(kind)
+        }
     }
+}
+
+/// What the answer placed before it could fail: the event's kind and the directory it reads.
+#[derive(Default)]
+struct Placed {
+    kind: Cell<Option<Kind>>,
+    start: RefCell<Option<PathBuf>>,
 }
 
 /// The event's answer. A protocol version klin does not speak is refused whole and first,
 /// wherever it runs: its payload names no tree klin can trust, so it cannot opt out. Every other
 /// event is answered once the opt-in walk found the worktree root's `klin.json`.
 /// Spec 5.1, 10.2, 10.9.
-fn answer(placed: &Cell<Option<Kind>>) -> ExitCode {
-    let Some(event) = invoked() else {
-        return ExitCode::SUCCESS;
+fn answer(placed: &Placed) -> ExitCode {
+    let event = match invoked() {
+        Ok(Some(event)) => event,
+        Ok(None) => return ExitCode::SUCCESS,
+        Err(why) => {
+            eprintln!("klin: NOTE: {why}.");
+            noted(std::env::current_dir().ok().as_deref(), None, &why);
+            return ExitCode::SUCCESS;
+        }
     };
-    placed.set(event.kind);
+    placed.kind.set(event.kind);
     let start = event.root.clone().or_else(|| std::env::current_dir().ok());
+    placed.start.replace(start.clone());
     if event.host.refuses() {
         return ExitCode::from(refused(&event, start.as_deref()));
     }
@@ -76,19 +98,32 @@ fn refused(event: &Event, start: Option<&Path>) -> u8 {
 }
 
 /// The event this invocation carries, when it is one klin answers: `event` was named, the
-/// payload reads, and the host names a kind for it or refuses it whole. Each miss says why on
-/// stderr, except an event no hook of klin's runs on. Spec 10.1, 10.10.
-fn invoked() -> Option<Event> {
+/// payload reads, and the host names a kind for it or refuses it whole. An event no hook of
+/// klin's runs on is none, and a usage error or a payload klin cannot read is the failure the
+/// caller notes. Spec 10.1, 10.10.
+fn invoked() -> Result<Option<Event>, String> {
     let words: Vec<OsString> = std::env::args_os().skip(2).collect();
     if words.first().is_none_or(|word| word != EVENT) {
-        eprintln!("klin: NOTE: `klin {WORD}` takes `{EVENT}`, so this hook answered nothing.");
-        return None;
+        return Err(format!(
+            "`klin {WORD}` takes `{EVENT}`, so this hook answered nothing"
+        ));
     }
     let Some(event) = host::read(named_host(&words[1..]).as_deref()) else {
-        eprintln!("klin: NOTE: klin could not read this hook event, so it answered nothing.");
-        return None;
+        return Err("klin could not read this hook event, so it answered nothing".to_string());
     };
-    (event.kind.is_some() || event.host.refuses()).then_some(event)
+    Ok((event.kind.is_some() || event.host.refuses()).then_some(event))
+}
+
+/// The journal note of an ingress that failed without a decision, in a tree that opted in and
+/// whose state directory allows one. Spec 10.10.
+fn noted(start: Option<&Path>, kind: Option<Kind>, message: &str) {
+    let Some(start) = start else {
+        return;
+    };
+    let found = Discovered::from(start);
+    if let (Some(root), Some(_)) = (&found.root, &found.config) {
+        journal::failed(root, kind.map(Kind::name), message);
+    }
 }
 
 /// The value of `--host NAME` or `--host=NAME`. Every other argument is one the ingress does
