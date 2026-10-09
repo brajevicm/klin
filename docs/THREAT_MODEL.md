@@ -132,8 +132,9 @@ gate that would have named it.
 A deleted test is a review item at `klin check`, so no CI run fails on it.
 At the Enforced level it holds through the Stop's one question, the guard in
 front of the record that question leaves, the pull-request annotation, and
-the reviewer who reads the diff. An agent that runs with no hook meets none of the three. ADR
-0031 and ADR 0032 record the cost.
+the reviewer who reads the diff. An agent that runs with no hook meets only
+the last two. ADR 0031 and ADR 0032
+record the cost.
 
 ## A missing binary or a missing network
 

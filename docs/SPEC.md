@@ -1810,8 +1810,8 @@ A finding: `id`, `check` (null for `measurement-lost`), `kind` (`metric` or
 (`new`, `worsened`, `held`), `file`,
 `line` (null for `measurement-lost`), `text`, `values` (object), `ceiling`
 (object of the values judged),
-`matched` (`{file, line, text, accepted, values}` or null), `remedy`
-(string), and `identity` (section 8.4) when the family has one.
+`matched` (`{file, line, text, accepted, values}` or null), `condition`
+(string, what the finding breaks), `remedy` (string), and `identity` (section 8.4) when the family has one.
 
 A review item: `check`, `kind` (`deleted-test`, `unmatched-accepted`,
 `unmeasured`, `moved-pin`, `moved-skipped`), `file`, `line`, `text`, `reason`
@@ -1895,10 +1895,11 @@ the project's commands ran. No message, document or hook text may claim that
 
 ### 12.3 The GitHub Action
 
-- The Action runs `klin check $ARGS --json` with `fetch-depth` deep enough
+- The Action runs `klin check --json $ARGS` with `fetch-depth` deep enough
   for the base, and ends the job with the exit code of `klin check`, so every
   non-zero exit fails the job. When the run prints no JSON document, the
-  Action prints what the run printed.
+  Action prints what the run printed. The Action adds `--json` itself, so
+  `args` holds selectors and flags other than `--json`.
 - It writes review items, holes, errors, failing findings, the count of
   files not measured, and the count of what it did not annotate to the job
   summary. It writes failing findings and review
@@ -2866,7 +2867,8 @@ gate` by hand against a merge-base, the run fails on new or worsened findings
 only. A stale citation, a missing lockfile entry or a long document that the
 base already holds is `held`, not `new`. A file klin could not measure at
 the base either is a NOTE (8.6), so it keeps this promise too. A build that
-already fails is judged under section 14 and is not part of this promise.
+already fails is judged under the failure model of section 15 and is not part
+of this promise.
 
 Under `--hook` the file is the marker that the repository opted in. When no
 `klin.json` resolves, `klin gate --hook` MUST exit 0, print nothing and write
@@ -3691,7 +3693,7 @@ site(s)`. The second pass of 4.4 matches a renamed test by body hash before
 it counts as missing, so a rename with the body unchanged is `held`.
 
 Removing a test is ordinary work, and deleting a failing one is the
-cheapest route to green in section 1. klin cannot tell which it was, so it
+cheapest route to green that section 1 names. klin cannot tell which it was, so it
 asks once and does not judge the answer (ADR 0031):
 
 - Under `--hook`, a vanished site is `worsened` and blocks the stop, and the
@@ -3752,7 +3754,7 @@ lockfile format klin cannot read is one NOTE per run and no finding, so such a
 manifest never reads as a pass.
 
 Two more checks belong to this tier by the criteria and are not in the core
-list of section 18, because each takes weeks and carries an unsolved problem:
+list of the 0.x implementation checklist, because each takes weeks and carries an unsolved problem:
 
 | Check | Agent failure it names | Identity | Judgement | Status |
 |---|---|---|---|---|
@@ -5570,7 +5572,8 @@ Every check MUST:
 - name every file that is present in both trees, was measured in `before`,
   and was not measured in `after`. Such a file left through compact scope, a
   file the grammar stopped reading, or a discovery rule the tree no longer meets.
-  In the hook it is a NOTE. Under `--strict` it is exit 2, per section 10.
+  In the hook it is a NOTE. Under `--strict` it is exit 2, per the 0.x runner
+  contract that sections 11.3 and 12 replace.
   The rule binds a check whose scope is a set of source files. A check whose
   scope is a list a person writes, a report, or the very set it ratchets,
   such as `inventory`, has nothing to lose this way that it does not already
@@ -5739,7 +5742,7 @@ this prompt event; guard, gate and radius do not place or parse it again.
 In hook mode the exit code is the host's protocol, not the verdict. On Claude
 Code, Codex and the harness protocol, exit 2 means "block this stop", whatever
 caused it. On Cursor a block is a `followup_message` under exit 0, as above.
-The verdict of section 4.9 lives
+The verdict of section 7 lives
 in the report and in the `turn` file. Outside hook mode the exit code is the
 verdict.
 

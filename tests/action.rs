@@ -88,7 +88,7 @@ const COMPLEX: &str = "(x: i32) -> i32 { if x > 1 { if x > 2 { if x > 3 { if x >
     else { 4 } } else { 5 } } else { 6 } } else { 7 } } else { 8 } } else { 9 } } else { 10 } \
     } else { 11 } }\n";
 
-/// What the Action's gate step did in `tree` with `args`.
+/// What one run of the Action's gate step printed, wrote to the job summary, and exited with.
 struct Gated {
     code: i32,
     printed: String,
@@ -209,7 +209,7 @@ fn the_action_annotates_failing_findings_before_review_items_and_counts_the_rest
         tree.write(&format!("src/broken{at}.rs"), BROKEN);
     }
 
-    let gated = gated(&tree, "complexity");
+    let gated = gated(&tree, "-- complexity");
 
     assert_eq!(gated.code, 1, "{}", gated.printed);
     let levels: Vec<&str> = gated

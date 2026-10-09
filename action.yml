@@ -38,9 +38,9 @@ runs:
       env:
         ARGS: ${{ inputs.args }}
       run: |
-        set -uo pipefail
+        set -fuo pipefail
         report="$RUNNER_TEMP/klin-check.json"
-        klin check $ARGS --json > "$report"
+        klin check --json $ARGS > "$report"
         code=$?
         if jq -e 'type == "object"' "$report" > /dev/null 2>&1; then
           jq -r --arg part annotations -f "$GITHUB_ACTION_PATH/action/report.jq" "$report"
