@@ -229,6 +229,8 @@ struct Component {
 struct Target {
     file: PathBuf,
     bytes: Vec<u8>,
+    /// The file a person agreed to replace, which the write must still reach. Section B.19.3.
+    agreed: Option<PathBuf>,
 }
 
 fn told(host: &dyn Adapter, said: String) -> Component {
@@ -260,6 +262,15 @@ fn written(target: &Target) -> Result<(), Error> {
         std::fs::create_dir_all(parent).map_err(|why| Error::unreadable(parent, why))?;
     }
     let held = std::fs::canonicalize(&target.file);
+    if let Some(agreed) = &target.agreed
+        && held.as_ref().ok() != Some(agreed)
+    {
+        return Err(Error(format!(
+            "{} no longer reaches {}, the file setup was to replace, so klin did not write it",
+            target.file.display(),
+            agreed.display()
+        )));
+    }
     let path = held.as_deref().unwrap_or(&target.file);
     write::atomic_write(write::AtomicWrite {
         target: path,
@@ -331,6 +342,7 @@ fn opt_in(file: Option<&Path>) -> Component {
             targets: vec![Target {
                 file: file.to_path_buf(),
                 bytes: b"{}\n".to_vec(),
+                agreed: None,
             }],
             host: false,
         },
@@ -474,6 +486,7 @@ fn reconciled(host: &'static dyn Adapter, file: &Path) -> Result<Component, Erro
         targets: vec![Target {
             file: file.to_path_buf(),
             bytes,
+            agreed: None,
         }],
         host: true,
     })
@@ -482,7 +495,8 @@ fn reconciled(host: &'static dyn Adapter, file: &Path) -> Result<Component, Erro
 /// The standalone skill is one canonical text. A missing file is klin's to write, the exact
 /// current text is already current, and an earlier text is klin's to replace. Any other text is
 /// a person's: on a terminal the person says whether to replace it, and without one it is
-/// replaced and named. Shared Codex and Cursor paths are planned once. Section B.19.3.
+/// replaced and named, unless a link sends it to another file. Shared Codex and Cursor paths
+/// are planned once. Section B.19.3.
 fn skill(
     host: &dyn Adapter,
     scope: &Scope,
@@ -493,58 +507,96 @@ fn skill(
         return Ok((None, None));
     }
     seen.push(file.clone());
-    let Some(said) = rewritten(&file)? else {
+    let own = scope
+        .at
+        .canonicalize()
+        .map_err(|why| Error::unreadable(&scope.at, why))?
+        .join(host.skill_file());
+    let Some((said, agreed)) = rewritten(&file, &own)? else {
         return Ok((None, Some(format!("{} is already current", file.display()))));
     };
     let target = Target {
         file,
         bytes: SKILL.as_bytes().to_vec(),
+        agreed,
     };
     Ok((Some(target), Some(said)))
 }
 
-/// What `setup` says it did to a skill file it writes, or `None` where the file is current.
-fn rewritten(file: &Path) -> Result<Option<String>, Error> {
+/// What `setup` says it did to a skill file it writes, and the file a person agreed to replace,
+/// or `None` where the file is current. `own` is where the skill's path resolves with no link.
+fn rewritten(file: &Path, own: &Path) -> Result<Option<(String, Option<PathBuf>)>, Error> {
     match held_skill(file) {
         Ok(Held::Current) => Ok(None),
-        Ok(Held::Earlier) => Ok(Some(format!(
-            "replaced {}, an earlier klin skill",
-            file.display()
+        Ok(Held::Earlier) => Ok(Some((
+            format!("replaced {}, an earlier klin skill", file.display()),
+            None,
         ))),
-        Ok(Held::Other) => consented(file).map(Some),
+        Ok(Held::Other) => consented(file, own).map(|(said, agreed)| Some((said, Some(agreed)))),
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => {
-            Ok(Some(format!("wrote {}", file.display())))
+            Ok(Some((format!("wrote {}", file.display()), None)))
         }
         Err(why) => Err(Error::unreadable(file, why)),
     }
 }
 
 /// A skill a person may have changed, replaced only where they agree or nobody can answer.
-fn consented(file: &Path) -> Result<String, Error> {
-    if replace_agreed(file)? {
-        return Ok(format!(
-            "replaced {}, which differed from klin's skill",
-            file.display()
-        ));
+/// A link that sends the skill to another file, such as `.git/config`, is followed only on a
+/// yes. Section B.19.3.
+fn consented(file: &Path, own: &Path) -> Result<(String, PathBuf), Error> {
+    let reached = file
+        .canonicalize()
+        .map_err(|why| Error::unreadable(file, why))?;
+    let linked = (reached != own).then_some(reached.as_path());
+    if replace_agreed(file, linked)? {
+        let said = match linked {
+            Some(to) => format!(
+                "replaced {}, which {} links to and which differed from klin's skill",
+                to.display(),
+                file.display()
+            ),
+            None => format!(
+                "replaced {}, which differed from klin's skill",
+                file.display()
+            ),
+        };
+        return Ok((said, reached));
     }
+    let kept = match linked {
+        Some(to) => format!(
+            "{} links to {}, and klin replaces a file a skill links to only on a yes at a \
+             terminal",
+            file.display(),
+            to.display()
+        ),
+        None => format!("{}: kept the existing skill", file.display()),
+    };
     Err(Error(format!(
-        "{}: kept the existing skill, which differs from klin's canonical skill, and wrote \
-             nothing. Move it aside or reconcile it, then rerun klin setup",
-        file.display()
+        "{kept}. It differs from klin's canonical skill, and klin wrote nothing. Move it aside \
+         or reconcile it, then rerun klin setup"
     )))
 }
 
 /// Whether a person agrees to replace a skill they may have changed. Without a terminal nobody
-/// can answer, and the replacement is printed. Section B.19.3.
-fn replace_agreed(file: &Path) -> Result<bool, Error> {
+/// can answer: the skill's own file is replaced and printed, and a file a link reaches is kept.
+/// Section B.19.3.
+fn replace_agreed(file: &Path, linked: Option<&Path>) -> Result<bool, Error> {
     let stdin = std::io::stdin();
     if !stdin.is_terminal() {
-        return Ok(true);
+        return Ok(linked.is_none());
     }
-    eprint!(
-        "{} differs from klin's canonical skill. Replace it? [y/N] ",
-        file.display()
-    );
+    match linked {
+        Some(to) => eprint!(
+            "{} links to {}, which differs from klin's canonical skill. Replace {}? [y/N] ",
+            file.display(),
+            to.display(),
+            to.display()
+        ),
+        None => eprint!(
+            "{} differs from klin's canonical skill. Replace it? [y/N] ",
+            file.display()
+        ),
+    }
     let mut answer = String::new();
     stdin
         .read_line(&mut answer)

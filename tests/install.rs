@@ -891,6 +891,60 @@ fn a_written_hook_line_finds_klin_where_the_installer_put_it() {
     }
 }
 
+/// A changed skill that is a link names another file, which may be no skill at all, such as
+/// `.git/config`. Without a terminal nobody agreed to replace that file, so `setup` writes
+/// nothing. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_keeps_a_changed_skill_that_is_a_link_without_a_terminal() {
+    let tree = a_repository();
+    let config = skill_at(&tree.path(".git/config"));
+    let link = tree.path(".claude/skills/klin/SKILL.md");
+    assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin")).is_ok());
+    assert!(std::os::unix::fs::symlink(tree.path(".git/config"), &link).is_ok());
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says(".git/config"), "{}", run.out);
+    assert_eq!(skill_at(&tree.path(".git/config")), config);
+    assert!(link.is_symlink(), "{}", run.out);
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+}
+
+/// A linked directory above the skill sends the write outside the scope too. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_keeps_a_changed_skill_under_a_linked_directory_without_a_terminal() {
+    let tree = a_repository();
+    let outside = Tree::bare();
+    outside.write("klin/SKILL.md", "outside\n");
+    assert!(std::fs::create_dir_all(tree.path(".claude")).is_ok());
+    assert!(std::os::unix::fs::symlink(outside.root(), tree.path(".claude/skills")).is_ok());
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert_eq!(skill_at(&outside.path("klin/SKILL.md")), "outside\n");
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+}
+
+/// On a terminal the question names the file the link reaches, and a yes replaces it.
+/// Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_names_the_file_a_linked_skill_reaches_before_replacing_it() {
+    let tree = a_repository();
+    let held = tree.write("dotfiles/SKILL.md", "a person's skill\n");
+    let link = tree.path(".claude/skills/klin/SKILL.md");
+    assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin")).is_ok());
+    assert!(std::os::unix::fs::symlink(&held, &link).is_ok());
+
+    let run = tree.run_on_terminal(&["setup", "--host", "claude"], "y\n");
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("dotfiles/SKILL.md"), "{}", run.out);
+    assert_eq!(skill_at(&held), CANONICAL_SKILL);
+    assert!(link.is_symlink(), "{}", run.out);
+}
+
 /// A settings file kept in a dotfiles tree is a link. klin follows it, so the link survives
 /// and the tree it points into holds the hooks. #147.
 #[test]
