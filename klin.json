@@ -95,6 +95,10 @@
         "in": "src/syntax",
         "can_use": ["catalogue", "project", "core"]
       },
+      "plan": {
+        "in": ["src/plan.rs"],
+        "can_use": ["catalogue", "contract", "project", "core"]
+      },
       "project": {
         "in": [
           "src/files.rs",
