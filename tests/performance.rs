@@ -276,16 +276,11 @@ impl Fixture {
         let tsx = files_per_language / 100;
         let scope = chosen("KLIN_PERF_SCOPE", &["whole", "rust"]);
         let config = chosen("KLIN_PERF_CONFIG", &["build-off", "empty", "legacy"]);
-        let layering = profile.units.is_some()
-            && config != "legacy"
-            && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on";
-        let integration = profile.units.is_some()
-            && config != "legacy"
-            && chosen("KLIN_PERF_SARIF", &["off", "on"]) == "on";
-        assert!(
-            !integration || perf_case() != PerfCase::Full,
-            "KLIN_PERF_SARIF=on requires KLIN_PERF_CASE=warm20 or warm100"
-        );
+        let Switches {
+            layering,
+            integration,
+            origin,
+        } = switches(profile, config);
         write_project_files(&tree, scope, config, layering, integration);
         let generated = write_sources(&tree, files_per_language, tsx, profile);
         if let Some(expected) = profile.expected {
@@ -301,7 +296,6 @@ impl Fixture {
             alias_sources(&tree);
         }
         tree.base();
-        let origin = profile.units.is_some() && chosen("KLIN_PERF_ORIGIN", &["off", "on"]) == "on";
         if origin {
             tree.git(&["update-ref", "refs/remotes/origin/main", "main"]);
         }
@@ -590,6 +584,29 @@ impl Fixture {
                     .replace("base", "turn"),
             );
         }
+    }
+}
+
+/// The switches only the source-dense rows take. The legacy configuration pins its own
+/// `klin.json` after the base, so the two that write to it stay off under it.
+struct Switches {
+    layering: bool,
+    integration: bool,
+    origin: bool,
+}
+
+fn switches(profile: Profile, config: &str) -> Switches {
+    let dense = profile.units.is_some();
+    let configured = dense && config != "legacy";
+    let integration = configured && chosen("KLIN_PERF_SARIF", &["off", "on"]) == "on";
+    assert!(
+        !integration || perf_case() != PerfCase::Full,
+        "KLIN_PERF_SARIF=on requires KLIN_PERF_CASE=warm20 or warm100"
+    );
+    Switches {
+        layering: configured && chosen("KLIN_PERF_LAYERING", &["on", "off"]) == "on",
+        integration,
+        origin: dense && chosen("KLIN_PERF_ORIGIN", &["off", "on"]) == "on",
     }
 }
 
