@@ -464,7 +464,7 @@ fn an_accepted_entry_with_a_reason_keeps_the_reason_out_of_its_values() {
 }
 
 #[test]
-fn an_accepted_entry_whose_reason_is_not_text_is_a_config_error() {
+fn an_accepted_entry_whose_reason_is_not_a_string_is_a_config_error() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(
         "klin.json",

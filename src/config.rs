@@ -525,26 +525,35 @@ fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Resul
                 "a list of accepted entries",
             ));
         };
-        let by_file = fields.get("gate").and_then(Value::as_str) == Some(MEASUREMENT_LOST);
-        let required: &[&str] = match by_file {
-            true => &["gate", "file"],
-            false => &["gate", "file", "text"],
-        };
-        for name in required {
-            if !fields.get(*name).is_some_and(Value::is_string) {
-                return missing(file, section, name);
-            }
+        accepted_entry_shape(file, section, fields)?;
+    }
+    Ok(())
+}
+
+fn accepted_entry_shape(
+    file: &Path,
+    section: &str,
+    fields: &Map<String, Value>,
+) -> Result<(), Error> {
+    let by_file = fields.get("gate").and_then(Value::as_str) == Some(MEASUREMENT_LOST);
+    let required: &[&str] = match by_file {
+        true => &["gate", "file"],
+        false => &["gate", "file", "text"],
+    };
+    for name in required {
+        if !fields.get(*name).is_some_and(Value::is_string) {
+            return missing(file, section, name);
         }
-        if let Some(line) = fields.get("line")
-            && !line.is_u64()
-        {
-            return Err(shape_error(file, section, "line", "a whole number"));
-        }
-        if let Some(reason) = fields.get(ACCEPTED_REASON)
-            && !reason.is_string()
-        {
-            return Err(shape_error(file, section, ACCEPTED_REASON, "a string"));
-        }
+    }
+    if let Some(line) = fields.get("line")
+        && !line.is_u64()
+    {
+        return Err(shape_error(file, section, "line", "a whole number"));
+    }
+    if let Some(reason) = fields.get(ACCEPTED_REASON)
+        && !reason.is_string()
+    {
+        return Err(shape_error(file, section, ACCEPTED_REASON, "a string"));
     }
     Ok(())
 }

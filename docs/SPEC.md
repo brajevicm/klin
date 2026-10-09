@@ -2854,10 +2854,11 @@ under `--strict`.
 
 An entry may carry a `reason`, a string in which the person says why they
 accept the debt. It is not a value: klin never ratchets it, never compares
-it, and leaves it out of the `values` of the entry a finding matched (11.2).
+it, and leaves it out of the `values` of the entry a finding matched (11.2)
+and of the values `klin policy` prints. `klin policy --json` keeps it.
 An entry whose `reason` is not a string is a config error. Pinned by
 `an_accepted_entry_with_a_reason_keeps_the_reason_out_of_its_values` and
-`an_accepted_entry_whose_reason_is_not_text_is_a_config_error` in
+`an_accepted_entry_whose_reason_is_not_a_string_is_a_config_error` in
 `tests/complexity.rs`, and by
 `the_readme_accepted_example_fits_the_schema_and_the_binary` in
 `tests/schema.rs`.
