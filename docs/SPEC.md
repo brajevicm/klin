@@ -7289,6 +7289,8 @@ Any other existing skill text needs consent, at project scope and at user scope 
 
 - When stdin is a terminal, `setup` asks once per skill path, naming the path. A yes replaces the file. Any other answer keeps the file, and the run writes no file at all.
 - When stdin is not a terminal, `setup` replaces the file and prints the path it replaced. At project scope `git diff` shows the change. At user scope the printed line is the only record.
+- A skill path that resolves to another file, because the file or a directory above it is a link, can reach a file that is no skill, such as `.git/config`. On a terminal the question names the file the link reaches, and a yes replaces that file. Without a terminal `setup` keeps it, names the link and the file it reaches, and writes no file at all.
+- At the write, `setup` resolves the path again. A path that no longer reaches the file the person agreed to replace is not written, and the run reports the write as incomplete.
 
 `setup` asks during preflight, before the marker or any host integration is written. Rerunning `klin setup` is the reconciliation step after a binary update. `klin status` (11.4) reports an earlier text of klin's skill as a conflict whose detail says that `klin setup` replaces it, apart from a skill that differs from klin's skill.
 
