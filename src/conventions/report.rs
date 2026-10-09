@@ -20,7 +20,7 @@ use super::rules::{
 /// Every convention explained, or only the one `NAME` names.
 pub fn explain(project: &Project, named: Option<&str>) -> Result<Explained, Error> {
     let config = &project.config;
-    let conventions = conventions(config)?;
+    let conventions = conventions(config, project.moves())?;
     let places = walked(config, project.tree())?;
     let holes = holes(&conventions, &places);
     if let Some(name) = named

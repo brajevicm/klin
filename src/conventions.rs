@@ -30,7 +30,7 @@ use rules::{
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = at.config();
-    let conventions = conventions(config)?;
+    let conventions = conventions(config, at.project.moves())?;
     let places = walked(config, at.project.tree())?;
     let rules = every_rule(config, &conventions, &places)?;
     let mut after = measure(&rules, &places)?;
@@ -43,7 +43,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// Every convention resolved, or the first one whose language or pattern a person must settle.
+/// Every convention that measures anything resolved, or the first one whose language or pattern a person must settle.
 fn every_rule<'a>(
     config: &Config,
     conventions: &'a [Convention],
@@ -51,6 +51,7 @@ fn every_rule<'a>(
 ) -> Result<Vec<Rule<'a>>, Error> {
     conventions
         .iter()
+        .filter(|convention| !convention.gone())
         .map(|convention| {
             resolved(convention, places).map_err(|why| {
                 Error(format!(

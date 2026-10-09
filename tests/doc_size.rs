@@ -429,7 +429,7 @@ fn a_changed_run_judges_only_the_instruction_files_that_changed() {
 }
 
 /// A changed run still reads every pinned document, so a pinned README the change set renamed
-/// is the config error a whole run reports. #435.
+/// is followed to its new path and named for review, as a whole run does. #435, spec 7.3.
 #[test]
 fn a_changed_run_still_reports_a_pinned_document_that_was_renamed() {
     let tree = Tree::new();
@@ -440,8 +440,13 @@ fn a_changed_run_still_reports_a_pinned_document_that_was_renamed() {
     tree.git(&["mv", "README.md", "docs/README.md"]);
 
     let run = tree.run(&["check", "doc-size", "--changed"]);
-    assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("no such file"), "{}", run.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("docs/README.md"), "{}", run.out);
+    assert!(
+        run.says("REVIEW: the pinned document README.md"),
+        "{}",
+        run.out
+    );
 }
 
 /// A new pin that names a missing file is a config error on a changed run where only the

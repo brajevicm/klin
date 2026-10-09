@@ -500,7 +500,6 @@ fn an_in_path_that_names_nothing_fails_and_an_except_path_that_names_nothing_is_
         }"#,
     );
     tree.write("src/main.rs", "FORBIDDEN\n");
-    tree.base();
 
     let run = tree.run(&["check", "conventions"]);
     assert_eq!(run.code, 2, "{}", run.out);
@@ -532,7 +531,6 @@ fn each_in_path_that_names_nothing_is_a_configuration_error_even_beside_a_findin
         }"#,
     );
     tree.write("src/main.rs", "FORBIDDEN\n");
-    tree.base();
 
     let run = tree.run(&["check", "conventions", "--json"]);
     assert_eq!(run.code, 2, "{}", run.out);

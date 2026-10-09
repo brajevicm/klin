@@ -142,7 +142,7 @@ impl Project {
             let Ok(changes) = self.changes(base) else {
                 return Moves::default();
             };
-            let mut moves = match scope::states_a_scope(&self.config) {
+            let mut moves = match scope::names_a_path(&self.config) {
                 true => self
                     .tree
                     .files()
