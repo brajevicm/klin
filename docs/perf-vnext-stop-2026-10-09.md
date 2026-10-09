@@ -113,8 +113,7 @@ On the quiet machine, all 5,000 events completed within 50 ms. Run B ran while
 other processes loaded the machine: its 10,000-file cold survey took 30,709 ms,
 against 15,302 ms on a quieter run. The p99 of run B stays within 50 ms, and
 its maximum does not. The time includes the process start, which is outside
-klin, and the first event of the row starts a binary that macOS had not run
-before.
+klin.
 
 Run A took its p99 at rank `len * 99 / 100`. Run B used the final harness,
 which takes the nearest rank, `ceil(0.99 * len) - 1`. Two runs are left out:
