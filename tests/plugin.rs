@@ -336,17 +336,15 @@ fn fake_curl(body: &str) -> String {
     format!("#!/bin/sh\ncase \"$*\" in *klin-installer.sh*) ;; *) exit 22 ;; esac\n{body}\n")
 }
 
-/// An installer that puts a klin in `~/.local/bin` which records where it ran and with what,
-/// and writes the `env` script that puts `~/.local/bin` on PATH, as the dist installer does.
+/// An installer that puts a klin in `~/.local/bin` which records where it ran and with what.
 const AN_INSTALLER: &str = r#"cat <<'SH'
 mkdir -p "$HOME/.local/bin"
 printf '#!/bin/sh\necho "$PWD $*" > "$HOME/ran"\n' > "$HOME/.local/bin/klin"
 chmod +x "$HOME/.local/bin/klin"
-echo 'export PATH="$HOME/.local/bin:$PATH"' > "$HOME/.local/bin/env"
 SH"#;
 
-/// The README's install runs from the repository root in bash: the installer, the `env` script
-/// it wrote, then the klin it installed, found on PATH. ADR 0056.
+/// The README's install runs from the repository root in bash: the installer, then the klin it
+/// installed, found on a PATH that holds `~/.local/bin` as a new terminal's does. ADR 0056.
 #[test]
 fn the_readmes_install_runs_the_installed_klin_in_the_repository() {
     let script = block(&text(README), "klin-installer.sh");
@@ -356,7 +354,11 @@ fn the_readmes_install_runs_the_installed_klin_in_the_repository() {
     executable(&work.path("bin/curl"));
     let home = Tree::bare();
 
-    let path = format!("{}:/usr/bin:/bin", work.path("bin").display());
+    let path = format!(
+        "{}:{}:/usr/bin:/bin",
+        work.path("bin").display(),
+        home.path(".local/bin").display()
+    );
     let home_dir = home.root().display().to_string();
     let run = ran(
         "/bin/bash",
