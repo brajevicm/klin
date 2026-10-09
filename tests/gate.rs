@@ -925,16 +925,11 @@ fn hook_evidence_is_the_original_build_blocked_stop_not_a_second_gate_run() {
         },
         Err(why) => panic!("the original hook wrote no evidence: {why}"),
     };
-    assert_eq!(exact["status"], "ERROR", "{exact}");
-    assert_eq!(exact["exit"], 2, "{exact}");
-    assert_eq!(exact["gates"], serde_json::json!([]), "{exact}");
-    assert!(
-        !exact["findings"]
-            .as_array()
-            .unwrap_or(&Vec::new())
-            .iter()
-            .any(|finding| finding["gate"] == "escapes")
-    );
+    assert_eq!(exact["command"], "check", "{exact}");
+    assert_eq!(exact["judgement"], Value::Null, "{exact}");
+    assert_eq!(exact["notes"][0]["kind"], "build", "{exact}");
+    assert_eq!(exact["capabilities"], serde_json::json!([]), "{exact}");
+    assert_eq!(exact["findings"], serde_json::json!([]), "{exact}");
 
     let standalone = tree.run(&["check", "--json"]);
     assert_eq!(standalone.code, 1, "{}", standalone.out);
@@ -1440,6 +1435,25 @@ fn no_source_root_in_the_hook_lets_the_turn_end() {
     assert_eq!(run.code, 0, "{}", run.out);
 }
 
+/// The Stop's check document holds the note of a tree with no source root, and a later Stop under
+/// the same stamp does not tell it again. Spec 2.3, 11.7.
+#[test]
+fn no_source_root_in_the_hook_is_a_run_note_told_once_per_stamp() {
+    let tree = without_source(NOTHING_SAID_ABOUT_ESCAPES);
+
+    let (first, report) = harness::stop_report(tree.root(), A_STOP, &[]);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(first.says("found no source root"), "{}", first.out);
+    let noted = list(&report, "notes")
+        .iter()
+        .any(|note| note["kind"] == "no-source-root" && note["check"].is_null());
+    assert!(noted, "{report}");
+
+    let again = stop(&tree, A_SECOND_STOP);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert!(!again.says("found no source root"), "{}", again.out);
+}
+
 #[test]
 fn a_source_root_leaves_no_note() {
     let tree = tree(NOTHING_SAID_ABOUT_ESCAPES);
@@ -1554,17 +1568,19 @@ fn hook_says_nothing_for_a_note_no_grammar_hole_left() {
 }
 
 #[test]
-fn a_file_the_grammar_rejected_is_a_json_note_in_the_hook() {
+fn a_file_the_grammar_rejected_is_a_review_item_in_the_hook_report() {
     let tree = tree(EVERY_GATE);
     tree.write("src/broken.rs", "fn ( { ) unbalanced");
 
     let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 0, "{}", run.out);
-    let notes = list(&report, "notes");
-    assert_eq!(notes.len(), 1, "{}", run.out);
-    assert_eq!(field(&notes[0], "outcome"), "unparsed", "{}", run.out);
-    assert_eq!(field(&notes[0], "file"), "src/broken.rs", "{}", run.out);
-    assert!(list(&report, "findings").is_empty(), "{}", run.out);
+    let reviews = list(&report, "reviews");
+    assert_eq!(reviews.len(), 1, "{report}");
+    assert_eq!(field(&reviews[0], "kind"), "unmeasured", "{report}");
+    assert_eq!(field(&reviews[0], "reason"), "unreadable", "{report}");
+    assert_eq!(field(&reviews[0], "file"), "src/broken.rs", "{report}");
+    assert!(list(&report, "notes").is_empty(), "{report}");
+    assert!(list(&report, "findings").is_empty(), "{report}");
 }
 
 const ANOTHER_VERSION: &str = r#"{

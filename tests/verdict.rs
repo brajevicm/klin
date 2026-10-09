@@ -13,6 +13,10 @@ const A_BROKEN_GATE: &str = r#"{
   "doc_size": {"README.md": 10},
   "escapes": { "in": "README.md" }
 }"#;
+const AN_ACCEPTED_LOST_FILE: &str = r#"{
+  "accepted": [{"gate": "measurement-lost", "file": "src/lib.rs", "reason": "grammar lag"}],
+  "doc_size": {"README.md": 10}
+}"#;
 const AN_UNMATCHED_ACCEPTED: &str = r#"{
   "accepted": [{"gate": "escapes", "file": "src/lib.rs", "text": "the line that held it",
                 "count": 1}],
@@ -95,6 +99,22 @@ fn a_coverage_note_is_told_once_per_stamp_and_leaves_the_stamp_green() {
     assert!(told(&first).contains("src/broken.rs"), "{}", first.out);
     no_repair(&told(&first));
     assert_eq!(tree.field("verdict"), "green", "{}", first.out);
+
+    let again = second_stop(&tree);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert_eq!(told(&again), "", "{}", again.out);
+}
+
+/// A review item is told once per stamp as a note is: an accepted lost file klin measures now is
+/// told at the first Stop and not at a later one under the same stamp. Spec 2.3, 7.6.
+#[test]
+fn an_unmatched_accepted_lost_file_is_told_once_per_stamp() {
+    let tree = tree(AN_ACCEPTED_LOST_FILE);
+    tree.write("src/lib.rs", "pub fn kept() -> u8 {\n    2\n}\n");
+
+    let first = stop(&tree);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(told(&first).contains("matches nothing"), "{}", first.out);
 
     let again = second_stop(&tree);
     assert_eq!(again.code, 0, "{}", again.out);

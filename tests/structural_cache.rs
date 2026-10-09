@@ -31,26 +31,20 @@ fn commands() -> Tree {
     tree
 }
 
-/// A first Stop over the tree at `cwd`, judged against the branch base, as the report it
-/// recorded, with the code `check` gives its status. Only the hook reads the structural cache,
-/// since `check` checks the base out whole.
+/// A first Stop over the tree at `cwd`, judged against the branch base, as the check document it
+/// recorded, with the exit that document states. Only the hook reads the structural cache, since
+/// `check` checks the base out whole.
 fn stop(tree: &Tree, cwd: &Path) -> Run {
     let _ = fs::remove_file(tree.state("turn"));
-    let (run, line) = harness::stop_report(cwd, A_STOP, &[]);
-    assert!(line.is_object(), "no report in {}", run.out);
-    let report: serde_json::Map<String, Value> = [
-        "derived", "findings", "gates", "notes", "status", "summary", "window",
-    ]
-    .into_iter()
-    .map(|key| (key.to_string(), line[key].clone()))
-    .collect();
-    let out = Value::Object(report).to_string();
+    let (run, document) = harness::stop_report(cwd, A_STOP, &[]);
+    assert_eq!(
+        document["command"], "check",
+        "no check document in {}",
+        run.out
+    );
+    let out = document.to_string();
     Run {
-        code: match line["status"].as_str() {
-            Some("PASS") => 0,
-            Some("FAIL") => 1,
-            _ => 2,
-        },
+        code: document["exit"].as_i64().map_or(-1, |exit| exit as i32),
         printed: out.clone(),
         out,
     }
@@ -312,7 +306,7 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
             .and_then(|gates| gates.iter().find(|row| row["name"] == "dead-symbols"))
             .unwrap_or_else(|| panic!("no dead-symbols row in {report}"));
         (
-            report["status"].clone(),
+            report["judgement"].clone(),
             report["window"]["before"].clone(),
             row["facts"]["cached"].clone(),
         )
@@ -324,7 +318,7 @@ fn repeated_red_stops_keep_the_turn_base_through_a_prompt_and_a_branch_switch() 
     tree.git(&["checkout", "-q", "-b", "elsewhere"]);
     let third = stop();
 
-    assert_eq!(first.0, "FAIL", "{first:?}");
+    assert_eq!(first.0, "fail", "{first:?}");
     assert_eq!(first.2, 0, "{first:?}");
     for later in [&second, &third] {
         assert_eq!((&later.0, &later.1), (&first.0, &first.1), "{later:?}");
