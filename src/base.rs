@@ -642,7 +642,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    fn name(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Kind::Turn => "turn",
             Kind::Branch => "branch",

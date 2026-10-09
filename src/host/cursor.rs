@@ -193,11 +193,13 @@ impl Adapter for Cursor {
         }
     }
 
-    /// A stop that tells the person uses `followup_message`, which Cursor submits as the next
-    /// prompt. A block uses that field too, because Cursor's stop has no other channel, and it
+    /// A block uses `followup_message`, because Cursor's stop has no other channel, and it
     /// exits 0: Cursor 3.21.18 did not submit the follow-up of a stop hook that exited 2, and
     /// did submit one from a hook that exited 0. Nothing enforces an exit-0 block, so a Cursor
-    /// that ignored stdout would let the turn end, which fails open. Spec 9.1.
+    /// that ignored stdout would let the turn end, which fails open. Cursor submits a
+    /// `followup_message` as the next agent prompt, so a notice that blocks nothing never uses
+    /// it: it goes to stderr, and the journal holds it for `klin status` and `klin report`.
+    /// Spec 9.1, 10.7.
     fn stop(&self, stop: &Stop) -> u8 {
         match stop {
             Stop::Block(text) => {
@@ -206,16 +208,14 @@ impl Adapter for Cursor {
             }
             Stop::Pass => 0,
             Stop::Tell(text) => {
-                followup(text);
+                eprintln!("{text}");
                 0
             }
         }
     }
 
-    /// Cursor submits a `followup_message` as the next agent prompt, so a notice outside a
-    /// blocking Stop goes to stderr alone. Spec 10.7.
-    fn tell(&self, text: &str) {
-        eprintln!("{text}");
+    fn delivers_notices(&self) -> bool {
+        false
     }
 
     fn follows_up(&self) -> bool {

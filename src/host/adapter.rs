@@ -168,6 +168,11 @@ pub trait Adapter: Sync {
     fn tell(&self, text: &str) {
         self.stop(&Stop::Tell(text.to_string()));
     }
+    /// Whether the host has a person-visible channel that blocks nothing. A notice on a host
+    /// without one lands in the journal alone. Spec 10.7.
+    fn delivers_notices(&self) -> bool {
+        true
+    }
     /// The exit code a stop this host blocks ends with. The block itself is the report the
     /// adapter delivered; the code is only the host's protocol for it. Spec 9.1.
     fn block_exit(&self) -> u8 {

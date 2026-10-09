@@ -192,14 +192,33 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     let mut records = Recorded::default();
     records.findings.push(record("error", &problem.to_string()));
     log.report = Some(as_json(ERROR, 0, &said, records, None));
-    let said =
-        Some(said).filter(|said| fresh && !keeps_quiet(root, Some(event), false, said, &mut log));
+    let config = json!({
+        "path": config::located(None, root).map(|file| file.display().to_string()),
+        "present": true,
+    });
+    let fault = Fault {
+        kind: ErrorKind::Configuration,
+        error: Error(problem.to_string()),
+    };
+    log.result = Some(Report::stopped_by(config, None, fault));
+    let said = fresh.then_some(said);
+    log.notice = noticed(root, said.as_deref(), Some(event));
     journal::stop(root, &log);
     if let Some(said) = said {
         turn::heard(root, &told);
         host::answering(Some(event)).stop(&Stop::Tell(said));
     }
     0
+}
+
+/// The notice a Stop that blocks nothing leaves for the person, and whether the host has a
+/// channel that delivers it. Spec 10.7, 13.1.
+fn noticed(root: &Path, said: Option<&str>, event: Option<&Event>) -> Option<journal::Notice> {
+    said.map(|message| journal::Notice {
+        message: message.to_string(),
+        delivered: host::answering(event).delivers_notices(),
+        stamp: turn::stamp_commit(root),
+    })
 }
 
 fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
@@ -221,7 +240,7 @@ fn by_hand(args: &Args, project: &mut Project, out: &mut String) -> Result<Tally
     if let Some(window) = &window {
         project.bind(window);
     }
-    judge(args, project, window.as_ref(), &[], None, out)
+    judge(args, project, window.as_ref(), &[], None, out).map_err(Error::from)
 }
 
 /// How long a stop waits for the stop before it to finish. A fraction of the hook's five
@@ -274,8 +293,8 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         log.build_blocks = held.builds;
         log.prompt = held.prompt;
     }
-    let said = tell(args, root, code, note, &mut log)
-        .filter(|said| !keeps_quiet(root, event.as_ref(), lost, said, &mut log));
+    let said = tell(args, root, code, note, &mut log);
+    log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || log.told.contains(&"note")) {
         turn::heard(root, &told);
     }
@@ -355,44 +374,6 @@ fn once(
     let note =
         note.filter(|_| told.is_empty() || told.iter().any(|record| !heard.contains(record)));
     (note, told)
-}
-
-/// Whether this stop keeps its told message to itself. A host that submits a told message as
-/// its next prompt opens no turn with it, so a stop over the same state would tell it again and
-/// the pair would replay forever. Such a host hears one message once per prompt, and only a
-/// message klin recorded first: a stop that lost the state lock, or whose stamp would not take
-/// the record, tells it nothing. The journal records the stop as having told nothing, and a
-/// repeat carries `told-before`. Spec 9.1, ADR 0052.
-fn keeps_quiet(
-    root: &Path,
-    event: Option<&Event>,
-    lost: bool,
-    said: &str,
-    log: &mut journal::Stop,
-) -> bool {
-    if !host::answering(event).follows_up() {
-        return false;
-    }
-    let session = session(event);
-    let heard = heard(said);
-    let repeated = !lost && handoff::told_before(root, session, &heard);
-    if repeated {
-        log.flags.push("told-before");
-    }
-    if !lost && !repeated && handoff::expect_told(root, session, said, &heard) {
-        return false;
-    }
-    log.told.clear();
-    true
-}
-
-/// What a told message says, less its window line, whose age moves each minute and says
-/// nothing new. Spec 9.1.
-fn heard(said: &str) -> String {
-    said.lines()
-        .filter(|line| !line.trim_start().starts_with("window:"))
-        .collect::<Vec<&str>>()
-        .join("\n")
 }
 
 /// The host session an event names, and none for a stop no event placed.
@@ -595,12 +576,21 @@ fn ran(
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Leaves, Option<Vec<String>>, Option<String>) {
+    let handing = Handing {
+        window,
+        event,
+        lost,
+    };
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),
         Err(problem) => {
-            let (code, note, _) = handed(args, project, Err(problem), event, lost, log, out);
+            let fault = Fault {
+                kind: ErrorKind::Configuration,
+                error: problem,
+            };
+            let (code, note, _) = handed(args, project, Err(fault), handing, log, out);
             return (code, Leaves::Nothing, None, note);
         }
     };
@@ -608,6 +598,11 @@ fn ran(
         Some(failure) => {
             let blocks = build_block(project.root(), lost, log);
             let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
+            log.result = Some(Report::unbuilt(
+                Report::config_of(project),
+                window,
+                &failure,
+            ));
             (
                 blocked_build(project.root(), event, text, code),
                 Leaves::Verdict(Verdict::red()),
@@ -625,7 +620,7 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let (code, note, advised) = handed(args, project, judged, event, lost, log, out);
+            let (code, note, advised) = handed(args, project, judged, handing, log, out);
             let asked = (code == BLOCKED).then_some(reported);
             let leaves = Leaves::measured(verdict, asked.is_some(), advised);
             (code, leaves, asked, note)
@@ -638,7 +633,7 @@ fn ran(
 /// failed before it measured reaches none, so the `aborted` the Stop wrote stays and the stamp
 /// never moves past work no Stop judged. Only a klin.json klin cannot read writes `unjudged`.
 /// Spec 6.6, 10.4.
-fn judged_verdict(judged: &Result<Tally, Error>) -> Option<Verdict> {
+fn judged_verdict(judged: &Result<Tally, Fault>) -> Option<Verdict> {
     let tally = judged.as_ref().ok()?;
     Some(match tally.failed {
         0 => Verdict::Green,
@@ -663,24 +658,42 @@ fn sorted(
     }
 }
 
+/// What a Stop hands its finished run over with: the window it judged, the host event, and
+/// whether it lost the state lock.
+#[derive(Clone, Copy)]
+struct Handing<'a> {
+    window: Option<&'a Window>,
+    event: Option<&'a Event>,
+    lost: bool,
+}
+
 /// What the hook does with a run it finished: report it, and block the stop or let it end with
 /// the note it leaves for the person, and whether it was an advisory Stop that measured, which
 /// blocks nothing for a finding and tells what it found. Spec 6.6.
 fn handed(
     args: &Args,
     project: &Project,
-    outcome: Result<Tally, Error>,
-    event: Option<&Event>,
-    lost: bool,
+    outcome: Result<Tally, Fault>,
+    Handing {
+        window,
+        event,
+        lost,
+    }: Handing,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Option<String>, bool) {
-    let (mut tally, measured) = match refused(args, outcome, out) {
+    let (mut tally, measured) = match outcome {
         Ok(tally) => (tally, true),
-        Err(problem) => {
+        Err(fault) => {
+            let problem = fault.error.to_string();
+            log.result = Some(Report::stopped_by(
+                Report::config_of(project),
+                window,
+                fault,
+            ));
             let _ = writeln!(out, "ERR: {problem}");
             let mut records = Recorded::default();
-            records.findings.push(record("error", &problem.to_string()));
+            records.findings.push(record("error", &problem));
             let tally = Tally {
                 errored: 1,
                 record: Some(as_json(
@@ -696,6 +709,9 @@ fn handed(
         }
     };
     log.report = tally.record.take();
+    if let Some(document) = tally.document.take() {
+        log.result = Some(document);
+    }
     if let Some(reason) = log.advisory.filter(|_| measured) {
         let said = advised(reason, &tally, &std::mem::take(out));
         return (0, Some(said), true);
@@ -726,8 +742,10 @@ struct Tally {
     reported: Vec<String>,
     /// The deleted tests among those findings, as sites, which klin has not asked about yet.
     unasked: Vec<String>,
-    /// The 11.2 object the run built, which the journal writes as the stop's line. Spec 11.4.
+    /// The 11.2 object the run built, which the hook tells from. Spec 11.4.
     record: Option<Value>,
+    /// The check document the run built, which the journal line holds. Spec 13.1.
+    document: Option<Value>,
 }
 
 impl Tally {
@@ -1084,12 +1102,13 @@ fn judge(
     built: &[contract::Said],
     unbuilt: Option<&str>,
     out: &mut String,
-) -> Result<Tally, Error> {
-    let plan = plan(project)?;
+) -> Result<Tally, Fault> {
+    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
     if args.list {
-        return listed(args, project, &plan, out);
+        return listed(args, project, &plan, out).map_err(fault(ErrorKind::Configuration));
     }
-    let wanted: Vec<&Gate> = select(&args.gates, &plan, project)?
+    let wanted: Vec<&Gate> = select(&args.gates, &plan, project)
+        .map_err(fault(ErrorKind::Invocation))?
         .into_iter()
         .filter(|gate| gate.check.placement.at_stop())
         .collect();
@@ -1098,8 +1117,15 @@ fn judge(
     if let (Some(unbuilt), false) = (unbuilt, args.json) {
         let _ = writeln!(out, "  {unbuilt}");
     }
-    let rootless = no_source_root(args, &plan, &wanted, project, out)?;
-    let (mut tally, mut records) = each(args, &wanted, project, &against, out);
+    let rootless =
+        no_source_root(args, &plan, &wanted, project, out).map_err(fault(ErrorKind::Internal))?;
+    let mut doc = Report::stopping(project, against.base.as_ref(), &wanted);
+    doc.built = built
+        .iter()
+        .filter_map(|(_, entry)| entry.clone())
+        .collect();
+    let (mut tally, mut records) = each(args, &wanted, project, &against, &mut doc, out);
+    tally.document = Some(doc.stopped_with(&plan, unbuilt));
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
     let gone = gone_moves(args, project, &wanted, out);
@@ -1144,10 +1170,13 @@ fn against_or_stop<'a>(
     project: &'a Project,
     window: Option<&Window>,
     out: &mut String,
-) -> Result<Against<'a>, Error> {
+) -> Result<Against<'a>, Fault> {
     let against = against(args, wanted, project, window, out)?;
     match against.unlaid {
-        Some(why) => Err(Error(why)),
+        Some(why) => Err(Fault {
+            kind: ErrorKind::Git,
+            error: Error(why),
+        }),
         None => Ok(against),
     }
 }
@@ -1862,7 +1891,7 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
 
 /// The records of spec 11.2 only the runner writes: the findings, notes and derived entries it
 /// renders from each gate's typed result or records itself, and one row per gate.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Recorded {
     findings: Vec<Value>,
     notes: Vec<Value>,
@@ -1968,9 +1997,7 @@ fn not_blocked(
         "klin: not blocking again; {why}, and the window stays open until a person \
          fixes, accepts or resets it."
     );
-    let person = (!args.json && !event.host.follows_up())
-        .then(|| person_note(tally, report))
-        .flatten();
+    let person = (!args.json).then(|| person_note(tally, report)).flatten();
     (event.host.stop(&Stop::Pass), person)
 }
 
@@ -2109,8 +2136,8 @@ fn working_tree(root: &Path, at: &Path) -> Option<String> {
 
 /// Record the exact report a follow-up host will echo under the event's session, then deliver
 /// the block. The stop's run reads `BLOCKED` as its decision whatever exit code the host takes
-/// for a block, and the stop ends with that code. A stop that tells records its message the same way, so neither echo opens a turn
-/// or a fresh gate budget. Spec 9.1, 9.3.
+/// for a block, and the stop ends with that code. The echo opens no turn and no fresh gate
+/// budget. Spec 9.1, 9.3, 10.4.
 ///
 /// A host that submits the report hears it only once klin recorded it. A report klin could
 /// not record would open a turn and a fresh budget when the host submits it, so the stop is
@@ -2286,6 +2313,7 @@ fn each(
     wanted: &[&Gate],
     project: &Project,
     against: &Against,
+    doc: &mut Report,
     out: &mut String,
 ) -> (Tally, Recorded) {
     let mut tally = Tally::default();
@@ -2306,24 +2334,44 @@ fn each(
             .gates
             .push(row(gate, code, (&records, &recorded), ms));
         reported.extend(unmeasured_by(&gate.name, &told));
-        gather(&mut totals, recorded, &gate.name);
+        gather(&mut totals, recorded.clone(), &gate.name);
+        let ran = (code, told, records, recorded);
+        doc.took(
+            &QUIET,
+            (gate, project, against),
+            ran,
+            ms,
+            &mut String::new(),
+        );
     }
     let base = against.base.as_ref().map(|base| base.before.as_str());
+    let sorted = holes::sorted(project, base, reported);
+    doc.settled(
+        &QUIET,
+        (project, wanted, against),
+        &sorted,
+        &mut String::new(),
+    );
     stop_unmeasured(
         args,
         (project, wanted),
-        holes::sorted(project, base, reported),
+        sorted,
         (&mut tally, &mut totals),
         out,
     );
     tally.told += totals.notes.iter().filter(|note| told(note)).count();
-    tally.reported = totals
-        .findings
+    (tally.reported, tally.unasked) = asked_sites(&totals.findings);
+    (tally, totals)
+}
+
+/// The site id of every finding a Stop reports, which a block records as asked, and the deleted
+/// tests among them as sites, which klin has not asked about yet. Spec 8.2, 9.2.
+fn asked_sites(findings: &[Value]) -> (Vec<String>, Vec<String>) {
+    let reported = findings
         .iter()
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
-    tally.unasked = totals
-        .findings
+    let unasked = findings
         .iter()
         .filter(|finding| finding["gate"] == INVENTORY)
         .map(|finding| {
@@ -2335,7 +2383,7 @@ fn each(
             )
         })
         .collect();
-    (tally, totals)
+    (reported, unasked)
 }
 
 const INVENTORY: &str = "inventory";
@@ -2718,12 +2766,10 @@ fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
     )))
 }
 
-fn one(
-    args: &Args,
-    gate: &Gate,
-    project: &Project,
-    against: &Against,
-) -> (u8, Vec<Told>, Records, Recorded) {
+/// One gate's run: its exit code, what it told, what it recorded and its findings as JSON.
+type Ran = (u8, Vec<Told>, Records, Recorded);
+
+fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
     let mut told = Vec::new();
     let mut records = Records::default();
     let at = Context {
@@ -2978,6 +3024,8 @@ struct Report {
     not_measured: std::collections::BTreeSet<String>,
     /// What each gate could not measure, as it saw it, for the run to sort once. Spec 7.2.
     reported: Vec<(String, String, Seen)>,
+    /// The derived build commands the Stop ran before it measured, in the run's basis. Spec 8.1.
+    built: Vec<Value>,
     reviews: Vec<Value>,
     errors: Vec<Value>,
     gates: Vec<Value>,
@@ -3243,7 +3291,71 @@ fn held_roots(project: &Project) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// The arguments the Stop's document is gathered under: no text, because the Stop prints its own,
+/// and the Stop's own window and scope.
+const QUIET: Args = Args {
+    config: None,
+    gates: Vec::new(),
+    list: false,
+    entry: None,
+    changed: true,
+    hook: true,
+    json: true,
+};
+
 impl Report {
+    /// The document a Stop gathers beside its own records: the configuration it ran under and
+    /// what binding its window found. Spec 13.1.
+    fn stopping(project: &Project, base: Option<&Window>, wanted: &[&Gate]) -> Report {
+        let mut doc = Report {
+            config: Some(Report::config_of(project)),
+            ..Report::default()
+        };
+        doc.windowed(&QUIET, (project, wanted), base, &mut String::new());
+        doc
+    }
+
+    /// The configuration a run judged under, as the check document names it. Spec 11.7.
+    fn config_of(project: &Project) -> Value {
+        json!({
+            "path": project.config.file.display().to_string(),
+            "present": project.config.written(),
+        })
+    }
+
+    /// The Stop's document once every gate ran: the note of a build that could not run, and the
+    /// rows of the capabilities that do not apply. Spec 11.7, 13.1.
+    fn stopped_with(mut self, plan: &Plan, unbuilt: Option<&str>) -> Value {
+        self.notes
+            .extend(unbuilt.map(|unbuilt| note(UNBUILT, unbuilt)));
+        self.not_applicable(plan);
+        self.closed()
+    }
+
+    /// The document of a Stop whose build failed, so no capability measured. Spec 6.4, 13.1.
+    fn unbuilt(config: Value, window: Option<&Window>, failure: &str) -> Value {
+        Report {
+            config: Some(config),
+            window: window.map(Window::record),
+            stopped: true,
+            notes: vec![note("build", failure)],
+            ..Report::default()
+        }
+        .closed()
+    }
+
+    /// The document of a Stop that stopped before any capability measured, with the error that
+    /// stopped it. Spec 7.3, 13.1.
+    fn stopped_by(config: Value, window: Option<&Window>, fault: Fault) -> Value {
+        let mut doc = Report {
+            config: Some(config),
+            window: window.map(Window::record),
+            ..Report::default()
+        };
+        doc.stop(&QUIET, fault, &mut String::new());
+        doc.closed()
+    }
+
     /// Every selected gate, the rows of what a selector named that does not apply, and the hole
     /// of a whole run that measured nothing. Spec 7.2, 11.7.
     fn ran(
@@ -3260,16 +3372,8 @@ impl Report {
         }
         let base = against.base.as_ref().map(|base| base.before.as_str());
         let reported = std::mem::take(&mut self.reported);
-        let (sorted, failed) = holes::sorted(project, base, reported);
-        if let Some(why) = failed {
-            self.axes.error = true;
-            self.errors.push(error_record(ErrorKind::Git, None, &why));
-            if !args.json {
-                let _ = writeln!(out, "  ERR: {why}");
-            }
-        }
-        self.unmeasured(args, (project, wanted), &sorted, out);
-        self.not_read(wanted, &by_extension(project, against));
+        let sorted = holes::sorted(project, base, reported);
+        self.settled(args, (project, wanted, against), &sorted, out);
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
         {
@@ -3281,6 +3385,27 @@ impl Report {
         if args.gates.is_empty() {
             self.not_applicable(plan);
         }
+    }
+
+    /// What the run could not measure, sorted once over every gate: the error of a sort git
+    /// could not finish, the files the gates could not measure, and the files of a language each
+    /// gate does not read. Spec 7.2, 11.7.
+    fn settled(
+        &mut self,
+        args: &Args,
+        (project, wanted, against): (&Project, &[&Gate], &Against),
+        (sorted, failed): &(Vec<Unmeasured>, Option<String>),
+        out: &mut String,
+    ) {
+        if let Some(why) = failed {
+            self.axes.error = true;
+            self.errors.push(error_record(ErrorKind::Git, None, why));
+            if !args.json {
+                let _ = writeln!(out, "  ERR: {why}");
+            }
+        }
+        self.unmeasured(args, (project, wanted), sorted, out);
+        self.not_read(wanted, &by_extension(project, against));
     }
 
     /// What binding the window found: the window and the tree the run judges, a `moved-pin`
@@ -3296,7 +3421,7 @@ impl Report {
         out: &mut String,
     ) {
         self.window = base.map(Window::record);
-        self.tree = Some(base::tree_record(project.root()));
+        self.tree = (!args.hook).then(|| base::tree_record(project.root()));
         for review in selected(project.moves(), wanted).filter_map(moved_review) {
             if !args.json {
                 let _ = writeln!(
@@ -3341,8 +3466,20 @@ impl Report {
         if let (Some(why), true) = (&against.unlaid, gate.check.needs.the_tree()) {
             return self.unlaid(args, gate, why, out);
         }
-        let ((code, told, records, recorded), ms) =
-            journal::timed(|| one(args, gate, project, against));
+        let (ran, ms) = journal::timed(|| one(args, gate, project, against));
+        self.took(args, (gate, project, against), ran, ms, out);
+    }
+
+    /// One gate's result in the document: its row, its measurement record, its errors and what
+    /// it found. The Stop hands it the result its own run already took. Spec 11.7.
+    fn took(
+        &mut self,
+        args: &Args,
+        (gate, project, against): (&Gate, &Project, &Against),
+        (code, told, records, recorded): Ran,
+        ms: u64,
+        out: &mut String,
+    ) {
         let axes = axes(code, &recorded);
         self.axes = self.axes.and(axes);
         printed(
@@ -3354,12 +3491,9 @@ impl Report {
         self.gates.push(row(gate, code, (&records, &recorded), ms));
         self.measured.add(gate.check, &records);
         self.capabilities.push(active_row(gate, axes, &records));
-        self.measurements.push(measurement(
-            &gate.name,
-            gate.check,
-            axes,
-            (&recorded.holes, &recorded.derived),
-        ));
+        let basis = basis(gate, (project, against), &records, &recorded);
+        self.measurements
+            .push(measurement(&gate.name, axes, &recorded.holes, basis));
         self.errors.extend(gate_errors(&gate.name, code, &told));
         self.reported.extend(unmeasured_by(&gate.name, &told));
         self.gathered(&gate.name, recorded);
@@ -3489,7 +3623,7 @@ impl Report {
         self.capabilities
             .push(active_row(gate, axes, &Records::default()));
         self.measurements
-            .push(measurement(&gate.name, gate.check, axes, (&[], &[])));
+            .push(measurement(&gate.name, axes, &[], produced(gate.check)));
         self.errors
             .push(error_record(ErrorKind::Git, Some(&gate.name), &message));
     }
@@ -3542,7 +3676,7 @@ impl Report {
         let holes = render::json(&told).holes;
         self.capabilities.push(inapplicable(check, Some(axes)));
         self.measurements
-            .push(measurement(check.name, check, axes, (&holes, &[])));
+            .push(measurement(check.name, axes, &holes, produced(check)));
     }
 
     /// The rows of the capabilities that do not apply, which a whole run lists. Spec 11.7.
@@ -3565,11 +3699,24 @@ impl Report {
             .push(error_record(fault.kind, None, &fault.error.to_string()));
     }
 
-    fn finish(mut self, args: &Args, out: &mut String) -> u8 {
+    /// The run's axes once every record is in: a hole makes it incomplete, and a review item
+    /// makes a pass a review. Spec 7.5.
+    fn aggregate(&mut self) {
         self.axes.incomplete |= !self.holes.is_empty();
         if !self.reviews.is_empty() {
             self.axes.judgement = self.axes.judgement.max(Judgement::Review);
         }
+    }
+
+    /// The document of a Stop's run, which the journal line holds under `result`. Spec 13.1.
+    fn closed(mut self) -> Value {
+        self.aggregate();
+        let exit = self.axes.exit();
+        self.document(exit)
+    }
+
+    fn finish(mut self, args: &Args, out: &mut String) -> u8 {
+        self.aggregate();
         let exit = self.axes.exit();
         let (judgement, measurement) = match self.stopped {
             true => ("none", "none"),
@@ -3603,7 +3750,11 @@ impl Report {
                 0,
                 json!({
                     "check": null,
-                    "basis": {},
+                    "basis": {
+                        "producer": null,
+                        "klin": env!("CARGO_PKG_VERSION"),
+                        "policy": self.built,
+                    },
                     "state": if holes.is_empty() { "complete" } else { "incomplete" },
                     "holes": holes,
                 }),
@@ -3653,10 +3804,9 @@ fn active_row(gate: &Gate, axes: Axes, records: &Records) -> Value {
 /// survey knows, counted once for every gate. A whole run's scope is every surveyed file, and a
 /// changed run's is its changed files. Spec 7.2.
 fn by_extension(project: &Project, against: &Against) -> BTreeMap<String, usize> {
-    let listed = project.tree().files().unwrap_or_default();
     let files: Vec<&String> = match &against.scope {
         Some(scope) => scope.iter().collect(),
-        None => listed.iter().collect(),
+        None => project.tree().files().unwrap_or_default().iter().collect(),
     };
     let mut counted = BTreeMap::new();
     for file in files {
@@ -3779,22 +3929,75 @@ fn inapplicable(check: &catalogue::Row, named: Option<Axes>) -> Value {
     })
 }
 
-/// One measurement record: what produced it, the policy it used, and its holes. Spec 8.1, 11.7.
-fn measurement(
-    name: &str,
-    check: &catalogue::Row,
-    axes: Axes,
-    (holes, policy): (&[Value], &[Value]),
-) -> Value {
+/// One measurement record: its basis, its state and its holes. Spec 8.1, 11.7.
+fn measurement(name: &str, axes: Axes, holes: &[Value], basis: Value) -> Value {
     json!({
         "check": name,
-        "basis": {
-            "producer": { "capability": check.name, "semantics_version": check.semantics },
-            "policy": policy,
-        },
+        "basis": basis,
         "state": axes.measurement(),
         "holes": holes,
     })
+}
+
+/// The basis of a capability that measured nothing: what would have produced it, and the klin
+/// that ran. Spec 8.1.
+fn produced(check: &catalogue::Row) -> Value {
+    json!({
+        "producer": { "capability": check.name, "semantics_version": check.semantics },
+        "klin": env!("CARGO_PKG_VERSION"),
+    })
+}
+
+/// What one gate's measurement rests on: the producer and its semantics version, the klin that
+/// ran, the policy by provenance (the derived values under `policy`, what a person pinned under
+/// `pinned`, built-in for the rest) with the derivation commit, the integration entry, the scope
+/// with its coverage counts, the window and the reason of each hole. It holds no machine path,
+/// time, process id or duration, and it reads only what the run already holds, so the Stop
+/// starts no git process and reads no file for it. Spec 8.1.
+fn basis(
+    gate: &Gate,
+    (project, against): (&Project, &Against),
+    records: &Records,
+    recorded: &Recorded,
+) -> Value {
+    let pinned = pinned_entry(gate, project);
+    let integration = (gate.check.activation == Activation::Integration).then(|| {
+        json!({
+            "entry": gate.name,
+            "run": pinned.and_then(|entry| entry.get("run")),
+            "report": pinned.and_then(|entry| entry.get("report")),
+        })
+    });
+    let mut basis = produced(gate.check);
+    basis["policy"] = recorded.derived.clone().into();
+    basis["pinned"] = pinned.cloned().into();
+    basis["derivation"] = project.surveyed_commit().into();
+    basis["integration"] = integration.into();
+    basis["scope"] = json!({
+        "changed": against.scope.is_some(),
+        "coverage": records.coverage,
+    });
+    basis["window"] = against.base.as_ref().map_or(Value::Null, |base| {
+        json!({ "kind": base.kind.name(), "before": base.before, "after": "the working tree" })
+    });
+    basis["holes"] = recorded
+        .holes
+        .iter()
+        .map(|hole| json!({ "reason": hole["reason"] }))
+        .collect();
+    basis
+}
+
+/// What a person pinned for this gate: its own entry where each entry is a gate, and the whole
+/// section otherwise.
+fn pinned_entry<'a>(gate: &Gate, project: &'a Project) -> Option<&'a Value> {
+    let section = project.config.pinned(gate.check.section)?;
+    match gate.check.gate_per_entry {
+        true => section.as_array()?.iter().find(|entry| {
+            entry.get(contract::NAMED.name).and_then(Value::as_str) == Some(gate.name.as_str())
+        }),
+        false => Some(section),
+    }
 }
 
 /// The capability-scope errors of a gate that is exit 2, each under its kind. A gate that
@@ -3844,6 +4047,11 @@ fn finding_record(gate: &str, finding: Value) -> Value {
         fields.insert("remedy".into(), remedy);
     }
     Value::Object(fields)
+}
+
+/// A note of the run itself, with no check. Spec 11.7.
+fn note(kind: &str, message: &str) -> Value {
+    json!({ "check": null, "kind": kind, "coverage": false, "message": message })
 }
 
 /// A note as the check document names it: its kind, and the words a person reads. Spec 11.7.

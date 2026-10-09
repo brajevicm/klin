@@ -1041,7 +1041,7 @@ fn legacy_unreached_debt_stays_a_note_in_a_turn_that_edits_another_file() {
         .last()
         .and_then(|line| serde_json::from_str(line).ok())
         .unwrap_or_default();
-    let row = last["gates"]
+    let row = harness::gate_rows(&last)
         .as_array()
         .and_then(|gates| gates.iter().find(|gate| gate["name"] == "reachability"))
         .cloned()

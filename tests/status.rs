@@ -87,9 +87,9 @@ fn status_reports_each_integrations_state() {
 }
 
 /// The local window is the stamp's verdict, and `status` reads it without writing anything to
-/// the state directory. Spec 11.4.
+/// the state directory. `report` reads the journal the same way. Spec 11.4, 13.2.
 #[test]
-fn status_reports_the_window_verdict_and_writes_nothing() {
+fn status_and_report_read_the_window_and_write_nothing() {
     let tree = Tree::new();
     tree.write("klin.json", r#"{"doc_size": {"README.md": 3}}"#);
     tree.words("README.md", 2);
@@ -109,6 +109,17 @@ fn status_reports_the_window_verdict_and_writes_nothing() {
     let text = tree.run(&["status"]);
     assert!(text.says("window: red"), "{}", text.out);
     assert_eq!(files(&tree), before, "status wrote to the state directory");
+
+    for args in [
+        &["report"][..],
+        &["report", "--details"],
+        &["report", "--json"],
+        &["report", "--since", "7d"],
+    ] {
+        let run = tree.run(args);
+        assert_eq!(run.code, 0, "{args:?}: {}", run.out);
+    }
+    assert_eq!(files(&tree), before, "report wrote to the state directory");
 }
 
 /// Without a klin.json `status` still reads, and says what it runs under. Spec 5.1, 11.4.

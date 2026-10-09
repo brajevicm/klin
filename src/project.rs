@@ -103,6 +103,12 @@ impl Project {
             .get_or_init(|| survey::facts(&self.tree, self.derivation().as_deref(), self.keeps))
     }
 
+    /// The derivation commit of the facts a check of this run already read, and `None` where
+    /// no check read them, so naming it surveys nothing. Spec 8.1.
+    pub fn surveyed_commit(&self) -> Option<&str> {
+        self.facts.get()?.commit.as_deref()
+    }
+
     fn derivation(&self) -> &Option<String> {
         self.derivation.get_or_init(|| {
             self.by_hand
