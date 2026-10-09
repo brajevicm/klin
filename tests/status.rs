@@ -223,3 +223,22 @@ fn status_reads_klins_skill_without_hook_lines_as_a_conflict() {
     let text = tree.run_with(&[("HOME", at.as_str())], &["status"]);
     assert!(text.says("holds none of klin's hook lines"), "{}", text.out);
 }
+
+/// The same skill alone in a repository reads as a conflict too, not as `missing`: the skill is
+/// part of a copy, and that copy lost its hook lines. Spec 11.4.
+#[test]
+fn status_reads_klins_skill_without_hook_lines_in_a_repository_as_a_conflict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    assert_eq!(tree.run(&["setup", "--host", "claude"]).code, 0);
+    tree.remove(".claude/settings.json");
+
+    let document = status(&tree);
+    assert_eq!(
+        state(&document, "claude"),
+        ["project hooks conflict"],
+        "{document}"
+    );
+    let text = tree.run(&["status"]);
+    assert!(text.says("holds none of klin's hook lines"), "{}", text.out);
+}
