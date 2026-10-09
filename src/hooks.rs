@@ -17,6 +17,7 @@ const SKILL: &str = include_str!("../plugins/klin/skills/klin/SKILL.md");
 /// the text it replaced, or the status test that reads git history fails. A file that holds one
 /// of them is klin's, written by an earlier `setup` and changed by nobody. Spec B.19.3.
 const EARLIER_SKILLS: &[u64] = &[
+    0x16e8_4f5d_63b9_eb01,
     0x5c53_ac81_e30d_2e9b,
     0x38ce_1765_4060_07d6,
     0x2392_3714_0eaf_6407,

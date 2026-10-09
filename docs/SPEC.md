@@ -7301,7 +7301,8 @@ resolve the repository root, the selected hosts, the plugins beside them, every
 target path and every host file's shape before it writes anything, so a
 deterministic error leaves every file as it was. Each owned file is written
 whole, through a neighbour and a rename, so a run that dies partway leaves the
-file it found. It follows a path that is a link, so a settings file kept in a
+file it found. The neighbour is made new: a file or a link already at its path
+is removed first and never written through. It follows a path that is a link, so a settings file kept in a
 dotfiles tree stays a link, and it keeps the permissions the file had. Where a
 filesystem failure still happens after the first write, the output MUST name
 what was written and what was not, and the run MUST NOT print a plain success.

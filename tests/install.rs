@@ -960,6 +960,27 @@ fn install_writes_no_missing_skill_under_a_linked_directory_without_a_terminal()
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
 }
 
+/// klin writes a file whole through a neighbour it renames over it. A neighbour a repository
+/// planted as a link is replaced, never written through. Spec B.19.3.
+#[cfg(unix)]
+#[test]
+fn install_writes_through_no_planted_neighbour_link() {
+    let tree = a_repository();
+    let outside = Tree::bare();
+    let held = outside.write("sentinel", "outside\n");
+    assert!(std::fs::create_dir_all(tree.path(".claude/skills/klin")).is_ok());
+    let neighbour = tree.path(".claude/skills/klin/SKILL.writing");
+    assert!(std::os::unix::fs::symlink(&held, &neighbour).is_ok());
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(skill_at(&held), "outside\n");
+    assert_eq!(
+        skill_at(&tree.path(".claude/skills/klin/SKILL.md")),
+        CANONICAL_SKILL
+    );
+}
+
 /// On a terminal the question names the file the link reaches, and a yes replaces it.
 /// Spec B.19.3.
 #[cfg(unix)]

@@ -121,11 +121,12 @@ travel with the repository, and does not reach a cloud or remote agent. The
 flag is --user, never --global.
 
 When klin setup finds no skill file, it writes the canonical skill. When
-the file is byte-identical, it does nothing. When it differs, it reports an
-explicit conflict and never overwrites the person's file. After a binary
-update, rerun klin setup when klin update names an integration that is not
-current, to reconcile files klin can safely own; resolve a different file
-as a person rather than losing its contents. The standalone
+the file is byte-identical, it does nothing. When it holds an earlier klin
+skill, it replaces it. When it differs, it asks the person on a terminal
+before it replaces it, and without a terminal it replaces it and prints the
+path. A skill that a link sends outside its own path is written only on a
+yes at a terminal. After a binary update, rerun klin setup when klin update
+names an integration that is not current. The standalone
 route copies this skill only; plugin slash commands remain plugin-owned.
 
 klin setup --pin also writes derived ceilings into klin.json as policy a
