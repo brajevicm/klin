@@ -372,6 +372,10 @@ fn renaming_a_pinned_document_keeps_it_measured_and_adds_a_moved_pin() {
         "{report}"
     );
 
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(!stop.says("NOTE: the pinned document"), "{}", stop.out);
+
     tree.write("docs/manual.md", &document(110));
     let run = tree.run(&["check"]);
     assert_eq!(run.code, 1, "{}", run.out);
@@ -388,9 +392,13 @@ fn a_renamed_pinned_document_over_its_ceiling_in_the_base_is_held() {
     let tree = documented(150);
     tree.git(&["mv", "docs/guide.md", "docs/manual.md"]);
 
-    let run = tree.run(&["check", "--json"]);
+    let run = tree.run(&["check", "doc-size"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(moved_pins(&run.json()).len(), 1, "{}", run.out);
+    assert!(
+        run.says("docs/manual.md is 150 words, over its ceiling of 100, held at the base"),
+        "{}",
+        run.out
+    );
 }
 
 #[test]
@@ -451,6 +459,10 @@ fn renaming_the_files_a_convention_in_names_keeps_them_measured_and_adds_a_moved
     assert_eq!(pins[0]["file"], "src/core", "{report}");
     let said = pins[0]["text"].as_str().unwrap_or_default();
     assert!(said.contains("convention \"no-spawn\""), "{said}");
+
+    let stop = harness::feed(tree.root(), harness::AGENT, A_STOP);
+    assert_eq!(stop.code, 0, "{}", stop.out);
+    assert!(!stop.says("NOTE: the pinned"), "{}", stop.out);
 
     tree.write("src/engine/a.rs", &format!("{}{SPAWN}", many()));
     let run = tree.run(&["check"]);

@@ -1058,6 +1058,9 @@ Rules:
   finding by moving its file out of scope, without blocking a requested
   move. The kept membership holds in both trees and against an `except`
   path too, so a file renamed under an `except` path is still measured.
+  **Known limit:** `conventions` reads the path each tree holds, so a file
+  renamed out of a convention's `in` keeps no membership there, and the
+  convention does not measure it at its new path.
 - **Moved into a skipped directory.** A source file, of a language klin
   reads, that the change moved by a detected rename from a path under no
   directory of the default skip set to a path under one, such as `out/`,
