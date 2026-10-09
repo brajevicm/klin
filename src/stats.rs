@@ -9,7 +9,8 @@ use serde_json::Value;
 use crate::check::catalogue;
 use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
-use crate::{git::Repo, journal, turn};
+use crate::journal::{self, Dated};
+use crate::{git::Repo, turn};
 
 /// What needs the person's attention, and what klin was worth. The report reads the journal of
 /// 13.1 and the stamp's time, and nothing else: it re-runs no check, reads no working tree,
@@ -683,13 +684,13 @@ struct Evidence {
     reviews: Vec<Review>,
     holes: Vec<Holed>,
     not_measured: Vec<Unmeasured>,
-    advisory: Vec<(u64, String)>,
-    notices: Vec<(u64, String)>,
+    advisory: Vec<Dated>,
+    notices: Vec<Dated>,
 }
 
 impl Evidence {
     /// The evidence of the scope's Stop lines, beside the open window's notices. Spec 13.2.
-    fn read(lines: &[Value], notices: Vec<(u64, String)>) -> Evidence {
+    fn read(lines: &[Value], notices: Vec<Dated>) -> Evidence {
         let mut out = Evidence {
             notices,
             ..Evidence::default()
@@ -697,7 +698,10 @@ impl Evidence {
         for line in lines.iter().filter(|line| kind(line) == "stop") {
             let time = at(line);
             if let Some(reason) = line["advisory"].as_str() {
-                out.advisory.push((time, reason.to_string()));
+                out.advisory.push(Dated {
+                    time,
+                    text: reason.to_string(),
+                });
             }
             out.reviewed(line, time);
             out.holed(line, time);
@@ -709,26 +713,22 @@ impl Evidence {
     /// The review items a Stop reported, each kept once with the last time a Stop saw it.
     fn reviewed(&mut self, line: &Value, time: u64) {
         for item in held(line, "reviews") {
-            let same = |one: &&mut Review| {
+            let same = |one: &Review| {
                 one.check == item["check"]
                     && one.kind == word(item, "kind")
                     && one.file == item["file"]
                     && one.text == item["text"]
             };
-            match self.reviews.iter_mut().find(same) {
-                Some(one) => {
-                    one.last_seen = time;
-                    one.reason = item["reason"].clone();
-                }
-                None => self.reviews.push(Review {
-                    check: item["check"].clone(),
-                    kind: word(item, "kind").to_string(),
-                    file: item["file"].clone(),
-                    text: item["text"].clone(),
-                    reason: item["reason"].clone(),
-                    last_seen: time,
-                }),
-            }
+            let one = upsert(&mut self.reviews, same, || Review {
+                check: item["check"].clone(),
+                kind: word(item, "kind").to_string(),
+                file: item["file"].clone(),
+                text: item["text"].clone(),
+                reason: Value::Null,
+                last_seen: time,
+            });
+            one.last_seen = time;
+            one.reason = item["reason"].clone();
         }
     }
 
@@ -737,18 +737,13 @@ impl Evidence {
         for record in held(line, "measurements") {
             for hole in list(record, "holes") {
                 let (check, reason) = (&record["check"], word(hole, "reason"));
-                match self
-                    .holes
-                    .iter_mut()
-                    .find(|one| one.check == *check && one.reason == reason)
-                {
-                    Some(one) => one.last_seen = time,
-                    None => self.holes.push(Holed {
-                        check: check.clone(),
-                        reason: reason.to_string(),
-                        last_seen: time,
-                    }),
-                }
+                let same = |one: &Holed| one.check == *check && one.reason == reason;
+                upsert(&mut self.holes, same, || Holed {
+                    check: check.clone(),
+                    reason: reason.to_string(),
+                    last_seen: time,
+                })
+                .last_seen = time;
             }
         }
     }
@@ -772,21 +767,29 @@ impl Evidence {
                 (&finding["check"], reason, word(finding, "file"))
             });
         for (check, reason, file) in gaps.chain(limits).chain(lost) {
-            match self
-                .not_measured
-                .iter_mut()
-                .find(|one| one.check == *check && one.reason == reason && one.file == file)
-            {
-                Some(one) => one.last_seen = time,
-                None => self.not_measured.push(Unmeasured {
-                    check: check.clone(),
-                    reason: reason.to_string(),
-                    file: file.to_string(),
-                    last_seen: time,
-                }),
-            }
+            let same =
+                |one: &Unmeasured| one.check == *check && one.reason == reason && one.file == file;
+            upsert(&mut self.not_measured, same, || Unmeasured {
+                check: check.clone(),
+                reason: reason.to_string(),
+                file: file.to_string(),
+                last_seen: time,
+            })
+            .last_seen = time;
         }
     }
+}
+
+/// The entry of `list` that `same` finds, or a new one `made` pushes, so each key is kept once.
+fn upsert<T>(list: &mut Vec<T>, same: impl Fn(&T) -> bool, made: impl FnOnce() -> T) -> &mut T {
+    let at = match list.iter().position(same) {
+        Some(at) => at,
+        None => {
+            list.push(made());
+            list.len() - 1
+        }
+    };
+    &mut list[at]
 }
 
 fn plural(count: usize, one: &str, many: &str) -> String {
@@ -967,7 +970,7 @@ impl Report {
         scope: Scope,
         now: u64,
         skipped: u64,
-        notices: Vec<(u64, String)>,
+        notices: Vec<Dated>,
         empty: bool,
     ) -> Report {
         let regressions = regressions(lines);
@@ -1081,8 +1084,11 @@ fn evidence_lines(evidence: &Evidence) -> Vec<String> {
             "{many} Stops were advisory: the history moved, so klin blocked nothing."
         )),
     }
-    for (_, message) in &evidence.notices {
-        said.push(format!("klin left you a notice in this window:\n{message}"));
+    for notice in &evidence.notices {
+        said.push(format!(
+            "klin left you a notice in this window:\n{}",
+            notice.text
+        ));
     }
     said
 }
@@ -1255,7 +1261,7 @@ fn evidence(out: &mut String, report: &Report, offset: i64) {
     }
     if !held.advisory.is_empty() {
         let _ = writeln!(out, "\nAdvisory");
-        for (time, reason) in &held.advisory {
+        for Dated { time, text: reason } in &held.advisory {
             let when = day(*time, report.now, offset);
             let _ = writeln!(
                 out,
@@ -1395,11 +1401,11 @@ fn json(out: &mut String, report: &Report) {
             "check": one.check, "reason": one.reason, "file": one.file,
             "last_seen": one.last_seen,
         })).collect::<Vec<Value>>(),
-        "notices": held.notices.iter().map(|(time, message)| serde_json::json!({
-            "time": time, "message": message, "delivered": false,
+        "notices": held.notices.iter().map(|notice| serde_json::json!({
+            "time": notice.time, "message": notice.text, "delivered": false,
         })).collect::<Vec<Value>>(),
-        "advisory": held.advisory.iter().map(|(time, reason)| serde_json::json!({
-            "time": time, "reason": reason,
+        "advisory": held.advisory.iter().map(|advisory| serde_json::json!({
+            "time": advisory.time, "reason": advisory.text,
         })).collect::<Vec<Value>>(),
         "skipped_lines": report.confidence.skipped,
         "episodes": report.regressions.iter().map(episode).collect::<Vec<Value>>(),

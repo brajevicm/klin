@@ -91,7 +91,7 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "last_advisory": last_advisory(lines),
         "notices": journal::open_notices(lines, held.commit.as_deref())
             .into_iter()
-            .map(|(time, message)| json!({"time": time, "message": message}))
+            .map(|notice| json!({"time": notice.time, "message": notice.text}))
             .collect::<Vec<Value>>(),
     });
     match held.verdict {

@@ -576,6 +576,11 @@ fn ran(
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Leaves, Option<Vec<String>>, Option<String>) {
+    let handing = Handing {
+        window,
+        event,
+        lost,
+    };
     let (outcome, build_ms) = journal::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
@@ -585,7 +590,6 @@ fn ran(
                 kind: ErrorKind::Configuration,
                 error: problem,
             };
-            let handing = (window, event, lost);
             let (code, note, _) = handed(args, project, Err(fault), handing, log, out);
             return (code, Leaves::Nothing, None, note);
         }
@@ -616,7 +620,6 @@ fn ran(
                 .as_ref()
                 .map(|tally| tally.reported.clone())
                 .unwrap_or_default();
-            let handing = (window, event, lost);
             let (code, note, advised) = handed(args, project, judged, handing, log, out);
             let asked = (code == BLOCKED).then_some(reported);
             let leaves = Leaves::measured(verdict, asked.is_some(), advised);
@@ -655,6 +658,15 @@ fn sorted(
     }
 }
 
+/// What a Stop hands its finished run over with: the window it judged, the host event, and
+/// whether it lost the state lock.
+#[derive(Clone, Copy)]
+struct Handing<'a> {
+    window: Option<&'a Window>,
+    event: Option<&'a Event>,
+    lost: bool,
+}
+
 /// What the hook does with a run it finished: report it, and block the stop or let it end with
 /// the note it leaves for the person, and whether it was an advisory Stop that measured, which
 /// blocks nothing for a finding and tells what it found. Spec 6.6.
@@ -662,7 +674,11 @@ fn handed(
     args: &Args,
     project: &Project,
     outcome: Result<Tally, Fault>,
-    (window, event, lost): (Option<&Window>, Option<&Event>, bool),
+    Handing {
+        window,
+        event,
+        lost,
+    }: Handing,
     log: &mut journal::Stop,
     out: &mut String,
 ) -> (u8, Option<String>, bool) {

@@ -211,24 +211,30 @@ pub fn line(stop: &Stop) -> Value {
 /// The notices of the open window that only the journal holds: those a Stop left under the
 /// current stamp on a host with no channel for them, newest time per message. A notice expires
 /// when the stamp moves, so the stamp commit, not a clock, bounds them. Spec 10.7.
-pub fn open_notices(lines: &[Value], stamp: Option<&str>) -> Vec<(u64, String)> {
+pub fn open_notices(lines: &[Value], stamp: Option<&str>) -> Vec<Dated> {
     let Some(stamp) = stamp else {
         return Vec::new();
     };
-    let mut out: Vec<(u64, String)> = Vec::new();
-    for line in lines.iter().filter(|line| line["kind"] == "stop") {
+    let mut out: Vec<Dated> = Vec::new();
+    for line in lines.iter().rev().filter(|line| line["kind"] == "stop") {
         let notice = &line["notice"];
-        if notice["delivered"] != false || notice["stamp"] != stamp {
-            continue;
-        }
-        let time = line["time"].as_u64().unwrap_or_default();
-        let message = notice["message"].as_str().unwrap_or_default().to_string();
-        match out.iter_mut().find(|(_, held)| *held == message) {
-            Some(held) => held.0 = time,
-            None => out.push((time, message)),
+        let text = notice["message"].as_str().unwrap_or_default();
+        let open = notice["delivered"] == false && notice["stamp"] == stamp;
+        if open && !out.iter().any(|held| held.text == text) {
+            out.push(Dated {
+                time: line["time"].as_u64().unwrap_or_default(),
+                text: text.to_string(),
+            });
         }
     }
+    out.reverse();
     out
+}
+
+/// A line's time and the words it records, such as a notice's message or an advisory reason.
+pub struct Dated {
+    pub time: u64,
+    pub text: String,
 }
 
 /// The note of an ingress that failed without a decision: a usage error, an event klin cannot
