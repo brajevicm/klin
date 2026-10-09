@@ -605,7 +605,7 @@ fn an_unparsed_file_is_named_by_each_caller_as_before() {
     let old = "note src/old_broken.rs src/old_broken.rs is not measured (unreadable) — the Rust grammar finds an error at line 1, column 1";
     assert_eq!(lines(&seen["whole"]), [r#""REVIEW" 0"#, new, old]);
     assert_eq!(lines(&seen["changed"]), [r#""REVIEW" 0"#, new]);
-    assert_eq!(lines(&seen["hook"]), [r#""PASS" 0"#]);
+    assert_eq!(lines(&seen["hook"]), [r#""REVIEW" 0"#]);
 }
 
 #[test]
