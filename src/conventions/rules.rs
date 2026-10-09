@@ -14,7 +14,7 @@ use crate::error::Error;
 use crate::key::Key;
 use crate::ratchet::Finding;
 use crate::record::Values;
-use crate::scope::{self, Moves, Pinned, Selector};
+use crate::scope::{self, Moves, Selector};
 use crate::syntax::pattern::{self, Pattern};
 use crate::syntax::{self, Parsed, Unparsed};
 use crate::tree::Tree;
@@ -147,8 +147,10 @@ impl Convention {
 
     /// The convention following the `in` paths the change moved. Spec 7.3.
     fn followed(mut self, moves: &Moves) -> Convention {
-        let pinned = Pinned::Convention(self.name.clone());
-        for (path, renamed) in moves.pinned_as(SECTION, &pinned) {
+        let followed: Vec<_> = moves
+            .pinned_where(SECTION, |kind| kind.convention(&self.name))
+            .collect();
+        for (path, renamed) in followed {
             self.moved.push(path.to_string());
             self.kept.extend(renamed.iter().map(|(_, now)| now.clone()));
         }

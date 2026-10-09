@@ -391,52 +391,34 @@ impl Moves {
 
     /// The paths this run keeps in a section's scope because the change moved them.
     fn kept(&self, section: &str) -> Vec<String> {
-        let mut kept = Vec::new();
-        for moved in self.iter().filter(|moved| moved.section() == Some(section)) {
-            match moved {
-                Moved::Pin {
-                    pinned: Pinned::In,
-                    renamed,
-                    ..
-                } => kept.extend(renamed.iter().map(|(_, path)| path.clone())),
-                Moved::Pin { .. } => {}
-                Moved::Out { path, .. } => kept.push(path.clone()),
-                Moved::Skipped { .. } => {}
-            }
-        }
-        kept
+        self.pinned_where(section, |kind| *kind == Pinned::In)
+            .flat_map(|(_, renamed)| renamed.iter().map(|(_, now)| now.clone()))
+            .chain(self.out_of(section).into_iter().map(str::to_owned))
+            .collect()
     }
 
     /// The pinned `in` paths of the section the change moved, which may select nothing.
     fn pinned(&self, section: &str) -> Vec<String> {
-        self.iter()
-            .filter_map(|moved| match moved {
-                Moved::Pin {
-                    section: of,
-                    pinned: Pinned::In,
-                    path,
-                    ..
-                } if of == section => Some(path.clone()),
-                _ => None,
-            })
+        self.pinned_where(section, |kind| *kind == Pinned::In)
+            .map(|(path, _)| path.to_owned())
             .collect()
     }
 
-    /// Each path pinned as `pinned` in the section that the change moved, with the files git
-    /// saw renamed out of it, by the path the base held and the path they have now.
-    pub fn pinned_as<'a>(
+    /// Each path of the section that the change moved and whose kind of pin `is` accepts, with
+    /// the files git saw renamed out of it, by the path the base held and the path they have now.
+    pub fn pinned_where<'a>(
         &'a self,
         section: &'a str,
-        pinned: &'a Pinned,
+        is: impl Fn(&Pinned) -> bool + 'a,
     ) -> impl Iterator<Item = (&'a str, &'a [(String, String)])> {
         self.iter().filter_map(move |moved| match moved {
             Moved::Pin {
                 section: of,
-                pinned: kind,
+                pinned,
                 path,
                 renamed,
                 ..
-            } if of == section && kind == pinned => Some((path.as_str(), renamed.as_slice())),
+            } if of == section && is(pinned) => Some((path.as_str(), renamed.as_slice())),
             _ => None,
         })
     }
@@ -488,6 +470,13 @@ pub enum Pinned {
     In,
     Convention(String),
     Document,
+}
+
+impl Pinned {
+    /// Whether this pins the `in` of the convention with this name.
+    pub fn convention(&self, named: &str) -> bool {
+        matches!(self, Pinned::Convention(name) if name == named)
+    }
 }
 
 impl Moved {

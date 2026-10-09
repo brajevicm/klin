@@ -367,7 +367,7 @@ fn pinned(config: &Config, moves: &Moves, pins: &Map<String, Value>) -> Result<L
         });
         let moved = Selector::parse(DOCUMENT, name).ok().and_then(|pin| {
             moves
-                .pinned_as(SECTION, &Pinned::Document)
+                .pinned_where(SECTION, |kind| *kind == Pinned::Document)
                 .find(|(path, _)| *path == pin.as_str())
         });
         match moved {
