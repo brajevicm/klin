@@ -1698,7 +1698,7 @@ Text output:
 | --- | --- |
 | `current` | The host files hold the hook lines and owned files that this klin's `setup` writes. |
 | `missing` | The repository proves the host, and no copy of klin's hooks, and no skill of klin's that only this host reads, is installed for it. |
-| `conflict` | A klin-owned file was changed, deleted or cannot be read, or two copies disagree in a way B.9.8 cannot settle. klin's own skill at a scope where its host is the only host that reads it and the scope proves, and no host that reads it has a copy of klin's integration, is a conflict at that scope. A skill that two proven hosts share makes no row. |
+| `conflict` | A klin-owned file was changed, deleted or cannot be read, or two copies disagree in a way B.9.8 cannot settle. klin's own skill, the current text or an earlier one (B.19.3), at a scope where its host is the only host that reads it and the scope proves, and no host that reads it has a copy of klin's integration, is a conflict at that scope. A skill that two proven hosts share makes no row. Beside klin's hook lines, an earlier text of klin's skill is a conflict whose detail says that `klin setup` replaces it, and any other text is a conflict whose detail says that it differs from klin's skill. |
 
 - `--json` prints the document of section 11.7.
 - Exit 0 when it could read what it reports, whatever it found. Exit 2 on an
@@ -7283,7 +7283,16 @@ At project scope the selected hosts receive:
 
 At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that serves the selected host and scope carries the skill too, and klin writes the standalone copy all the same, so a teammate without the plugin has it.
 
-Skill targets participate in the same preflight as hooks. A missing file is written, a byte-identical file is already current, and a different existing file is an explicit conflict that is never overwritten. A later binary may reconcile an older standalone file only when klin can prove it owns that file; without that proof, the different file is preserved and refused. The conflict is found before the marker or any host integration is written. Rerunning `klin install` is the reconciliation step after a binary update.
+Skill targets participate in the same preflight as hooks. A missing file is written, and a byte-identical file is already current. A file that holds, byte for byte, a text that `plugins/klin/skills/klin/SKILL.md` held earlier in klin's history is klin's: klin wrote it and nobody changed it, so `setup` replaces it without asking. The binary carries a hash of every such earlier text, and a CLI test fails when that list misses a version from git history.
+
+Any other existing skill text needs consent, at project scope and at user scope alike:
+
+- When stdin is a terminal, `setup` asks once per skill path, naming the path. A yes replaces the file. Any other answer keeps the file, and the run writes no file at all.
+- When stdin is not a terminal, `setup` replaces the file and prints the path it replaced. At project scope `git diff` shows the change. At user scope the printed line is the only record.
+- A skill path that resolves outside its own path, because the file or a directory above it is a link, can reach a file that is no skill, such as `.git/config`, or a directory that no `git diff` shows. This rule holds for every skill write: a missing skill, an earlier text of klin's skill, and a changed skill. On a terminal the question names the file the link reaches, and a yes writes there. Without a terminal `setup` names the link and the file it reaches, and writes no file at all.
+- At the write, `setup` resolves the path again, before it makes any directory. A path that no longer reaches the file it planned to write is not written, and the run reports the write as incomplete.
+
+`setup` asks during preflight, before the marker or any host integration is written. Rerunning `klin setup` is the reconciliation step after a binary update. `klin status` (11.4) reports an earlier text of klin's skill as a conflict whose detail says that `klin setup` replaces it, apart from a skill that differs from klin's skill.
 
 The standalone route copies the skill only. Slash commands and other host-specific command surfaces remain plugin-owned. User scope is local to one machine and does not reach a cloud or remote agent.
 
@@ -7292,7 +7301,8 @@ resolve the repository root, the selected hosts, the plugins beside them, every
 target path and every host file's shape before it writes anything, so a
 deterministic error leaves every file as it was. Each owned file is written
 whole, through a neighbour and a rename, so a run that dies partway leaves the
-file it found. It follows a path that is a link, so a settings file kept in a
+file it found. The neighbour is made new: a file or a link already at its path
+is removed first and never written through. It follows a path that is a link, so a settings file kept in a
 dotfiles tree stays a link, and it keeps the permissions the file had. Where a
 filesystem failure still happens after the first write, the output MUST name
 what was written and what was not, and the run MUST NOT print a plain success.

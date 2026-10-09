@@ -7,7 +7,7 @@
 //! best-effort and not a replacement, and a base file's move to a renamed path, which is a
 //! semantic move of an existing path and not new content overwriting a target.
 
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 /// One replacement: `bytes` written over `target` atomically, and, where `keep_mode_from`
@@ -35,8 +35,18 @@ fn temporary(target: &Path) -> PathBuf {
     target.with_extension("writing")
 }
 
+/// The neighbour is made new, so a file or a link already at its path, such as one a repository
+/// planted, is removed and never written through.
 fn place(beside: &Path, bytes: &[u8], keep_mode_from: Option<&Path>) -> io::Result<()> {
-    std::fs::write(beside, bytes)?;
+    match std::fs::remove_file(beside) {
+        Err(why) if why.kind() != io::ErrorKind::NotFound => return Err(why),
+        _ => {}
+    }
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(beside)?
+        .write_all(bytes)?;
     if let Some(from) = keep_mode_from
         && let Ok(held) = std::fs::metadata(from)
     {
