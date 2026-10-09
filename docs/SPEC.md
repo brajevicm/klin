@@ -1901,14 +1901,15 @@ the project's commands ran. No message, document or hook text may claim that
   non-zero exit fails the job. When the run prints no JSON document, the
   Action prints what the run printed. The Action adds `--json` itself, so
   `args` holds selectors and flags other than `--json`.
-- When the Action cannot report, because `jq` is missing, the run printed no
+- When the Action cannot report, because `jq` is missing or broken, the run printed no
   JSON document, or writing the annotations or the summary failed, it writes
   one `error` annotation that says so and fails the job: with the exit of
   `klin check` when that is non-zero, else with 2. A report the person cannot
   see never leaves a green job.
 - It writes review items, holes, errors, failing findings, the count of
   files not measured, and the count of what it did not annotate to the job
-  summary. The summary gives every count first, then lists the items up to
+  summary. The summary gives every count first, then lists errors, holes,
+  failing findings and review items, in that order, up to
   a budget under GitHub's step summary limit of 1 MiB, and says how many
   lines it left out past it. A hole's line gives its reason and its text. It
   writes failing findings and review

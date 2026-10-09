@@ -339,7 +339,7 @@ fn the_action_without_jq_fails_a_green_job() {
     assert!(
         gated
             .printed
-            .contains("::error title=klin::the Action needs jq"),
+            .contains("::error title=klin::the Action needs a working jq"),
         "{}",
         gated.printed
     );
@@ -358,11 +358,11 @@ fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
         "not_measured": 20_000,
     });
     tree.write(".runner/check.json", &document.to_string());
-    let printed = tree.path(".runner/check.json");
-    let fake = format!("#!/bin/sh\ncat '{}'\n", printed.display());
+    let document = tree.path(".runner/check.json");
+    let klin = format!("#!/bin/sh\ncat '{}'\n", document.display());
     let path = format!(
         "{}:{}",
-        bin(&tree, &[], &[("klin", &fake)]),
+        bin(&tree, &[], &[("klin", &klin)]),
         std::env::var("PATH").unwrap()
     );
 
@@ -379,5 +379,30 @@ fn a_summary_past_the_step_limit_keeps_its_counts_and_says_what_it_left_out() {
         gated.summary.contains("line(s) left out"),
         "{}",
         &gated.summary[gated.summary.len() - 500..]
+    );
+}
+
+#[test]
+fn a_jq_that_cannot_format_the_report_fails_the_job_and_names_the_write() {
+    let tree = tree();
+    tree.write("src/new.rs", BROKEN);
+    let jq = format!(
+        "#!/bin/sh\n[ \"$1\" = -r ] && exit 5\nexec '{}' \"$@\"\n",
+        tool("jq").display()
+    );
+    let path = bin(
+        &tree,
+        &["cat", "git", "tee"],
+        &[("klin", &klin_script()), ("jq", &jq)],
+    );
+
+    let gated = gated_on(&tree, "", &path);
+
+    assert_eq!(gated.code, 2, "{}", gated.printed);
+    assert_eq!(
+        gated.annotations("error"),
+        ["::error title=klin::the Action could not write its annotations"],
+        "{}",
+        gated.printed
     );
 }
