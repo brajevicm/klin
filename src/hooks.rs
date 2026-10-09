@@ -807,7 +807,11 @@ pub fn integrations(root: &Path) -> Vec<Integration> {
             [(Owner::Project, Some(root)), (Owner::User, home.as_deref())]
                 .into_iter()
                 .filter_map(|(scope, at)| Some((scope, at?)))
-                .flat_map(|(scope, at)| copies(host, scope, at))
+                .flat_map(|(scope, at)| {
+                    copies(host, scope, at)
+                        .into_iter()
+                        .chain(skill_alone(host, scope, at))
+                })
                 .collect();
         if rows.is_empty() && root.join(host.marker()).is_dir() {
             rows.push(Integration {
@@ -851,6 +855,29 @@ fn copies(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Vec<Integratio
         }
     });
     plugin.into_iter().chain(hooks).collect()
+}
+
+/// klin's skill at a scope that proves the host, where no host that reads that skill holds a
+/// copy of klin's integration: an install whose hook lines are gone. Spec 11.4.
+fn skill_alone(host: &'static dyn Adapter, scope: Owner, at: &Path) -> Option<Integration> {
+    let skill = at.join(host.skill_file());
+    let alone = at.join(host.marker()).is_dir()
+        && std::fs::read(&skill).is_ok_and(|text| text == SKILL.as_bytes())
+        && ADAPTERS
+            .iter()
+            .filter(|reader| reader.skill_file() == host.skill_file())
+            .all(|reader| copies(*reader, scope, at).is_empty());
+    alone.then(|| Integration {
+        host: host.name(),
+        scope,
+        route: Route::Hooks,
+        state: State::Conflict,
+        detail: format!(
+            "{} is klin's skill, and {} holds none of klin's hook lines",
+            skill.display(),
+            at.join(host.hook_file()).display()
+        ),
+    })
 }
 
 /// Whether a hook file and the skill beside it hold what this klin's `setup` writes. Only the

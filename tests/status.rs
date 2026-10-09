@@ -187,3 +187,39 @@ fn status_reads_a_missing_or_unreadable_skill_as_a_conflict() {
         "{unreadable}"
     );
 }
+
+/// klin's skill at a scope whose hook file lost klin's lines is the rest of an install, and reads
+/// as a conflict with its own detail. A skill another host's hooks still use is not alone.
+/// Spec 11.4.
+#[test]
+fn status_reads_klins_skill_without_hook_lines_as_a_conflict() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    let home = Tree::bare();
+    let at = home.root().display().to_string();
+    std::fs::create_dir_all(home.path(".cursor")).expect("cursor directory");
+    let setup = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude", "--host", "codex"],
+    );
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    home.remove(".claude/settings.json");
+
+    let run = tree.run_with(&[("HOME", at.as_str())], &["status", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let document = run.json();
+    assert_eq!(
+        state(&document, "claude"),
+        ["user hooks conflict"],
+        "{document}"
+    );
+    assert_eq!(
+        state(&document, "codex"),
+        ["user hooks current"],
+        "{document}"
+    );
+    assert!(state(&document, "cursor").is_empty(), "{document}");
+
+    let text = tree.run_with(&[("HOME", at.as_str())], &["status"]);
+    assert!(text.says("holds none of klin's hook lines"), "{}", text.out);
+}

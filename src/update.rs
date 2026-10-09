@@ -47,11 +47,35 @@ fn reconcile_hint() {
     let Ok(document) = serde_json::from_slice::<serde_json::Value>(&read.stdout) else {
         return;
     };
-    let stale: Vec<String> = document["integrations"]
+    let stale: Vec<&serde_json::Value> = document["integrations"]
         .as_array()
         .into_iter()
         .flatten()
         .filter(|row| row["state"] != hooks::State::Current.as_str())
+        .collect();
+    let (user, project): (Vec<_>, Vec<_>) = stale
+        .into_iter()
+        .partition(|row| row["scope"] == hooks::Owner::User.as_str());
+    if !project.is_empty() {
+        println!(
+            "klin: run klin setup to reconcile this repository's integration: {}.",
+            described(&project)
+        );
+    }
+    if !user.is_empty() {
+        let hosts: String = user
+            .iter()
+            .map(|row| format!(" --host {}", row["host"].as_str().unwrap_or("")))
+            .collect();
+        println!(
+            "klin: run klin setup --user{hosts} to reconcile your own integration: {}.",
+            described(&user)
+        );
+    }
+}
+
+fn described(rows: &[&serde_json::Value]) -> String {
+    rows.iter()
         .map(|row| {
             format!(
                 "{} ({}) is {}",
@@ -60,17 +84,10 @@ fn reconcile_hint() {
                 row["state"].as_str().unwrap_or("")
             )
         })
-        .collect();
-    if !stale.is_empty() {
-        println!(
-            "klin: run klin setup to reconcile this repository's integration: {}.",
-            stale.join(", ")
-        );
-    }
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
-/// The path the updated binary sits at. Linux names a running binary that was replaced on disk
-/// with a ` (deleted)` suffix, and the new binary is at the path without it.
 fn replaced(exe: PathBuf) -> PathBuf {
     match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
         Some(path) => PathBuf::from(OsStr::from_bytes(path)),

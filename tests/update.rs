@@ -58,3 +58,34 @@ fn update_names_setup_when_an_integration_is_not_current() {
     assert_eq!(current.code, 0, "{}", current.out);
     assert!(!current.says("klin setup"), "{}", current.out);
 }
+
+/// A copy in one person's home is reconciled by `klin setup --user`, so the hint names that
+/// command and the host, and never sends the person to write the repository's files. Spec 11.8.
+#[test]
+fn update_names_setup_user_for_a_skill_without_hook_lines() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}\n");
+    let home = Tree::bare();
+    let at = home.root().display().to_string();
+    let setup = tree.run_with(
+        &[("HOME", at.as_str())],
+        &["setup", "--user", "--host", "claude"],
+    );
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    home.remove(".claude/settings.json");
+    let updater = tree.write("bin/klin-update", "#!/bin/sh\nexit 0\n");
+    if let Err(why) = fs::set_permissions(&updater, fs::Permissions::from_mode(0o755)) {
+        panic!("chmod {}: {why}", updater.display());
+    }
+
+    let path = format!("{}:/usr/bin:/bin", tree.at("bin"));
+    let run = tree.run_with(&[("PATH", &path), ("HOME", at.as_str())], &["update"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("run klin setup --user --host claude"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("claude (user) is conflict"), "{}", run.out);
+    assert!(!run.says("this repository's integration"), "{}", run.out);
+}
