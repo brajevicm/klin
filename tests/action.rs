@@ -97,9 +97,17 @@ struct Gated {
 
 impl Gated {
     fn annotations(&self, level: &str) -> Vec<&str> {
+        let prefix = format!("::{level} ");
         self.printed
             .lines()
-            .filter(|line| line.starts_with(&format!("::{level} ")))
+            .filter(|line| line.starts_with(&prefix))
+            .collect()
+    }
+
+    fn levels(&self) -> Vec<&str> {
+        self.printed
+            .lines()
+            .filter_map(|line| line.strip_prefix("::")?.split(' ').next())
             .collect()
     }
 }
@@ -212,14 +220,8 @@ fn the_action_annotates_failing_findings_before_review_items_and_counts_the_rest
     let gated = gated(&tree, "-- complexity");
 
     assert_eq!(gated.code, 1, "{}", gated.printed);
-    let levels: Vec<&str> = gated
-        .printed
-        .lines()
-        .filter_map(|line| line.strip_prefix("::"))
-        .filter_map(|line| line.split(' ').next())
-        .collect();
     assert_eq!(
-        levels,
+        gated.levels(),
         [["error"; 10], ["warning"; 10]].concat(),
         "{}",
         gated.printed
