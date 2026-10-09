@@ -46,7 +46,6 @@ From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-source $HOME/.local/bin/env
 
 # Set up this repository. For Claude Code only, add --host claude.
 klin setup
