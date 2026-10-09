@@ -173,7 +173,7 @@
           "type": "object"
         }
       ],
-      "description": "The `complexity` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `complexity` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "conventions": {
       "anyOf": [
@@ -382,11 +382,11 @@
           "type": "object"
         }
       ],
-      "description": "The `dead-symbols` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `dead-symbols` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "doc_citations": {
       "const": false,
-      "description": "The `doc-citations` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate. The section reads no keys: documents and citation roots are discovered; remove the section, or set it to false."
+      "description": "The `doc-citations` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate. The section reads no keys: documents and citation roots are discovered; remove the section, or set it to false."
     },
     "doc_size": {
       "anyOf": [
@@ -421,7 +421,7 @@
           "type": "object"
         }
       ],
-      "description": "The `doc-size` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `doc-size` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "escapes": {
       "anyOf": [
@@ -474,7 +474,7 @@
           "type": "object"
         }
       ],
-      "description": "The `escapes` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `escapes` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "inventory": {
       "anyOf": [
@@ -523,7 +523,7 @@
           "type": "object"
         }
       ],
-      "description": "The `inventory` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `inventory` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "journal": {
       "additionalProperties": false,
@@ -681,11 +681,11 @@
           "type": "object"
         }
       ],
-      "description": "The `lockfile` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `lockfile` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "public_api": {
       "const": false,
-      "description": "The `public-api` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate. The section reads no keys: public surfaces are derived from Cargo library targets and package entry points; remove the section, or set it to false. A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050)."
+      "description": "The `public-api` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate. The section reads no keys: public surfaces are derived from Cargo library targets and package entry points; remove the section, or set it to false. A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050)."
     },
     "radius": {
       "additionalProperties": false,
@@ -749,7 +749,7 @@
           "type": "object"
         }
       ],
-      "description": "The `reachability` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `reachability` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "sarif": {
       "anyOf": [
@@ -835,7 +835,7 @@
           "type": "object"
         }
       ],
-      "description": "The `stubs` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and derives what the section leaves out. `false` excludes the gate."
+      "description": "The `stubs` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     }
   },
   "title": "klin.json",

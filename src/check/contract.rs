@@ -184,8 +184,8 @@ impl Activation {
     pub fn absence(self) -> &'static str {
         match self {
             Activation::Automatic => {
-                "the check runs when the tree holds what it applies to, and derives what the \
-                 section leaves out"
+                "the check runs when the tree holds what it applies to, and every key follows \
+                 its own derivation rule or default"
             }
             Activation::Policy => "the project has no such policy, so the check does not run",
             Activation::Integration => "no external tool is configured, so the check does not run",

@@ -154,6 +154,12 @@ fn the_schema_descriptions_carry_the_policy_metadata() {
         complexity.contains("`false` excludes the gate"),
         "{complexity}"
     );
+    let escapes = described(&properties["escapes"]);
+    assert!(!escapes.contains("derives"), "{escapes}");
+    assert!(
+        escapes.contains("every key follows its own derivation rule or default"),
+        "{escapes}"
+    );
     let layering = described(&properties["layering"]);
     assert!(layering.contains("the check does not run"), "{layering}");
     let sarif = described(&properties["sarif"]);
