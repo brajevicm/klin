@@ -28,3 +28,20 @@ A full rewrite of the 0.x catalogue would delay the core contract that the
 roadmap needs. A new file that stays beside the old one would leave two
 documents that both claim to be `docs/SPEC.md`. One target and one frozen
 shipped contract keep each claim true.
+
+## Amendment: one spec (#505)
+
+The roadmap reached its last step, so the split ends. `docs/SPEC-0.x.md` no
+longer exists. `docs/SPEC.md` is klin's one specification, and ADR 0025's
+authority names it alone.
+
+- Appendix B of `docs/SPEC.md` holds every 0.x section that section 0.3
+  carried forward, under its 0.x number with the prefix B. The 0.x section
+  6.3 is section B.6.3. Where the main body amends a rule of Appendix B, the
+  main body wins.
+- Points 1 to 4 above no longer apply. A change to shipped behavior follows
+  `docs/SPEC.md`, the ADRs and the CLI tests.
+- A `Spec N.N` reference in `src/` or in an older ADR that names a 0.x section
+  now names section B.N.N of `docs/SPEC.md`, when Appendix B holds it, or
+  the main-body section that the table of section 0.3 lists as its
+  replacement.
