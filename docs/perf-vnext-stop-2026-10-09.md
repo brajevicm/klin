@@ -9,29 +9,49 @@ Stop with the baseline of `docs/perf-baseline-748d01fc-2026-10-02.md`.
   section 6.6, the `aborted` write and the told-once record.
 - Baseline: the binary built from `748d01fc`, through `KLIN_BIN`. Its Stop
   is the 0.x `klin gate --hook --changed`.
-- Machine: macOS, aarch64 (Apple Silicon), developer laptop. This is a
-  contributor machine, not the controlled machine.
+- Machine: macOS, aarch64 (Apple Silicon), developer laptop, which is how
+  the baseline document describes its machine. The owner decides whether
+  these rows count as the controlled rows of section 14.2.
 - Each value is the median of 5 iterations. The times exclude the project
   build command.
 
-## 1M rows (owner)
+## 1M rows
 
-The owner takes these rows on the controlled machine (section 14.2). They are
-not recorded yet.
+The owner asked for these rows on 2026-10-09. They ran on this machine, from
+the PR branch at `6fb99607`, one after the other in the foreground, with the
+load average below 4 at the start of each run. Fixture: `source-dense-1m`,
+digest `4606c5ecf1f80e3b`, as in the baseline.
 
 ```sh
+KLIN_PERF_ORIGIN=on KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm20  cargo test --release --test performance -- --ignored perf --nocapture
 KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm20  cargo test --release --test performance -- --ignored perf --nocapture
+KLIN_PERF_ORIGIN=on KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture
 KLIN_PERF_ROW=structural_1m KLIN_PERF_CASE=warm100 cargo test --release --test performance -- --ignored perf --nocapture
 ```
 
-These are the rows of the `748d01fc` baseline. Add `KLIN_PERF_ORIGIN=on` to
-include the default-branch reads of the history check (see "The history
-check" below).
+| Row | Baseline at `748d01fc` | vNext, `origin=on` | vNext, `origin=off` | Limit |
+| --- | --- | --- | --- | --- |
+| warm 1M/20 hook median (ms) | 1218 | 1182 | 1175 | 1,500 ms admission envelope |
+| warm 1M/100 hook median (ms) | 1567 | 1535 | 1540 | a rise above one third needs an explanation |
+| 1M/20 `stop_total_ms` | 1176 | 1142 | 1133 | |
+| 1M/100 `stop_total_ms` | 1526 | 1494 | 1499 | |
+| 1M/20 outside the gates (ms) | 174 | 192 | 191 | |
+| 1M/100 outside the gates (ms) | 215 | 232 | 238 | |
+| 1M/20 peak RSS (KB) | 324,864 | 321,248 | 322,896 | |
+| 1M/100 peak RSS (KB) | 331,808 | 329,392 | 328,784 | |
 
-| Row | Baseline at `748d01fc` | vNext | Limit |
-| --- | --- | --- | --- |
-| warm 1M/20 hook median (ms) | 1218 | not taken | 1,500 ms admission envelope |
-| warm 1M/100 hook median (ms) | 1567 | not taken | a rise above one third needs an explanation |
+The warm 1M/20 median is 1,182 ms with the default-branch reads and 1,175 ms
+without them. Both are below the 1,500 ms envelope and below the 1,218 ms
+baseline. The 1M/100 median is 1,535 and 1,540 ms against 1,567 ms, about 2%
+lower, so the one-third rule does not apply.
+
+Outside the gates, the vNext Stop spends 17 to 18 ms more at 20 files and 17
+to 23 ms more at 100 files. In the bands of section 14.3, that is normal (10
+to 25 ms). `dead-symbols` (465 and 458 ms against 486 ms at 20 files) and
+`reachability` (258 ms against 285 ms) are faster, so the totals are lower.
+
+The baseline values come from `docs/perf-baseline-748d01fc-2026-10-02.md`,
+taken on 2026-10-02. They were not taken again beside these rows.
 
 ## 300k rows (contributor)
 
@@ -95,7 +115,9 @@ KLIN_PERF_ORIGIN=on KLIN_PERF_ROW=structural_300k KLIN_PERF_CASE=warm20 cargo te
 | 12 | on | 751 | 723 | 186 |
 | 13 | off | 749 | 720 | 189 |
 
-The default-branch reads add no time that these rows can show. The rows do
+The default-branch reads add no time that these rows can show. The 1M rows
+agree: 1,182 ms on against 1,175 ms off at 20 files, and 1,535 ms against
+1,540 ms at 100. The rows do
 not time a `git merge-base` itself, because no warm Stop follows a commit.
 The baseline binary was not run with `KLIN_PERF_ORIGIN=on`, because a remote
 ref may change how the 0.x Stop chooses its base.
