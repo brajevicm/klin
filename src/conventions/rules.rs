@@ -140,11 +140,9 @@ impl Convention {
             && self.within.iter().all(|within| self.moved_in(within))
     }
 
-    /// Whether the change moved this `in` path, or a path above it. Spec 7.3.
+    /// Whether the change moved this `in` path. Spec 7.3.
     fn moved_in(&self, within: &Selector) -> bool {
-        self.moved
-            .iter()
-            .any(|moved| scope::under_or_at(within.as_str(), moved))
+        self.moved.iter().any(|moved| moved == within.as_str())
     }
 
     /// The convention following the `in` paths the change moved. Spec 7.3.

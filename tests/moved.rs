@@ -570,6 +570,9 @@ fn a_renamed_pinned_document_is_followed_beside_a_directory_at_its_old_path() {
         pins[0]["reason"], "docs/guide.md -> docs/manual.md",
         "{report}"
     );
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert!(run.says("docs/manual.md is 90 words"), "{}", run.out);
 }
 
 #[test]
@@ -586,5 +589,28 @@ fn deleting_every_file_of_overlapping_convention_in_paths_is_a_moved_pin_and_no_
 
     let run = tree.run(&["check", "--json"]);
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(moved_pins(&run.json()).len(), 1, "{}", run.out);
+    let report = run.json();
+    let files: Vec<&str> = moved_pins(&report)
+        .iter()
+        .filter_map(|pin| pin["file"].as_str())
+        .collect();
+    assert_eq!(files, ["src/core", "src/core/internal"], "{report}");
+}
+
+#[test]
+fn deleting_the_files_of_a_nested_convention_in_path_is_a_moved_pin_and_no_error() {
+    let tree = pinned(&CONVENTION.replace(
+        r#""in": "src/core""#,
+        r#""in": ["src/core", "src/core/internal"]"#,
+    ));
+    tree.write("src/core/internal/c.rs", SIMPLE);
+    tree.base();
+    tree.remove("src/core/internal/c.rs");
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(pins[0]["file"], "src/core/internal", "{report}");
 }

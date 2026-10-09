@@ -194,11 +194,11 @@ pub fn moved(
     let renamed: Vec<(&str, &str)> = renames
         .iter()
         .copied()
-        .filter(|(_, path)| reached(path))
+        .filter(|(_, path)| Pinned::In.follows(path, reached))
         .collect();
     let mut at_base = AtBase::new(config, base);
     let mut out = Vec::new();
-    let moved = Changed {
+    let changed = Changed {
         files,
         renames: &renames,
         reached,
@@ -206,7 +206,7 @@ pub fn moved(
     for (section, shape, fields) in config.shaped() {
         for (pinned, selectors) in pinned_paths(shape, fields) {
             let of = (section, shape, &pinned);
-            out.extend(pins(of, &selectors, &moved, &mut at_base));
+            out.extend(pins(of, &selectors, &changed, &mut at_base));
         }
         if let (SectionShape::Object, Ok(scope)) = (shape, Scope::from_fields(fields))
             && files.iter().any(|file| scope.selects(file))
@@ -214,7 +214,7 @@ pub fn moved(
             out.extend(moved_out(
                 section,
                 &scope,
-                &dead(&scope.within, files),
+                &dead(&Pinned::In, &scope.within, files),
                 &renamed,
             ));
         }
@@ -223,7 +223,8 @@ pub fn moved(
 }
 
 /// The paths of one section that a change can move, each list with what pins it: the section's
-/// own `in`, each convention's `in`, and each pinned document on its own.
+/// own `in`, each convention's `in` as written, since a convention judges every path it states,
+/// and each pinned document on its own.
 fn pinned_paths(shape: SectionShape, fields: &Map<String, Value>) -> Vec<(Pinned, Vec<Selector>)> {
     match shape {
         SectionShape::Object => Scope::from_fields(fields)
@@ -233,7 +234,7 @@ fn pinned_paths(shape: SectionShape, fields: &Map<String, Value>) -> Vec<(Pinned
             .iter()
             .filter_map(|(name, rule)| {
                 let selectors = selectors(rule.as_object()?, IN).ok()?;
-                Some((Pinned::Convention(name.clone()), outermost(selectors)))
+                Some((Pinned::Convention(name.clone()), selectors))
             })
             .collect(),
         SectionShape::DocumentMap(_) => fields
@@ -251,18 +252,10 @@ fn pinned_paths(shape: SectionShape, fields: &Map<String, Value>) -> Vec<(Pinned
 fn pins(
     (section, shape, pinned): (&str, SectionShape, &Pinned),
     selectors: &[Selector],
-    moved: &Changed,
+    changed: &Changed,
     at_base: &mut AtBase,
 ) -> Vec<Moved> {
-    let mut dead: Vec<&Selector> = selectors
-        .iter()
-        .filter(|selector| {
-            !moved
-                .files
-                .iter()
-                .any(|file| pinned.selects(selector, file))
-        })
-        .collect();
+    let mut dead = dead(pinned, selectors, changed.files);
     if *pinned == Pinned::Document {
         dead.retain(|document| !at_base.config.path(document.as_str()).is_file());
     }
@@ -273,7 +266,7 @@ fn pins(
         if held == 0 && (quiet || !at_base.pins((section, shape, pinned), selector)) {
             continue;
         }
-        out.push(pin(section, pinned, selector, held, moved));
+        out.push(pin(section, pinned, selector, held, changed));
     }
     out
 }
@@ -286,19 +279,11 @@ struct Changed<'a> {
     reached: fn(&str) -> bool,
 }
 
-impl Changed<'_> {
-    /// Whether the pin follows a rename to this path: a document is read wherever it goes, and
-    /// an `in` path follows no file under a directory every walk skips.
-    fn follows(&self, pinned: &Pinned, path: &str) -> bool {
-        *pinned == Pinned::Document || (self.reached)(path)
-    }
-}
-
 /// The paths of a list that select no file of the working tree.
-fn dead<'a>(selectors: &'a [Selector], files: &[String]) -> Vec<&'a Selector> {
+fn dead<'a>(pinned: &Pinned, selectors: &'a [Selector], files: &[String]) -> Vec<&'a Selector> {
     selectors
         .iter()
-        .filter(|selector| !files.iter().any(|file| selector.holds(file)))
+        .filter(|selector| !files.iter().any(|file| pinned.selects(selector, file)))
         .collect()
 }
 
@@ -371,12 +356,18 @@ impl<'a> AtBase<'a> {
 /// A pinned path that selects no file of the working tree, with the files git saw renamed out
 /// of it to a path the pin follows, how many a rename took under a directory every walk skips,
 /// which it does not, and how many of the `held` files the base held there went with no rename.
-fn pin(section: &str, pinned: &Pinned, selector: &Selector, held: usize, moved: &Changed) -> Moved {
-    let (gone, hidden): (Vec<_>, Vec<_>) = moved
+fn pin(
+    section: &str,
+    pinned: &Pinned,
+    selector: &Selector,
+    held: usize,
+    changed: &Changed,
+) -> Moved {
+    let (gone, hidden): (Vec<_>, Vec<_>) = changed
         .renames
         .iter()
         .filter(|(was, _)| pinned.selects(selector, was))
-        .partition(|(_, path)| moved.follows(pinned, path));
+        .partition(|(_, path)| pinned.follows(path, changed.reached));
     let gone: Vec<(String, String)> = gone
         .into_iter()
         .map(|(was, path)| (was.to_string(), path.to_string()))
@@ -513,6 +504,12 @@ impl Pinned {
             Pinned::Document => selector.as_str() == file,
             Pinned::In | Pinned::Convention(_) => selector.holds(file),
         }
+    }
+
+    /// Whether the pin follows a rename to this path: a document is read wherever it goes, and
+    /// an `in` path follows no file under a directory every walk skips.
+    fn follows(&self, path: &str, reached: fn(&str) -> bool) -> bool {
+        *self == Pinned::Document || reached(path)
     }
 
     /// Whether this pins the `in` of the convention with this name.
