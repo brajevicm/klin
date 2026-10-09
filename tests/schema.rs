@@ -521,7 +521,8 @@ fn vocabulary(schema: &Value) {
         return;
     };
     for (keyword, rule) in rules {
-        match keyword_named(keyword).1 {
+        let (_, holds, _) = keyword_named(keyword);
+        match holds {
             Nothing => {}
             Schema => vocabulary(rule),
             Schemas => listed(rule).iter().for_each(vocabulary),

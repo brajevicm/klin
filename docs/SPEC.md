@@ -3306,8 +3306,9 @@ and the schema accepts it:
 - A `sarif` entry named `measurement-lost`, the name that section 7.2 reserves.
 - A `files` glob that does not parse, such as `[`, or that is absolute, such
   as `/tmp/scratch`.
-- An accepted entry for a `conventions/<name>` gate whose name the
-  `conventions` section does not define.
+- An accepted entry for a `conventions/<name>` gate when the file has a
+  `conventions` section that does not define the name. With no section, klin
+  accepts the entry too.
 
 The reference MUST also state what the key tables alone do not say:
 
