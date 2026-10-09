@@ -121,8 +121,10 @@ the hook's unit, not the person's: `klin report` counts regressions.
 _Avoid_: catch, prevention
 
 **Journal**:
-The per-worktree record of each stop, guard refusal and reset, written
-best-effort and read by `klin report`.
+The per-worktree record of each stop, prompt, guard refusal and ingress
+failure, written best-effort and read by `klin report` and `klin status`. A
+stop's line holds the check document its run built, and the notice it left
+for the person.
 _Avoid_: log, telemetry
 
 **First-class integration**:

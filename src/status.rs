@@ -12,7 +12,7 @@ use crate::config::{Config, Discovered};
 use crate::error::Error;
 use crate::hooks::{self, Integration};
 use crate::stamp::{Here, Verdict};
-use crate::{journal, stamp, state};
+use crate::{journal, stamp, state, stats};
 
 const NO_REPOSITORY: &str = "klin status reads a repository, and this is no git repository.";
 
@@ -75,8 +75,9 @@ fn integration(one: &Integration) -> Value {
 }
 
 /// The local window the stamp holds: its verdict, its age, why it is red, unjudged or aborted,
-/// the default-branch ref the advisory rules read, and the last advisory Stop. It never claims
-/// that the working tree passes. Spec 6.6, 11.4.
+/// the default-branch ref the advisory rules read, the last advisory Stop, and the notices of
+/// the window that only the journal holds. It never claims that the working tree passes.
+/// Spec 6.6, 10.7, 11.4.
 fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
     let held = stamp::read(at)?;
     let mut window = json!({
@@ -88,6 +89,10 @@ fn window(root: &Path, at: &Path, lines: &[Value]) -> Option<Value> {
         "aborted_since": null,
         "default_branch": Here::read(root).default.map(|(name, _)| name),
         "last_advisory": last_advisory(lines),
+        "notices": stats::open_notices(lines, Some(held.time))
+            .into_iter()
+            .map(|(time, message)| json!({"time": time, "message": message}))
+            .collect::<Vec<Value>>(),
     });
     match held.verdict {
         Verdict::Red { open, unasked } => {
@@ -196,6 +201,9 @@ fn window_text(window: &Value, out: &mut String) {
         None => writeln!(out, "window: none, no session has opened one"),
     };
     history_text(window, out);
+    for notice in window["notices"].as_array().into_iter().flatten() {
+        let _ = writeln!(out, "  notice: {}", word(notice, "message"));
+    }
     for (key, label) in [
         ("open", "open finding"),
         ("unasked", "deleted test not asked about"),

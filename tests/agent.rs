@@ -93,6 +93,50 @@ fn a_usage_error_an_unknown_argument_or_an_unreadable_event_never_exits_two() {
     assert!(unknown.says("refused"), "{}", unknown.out);
 }
 
+/// An ingress that fails without a decision leaves a journal note in a tree that opted in, and
+/// still exits 0, so no host reads it as a block or a deny. A tree that did not opt in keeps no
+/// state. Spec 10.10.
+#[test]
+fn an_ingress_failure_in_an_opted_in_tree_writes_a_journal_note() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"doc_size": {"README.md": 3}}"#);
+    tree.words("README.md", 2);
+
+    let usage = feed(tree.root(), &["__agent"], STOP);
+    assert_eq!(usage.code, 0, "{}", usage.out);
+    let unreadable = event(&tree, "not json");
+    assert_eq!(unreadable.code, 0, "{}", unreadable.out);
+
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let notes: Vec<serde_json::Value> = journal
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter(|line| line["kind"] == "note")
+        .collect();
+    assert_eq!(notes.len(), 2, "{journal}");
+    assert_eq!(notes[0]["schema"], 2, "{journal}");
+    assert!(
+        notes[0]["message"]
+            .as_str()
+            .is_some_and(|said| said.contains("takes `event`")),
+        "{journal}"
+    );
+    assert!(
+        notes[1]["message"]
+            .as_str()
+            .is_some_and(|said| said.contains("could not read")),
+        "{journal}"
+    );
+
+    let off = Tree::new();
+    let run = event(&off, "not json");
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        !off.path(".git/klin").exists(),
+        "a tree that did not opt in kept state"
+    );
+}
+
 /// The opt-in walk ends at the first directory that holds a `.git` entry, so a repository nested
 /// inside an opted-in one is not opted in by the outer file. A `.git` file whose `gitdir` names
 /// nothing ends no walk. Spec 5.1.

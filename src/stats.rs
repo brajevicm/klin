@@ -4,18 +4,20 @@ use std::path::Path;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
-use crate::check::{catalogue, contract};
+use crate::check::catalogue;
+use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
 use crate::{git::Repo, journal, turn};
 
 /// What needs the person's attention, and what klin was worth. The report reads the journal of
-/// 11.4 and nothing else: it re-runs no gate, reads no working tree and keeps no clock of its
-/// own. It turns the lines into one regression per finding identity, decides the outcome and the
-/// measurement confidence once, and hands that to one of three surfaces. The default says what
-/// matters now, `--all` carries the evidence, `--json` carries the facts. The words a gate is
-/// named by come from the catalogue and never from a table here. Spec 11.5.
+/// 13.1 and the stamp's time, and nothing else: it re-runs no check, reads no working tree,
+/// writes nothing and keeps no clock of its own. It turns the lines into one regression per
+/// finding identity, decides the outcome and the measurement confidence once, and hands that to
+/// one of three surfaces. The default says what matters now, `--details` carries the evidence,
+/// `--json` carries the facts. The words a check is named by come from the catalogue and never
+/// from a table here. Spec 13.2.
 #[derive(clap::Args)]
 pub struct Args {
     /// The window to report, as a number of days, such as 7d. The newest session by default
@@ -45,6 +47,7 @@ enum Outcome {
     FixedLater,
     ConfigChanged,
     SetAside,
+    NotCompared,
     Open,
     AskedOnce,
 }
@@ -56,8 +59,20 @@ impl Outcome {
             Outcome::FixedLater => "fixed-later",
             Outcome::ConfigChanged => "config-changed",
             Outcome::SetAside => "set-aside",
+            Outcome::NotCompared => "not-compared",
             Outcome::Open => "open",
             Outcome::AskedOnce => "asked-once",
+        }
+    }
+
+    /// The state the report document names: a fix under another policy is still a fix, because
+    /// a policy change does not decide comparability. Spec 8.3, 13.3.
+    fn state(self) -> &'static str {
+        match self {
+            Outcome::FixedNext | Outcome::FixedLater | Outcome::ConfigChanged => "fixed",
+            Outcome::SetAside => "set-aside",
+            Outcome::NotCompared => "not-compared",
+            Outcome::Open | Outcome::AskedOnce => "open",
         }
     }
 
@@ -78,19 +93,20 @@ impl Outcome {
                 format!("Fixed after klin flagged it {tries} measured tries later.")
             }
             Outcome::ConfigChanged => "Resolved after the config changed.".into(),
-            Outcome::SetAside => "Set aside when you restarted.".into(),
+            Outcome::SetAside => "Set aside when the window moved before klin judged it.".into(),
+            Outcome::NotCompared => "Measurement changed; not compared.".into(),
             Outcome::Open => "Still open.".into(),
             Outcome::AskedOnce => "klin asked about it once and let it through.".into(),
         }
     }
 }
 
-/// What keys one regression across stops. A finding's `id` of 11.2 is the identity where the
-/// record carries one. It hashes the gate, the path and the declaration text, so a renamed path
+/// What keys one regression across stops. A finding's `id` of 11.7 is the identity where the
+/// record carries one. It hashes the check, the path and the declaration text, so a renamed path
 /// is a different id, and the reader stays conservative rather than merge two ids whose text
-/// resembles each other. A record that carries no id — `doc-size` is one shape that does not —
-/// falls back to the smallest key its recorded fields allow, so the gate is neither dropped nor
-/// merged with the finding beside it. Spec 11.5, ADR 0034.
+/// resembles each other. A record that carries no id falls back to the smallest key its
+/// recorded fields allow, so the check is neither dropped nor merged with the finding beside it.
+/// Spec 13.2, ADR 0034.
 #[derive(Clone, PartialEq, Eq)]
 enum Identity {
     Id(String),
@@ -106,7 +122,7 @@ fn identity(site: &Value) -> Identity {
     match site.get("id").and_then(Value::as_str) {
         Some(id) if !id.is_empty() => Identity::Id(id.to_string()),
         _ => Identity::Site {
-            gate: word(site, "gate").to_string(),
+            gate: check_of(site).to_string(),
             file: word(site, "file").to_string(),
             line: site.get("line").and_then(Value::as_u64),
             text: word(site, "text").to_string(),
@@ -135,18 +151,19 @@ struct Regression {
     prompt: Option<String>,
     /// The config hash in force when the site was first flagged. Spec 11.4.
     config: String,
+    /// The semantics version of the capability that flagged it, which a later measurement must
+    /// share to prove a fix. Spec 8.3.
+    semantics: Option<u64>,
     outcome: Outcome,
     /// How many stops measured the gate after the site was first flagged.
     tries: usize,
-    /// Where, in the lines the report read, the line that ended it sits.
-    ended: Option<usize>,
 }
 
 impl Regression {
     fn opened(site: &Value, stop: &Value, chapter: u64, prompt: Option<String>) -> Regression {
         Regression {
             identity: identity(site),
-            gate: word(site, "gate").to_string(),
+            gate: check_of(site).to_string(),
             id: site
                 .get("id")
                 .and_then(Value::as_str)
@@ -156,22 +173,21 @@ impl Regression {
             line: site.get("line").and_then(Value::as_u64),
             text: word(site, "text").to_string(),
             values: site.get("values").cloned().unwrap_or(Value::Null),
-            remedy: word(site, "fix_advice").to_string(),
+            remedy: word(site, "remedy").to_string(),
             first: at(stop),
             last: at(stop),
             chapter,
             prompt,
             config: word(stop, "config_hash").to_string(),
+            semantics: semantics(stop, check_of(site)),
             outcome: Outcome::Open,
             tries: 0,
-            ended: None,
         }
     }
 
-    fn close(&mut self, outcome: Outcome, time: u64, index: usize) {
+    fn close(&mut self, outcome: Outcome, time: u64) {
         self.outcome = outcome;
         self.last = time;
-        self.ended = Some(index);
     }
 
     /// How a site that went from a measurement reads. The `config_hash` of 11.4 is what tells a
@@ -205,7 +221,9 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let (lines, skipped) = journal::read(start);
     let now = clock();
     let held = scoped(&lines, scope, start, now);
-    let mut report = Report::read(&held, scope, now, skipped, lines.is_empty() && skipped == 0);
+    let notices = open_notices(&lines, turn::taken_at(start));
+    let mut report = Report::read(&held, scope, now, skipped, notices);
+    report.empty = lines.is_empty() && skipped == 0;
     report.confidence.unscoped = unscoped(&lines, scope, start);
     if !args.json && report.confidence.unscoped.is_some() && matches!(scope, Scope::Session) {
         let _ = writeln!(
@@ -216,7 +234,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Ok(0);
     }
     match args.json {
-        true => json(out, &report, &lines, scope, now),
+        true => json(out, &report),
         false => text(out, args, start, &report),
     }
     Ok(0)
@@ -265,6 +283,29 @@ fn word<'a>(record: &'a Value, key: &str) -> &'a str {
     record.get(key).and_then(Value::as_str).unwrap_or_default()
 }
 
+/// One list of the check document a Stop line holds under `result`. Spec 13.1.
+fn held<'a>(line: &'a Value, key: &str) -> &'a [Value] {
+    line.get("result").map_or(&[], |result| list(result, key))
+}
+
+/// The check a record names, and `measurement-lost` for the built-in row's records, which name
+/// none. Spec 11.7.
+fn check_of(record: &Value) -> &str {
+    match record.get("check").and_then(Value::as_str) {
+        Some(check) => check,
+        None => MEASUREMENT_LOST,
+    }
+}
+
+/// The semantics version under which this Stop measured the check, and `None` for the built-in
+/// row, which has no producer of its own. Spec 8.2.
+fn semantics(line: &Value, check: &str) -> Option<u64> {
+    held(line, "measurements")
+        .iter()
+        .find(|record| word(record, "check") == check)
+        .and_then(|record| record["basis"]["producer"]["semantics_version"].as_u64())
+}
+
 fn blocked(line: &Value) -> bool {
     line.get("hook")
         .and_then(|hook| hook.get("blocked"))
@@ -282,10 +323,10 @@ fn gate_blocked(line: &Value) -> bool {
     }
 }
 
-/// Whether klin could tell where the window the person asked for begins. `--turn` needs a turn
-/// stamp it can read, and `--session` needs a session id somewhere in the journal. Without one
+/// Whether klin could tell where the window the person asked for begins. A turn needs a turn
+/// stamp it can read, and a session needs a session id somewhere in the journal. Without one
 /// the scope holds no line at all, and a report that never found its window must not read as a
-/// quiet one. A window of days always begins somewhere. Spec 6.2, 11.5.
+/// quiet one. A window of days always begins somewhere. Spec 6.2, 13.2.
 fn unscoped(lines: &[Value], scope: Scope, root: &Path) -> Option<String> {
     match scope {
         Scope::Since(_) => None,
@@ -316,25 +357,19 @@ fn scoped(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Vec<Value> {
 }
 
 /// The lines at or after the time the turn stamp was taken, and none where no stamp is readable.
-/// A journal time is a whole second, so a line from the second a reset moved the stamp in would
-/// read as part of the turn, and the reset's own line bounds it instead. Spec 6.2, 11.5.
+/// Spec 6.2, 13.2.
 fn this_turn(lines: &[Value], since: Option<u64>) -> Vec<Value> {
     let Some(since) = since else {
         return Vec::new();
     };
-    let reset = lines
-        .iter()
-        .rposition(|line| kind(line) == "reset")
-        .map_or(0, |index| index + 1);
-    lines[reset..]
+    lines
         .iter()
         .filter(|line| at(line) >= since)
         .cloned()
         .collect()
 }
 
-/// The lines carrying the newest session id, and the resets among them, which a person runs
-/// outside any session and which still set aside the regressions before them.
+/// The lines carrying the newest session id. Spec 13.2.
 fn this_session(lines: &[Value]) -> Vec<Value> {
     let Some(newest) = lines
         .iter()
@@ -350,16 +385,18 @@ fn this_session(lines: &[Value]) -> Vec<Value> {
         .unwrap_or_default();
     lines[first..]
         .iter()
-        .filter(|line| word(line, "session") == newest || kind(line) == "reset")
+        .filter(|line| word(line, "session") == newest)
         .cloned()
         .collect()
 }
 
-/// One pass over the window's lines: the regressions it has opened, and the slots of those no
-/// later line has closed yet.
+/// One pass over the window's lines: the regressions it has opened, the slots of those no later
+/// line has closed yet, and whether the last Stop wrote `unjudged`, whose stamp the next prompt
+/// moves.
 struct Pass {
     held: Vec<Regression>,
     live: Vec<usize>,
+    unjudged: bool,
 }
 
 /// The regressions the lines hold, newest first, with no I/O, no clock and no formatting. One
@@ -368,12 +405,20 @@ fn regressions(lines: &[Value]) -> Vec<Regression> {
     let mut pass = Pass {
         held: Vec::new(),
         live: Vec::new(),
+        unjudged: false,
     };
     for (index, line) in lines.iter().enumerate() {
         match kind(line) {
-            "reset" => pass.set_aside(at(line), index),
+            "prompt" if pass.unjudged => {
+                pass.set_aside(at(line));
+                pass.unjudged = false;
+            }
             "stop" => {
-                pass.settle(line, index);
+                pass.settle(line);
+                if line["advisory"].is_string() {
+                    pass.set_aside(at(line));
+                }
+                pass.unjudged = word(line, "verdict") == "unjudged";
                 if gate_blocked(line) {
                     pass.flag(lines, index);
                 }
@@ -386,25 +431,27 @@ fn regressions(lines: &[Value]) -> Vec<Regression> {
 }
 
 impl Pass {
-    /// A person moved the turn stamp. That makes every regression still open unknown: not fixed,
-    /// and not proven to be in the tree, because the report never looks at the tree.
-    fn set_aside(&mut self, time: u64, index: usize) {
+    /// The stamp moved with no Stop judging the window: an advisory Stop took a fresh one, or a
+    /// prompt moved an `unjudged` one. That makes every regression still open unknown: not fixed,
+    /// and not proven to be in the tree, because the report never looks at the tree. Spec 13.2.
+    fn set_aside(&mut self, time: u64) {
         for slot in self.live.drain(..) {
-            self.held[slot].close(Outcome::SetAside, time, index);
+            self.held[slot].close(Outcome::SetAside, time);
         }
     }
 
-    /// What this stop said about the regressions open before it. A gate the stop ran no row for
-    /// did not run, and a row that says `ERR` measured nothing: neither ends a regression and
-    /// neither counts as a try. A site this stop let through after klin asked is a question and
-    /// never a fix. Spec 11.2, 11.5.
-    fn settle(&mut self, line: &Value, index: usize) {
+    /// What this stop said about the regressions open before it. A check the stop ran no row for
+    /// did not run, and a row whose execution erred measured nothing: neither ends a regression
+    /// and neither counts as a try. A site this stop let through after klin asked is a question
+    /// and never a fix. A site gone from a measurement under another semantics version is not
+    /// compared, and never a fix. Spec 8.3, 13.2.
+    fn settle(&mut self, line: &Value) {
         let (time, hash) = (at(line), word(line, "config_hash"));
         let held = &mut self.held;
         self.live.retain(|slot| {
             let one = &mut held[*slot];
             if let_through(line, one) {
-                one.close(Outcome::AskedOnce, time, index);
+                one.close(Outcome::AskedOnce, time);
                 return false;
             }
             if !measured(line, &one.gate) {
@@ -415,8 +462,11 @@ impl Pass {
                 one.last = time;
                 return true;
             }
-            let outcome = one.resolved(hash);
-            one.close(outcome, time, index);
+            let outcome = match semantics(line, &one.gate) == one.semantics {
+                true => one.resolved(hash),
+                false => Outcome::NotCompared,
+            };
+            one.close(outcome, time);
             false
         });
     }
@@ -451,18 +501,16 @@ impl Pass {
         self.held[slot].last = time;
         if !self.live.contains(&slot) {
             self.held[slot].outcome = Outcome::Open;
-            self.held[slot].ended = None;
             self.live.push(slot);
         }
     }
 }
 
-/// The failing findings of one stop. A record that names no gate or no file is a run that could
-/// not measure, and it is no regression.
+/// The failing findings of one stop: new or worse than the base, at a file. Spec 11.7.
 fn failures(line: &Value) -> impl Iterator<Item = &Value> {
-    list(line, "findings")
-        .iter()
-        .filter(|site| !word(site, "gate").is_empty() && !word(site, "file").is_empty())
+    held(line, "findings").iter().filter(|site| {
+        matches!(word(site, "outcome"), "new" | "worsened") && !word(site, "file").is_empty()
+    })
 }
 
 /// Whether this stop still recorded the site. A stop lists what it found, so a site missing from
@@ -472,22 +520,28 @@ fn carries(line: &Value, held: &Identity) -> bool {
     failures(line).any(|site| identity(site) == *held)
 }
 
-/// Whether this stop ran the gate and measured something. A gate the stop carries no row for did
-/// not run, because a tree that does not build runs none, and a gate that errored measured
-/// nothing. Neither says the site went. Spec 11.2.
-fn measured(line: &Value, gate: &str) -> bool {
-    list(line, "gates")
-        .iter()
-        .any(|row| word(row, "name") == gate && word(row, "status") != "ERR")
+/// Whether this stop ran the check and measured something. A check the stop carries no active
+/// row for did not run, because a tree that does not build runs none, and a check whose
+/// execution erred measured nothing. Neither says the site went. The built-in row of lost files
+/// measured wherever the run did. Spec 11.7.
+fn measured(line: &Value, check: &str) -> bool {
+    if check == MEASUREMENT_LOST {
+        return line["result"]["measurement"].is_string();
+    }
+    held(line, "capabilities").iter().any(|row| {
+        word(row, "name") == check
+            && word(row, "state") == "active"
+            && word(row, "execution") != "error"
+    })
 }
 
 /// Whether this stop recorded the site as one it let through after an earlier stop asked about
 /// it, or as a test function that went with its file, which is a note and not a finding.
 /// Spec 8.2.
 fn let_through(line: &Value, one: &Regression) -> bool {
-    list(line, "notes").iter().any(|note| {
-        word(note, "gate") == one.gate
-            && match word(note, "outcome") {
+    held(line, "notes").iter().any(|note| {
+        word(note, "check") == one.gate
+            && match word(note, "kind") {
                 "deleted" => true,
                 "note" => note.get("line").is_some(),
                 _ => false,
@@ -512,18 +566,14 @@ fn excerpt(lines: &[Value], index: usize) -> Option<String> {
 
 /// What the window's own records say klin did not see. A positive claim about a window klin did
 /// not measure whole is the one lie the report must not tell, so the reader decides this once and
-/// the report puts it above the value it found. Spec 11.5.
+/// the report puts it above the value it found. Spec 13.2.
 #[derive(Default)]
 struct Confidence {
-    /// Source files a grammar refused.
-    unparsed: Vec<String>,
-    /// Files the base measured and the working tree did not.
-    lost: Vec<String>,
-    /// Known-language files no structural adapter reads.
+    /// The files a capability did not measure, from the scope's records.
     not_measured: Vec<String>,
-    /// Dependency or public-surface forms a check supports and could not resolve.
-    unresolved: usize,
-    /// Gates a stop ran that measured nothing.
+    /// The holes the scope's measurements left.
+    holes: usize,
+    /// Checks a stop ran whose execution erred.
     errored: Vec<String>,
     /// Journal lines the reader could not take.
     skipped: u64,
@@ -532,56 +582,42 @@ struct Confidence {
 }
 
 impl Confidence {
-    fn read(lines: &[Value], skipped: u64) -> Confidence {
+    fn read(evidence: &Evidence, lines: &[Value], skipped: u64) -> Confidence {
         let mut held = Confidence {
             skipped,
+            holes: evidence.holes.len(),
             ..Confidence::default()
         };
-        for line in lines {
-            for note in list(line, "notes") {
-                held.note(note);
+        for item in &evidence.not_measured {
+            if !held.not_measured.contains(&item.file) {
+                held.not_measured.push(item.file.clone());
             }
-            for row in list(line, "gates") {
-                let name = word(row, "name");
-                if word(row, "status") == "ERR" && !held.errored.iter().any(|held| held == name) {
-                    held.errored.push(name.to_string());
-                }
+        }
+        for row in lines
+            .iter()
+            .flat_map(|line| self::held(line, "capabilities"))
+        {
+            let name = word(row, "name");
+            if word(row, "execution") == "error" && !held.errored.iter().any(|held| held == name) {
+                held.errored.push(name.to_string());
             }
         }
         held
     }
 
-    fn note(&mut self, note: &Value) {
-        let file = word(note, "file").to_string();
-        let held = match word(note, "outcome") {
-            contract::UNPARSED => &mut self.unparsed,
-            contract::LOST => &mut self.lost,
-            contract::NOT_MEASURED => &mut self.not_measured,
-            contract::UNRESOLVED => {
-                self.unresolved += 1;
-                return;
-            }
-            _ => return,
-        };
-        if !file.is_empty() && !held.contains(&file) {
-            held.push(file);
-        }
-    }
-
-    fn files(&self) -> usize {
-        self.unparsed.len() + self.lost.len() + self.not_measured.len()
-    }
-
     /// The one sentence the report puts above its value claim, and `None` for a window klin
-    /// measured whole. The narrowest claim the records support wins, and `--all` carries the rows
-    /// behind it.
+    /// measured whole. The narrowest claim the records support wins, and `--details` carries the
+    /// rows behind it.
     fn gap(&self) -> Option<String> {
         if self.unscoped.is_some() {
             return self.unscoped.clone();
         }
-        let files = self.files();
-        if files > 0 {
-            return Some(self.unmeasured(files));
+        if !self.not_measured.is_empty() {
+            return Some(plural(
+                self.not_measured.len(),
+                "file wasn't measured",
+                "files weren't measured",
+            ));
         }
         if !self.errored.is_empty() {
             let count = self.errored.len();
@@ -591,11 +627,11 @@ impl Confidence {
                 "checks couldn't finish",
             ));
         }
-        if self.unresolved > 0 {
+        if self.holes > 0 {
             return Some(plural(
-                self.unresolved,
-                "dependency couldn't be resolved",
-                "dependencies couldn't be resolved",
+                self.holes,
+                "measurement was incomplete",
+                "measurements were incomplete",
             ));
         }
         match usize::try_from(self.skipped).unwrap_or(usize::MAX) {
@@ -608,22 +644,169 @@ impl Confidence {
         }
     }
 
-    /// The narrowest true claim about the files klin did not measure: where every one of them is
-    /// a file a grammar refused, the reader can say so and not only that something went unread.
-    fn unmeasured(&self, files: usize) -> String {
-        match self.lost.is_empty() && self.not_measured.is_empty() {
-            true => plural(
-                files,
-                "source file couldn't be parsed",
-                "source files couldn't be parsed",
-            ),
-            false => plural(files, "file wasn't measured", "files weren't measured"),
-        }
-    }
-
     fn whole(&self) -> bool {
         self.gap().is_none()
     }
+}
+
+/// One review item of the scope, keyed by its check, kind, file and text. Spec 13.2.
+struct Review {
+    check: Value,
+    kind: String,
+    file: Value,
+    text: Value,
+    reason: Value,
+    last_seen: u64,
+}
+
+/// One hole of the scope, keyed by its check and reason.
+struct Holed {
+    check: Value,
+    reason: String,
+    last_seen: u64,
+}
+
+/// One file a capability did not measure, keyed by its check, reason and file.
+struct Unmeasured {
+    check: Value,
+    reason: String,
+    file: String,
+    last_seen: u64,
+}
+
+/// The evidence beside the regressions: review items, holes, files not measured, advisory Stops,
+/// and the notices of the open window that only the journal holds. Spec 13.2, 13.3.
+#[derive(Default)]
+struct Evidence {
+    reviews: Vec<Review>,
+    holes: Vec<Holed>,
+    not_measured: Vec<Unmeasured>,
+    advisory: Vec<(u64, String)>,
+    notices: Vec<(u64, String)>,
+}
+
+impl Evidence {
+    fn read(lines: &[Value], notices: Vec<(u64, String)>) -> Evidence {
+        let mut out = Evidence {
+            notices,
+            ..Evidence::default()
+        };
+        for line in lines.iter().filter(|line| kind(line) == "stop") {
+            let time = at(line);
+            if let Some(reason) = line["advisory"].as_str() {
+                out.advisory.push((time, reason.to_string()));
+            }
+            out.reviewed(line, time);
+            out.holed(line, time);
+            out.unmeasured(line, time);
+        }
+        out
+    }
+
+    fn reviewed(&mut self, line: &Value, time: u64) {
+        for item in held(line, "reviews") {
+            let same = |one: &&mut Review| {
+                one.check == item["check"]
+                    && one.kind == word(item, "kind")
+                    && one.file == item["file"]
+                    && one.text == item["text"]
+            };
+            match self.reviews.iter_mut().find(same) {
+                Some(one) => {
+                    one.last_seen = time;
+                    one.reason = item["reason"].clone();
+                }
+                None => self.reviews.push(Review {
+                    check: item["check"].clone(),
+                    kind: word(item, "kind").to_string(),
+                    file: item["file"].clone(),
+                    text: item["text"].clone(),
+                    reason: item["reason"].clone(),
+                    last_seen: time,
+                }),
+            }
+        }
+    }
+
+    fn holed(&mut self, line: &Value, time: u64) {
+        for record in held(line, "measurements") {
+            for hole in list(record, "holes") {
+                let (check, reason) = (&record["check"], word(hole, "reason"));
+                match self
+                    .holes
+                    .iter_mut()
+                    .find(|one| one.check == *check && one.reason == reason)
+                {
+                    Some(one) => one.last_seen = time,
+                    None => self.holes.push(Holed {
+                        check: check.clone(),
+                        reason: reason.to_string(),
+                        last_seen: time,
+                    }),
+                }
+            }
+        }
+    }
+
+    /// The files a Stop did not measure: an opened gap, a coverage note, and a lost file.
+    /// Spec 7.2.
+    fn unmeasured(&mut self, line: &Value, time: u64) {
+        let gaps = held(line, "reviews")
+            .iter()
+            .filter(|item| word(item, "kind") == "unmeasured")
+            .map(|item| (&item["check"], word(item, "reason"), word(item, "file")));
+        let limits = held(line, "notes")
+            .iter()
+            .filter(|note| note["coverage"] == true)
+            .map(|note| (&note["check"], word(note, "kind"), word(note, "file")));
+        let lost = held(line, "findings")
+            .iter()
+            .filter(|finding| word(finding, "kind") == MEASUREMENT_LOST)
+            .map(|finding| {
+                let reason = word(&finding["values"], "reason");
+                (&finding["check"], reason, word(finding, "file"))
+            });
+        for (check, reason, file) in gaps.chain(limits).chain(lost) {
+            match self
+                .not_measured
+                .iter_mut()
+                .find(|one| one.check == *check && one.reason == reason && one.file == file)
+            {
+                Some(one) => one.last_seen = time,
+                None => self.not_measured.push(Unmeasured {
+                    check: check.clone(),
+                    reason: reason.to_string(),
+                    file: file.to_string(),
+                    last_seen: time,
+                }),
+            }
+        }
+    }
+}
+
+/// The non-blocking notices of the open window that only the journal holds: those a Stop under
+/// the current stamp left on a host with no channel for them. A notice expires when its window
+/// closes, so the stamp's time bounds them. Spec 10.7.
+pub fn open_notices(lines: &[Value], since: Option<u64>) -> Vec<(u64, String)> {
+    let Some(since) = since else {
+        return Vec::new();
+    };
+    let mut out: Vec<(u64, String)> = Vec::new();
+    for line in lines
+        .iter()
+        .filter(|line| kind(line) == "stop" && at(line) >= since)
+    {
+        let notice = &line["notice"];
+        if notice["delivered"] != false {
+            continue;
+        }
+        let message = word(notice, "message").to_string();
+        match out.iter_mut().find(|(_, held)| *held == message) {
+            Some(held) => held.0 = at(line),
+            None => out.push((at(line), message)),
+        }
+    }
+    out
 }
 
 fn plural(count: usize, one: &str, many: &str) -> String {
@@ -639,11 +822,9 @@ struct Counts {
     caught: usize,
     open: usize,
     fixed: usize,
-    fixed_next: usize,
-    fixed_later: usize,
     config_changed: usize,
     set_aside: usize,
-    asked_once: usize,
+    not_compared: usize,
 }
 
 impl Counts {
@@ -653,39 +834,21 @@ impl Counts {
             caught: held.iter().filter(|one| one.outcome.counted()).count(),
             open: many(Outcome::Open),
             fixed: many(Outcome::FixedNext) + many(Outcome::FixedLater),
-            fixed_next: many(Outcome::FixedNext),
-            fixed_later: many(Outcome::FixedLater),
             config_changed: many(Outcome::ConfigChanged),
             set_aside: many(Outcome::SetAside),
-            asked_once: many(Outcome::AskedOnce),
+            not_compared: many(Outcome::NotCompared),
         }
-    }
-
-    fn record(&self) -> Map<String, Value> {
-        let mut out = Map::new();
-        out.insert("caught".into(), self.caught.into());
-        out.insert("open".into(), self.open.into());
-        out.insert("fixed-next".into(), self.fixed_next.into());
-        out.insert("fixed-later".into(), self.fixed_later.into());
-        out.insert("config-changed".into(), self.config_changed.into());
-        out.insert("set-aside".into(), self.set_aside.into());
-        out.insert("asked-once".into(), self.asked_once.into());
-        out
     }
 }
 
-/// One thing the person was asked about or did. None of these is a regression: a reset and a
-/// guard refusal ask nothing, and a deleted test klin let through is a question the person
-/// answers. They stay out of the count and keep their own trail. Spec 11.5.
+/// One thing the person was asked about. Neither is a regression: a guard refusal asks nothing,
+/// and a deleted test klin let through is a question the person answers. They stay out of the
+/// count and keep their own trail. Spec 13.2.
 enum Audit {
     Guard {
         time: u64,
         decision: String,
         reason: String,
-    },
-    Reset {
-        time: u64,
-        set_aside: usize,
     },
     Deleted {
         time: u64,
@@ -698,9 +861,7 @@ enum Audit {
 impl Audit {
     fn time(&self) -> u64 {
         match self {
-            Audit::Guard { time, .. } | Audit::Reset { time, .. } | Audit::Deleted { time, .. } => {
-                *time
-            }
+            Audit::Guard { time, .. } | Audit::Deleted { time, .. } => *time,
         }
     }
 
@@ -709,13 +870,6 @@ impl Audit {
             Audit::Guard {
                 decision, reason, ..
             } => guarded(decision, reason),
-            Audit::Reset { set_aside: 0, .. } => "You told klin to start over.".into(),
-            Audit::Reset { set_aside: 1, .. } => {
-                "You restarted, and 1 regression was set aside.".into()
-            }
-            Audit::Reset { set_aside, .. } => {
-                format!("You restarted, and {set_aside} regressions were set aside.")
-            }
             Audit::Deleted {
                 file, line, text, ..
             } => deleted(file, *line, text),
@@ -733,7 +887,6 @@ impl Audit {
                 None,
                 None,
             ),
-            Audit::Reset { .. } => ("reset", None, None, None, None),
             Audit::Deleted { file, line, .. } => {
                 ("asked-once", None, None, Some(file.clone()), *line)
             }
@@ -785,25 +938,15 @@ fn deleted(file: &str, line: Option<u64>, text: &str) -> String {
     }
 }
 
-/// Everything the person was asked about or did in the window, newest first. Spec 11.5.
+/// Everything the person was asked about in the window, newest first. Spec 13.2.
 fn audit_trail(lines: &[Value], held: &[Regression]) -> Vec<Audit> {
     let mut out: Vec<Audit> = lines
         .iter()
-        .enumerate()
-        .filter_map(|(index, line)| match kind(line) {
-            "guard" => Some(Audit::Guard {
-                time: at(line),
-                decision: word(line, "decision").to_string(),
-                reason: word(line, "reason").to_string(),
-            }),
-            "reset" => Some(Audit::Reset {
-                time: at(line),
-                set_aside: held
-                    .iter()
-                    .filter(|one| one.ended == Some(index) && one.outcome == Outcome::SetAside)
-                    .count(),
-            }),
-            _ => None,
+        .filter(|line| kind(line) == "guard")
+        .map(|line| Audit::Guard {
+            time: at(line),
+            decision: word(line, "decision").to_string(),
+            reason: word(line, "reason").to_string(),
         })
         .collect();
     out.extend(
@@ -820,15 +963,18 @@ fn audit_trail(lines: &[Value], held: &[Regression]) -> Vec<Audit> {
     out
 }
 
-/// One report, read once: the window's regressions, the audit trail beside them, what klin could
-/// not measure, and the activity facts. Each surface formats this and works nothing out again.
+/// One report, read once: the window's regressions, the audit trail and the evidence beside
+/// them, and what klin could not measure. Each surface formats this and works nothing out again.
 struct Report {
     scope: Scope,
     regressions: Vec<Regression>,
     audit: Vec<Audit>,
+    evidence: Evidence,
     confidence: Confidence,
     counts: Counts,
     now: u64,
+    /// The newest session id the scope's lines carry.
+    session: Option<String>,
     stops: usize,
     ms: u64,
     /// Whether the journal held no line at all, which is a first run and not a quiet window.
@@ -836,21 +982,35 @@ struct Report {
 }
 
 impl Report {
-    fn read(lines: &[Value], scope: Scope, now: u64, skipped: u64, empty: bool) -> Report {
+    fn read(
+        lines: &[Value],
+        scope: Scope,
+        now: u64,
+        skipped: u64,
+        notices: Vec<(u64, String)>,
+    ) -> Report {
         let regressions = regressions(lines);
+        let evidence = Evidence::read(lines, notices);
         Report {
             counts: Counts::of(&regressions),
             audit: audit_trail(lines, &regressions),
-            confidence: Confidence::read(lines, skipped),
+            confidence: Confidence::read(&evidence, lines, skipped),
+            evidence,
             regressions,
             scope,
             now,
+            session: lines
+                .iter()
+                .rev()
+                .map(|line| word(line, "session"))
+                .find(|session| !session.is_empty())
+                .map(str::to_string),
             stops: lines.iter().filter(|line| kind(line) == "stop").count(),
             ms: lines
                 .iter()
                 .filter_map(|line| line.get("timing")?.get("klin_ms")?.as_u64())
                 .sum(),
-            empty,
+            empty: false,
         }
     }
 
@@ -897,7 +1057,25 @@ fn attention(report: &Report) -> Vec<String> {
         open => said.push(format!("{open} regressions need your attention.")),
     }
     if report.counts.set_aside > 0 {
-        said.push(restarted(report.counts.set_aside, report.counts.open > 0));
+        said.push(set_aside(report.counts.set_aside, report.counts.open > 0));
+    }
+    if report.counts.not_compared > 0 {
+        said.push(format!(
+            "{} went under a changed measurement, so klin did not compare {}.",
+            counted(report.counts.not_compared),
+            match report.counts.not_compared {
+                1 => "it",
+                _ => "them",
+            }
+        ));
+    }
+    match report.evidence.reviews.len() {
+        0 => {}
+        1 => said.push("1 review item is open.".into()),
+        many => said.push(format!("{many} review items are open.")),
+    }
+    for (_, message) in &report.evidence.notices {
+        said.push(format!("klin left you a notice in this window:\n{message}"));
     }
     if said.is_empty() {
         said.push("Nothing needs your attention.".into());
@@ -905,14 +1083,16 @@ fn attention(report: &Report) -> Vec<String> {
     said
 }
 
-/// A reset makes the regressions it caught unknown: not fixed, and not proven to be in the tree,
-/// because the report reads the journal and never the tree.
-fn restarted(aside: usize, after_open: bool) -> String {
+/// A stamp that moved with no Stop judging the window makes the regressions it held unknown: not
+/// fixed, and not proven to be in the tree, because the report reads the journal and never the
+/// tree. Spec 13.2.
+fn set_aside(aside: usize, after_open: bool) -> String {
+    let why = "because the window moved before klin judged it again";
     match (after_open, aside) {
-        (true, 1) => "1 more was set aside when you restarted.".into(),
-        (true, _) => format!("{aside} more were set aside when you restarted."),
-        (false, 1) => "1 regression was set aside when you restarted.".into(),
-        (false, _) => format!("{aside} regressions were set aside when you restarted."),
+        (true, 1) => format!("1 more was set aside, {why}."),
+        (true, _) => format!("{aside} more were set aside, {why}."),
+        (false, 1) => format!("1 regression was set aside, {why}."),
+        (false, _) => format!("{aside} regressions were set aside, {why}."),
     }
 }
 
@@ -1050,7 +1230,35 @@ fn history(out: &mut String, start: &Path, report: &Report) {
         turn_chapter(out, report, &chapter, offset);
     }
     audit(out, report, offset);
+    evidence(out, report, offset);
     measurement(out, report);
+}
+
+/// The review items, the advisory Stops and the files not measured, which `--details` lists
+/// whole. Spec 13.2.
+fn evidence(out: &mut String, report: &Report, offset: i64) {
+    let held = &report.evidence;
+    if !held.reviews.is_empty() {
+        let _ = writeln!(out, "\nReview");
+        for one in &held.reviews {
+            let _ = writeln!(
+                out,
+                "  {}  {}",
+                one.file.as_str().unwrap_or_default(),
+                one.text.as_str().unwrap_or(&one.kind)
+            );
+        }
+    }
+    if !held.advisory.is_empty() {
+        let _ = writeln!(out, "\nAdvisory");
+        for (time, reason) in &held.advisory {
+            let when = day(*time, report.now, offset);
+            let _ = writeln!(
+                out,
+                "  {when}  the history moved ({reason}), so klin blocked nothing"
+            );
+        }
+    }
 }
 
 /// The regressions of one turn, kept together by the prompt counter the stop that flagged them
@@ -1112,20 +1320,14 @@ fn measurement(out: &mut String, report: &Report) {
         return;
     }
     let _ = writeln!(out, "\nMeasurement");
-    named(out, "no grammar read", &held.unparsed);
-    named(out, "the base measured and this tree did not", &held.lost);
-    named(out, "no structural adapter reads", &held.not_measured);
-    if held.unresolved > 0 {
-        let _ = writeln!(
-            out,
-            "  {} dependency form(s) klin could not resolve.",
-            held.unresolved
-        );
+    named(out, "no capability measured", &held.not_measured);
+    if held.holes > 0 {
+        let _ = writeln!(out, "  {} measurement(s) left a hole.", held.holes);
     }
     if !held.errored.is_empty() {
         let _ = writeln!(
             out,
-            "  {} gate(s) measured nothing: {}",
+            "  {} check(s) measured nothing: {}",
             held.errored.len(),
             held.errored.join(", ")
         );
@@ -1146,28 +1348,74 @@ fn named(out: &mut String, why: &str, files: &[String]) {
     let _ = writeln!(out, "  {} file(s) {why}: {}", files.len(), files.join(", "));
 }
 
-/// The facts, and none of the person's sentences: one entry per regression identity, the audit
-/// trail, the measurement gaps and the activity the journal recorded. The human default prints
-/// less than this, and nothing factual is dropped because it stopped printing. Spec 11.5.
-fn json(out: &mut String, report: &Report, lines: &[Value], scope: Scope, now: u64) {
-    let window = match scope {
-        Scope::Turn => serde_json::json!({ "scope": "turn" }),
-        Scope::Session => serde_json::json!({ "scope": "session" }),
-        Scope::Since(days) => serde_json::json!({ "scope": "days", "days": days }),
+/// The report document of spec 13.3: the facts, and none of the person's sentences. Beside it,
+/// `episodes`, `audit` and `activity` keep the trail the benchmark reads. Spec 11.7, 13.3.
+fn json(out: &mut String, report: &Report) {
+    let (kind, value) = match report.scope {
+        Scope::Turn => ("turn", Value::Null),
+        Scope::Session => ("session", report.session.clone().into()),
+        Scope::Since(days) => ("since", format!("{days}d").into()),
     };
+    let held = &report.evidence;
+    let counts = &report.counts;
     let record = serde_json::json!({
-        "window": window,
-        "stops": report.stops,
-        "skipped": report.confidence.skipped,
-        "unreadable": report.confidence.unparsed.len() + report.confidence.lost.len(),
-        "counts": report.counts.record(),
+        "schema_version": 1,
+        "command": "report",
+        "scope": { "kind": kind, "value": value, "known": report.confidence.unscoped.is_none() },
+        "counts": {
+            "caught": counts.caught,
+            "fixed": counts.fixed + counts.config_changed,
+            "open": counts.open,
+            "not_compared": counts.not_compared,
+            "set_aside": counts.set_aside,
+            "reviews": held.reviews.len(),
+            "holes": held.holes.len(),
+            "not_measured": held.not_measured.len(),
+            "notices": held.notices.len(),
+            "advisory": held.advisory.len(),
+        },
+        "regressions": report
+            .regressions
+            .iter()
+            .filter(|one| one.outcome.counted())
+            .map(regression)
+            .collect::<Vec<Value>>(),
+        "reviews": held.reviews.iter().map(|one| serde_json::json!({
+            "check": one.check, "kind": one.kind, "file": one.file, "text": one.text,
+            "reason": one.reason, "last_seen": one.last_seen,
+        })).collect::<Vec<Value>>(),
+        "holes": held.holes.iter().map(|one| serde_json::json!({
+            "check": one.check, "reason": one.reason, "last_seen": one.last_seen,
+        })).collect::<Vec<Value>>(),
+        "not_measured": held.not_measured.iter().map(|one| serde_json::json!({
+            "check": one.check, "reason": one.reason, "file": one.file,
+            "last_seen": one.last_seen,
+        })).collect::<Vec<Value>>(),
+        "notices": held.notices.iter().map(|(time, message)| serde_json::json!({
+            "time": time, "message": message, "delivered": false,
+        })).collect::<Vec<Value>>(),
+        "advisory": held.advisory.iter().map(|(time, reason)| serde_json::json!({
+            "time": time, "reason": reason,
+        })).collect::<Vec<Value>>(),
+        "skipped_lines": report.confidence.skipped,
         "episodes": report.regressions.iter().map(episode).collect::<Vec<Value>>(),
         "audit": report.audit.iter().map(Audit::record).collect::<Vec<Value>>(),
-        "confidence": confidence(&report.confidence),
         "activity": { "stops": report.stops, "klin_ms": report.ms },
-        "earlier": earlier(lines, scope, now),
     });
     let _ = writeln!(out, "{record}");
+}
+
+fn regression(one: &Regression) -> Value {
+    serde_json::json!({
+        "id": one.id,
+        "check": one.gate,
+        "file": one.file,
+        "text": one.text,
+        "state": one.outcome.state(),
+        "config_changed": one.outcome == Outcome::ConfigChanged,
+        "first_seen": one.first,
+        "last_seen": one.last,
+    })
 }
 
 fn episode(one: &Regression) -> Value {
@@ -1194,43 +1442,6 @@ fn episode(one: &Regression) -> Value {
         "tries": one.tries,
         "config_changed": one.outcome == Outcome::ConfigChanged,
     })
-}
-
-fn confidence(held: &Confidence) -> Value {
-    serde_json::json!({
-        "whole": held.whole(),
-        "gap": held.gap(),
-        "unscoped": held.unscoped,
-        "unparsed": held.unparsed,
-        "lost": held.lost,
-        "not_measured": held.not_measured,
-        "unresolved": held.unresolved,
-        "errored": held.errored,
-        "skipped": held.skipped,
-    })
-}
-
-/// What the window before this one caught, for a harness that trends the two. Only a window of
-/// days has one, and only where the journal reaches back over all of it. Spec 11.5.
-fn earlier(lines: &[Value], scope: Scope, now: u64) -> Option<Value> {
-    let Scope::Since(days) = scope else {
-        return None;
-    };
-    let span = days.saturating_mul(DAY);
-    let (from, until) = (
-        now.saturating_sub(span.saturating_mul(2)),
-        now.saturating_sub(span),
-    );
-    if lines.first().is_none_or(|first| at(first) > from) {
-        return None;
-    }
-    let held: Vec<Value> = lines
-        .iter()
-        .filter(|line| (from..until).contains(&at(line)))
-        .cloned()
-        .collect();
-    let counts = Counts::of(&regressions(&held));
-    Some(serde_json::json!({ "caught": counts.caught, "open": counts.open }))
 }
 
 /// The journal a stop's telling needs and no more: back to the seven-day cutoff the week's

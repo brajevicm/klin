@@ -83,3 +83,13 @@ plugin tree.
 Plugin detection covers Cursor's documented local tree and the marketplace
 cache layout observed under 3.20.21. Both are bounded searches under
 `.cursor/plugins`; malformed or unrelated manifests do not count.
+
+## Amendment: a Cursor notice never uses `followup_message` (#504)
+
+Cursor submits a `followup_message` as the next agent prompt, so a notice
+for the person that blocks nothing must not use it (vNext spec 10.7). A
+Cursor block still prints its report as `followup_message` and exits 0. A
+Cursor notice that blocks nothing goes to stderr, and the journal holds it
+with `delivered: false`. `klin status` and `klin report` show it while its
+window is open, and it expires when the stamp moves. The stop notice of
+this record is therefore the block report alone.

@@ -569,7 +569,10 @@ fn the_structured_report_of_a_hook_stop_still_holds_every_gate() {
     assert_eq!(run.code, 2, "{}", run.out);
     let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
     let report = object(journal.lines().last().unwrap_or_default(), &run);
-    let gates = report["gates"].as_array().cloned().unwrap_or_default();
+    let gates = harness::gate_rows(&report)
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     for name in ["doc-size", "escapes", "complexity"] {
         assert!(
             gates.iter().any(|gate| field(gate, "name") == name),

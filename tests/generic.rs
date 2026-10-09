@@ -139,6 +139,33 @@ fn a_generic_stop_returns_the_failing_report_in_its_decision() {
     assert!(message.contains("README.md"), "{}", run.out);
 }
 
+/// The harness protocol carries a notice that blocks nothing as a `tell` decision, which the
+/// journal records as delivered. Spec 10.7, 10.9.
+#[test]
+fn a_generic_notice_that_blocks_nothing_is_a_tell() {
+    let tree = failing();
+    let root = tree.root();
+    let first = feed(root, harness::AGENT, &event("stop", root, json!({})));
+    assert_eq!(answer(&first)["action"], "block", "{}", first.out);
+
+    let again = feed(
+        root,
+        harness::AGENT,
+        &event("stop", root, json!({"blocked_before": true})),
+    );
+    assert_eq!(again.code, 0, "{}", again.out);
+    let told = answer(&again);
+    assert_eq!(told["action"], "tell", "{}", again.out);
+    let message = told["message"].as_str().unwrap_or_default();
+    assert!(message.contains("klin report"), "{}", again.out);
+    let line = journal(&tree)
+        .into_iter()
+        .rfind(|line| line["kind"] == "stop")
+        .unwrap_or_default();
+    assert_eq!(line["notice"]["delivered"], true, "{line}");
+    assert_eq!(line["notice"]["message"], message, "{line}");
+}
+
 #[test]
 fn a_generic_stop_over_a_green_tree_lets_the_turn_end() {
     let tree = Tree::new();

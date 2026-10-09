@@ -70,8 +70,11 @@ fn has_flag(line: &Value, wanted: &str) -> bool {
         .is_some_and(|flags| flags.iter().any(|flag| flag == wanted))
 }
 
+/// A Stop's line holds the check document its run built under `result`, as a Stop names it:
+/// `command` is `stop` and `exit` is null, because the host's exit code is not a verdict. Each
+/// measurement names its basis, which holds no machine path. Spec 8.1, 13.1.
 #[test]
-fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
+fn a_stop_appends_one_line_holding_the_check_document_and_what_the_hook_knew() {
     let tree = tree(EVERY_GATE);
     prompt(&tree);
     tree.words("README.md", 30);
@@ -81,7 +84,7 @@ fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
     let lines = stops(&tree);
     assert_eq!(lines.len(), 1, "{lines:?}");
     let line = &lines[0];
-    assert_eq!(field(line, &["schema"]), 1, "{line}");
+    assert_eq!(field(line, &["schema"]), 2, "{line}");
     assert_eq!(field(line, &["kind"]), "stop", "{line}");
     assert_eq!(field(line, &["host"]), "claude", "{line}");
     assert_eq!(field(line, &["session"]), "s-1", "{line}");
@@ -91,22 +94,33 @@ fn a_stop_appends_one_line_holding_the_record_and_what_the_hook_knew() {
     assert_eq!(field(line, &["hook", "delivery"]), "block", "{line}");
     assert_eq!(field(line, &["hook", "blocked_before"]), false, "{line}");
     assert_eq!(field(line, &["hook", "build_blocks"]), 0, "{line}");
-    assert_eq!(field(line, &["window", "kind"]), "turn", "{line}");
-    assert_eq!(field(line, &["exit"]), 2, "{line}");
+    assert_eq!(field(line, &["result", "command"]), "stop", "{line}");
+    assert_eq!(field(line, &["result", "exit"]), &Value::Null, "{line}");
+    assert_eq!(field(line, &["result", "window", "kind"]), "turn", "{line}");
+    assert_eq!(field(line, &["result", "judgement"]), "fail", "{line}");
     assert_eq!(field(line, &["flags"]), &Value::Array(Vec::new()), "{line}");
-    for key in [
-        "version",
-        "time",
-        "derived",
-        "gates",
-        "findings",
-        "notes",
-        "asked",
-        "timing",
-        "config_hash",
-    ] {
+    assert_eq!(field(line, &["notice"]), &Value::Null, "{line}");
+    for key in ["version", "time", "asked", "told", "timing", "config_hash"] {
         assert!(line.get(key).is_some(), "no {key} in {line}");
     }
+    let findings = field(line, &["result", "findings"]);
+    assert_eq!(findings[0]["check"], "doc-size", "{line}");
+    let measured = field(line, &["result", "measurements"])
+        .as_array()
+        .unwrap_or_else(|| panic!("no measurements in {line}"));
+    let doc_size = measured
+        .iter()
+        .find(|record| record["check"] == "doc-size")
+        .unwrap_or_else(|| panic!("no doc-size record in {line}"));
+    let basis = &doc_size["basis"];
+    assert!(basis["producer"]["semantics_version"].is_u64(), "{basis}");
+    assert!(basis["klin"].is_string(), "{basis}");
+    assert_eq!(basis["scope"]["changed"], true, "{basis}");
+    assert_eq!(basis["window"]["kind"], "turn", "{basis}");
+    assert!(basis["policy"].is_array(), "{basis}");
+    assert_eq!(basis["pinned"]["README.md"], 10, "{basis}");
+    assert!(basis["derivation"].is_string(), "{basis}");
+    assert!(!basis.to_string().contains(&tree.at("")), "{basis}");
     assert!(field(line, &["timing", "klin_ms"]).is_u64(), "{line}");
     assert!(
         field(line, &["timing", "base_remove_ms"]).is_u64(),
@@ -129,8 +143,18 @@ fn a_blocking_stop_and_the_stop_after_it_record_the_spent_block() {
     let lines = stops(&tree);
     assert_eq!(lines.len(), 2, "{lines:?}");
     assert_eq!(field(&lines[0], &["hook", "blocked"]), true, "{}", lines[0]);
-    assert_eq!(field(&lines[0], &["exit"]), 2, "{}", lines[0]);
-    assert_eq!(field(&lines[1], &["exit"]), 0, "{}", lines[1]);
+    assert_eq!(
+        field(&lines[0], &["result", "exit"]),
+        &Value::Null,
+        "{}",
+        lines[0]
+    );
+    assert_eq!(
+        field(&lines[1], &["result", "exit"]),
+        &Value::Null,
+        "{}",
+        lines[1]
+    );
     assert_eq!(
         field(&lines[1], &["hook", "blocked"]),
         false,
@@ -270,7 +294,7 @@ fn every_gate_row_carries_ms_and_the_held_count_its_ok_line_prints() {
     let run = stop(&tree, A_STOP);
     assert_eq!(run.code, 0, "{}", run.out);
     let lines = stops(&tree);
-    let gates = field(&lines[0], &["gates"])
+    let gates = field(&lines[0], &["result", "diagnostics", "gates"])
         .as_array()
         .unwrap_or_else(|| panic!("no gates list in {}", lines[0]));
     assert!(!gates.is_empty(), "{}", lines[0]);
@@ -448,7 +472,7 @@ fn a_prompt_event_appends_a_line_with_the_counter_the_session_and_the_excerpt() 
     let lines = journal(&tree);
     assert_eq!(lines.len(), 1, "{lines:?}");
     let line = &lines[0];
-    assert_eq!(field(line, &["schema"]), 1, "{line}");
+    assert_eq!(field(line, &["schema"]), 2, "{line}");
     assert_eq!(field(line, &["kind"]), "prompt", "{line}");
     assert_eq!(field(line, &["prompt"]), 1, "{line}");
     assert_eq!(field(line, &["session"]), "s-9", "{line}");
@@ -560,7 +584,7 @@ fn a_guard_deny_for_the_configuration_appends_a_line_with_config_write() {
     let lines = journal(&tree);
     assert_eq!(lines.len(), 1, "{lines:?}");
     let line = &lines[0];
-    assert_eq!(field(line, &["schema"]), 1, "{line}");
+    assert_eq!(field(line, &["schema"]), 2, "{line}");
     assert_eq!(field(line, &["kind"]), "guard", "{line}");
     assert_eq!(field(line, &["session"]), "s-7", "{line}");
     assert_eq!(field(line, &["decision"]), "deny", "{line}");

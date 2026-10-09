@@ -97,7 +97,7 @@ the 0.x section unchanged.
 | 10 | Runner and CI | Replaced by sections 11.3 and 12. |
 | 11.1, 11.2 | Text and JSON | Replaced by sections 11.3 and 11.7. |
 | 11.3 | SARIF output | Not shipped. A future additive output. |
-| 11.4 | Journal record | Replaced by section 13.1, which keeps schema 1 lines readable. |
+| 11.4 | Journal record | Replaced by section 13.1. A reader skips schema 1 lines. |
 | 11.5 | `klin stats` | Replaced by section 13.2. The counted unit carries forward. |
 | 12 | Determinism | Carried forward. |
 | 13 | Performance budget | Carried forward. Section 14 amends it. |
@@ -711,10 +711,8 @@ An advisory Stop:
 
 A Stop that cannot take the state lock applies the same rules. When they
 make it advisory, it blocks nothing for a finding and tells what it found,
-and it takes no fresh stamp, as it writes no verdict. On a host that submits
-a told message as its next prompt, such as Cursor, it tells nothing, because
-it cannot record the message (section 9.1). Its journal line keeps the
-advisory reason. It took no fresh stamp, so the next Stop that holds the lock
+and it takes no fresh stamp, as it writes no verdict. Its journal line keeps
+the advisory reason. It took no fresh stamp, so the next Stop that holds the lock
 is advisory again and tells what it found.
 
 An advisory Stop for a missing stamp has no stamp to measure against. It
@@ -783,8 +781,9 @@ path.
 The state directory and its contents carry forward from 0.x 7.4, with these
 changes:
 
-- The journal `reset` kind is not written. A reader still reads old `reset`
-  lines. A Stop line can carry the verdict `advisory` (section 13.1).
+- The journal `reset` kind is not written, and a reader reads none, because
+  it reads no schema 1 line. A Stop line can carry the verdict `advisory`
+  (section 13.1).
 - The stamp also records the default-branch merge-base, HEAD's symbolic ref
   and HEAD's reflog position (section 6.6).
 - vNext adds no readiness record and no readiness drift check.
@@ -919,8 +918,7 @@ finding by making a file unmeasurable.
   the one false positive. The Stop text says to the person that a person can
   hold the file in `accepted`, and that `klin policy` shows how. It never
   says so to the agent: the Stop says it only when it does not block, through
-  the host's person channel, and never on a host that submits a told message
-  to the agent as its next prompt. The entry is `{"gate": "measurement-lost", "file":
+  the host's person channel, which on Cursor is the journal (section 10.7). The entry is `{"gate": "measurement-lost", "file":
   PATH}`, and it matches by file alone, for every capability (an amendment
   of 0.x 4.8, which otherwise requires `text` and values). The entry counts
   as matched while the file is still lost for any reason, so it never
@@ -1122,17 +1120,23 @@ can act on it.
 
 ### 8.1 Measurement basis
 
-Every measurement record names its basis. The basis holds, where relevant:
+Every measurement record names its basis. The basis holds, where relevant,
+under the field named:
 
-- the producer: the capability name and its semantics version (section 8.2);
-- the klin version that measured;
-- the effective policy that the capability used, with provenance (derived,
-  pinned, built-in) and the derivation commit;
-- for an integration: the configured entry name, the command or report path,
-  and whatever tool identity the report states;
-- the selected scope and the observed coverage counts;
-- the window: kind, `before` and `after`;
-- the holes, each with its reason.
+- `producer`: the capability name and its semantics version (section 8.2),
+  or null for the run's own record;
+- `klin`: the klin version that measured;
+- the effective policy that the capability used, by provenance: the derived
+  values under `policy`, each with its rule, what a person pinned under
+  `pinned`, and built-in for every key neither names, with the derivation
+  commit under `derivation`;
+- `integration`, for an integration: the configured entry name and its `run`
+  command or `report` path. A tool identity the report states is not read
+  yet;
+- `scope`: whether the run judged the changed files only (`changed`), and
+  the observed `coverage` counts;
+- `window`: kind, `before` and `after`;
+- `holes`: the reason of each hole.
 
 The basis MUST NOT hold a machine path, a timestamp, a process id or a
 duration. Those are run metadata, recorded and never compared.
@@ -1155,10 +1159,8 @@ basis. They are comparable by construction.
 
 Two measurements from different runs are **comparable** when they name the
 same capability and the same semantics version. They are **not comparable**
-when either differs. They are **unknown** when either side does not record a
-semantics version, such as a journal line that 0.x wrote. A policy change,
-such as a derived ceiling that moved, is reported, and it does not decide
-comparability.
+when either differs. A policy change, such as a derived ceiling that moved,
+is reported, and it does not decide comparability.
 
 Comparison across runs happens in three places:
 
@@ -1171,9 +1173,10 @@ Comparison across runs happens in three places:
    pass.
 2. **The journal and `klin report`**: a regression counts as fixed only when
    a later measurement of the same capability, comparable with the one that
-   flagged it, no longer holds it. Not comparable and unknown are reported as
-   "measurement changed; not compared". They are never read as a fix or a new
-   regression. A 0.x line is never upgraded by inference.
+   flagged it, no longer holds it. Not comparable is reported as
+   "measurement changed; not compared". It is never read as a fix or a new
+   regression. The `measurement-lost` row has no producer of its own, so its
+   findings compare across any two runs.
 3. **The accepted list**: an accepted entry keeps its person-authored
    meaning. An entry that stops matching after a semantics change is a review
    item (section 7.6), never a failure. The release notes of the version
@@ -1520,7 +1523,10 @@ them."), a configuration error, the turn-end line or the weekly line.
 - On Cursor, a non-blocking notice MUST NOT use `followup_message`, because
   Cursor submits it as the next agent prompt. The journal records it, and
   `klin status` and `klin report` show it while its window is open. A notice
-  expires when the window it belongs to closes, so notices never pile up.
+  expires when the window it belongs to closes, so notices never pile up: a
+  reader holds a notice open while its Stop line is no older than the stamp.
+  The stamp records the notes and errors of the notice as told (section 6.6),
+  so a later Stop under the same stamp leaves no second notice for them.
 - On the harness protocol, the notice is a `tell` decision.
 - A blocking Stop on Cursor still uses `followup_message`.
 
@@ -1560,8 +1566,9 @@ denies a tool call. So:
 - A usage error, an unknown argument, a host event klin cannot read, a
   run-scope internal failure and a panic exit 0 with no decision at
   `pre_tool`, `session` and `prompt`, and exit 1 at `stop`. Each writes a
-  notice to stderr and, where the state directory allows, a journal note. A
-  capability-scope error is not one of these (section 7.3).
+  notice to stderr and, where the tree opted in and the state directory
+  allows, a journal note (section 13.1). A capability-scope error is not one
+  of these (section 7.3).
 - A well-formed harness event with an unknown `klin_protocol` version is not
   "an event klin cannot read". It keeps the fail-closed rule of section 10.9.
 - An event klin cannot read, or one whose host names no kind klin answers,
@@ -1821,8 +1828,8 @@ into a `measurement-lost` finding, a review item or a coverage note.
 valid, error}`, `integrations [{host, scope, route, state, detail}]`,
 `state_dir`, `cache_dir`, `window {verdict, age_seconds, open [finding
 ids], unasked [deleted-test sites], error, aborted_since,
-default_branch, last_advisory {time, reason} or null, notices [...]}` or
-null,
+default_branch, last_advisory {time, reason} or null, notices [{time,
+message}]}` or null,
 and `last_stop {time, verdict, historical: true}` or null.
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
@@ -1922,13 +1929,18 @@ vNext writes journal `schema` 2:
   `stamp-missing`.
   A repository with no remote keeps the 0.x `branch-fallback` outcome for its
   fallback Stop.
-- `prompt` and `guard` lines keep their schema 1 fields.
+- `prompt` and `guard` lines keep their 0.x fields.
+- A `note` line records an ingress that failed without a decision (section
+  10.10): `event`, the kind klin placed or null, and `message`.
 
-A reader reads schema 1 and schema 2 lines. A schema 1 `stop` line keeps the
-0.x reading of 11.4 and 11.5. A schema 1 `reset` line still sets aside the
-regressions before it. A regression flagged on a schema 1 line and absent on
-a schema 2 line is "not compared", because the schema 1 line records no
-semantics version (section 8.3).
+In the `result` of a `stop` line, `tree` is null, because the Stop starts no
+git process to describe the working tree, and `window.kind` names the window
+the Stop judged: `turn`, or `branch` for the 0.x branch fallback. `notice` is
+null or `{message, delivered}`. `delivered` is false on Cursor, where only the
+journal holds the notice (section 10.7).
+
+klin is not released, so a reader reads schema 2 lines only. A line of
+another schema counts in `skipped_lines`.
 
 ### 13.2 `klin report`
 
@@ -1942,9 +1954,9 @@ semantics version (section 8.3).
   regressions still open, review items, holes, files not measured,
   regressions not compared, advisory Stops, set-aside regressions, and the
   non-blocking notices of open windows that only the journal holds.
-- A regression still open at an advisory Stop, or when an `unjudged` stamp
-  moves, is `set-aside`, as after an old `reset` line, because the fresh
-  stamp no longer judges it. It is never counted as fixed.
+- A regression still open at an advisory Stop, or when the next prompt moves
+  an `unjudged` stamp, is `set-aside`, because the fresh stamp no longer
+  judges it. It is never counted as fixed.
 - The counted unit is the Regression of 0.x 11.5, keyed by finding `id`. A
   fix counts only when comparable (section 8.3).
 - Review items are keyed by `check`, `kind`, `file` and `text`.
@@ -1965,6 +1977,11 @@ semantics version (section 8.3).
 | `notices` | `[{time, message, delivered}]` |
 | `advisory` | `[{time, reason}]` |
 | `skipped_lines` | Lines of a schema this reader does not know. |
+
+A regression's `state` is `fixed` also when the configuration changed before
+the site went, and `config_changed` says so (section 8.3). The document also
+carries `episodes`, `audit` and `activity`, the per-regression trail the
+benchmark reads. They are outside the stable schema.
 
 ## 14. Performance
 
@@ -2533,7 +2550,7 @@ Evidence:
 - an incompatible cache is rebuilt;
 - a regression flagged under one semantics version and absent under another
   is "not compared" in `klin report`;
-- a schema 1 journal line reads as 0.x did.
+- a journal line of another schema counts in `skipped_lines`.
 
 ### 19.3 Performance evidence
 

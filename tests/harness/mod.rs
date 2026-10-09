@@ -457,11 +457,16 @@ pub fn stop_report(
     (run, report)
 }
 
-/// The per-gate rows of a report: the check document's diagnostics, or the Stop hook's report.
+/// The per-gate rows of a report: the check document's diagnostics, the same document a Stop's
+/// journal line holds under `result`, or the Stop hook's report.
 pub fn gate_rows(report: &serde_json::Value) -> &serde_json::Value {
-    match report["diagnostics"]["gates"].is_array() {
-        true => &report["diagnostics"]["gates"],
-        false => &report["gates"],
+    let document = match report["result"].is_object() {
+        true => &report["result"],
+        false => report,
+    };
+    match document["diagnostics"]["gates"].is_array() {
+        true => &document["diagnostics"]["gates"],
+        false => &document["gates"],
     }
 }
 

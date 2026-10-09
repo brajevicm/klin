@@ -312,3 +312,11 @@ only. JSON and journal identities and accepted entries stay per finding.
 - Intended additive growth still blocks once. The agent says the change is
   intended and stops again, and a person accepts it in review.
 - A new language adds value from rung 2 on, without any compatibility rule.
+
+## Amendment: the turn-end line names `klin report` (#504)
+
+`klin stats` is gone (#507). The public-api turn-end line reads "Public API
+compatibility breaks still need your attention. `klin report` shows them.",
+and the counted wording names `klin report` too. The counting rule is
+unchanged. On Cursor the line is a notice the journal holds (vNext spec
+10.7).

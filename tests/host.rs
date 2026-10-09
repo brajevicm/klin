@@ -263,7 +263,8 @@ fn a_cursor_block_exits_0_and_is_journaled_as_a_block() {
         .unwrap_or_default();
     assert_eq!(line["hook"]["blocked"], true, "{line}");
     assert_eq!(line["hook"]["gate_block"], 1, "{line}");
-    assert_eq!(line["exit"], 0, "{line}");
+    assert_eq!(line["result"]["exit"], serde_json::Value::Null, "{line}");
+    assert_eq!(line["notice"], serde_json::Value::Null, "{line}");
 }
 
 /// `loop_count` counts the automatic follow-ups before this stop. It says nothing about a
@@ -326,26 +327,48 @@ fn a_first_cursor_stop_blocks_whatever_its_loop_count() {
     assert_eq!(silent.out, "", "{}", silent.out);
 }
 
-/// A note the stop tells the person uses Cursor's follow-up field, not Claude Code's notice.
+/// Cursor submits a `followup_message` as the next agent prompt, so a note for the person never
+/// uses it, and Claude Code's notice is not Cursor's either. Spec 10.7.
 #[test]
-fn cursor_tells_a_note_as_a_followup() {
-    let tree = Tree::new();
-    tree.write(
-        "klin.json",
-        r#"{
-  "complexity": {"cc": 1, "lines": 1}
-}"#,
-    );
-    tree.write("src/flow.rs", "fn f() {}\n");
-    tree.base();
-    tree.write("src/flow.rs", "%%% not rust %%%\n");
+fn cursor_never_tells_a_note_as_a_followup() {
+    let tree = cursor_noted();
 
     let run = stop(&tree, A_CURSOR_STOP, &[]);
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert!(run.says(r#""followup_message":"#), "{}", run.out);
+    assert!(!run.says("followup_message"), "{}", run.out);
     assert!(run.says("NOTE:"), "{}", run.out);
     assert!(!run.says("systemMessage"), "{}", run.out);
+}
+
+/// `AskUserQuestion` may keep the turn open, so the Stop after the person answers judges the tree
+/// with no prompt between. klin intercepts no ask tool: same-tree pass-through and the two-block
+/// cap bound the flow. Spec 10.5.
+#[test]
+fn an_ask_tool_flow_keeps_same_tree_pass_through_and_the_two_block_cap() {
+    let tree = failing();
+    let first = stop(&tree, A_STOP, &[]);
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("gate block 1 of 2"), "{}", first.out);
+
+    let ask = r#"{"hook_event_name":"PreToolUse","session_id":"s1","tool_name":"AskUserQuestion","tool_input":{"questions":[]}}"#;
+    let asked = feed(tree.root(), harness::AGENT, ask);
+    assert_eq!(asked.code, 0, "{}", asked.out);
+    assert_eq!(asked.printed, "", "{}", asked.out);
+
+    let answered = stop(&tree, A_SECOND_STOP, &[]);
+    assert_eq!(answered.code, 0, "{}", answered.out);
+    assert!(answered.says("not blocking again"), "{}", answered.out);
+
+    tree.words("README.md", 31);
+    let second = stop(&tree, A_SECOND_STOP, &[]);
+    assert_eq!(second.code, 2, "{}", second.out);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+
+    tree.words("README.md", 32);
+    let capped = stop(&tree, A_SECOND_STOP, &[]);
+    assert_eq!(capped.code, 0, "{}", capped.out);
+    assert!(capped.says("has blocked 2 stops"), "{}", capped.out);
 }
 
 #[test]
@@ -375,9 +398,9 @@ fn a_codex_continuation_over_a_changed_tree_spends_the_second_gate_block() {
     assert!(third.says("has blocked 2 stops"), "{}", third.out);
 }
 
-/// Cursor submits each block report, and each message a stop tells, as the next prompt. klin
-/// consumes that prompt without a fresh gate budget, so the stops after it spend the prompt's
-/// second block and no more.
+/// Cursor submits each block report as the next prompt. klin consumes that prompt without a fresh
+/// gate budget, so the stops after it spend the prompt's second block and no more. A stop that
+/// blocks nothing hands Cursor no follow-up at all. Spec 10.4, 10.7.
 #[test]
 fn a_cursor_followup_gains_no_fresh_gate_budget() {
     let tree = Tree::new();
@@ -396,11 +419,6 @@ fn a_cursor_followup_gains_no_fresh_gate_budget() {
     let first = stop(&tree, A_CURSOR_STOP, &[]);
     assert!(first.says("gate block 1 of 2"), "{}", first.out);
     echo_followup(&tree, &first);
-
-    let told = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(told.code, 0, "{}", told.out);
-    assert!(told.says(r#""followup_message":"#), "{}", told.out);
-    echo_followup(&tree, &told);
 
     let again = stop(&tree, A_CURSOR_STOP, &[]);
     assert_eq!(again.code, 0, "{}", again.out);
@@ -589,44 +607,6 @@ fn cursor_failing() -> Tree {
     tree
 }
 
-fn last_stop_flags(tree: &Tree) -> String {
-    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
-    let line = journal
-        .lines()
-        .rfind(|line| line.contains(r#""kind":"stop""#))
-        .unwrap_or_default();
-    let held: serde_json::Value = serde_json::from_str(line).unwrap_or_default();
-    held["flags"].to_string()
-}
-
-/// A told message Cursor submits opens no turn, so the stop after it would tell the same thing
-/// again. klin tells one message once per prompt, and still tells a message that says something
-/// new.
-#[test]
-fn a_cursor_tell_is_told_once_per_prompt_and_a_new_message_still_gets_through() {
-    let tree = cursor_failing();
-    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(blocked.says("gate block 1 of 2"), "{}", blocked.out);
-    echo_followup(&tree, &blocked);
-    let told = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(told.says(r#""followup_message":"#), "{}", told.out);
-    echo_followup(&tree, &told);
-
-    let again = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(again.code, 0, "{}", again.out);
-    assert!(!again.says("followup_message"), "{}", again.out);
-    assert!(
-        last_stop_flags(&tree).contains("told-before"),
-        "{}",
-        again.out
-    );
-
-    tree.words("README.md", 5);
-    let fixed = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(fixed.code, 0, "{}", fixed.out);
-    assert!(fixed.says(r#""followup_message":"#), "{}", fixed.out);
-}
-
 /// A tree whose only news is a file no grammar reads, which every stop tells as a note.
 fn cursor_noted() -> Tree {
     let tree = Tree::new();
@@ -645,42 +625,58 @@ fn cursor_noted() -> Tree {
     tree
 }
 
-/// A note's report opens with the window line, whose age moves each minute. The age says
-/// nothing new, so the note is still told once.
+/// A Cursor notice that blocks nothing emits no `followup_message`. The journal holds it, `klin
+/// status` and `klin report` show it while its window is open, and it expires when the window
+/// closes. Spec 10.7, 11.4, 13.2.
 #[test]
-fn a_cursor_note_is_told_once_even_as_its_window_line_ages() {
+fn a_cursor_notice_lands_in_the_journal_status_and_report_until_its_window_closes() {
     let tree = cursor_noted();
-    let first = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(first.says(r#""followup_message":"#), "{}", first.out);
-    assert!(first.says("window: "), "{}", first.out);
-    echo_followup(&tree, &first);
+    let run = stop(&tree, A_CURSOR_STOP, &[]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("followup_message"), "{}", run.out);
 
-    let text = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
-    let mut held: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
-    held["time"] = (held["time"].as_u64().unwrap_or_default() - 120).into();
+    let journal = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: serde_json::Value = journal
+        .lines()
+        .rfind(|line| line.contains(r#""kind":"stop""#))
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(line["notice"]["delivered"], false, "{line}");
+    let message = line["notice"]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("NOTE:"), "{line}");
+
+    let status = tree.run(&["status", "--json"]).json();
+    assert_eq!(
+        status["window"]["notices"][0]["message"], message,
+        "{status}"
+    );
+    let report = tree.run(&["report", "--json"]).json();
+    assert_eq!(report["counts"]["notices"], 1, "{report}");
+    assert_eq!(report["notices"][0]["message"], message, "{report}");
+    assert_eq!(report["notices"][0]["delivered"], false, "{report}");
+    let text = tree.run(&["report"]);
+    assert!(
+        text.says("klin left you a notice in this window:"),
+        "{}",
+        text.out
+    );
+
+    let stamped = tree.field("commit");
+    submit(&tree, "s1", &"the next task".into());
+    assert_ne!(tree.field("commit"), stamped, "the prompt kept the stamp");
+    let held = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
+    let mut held: serde_json::Value = serde_json::from_str(&held).unwrap_or_default();
+    held["time"] = (held["time"].as_u64().unwrap_or_default() + 5).into();
     tree.write(".git/klin/turn", &held.to_string());
 
-    let aged = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(aged.code, 0, "{}", aged.out);
-    assert!(!aged.says("followup_message"), "{}", aged.out);
-}
-
-#[test]
-fn a_person_prompt_lets_cursor_hear_the_same_message_again() {
-    let tree = cursor_failing();
-    let blocked = stop(&tree, A_CURSOR_STOP, &[]);
-    echo_followup(&tree, &blocked);
-    let told = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(told.says(r#""followup_message":"#), "{}", told.out);
-    echo_followup(&tree, &told);
-
-    submit(&tree, "s1", &"keep going".into());
-    let fresh = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(fresh.says("gate block 1 of 2"), "{}", fresh.out);
-    echo_followup(&tree, &fresh);
-    let retold = stop(&tree, A_CURSOR_STOP, &[]);
-    assert_eq!(retold.code, 0, "{}", retold.out);
-    assert!(retold.says(r#""followup_message":"#), "{}", retold.out);
+    let status = tree.run(&["status", "--json"]).json();
+    assert_eq!(
+        status["window"]["notices"],
+        serde_json::json!([]),
+        "{status}"
+    );
+    let report = tree.run(&["report", "--json"]).json();
+    assert_eq!(report["counts"]["notices"], 0, "{report}");
 }
 
 /// Two Cursor sessions share one worktree. What one session was handed does not replace what
@@ -693,10 +689,9 @@ fn a_second_cursor_session_does_not_refresh_the_first_sessions_budget() {
 
     let other = stop(&tree, &cursor_stop("s2"), &[]);
     assert_eq!(other.code, 0, "{}", other.out);
-    assert!(other.says(r#""followup_message":"#), "{}", other.out);
+    assert!(!other.says("followup_message"), "{}", other.out);
 
     let prompts = tree.field("prompts");
-    echo_from(&tree, &other, "s2");
     echo_from(&tree, &blocked, "s1");
     assert_eq!(tree.field("prompts"), prompts, "an echo opened a turn");
 
@@ -724,14 +719,13 @@ fn a_cursor_block_klin_cannot_hand_off_is_reported_and_blocks_nothing() {
     );
 }
 
-/// A stop that lost the state lock cannot record what it tells, so on Cursor it tells nothing
-/// and leaves the turn stamp as the stop holding the lock wrote it.
+/// A stop that lost the state lock hands Cursor no follow-up and leaves the turn stamp as the
+/// stop holding the lock wrote it.
 #[test]
 fn a_cursor_stop_without_the_state_lock_tells_nothing_and_writes_no_stamp() {
     let tree = cursor_noted();
     let first = stop(&tree, A_CURSOR_STOP, &[]);
-    assert!(first.says(r#""followup_message":"#), "{}", first.out);
-    echo_followup(&tree, &first);
+    assert!(!first.says("followup_message"), "{}", first.out);
     let stamp = std::fs::read_to_string(tree.state("turn")).unwrap_or_default();
 
     let opened = std::fs::OpenOptions::new()

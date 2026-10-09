@@ -205,3 +205,18 @@ Stop after a `red` one keeps `red` (spec 6.6).
 The deleted-test question of ADR 0031 is the one other reason to spend a gate
 block, and it shares the FAIL's block. The two-block cap, the changed-tree
 condition and the record of the tree are unchanged.
+
+## Amendment: Cursor is told nothing it would submit (#504)
+
+The told-message record of "A host-generated follow-up refreshes nothing" is
+gone. Cursor no longer receives a notice that blocks nothing as
+`followup_message` (ADR 0045, vNext spec 10.7), so no told message reaches
+Cursor's prompt, no stop can replay one, and `handed/` records only the block
+report a follow-up host will submit. The `told-before` flag is not written.
+The journal holds Cursor's notice, and the stamp records its notes and errors
+as told, so a later Stop under the same stamp leaves no second notice.
+
+The rest stands: a block report Cursor submits is consumed without a fresh
+budget, a stop with `loop_count` above 0 keeps the build stamp of the prompt
+that opened the chain, a Codex continuation keeps its prompt's budget, and
+only a genuine person prompt brings two gate blocks and eight build blocks.

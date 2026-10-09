@@ -734,9 +734,9 @@ fn cursor_stop(generation: &str) -> String {
     )
 }
 
-/// Cursor tells a note as a `followup_message` it submits as the next prompt, which a Stop
-/// without the lock cannot record, so it tells nothing. That Stop takes no fresh stamp either,
-/// so the next Stop that holds the lock is advisory again and tells it. Spec 6.6, 9.1.
+/// A Stop without the lock takes no fresh stamp, so the next Stop that holds the lock is
+/// advisory again. On Cursor neither hands the note to the agent: the journal holds it.
+/// Spec 6.6, 10.7.
 #[test]
 fn on_cursor_a_stop_that_lost_the_lock_leaves_the_advisory_note_to_the_next_stop() {
     let remote = Remote::new();
@@ -756,9 +756,13 @@ fn on_cursor_a_stop_that_lost_the_lock_leaves_the_advisory_note_to_the_next_stop
     drop(lock);
 
     let told = harness::feed(remote.tree.root(), harness::AGENT, &cursor_stop("g2"));
-    assert!(told.printed.contains("followup_message"), "{}", told.out);
+    assert!(!told.printed.contains("followup_message"), "{}", told.out);
     assert!(told.says(MOVED), "{}", told.out);
-    assert_eq!(last_stop(&remote.tree)["verdict"], "advisory");
+    let line = last_stop(&remote.tree);
+    assert_eq!(line["verdict"], "advisory", "{line}");
+    assert_eq!(line["notice"]["delivered"], false, "{line}");
+    let notice = line["notice"]["message"].as_str().unwrap_or_default();
+    assert!(notice.contains(MOVED), "{line}");
 }
 
 /// The agent on `main` one commit past the base, level with `origin/main`, so a rewind of one
