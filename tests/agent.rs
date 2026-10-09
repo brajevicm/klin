@@ -147,9 +147,12 @@ fn a_stop_that_panics_exits_1_and_writes_a_journal_note() {
     let tree = Tree::new();
     tree.write("klin.json", "{not json at all");
 
-    let mut child = Command::new(binary())
-        .arg("__agent")
-        .arg("event")
+    let mut command = Command::new(binary());
+    for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
+        command.env_remove(name);
+    }
+    let mut child = command
+        .args(AGENT)
         .env("HOME", empty_home())
         .current_dir(tree.root())
         .stdin(Stdio::piped())
