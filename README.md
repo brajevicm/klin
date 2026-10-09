@@ -46,7 +46,6 @@ From your repository root on macOS, Ubuntu 22.04+, or Debian 12+:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh
-source $HOME/.local/bin/env
 
 # Set up this repository. For Claude Code only, add --host claude.
 klin setup
@@ -110,7 +109,7 @@ Run `/hooks`, review and trust the klin hooks, then start a fresh session.
 
 ```sh
 d=$(mktemp -d) &&
-  git clone --depth 1 --branch v0.4.2 https://github.com/brajevicm/klin "$d" &&
+  git clone --depth 1 --branch v0.5.0 https://github.com/brajevicm/klin "$d" &&
   mkdir -p ~/.cursor/plugins/local &&
   rm -rf ~/.cursor/plugins/local/klin &&
   cp -R "$d/plugins/klin" ~/.cursor/plugins/local/klin
@@ -243,7 +242,7 @@ GitHub Actions:
 - uses: actions/checkout@v5
   with:
     fetch-depth: 0
-- uses: brajevicm/klin@v0.4.2
+- uses: brajevicm/klin@v0.5.0
 ```
 
 Other CI: install klin, fetch the full Git history, then run:
