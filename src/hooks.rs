@@ -554,11 +554,17 @@ fn replace_agreed(file: &Path) -> Result<bool, Error> {
 }
 
 /// What a skill file holds, judged against the skill this klin writes.
-#[derive(PartialEq)]
 enum Held {
     Current,
     Earlier,
     Other,
+}
+
+impl Held {
+    /// Whether klin wrote the text, this klin or an earlier one.
+    fn is_klins(&self) -> bool {
+        matches!(self, Held::Current | Held::Earlier)
+    }
 }
 
 /// The one place that judges a skill file, so every reader of it agrees.
@@ -978,7 +984,7 @@ fn skill_alone(
         .map(|(reader, _)| reader.name())
         .eq([host.name()])
         && readers().all(|(_, held)| held.is_empty())
-        && held_skill(&skill).is_ok_and(|held| held != Held::Other);
+        && held_skill(&skill).is_ok_and(|held| held.is_klins());
     if !alone {
         return None;
     }

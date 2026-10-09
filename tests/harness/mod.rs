@@ -486,6 +486,11 @@ pub fn earlier_skills() -> Vec<String> {
             .current_dir(repository)
             .output()
             .expect("run git");
+        assert!(
+            done.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&done.stderr)
+        );
         String::from_utf8_lossy(&done.stdout).to_string()
     };
     let log = git(&[
