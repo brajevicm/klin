@@ -8,7 +8,9 @@ inputs:
     required: false
     default: ""
   args:
-    description: Arguments appended to klin check, such as check names or --json.
+    description: >-
+      Arguments appended to klin check, such as check names or --changed. The
+      action adds --json itself to write annotations and the job summary.
     required: false
     default: ""
 runs:
@@ -35,4 +37,15 @@ runs:
       shell: bash
       env:
         ARGS: ${{ inputs.args }}
-      run: klin check $ARGS
+      run: |
+        set -uo pipefail
+        report="$RUNNER_TEMP/klin-check.json"
+        klin check $ARGS --json > "$report"
+        code=$?
+        if jq -e 'type == "object"' "$report" > /dev/null 2>&1; then
+          jq -r --arg part annotations -f "$GITHUB_ACTION_PATH/action/report.jq" "$report"
+          jq -r --arg part summary -f "$GITHUB_ACTION_PATH/action/report.jq" "$report" | tee -a "$GITHUB_STEP_SUMMARY"
+        else
+          cat "$report"
+        fi
+        exit "$code"
