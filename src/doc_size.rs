@@ -333,9 +333,9 @@ fn listing(project: &Project) -> Result<Listing, Error> {
         .instructions
         .iter()
         .filter(|name| {
-            !pins
-                .keys()
-                .any(|pin| config.path(pin) == config.root().join(name))
+            let path = config.root().join(name);
+            !pins.keys().any(|pin| config.path(pin) == path)
+                && !listing.documents.iter().any(|pinned| pinned.path == path)
         })
         .collect();
     if !unpinned.is_empty() {

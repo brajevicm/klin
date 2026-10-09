@@ -1020,9 +1020,11 @@ Rules:
 - **Moved and deleted policy paths.** A path that the policy names (an `in`
   path, a pinned document, a convention's `in`) and that selects files in the
   base and none in the working tree is decided by what happened to those
-  files, by a deterministic test on both trees. A pinned document names one
-  file, and one that the working tree holds did not move, even where no walk
-  reaches it:
+  files, by a deterministic test on both trees. A pinned document names
+  exactly one file, never a directory below it. One that the working tree
+  holds did not move, even where no walk reaches it. A rename of it is
+  followed wherever it goes, under a skipped directory too, and an
+  instruction file it was renamed to is judged once, under the pin:
   - **Renamed.** When git detects every selected file as renamed (`-M50%`),
     the policy follows the rename for this run. The capability measures the
     new paths under the pinned values, so it stays switched on. `klin check`

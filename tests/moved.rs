@@ -517,3 +517,74 @@ fn a_convention_in_path_the_base_holds_that_selects_nothing_in_either_tree_is_a_
     assert_eq!(pins.len(), 1, "{report}");
     assert_eq!(pins[0]["file"], "src/gone", "{report}");
 }
+
+#[test]
+fn a_pinned_document_renamed_into_a_skipped_directory_is_measured_under_its_pin() {
+    let tree = documented(90);
+    std::fs::create_dir_all(tree.path("build")).unwrap_or_default();
+    tree.git(&["mv", "docs/guide.md", "build/guide.md"]);
+    tree.write("build/guide.md", &document(150));
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("build/guide.md"), "{}", run.out);
+}
+
+#[test]
+fn a_renamed_pinned_instruction_file_is_judged_once_under_its_pin() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"doc_size": {"AGENTS.md": 100}}"#);
+    tree.write("AGENTS.md", &document(90));
+    tree.write("src/lib.rs", SIMPLE);
+    tree.base();
+    std::fs::create_dir_all(tree.path("docs")).unwrap_or_default();
+    tree.git(&["mv", "AGENTS.md", "docs/AGENTS.md"]);
+
+    let run = tree.run(&["check", "doc-size"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(
+        run.out.matches("docs/AGENTS.md is 90 words").count(),
+        1,
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("docs/AGENTS.md is 90 words, ceiling 100"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_renamed_pinned_document_is_followed_beside_a_directory_at_its_old_path() {
+    let tree = documented(90);
+    tree.git(&["mv", "docs/guide.md", "docs/manual.md"]);
+    tree.write("docs/guide.md/notes.txt", "notes\n");
+
+    let run = tree.run(&["check", "doc-size", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let report = run.json();
+    let pins = moved_pins(&report);
+    assert_eq!(pins.len(), 1, "{report}");
+    assert_eq!(
+        pins[0]["reason"], "docs/guide.md -> docs/manual.md",
+        "{report}"
+    );
+}
+
+#[test]
+fn deleting_every_file_of_overlapping_convention_in_paths_is_a_moved_pin_and_no_error() {
+    let tree = pinned(&CONVENTION.replace(
+        r#""in": "src/core""#,
+        r#""in": ["src/core", "src/core/internal"]"#,
+    ));
+    tree.write("src/core/internal/c.rs", SIMPLE);
+    tree.base();
+    for file in ["src/core/a.rs", "src/core/b.rs", "src/core/internal/c.rs"] {
+        tree.remove(file);
+    }
+
+    let run = tree.run(&["check", "--json"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(moved_pins(&run.json()).len(), 1, "{}", run.out);
+}

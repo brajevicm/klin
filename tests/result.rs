@@ -197,7 +197,8 @@ fn an_invalid_configuration_says_err_and_the_axes_in_the_text() {
 
 #[test]
 fn a_capability_configuration_error_exits_2_and_the_other_capabilities_still_report() {
-    let tree = tree(r#"{"doc_size": {"gone.md": 10}}"#);
+    let tree = tree("{}");
+    tree.write("klin.json", r#"{"doc_size": {"gone.md": 10}}"#);
 
     let (code, report) = checked(&tree, &[]);
 
@@ -213,7 +214,8 @@ fn a_capability_configuration_error_exits_2_and_the_other_capabilities_still_rep
 
 #[test]
 fn a_capability_error_prints_an_err_row_and_line() {
-    let tree = tree(r#"{"doc_size": {"gone.md": 10}}"#);
+    let tree = tree("{}");
+    tree.write("klin.json", r#"{"doc_size": {"gone.md": 10}}"#);
 
     let run = tree.run(&["check"]);
 

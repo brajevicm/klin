@@ -406,8 +406,11 @@ fn a_failing_run_with_a_hole_exits_1_and_lists_both() {
 
 #[test]
 fn an_error_and_a_hole_together_exit_2() {
-    let tree = tree(
-        r#"{"doc_size": {"gone.md": 10}, "sarif": [{"name": "eslint", "report": "eslint.sarif"}]}"#,
+    let sarif = r#""sarif": [{"name": "eslint", "report": "eslint.sarif"}]"#;
+    let tree = tree(&format!("{{{sarif}}}"));
+    tree.write(
+        "klin.json",
+        &format!(r#"{{"doc_size": {{"gone.md": 10}}, {sarif}}}"#),
     );
 
     let report = tree.run(&["check", "doc-size", "eslint", "--json"]).json();
