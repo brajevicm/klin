@@ -1958,7 +1958,9 @@ another schema counts in `skipped_lines`.
   non-blocking notices of open windows that only the journal holds.
 - A regression still open at an advisory Stop, or when the next prompt moves
   an `unjudged` stamp, is `set-aside`, because the fresh stamp no longer
-  judges it. It is never counted as fixed.
+  judges it. It is never counted as fixed: an advisory Stop measures a window
+  that other people's commits entered, so a site gone at that Stop proves no
+  fix.
 - The counted unit is the Regression of 0.x 11.5, keyed by finding `id`. A
   fix counts only when comparable (section 8.3).
 - Review items are keyed by `check`, `kind`, `file` and `text`.

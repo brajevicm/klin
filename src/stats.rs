@@ -415,9 +415,9 @@ fn regressions(lines: &[Value]) -> Vec<Regression> {
                 pass.unjudged = false;
             }
             "stop" => {
-                pass.settle(line);
-                if line["advisory"].is_string() {
-                    pass.set_aside(at(line));
+                match line["advisory"].is_string() {
+                    true => pass.set_aside(at(line)),
+                    false => pass.settle(line),
                 }
                 pass.unjudged = word(line, "verdict") == "unjudged";
                 if gate_blocked(line) {

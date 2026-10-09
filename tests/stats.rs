@@ -1155,13 +1155,13 @@ fn guard(ago: u64, decision: &str, reason: &str) -> Value {
            "session": "s-1", "decision": decision, "reason": reason})
 }
 
-/// An advisory Stop that measured nothing, as one that took a fresh stamp after the history
-/// moved records it. Spec 13.1.
+/// An advisory Stop as one that took a fresh stamp after the history moved records it: it
+/// measured every check and found nothing, which proves no fix, because other people's commits
+/// came into the window it measured. Spec 6.6, 13.1, 13.2.
 fn advisory(ago: u64) -> Value {
     let mut line = stop(ago, false, vec![], vec![]);
     line["verdict"] = json!("advisory");
     line["advisory"] = json!("incoming-commits");
-    line["result"]["capabilities"] = json!([]);
     line
 }
 
