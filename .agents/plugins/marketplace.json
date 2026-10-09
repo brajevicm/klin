@@ -10,7 +10,7 @@
         "source": "git-subdir",
         "url": "https://github.com/brajevicm/klin.git",
         "path": "./plugins/klin",
-        "ref": "v0.5.1"
+        "ref": "v0.5.2"
       },
       "policy": {
         "installation": "AVAILABLE"
