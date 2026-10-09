@@ -432,6 +432,55 @@ fn an_accepted_entry_holds_a_function_at_its_value_and_fails_above_it() {
 }
 
 #[test]
+fn an_accepted_entry_with_a_reason_keeps_the_reason_out_of_its_values() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "cc": 9, "lines": 13,
+                "reason": "Legacy parser. Split tracked in #123."}"#,
+        ),
+    );
+    tree.write("src/knot.rs", RUST);
+
+    let held = tree.run(&["check", "complexity"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+
+    tree.write(
+        "src/knot.rs",
+        &RUST.replace("a == 0 ||", "a == 0 || a == -2 ||"),
+    );
+    let worse = tree.run(&["check", "--json", "complexity"]);
+    assert_eq!(worse.code, 1, "{}", worse.out);
+    let report = worse.json();
+    let matched = &report["findings"][0]["matched"];
+    assert_eq!(matched["accepted"], true, "{report}");
+    assert_eq!(
+        matched["values"],
+        serde_json::json!({"cc": 9, "lines": 13}),
+        "{report}"
+    );
+}
+
+#[test]
+fn an_accepted_entry_whose_reason_is_not_text_is_a_config_error() {
+    let tree = tree(r#"{"cc": 8, "lines": 60}"#);
+    tree.write(
+        "klin.json",
+        &accepted(
+            r#"{"gate": "complexity", "file": "src/knot.rs",
+                "text": "fn tangled(a: i32) -> i32 {", "cc": 9, "lines": 13, "reason": 7}"#,
+        ),
+    );
+    tree.write("src/knot.rs", RUST);
+
+    let run = tree.run(&["check", "complexity"]);
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("\"reason\" must be a string"), "{}", run.out);
+}
+
+#[test]
 fn an_accepted_entry_the_base_also_holds_stays_matched() {
     let tree = tree(r#"{"cc": 8, "lines": 60}"#);
     tree.write(

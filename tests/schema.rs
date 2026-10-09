@@ -26,6 +26,7 @@ fn the_schema_describes_the_compact_configuration_shapes() {
     convention_schema(properties);
     layering_schema(properties);
     sarif_schema(properties);
+    accepted_schema(properties);
 }
 
 fn top_level_schema(schema: &Value, properties: &serde_json::Map<String, Value>) {
@@ -114,6 +115,63 @@ fn sarif_schema(properties: &serde_json::Map<String, Value>) {
     assert_eq!(sarif["required"][0], "name");
     assert_eq!(sarif["required"][1], "report");
     assert_eq!(sarif["additionalProperties"], Value::Bool(false));
+}
+
+fn accepted_schema(properties: &serde_json::Map<String, Value>) {
+    let entry = &properties["accepted"]["items"];
+    assert_eq!(entry["properties"]["reason"]["type"], "string");
+    assert_eq!(entry["additionalProperties"]["type"], "number");
+    assert!(
+        entry["required"]
+            .as_array()
+            .is_some_and(|required| !required.contains(&Value::from("reason")))
+    );
+}
+
+#[test]
+fn the_readme_accepted_example_fits_the_schema_and_the_binary() {
+    let readme =
+        fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md"))
+            .unwrap_or_else(|why| panic!("README.md could not be read: {why}"));
+    let example = readme
+        .split("Policy lives in `klin.json`:\n\n```json\n")
+        .nth(1)
+        .and_then(|rest| rest.split("```").next())
+        .unwrap_or_else(|| panic!("README.md has no klin.json example"));
+    let config: Value = serde_json::from_str(example)
+        .unwrap_or_else(|why| panic!("the README example is JSON: {why}"));
+    let schema = schema();
+    let item = &schema["properties"]["accepted"]["items"];
+    let entries = config["accepted"].as_array().map_or(&[][..], Vec::as_slice);
+    assert!(!entries.is_empty(), "{config}");
+    for entry in entries {
+        fits(entry, item);
+    }
+
+    let tree = Tree::new();
+    tree.write("klin.json", example);
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+fn fits(entry: &Value, item: &Value) {
+    let fields = entry.as_object().unwrap_or_else(|| panic!("{entry}"));
+    for name in item["required"].as_array().into_iter().flatten() {
+        let name = name.as_str().unwrap_or_default();
+        assert!(fields.contains_key(name), "{entry} has no {name}");
+    }
+    for (name, value) in fields {
+        let shape = item["properties"]
+            .get(name)
+            .unwrap_or(&item["additionalProperties"]);
+        let fit = match shape["type"].as_str() {
+            Some("string") => value.is_string(),
+            Some("integer") => value.is_u64(),
+            Some("number") => value.is_number(),
+            _ => false,
+        };
+        assert!(fit, "{name} of {entry} does not fit {shape}");
+    }
 }
 
 #[test]

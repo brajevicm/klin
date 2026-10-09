@@ -119,6 +119,7 @@ pub fn accepted_leaving_out(
         }
         names_every_value(config, gate, &entry, metrics, optional)?;
         entry.remove(BODY);
+        entry.remove(config::ACCEPTED_REASON);
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);
     }

@@ -21,6 +21,9 @@
             "minimum": 0,
             "type": "integer"
           },
+          "reason": {
+            "type": "string"
+          },
           "text": {
             "type": "string"
           }

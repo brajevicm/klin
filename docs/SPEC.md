@@ -2852,6 +2852,16 @@ and `an_accepted_entry_that_names_some_of_the_values_is_a_tool_error` in
 `tests/complexity.rs`. An entry that matches nothing is a NOTE, and a failure
 under `--strict`.
 
+An entry may carry a `reason`, a string in which the person says why they
+accept the debt. It is not a value: klin never ratchets it, never compares
+it, and leaves it out of the `values` of the entry a finding matched (11.2).
+An entry whose `reason` is not a string is a config error. Pinned by
+`an_accepted_entry_with_a_reason_keeps_the_reason_out_of_its_values` and
+`an_accepted_entry_whose_reason_is_not_text_is_a_config_error` in
+`tests/complexity.rs`, and by
+`the_readme_accepted_example_fits_the_schema_and_the_binary` in
+`tests/schema.rs`.
+
 The accepted entry takes the match when the finding holds against it, unless
 a `before` entry the finding also holds against shares more values with it
 (4.4). When the finding rose against the accepted entry but not against

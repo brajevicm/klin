@@ -505,6 +505,8 @@ fn build_error(file: &Path, key: &str) -> Error {
 /// capability, `sarif` entry or other accepted entry may take it. Spec 7.2.
 pub const MEASUREMENT_LOST: &str = "measurement-lost";
 
+pub const ACCEPTED_REASON: &str = "reason";
+
 fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
     let Some(entries) = value.as_array() else {
         return Err(shape_error(
@@ -537,6 +539,11 @@ fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Resul
             && !line.is_u64()
         {
             return Err(shape_error(file, section, "line", "a whole number"));
+        }
+        if let Some(reason) = fields.get(ACCEPTED_REASON)
+            && !reason.is_string()
+        {
+            return Err(shape_error(file, section, ACCEPTED_REASON, "a string"));
         }
     }
     Ok(())

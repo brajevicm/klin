@@ -199,7 +199,8 @@ fn accepted_schema() -> Value {
                 "gate": {"type": "string"},
                 "file": {"type": "string"},
                 "text": {"type": "string"},
-                "line": integer()
+                "line": integer(),
+                "reason": {"type": "string"}
             },
             "required": ["gate", "file", "text"],
             "additionalProperties": {"type": "number"}
