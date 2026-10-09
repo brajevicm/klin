@@ -167,11 +167,8 @@ impl Needs {
 /// about a check before writing its section. Spec 4.6, ADR 0038.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Activation {
-    /// Absence means the check runs over the facts of the tree and derives its own policy.
     Automatic,
-    /// Absence means the project has no such policy, so the check does not run.
     Policy,
-    /// Absence means no external tool is configured, so the check does not run.
     Integration,
 }
 
@@ -181,6 +178,17 @@ impl Activation {
             Activation::Automatic => "automatic",
             Activation::Policy => "policy",
             Activation::Integration => "integration",
+        }
+    }
+
+    pub fn absence(self) -> &'static str {
+        match self {
+            Activation::Automatic => {
+                "the check runs when the tree holds what it applies to, and every key follows \
+                 its own derivation rule or default"
+            }
+            Activation::Policy => "the project has no such policy, so the check does not run",
+            Activation::Integration => "no external tool is configured, so the check does not run",
         }
     }
 }

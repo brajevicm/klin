@@ -130,6 +130,63 @@ fn accepted_schema(properties: &serde_json::Map<String, Value>) {
 }
 
 #[test]
+fn the_schema_descriptions_carry_the_policy_metadata() {
+    let schema = schema();
+    let described = |at: &Value| {
+        at["description"]
+            .as_str()
+            .unwrap_or_else(|| panic!("a description: {at}"))
+            .to_string()
+    };
+    let root = described(&schema);
+    assert!(root.contains("at the worktree root"), "{root}");
+    assert!(root.contains("run under `{}`"), "{root}");
+    assert!(root.contains("the hooks stay silent"), "{root}");
+
+    let properties = &schema["properties"];
+    let complexity = described(&properties["complexity"]);
+    assert!(
+        complexity
+            .contains("automatic: when the section is absent, the check runs when the tree holds"),
+        "{complexity}"
+    );
+    assert!(
+        complexity.contains("`false` excludes the gate"),
+        "{complexity}"
+    );
+    let escapes = described(&properties["escapes"]);
+    assert!(!escapes.contains("derives"), "{escapes}");
+    assert!(
+        escapes.contains("every key follows its own derivation rule or default"),
+        "{escapes}"
+    );
+    let layering = described(&properties["layering"]);
+    assert!(layering.contains("the check does not run"), "{layering}");
+    let sarif = described(&properties["sarif"]);
+    assert!(sarif.contains("no external tool"), "{sarif}");
+    let public_api = described(&properties["public_api"]);
+    assert!(
+        public_api.contains("public surfaces are derived from Cargo library targets"),
+        "{public_api}"
+    );
+    assert!(public_api.contains("ADR 0050"), "{public_api}");
+
+    let complexity = &properties["complexity"]["anyOf"][1]["properties"];
+    let cc = described(&complexity["cc"]);
+    assert!(cc.starts_with("the cyclomatic complexity"), "{cc}");
+    assert!(
+        cc.contains("Source: derived when absent. Derivation rule: the 95th percentile"),
+        "{cc}"
+    );
+    let test_lines = described(&complexity["test_lines"]);
+    assert!(test_lines.contains("Source: pinned only."), "{test_lines}");
+    assert!(
+        test_lines.contains("Default: test code is not judged on length."),
+        "{test_lines}"
+    );
+}
+
+#[test]
 fn the_readme_accepted_example_fits_the_schema_and_the_binary() {
     let readme =
         fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("README.md"))

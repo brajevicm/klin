@@ -2,10 +2,10 @@
   "$id": "https://raw.githubusercontent.com/brajevicm/klin/main/schemas/klin.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Human policy for klin; repository facts and semantic validation remain native to klin.",
+  "description": "Human policy for klin; repository facts and semantic validation remain native to klin. klin reads the klin.json at the worktree root, or in the starting directory outside a worktree, and never one below the root; `--config PATH` names another file. Without a file, `klin check`, `klin status` and `klin policy` run under `{}`, and the hooks stay silent.",
   "properties": {
     "accepted": {
-      "description": "the debt a person accepted, each entry a site and a reason. Only a person writes it",
+      "description": "the debt a person accepted, each entry a site and a reason. Only a person writes it. Source: pinned only. Default: nothing is accepted.",
       "items": {
         "additionalProperties": {
           "type": "number"
@@ -64,7 +64,7 @@
           "const": false
         }
       ],
-      "description": "a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing"
+      "description": "a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing. Source: derived when absent. Derivation rule: one command per standard manifest, from the fixed table of ADR 0012."
     },
     "complexity": {
       "anyOf": [
@@ -93,7 +93,7 @@
                   "type": "object"
                 }
               ],
-              "description": "the cyclomatic complexity a function may not pass"
+              "description": "the cyclomatic complexity a function may not pass. Source: derived when absent. Derivation rule: the 95th percentile of `cc` over every supported function selected by the compact scope recorded at the derivation commit, rounded up to the next whole number, with a floor of 10, and the floor itself below 50 functions."
             },
             "except": {
               "anyOf": [
@@ -110,7 +110,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -127,7 +127,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             },
             "lines": {
               "anyOf": [
@@ -147,7 +147,7 @@
                   "type": "object"
                 }
               ],
-              "description": "the body length a function outside test code may not pass"
+              "description": "the body length a function outside test code may not pass. Source: derived when absent. Derivation rule: the 95th percentile of `lines`, by the same rule as `cc`, test code included, with a floor of 25."
             },
             "test_lines": {
               "anyOf": [
@@ -167,12 +167,13 @@
                   "type": "object"
                 }
               ],
-              "description": "the body length a function in test code may not pass: in a test file of spec 5.4, or in a Rust item marked `#[cfg(test)]`, such as an inline test module"
+              "description": "the body length a function in test code may not pass: in a test file of spec 5.4, or in a Rust item marked `#[cfg(test)]`, such as an inline test module. Source: pinned only. Default: test code is not judged on length."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `complexity` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "conventions": {
       "anyOf": [
@@ -254,7 +255,7 @@
             ],
             "properties": {
               "code": {
-                "description": "a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list. A fragment, such as a match arm or a type, is read everywhere the language holds one",
+                "description": "a code pattern no source may hold, with `$NAME` for one piece of code and `$$$ARGS` for a list. A fragment, such as a match arm or a type, is read everywhere the language holds one. Source: pinned only.",
                 "type": "string"
               },
               "except": {
@@ -272,10 +273,10 @@
                     "type": "array"
                   }
                 ],
-                "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+                "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
               },
               "files": {
-                "description": "a glob over repository-relative paths no file may sit at, where `*` stays inside one directory and `**/` crosses any number",
+                "description": "a glob over repository-relative paths no file may sit at, where `*` stays inside one directory and `**/` crosses any number. Source: pinned only.",
                 "type": "string"
               },
               "in": {
@@ -293,10 +294,10 @@
                     "type": "array"
                   }
                 ],
-                "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+                "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
               },
               "language": {
-                "description": "the language a `code` pattern is written in",
+                "description": "the language a `code` pattern is written in. Source: pinned only. Default: the one language the source in scope is written in.",
                 "enum": [
                   "rust",
                   "typescript"
@@ -304,12 +305,12 @@
                 "type": "string"
               },
               "remedy": {
-                "description": "the exact action to take instead, printed with every failure",
+                "description": "the exact action to take instead, printed with every failure. Source: pinned only.",
                 "pattern": "[^\\t\\n\\v\\f\\r \\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]",
                 "type": "string"
               },
               "text": {
-                "description": "the literal text no line may hold, matched as written. Each convention states one of `text`, `code` and `files`",
+                "description": "the literal text no line may hold, matched as written. Each convention states one of `text`, `code` and `files`. Source: pinned only.",
                 "type": "string"
               }
             },
@@ -324,7 +325,8 @@
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `conventions` check, policy: when the section is absent, the project has no such policy, so the check does not run. `false` excludes the gate."
     },
     "dead_symbols": {
       "anyOf": [
@@ -350,10 +352,10 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "ignore": {
-              "description": "name globs for declarations the check leaves out",
+              "description": "name globs for declarations the check leaves out. Source: pinned only. Default: Rust `main`, test functions and declarations marked externally visible.",
               "items": {
                 "type": "string"
               },
@@ -374,15 +376,17 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `dead-symbols` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "doc_citations": {
-      "const": false
+      "const": false,
+      "description": "The `doc-citations` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate. The section reads no keys: documents and citation roots are discovered; remove the section, or set it to false."
     },
     "doc_size": {
       "anyOf": [
@@ -408,7 +412,7 @@
                 "type": "object"
               }
             ],
-            "description": "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root and `AGENTS.md` in any directory keep a derived ceiling where the map does not name them; every other document is judged only when the map names it"
+            "description": "the words the document at that path, from the configuration's directory, may not pass: a whole number or dated steps. `AGENTS.md` and `CLAUDE.md` at the tree root and `AGENTS.md` in any directory keep a derived ceiling where the map does not name them; every other document is judged only when the map names it. Source: derived when absent. Derivation rule: each instruction file the derivation commit holds: the word count there, rounded up to the next 50 and never below 50; one it lacks: 50."
           },
           "minProperties": 1,
           "propertyNames": {
@@ -416,7 +420,8 @@
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `doc-size` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "escapes": {
       "anyOf": [
@@ -442,7 +447,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -459,16 +464,17 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             },
             "skip_test_idioms": {
-              "description": "whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files",
+              "description": "whether the test idioms inside test code are left out: `unwrap` and `expect` in Rust tests, `@ts-expect-error` in TypeScript and JavaScript test files. Source: pinned only. Default: `true`.",
               "type": "boolean"
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `escapes` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "inventory": {
       "anyOf": [
@@ -494,7 +500,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -511,16 +517,17 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `inventory` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "journal": {
       "additionalProperties": false,
-      "description": "how the journal records a turn, as `prompt`, `false` to record no prompt excerpt",
+      "description": "how the journal records a turn, as `prompt`, `false` to record no prompt excerpt. Source: pinned only. Default: the prompt excerpt is recorded.",
       "properties": {
         "prompt": {
           "type": "boolean"
@@ -538,7 +545,7 @@
           "minProperties": 1,
           "properties": {
             "acyclic": {
-              "description": "`true` to fail a dependency that closes a module cycle the base did not hold",
+              "description": "`true` to fail a dependency that closes a module cycle the base did not hold. Source: pinned only. Default: `false`.",
               "type": "boolean"
             },
             "except": {
@@ -556,7 +563,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -573,7 +580,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             },
             "layers": {
               "additionalProperties": {
@@ -614,7 +621,7 @@
                 ],
                 "type": "object"
               },
-              "description": "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer",
+              "description": "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. Source: pinned only.",
               "minProperties": 1,
               "type": "object"
             }
@@ -624,7 +631,8 @@
           ],
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `layering` check, policy: when the section is absent, the project has no such policy, so the check does not run. `false` excludes the gate."
     },
     "lockfile": {
       "anyOf": [
@@ -650,7 +658,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -667,19 +675,21 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `lockfile` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "public_api": {
-      "const": false
+      "const": false,
+      "description": "The `public-api` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate. The section reads no keys: public surfaces are derived from Cargo library targets and package entry points; remove the section, or set it to false. A Cargo library target and a TypeScript package entry point are surfaces whether or not the package can be published: `publish = false` and `\"private\": true` do not make a package not applicable (ADR 0050)."
     },
     "radius": {
       "additionalProperties": false,
-      "description": "the change radius a turn may not pass, as `lines` and `directories`",
+      "description": "the change radius a turn may not pass, as `lines` and `directories`. Source: derived when absent. Derivation rule: the 90th percentile over the last 200 non-merge commits, and no section below 50 commits.",
       "properties": {
         "directories": {
           "minimum": 0,
@@ -716,7 +726,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -733,12 +743,13 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `reachability` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     },
     "sarif": {
       "anyOf": [
@@ -750,19 +761,19 @@
             "additionalProperties": false,
             "properties": {
               "differential": {
-                "description": "whether only a finding on a line the window changed is judged",
+                "description": "whether only a finding on a line the window changed is judged. Source: pinned only. Default: `false`.",
                 "type": "boolean"
               },
               "name": {
-                "description": "the gate's own name, which `klin check` takes",
+                "description": "the gate's own name, which `klin check` takes. Source: pinned only.",
                 "type": "string"
               },
               "report": {
-                "description": "the SARIF file this gate reads",
+                "description": "the SARIF file this gate reads. Source: pinned only.",
                 "type": "string"
               },
               "run": {
-                "description": "the command that writes the report before the gate reads it",
+                "description": "the command that writes the report before the gate reads it. Source: pinned only. Default: klin reads the report as it finds it and refuses one that predates the change.",
                 "type": "string"
               }
             },
@@ -774,7 +785,8 @@
           },
           "type": "array"
         }
-      ]
+      ],
+      "description": "The `sarif` check, integration: when the section is absent, no external tool is configured, so the check does not run. `false` excludes the gate."
     },
     "stubs": {
       "anyOf": [
@@ -800,7 +812,7 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each"
+              "description": "a repository-relative path, or a list of them, taken out of `in`, with everything below each. Source: pinned only. Default: nothing is taken out."
             },
             "in": {
               "anyOf": [
@@ -817,12 +829,13 @@
                   "type": "array"
                 }
               ],
-              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each"
+              "description": "a repository-relative path, or a list of them, the section applies to, with everything below each. Source: pinned only. Default: the whole repository."
             }
           },
           "type": "object"
         }
-      ]
+      ],
+      "description": "The `stubs` check, automatic: when the section is absent, the check runs when the tree holds what it applies to, and every key follows its own derivation rule or default. `false` excludes the gate."
     }
   },
   "title": "klin.json",

@@ -62,7 +62,7 @@ fn schema_value() -> Value {
         "$schema": SCHEMA,
         "$id": SCHEMA_ID,
         "title": "klin.json",
-        "description": "Human policy for klin; repository facts and semantic validation remain native to klin.",
+        "description": "Human policy for klin; repository facts and semantic validation remain native to klin. klin reads the klin.json at the worktree root, or in the starting directory outside a worktree, and never one below the root; `--config PATH` names another file. Without a file, `klin check`, `klin status` and `klin policy` run under `{}`, and the hooks stay silent.",
         "type": "object",
         "properties": properties,
         "additionalProperties": false
@@ -70,6 +70,26 @@ fn schema_value() -> Value {
 }
 
 fn section(spec: &catalogue::Row) -> Value {
+    described(section_shape(spec), section_description(spec))
+}
+
+fn section_description(spec: &catalogue::Row) -> String {
+    let mut text = format!(
+        "The `{}` check, {}: when the section is absent, {}. `false` excludes the gate.",
+        spec.name,
+        spec.activation.name(),
+        spec.activation.absence()
+    );
+    if let SectionShape::FalseOnly(policy) = spec.shape {
+        let _ = write!(text, " The section reads no keys: {policy}.");
+    }
+    if let Some(more) = spec.reference_text {
+        let _ = write!(text, " {more}");
+    }
+    text
+}
+
+fn section_shape(spec: &catalogue::Row) -> Value {
     match spec.shape {
         SectionShape::Object => disabled(object(spec.keys, true)),
         SectionShape::DocumentMap(document) => disabled(document_map(document)),
@@ -138,11 +158,21 @@ fn object(keys: &[Key], minimum: bool) -> Value {
 }
 
 fn field(key: &Key) -> Value {
-    let mut out = shape(key.shape);
-    if let Value::Object(fields) = &mut out {
-        fields.insert("description".into(), Value::from(key.holds));
+    let mut text = format!("{}. Source: {}.", key.holds, key.source());
+    if let Some(rule) = key.rule {
+        let _ = write!(text, " Derivation rule: {rule}.");
     }
-    out
+    if !key.default.is_empty() {
+        let _ = write!(text, " Default: {}.", key.default);
+    }
+    described(shape(key.shape), text)
+}
+
+fn described(mut value: Value, text: String) -> Value {
+    if let Value::Object(fields) = &mut value {
+        fields.insert("description".into(), Value::from(text));
+    }
+    value
 }
 
 fn shape(shape: Shape) -> Value {
@@ -328,16 +358,13 @@ fn sections(out: &mut String) {
 fn table(keys: &[Key], out: &mut String) {
     let _ = writeln!(out, "{HEAD}\n{RULE}");
     for key in keys {
-        let source = match key.rule {
-            None => "pinned only",
-            Some(_) => "derived when absent",
-        };
         let _ = writeln!(
             out,
-            "| `{}` | {} | {} | {source} | {} | {} |",
+            "| `{}` | {} | {} | {} | {} | {} |",
             key.name,
             cell(key.holds),
             yes(key.required),
+            key.source(),
             cell(key.rule.unwrap_or_default()),
             cell(key.default)
         );

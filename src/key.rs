@@ -71,6 +71,13 @@ pub struct Key {
 }
 
 impl Key {
+    pub fn source(&self) -> &'static str {
+        match self.rule {
+            None => "pinned only",
+            Some(_) => "derived when absent",
+        }
+    }
+
     /// The `built-in` entry of `klin policy --json` for a key no one pinned or derived: the
     /// value a run uses, typed as a pinned one would be, or null where `default` only describes
     /// it, with those words beside it. Spec 11.6.
