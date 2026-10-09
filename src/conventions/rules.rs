@@ -107,9 +107,9 @@ pub(super) struct Convention {
     pub(super) except: Vec<Selector>,
     language: Option<&'static str>,
     pub(super) remedy: String,
-    /// The `in` paths the change moved, which may select nothing, and the paths it renamed
-    /// their files to, which this run measures. Spec 7.3.
+    /// The `in` paths the change moved, which may select nothing. Spec 7.3.
     moved: Vec<String>,
+    /// The paths the change renamed the files of a moved `in` path to, which this run measures.
     kept: Vec<String>,
 }
 
@@ -137,10 +137,12 @@ impl Convention {
     pub(super) fn gone(&self) -> bool {
         self.kept.is_empty()
             && !self.within.is_empty()
-            && self
-                .within
-                .iter()
-                .all(|within| self.moved.iter().any(|moved| moved == within.as_str()))
+            && self.within.iter().all(|within| self.moved_in(within))
+    }
+
+    /// Whether the change moved this `in` path. Spec 7.3.
+    fn moved_in(&self, within: &Selector) -> bool {
+        self.moved.iter().any(|moved| moved == within.as_str())
     }
 
     /// The convention following the `in` paths the change moved. Spec 7.3.
@@ -773,8 +775,7 @@ pub(super) fn holes<'a>(conventions: &'a [Convention], places: &[Place]) -> Vec<
         for (key, listed) in [(IN, &convention.within), (EXCEPT, &convention.except)] {
             let empty = listed.iter().filter(|at| {
                 !places.iter().any(|place| at.holds(&place.file))
-                    && !(key.name == IN.name
-                        && convention.moved.iter().any(|moved| moved == at.as_str()))
+                    && !(key.name == IN.name && convention.moved_in(at))
             });
             out.extend(empty.map(|path| Hole {
                 convention: &convention.name,

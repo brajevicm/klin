@@ -273,11 +273,11 @@ fn dead<'a>(selectors: &'a [Selector], files: &[String]) -> Vec<&'a Selector> {
 /// Whether any section names a path a change can move: an `in` or an `except`, a convention's
 /// `in`, or a pinned document.
 pub fn names_a_path(config: &Config) -> bool {
-    config.shaped().any(|(_, shape, fields)| match shape {
-        SectionShape::Object => fields.contains_key(IN.name) || fields.contains_key(EXCEPT.name),
-        SectionShape::Conventions(_) => fields.values().any(|rule| rule.get(IN.name).is_some()),
-        SectionShape::DocumentMap(_) => !fields.is_empty(),
-        SectionShape::FalseOnly(_) | SectionShape::Sarif => false,
+    config.shaped().any(|(_, shape, fields)| {
+        fields.contains_key(EXCEPT.name)
+            || pinned_paths(shape, fields)
+                .iter()
+                .any(|(_, selectors)| !selectors.is_empty())
     })
 }
 
@@ -432,11 +432,11 @@ impl Moves {
         self.iter().filter_map(move |moved| match moved {
             Moved::Pin {
                 section: of,
-                pinned: as_,
+                pinned: kind,
                 path,
                 renamed,
                 ..
-            } if of == section && as_ == pinned => Some((path.as_str(), renamed.as_slice())),
+            } if of == section && kind == pinned => Some((path.as_str(), renamed.as_slice())),
             _ => None,
         })
     }

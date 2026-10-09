@@ -43,7 +43,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// Every convention that measures anything resolved, or the first one whose language or pattern a person must settle.
+/// Every convention that measures anything resolved, or the first one whose language or
+/// pattern a person must settle.
 fn every_rule<'a>(
     config: &Config,
     conventions: &'a [Convention],
