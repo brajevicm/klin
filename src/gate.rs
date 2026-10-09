@@ -20,6 +20,7 @@ use crate::config::MEASUREMENT_LOST;
 use crate::error::Error;
 use crate::host;
 use crate::host::adapter::{Event, Stop};
+use crate::plan::{Gate, Plan, State, every_check};
 use crate::project::Project;
 use crate::scope::{Moved, Moves};
 use crate::stamp::Verdict;
@@ -49,30 +50,6 @@ const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
 /// the stop ends with. Spec 9.1.
 const BLOCKED: u8 = 2;
-
-struct Gate {
-    name: String,
-    check: &'static catalogue::Row,
-}
-
-#[derive(Default)]
-struct Plan {
-    gates: Vec<Gate>,
-    excluded: Vec<String>,
-    /// The checks klin offers that neither the config nor the survey supplies a section for.
-    /// Each needs a section a person writes, and none of them runs.
-    needs_a_section: Vec<&'static catalogue::Row>,
-}
-
-impl Plan {
-    /// The one gate a check runs as when its section is not a list of named entries.
-    fn one(&mut self, check: &'static catalogue::Row) {
-        self.gates.push(Gate {
-            name: check.name.to_string(),
-            check,
-        });
-    }
-}
 
 /// What one run of the runner is asked: by `check`, by `policy`, or by the Stop hook.
 #[derive(Default)]
@@ -1103,11 +1080,12 @@ fn judge(
     unbuilt: Option<&str>,
     out: &mut String,
 ) -> Result<Tally, Fault> {
-    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
+    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     if args.list {
         return listed(args, project, &plan, out).map_err(fault(ErrorKind::Configuration));
     }
-    let wanted: Vec<&Gate> = select(&args.gates, &plan, project)
+    let wanted: Vec<&Gate> = plan
+        .select(&args.gates, project)
         .map_err(fault(ErrorKind::Invocation))?
         .into_iter()
         .filter(|gate| gate.check.placement.at_stop())
@@ -1247,36 +1225,6 @@ fn listed(args: &Args, project: &Project, plan: &Plan, out: &mut String) -> Resu
     Ok(Tally::default())
 }
 
-/// What one capability is in this tree, which `klin check` and `klin policy` both name.
-/// Spec 11.6, 11.7.
-#[derive(Clone, Copy)]
-enum State {
-    Active,
-    Excluded,
-    NotApplicable,
-    NeedsPolicy,
-}
-
-impl State {
-    fn name(self) -> &'static str {
-        match self {
-            State::Active => "active",
-            State::Excluded => "excluded",
-            State::NotApplicable => "not-applicable",
-            State::NeedsPolicy => "needs-policy",
-        }
-    }
-
-    /// The word the text of `policy` gives the state after the capability's name.
-    fn said(self) -> &'static str {
-        match self {
-            State::Active => "runs",
-            State::NeedsPolicy => "needs a section a person writes",
-            State::Excluded | State::NotApplicable => self.name(),
-        }
-    }
-}
-
 /// One capability as `policy` prints it: the lines a person reads under its name, and the
 /// values and limitations its JSON row carries. Spec 11.6, 11.7.
 struct Capability<'a> {
@@ -1409,7 +1357,7 @@ fn stated(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
         || plan.needs_a_section.iter().any(|check| check.name == name);
     match inactive {
         true => Ok(()),
-        false => known(name, plan, project),
+        false => plan.known(name, project),
     }
 }
 
@@ -2210,106 +2158,6 @@ fn changes<'a>(
     Ok(Some(changed))
 }
 
-fn names<'a>(named: impl Iterator<Item = &'a str>) -> String {
-    named.collect::<Vec<&str>>().join(", ")
-}
-
-fn every_check() -> String {
-    names(catalogue::names())
-}
-
-fn no_gate(project: &Project, plan: &Plan) -> Error {
-    let config = &project.config;
-    if !plan.excluded.is_empty() {
-        return Error(format!(
-            "{} excludes every gate it names: {} — a run that measures nothing cannot pass, \
-             so lift one exclusion",
-            config.file.display(),
-            names(plan.excluded.iter().map(String::as_str))
-        ));
-    }
-    if !config.written() {
-        return Error(format!(
-            "{} does not exist and the survey of {} found no source root, no document and no \
-             manifest, so there is nothing to gate — run klin from the tree you mean to measure, \
-             or write the file naming one of: {}",
-            config.file.display(),
-            config.root().display(),
-            every_check()
-        ));
-    }
-    Error(format!(
-        "{} configures no gate — name at least one of: {}",
-        config.file.display(),
-        every_check()
-    ))
-}
-
-fn plan(project: &Project) -> Result<Plan, Error> {
-    let mut plan = Plan::default();
-    for check in catalogue::CATALOGUE {
-        add(project, check, &mut plan)?;
-    }
-    distinct(project, &plan)?;
-    Ok(plan)
-}
-
-/// A check's gates, from what the config states for its section and, where it states nothing,
-/// from what the section's absence means for this check: an Automatic check runs when its facts
-/// are available, and a Policy or Integration check runs nothing until a person writes the
-/// section. Planning derives no expensive number or topology. Spec 4.6, 5.2, ADR 0038.
-fn add(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) -> Result<(), Error> {
-    let Some(stated) = project.config.pinned(check.section) else {
-        absent(project, check, plan);
-        return Ok(());
-    };
-    match stated {
-        Value::Bool(false) => plan.excluded.push(check.name.to_string()),
-        _ if check.gate_per_entry => {
-            for (name, _) in contract::named_entries(&project.config, check.section)? {
-                plan.gates.push(Gate { name, check });
-            }
-        }
-        _ => plan.one(check),
-    }
-    Ok(())
-}
-
-/// The gate a section's absence plans: the check itself for an Automatic check whose facts are
-/// available, and otherwise a check that needs a section a person writes.
-fn absent(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) {
-    match check.activation == Activation::Automatic && (check.available)(project) {
-        true => plan.one(check),
-        false => plan.needs_a_section.push(check),
-    }
-}
-
-fn distinct(project: &Project, plan: &Plan) -> Result<(), Error> {
-    let mut seen: Vec<&str> = Vec::new();
-    let named = plan
-        .gates
-        .iter()
-        .map(|gate| gate.name.as_str())
-        .chain(plan.excluded.iter().map(String::as_str));
-    for name in named {
-        if name == MEASUREMENT_LOST {
-            return Err(Error(format!(
-                "{}: {MEASUREMENT_LOST} is the name of klin's own row of files it can no longer \
-                 measure, so no gate may take it — name the gate otherwise",
-                project.config.file.display()
-            )));
-        }
-        if seen.contains(&name) {
-            return Err(Error(format!(
-                "{}: two gates are named {name} — a name selects one gate, so each must differ",
-                project.config.file.display()
-            )));
-        }
-        seen.push(name);
-    }
-    Ok(())
-}
-
 fn each(
     args: &Args,
     wanted: &[&Gate],
@@ -2731,43 +2579,6 @@ fn code(tally: &Tally) -> u8 {
     }
 }
 
-fn select<'a>(named: &[String], plan: &'a Plan, project: &Project) -> Result<Vec<&'a Gate>, Error> {
-    for name in named {
-        known(name, plan, project)?;
-    }
-    let wanted: Vec<&Gate> = plan
-        .gates
-        .iter()
-        .filter(|gate| named.is_empty() || named.iter().any(|wanted| wanted == &gate.name))
-        .collect();
-    if wanted.is_empty() {
-        return Err(no_gate(project, plan));
-    }
-    Ok(wanted)
-}
-
-fn known(name: &str, plan: &Plan, project: &Project) -> Result<(), Error> {
-    let config = &project.config;
-    if plan.gates.iter().any(|gate| gate.name == name) {
-        return Ok(());
-    }
-    if plan.excluded.iter().any(|excluded| excluded == name) {
-        return Err(Error(format!(
-            "the gate named {name} is excluded in {} — naming a gate is a claim that it runs, \
-             so lift the exclusion or drop {name}",
-            config.file.display()
-        )));
-    }
-    Err(Error(format!(
-        "no gate named {name} — {} configures: {}",
-        config.file.display(),
-        match plan.gates.is_empty() {
-            true => "nothing".to_string(),
-            false => names(plan.gates.iter().map(|gate| gate.name.as_str())),
-        }
-    )))
-}
-
 /// One gate's run: its exit code, what it told, what it recorded and its findings as JSON.
 type Ran = (u8, Vec<Told>, Records, Recorded);
 
@@ -3082,7 +2893,7 @@ fn measured(
         }
         report.notes.push(note);
     }
-    let plan = plan(project).map_err(fault(ErrorKind::Configuration))?;
+    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
     let against = against(args, &wanted, project, window.as_ref(), out)?;
     report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
@@ -3186,7 +2997,7 @@ fn chosen_gates<'a>(
     if named.is_empty() && plan.gates.is_empty() && !plan.excluded.is_empty() {
         return Err(Fault {
             kind: ErrorKind::Configuration,
-            error: no_gate(project, plan),
+            error: plan.no_gate(project),
         });
     }
     let mut unsupported = Vec::new();
@@ -3196,7 +3007,9 @@ fn chosen_gates<'a>(
             Some(check) if !plan.gates.iter().any(|gate| &gate.name == name) => {
                 unsupported.push(*check)
             }
-            _ => known(name, plan, project).map_err(fault(ErrorKind::Invocation))?,
+            _ => plan
+                .known(name, project)
+                .map_err(fault(ErrorKind::Invocation))?,
         }
     }
     let wanted = plan
