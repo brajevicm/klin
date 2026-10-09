@@ -1108,11 +1108,7 @@ fn judge(
         .filter_map(|(_, entry)| entry.clone())
         .collect();
     let (mut tally, mut records) = each(args, &wanted, project, &against, &mut doc, out);
-    if let Some(unbuilt) = unbuilt {
-        doc.notes.push(note(UNBUILT, unbuilt));
-    }
-    doc.not_applicable(&plan);
-    tally.document = Some(doc.closed());
+    tally.document = Some(doc.stopped_with(&plan, unbuilt));
     tally.told += usize::from(rootless.is_some());
     records.notes.extend(rootless);
     let gone = gone_moves(args, project, &wanted, out);
@@ -2347,13 +2343,18 @@ fn each(
         out,
     );
     tally.told += totals.notes.iter().filter(|note| told(note)).count();
-    tally.reported = totals
-        .findings
+    (tally.reported, tally.unasked) = asked_sites(&totals.findings);
+    (tally, totals)
+}
+
+/// The site id of every finding a Stop reports, which a block records as asked, and the deleted
+/// tests among them as sites, which klin has not asked about yet. Spec 8.2, 9.2.
+fn asked_sites(findings: &[Value]) -> (Vec<String>, Vec<String>) {
+    let reported = findings
         .iter()
         .filter_map(|finding| finding.get("id")?.as_str().map(str::to_string))
         .collect();
-    tally.unasked = totals
-        .findings
+    let unasked = findings
         .iter()
         .filter(|finding| finding["gate"] == INVENTORY)
         .map(|finding| {
@@ -2365,7 +2366,7 @@ fn each(
             )
         })
         .collect();
-    (tally, totals)
+    (reported, unasked)
 }
 
 const INVENTORY: &str = "inventory";
@@ -3302,6 +3303,15 @@ impl Report {
             "path": project.config.file.display().to_string(),
             "present": project.config.written(),
         })
+    }
+
+    /// The Stop's document once every gate ran: the note of a build that could not run, and the
+    /// rows of the capabilities that do not apply. Spec 11.7, 13.1.
+    fn stopped_with(mut self, plan: &Plan, unbuilt: Option<&str>) -> Value {
+        self.notes
+            .extend(unbuilt.map(|unbuilt| note(UNBUILT, unbuilt)));
+        self.not_applicable(plan);
+        self.closed()
     }
 
     /// The document of a Stop whose build failed, so no capability measured. Spec 6.4, 13.1.

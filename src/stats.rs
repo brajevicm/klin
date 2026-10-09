@@ -1047,38 +1047,54 @@ fn text(out: &mut String, args: &Args, start: &Path, report: &Report) {
 }
 
 fn attention(report: &Report) -> Vec<String> {
-    let mut said = Vec::new();
-    if let Some(gap) = report.confidence.gap() {
-        said.push(format!("Stats may be incomplete: {gap}."));
+    let mut said: Vec<String> = report
+        .confidence
+        .gap()
+        .map(|gap| format!("Stats may be incomplete: {gap}."))
+        .into_iter()
+        .collect();
+    said.extend(unsettled(&report.counts));
+    said.extend(evidence_lines(&report.evidence));
+    if said.is_empty() {
+        said.push("Nothing needs your attention.".into());
     }
-    match report.counts.open {
+    said
+}
+
+/// The regressions no later measurement settled: open, set aside, or not compared.
+fn unsettled(counts: &Counts) -> Vec<String> {
+    let mut said = Vec::new();
+    match counts.open {
         0 => {}
         1 => said.push("1 regression needs your attention.".into()),
         open => said.push(format!("{open} regressions need your attention.")),
     }
-    if report.counts.set_aside > 0 {
-        said.push(set_aside(report.counts.set_aside, report.counts.open > 0));
+    if counts.set_aside > 0 {
+        said.push(set_aside(counts.set_aside, counts.open > 0));
     }
-    if report.counts.not_compared > 0 {
+    if counts.not_compared > 0 {
+        let them = match counts.not_compared {
+            1 => "it",
+            _ => "them",
+        };
         said.push(format!(
-            "{} went under a changed measurement, so klin did not compare {}.",
-            counted(report.counts.not_compared),
-            match report.counts.not_compared {
-                1 => "it",
-                _ => "them",
-            }
+            "{} went under a changed measurement, so klin did not compare {them}.",
+            counted(counts.not_compared)
         ));
     }
-    match report.evidence.reviews.len() {
+    said
+}
+
+/// The open review items, and each notice of the open window only the journal holds.
+fn evidence_lines(evidence: &Evidence) -> Vec<String> {
+    let mut said = Vec::new();
+    match evidence.reviews.len() {
         0 => {}
         1 => said.push("1 review item is open.".into()),
         many => said.push(format!("{many} review items are open.")),
     }
-    for (_, message) in &report.evidence.notices {
+    for (_, message) in &evidence.notices {
         said.push(format!("klin left you a notice in this window:\n{message}"));
-    }
-    if said.is_empty() {
-        said.push("Nothing needs your attention.".into());
     }
     said
 }
