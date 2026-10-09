@@ -3278,20 +3278,29 @@ calendar rule. `the_schema_accepts_a_configuration_exactly_when_klin_does` in
 `tests/schema.rs` pins this with a valid and an invalid file for each shape
 that the schema generates separately.
 
-klin and the schema disagree on these files, and no decision says which side
-is intended. `every_undecided_disagreement_still_disagrees` in
-`tests/schema.rs` pins each one until an owner decides:
+klin and the schema disagree on the files in the two lists below.
+`every_known_disagreement_still_disagrees` in `tests/schema.rs` pins each
+one. For the files in this first list, no decision says which side is
+intended, so each one waits for an owner to decide:
 
 - A convention whose name holds only whitespace: klin refuses it, and the
   schema accepts it.
-- A `text`, `code` or `files` matcher that holds only whitespace: klin
-  refuses it, and the schema accepts it.
+- A `text`, `code` or `files` matcher that is empty or holds only
+  whitespace: klin refuses it, and the schema accepts it.
 - A `text` matcher with a line break: klin refuses it, and the schema
   accepts it.
 - An accepted entry with an extra field that is not a number: klin accepts
   it, and the schema refuses it.
 - A whole number written with a fraction, such as `5.0`: klin refuses it, and
   the schema accepts it as an `integer`.
+
+The schema does not state these rules, which compare one value with another
+entry, with a reserved name or with a parsed pattern. klin refuses each file,
+and the schema accepts it:
+
+- Two `sarif` entries with the same `name`.
+- A `sarif` entry named `measurement-lost`, the name that section 7.2 reserves.
+- A `files` glob that does not parse, such as `[`.
 
 The reference MUST also state what the key tables alone do not say:
 

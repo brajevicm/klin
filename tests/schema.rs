@@ -233,7 +233,7 @@ const AGREED: &[(&str, bool)] = &[
         true,
     ),
     (
-        r#"{"conventions": {"a": {"text": "x", "remedy": "﻿"}}}"#,
+        r#"{"conventions": {"a": {"text": "x", "remedy": "\ufeff"}}}"#,
         true,
     ),
     (r#"{"conventions": {"a": {"text": "x"}}}"#, false),
@@ -246,7 +246,7 @@ const AGREED: &[(&str, bool)] = &[
         false,
     ),
     (
-        r#"{"conventions": {"a": {"text": "x", "remedy": " \u0085　"}}}"#,
+        r#"{"conventions": {"a": {"text": "x", "remedy": "\u00a0\u0085\u3000"}}}"#,
         false,
     ),
     (
@@ -311,10 +311,10 @@ const AGREED: &[(&str, bool)] = &[
     (r#"{"complexity": {"cc": {}}}"#, false),
 ];
 
-/// Rows where klin and the schema disagree and no spec, decision or test says which one is
-/// intended, with whether klin accepts the row; the schema answers the other way. Spec B.5.8
-/// lists each one, so a row that comes to agree is taken out of both places.
-const UNDECIDED: &[(&str, bool)] = &[
+/// Rows where klin and the schema disagree, with whether klin accepts the row; the schema answers
+/// the other way. Spec B.5.8 lists each one, so a row that comes to agree is taken out of both
+/// places.
+const KNOWN: &[(&str, bool)] = &[
     (
         r#"{"conventions": {" ": {"text": "x", "remedy": "Do."}}}"#,
         false,
@@ -332,6 +332,22 @@ const UNDECIDED: &[(&str, bool)] = &[
         true,
     ),
     (r#"{"complexity": {"cc": 5.0}}"#, false),
+    (
+        r#"{"conventions": {"a": {"text": "", "remedy": "Do."}}}"#,
+        false,
+    ),
+    (
+        r#"{"conventions": {"a": {"files": "[", "remedy": "Do."}}}"#,
+        false,
+    ),
+    (
+        r#"{"sarif": [{"name": "lint", "report": "a.sarif"}, {"name": "lint", "report": "b.sarif"}]}"#,
+        false,
+    ),
+    (
+        r#"{"sarif": [{"name": "measurement-lost", "report": "a.sarif"}]}"#,
+        false,
+    ),
 ];
 
 #[test]
@@ -350,10 +366,10 @@ fn the_schema_accepts_a_configuration_exactly_when_klin_does() {
 }
 
 #[test]
-fn every_undecided_disagreement_still_disagrees() {
+fn every_known_disagreement_still_disagrees() {
     let schema = schema();
     let tree = Tree::new();
-    for (config, accepted) in UNDECIDED {
+    for (config, accepted) in KNOWN {
         assert_eq!(klin_accepts(&tree, config), *accepted, "klin on {config}");
         assert_eq!(
             schema_accepts(&schema, config),
@@ -443,11 +459,21 @@ fn collection_holds(
         "items" => value
             .as_array()
             .is_none_or(|items| items.iter().all(|item| valid(rule, item))),
-        keyword => value
+        keyword if OBJECT_KEYWORDS.contains(&keyword) => value
             .as_object()
             .is_none_or(|fields| object_holds(rules, keyword, rule, fields)),
+        keyword => panic!("the test validator does not know \"{keyword}\""),
     }
 }
+
+const OBJECT_KEYWORDS: &[&str] = &[
+    "minProperties",
+    "required",
+    "propertyNames",
+    "properties",
+    "patternProperties",
+    "additionalProperties",
+];
 
 fn object_holds(
     rules: &serde_json::Map<String, Value>,
@@ -483,7 +509,7 @@ fn object_holds(
             .iter()
             .filter(|(name, _)| shapes(name).is_empty())
             .all(|(_, value)| valid(rule, value)),
-        keyword => panic!("the test validator does not know \"{keyword}\""),
+        _ => unreachable!("{keyword} is one of OBJECT_KEYWORDS"),
     }
 }
 
