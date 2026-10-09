@@ -28,12 +28,13 @@ evidence of one person's machine, not of the repository, and counting it would
 make a plugin user commit one host where a teammate commits three.
 
 The README installs klin from the repository: the installer piped into `sh`,
-`source $HOME/.local/bin/env`, then `klin install`. The release configuration
-puts the binary in `~/.local/bin`, and the dist installer writes that `env`
-script to put the directory on PATH, so the shell that ran the installer finds
-`klin`. fish sources `env.fish` instead. Where `~/.local/bin` is on PATH
-already, the installer writes no `env` script, and the `source` line fails
-while `klin install` still runs.
+then `klin install`. The release configuration puts the binary in
+`~/.local/bin`. The README once ran `source $HOME/.local/bin/env` between the
+two, but the dist installer writes that `env` script only where
+`~/.local/bin` is not on PATH already, so the line failed on machines where uv
+or pipx had put it there. Where the directory is missing from PATH, the
+installer prints the `source` command itself, and the README says to open a
+new terminal if `klin` is not found.
 
 The lines are not chained. A `curl` that fails hands `sh` nothing and `sh`
 exits 0, so a person who pastes the block at once runs any klin an earlier
@@ -42,7 +43,7 @@ and chained the lines, inside an outer `sh -c` for fish, to stop that. The
 command was hard to read, and no other installer README we surveyed guards
 it. A person who runs the lines one at a time sees the failed download first.
 
-A terminal that ran the installer but skipped the `source` line has no
+A terminal that ran the installer but not the `source` command has no
 `~/.local/bin` on PATH, and a host started from it runs the hooks with that
 PATH. So each hook line klin writes looks in `~/.local/bin` after PATH.
 Before this, the README's new terminal hid the gap.
