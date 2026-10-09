@@ -507,6 +507,13 @@ pub const MEASUREMENT_LOST: &str = "measurement-lost";
 
 pub const ACCEPTED_REASON: &str = "reason";
 
+type FieldShape = (&'static str, fn(&Value) -> bool, &'static str);
+
+const ACCEPTED_OPTIONAL: &[FieldShape] = &[
+    ("line", Value::is_u64, "a whole number"),
+    (ACCEPTED_REASON, Value::is_string, "a string"),
+];
+
 fn accepted_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
     let Some(entries) = value.as_array() else {
         return Err(shape_error(
@@ -545,17 +552,13 @@ fn accepted_entry_shape(
             return missing(file, section, name);
         }
     }
-    if let Some(line) = fields.get("line")
-        && !line.is_u64()
+    match ACCEPTED_OPTIONAL
+        .iter()
+        .find(|(name, fits, _)| fields.get(*name).is_some_and(|value| !fits(value)))
     {
-        return Err(shape_error(file, section, "line", "a whole number"));
+        Some((name, _, must_be)) => Err(shape_error(file, section, name, must_be)),
+        None => Ok(()),
     }
-    if let Some(reason) = fields.get(ACCEPTED_REASON)
-        && !reason.is_string()
-    {
-        return Err(shape_error(file, section, ACCEPTED_REASON, "a string"));
-    }
-    Ok(())
 }
 
 fn radius_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
