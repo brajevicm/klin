@@ -640,7 +640,8 @@ the stamp.
 
 **What the stamp records as told.** The `told` record keys each note, each
 error, each review item and each `measurement-lost` finding of the Stop's
-check document (11.7) by its record. A Stop records them only after
+check document (11.7) by its record, the ones its text does not print too.
+A Stop records them only after
 the host took the block or the notice, so a notice klin could not deliver,
 such as one whose follow-up record would not write, is told at a later Stop. A later Stop under the same stamp whose every record
 is already in `told` tells nothing. A Stop with at least one new record tells
