@@ -1,0 +1,16 @@
+rust prodcode {400: '13.9% over', 500: '10.5% over', 600: '8.1% over'}
+rust production {20: '13.9% over', 25: '10.3% over', 30: '7.9% over'}
+typescript code {250: '14.0% over', 300: '11.2% over', 400: '7.5% over'}
+typescript named {12: '9.5% over', 15: '6.9% over', 20: '4.4% over'}
+B rust prodcode 400 crossings 7 changes 4 of 50
+B rust prodcode 500 crossings 8 changes 5 of 50
+B rust prodcode 600 crossings 6 changes 4 of 50
+B rust production 20 crossings 3 changes 3 of 50
+B rust production 25 crossings 4 changes 3 of 50
+B rust production 30 crossings 4 changes 3 of 50
+B ts code 250 crossings 15 changes 5 of 50
+B ts code 300 crossings 11 changes 3 of 50
+B ts code 400 crossings 5 changes 3 of 50
+B ts named 12 crossings 5 changes 4 of 50
+B ts named 15 crossings 1 changes 1 of 50
+B ts named 20 crossings 2 changes 2 of 50
