@@ -71,3 +71,10 @@ improve. No timing-specific optimization is justified by these medians.
 excepts `src/git.rs` and `src/changed.rs`, whose direct Git use is test-only;
 integration tests are outside that scope. A new `Command::new("git")`
 elsewhere gets the shared-boundary remedy.
+
+## Amendment: the excepted paths after ADR 0067 (#600)
+
+ADR 0067 moves `src/git.rs` and `src/changed.rs` to `src/sys/git.rs` and
+`src/sys/changed.rs` (#602). From that move on,
+`conventions/single-git-boundary` excepts those two paths. The one git seam
+does not change.

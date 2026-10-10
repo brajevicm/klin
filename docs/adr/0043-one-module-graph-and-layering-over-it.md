@@ -183,3 +183,10 @@ An empty child object removes all inherited names. Array-form extends
 supplies no inherited names; direct child rules remain recognized. Inheritance
 still never proves an edge. Scope selection uses indexed ancestor directories
 once per source file, and aliases retain their once-tree compiled lookup.
+
+## Amendment: one layer per `src/` folder (#600)
+
+ADR 0067 replaces the runner, checks, syntax, project, catalogue, core and
+edge layers that "Final self-enforcement" names with one layer per folder of
+`src/` (#602). `acyclic` stays on, and the layer order is the table of ADR
+0067. The module graph and its rules do not change.
