@@ -1437,6 +1437,34 @@ fn a_stop_over_the_tree_its_prompt_saw_tells_nothing_and_still_writes_its_verdic
     assert!(told(&changed).contains("left a note"), "{}", changed.out);
 }
 
+/// Under a red stamp that did not move, the window still holds earlier work, and here that work
+/// leaves a note no Stop told yet. A turn that changed nothing still tells none of it, and its
+/// Stop writes the verdict. Spec 10.7.
+#[test]
+fn a_note_from_earlier_work_under_a_red_stamp_is_not_told_after_a_turn_that_changed_nothing() {
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    tree.write("src/new.rs", "pub fn one(a: i32 -> i32 {\n    a + 1\n}\n");
+    prompt(&tree);
+    assert_eq!(tree.field("verdict"), "red");
+    let before = journal_lines(&tree);
+
+    let quiet = hook(&tree, A_STOP);
+
+    let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: Value = text
+        .lines()
+        .last()
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(line["result"]["reviews"][0]["file"], "src/new.rs", "{line}");
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert_ne!(tree.field("verdict"), "aborted", "{}", quiet.out);
+    assert_eq!(journal_lines(&tree), before + 1, "{}", quiet.out);
+}
+
 /// After a gate block, a turn that changed nothing repeats no turn-end line: the verdict stays
 /// red, so the next turn that changes a file tells the person again. Spec 10.7.
 #[test]
