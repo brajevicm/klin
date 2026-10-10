@@ -31,8 +31,8 @@ its root, one `git ls-files` for what git ignores, every path relative and
 sorted. `files::found` selects a section's roots out of that list in memory,
 so root count adds a filter and not a walk. A root the list did not reach —
 outside the tree, or under a directory every walk skips — is walked on its
-own, as every root once was. Which files are source is a table of extensions
-in `project`, and no check's opinion.
+own, as every root once was. Which files are source is the language table
+in `syntax`, and no check's opinion.
 
 **`project::Project` is one run.** It owns the one `Config`, the working
 `Tree`, the changed set against the base and what the survey derives, each

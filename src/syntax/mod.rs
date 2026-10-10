@@ -28,6 +28,7 @@ pub enum LanguageId {
     Ruby,
     Swift,
     Kotlin,
+    Shell,
 }
 
 /// One grammar-backed language: the logical language it belongs to, what a failure calls it,
@@ -384,8 +385,38 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     key::extensions_by_name(
         LANGUAGES
             .iter()
-            .map(|language| (language.names, language.extensions)),
+            .map(|language| (language.names.to_vec(), language.extensions.to_vec())),
     )
+}
+
+/// The suffixes of the one language no grammar here reads, which the survey still calls source.
+const SHELL: &[&str] = &[".sh", ".bash", ".zsh"];
+
+/// The name a config calls a language by.
+pub fn name(id: LanguageId) -> &'static str {
+    LANGUAGES
+        .iter()
+        .find(|row| row.id == id)
+        .and_then(|row| row.names.first().copied())
+        .unwrap_or("shell")
+}
+
+/// The suffixes of one language: each grammar's first suffix, then the rest of each, in grammar
+/// order.
+pub fn suffixes(id: LanguageId) -> Vec<&'static str> {
+    if id == LanguageId::Shell {
+        return SHELL.to_vec();
+    }
+    let rows = || LANGUAGES.iter().filter(move |row| row.id == id);
+    rows()
+        .filter_map(|row| row.extensions.first().copied())
+        .chain(rows().flat_map(|row| row.extensions.iter().skip(1).copied()))
+        .collect()
+}
+
+/// Whether a path is source, which is a fact of the path and no check's opinion. ADR 0038.
+pub fn source(path: &str) -> bool {
+    language_of(path).is_some() || SHELL.iter().any(|suffix| path.ends_with(suffix))
 }
 
 /// The line at this row, trimmed, which is the text every site in klin is named by.

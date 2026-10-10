@@ -244,7 +244,7 @@ impl Run for Project {
 fn skipped(changes: &[Change]) -> impl Iterator<Item = Moved> + '_ {
     changes.iter().filter_map(|change| {
         let was = change.was.as_deref()?;
-        let source = survey::language_of(was).is_some();
+        let source = survey::source(was);
         (source && tree::reached(was) && !tree::reached(&change.path)).then(|| Moved::Skipped {
             was: was.to_string(),
             path: change.path.clone(),

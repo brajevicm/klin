@@ -166,13 +166,13 @@ pub fn entry_named<'a>(gate: &str, named: &'a str) -> Option<&'a str> {
 /// Every language name a table holds, with the extensions that name selects. Two rows under one
 /// name, such as TypeScript and TSX, are one row here, because the name selects both.
 pub fn extensions_by_name(
-    rows: impl Iterator<Item = (&'static [&'static str], &'static [&'static str])>,
+    rows: impl Iterator<Item = (Vec<&'static str>, Vec<&'static str>)>,
 ) -> Vec<(&'static str, String)> {
     let mut held: BTreeMap<&'static str, Vec<&str>> = BTreeMap::new();
     for (names, extensions) in rows {
         for name in names {
             let under = held.entry(name).or_default();
-            for extension in extensions {
+            for extension in &extensions {
                 if !under.contains(extension) {
                     under.push(extension);
                 }

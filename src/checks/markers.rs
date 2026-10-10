@@ -17,7 +17,7 @@ use crate::contract::ratchet::{self, Evaluator, Finding};
 use crate::facts::files;
 use crate::facts::survey::{self, Tests};
 use crate::facts::tree::Tree;
-use crate::syntax::{self, Unparsed};
+use crate::syntax::{self, LanguageId, Unparsed};
 use crate::sys::changed::Change;
 use crate::sys::error::Error;
 use crate::sys::record::Values;
@@ -26,11 +26,10 @@ use crate::sys::record::Values;
 /// a site it matches. A row that names no remedy carries the empty string.
 pub type Row = (&'static str, &'static str, &'static str);
 
-/// One language's table: the names a config may call it by, the files it reads, its rows, and
-/// the test idioms of its test code, which `skip_test_idioms` leaves out.
+/// One language's table: the languages it reads, whose names a config may call it by, its rows,
+/// and the test idioms of its test code, which `skip_test_idioms` leaves out.
 pub struct Language {
-    pub names: &'static [&'static str],
-    pub suffixes: &'static [&'static str],
+    pub languages: &'static [LanguageId],
     pub patterns: &'static [Row],
     pub test_idioms: Option<TestIdioms>,
 }
@@ -113,8 +112,24 @@ pub fn language_extensions(kind: &Kind) -> Vec<(&'static str, String)> {
     key::extensions_by_name(
         kind.languages
             .iter()
-            .map(|language| (language.names, language.suffixes)),
+            .map(|language| (names(language), suffixes(language))),
     )
+}
+
+fn names(language: &Language) -> Vec<&'static str> {
+    language
+        .languages
+        .iter()
+        .map(|&id| syntax::name(id))
+        .collect()
+}
+
+fn suffixes(language: &Language) -> Vec<&'static str> {
+    language
+        .languages
+        .iter()
+        .flat_map(|&id| syntax::suffixes(id))
+        .collect()
 }
 
 #[derive(Clone)]
@@ -392,7 +407,7 @@ fn language_sets(kind: &Kind, config: &Config) -> Result<Vec<Set>, Error> {
                 shapes: kind.reads_shapes,
                 cfg_attr: kind.reads_cfg_attr,
                 test_code: set.test_idioms.map(|idioms| idioms.code),
-                suffixes: set.suffixes.iter().map(|s| s.to_string()).collect(),
+                suffixes: suffixes(set).into_iter().map(String::from).collect(),
                 patterns: compiled(
                     kind,
                     config,
@@ -554,13 +569,11 @@ impl Walk {
 }
 
 fn applicable(kind: &Kind, tree: &Tree, scope: &Scope) -> Result<bool, Error> {
-    Ok(tree.files()?.iter().any(|file| {
-        scope.inside(file)
-            && kind
-                .languages
-                .iter()
-                .any(|language| language.suffixes.iter().any(|end| file.ends_with(end)))
-    }))
+    let suffixes: Vec<&str> = kind.languages.iter().flat_map(suffixes).collect();
+    Ok(tree
+        .files()?
+        .iter()
+        .any(|file| scope.inside(file) && suffixes.iter().any(|end| file.ends_with(end))))
 }
 
 /// The body shapes of one file's functions, which only a parser sees, recorded as sites. #114.

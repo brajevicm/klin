@@ -234,8 +234,8 @@ fn holding<'a>(paths: impl Iterator<Item = &'a String>) -> HashSet<&'a str> {
 }
 
 /// Whether a path is source, which is a fact of the path and no check's opinion. ADR 0038.
-fn source(path: &str) -> bool {
-    language_of(path).is_some()
+pub fn source(path: &str) -> bool {
+    crate::syntax::source(path)
 }
 
 /// Spec 5.4, 8.2.
@@ -353,73 +353,6 @@ fn kept(found: &Survey) -> Value {
     fields.insert("manifests".into(), list(&found.manifests));
     fields.insert("tests".into(), found.tests.into());
     Value::Object(fields)
-}
-
-/// One language a file is classified as by its extension, which is a fact of the path and no
-/// check's opinion. The escapes table names its own rows for each of these by the same name,
-/// and the survey leaves out a language that table has no rows for. Spec 5.4.
-pub struct Language {
-    pub name: &'static str,
-    pub suffixes: &'static [&'static str],
-}
-
-/// The languages the survey calls source, by extension. This is what a derived root is a
-/// directory of, so it belongs below every check. Spec 5.4, ADR 0038.
-pub const LANGUAGES: &[Language] = &[
-    Language {
-        name: "go",
-        suffixes: &[".go"],
-    },
-    Language {
-        name: "java",
-        suffixes: &[".java"],
-    },
-    Language {
-        name: "kotlin",
-        suffixes: &[".kt", ".kts"],
-    },
-    Language {
-        name: "python",
-        suffixes: &[".py"],
-    },
-    Language {
-        name: "ruby",
-        suffixes: &[".rb"],
-    },
-    Language {
-        name: "rust",
-        suffixes: &[".rs"],
-    },
-    Language {
-        name: "shell",
-        suffixes: &[".sh", ".bash", ".zsh"],
-    },
-    Language {
-        name: "swift",
-        suffixes: &[".swift"],
-    },
-    Language {
-        name: "typescript",
-        suffixes: &[".ts", ".tsx", ".mts", ".cts"],
-    },
-    Language {
-        name: "javascript",
-        suffixes: &[".js", ".jsx", ".mjs", ".cjs"],
-    },
-];
-
-/// The language a path is written in, by its extension, and `None` for a file no language
-/// claims. This is what the survey calls source.
-pub fn language_of(path: &str) -> Option<&'static str> {
-    LANGUAGES
-        .iter()
-        .find(|language| {
-            language
-                .suffixes
-                .iter()
-                .any(|suffix| path.ends_with(suffix))
-        })
-        .map(|language| language.name)
 }
 
 /// The tests of one tree: every file under one of its test roots, and every source file a test
