@@ -119,7 +119,7 @@ A Cargo library target and a TypeScript package entry point are surfaces whether
 
 ## Built-in language coverage
 
-The matrix reports which check discovers which language, and the tables after it report the source extensions each check discovers automatically. They are capabilities of the binary, not selectors accepted in `klin.json`.
+The matrix reports which check discovers which language, and the tables after it report the source extensions each check discovers automatically. Both are capabilities of the binary, not selectors accepted in `klin.json`.
 
 | Language | `escapes` | `stubs` | `complexity` | `dead_symbols` | `reachability` | `layering` | `public_api` | `conventions` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

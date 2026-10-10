@@ -392,15 +392,15 @@ fn languages(out: &mut String) {
         out,
         "\n## Built-in language coverage\n\n\
          The matrix reports which check discovers which language, and the tables after it \
-         report the source extensions each check discovers automatically. They are \
+         report the source extensions each check discovers automatically. Both are \
          capabilities of the binary, not selectors accepted in `klin.json`."
     );
-    let named: Vec<_> = catalogue::CATALOGUE
+    let covered: Vec<_> = catalogue::CATALOGUE
         .iter()
         .filter_map(|spec| Some((spec.section, spec.languages?())))
         .collect();
-    matrix(out, &named);
-    for (section, rows) in &named {
+    matrix(out, &covered);
+    for (section, rows) in &covered {
         let _ = writeln!(out, "\n### `{section}`\n");
         let _ = writeln!(out, "| Name | Extensions |\n| --- | --- |");
         for (name, extensions) in rows {
@@ -409,19 +409,19 @@ fn languages(out: &mut String) {
     }
 }
 
-fn matrix(out: &mut String, named: &[(&str, Vec<(&str, String)>)]) {
-    let names: BTreeSet<&str> = named
+fn matrix(out: &mut String, covered: &[(&str, Vec<(&str, String)>)]) {
+    let names: BTreeSet<&str> = covered
         .iter()
         .flat_map(|(_, rows)| rows.iter().map(|(name, _)| *name))
         .collect();
     let _ = write!(out, "\n| Language |");
-    for (section, _) in named {
+    for (section, _) in covered {
         let _ = write!(out, " `{section}` |");
     }
-    let _ = writeln!(out, "\n| --- |{}", " --- |".repeat(named.len()));
+    let _ = writeln!(out, "\n| --- |{}", " --- |".repeat(covered.len()));
     for name in names {
         let _ = write!(out, "| `{name}` |");
-        for (_, rows) in named {
+        for (_, rows) in covered {
             let mark = match rows.iter().any(|(row, _)| *row == name) {
                 true => "yes",
                 false => NONE,

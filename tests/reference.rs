@@ -127,7 +127,8 @@ fn the_reference_prints_one_matrix_of_languages_against_checks() {
         "no tsx row apart from typescript in: {coverage}"
     );
     assert!(
-        coverage.find("| Language |") < coverage.find("\n### `escapes`"),
+        coverage.find("| Language |").unwrap_or(usize::MAX)
+            < coverage.find("\n### `escapes`").unwrap_or(0),
         "the matrix does not come before the per-check tables in: {coverage}"
     );
 }
