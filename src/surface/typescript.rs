@@ -20,8 +20,6 @@ use crate::syntax::structural::facts::{DeclarationKind, Export, FileFacts, Visib
 
 pub(super) const LANGUAGE: &str = "TypeScript";
 const MANIFEST: &str = "package.json";
-const SOURCE: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
-
 pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Found) {
     let modules: HashMap<&str, usize> = graph
         .modules
@@ -266,7 +264,9 @@ impl<'a> Derivation<'a> {
         let Some(file) = joined(directory, named) else {
             return Err(format!("{named} leaves the tree"));
         };
-        if !SOURCE.iter().any(|end| file.ends_with(end)) {
+        if crate::syntax::structural::language_of(&file)
+            != Some(crate::syntax::LanguageId::TypeScript)
+        {
             return Err(format!(
                 "{named} is not a TypeScript source or declaration file, and klin does not map generated output back to source"
             ));

@@ -3,6 +3,7 @@ use crate::config::key::Key;
 use crate::config::scope;
 use crate::contract::check::{Context, Sink};
 use crate::contract::ratchet::{Evaluator, Remedy};
+use crate::syntax::LanguageId;
 use crate::sys::error::Error;
 use crate::sys::record::Values;
 
@@ -31,8 +32,7 @@ const HASH: &str = r"#[^\n]*\b(?:TODO|FIXME|XXX|HACK)\b";
 /// walk, and `reads_shapes` puts what it finds on the same sites. #114.
 const LANGUAGES: &[Language] = &[
     Language {
-        names: &["go"],
-        suffixes: &[".go"],
+        languages: &[LanguageId::Go],
         patterns: &[
             (
                 "not implemented",
@@ -44,8 +44,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["python"],
-        suffixes: &[".py"],
+        languages: &[LanguageId::Python],
         patterns: &[
             ("not implemented", r"\braise\s+NotImplementedError", BODY),
             (MARKER, HASH, NOTE),
@@ -53,8 +52,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["rust"],
-        suffixes: &[".rs"],
+        languages: &[LanguageId::Rust],
         patterns: &[
             ("not implemented", r"\b(?:todo|unimplemented)!\(", BODY),
             (MARKER, SLASH, NOTE),
@@ -62,8 +60,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["javascript", "typescript"],
-        suffixes: &[".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
+        languages: &[LanguageId::TypeScript, LanguageId::JavaScript],
         patterns: &[
             (
                 "not implemented",

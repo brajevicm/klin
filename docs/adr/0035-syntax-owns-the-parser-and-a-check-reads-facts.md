@@ -126,6 +126,10 @@ tree's sources and name its languages. That table covers shell, which no
 grammar here reads, so moving it would shrink what a survey discovers. It
 stays where it is.
 
+Note (#614): the table moved into `syntax`, shell row included. Each
+language's suffixes are written once there, and `syntax::source` decides
+whether a path is source, so the survey finds what it found before.
+
 ## Follow-up: the module graph resolves what syntax keeps (#50)
 
 ADR 0043 now owns resolution. To give it enough to resolve without a second

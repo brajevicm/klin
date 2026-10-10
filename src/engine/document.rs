@@ -1175,7 +1175,7 @@ fn held_roots(project: &Project) -> Vec<String> {
     let holds = |root: &str| {
         files.iter().any(|file| {
             survey::surveyed(file)
-                && survey::language_of(file).is_some()
+                && survey::source(file)
                 && crate::config::scope::under_or_at(file, root)
         })
     };
@@ -1201,7 +1201,7 @@ fn by_extension(project: &Project, against: &Against) -> BTreeMap<String, usize>
     };
     let mut counted = BTreeMap::new();
     for file in files {
-        if !survey::surveyed(file) || survey::language_of(file).is_none() {
+        if !survey::surveyed(file) || !survey::source(file) {
             continue;
         }
         if let Some((_, extension)) = file.rsplit_once('.') {

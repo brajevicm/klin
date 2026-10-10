@@ -28,6 +28,7 @@ pub enum LanguageId {
     Ruby,
     Swift,
     Kotlin,
+    Shell,
 }
 
 /// One grammar-backed language: the logical language it belongs to, what a failure calls it,
@@ -381,11 +382,84 @@ pub fn extensions(named: &[String]) -> Vec<&'static str> {
 
 /// Every language name the table holds, with the extensions that name selects.
 pub fn language_extensions() -> Vec<(&'static str, String)> {
-    key::extensions_by_name(
-        LANGUAGES
+    key::extensions_by_name(LANGUAGES.iter().map(|language| {
+        (
+            language.names.iter().copied(),
+            language.extensions.iter().copied(),
+        )
+    }))
+}
+
+/// One logical language: its id, the name a config calls it by, and the suffixes no grammar here
+/// reads, which the survey still calls source. Its grammars are the `LANGUAGES` rows of its id.
+pub struct Registered {
+    pub id: LanguageId,
+    pub name: &'static str,
+    pub bare: &'static [&'static str],
+}
+
+const fn registered(id: LanguageId, name: &'static str) -> Registered {
+    Registered {
+        id,
+        name,
+        bare: &[],
+    }
+}
+
+/// Every language klin knows, in `LanguageId` order, so a language's row is at its id.
+pub const REGISTRY: &[Registered] = &[
+    registered(LanguageId::Rust, "rust"),
+    registered(LanguageId::Python, "python"),
+    registered(LanguageId::TypeScript, "typescript"),
+    registered(LanguageId::JavaScript, "javascript"),
+    registered(LanguageId::Go, "go"),
+    registered(LanguageId::Java, "java"),
+    registered(LanguageId::Ruby, "ruby"),
+    registered(LanguageId::Swift, "swift"),
+    registered(LanguageId::Kotlin, "kotlin"),
+    Registered {
+        id: LanguageId::Shell,
+        name: "shell",
+        bare: &[".sh", ".bash", ".zsh"],
+    },
+];
+
+const _: () = {
+    let mut at = 0;
+    while at < REGISTRY.len() {
+        assert!(REGISTRY[at].id as usize == at);
+        at += 1;
+    }
+    assert!(REGISTRY.len() == LanguageId::Shell as usize + 1);
+};
+
+fn registry_row(id: LanguageId) -> &'static Registered {
+    &REGISTRY[id as usize]
+}
+
+/// The name a config calls a language by.
+pub fn name(id: LanguageId) -> &'static str {
+    registry_row(id).name
+}
+
+/// The suffixes of one language: each grammar's first suffix, then the rest of each, in grammar
+/// order, then the suffixes no grammar reads.
+pub fn suffixes(id: LanguageId) -> Vec<&'static str> {
+    let rows = || LANGUAGES.iter().filter(move |row| row.id == id);
+    rows()
+        .filter_map(|row| row.extensions.first().copied())
+        .chain(rows().flat_map(|row| row.extensions.iter().skip(1).copied()))
+        .chain(registry_row(id).bare.iter().copied())
+        .collect()
+}
+
+/// Whether a path is source, which is a fact of the path and no check's opinion. ADR 0038.
+pub fn source(path: &str) -> bool {
+    language_of(path).is_some()
+        || REGISTRY
             .iter()
-            .map(|language| (language.names, language.extensions)),
-    )
+            .flat_map(|row| row.bare)
+            .any(|suffix| path.ends_with(suffix))
 }
 
 /// The line at this row, trimmed, which is the text every site in klin is named by.

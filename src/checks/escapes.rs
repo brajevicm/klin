@@ -3,6 +3,7 @@ use crate::config::key::Key;
 use crate::config::scope;
 use crate::contract::check::{Context, Sink};
 use crate::contract::ratchet::{Evaluator, Remedy};
+use crate::syntax::LanguageId;
 use crate::sys::error::Error;
 use crate::sys::record::Values;
 
@@ -15,8 +16,7 @@ const LABEL: &str = "escape";
 
 const LANGUAGES: &[Language] = &[
     Language {
-        names: &["go"],
-        suffixes: &[".go"],
+        languages: &[LanguageId::Go],
         patterns: &[
             ("nolint", r"//\s*nolint", ""),
             ("skipped test", r"\bt\.Skip(?:Now|f)?\(", ""),
@@ -24,8 +24,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["java"],
-        suffixes: &[".java"],
+        languages: &[LanguageId::Java],
         patterns: &[
             ("suppress warnings", r"@SuppressWarnings\(", ""),
             ("skipped test", r"@(?:Ignore|Disabled)\b", ""),
@@ -33,8 +32,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["kotlin"],
-        suffixes: &[".kt", ".kts"],
+        languages: &[LanguageId::Kotlin],
         patterns: &[
             ("not-null assertion", r"!!", ""),
             ("suppress", r"@Suppress\(", ""),
@@ -43,8 +41,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["python"],
-        suffixes: &[".py"],
+        languages: &[LanguageId::Python],
         patterns: &[
             ("type ignore", r"#\s*type:\s*ignore", ""),
             ("noqa", r"#\s*noqa\b", ""),
@@ -60,8 +57,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["ruby"],
-        suffixes: &[".rb"],
+        languages: &[LanguageId::Ruby],
         patterns: &[
             ("rubocop:disable", r"rubocop:disable", ""),
             ("skipped test", r"\bskip\b|\bxit\b|\bpending\b", ""),
@@ -69,8 +65,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["rust"],
-        suffixes: &[".rs"],
+        languages: &[LanguageId::Rust],
         patterns: &[
             ("unwrap", r"\.unwrap\(\)", ""),
             ("expect", r"\.expect\(", ""),
@@ -88,8 +83,7 @@ const LANGUAGES: &[Language] = &[
         }),
     },
     Language {
-        names: &["shell"],
-        suffixes: &[".sh", ".bash", ".zsh"],
+        languages: &[LanguageId::Shell],
         patterns: &[
             ("errors ignored", r"\|\|\s*true\b|^\s*set\s+\+e\b", ""),
             ("shellcheck disable", r"shellcheck\s+disable", ""),
@@ -97,8 +91,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["swift"],
-        suffixes: &[".swift"],
+        languages: &[LanguageId::Swift],
         patterns: &[
             ("force try", r"\btry!", ""),
             ("force cast", r"\bas!", ""),
@@ -110,8 +103,7 @@ const LANGUAGES: &[Language] = &[
         test_idioms: None,
     },
     Language {
-        names: &["javascript", "typescript"],
-        suffixes: &[".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
+        languages: &[LanguageId::TypeScript, LanguageId::JavaScript],
         patterns: &[
             ("any", r":\s*any\b|\bas\s+any\b|<any>", ""),
             ("ts-ignore", r"@ts-(?:ignore|nocheck)", ""),

@@ -9,8 +9,6 @@ use std::collections::BTreeMap;
 
 use super::resolver::{Attachment, Builder, Topology, directory, joined};
 
-const SOURCE: &[&str] = &[".ts", ".tsx", ".mts", ".cts"];
-
 /// Each script extension with the TypeScript extensions a specifier written with it stands for.
 const STANDS_FOR: &[(&str, &[&str])] = &[
     (".js", &[".ts", ".tsx"]),
@@ -132,7 +130,7 @@ fn dependency(
 }
 
 fn source(file: &str) -> bool {
-    SOURCE.iter().any(|end| file.ends_with(end))
+    crate::syntax::structural::language_of(file) == Some(crate::syntax::LanguageId::TypeScript)
 }
 
 fn package_name(specifier: &str) -> bool {
