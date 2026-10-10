@@ -55,10 +55,19 @@ The code that measures is in `checks/`, and the ratchet is in `contract/`.
    `src/main.rs`. A new file in an existing folder needs no change to
    `klin.json`. A new folder is a new layer: only the owner commits it, and it
    amends this ADR.
-4. A new file goes in the folder of the component it serves, or in `sys/`
-   when it holds no klin concept. That folder must sit above every layer the
-   file uses. When no folder fits, a dependency points the wrong way: move
-   the code that the file needs down, as #601 does.
+4. A new file goes in the folder of its component when that folder sits at
+   or above every layer the file uses, and at or below every layer that uses
+   the file. A check goes in `checks/`, or in `checks/structural/` when it
+   measures both trees in full. A command goes in `cli/`, a host in
+   `hook/host/`, and language code in its seam (rule 7). When the component
+   has no folder, or its folder does not fit, the file goes in the lowest
+   folder that sits at or above every layer it uses. That is why `project` is
+   in `contract/`, `stats` in `hook/`, `against` in `engine/`, and `changed`
+   and `record` in `sys/`. Do not put a file in a higher folder only to pass
+   the gate. Move the code that the file needs down when the imports of that
+   code allow it, as #601 moves `timed` to `sys/`. Otherwise pass the value
+   in from a layer above, as #606 passes the language parts through
+   `Project`.
 5. The `mod.rs` of a new folder holds only `mod` lines, as `src/check/mod.rs`
    does at `80188ef5`. The `mod.rs` files of `syntax/`,
    `syntax/structural/`, `modules/`, `surface/` and `hook/host/` keep their
