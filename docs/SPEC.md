@@ -639,8 +639,10 @@ Review items, notes, coverage notes and errors the base had too do not keep
 the stamp.
 
 **What the stamp records as told.** The `told` record keys each note, each
-error, each review item and each `measurement-lost` finding of the Stop's
-check document (11.7) by its record, the ones its text does not print too.
+error and each review item of the Stop's check document (11.7) by its record,
+the ones its text does not print too. It keys each `measurement-lost`
+finding by its file, reason and position, so new words for the same loss
+are not a new record.
 A Stop records them only after
 the host took the block or the notice, so a notice klin could not deliver,
 such as one whose follow-up record would not write, is told at a later Stop. A later Stop under the same stamp whose every record

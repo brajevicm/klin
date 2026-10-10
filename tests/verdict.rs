@@ -17,6 +17,10 @@ const AN_ACCEPTED_LOST_FILE: &str = r#"{
   "accepted": [{"gate": "measurement-lost", "file": "src/lib.rs", "reason": "grammar lag"}],
   "doc_size": {"README.md": 10}
 }"#;
+const A_HELD_LOST_FILE: &str = r#"{
+  "accepted": [{"gate": "measurement-lost", "file": "src/lib.rs", "reason": "generated"}],
+  "doc_size": {"README.md": 10}
+}"#;
 const AN_UNMATCHED_ACCEPTED: &str = r#"{
   "accepted": [{"gate": "escapes", "file": "src/lib.rs", "text": "the line that held it",
                 "count": 1}],
@@ -119,6 +123,47 @@ fn an_unmatched_accepted_lost_file_is_told_once_per_stamp() {
     let again = second_stop(&tree);
     assert_eq!(again.code, 0, "{}", again.out);
     assert_eq!(told(&again), "", "{}", again.out);
+}
+
+/// A held lost file is keyed by its file, reason and position, so a later Stop under the same
+/// stamp that finds it lost with other words tells nothing again. Spec 2.3, 7.2.
+#[test]
+fn a_held_lost_file_whose_message_alone_changed_is_not_told_again() {
+    let tree = tree(A_HELD_LOST_FILE);
+    tree.write("src/broken.rs", "fn broken( {\n");
+    tree.base();
+    let long = "x".repeat(65_540);
+    tree.write("src/broken.rs", "fn broken( { (\n");
+    tree.write(
+        "src/lib.rs",
+        &format!("// {long}\npub fn kept() -> u8 {{ 1 }}\n"),
+    );
+
+    let first = stop(&tree);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(told(&first).contains("src/broken.rs"), "{}", first.out);
+
+    tree.write(
+        "src/lib.rs",
+        &format!("pub fn kept() -> u8 {{ 1 }}\n// {long}\n"),
+    );
+    let (again, document) = harness::stop_report(tree.root(), A_SECOND_STOP, &[]);
+    assert_eq!(again.code, 0, "{}", again.out);
+    assert_eq!(told(&again), "", "{}", again.out);
+    let lost = document["findings"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|finding| finding["kind"] == "measurement-lost")
+        .unwrap_or_else(|| panic!("no lost file in {document}"));
+    assert_eq!(lost["file"], "src/lib.rs", "{document}");
+    assert_eq!(lost["values"]["reason"], "line-ceiling", "{document}");
+    assert!(
+        lost["condition"]
+            .as_str()
+            .is_some_and(|said| said.contains("line 2")),
+        "{document}"
+    );
 }
 
 /// A capability-scope error blocks nothing and keeps nothing red, and its text asks for no

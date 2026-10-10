@@ -438,19 +438,23 @@ fn refreshed(root: &Path, fresh: stamp::Capture, log: &mut journal::Stop) {
 }
 
 /// What a Stop's check document tells that no later Stop under the same stamp repeats: each
-/// note, error and review item, and each file lost to measurement, keyed by its record.
+/// note, error and review item, keyed by its record, and each file lost to measurement, keyed
+/// by its file, reason and position, so new words for the same loss are not a new record.
 /// Spec 2.3.
 fn told_records(document: Option<&Value>) -> Vec<String> {
     let Some(document) = document else {
         return Vec::new();
     };
     let listed = |field: &str| document[field].as_array().into_iter().flatten();
-    let lost = listed("findings").filter(|finding| finding["kind"] == MEASUREMENT_LOST);
+    let lost = listed("findings")
+        .filter(|finding| finding["kind"] == MEASUREMENT_LOST)
+        .map(|finding| json!([MEASUREMENT_LOST, finding["file"], finding["values"]]));
     listed("notes")
         .chain(listed("errors"))
         .chain(listed("reviews"))
-        .chain(lost)
-        .map(|record| key(&record.to_string()))
+        .map(Value::to_string)
+        .chain(lost.map(|site| site.to_string()))
+        .map(|record| key(&record))
         .collect()
 }
 
