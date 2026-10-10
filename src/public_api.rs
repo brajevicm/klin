@@ -15,7 +15,7 @@ use serde_json::{Value, json};
 use crate::check::contract::{self, Context, Line, Listed, Measured, Sink, Site, Unresolvable};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
-use crate::error::Error;
+use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::key::Key;
 use crate::measurement;
 use crate::modules::resolver::Hole;
@@ -444,12 +444,16 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 
 /// The derived contract of the working tree, item by item, so automatic derivation is
 /// inspectable. Nothing is judged and no base is read. ADR 0044.
-pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Explained, Error> {
+pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Explained, Fault> {
     if let Some(named) = named {
-        return Err(Error(format!(
+        return Err(fault(ErrorKind::Invocation)(Error(format!(
             "{NAME} explains every surface at once, so drop {named}"
-        )));
+        ))));
     }
+    explain_all(project).map_err(fault(ErrorKind::Configuration))
+}
+
+fn explain_all(project: &Project) -> Result<contract::Explained, Error> {
     project.config.policy(SECTION, KEYS)?;
     let tree = project.tree();
     let measured = measurement::measure_all(tree, None)?;

@@ -6,7 +6,7 @@ use serde_json::json;
 
 use crate::check::contract::Explained;
 use crate::config::Config;
-use crate::error::Error;
+use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::key::Key;
 use crate::project::Project;
 use crate::scope::Selector;
@@ -18,15 +18,20 @@ use super::rules::{
 };
 
 /// Every convention explained, or only the one `NAME` names.
-pub fn explain(project: &Project, named: Option<&str>) -> Result<Explained, Error> {
+pub fn explain(project: &Project, named: Option<&str>) -> Result<Explained, Fault> {
     let config = &project.config;
-    let conventions = conventions(config, project.moves())?;
-    let places = walked(config, project.tree())?;
+    let configuration = fault(ErrorKind::Configuration);
+    let conventions = conventions(config, project.moves()).map_err(&configuration)?;
+    let places = walked(config, project.tree()).map_err(&configuration)?;
     let holes = holes(&conventions, &places);
     if let Some(name) = named
         && !conventions.iter().any(|convention| convention.name == name)
     {
-        return Err(unknown(config, name, &conventions));
+        return Err(fault(ErrorKind::Invocation)(unknown(
+            config,
+            name,
+            &conventions,
+        )));
     }
     let chosen: Vec<&Convention> = conventions
         .iter()

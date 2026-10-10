@@ -47,7 +47,12 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
             let _ = writeln!(out, "{note}");
         }
     }
+    let mut config = None;
     let outcome = loaded(args, start).and_then(|mut project| {
+        config = Some(json!({
+            "path": project.config.file.display().to_string(),
+            "present": project.config.written(),
+        }));
         if let Ok(window) = base::choose(project.root()) {
             project.bind(&window);
         }
@@ -59,14 +64,17 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
     if !args.json {
         return Err(refused.error);
     }
-    let located = config::located(args.config.as_deref(), start);
+    let config = config.unwrap_or_else(|| {
+        let located = config::located(args.config.as_deref(), start);
+        json!({
+            "path": located.as_ref().map(|file| file.display().to_string()),
+            "present": located.as_ref().is_some_and(|file| file.is_file()),
+        })
+    });
     let document = json!({
         "schema_version": 1,
         "command": "policy",
-        "config": {
-            "path": located.as_ref().map(|file| file.display().to_string()),
-            "present": located.as_ref().is_some_and(|file| file.is_file()),
-        },
+        "config": config,
         "errors": [{ "kind": refused.kind.name(), "check": null, "message": refused.error.to_string() }],
     });
     out.clear();
@@ -74,11 +82,11 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(2)
 }
 
-/// The project `policy` reads, where a `--config` that names no file is an invocation error,
-/// as under `klin check`.
+/// The project `policy` reads, where a `--config` that names no file, or names a directory, is an
+/// invocation error. Spec 7.3.
 fn loaded(args: &Policy, start: &Path) -> Result<Project, Fault> {
     let named_nothing = args.config.is_some()
-        && !config::located(args.config.as_deref(), start).is_some_and(|file| file.exists());
+        && !config::located(args.config.as_deref(), start).is_some_and(|file| file.is_file());
     Project::load(args.config.as_deref(), start, &catalogue::sections())
         .map(Project::read_only)
         .map_err(fault(match named_nothing {
@@ -351,20 +359,13 @@ fn said_by(
     }
 }
 
-/// What a check's explanation says, where an entry it does not have is an invocation error,
-/// and anything else that stops the explanation is a configuration error. Spec 7.3, 11.7.
 fn explained(
     explain: contract::Explain,
     project: &Project,
     args: &Policy,
 ) -> Result<(Vec<String>, Vec<Value>), Fault> {
-    match explain(project, args.entry.as_deref()) {
-        Ok(explained) => Ok((explained.lines, explained.values)),
-        Err(error) if args.entry.is_some() && explain(project, None).is_ok() => {
-            Err(fault(ErrorKind::Invocation)(error))
-        }
-        Err(error) => Err(fault(ErrorKind::Configuration)(error)),
-    }
+    let explained = explain(project, args.entry.as_deref())?;
+    Ok((explained.lines, explained.values))
 }
 
 /// A value a person pinned, and for a dated schedule the step in force as the value, with the

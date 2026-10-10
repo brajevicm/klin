@@ -453,6 +453,8 @@ fn policy_json_names_an_argument_it_cannot_take_as_an_invocation_error() {
         &["policy", "--json", "complexity", "cc"],
         &["policy", "--json", "conventions", "nope"],
         &["policy", "--json", "--config", "missing.json"],
+        &["policy", "--json", "--config", "."],
+        &["policy", "--json", "public-api", "nope"],
     ] {
         let run = tree.run(args);
 
@@ -461,4 +463,23 @@ fn policy_json_names_an_argument_it_cannot_take_as_an_invocation_error() {
         assert_eq!(json["command"], "policy", "{args:?}: {json}");
         assert_eq!(json["errors"][0]["kind"], "invocation", "{args:?}: {json}");
     }
+}
+
+/// The error document names the configuration the run loaded, as the policy document does, even
+/// where no klin.json is written. Spec 11.7.
+#[test]
+fn policy_json_error_names_the_configuration_the_run_loaded() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let listed = tree.run(&["policy", "--json"]).json();
+    let refused = tree.run(&["policy", "--json", "nope"]).json();
+
+    assert_eq!(refused["errors"][0]["kind"], "invocation", "{refused}");
+    assert_eq!(
+        refused["config"]["path"], listed["config"]["path"],
+        "{refused}"
+    );
+    assert_eq!(refused["config"]["present"], false, "{refused}");
 }
