@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use serde_json::{Value, json};
@@ -47,7 +48,7 @@ pub struct Spent {
     pub builds: u64,
     pub gate_blocks: u64,
     /// Every tree a block of this prompt was taken over. Spec 10.7.
-    pub trees: Vec<String>,
+    pub trees: BTreeSet<String>,
 }
 
 /// What a build failure at this stop spends: the block it took and its number in this turn, no
@@ -124,7 +125,7 @@ impl Budget<'_> {
         }
         let count = Count {
             builds: held.builds + 1,
-            trees: with(held.trees, tree.as_deref()),
+            trees: held.trees.into_iter().chain(tree.clone()).collect(),
             build_tree: tree,
             ..held
         };
@@ -162,7 +163,7 @@ impl Budget<'_> {
         };
         let recorded = Count {
             gate_blocks: number,
-            trees: with(count.trees, tree.as_deref()),
+            trees: count.trees.into_iter().chain(tree.clone()).collect(),
             gate_tree: tree,
             ..count
         };
@@ -187,9 +188,12 @@ impl Budget<'_> {
             })
             .unwrap_or_default();
         let build_tree = held.build_tree.or(held.tree);
-        let trees = [&build_tree, &held.gate_tree]
+        let trees = held
+            .trees
             .into_iter()
-            .fold(held.trees, |trees, tree| with(trees, tree.as_deref()));
+            .chain(build_tree.clone())
+            .chain(held.gate_tree.clone())
+            .collect();
         Count {
             prompt,
             session: self.session.map(str::to_string),
@@ -312,17 +316,7 @@ struct Count {
     /// prove that a later stop changed it. ADR 0052.
     gate_tree: Option<String>,
     /// Every tree a block of this prompt was taken over, of either kind. Spec 10.7.
-    trees: Vec<String>,
-}
-
-/// The `trees` with one more, each held once.
-fn with(mut trees: Vec<String>, tree: Option<&str>) -> Vec<String> {
-    if let Some(tree) = tree
-        && !trees.iter().any(|held| held == tree)
-    {
-        trees.push(tree.to_string());
-    }
-    trees
+    trees: BTreeSet<String>,
 }
 
 /// The record as it stands on disk. A field that is missing or holds another type reads as
@@ -337,7 +331,7 @@ struct Record {
     build_tree: Option<String>,
     gate_blocks: Option<u64>,
     gate_tree: Option<String>,
-    trees: Vec<String>,
+    trees: BTreeSet<String>,
     tree: Option<String>,
     gate_spent: bool,
 }

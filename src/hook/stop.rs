@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::Path;
 use std::time::Duration;
@@ -146,7 +147,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
-    let mut seen = Vec::new();
+    let mut seen = BTreeSet::new();
     if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
         log.gate_blocks = spent.gate_blocks;
         log.build_blocks = spent.builds;
@@ -396,21 +397,11 @@ fn tell(
 /// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
 /// `seen`, is the tree the prompt `mark` was taken over. False when klin cannot read the mark's
 /// tree or the working tree. Spec 10.7.
-fn unchanged(root: &Path, mark: Option<&str>, seen: &[String]) -> bool {
+fn unchanged(root: &Path, mark: Option<&str>, seen: &BTreeSet<String>) -> bool {
     let (Some(mark), Ok(at)) = (mark, state::ready(root)) else {
         return false;
     };
-    let prompted = stamp::git(
-        root,
-        None,
-        &[
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            &format!("{mark}^{{tree}}"),
-        ],
-    );
-    let Some(prompted) = prompted else {
+    let Some(prompted) = stamp::tree_of(root, mark) else {
         return false;
     };
     seen.iter().all(|tree| *tree == prompted)
