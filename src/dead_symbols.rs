@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
-use crate::base::Prior;
+use crate::base::{Layout, Prior};
 use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
@@ -80,18 +80,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let timer = measurement::Timer {
-        names: &mut names,
-        layout: &mut layout,
-    };
-    let measurement::Sides { before, after, .. } = measurement::sides(
-        at,
-        &commit,
-        Some(timer),
-        |unchanged| measure(project.tree(), &spec.selection, unchanged),
-        |prior| Ok((before(at, &spec, prior)?, ())),
-        out,
-    )?;
+    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout, out)?;
     let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
     let widened = at.scoped(
         impact
@@ -142,6 +131,26 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     holes::unread_said(&after.unparsed, at, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
+}
+
+/// The two trees measured over `spec`'s selection, the base under its own scope. Spec 8.4.
+fn sweeps(
+    at: &Context,
+    spec: &Spec,
+    commit: &str,
+    names: &mut structural::NameCost,
+    layout: &mut Option<Layout>,
+    out: &mut Sink,
+) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
+    let sides = measurement::sides(
+        at,
+        commit,
+        Some(measurement::Timer { names, layout }),
+        |unchanged| measure(at.project.tree(), &spec.selection, unchanged),
+        |prior| Ok((before(at, spec, prior)?, ())),
+        out,
+    )?;
+    Ok((sides.before, sides.after))
 }
 
 /// The effective judgement scope of a changed, non-strict run, and the names judging it needs:

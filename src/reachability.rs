@@ -135,23 +135,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let timer = measurement::Timer {
-        names: &mut names,
-        layout: &mut layout,
-    };
-    let measurement::Sides {
-        before,
-        beside: before_families,
-        after,
-        ..
-    } = measurement::sides(
-        at,
-        &commit,
-        Some(timer),
-        |unchanged| measure(project.tree(), &families, unchanged),
-        |prior| before(at, &families, prior),
-        out,
-    )?;
+    let (before, before_families, after) =
+        sweeps(at, &families, &commit, &mut names, &mut layout, out)?;
     let (before_states, _) = judgement(&before, &mut names.before, &before_families);
     let (after_states, unjudged) = judgement(&after, &mut names.after, &families);
     out.record(|records| {
@@ -193,6 +178,26 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     coverage_result(at, (&before, &before_families), (&after, &families), out);
     base_note(&held_before, out);
     Ok(code)
+}
+
+/// The two trees measured, and the families under the base's scope. Spec 8.4.
+fn sweeps(
+    at: &Context,
+    families: &[Family],
+    commit: &str,
+    names: &mut structural::NameCost,
+    layout: &mut Option<base::Layout>,
+    out: &mut Sink,
+) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
+    let sides = measurement::sides(
+        at,
+        commit,
+        Some(measurement::Timer { names, layout }),
+        |unchanged| measure(at.project.tree(), families, unchanged),
+        |prior| before(at, families, prior),
+        out,
+    )?;
+    Ok((sides.before, sides.beside, sides.after))
 }
 
 fn judgement(
