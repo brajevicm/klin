@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
-use crate::base::{self, Prior};
+use crate::base::{Layout, Prior};
 use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
@@ -80,7 +80,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
+    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout, out)?;
     let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
     let widened = at.scoped(
         impact
@@ -106,7 +106,6 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         dead_findings(&after_states, &before_index, &after_index, &held_before)
     });
     out.record(|records| {
-        records.facts = Some(before.cost + after.cost);
         records.states = Some(built);
         records.names = Some(names);
         records.layout = layout;
@@ -134,31 +133,24 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// The two trees measured. A changed run that is not strict measures them over one base
-/// extraction: the working tree takes the base's facts for every file its `Change` set leaves
-/// out, and extracts only the files it changed. Strict and whole runs extract both trees.
+/// The two trees measured over `spec`'s selection, the base under its own scope. Spec 8.4.
 fn sweeps(
     at: &Context,
     spec: &Spec,
     commit: &str,
     names: &mut structural::NameCost,
-    layout: &mut Option<base::Layout>,
+    layout: &mut Option<Layout>,
+    out: &mut Sink,
 ) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || contract::whole_base(at, commit))?;
-    let unchanged = structural::timed(&mut names.base, || {
-        contract::unchanged_base(at, prior, commit)
-    })?;
-    *layout = prior.layout();
-    let mut after = structural::timed(&mut names.after.measure, || {
-        measure(at.project.tree(), &spec.selection, unchanged.as_ref())
-    })?;
-    let before = structural::timed(&mut names.before.measure, || before(at, spec, prior))?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            measurement::Unchanged::publish,
-        );
-    Ok((before, after))
+    let sides = measurement::sides_counted(
+        at,
+        commit,
+        measurement::Counted { names, layout },
+        |unchanged| measure(at.project.tree(), &spec.selection, unchanged),
+        |prior| Ok((before(at, spec, prior)?, ())),
+        out,
+    )?;
+    Ok((sides.before, sides.after))
 }
 
 /// The effective judgement scope of a changed, non-strict run, and the names judging it needs:

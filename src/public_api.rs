@@ -108,25 +108,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-/// The base and the working tree, each measured, resolved and derived. A changed run that is
-/// not strict takes the base's facts for every file it did not change, as `layering` does, and
-/// judges every file of both trees whatever its scope, because a manifest or a re-export can
-/// change what an unchanged file means to a consumer.
+/// The base and the working tree, each measured by `measurement::sides_all`, resolved and
+/// derived. Every file of both trees is judged whatever its scope, because a manifest or a
+/// re-export can change what an unchanged file means to a consumer.
 fn sides(at: &Context, commit: &str, out: &mut Sink) -> Result<(Side, Side), Error> {
-    let project = at.project;
-    let prior = contract::whole_base(at, commit)?;
-    let unchanged = contract::unchanged_base(at, prior, commit)?;
-    let mut after = measurement::measure_all(project.tree(), unchanged.as_ref())?;
-    let before = measurement::measure_all(prior.tree(), None)?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            measurement::Unchanged::publish,
-        );
-    out.record(|records| records.facts = Some(before.cost + after.cost));
+    let measured = measurement::sides_all(at, commit, out)?;
+    let prior = measured.prior;
     Ok((
-        side(prior.tree(), &before, prior.renamed())?,
-        side(project.tree(), &after, &HashMap::new())?,
+        side(prior.tree(), &measured.before, prior.renamed())?,
+        side(at.project.tree(), &measured.after, &HashMap::new())?,
     ))
 }
 

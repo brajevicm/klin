@@ -246,24 +246,19 @@ fn under_the_base(
 }
 
 /// The base and the working tree, each measured and resolved, and the working tree resolved
-/// under the base's manifests on demand. A changed run that is not strict takes the base's facts
-/// for every file it did not change, as `dead-symbols` does.
+/// under the base's manifests on demand, both trees measured by `measurement::sides_all`.
 fn sides<'a>(
     at: &Context<'a>,
     commit: &str,
     out: &mut Sink,
 ) -> Result<(Side, Side, impl FnOnce() -> Result<Side, Error> + 'a), Error> {
     let project = at.project;
-    let prior = contract::whole_base(at, commit)?;
-    let unchanged = contract::unchanged_base(at, prior, commit)?;
-    let mut after = measurement::measure_all(project.tree(), unchanged.as_ref())?;
-    let before = measurement::measure_all(prior.tree(), None)?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            measurement::Unchanged::publish,
-        );
-    out.record(|records| records.facts = Some(before.cost + after.cost));
+    let measurement::Sides {
+        prior,
+        before,
+        after,
+        ..
+    } = measurement::sides_all(at, commit, out)?;
     let was = side(prior.tree(), &before, prior.renamed())?;
     let now = side(project.tree(), &after, &HashMap::new())?;
     let base_scoped = move || {

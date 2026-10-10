@@ -19,7 +19,6 @@ use crate::coverage::{Coverage, Left};
 use crate::error::{Error, Fault};
 use crate::files::Form;
 use crate::key::Key;
-use crate::measurement::{self, Unchanged};
 use crate::project::Project;
 use crate::record::Values;
 use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
@@ -782,29 +781,6 @@ pub fn base_commit(root: &Path, at: &Context) -> Result<String, Error> {
 /// The base a gate the runner did not lay out chooses for itself.
 pub fn announced(root: &Path) -> Result<Window, Error> {
     base::choose(root)
-}
-
-/// The base laid out whole for this run: the runner's own when it laid the whole base out, which
-/// a changed run never does, and otherwise the run's one checkout. Spec 8.4, ADR 0038.
-pub fn whole_base<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
-    match at.prior.filter(|_| at.changes.is_none()) {
-        Some(prior) => Ok(prior),
-        None => at.project.whole_base(commit, shared(at)),
-    }
-}
-
-/// The base's view of the files this run leaves alone, which only a changed run that is not
-/// strict shares. Spec 8.4.
-pub fn unchanged_base<'a>(
-    at: &Context<'a>,
-    prior: &'a Prior,
-    commit: &str,
-) -> Result<Option<Unchanged<'a>>, Error> {
-    measurement::unchanged(at.project, shared(at), prior, commit)
-}
-
-fn shared<'a>(at: &Context<'a>) -> Option<&'a [Change]> {
-    at.changes
 }
 
 /// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
