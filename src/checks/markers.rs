@@ -120,7 +120,7 @@ fn names(language: &Language) -> Vec<&'static str> {
     language
         .languages
         .iter()
-        .map(|&id| syntax::name(id))
+        .filter_map(|&id| syntax::name(id))
         .collect()
 }
 

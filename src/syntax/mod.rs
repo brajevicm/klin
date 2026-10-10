@@ -394,15 +394,14 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 const SHELL: &[&str] = &[".sh", ".bash", ".zsh"];
 
 /// The name a config calls a language by.
-pub fn name(id: LanguageId) -> &'static str {
+pub fn name(id: LanguageId) -> Option<&'static str> {
     if id == LanguageId::Shell {
-        return "shell";
+        return Some("shell");
     }
     LANGUAGES
         .iter()
         .find(|row| row.id == id)
         .and_then(|row| row.names.first().copied())
-        .expect("every language but shell has a grammar row")
 }
 
 /// The suffixes of one language: each grammar's first suffix, then the rest of each, in grammar
