@@ -65,6 +65,19 @@
         ],
         "can_use": null
       },
+      "document": {
+        "in": ["src/diagnostics.rs", "src/document.rs"],
+        "can_use": [
+          "plan",
+          "catalogue",
+          "contract",
+          "project",
+          "render",
+          "journal",
+          "syntax",
+          "core"
+        ]
+      },
       "checks": {
         "in": [
           "src/complexity.rs",

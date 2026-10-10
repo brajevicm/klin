@@ -9,10 +9,10 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, Derived, Entry, Failed,
-    Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed, Located, Matched, Measured,
-    Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNMATCHED_ACCEPTED, Unmatched,
-    Unresolvable, Wording,
+    self, AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION,
+    Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed,
+    Located, Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNBUILT,
+    UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
 };
 use crate::check::holes::{self, Unmeasured};
 use crate::config::MEASUREMENT_LOST;
@@ -619,53 +619,234 @@ fn provenance_line(said: &Provenance) -> String {
     }
 }
 
-/// What the JSON of spec 11.2 carries of one gate's result.
-#[derive(Default)]
-pub struct Json {
-    pub findings: Vec<Value>,
-    pub notes: Vec<Value>,
-    pub derived: Vec<Value>,
-    /// The `{reason, detail, text}` of each hole the gate told. Spec 7.2, 11.7.
-    pub holes: Vec<Value>,
-    /// The review items of forms the change opened, each under its gap reason. Spec 7.2, 11.7.
-    pub reviews: Vec<Value>,
+/// A key of a record that the check document leaves out, writes as `null`, or writes with a
+/// value, because the three say different things. Spec 11.7.
+#[derive(Clone, Default)]
+pub enum Slot<T> {
+    #[default]
+    Absent,
+    Null,
+    Is(T),
 }
 
-/// The findings, notes and derived entries of one gate's result, in the order the result says
-/// them. Spec 11.2.
-pub fn json(told: &[Told]) -> Json {
-    let mut out = Json::default();
+impl<T: Clone + Into<Value>> Slot<T> {
+    fn entry(&self, key: &str) -> Option<(String, Value)> {
+        match self {
+            Slot::Absent => None,
+            Slot::Null => Some((key.to_string(), Value::Null)),
+            Slot::Is(value) => Some((key.to_string(), value.clone().into())),
+        }
+    }
+}
+
+/// A key a record writes only when it holds a value.
+fn entry<T: Into<Value>>(key: &str, value: Option<T>) -> Option<(String, Value)> {
+    value.map(|value| (key.to_string(), value.into()))
+}
+
+impl Slot<String> {
+    /// The file of a record, left out where the site names none.
+    fn file(file: &str) -> Slot<String> {
+        match file.is_empty() {
+            true => Slot::Absent,
+            false => Slot::Is(file.to_string()),
+        }
+    }
+}
+
+/// How a finding stands against what the ratchet holds. Only a held finding passes. Spec 11.7.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    New,
+    Worsened,
+    Held,
+}
+
+impl Outcome {
+    fn name(self) -> &'static str {
+        match self {
+            Outcome::New => "new",
+            Outcome::Worsened => "worsened",
+            Outcome::Held => "held",
+        }
+    }
+}
+
+/// A finding of the check document. Spec 11.7.
+#[derive(Clone)]
+pub struct Finding {
+    pub id: String,
+    pub check: Option<String>,
+    pub kind: &'static str,
+    pub outcome: Outcome,
+    pub file: String,
+    pub line: Option<u64>,
+    pub text: Option<String>,
+    pub values: Map<String, Value>,
+    pub ceiling: Value,
+    pub matched: Value,
+    pub condition: String,
+    pub remedy: String,
+}
+
+impl Finding {
+    pub fn failing(&self) -> bool {
+        self.outcome != Outcome::Held
+    }
+
+    /// The site as `file:line  text`, which a Stop records for a deleted test it has not asked
+    /// about. Spec 9.2.
+    pub fn site(&self) -> String {
+        let line = self.line.unwrap_or_default();
+        let text = self.text.as_deref().unwrap_or_default();
+        format!("{}:{line}  {text}", self.file)
+    }
+
+    pub fn json(&self) -> Value {
+        serde_json::json!({
+            "id": self.id,
+            "check": self.check,
+            "kind": self.kind,
+            "outcome": self.outcome.name(),
+            "file": self.file,
+            "line": self.line,
+            "text": self.text,
+            "values": self.values,
+            "ceiling": self.ceiling,
+            "matched": self.matched,
+            "condition": self.condition,
+            "remedy": self.remedy,
+        })
+    }
+}
+
+/// A note of the check document: the words a person reads, and what the note is about. Spec 11.7.
+#[derive(Clone, Default)]
+pub struct Note {
+    pub check: Option<String>,
+    pub kind: &'static str,
+    pub message: String,
+    pub coverage: Option<bool>,
+    pub file: Slot<String>,
+    pub line: Option<u64>,
+    pub values: Option<Map<String, Value>>,
+}
+
+impl Note {
+    /// A note about the run, with no check and no site.
+    pub fn of_run(kind: &'static str, message: &str) -> Note {
+        Note {
+            kind,
+            message: message.to_string(),
+            coverage: Some(false),
+            ..Note::default()
+        }
+    }
+
+    /// Whether the hook tells a person this note even when nothing blocks the stop: a file the
+    /// run could not read or stopped measuring, and a deleted test the run let through. Spec 8.2,
+    /// 8.6, 14.
+    pub fn told(&self) -> bool {
+        matches!(
+            self.kind,
+            DELETED | DERIVATION | UNRESOLVED | AMBIGUOUS | UNBUILT | UNMATCHED
+        )
+    }
+
+    pub fn json(&self) -> Value {
+        let mut out = Map::new();
+        out.insert("check".into(), self.check.clone().into());
+        out.insert("kind".into(), self.kind.into());
+        out.insert("message".into(), self.message.clone().into());
+        out.extend(entry("coverage", self.coverage));
+        out.extend(self.file.entry("file"));
+        out.extend(entry("line", self.line));
+        out.extend(entry("values", self.values.clone()));
+        Value::Object(out)
+    }
+}
+
+/// A review item of the check document, which never changes an exit code. Spec 11.7.
+#[derive(Clone, Default)]
+pub struct Review {
+    pub check: Option<String>,
+    pub kind: &'static str,
+    pub file: String,
+    pub line: Slot<u64>,
+    pub text: String,
+    pub reason: Slot<String>,
+    pub values: Option<Map<String, Value>>,
+}
+
+impl Review {
+    pub fn json(&self) -> Value {
+        let mut out = Map::new();
+        out.insert("check".into(), self.check.clone().into());
+        out.insert("kind".into(), self.kind.into());
+        out.insert("file".into(), self.file.clone().into());
+        out.extend(self.line.entry("line"));
+        out.insert("text".into(), self.text.clone().into());
+        out.extend(self.reason.entry("reason"));
+        out.extend(entry("values", self.values.clone()));
+        Value::Object(out)
+    }
+}
+
+/// What one gate's result adds to the check document of spec 11.7: its findings, notes and
+/// review items under the gate's name, the derived entries of its policy, and its holes.
+#[derive(Default)]
+pub struct GateRecords {
+    gate: String,
+    pub findings: Vec<Finding>,
+    pub notes: Vec<Note>,
+    pub reviews: Vec<Review>,
+    pub derived: Vec<Value>,
+    pub holes: Vec<Incomplete>,
+}
+
+/// The records of one gate's result, in the order the result says them. Spec 11.7.
+pub fn records(gate: &str, told: &[Told]) -> GateRecords {
+    let mut out = GateRecords {
+        gate: gate.to_string(),
+        ..GateRecords::default()
+    };
     for item in told {
-        json_one(item, &mut out);
+        record_one(item, &mut out);
     }
     out
 }
 
-fn json_one(told: &Told, out: &mut Json) {
+/// The derived entries of a result, which `klin policy` lists beside the lines it prints.
+pub fn derived(told: &[Told]) -> Vec<Value> {
+    told.iter()
+        .filter_map(|item| match item {
+            Told::Provenance(said) => derived_json(said),
+            _ => None,
+        })
+        .collect()
+}
+
+fn record_one(told: &Told, out: &mut GateRecords) {
     match told {
         Told::Document {
             name,
             words,
             ceiling,
             standing,
-        } => document_json((name, *words, ceiling.value), standing, out),
+        } => document_records((name, *words, ceiling.value), standing, out),
         Told::Provenance(said) => out.derived.extend(derived_json(said)),
-        Told::Plain(said) => out.notes.extend(note_json(said)),
-        other => found_json(other, out),
+        Told::Plain(said) => out.notes.extend(note_record(said, &out.gate)),
+        other => found_records(other, out),
     }
 }
 
 /// What a gate found beyond its own documents, policy and plain lines.
-fn found_json(told: &Told, out: &mut Json) {
+fn found_records(told: &Told, out: &mut GateRecords) {
     match told {
-        Told::Hole(hole) => hole_json(hole, out),
-        Told::Listed(listed) => listed_json(listed, out),
-        Told::Ratchet(said) => ratchet_json(said, out),
-        Told::Incomplete(hole) => out.holes.push(serde_json::json!({
-            "reason": hole.reason.name(),
-            "detail": hole.detail,
-            "text": hole.text,
-        })),
+        Told::Hole(hole) => hole_records(hole, out),
+        Told::Listed(listed) => listed_records(listed, out),
+        Told::Ratchet(said) => ratchet_records(said, out),
+        Told::Incomplete(hole) => out.holes.push(hole.clone()),
         Told::Judged { .. } | Told::Document { .. } | Told::Provenance(_) | Told::Plain(_) => (),
     }
 }
@@ -687,211 +868,219 @@ fn derived_json(said: &Provenance) -> Option<Value> {
     ))
 }
 
-/// The record of a NOTE, and nothing for a line the JSON records elsewhere or not at all.
-fn note_json(said: &Plain) -> Option<Value> {
+/// The note of a NOTE line, and nothing for a line the JSON records elsewhere or not at all.
+fn note_record(said: &Plain, gate: &str) -> Option<Note> {
     let Plain::Note(note) = said else {
         return None;
     };
-    Some(record(note.outcome, Some(&note.file), None, &note.text))
+    Some(site_note(
+        gate,
+        note.outcome,
+        (&note.file, None),
+        &note.text,
+    ))
 }
 
-fn record(outcome: &str, file: Option<&str>, line: Option<u64>, text: &str) -> Value {
-    Value::Object(fields(outcome, file, line, text))
-}
-
-/// One record of a site: what it is, the file and line it names where it names them, its text.
-fn fields(outcome: &str, file: Option<&str>, line: Option<u64>, text: &str) -> Map<String, Value> {
-    let mut out = Map::new();
-    out.insert("outcome".into(), outcome.into());
-    if let Some(file) = file {
-        out.insert("file".into(), file.into());
+/// The note of one site: what it is, the file and line it names where it names them, its text.
+fn site_note(
+    gate: &str,
+    kind: &'static str,
+    (file, line): (&str, Option<u64>),
+    text: &str,
+) -> Note {
+    Note {
+        check: Some(gate.to_string()),
+        kind,
+        message: text.to_string(),
+        coverage: Some(false),
+        file: Slot::file(file),
+        line,
+        ..Note::default()
     }
-    if let Some(line) = line {
-        out.insert("line".into(), line.into());
-    }
-    out.insert("text".into(), text.into());
-    out
 }
 
-fn document_json((name, words, ceiling): (&str, u64, u64), standing: &Standing, out: &mut Json) {
-    let site = |outcome: &str| {
-        let mut site = Map::new();
-        site.insert("outcome".into(), outcome.into());
-        site.insert("file".into(), name.into());
-        site.insert(
-            "values".into(),
-            serde_json::json!({ "words": words, "ceiling": ceiling }),
-        );
-        site
-    };
+fn document_records(
+    (name, words, ceiling): (&str, u64, u64),
+    standing: &Standing,
+    out: &mut GateRecords,
+) {
+    let mut values = Map::new();
+    values.insert("words".into(), words.into());
+    values.insert("ceiling".into(), ceiling.into());
     match standing {
         Standing::Under | Standing::Held(_) => (),
-        Standing::Near(_) => out.notes.push(Value::Object(site("near-ceiling"))),
+        Standing::Near(_) => out.notes.push(Note {
+            values: Some(values),
+            ..site_note(&out.gate, "near-ceiling", (name, None), "near-ceiling")
+        }),
         Standing::Over {
             id,
             condition,
             fix_advice,
-        } => {
-            let mut over = site("new");
-            over.insert("id".into(), id.clone().into());
-            over.insert("line".into(), Value::Null);
-            over.insert("text".into(), Value::Null);
-            over.insert("ceiling".into(), serde_json::json!({ "words": ceiling }));
-            over.insert("matched".into(), Value::Null);
-            over.insert("condition".into(), (*condition).into());
-            over.insert("fix_advice".into(), (*fix_advice).into());
-            out.findings.push(Value::Object(over));
-        }
+        } => out.findings.push(Finding {
+            id: id.clone(),
+            check: Some(out.gate.clone()),
+            kind: METRIC,
+            outcome: Outcome::New,
+            file: name.to_string(),
+            line: None,
+            text: None,
+            values,
+            ceiling: serde_json::json!({ "words": ceiling }),
+            matched: Value::Null,
+            condition: condition.to_string(),
+            remedy: fix_advice.to_string(),
+        }),
     }
 }
 
+/// The kind of a finding a ratchet or a ceiling judged. Spec 11.7.
+const METRIC: &str = "metric";
+
 /// The forms a gate could not resolve: a review item each where the change opened them, and a
 /// coverage note each where the base held them too. Spec 7.2, 11.7.
-fn hole_json(hole: &Hole, out: &mut Json) {
+fn hole_records(hole: &Hole, out: &mut GateRecords) {
     let Hole::Unresolved { opened, forms, .. } = hole else {
         return;
     };
     for (form, why) in forms {
         let reason = holes::form_reason(why);
         let text = format!("{} — {why}", form.text);
-        let mut record = fields(reason, Some(&form.file), Some(form.line), &text);
         match opened {
-            true => {
-                record.insert("reason".into(), reason.into());
-                out.reviews.push(Value::Object(record));
-            }
-            false => {
-                record.insert("coverage".into(), true.into());
-                out.notes.push(Value::Object(record));
-            }
+            true => out.reviews.push(Review {
+                reason: Slot::Is(reason.to_string()),
+                ..located_review(&out.gate, holes::UNMEASURED, form, text)
+            }),
+            false => out.notes.push(Note {
+                coverage: Some(true),
+                ..site_note(&out.gate, reason, (&form.file, Some(form.line)), &text)
+            }),
         }
     }
 }
 
-fn listed_json(listed: &Listed, out: &mut Json) {
-    let notes: Vec<Value> = match listed {
+fn located_review(gate: &str, kind: &'static str, site: &Located, text: String) -> Review {
+    Review {
+        check: Some(gate.to_string()),
+        kind,
+        file: site.file.clone(),
+        line: Slot::Is(site.line),
+        text,
+        ..Review::default()
+    }
+}
+
+fn listed_records(listed: &Listed, out: &mut GateRecords) {
+    let gate = out.gate.clone();
+    let notes: Vec<Note> = match listed {
         Listed::DeadSymbols(_) => Vec::new(),
         Listed::TestsDeleted { went, caller } => {
-            let records = went.iter().map(|site| {
-                record(
-                    DELETED,
-                    Some(&site.file),
-                    Some(site.line),
-                    &format!(
-                        "the test site {} in {} went in this window",
-                        site.text, site.file
-                    ),
+            let said = |site: &Located| {
+                format!(
+                    "the test site {} in {} went in this window",
+                    site.text, site.file
                 )
-            });
+            };
             if *caller == Caller::Gate {
-                out.reviews
-                    .extend(records.map(|item| kinded(item, DELETED_TEST)));
+                out.reviews.extend(
+                    went.iter()
+                        .map(|site| located_review(&gate, DELETED_TEST, site, said(site))),
+                );
                 return;
             }
-            records.collect()
+            went.iter()
+                .map(|site| site_note(&gate, DELETED, (&site.file, Some(site.line)), &said(site)))
+                .collect()
         }
         Listed::TestFunctionsOrphaned(went) => went
             .iter()
             .map(|site| {
-                record(
-                    "note",
-                    Some(&site.file),
-                    Some(site.line),
-                    &format!(
-                        "the test function {} went with the file {} that held it",
-                        site.text, site.file
-                    ),
-                )
+                let text = format!(
+                    "the test function {} went with the file {} that held it",
+                    site.text, site.file
+                );
+                site_note(&gate, "note", (&site.file, Some(site.line)), &text)
             })
             .collect(),
         Listed::TestFilesPaired { files, rule } => files
             .iter()
             .map(|site| {
-                record(
-                    "note",
-                    Some(&site.file),
-                    None,
-                    &format!(
-                        "the test file {} went with its subject {}, matched by {rule}",
-                        site.file, site.text
-                    ),
-                )
+                let text = format!(
+                    "the test file {} went with its subject {}, matched by {rule}",
+                    site.file, site.text
+                );
+                site_note(&gate, "note", (&site.file, None), &text)
             })
             .collect(),
         Listed::Held(_) | Listed::NoSurface(_) => noted(listed)
-            .map(|text| record("note", Some(""), None, &text))
+            .map(|text| site_note(&gate, "note", ("", None), &text))
             .into_iter()
             .collect(),
     };
     out.notes.extend(notes);
 }
 
-fn ratchet_json(said: &Ratchet, out: &mut Json) {
+fn ratchet_records(said: &Ratchet, out: &mut GateRecords) {
     match said {
         Ratchet::New {
             condition, failed, ..
-        } => out.findings.extend(
-            failed
-                .iter()
-                .map(|finding| failed_json("new", condition, finding)),
-        ),
+        } => failed_findings(Outcome::New, condition, failed, out),
         Ratchet::Worse {
             condition, failed, ..
-        } => out.findings.extend(
-            failed
-                .iter()
-                .map(|finding| failed_json("worsened", condition, finding)),
-        ),
+        } => failed_findings(Outcome::Worsened, condition, failed, out),
         Ratchet::AcceptedUnmatched { entries, caller } => {
-            let records = entries.iter().map(|entry| {
-                let site = &entry.entry;
-                let mut record = fields("unmatched", Some(&site.file), site.line, &site.text);
-                record.insert("values".into(), Value::Object(entry.entry.values.clone()));
-                Value::Object(record)
-            });
-            match caller {
-                Caller::Gate => out
-                    .reviews
-                    .extend(records.map(|item| kinded(item, UNMATCHED_ACCEPTED))),
-                Caller::Hook => out.notes.extend(records),
+            for unmatched in entries {
+                unmatched_record(&unmatched.entry, *caller, out);
             }
         }
     }
 }
 
-/// A record as the review item of one kind, which keeps its outcome as its kind. Spec 11.7.
-fn kinded(record: Value, kind: &str) -> Value {
-    let Value::Object(mut fields) = record else {
-        return record;
-    };
-    fields.insert("kind".into(), kind.into());
-    Value::Object(fields)
+/// An accepted entry that matched nothing: a review item at `klin check`, and a note at the Stop.
+/// Spec 7.6.
+fn unmatched_record(site: &Entry, caller: Caller, out: &mut GateRecords) {
+    let values = Some(site.values.clone());
+    match caller {
+        Caller::Gate => out.reviews.push(Review {
+            check: Some(out.gate.clone()),
+            kind: UNMATCHED_ACCEPTED,
+            file: site.file.clone(),
+            line: site.line.map_or(Slot::Absent, Slot::Is),
+            text: site.text.clone(),
+            values,
+            ..Review::default()
+        }),
+        Caller::Hook => out.notes.push(Note {
+            values,
+            ..site_note(&out.gate, UNMATCHED, (&site.file, site.line), &site.text)
+        }),
+    }
 }
 
 /// One failure with what the ratchet held against it, so a harness sees both sides of the
 /// comparison. Spec 11.2.
-fn failed_json(outcome: &str, condition: &str, finding: &Failed) -> Value {
-    let mut out = fields(
-        outcome,
-        Some(&finding.file),
-        Some(finding.line),
-        &finding.text,
-    );
-    out.insert("id".into(), finding.id.clone().into());
-    out.insert("values".into(), Value::Object(finding.values.clone()));
-    out.insert("condition".into(), condition.into());
-    out.insert("fix_advice".into(), finding.fix_advice.clone().into());
-    out.insert(
-        "ceiling".into(),
-        finding.ceiling.clone().map_or(Value::Null, Into::into),
-    );
-    let matched = match &finding.matched {
-        Matched::Nothing => Value::Null,
-        Matched::Accepted(entry) => matched_json(entry, true),
-        Matched::Base(entry) => matched_json(entry, false),
-    };
-    out.insert("matched".into(), matched);
-    Value::Object(out)
+fn failed_findings(outcome: Outcome, condition: &str, failed: &[Failed], out: &mut GateRecords) {
+    for finding in failed {
+        let matched = match &finding.matched {
+            Matched::Nothing => Value::Null,
+            Matched::Accepted(entry) => matched_json(entry, true),
+            Matched::Base(entry) => matched_json(entry, false),
+        };
+        out.findings.push(Finding {
+            id: finding.id.clone(),
+            check: Some(out.gate.clone()),
+            kind: METRIC,
+            outcome,
+            file: finding.file.clone(),
+            line: Some(finding.line),
+            text: Some(finding.text.clone()),
+            values: finding.values.clone(),
+            ceiling: finding.ceiling.clone().map_or(Value::Null, Into::into),
+            matched,
+            condition: condition.to_string(),
+            remedy: finding.fix_advice.clone(),
+        });
+    }
 }
 
 fn matched_json(entry: &Entry, accepted: bool) -> Value {
@@ -987,7 +1176,7 @@ fn lost_remedy(item: &Unmeasured) -> String {
 
 /// The finding of one lost file: keyed by the file, with no check, no line and no ratcheted
 /// value, held where an accepted entry names the file. Spec 7.2, 11.7.
-pub fn lost_json(item: &Unmeasured, held: bool) -> Value {
+pub fn lost_finding(item: &Unmeasured, held: bool) -> Finding {
     let mut values = Map::new();
     values.insert("reason".into(), item.reason.name().into());
     if let Some((line, column)) = item.at {
@@ -999,56 +1188,57 @@ pub fn lost_json(item: &Unmeasured, held: bool) -> Value {
             "file": item.file, "line": null, "text": "", "accepted": true, "values": {},
         })
     });
-    serde_json::json!({
-        "id": holes::lost_id(&item.file),
-        "check": null,
-        "kind": MEASUREMENT_LOST,
-        "outcome": if held { "held" } else { "new" },
-        "file": item.file,
-        "line": null,
-        "text": item.file,
-        "values": values,
-        "ceiling": {},
-        "matched": matched,
-        "condition": lost_condition(item),
-        "remedy": lost_remedy(item),
-    })
+    Finding {
+        id: holes::lost_id(&item.file),
+        check: None,
+        kind: MEASUREMENT_LOST,
+        outcome: if held { Outcome::Held } else { Outcome::New },
+        file: item.file.clone(),
+        line: None,
+        text: Some(item.file.clone()),
+        values,
+        ceiling: serde_json::json!({}),
+        matched: matched.unwrap_or(Value::Null),
+        condition: lost_condition(item),
+        remedy: lost_remedy(item),
+    }
 }
 
 /// The review item of one opened gap. Spec 7.2, 11.7.
-pub fn opened_json(item: &Unmeasured) -> Value {
-    serde_json::json!({
-        "check": null,
-        "kind": holes::UNMEASURED,
-        "file": item.file,
-        "line": null,
-        "text": item.text,
-        "reason": item.reason.name(),
-    })
+pub fn opened_review(item: &Unmeasured) -> Review {
+    Review {
+        kind: holes::UNMEASURED,
+        file: item.file.clone(),
+        line: Slot::Null,
+        text: item.text.clone(),
+        reason: Slot::Is(item.reason.name().to_string()),
+        ..Review::default()
+    }
 }
 
 /// The coverage note of one file klin's own limit leaves unmeasured. Spec 7.2, 11.7.
-pub fn limit_json(item: &Unmeasured) -> Value {
-    serde_json::json!({
-        "check": null,
-        "kind": item.reason.name(),
-        "coverage": true,
-        "file": item.file,
-        "message": unmeasured_said(item),
-    })
+pub fn limit_note(item: &Unmeasured) -> Note {
+    Note {
+        kind: item.reason.name(),
+        message: unmeasured_said(item),
+        coverage: Some(true),
+        file: Slot::Is(item.file.clone()),
+        ..Note::default()
+    }
 }
 
 /// The review item of an accepted entry of gate `measurement-lost` whose file klin measures
 /// again. Spec 7.2, 7.6, 11.7.
-pub fn unmatched_lost_json(file: &str) -> Value {
-    serde_json::json!({
-        "check": MEASUREMENT_LOST,
-        "kind": UNMATCHED_ACCEPTED,
-        "file": file,
-        "line": null,
-        "text": unmatched_lost_text(file),
-        "reason": null,
-    })
+pub fn unmatched_lost_review(file: &str) -> Review {
+    Review {
+        check: Some(MEASUREMENT_LOST.to_string()),
+        kind: UNMATCHED_ACCEPTED,
+        file: file.to_string(),
+        line: Slot::Null,
+        text: unmatched_lost_text(file),
+        reason: Slot::Null,
+        ..Review::default()
+    }
 }
 
 /// How `klin policy` tells a person to hold a file klin's grammar does not read yet. The Stop
