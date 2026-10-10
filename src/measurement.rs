@@ -3,7 +3,6 @@
 //! base laid out beside it, the change set and the structural cache, so it sits above `project`
 //! and `base`, and the facts it reads stay below both. ADR 0038, ADR 0065, spec 8.4.
 
-use std::cell::OnceCell;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -16,16 +15,15 @@ use crate::files::{self, Found};
 use crate::syntax::Unparsed;
 use crate::syntax::structural::facts::{FileFacts, Outcome, Unsupported};
 use crate::syntax::structural::{
-    Cache, ExtractionCost, SourceIndex, TreeNameCost, selected_extensions, timed,
+    Cache, ExtractionCost, NameSet, SourceIndex, TreeNameCost, file_at, selected_extensions, timed,
 };
 use crate::tree::Tree;
 
 /// One structural measurement over a discovered file set. Consumers receive the semantic facts
-/// and explicit coverage outcomes; a name-resolving consumer asks for the index lazily, and none
+/// and explicit coverage outcomes; a name-resolving consumer builds the index when it judges, and none
 /// parses files or reconstructs capability gaps.
 pub struct Measurement {
     facts: Vec<Rc<FileFacts>>,
-    index: OnceCell<SourceIndex>,
     pub unparsed: Vec<Unparsed>,
     pub unsupported: Vec<Unsupported>,
     pub files: Files,
@@ -34,21 +32,22 @@ pub struct Measurement {
 
 impl Measurement {
     /// The selected files' shared facts, sorted by path, without building the name-resolution
-    /// index. `index().files()` holds the same files in the same order.
+    /// index. `indexed(..).files()` holds the same files in the same order.
     pub fn facts(&self) -> &[Rc<FileFacts>] {
         &self.facts
     }
 
-    /// The name-resolution index, built once only when a consumer asks for it.
-    pub fn index(&self) -> &SourceIndex {
-        self.index
-            .get_or_init(|| SourceIndex::of(self.facts.clone()))
+    /// The facts of the selected file at this path, found without building the index.
+    pub fn file(&self, path: &str) -> Option<&FileFacts> {
+        file_at(&self.facts, path)
     }
 
-    /// The name-resolution index, with what building it took and what it holds counted into
-    /// the tree's name cost. Spec 11.2.
-    pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
-        let index = timed(&mut cost.index, || self.index());
+    /// A name-resolution index over only the `wanted` names, or every name, with what building
+    /// it took and what it holds counted into the tree's name cost. Spec 11.2.
+    pub fn indexed(&self, cost: &mut TreeNameCost, wanted: Option<&NameSet>) -> SourceIndex {
+        let index = timed(&mut cost.index, || {
+            SourceIndex::of(self.facts.clone(), wanted)
+        });
         index.tally(cost);
         index
     }
@@ -157,7 +156,6 @@ pub fn measure(
     let not_measured = unsupported.iter().map(|file| file.file.clone()).collect();
     Ok(Measurement {
         facts,
-        index: OnceCell::new(),
         unparsed,
         unsupported,
         files: Files {
@@ -197,7 +195,6 @@ mod tests {
     fn measurement_of(files: Vec<Rc<FileFacts>>) -> Measurement {
         Measurement {
             facts: files,
-            index: OnceCell::new(),
             unparsed: Vec::new(),
             unsupported: Vec::new(),
             files: Files::default(),
@@ -206,22 +203,16 @@ mod tests {
     }
 
     #[test]
-    fn reading_facts_builds_no_name_index_and_holds_the_order_the_index_uses() {
+    fn the_index_holds_the_facts_in_the_order_facts_reads_them() {
         let measured = measurement_of(vec![
             facts("src/one.rs", "fn a() {}\n"),
             facts("src/two.rs", "fn b() {}\n"),
         ]);
         let read: Vec<&str> = measured.facts().iter().map(|f| f.file.as_str()).collect();
         assert_eq!(read, vec!["src/one.rs", "src/two.rs"]);
-        assert!(measured.index.get().is_none(), "facts() built an index");
-        let indexed: Vec<&str> = measured
-            .index()
-            .files()
-            .iter()
-            .map(|f| f.file.as_str())
-            .collect();
+        let index = measured.indexed(&mut TreeNameCost::default(), None);
+        let indexed: Vec<&str> = index.files().iter().map(|f| f.file.as_str()).collect();
         assert_eq!(indexed, read);
-        assert!(measured.index.get().is_some());
     }
 
     fn facts(file: &str, source: &str) -> Rc<FileFacts> {

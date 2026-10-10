@@ -268,6 +268,29 @@ identity, contents and epoch. The extraction, coverage, findings and reports
 therefore keep the existing semantics, while future consumers such as #46 can
 take structural facts without depending on `SourceIndex` as their container.
 
+## Follow-up: a changed dead-symbols run indexes only its names (#540)
+
+Every changed Stop built a full name index of each tree for `dead-symbols`,
+about 23 ms each at 300k/20 and 75 ms each at 1M/20, although the run judges
+only the changed scope. On the 300k/20 row that judgement reads 153 names.
+
+`SourceIndex::of` now takes an optional name set. A changed run that is not
+strict finds the names whose references the turn changed from the changed
+files' own facts, with no index, widens the judged scope to the files that
+declare one of them, and builds each tree's index over every file but only
+the names the judged files declare plus those changed names. A state reads
+the references of the names its own declaration binds, and a lost reference
+reads the same names in both trees, so no other name reaches a verdict.
+Strict and whole runs pass no set and index every name, as before. The scan
+that finds the changed names and the judged names reads both trees, and its
+time counts in the working tree's `index_ms`, so a row still sees what
+preparing the smaller index costs.
+
+Each check still builds its own index from the facts it selected. The set
+only narrows which names that index records, and the `distinct_names` counter
+of each tree counts the names it recorded. #550 asks the same question for
+`reachability`, whose families read names outside the changed scope.
+
 ## Final self-enforcement
 
 The self-hosted `layering` section assigns the runner, checks, syntax, project

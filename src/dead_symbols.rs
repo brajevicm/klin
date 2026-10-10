@@ -55,6 +55,12 @@ struct Spec {
     ignore: Vec<String>,
 }
 
+/// What a changed, non-strict run judges: the files, and the names the index needs for them.
+struct Impact {
+    scope: Vec<String>,
+    names: structural::NameSet,
+}
+
 struct State {
     file: String,
     name: String,
@@ -75,17 +81,29 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
-    let affected = affected_scope(at, &before, &after, &mut names);
-    let widened = at.scoped(affected.as_deref().or(at.only));
+    let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
+    let widened = at.scoped(
+        impact
+            .as_ref()
+            .map_or(at.only, |impact| Some(&impact.scope)),
+    );
     let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some());
-    let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
-    let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
+    let wanted = impact.as_ref().map(|impact| &impact.names);
+    let (before_states, before_index) = judgement(
+        &before,
+        &mut names.before,
+        &spec.ignore,
+        judged_scope,
+        wanted,
+    );
+    let (after_states, after_index) =
+        judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
     let built = (before_states.len() + after_states.len()) as u64;
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = structural::timed(names.lost.get_or_insert_default(), || {
-        dead_findings(&after_states, &before, &after, &held_before)
+        dead_findings(&after_states, &before_index, &after_index, &held_before)
     });
     out.record(|records| {
         records.facts = Some(before.cost + after.cost);
@@ -143,55 +161,65 @@ fn sweeps(
     Ok((before, after))
 }
 
-/// The effective judgement scope of a changed, non-strict run: the physical scope the runner
-/// gave, plus every file declaring a name whose reference evidence this turn changed. A
-/// declaration that did not move can still change from referenced to dead when its last caller
-/// changed, so the physical scope alone is not the semantic impact scope. A name a changed file
-/// references on both sides cannot flip one, so only the names one side holds alone widen
-/// anything: no type, import or receiver resolution enters here, and a name with several
-/// declarations widens to all of them, which fails less. Issue #237, spec 8.4.
-fn affected_scope(
+/// The effective judgement scope of a changed, non-strict run, and the names judging it needs:
+/// the physical scope the runner gave, plus every file declaring a name whose reference evidence
+/// this turn changed. A declaration that did not move can still change from referenced to dead
+/// when its last caller changed, so the physical scope alone is not the semantic impact scope.
+/// A name a changed file references on both sides cannot flip one, so only the names one side
+/// holds alone widen anything: no type, import or receiver resolution enters here, and a name
+/// with several declarations widens to all of them, which fails less. Issue #237, spec 8.4.
+///
+/// A state reads the references of the names its own declaration binds, and a lost reference
+/// reads the same names in both trees, so the index needs the names the judged files declare,
+/// and no other. Issue #540, ADR 0038.
+fn impact(
     at: &Context,
     before: &measurement::Measurement,
     after: &measurement::Measurement,
-    names: &mut structural::NameCost,
-) -> Option<Vec<String>> {
+) -> Option<Impact> {
     let only = at.only.filter(|_| at.changes.is_some())?;
-    structural::timed(&mut names.before.index, || before.index());
-    structural::timed(&mut names.after.index, || after.index());
-    let mut affected = BTreeSet::new();
+    let mut affected = structural::NameSet::new();
     for change in at.changes? {
         if !measured_after(after, &change.path) {
             continue;
         }
-        let now = reference_names(after.index().file(&change.path));
+        let now = reference_names(after.file(&change.path));
         let was = change
             .was
             .as_ref()
-            .map(|was| reference_names(before.index().file(was)))
+            .map(|was| reference_names(before.file(was)))
             .unwrap_or_default();
-        affected.extend(now.symmetric_difference(&was).cloned());
-    }
-    let mut scope: BTreeSet<String> = only.iter().cloned().collect();
-    scope.extend(declaring_files(&affected, before, after));
-    Some(scope.into_iter().collect())
-}
-
-/// Every file that declares one of these names in either tree.
-fn declaring_files(
-    names: &BTreeSet<(syntax::LanguageId, structural::facts::Name)>,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
-) -> BTreeSet<String> {
-    let mut files = BTreeSet::new();
-    for (language, name) in names {
-        for index in [before.index(), after.index()] {
-            for declared in index.declarations(*language, name.as_str()) {
-                files.insert(declared.file.to_string());
-            }
+        for (language, name) in now.symmetric_difference(&was) {
+            affected.entry(*language).or_default().insert(name.clone());
         }
     }
-    files
+    let both = || before.facts().iter().chain(after.facts());
+    let mut scope: BTreeSet<&str> = only.iter().map(String::as_str).collect();
+    scope.extend(
+        both()
+            .filter(|file| declares_any(file, &affected))
+            .map(|file| file.file.as_str()),
+    );
+    let mut names = affected;
+    for file in both().filter(|file| scope.contains(file.file.as_str())) {
+        let declared = names.entry(file.language).or_default();
+        for declaration in &file.declarations {
+            declared.extend(declaration.names().map(structural::facts::Name::new));
+        }
+    }
+    Some(Impact {
+        scope: scope.into_iter().map(str::to_string).collect(),
+        names,
+    })
+}
+
+fn declares_any(file: &structural::facts::FileFacts, names: &structural::NameSet) -> bool {
+    names.get(&file.language).is_some_and(|names| {
+        file.declarations
+            .iter()
+            .flat_map(structural::facts::Declaration::names)
+            .any(|name| names.contains(name))
+    })
 }
 
 fn reference_names(
@@ -214,14 +242,18 @@ fn measured_after(after: &measurement::Measurement, path: &str) -> bool {
         && !after.unsupported.iter().any(|held| held.file == path)
 }
 
+/// The tree's states, with the index they were judged against, which every later name query
+/// of the run reads.
 fn judgement(
     measured: &measurement::Measurement,
     cost: &mut structural::TreeNameCost,
     ignore: &[String],
     only: Option<&[String]>,
-) -> Vec<State> {
-    let index = measured.indexed(cost);
-    structural::timed(&mut cost.query, || states(index, ignore, only))
+    wanted: Option<&structural::NameSet>,
+) -> (Vec<State>, structural::SourceIndex) {
+    let index = measured.indexed(cost, wanted);
+    let states = structural::timed(&mut cost.query, || states(&index, ignore, only));
+    (states, index)
 }
 
 fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
@@ -246,8 +278,8 @@ fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
 
 fn dead_findings(
     states: &[State],
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     held_before: &[&State],
 ) -> Vec<Finding> {
     states
@@ -335,9 +367,10 @@ fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
     }))
 }
 
-/// The declaration state of one tree, built only for the files the run judges. The index stays
-/// complete over both trees, so a declaration in scope is judged against every reference the
-/// repository holds, and only the states nothing can report are left unbuilt. Spec 8.4.
+/// The declaration state of one tree, built only for the files the run judges. The index holds
+/// every file of the tree and at least the names those files declare, so a declaration in scope
+/// is judged against every reference the repository holds to it, and only the states nothing
+/// can report are left unbuilt. Spec 8.4.
 fn states(
     index: &structural::SourceIndex,
     ignore: &[String],
@@ -405,8 +438,8 @@ fn finding(state: &State) -> Finding {
 
 fn finding_with_lost_reference(
     state: &State,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     before_states: &[&State],
 ) -> Finding {
     let mut finding = finding(state);
@@ -433,15 +466,15 @@ fn site(state: &State) -> (&str, u64, &str) {
 
 fn lost_reference(
     state: &State,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     before_states: &[&State],
 ) -> Option<String> {
     let held = held_at(before_states, state)?;
     if held.dead {
         return None;
     }
-    let file = before.index().file(&state.file)?;
+    let file = before.file(&state.file)?;
     let declaration = file.declarations.iter().find(|declaration| {
         (declaration.line, &declaration.name, &declaration.text)
             == (held.line, &held.name, &held.text)
@@ -450,12 +483,10 @@ fn lost_reference(
         .names()
         .filter_map(|name| {
             let now: BTreeSet<(&str, u64)> = after
-                .index()
                 .references(file.language, name)
                 .map(|reference| (reference.file, reference.line))
                 .collect();
             before
-                .index()
                 .references(file.language, name)
                 .filter(|reference| {
                     reference.file != held.file

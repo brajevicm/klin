@@ -747,6 +747,17 @@ impl<'a, 'b> Reading<'a, 'b> {
     }
 }
 
+/// The facts of the file at this path among files sorted by path, and `None` when none is.
+pub fn file_at<'a>(files: &'a [Rc<FileFacts>], path: &str) -> Option<&'a FileFacts> {
+    let at = files
+        .binary_search_by(|held| held.file.as_str().cmp(path))
+        .ok()?;
+    files.get(at).map(Rc::as_ref)
+}
+
+/// Names grouped by logical language, the set a filtered `SourceIndex` records.
+pub type NameSet = HashMap<LanguageId, HashSet<Name>>;
+
 /// One declaration as the index reports it, with the file that holds it.
 #[derive(Clone, Copy)]
 pub struct Declared<'a> {
@@ -787,12 +798,22 @@ impl SourceIndex {
         cost.distinct_names = self.names.values().map(HashMap::len).sum();
     }
 
-    pub fn of(mut files: Vec<Rc<FileFacts>>) -> SourceIndex {
+    /// The index over every file, recording the sites of only the names `wanted` holds, or of
+    /// every name when it is `None`. A file outside the names still sits in `files`.
+    pub fn of(mut files: Vec<Rc<FileFacts>>, wanted: Option<&NameSet>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
+        let kept = |language: LanguageId| {
+            let names = wanted.map(|wanted| wanted.get(&language));
+            move |name: &str| names.is_none_or(|names| names.is_some_and(|n| n.contains(name)))
+        };
         let mut names: HashMap<LanguageId, HashMap<Name, Sites>> = HashMap::new();
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
+            let kept = kept(file.language);
             for reference in &file.references {
+                if !kept(reference.name.as_str()) {
+                    continue;
+                }
                 record_name(named, reference.name.clone(), |sites| {
                     sites.references.push((at, reference.line));
                 });
@@ -800,8 +821,9 @@ impl SourceIndex {
         }
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
+            let kept = kept(file.language);
             for (which, declaration) in file.declarations.iter().enumerate() {
-                for name in declaration.names() {
+                for name in declaration.names().filter(|name| kept(name)) {
                     record_text(named, name, |sites| {
                         sites.declarations.push((at, which));
                     });
@@ -821,11 +843,7 @@ impl SourceIndex {
 
     /// The facts of the file at this path, and `None` when the index holds no such file.
     pub fn file(&self, path: &str) -> Option<&FileFacts> {
-        let at = self
-            .files
-            .binary_search_by(|held| held.file.as_str().cmp(path))
-            .ok()?;
-        self.files.get(at).map(Rc::as_ref)
+        file_at(&self.files, path)
     }
 
     /// The sites of one name in one logical language, and `None` when no file of that language
@@ -1366,10 +1384,13 @@ export function charge(at: number): number {
     fn the_index_resolves_a_name_to_every_declaration_of_it_in_one_order() {
         let one = "pub fn refund() {}\npub struct Refund;\n";
         let two = "pub fn refund() {}\n";
-        let index = SourceIndex::of(vec![
-            measured_facts("src/two.rs", two),
-            measured_facts("src/one.rs", one),
-        ]);
+        let index = SourceIndex::of(
+            vec![
+                measured_facts("src/two.rs", two),
+                measured_facts("src/one.rs", one),
+            ],
+            None,
+        );
         let rust = LanguageId::Rust;
         let found: Vec<(&str, LanguageId, u64)> = index
             .declarations(rust, "refund")
@@ -1385,16 +1406,19 @@ export function charge(at: number): number {
 
     #[test]
     fn the_index_resolves_a_name_to_every_reference_of_it_in_one_order() {
-        let index = SourceIndex::of(vec![
-            measured_facts(
-                "src/two.ts",
-                "export const a = refund() + refund();\nrefund();\n",
-            ),
-            measured_facts(
-                "src/one.rs",
-                "fn a() { refund(); other(); }\nfn b() { refund(); }\n",
-            ),
-        ]);
+        let index = SourceIndex::of(
+            vec![
+                measured_facts(
+                    "src/two.ts",
+                    "export const a = refund() + refund();\nrefund();\n",
+                ),
+                measured_facts(
+                    "src/one.rs",
+                    "fn a() { refund(); other(); }\nfn b() { refund(); }\n",
+                ),
+            ],
+            None,
+        );
         let found: Vec<(&str, u64)> = index
             .references(LanguageId::Rust, "refund")
             .map(|site| (site.file, site.line))
@@ -1464,7 +1488,7 @@ export function charge(at: number): number {
                 &names,
             )));
         }
-        SourceIndex::of(files)
+        SourceIndex::of(files, None)
     }
 
     const SHARED_SITES: [(&str, u64); 8] = [
