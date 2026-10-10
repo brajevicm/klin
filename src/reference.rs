@@ -195,7 +195,7 @@ fn schema_for_shape(shape: Shape) -> Value {
         Shape::Accepted => accepted_schema(),
         Shape::Radius => radius_schema(),
         Shape::Journal => journal_schema(),
-        Shape::Layers => layers_schema(),
+        Shape::PathGraph(_) => path_graph_schema(),
         _ => Value::Null,
     }
 }
@@ -251,7 +251,7 @@ fn journal_schema() -> Value {
     object_fields([("prompt", json!({"type": "boolean"}))])
 }
 
-fn layers_schema() -> Value {
+fn path_graph_schema() -> Value {
     json!({
         "type": "object",
         "minProperties": 1,

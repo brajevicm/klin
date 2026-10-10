@@ -458,7 +458,9 @@ fn complex_value_shape(
         Shape::Accepted => accepted_shape(file, section, key, value),
         Shape::Radius => radius_shape(file, section, key, value),
         Shape::Journal => journal_shape(file, section, key, value),
-        Shape::Layers => layers_shape(file, section, key, value),
+        Shape::PathGraph(read) => {
+            read(value).map_err(|why| Error(format!("{}: {why}", file.display())))
+        }
         _ => Ok(()),
     }
 }
@@ -617,61 +619,6 @@ fn object_shape(
     Ok(())
 }
 
-fn layers_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
-    let Some(layers) = value.as_object().filter(|layers| !layers.is_empty()) else {
-        return Err(shape_error(
-            file,
-            section,
-            key.name,
-            "a non-empty map of layers",
-        ));
-    };
-    for (name, value) in layers {
-        let Some(fields) = value.as_object() else {
-            return Err(shape_error(
-                file,
-                section,
-                name,
-                "an object with an \"in\" path",
-            ));
-        };
-        known_fields(
-            file,
-            &format!("{section} layer {name}"),
-            fields,
-            &["in", "can_use"],
-        )?;
-        let within = fields.get("in").ok_or_else(|| {
-            Error(format!(
-                "{}: \"{section}\" layer \"{name}\" has no \"in\"",
-                file.display()
-            ))
-        })?;
-        if !string_or_list(within) {
-            return Err(shape_error(
-                file,
-                section,
-                "in",
-                "a non-empty path or list of paths",
-            ));
-        }
-        if let Some(can_use) = fields.get("can_use")
-            && !can_use.is_null()
-            && !can_use
-                .as_array()
-                .is_some_and(|items| items.iter().all(Value::is_string))
-        {
-            return Err(shape_error(
-                file,
-                section,
-                "can_use",
-                "a list of layer names or null",
-            ));
-        }
-    }
-    Ok(())
-}
-
 fn dynamic_conventions(
     file: &Path,
     check: &Section,
@@ -797,16 +744,19 @@ fn missing(file: &Path, section: &str, key: &str) -> Result<(), Error> {
 }
 
 fn shape_error(file: &Path, section: &str, key: &str, expected: &str) -> Error {
+    Error(format!(
+        "{}: {}",
+        file.display(),
+        must_be(section, key, expected)
+    ))
+}
+
+/// What a key must hold, said of the section itself when the key is the section's name.
+pub fn must_be(section: &str, key: &str, expected: &str) -> String {
     if section == key {
-        Error(format!(
-            "{}: \"{section}\" must be {expected}",
-            file.display()
-        ))
+        format!("\"{section}\" must be {expected}")
     } else {
-        Error(format!(
-            "{}: a \"{section}\" entry's \"{key}\" must be {expected}",
-            file.display()
-        ))
+        format!("a \"{section}\" entry's \"{key}\" must be {expected}")
     }
 }
 
@@ -854,37 +804,42 @@ pub fn known_fields(
     fields: &Map<String, Value>,
     known: &[&str],
 ) -> Result<(), Error> {
+    unknown_field(section, fields, known).map_err(|why| Error(format!("{}: {why}", file.display())))
+}
+
+/// `known_fields` without the file, for a check's reader that config prefixes.
+pub fn unknown_field(
+    section: &str,
+    fields: &Map<String, Value>,
+    known: &[&str],
+) -> Result<(), String> {
     let Some(unknown) = fields.keys().find(|key| !known.contains(&key.as_str())) else {
         return Ok(());
     };
     if TOPOLOGY.contains(&unknown.as_str()) {
-        return Err(Error(format!(
-            "{}: \"{section}\" no longer reads \"{unknown}\" — repository topology is \
-             discovered; {NARROW}",
-            file.display()
-        )));
+        return Err(format!(
+            "\"{section}\" no longer reads \"{unknown}\" — repository topology is \
+             discovered; {NARROW}"
+        ));
     }
     if let Some((_, now)) = RENAMED
         .iter()
         .find(|(was, now)| unknown == was && known.contains(now))
     {
-        return Err(Error(format!(
-            "{}: \"{section}\" no longer reads \"{unknown}\", which klin renamed \"{now}\". \
-             Rename the key.",
-            file.display()
-        )));
+        return Err(format!(
+            "\"{section}\" no longer reads \"{unknown}\", which klin renamed \"{now}\". \
+             Rename the key."
+        ));
     }
-    Err(Error(match nearest(unknown, known.iter().copied()) {
-        Some(meant) => format!(
-            "{}: \"{section}\" has unknown field \"{unknown}\"\nDid you mean \"{meant}\"?",
-            file.display()
-        ),
+    Err(match nearest(unknown, known.iter().copied()) {
+        Some(meant) => {
+            format!("\"{section}\" has unknown field \"{unknown}\"\nDid you mean \"{meant}\"?")
+        }
         None => format!(
-            "{}: \"{section}\" has unknown field \"{unknown}\" — it reads only: {}",
-            file.display(),
+            "\"{section}\" has unknown field \"{unknown}\" — it reads only: {}",
             known.join(", ")
         ),
-    }))
+    })
 }
 
 /// The candidate a misspelling most likely meant: the nearest within two edits.
