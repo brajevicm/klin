@@ -143,10 +143,8 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         records.names = Some(names);
         records.layout = layout;
     });
-    let held_before: Vec<&State> = before_states
-        .iter()
-        .filter(|state| project.was_held(&state.file))
-        .collect();
+    let mut held_before: Vec<&State> = before_states.iter().collect();
+    contract::keep_held(at, &mut held_before);
     let prior = held_before
         .iter()
         .map(|state| finding(state, None))
@@ -360,20 +358,22 @@ fn before(
     families: &[Family],
     prior: &base::Prior,
 ) -> Result<(Measurement, Vec<Family>), Error> {
-    let before_families = base_families(at.config(), prior.root(), families);
-    Ok((
-        measure(prior.tree(), &before_families, None)?,
-        before_families,
-    ))
-}
-
-/// Each derived family under the compact scope recorded by the base commit. Spec 8.6.
-fn base_families(config: &Config, prior: &Path, families: &[Family]) -> Vec<Family> {
     let today = families
         .first()
         .map(|family| family.scope.clone())
         .unwrap_or_default();
-    let scope = Scope::at_base(config, SECTION, prior, &today);
+    let lay = contract::Lay::Whole(prior);
+    contract::at_base(at, lay, (SECTION, &today), |prior, scope| {
+        let before_families = base_families(families, &scope);
+        Ok((
+            measure(prior.tree(), &before_families, None)?,
+            before_families,
+        ))
+    })
+}
+
+/// Each derived family under the compact scope recorded by the base commit. Spec 8.6.
+fn base_families(families: &[Family], scope: &Scope) -> Vec<Family> {
     families
         .iter()
         .map(|family| Family {
@@ -619,6 +619,12 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
     }
 }
 
+impl contract::Based for Vec<&State> {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
+        self.retain(|state| was_held(&state.file));
+    }
+}
+
 fn coverage_result(
     at: &Context,
     (before, before_families): (&Measurement, &[Family]),
@@ -627,8 +633,6 @@ fn coverage_result(
 ) {
     let now = covered(after, families);
     let was = covered(before, before_families);
-    holes::lost_said(&now.lost(&was, at.project, None), out);
-    holes::files_formed(&now, &was, at, out);
     let unparsed: Vec<syntax::Unparsed> = after
         .unparsed
         .iter()
@@ -638,7 +642,7 @@ fn coverage_result(
             language: file.language,
         })
         .collect();
-    holes::unread_said(&unparsed, at, out);
+    holes::closed((&now, &was), &unparsed, None, at, out);
 }
 
 fn evaluator() -> Evaluator<'static> {

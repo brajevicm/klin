@@ -43,9 +43,25 @@ pub fn held_files(config: &crate::config::Config) -> Vec<String> {
         .collect()
 }
 
+/// What a gate says about the files it measured in both trees and could not measure now: the
+/// files that left its scope, the files the working tree's `.gitattributes` give a form, and the
+/// files in its scope no grammar read. `only` limits the files that left to the run's judgement
+/// scope, or to nothing for a gate whose effective scope is wider than the run's. Spec 7.2.
+pub fn closed(
+    (now, before): (&Files, &Files),
+    unparsed: &[Unparsed],
+    only: Option<&[String]>,
+    at: &Context,
+    out: &mut Sink,
+) {
+    lost_said(&now.lost(before, at.project, only), out);
+    files_formed(now, before, at, out);
+    unread_said(unparsed, at, out);
+}
+
 /// What a gate says about the files that left its scrutiny: measured at the base, still in the
 /// tree, and not measured now. The runner decides what each one is. Spec 7.2.
-pub fn lost_said(lost: &[Lost], out: &mut Sink) {
+fn lost_said(lost: &[Lost], out: &mut Sink) {
     for file in lost {
         out.tell(Hole::Lost {
             file: file.file.clone(),
@@ -84,7 +100,7 @@ pub fn formed_said<'a>(
 }
 
 /// The same for a gate that holds what it measured in both trees as coverage files.
-pub fn files_formed(now: &Files, before: &Files, at: &Context, out: &mut Sink) {
+fn files_formed(now: &Files, before: &Files, at: &Context, out: &mut Sink) {
     formed_said(
         now.measured.iter().map(String::as_str),
         |file| before.measured.iter().any(|held| held == file),

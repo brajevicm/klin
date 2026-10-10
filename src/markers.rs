@@ -271,7 +271,6 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let said = out.covered(&read.files.coverage(at.only));
     let before = at_the_base(kind, &spec, at)?;
     out.record(|records| records.work = Some(read.work + before.work));
-    let lost = read.files.lost(&before.files, project, at.only);
     let code = kind.evaluator.evaluate(
         named(read.findings, &read.marks, &before.marks),
         before.findings,
@@ -287,37 +286,27 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    holes::lost_said(&lost, out);
-    holes::files_formed(&read.files, &before.files, at, out);
-    holes::unread_said(&read.unparsed, at, out);
+    let files = (&read.files, &before.files);
+    holes::closed(files, &read.unparsed, at.only, at, out);
     Ok(code)
 }
 
+impl contract::Based for Read {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
+        self.findings.retain(|finding| was_held(&finding.file));
+        self.marks.retain(|(file, _), _| was_held(file));
+    }
+}
+
 fn at_the_base(kind: &Kind, spec: &Spec, at: &Context) -> Result<Read, Error> {
-    let owned;
-    let prior = match at.prior {
-        Some(prior) => prior,
-        None => {
-            owned = contract::own_base(at)?;
-            &owned
-        }
-    };
-    let project = at.project;
-    let search = Search {
-        scope: Scope::at_base(
-            &project.config,
-            kind.section,
-            prior.root(),
-            &spec.search.scope,
-        ),
-        ..spec.search.clone()
-    };
-    let mut before = findings(kind, &search, prior.tree(), prior.root(), None)?;
-    before
-        .findings
-        .retain(|finding| project.was_held(&finding.file));
-    before.marks.retain(|(file, _), _| project.was_held(file));
-    Ok(before)
+    let today = (kind.section, &spec.search.scope);
+    contract::base_findings(at, contract::Lay::Announced, today, |prior, scope| {
+        let search = Search {
+            scope,
+            ..spec.search.clone()
+        };
+        findings(kind, &search, prior.tree(), prior.root(), None)
+    })
 }
 
 /// The lines of each site keyed by its row whose text the base file lacks, one base line taken

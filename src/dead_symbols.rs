@@ -100,7 +100,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let (after_states, after_index) =
         judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
     let built = (before_states.len() + after_states.len()) as u64;
-    let held_before = held(&before_states, project);
+    let held_before = held(&before_states, at);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = structural::timed(names.lost.get_or_insert_default(), || {
         dead_findings(&after_states, &before_index, &after_index, &held_before)
@@ -126,9 +126,8 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         Line::new(Measured::DeadSymbols { judged, dead }, said),
         out,
     );
-    holes::lost_said(&after.files.lost(&before.files, at.project, at.only), out);
-    holes::files_formed(&after.files, &before.files, at, out);
-    holes::unread_said(&after.unparsed, at, out);
+    let files = (&after.files, &before.files);
+    holes::closed(files, &after.unparsed, at.only, at, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
 }
@@ -249,23 +248,26 @@ fn judgement(
 }
 
 fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
-    let selection = Selection {
-        scope: Scope::at_base(
-            &at.project.config,
-            SECTION,
-            prior.root(),
-            &spec.selection.scope,
-        ),
-        ..spec.selection.clone()
-    };
-    measure(prior.tree(), &selection, None)
+    let today = (SECTION, &spec.selection.scope);
+    contract::at_base(at, contract::Lay::Whole(prior), today, |prior, scope| {
+        let selection = Selection {
+            scope,
+            ..spec.selection.clone()
+        };
+        measure(prior.tree(), &selection, None)
+    })
 }
 
-fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
-    states
-        .iter()
-        .filter(|state| project.was_held(&state.file))
-        .collect()
+impl contract::Based for Vec<&State> {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
+        self.retain(|state| was_held(&state.file));
+    }
+}
+
+fn held<'a>(states: &'a [State], at: &Context) -> Vec<&'a State> {
+    let mut held = states.iter().collect();
+    contract::keep_held(at, &mut held);
+    held
 }
 
 fn dead_findings(
