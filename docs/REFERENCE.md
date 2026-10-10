@@ -119,7 +119,21 @@ A Cargo library target and a TypeScript package entry point are surfaces whether
 
 ## Built-in language coverage
 
-These tables report the source extensions each check discovers automatically. They are capabilities of the binary, not selectors accepted in `klin.json`.
+The matrix reports which check discovers which language, and the tables after it report the source extensions each check discovers automatically. Both are capabilities of the binary, not selectors accepted in `klin.json`.
+
+| Language | `escapes` | `stubs` | `complexity` | `dead_symbols` | `reachability` | `layering` | `public_api` | `conventions` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `go` | yes | yes | yes | — | — | — | — | — |
+| `java` | yes | — | yes | — | — | — | — | — |
+| `javascript` | yes | yes | yes | — | — | — | — | — |
+| `kotlin` | yes | — | yes | — | — | — | — | — |
+| `python` | yes | yes | yes | — | — | — | — | — |
+| `ruby` | yes | — | yes | — | — | — | — | — |
+| `rust` | yes | yes | yes | yes | yes | yes | yes | yes |
+| `shell` | yes | — | — | — | — | — | — | — |
+| `swift` | yes | — | yes | — | — | — | — | — |
+| `tsx` | — | — | yes | — | — | — | — | — |
+| `typescript` | yes | yes | yes | yes | yes | yes | yes | yes |
 
 ### `escapes`
 

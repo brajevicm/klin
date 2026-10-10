@@ -97,6 +97,43 @@ fn the_reference_states_built_in_languages_and_compact_scope() {
 }
 
 #[test]
+fn the_reference_prints_one_matrix_of_languages_against_checks() {
+    let out = printed();
+    let Some((_, coverage)) = out.split_once("\n## Built-in language coverage\n") else {
+        panic!("no language coverage in: {out}");
+    };
+    let matrix: Vec<&str> = coverage
+        .lines()
+        .skip_while(|line| !line.starts_with("| Language |"))
+        .take_while(|line| line.starts_with('|'))
+        .collect();
+
+    assert_eq!(
+        matrix.first().copied(),
+        Some(
+            "| Language | `escapes` | `stubs` | `complexity` | `dead_symbols` | `reachability` \
+             | `layering` | `public_api` | `conventions` |"
+        ),
+        "no matrix header in: {coverage}"
+    );
+    assert!(
+        matrix.contains(&"| `shell` | yes | — | — | — | — | — | — | — |"),
+        "no shell row naming only escapes in: {coverage}"
+    );
+    assert!(
+        matrix
+            .iter()
+            .any(|row| row.starts_with("| `tsx` | — | — | yes |")),
+        "no tsx row apart from typescript in: {coverage}"
+    );
+    assert!(
+        coverage.find("| Language |").unwrap_or(usize::MAX)
+            < coverage.find("\n### `escapes`").unwrap_or(0),
+        "the matrix does not come before the per-check tables in: {coverage}"
+    );
+}
+
+#[test]
 fn the_committed_reference_is_what_the_binary_prints() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/REFERENCE.md");
     let committed = std::fs::read_to_string(&path).unwrap_or_default();
