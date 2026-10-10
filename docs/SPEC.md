@@ -1551,13 +1551,15 @@ them."), a configuration error, the turn-end line or the weekly line.
   no part as told, so the next turn that changes a file tells the person
   again. These Stops still tell as usual:
   - a Stop that cannot read the mark's tree or the working tree, or whose
-    prompt took a block over a tree klin could not hash;
+    prompt took a block over a tree klin could not hash, or whose block
+    record lists no trees because an older klin wrote it;
   - a Stop that found the history moved under the turn (6.6), whether or not
     its run measured;
   - a Stop under a `klin.json` klin cannot read, which tells once per stamp.
 
   A quiet Stop still tells that no prompt event reached the session (B.16.3),
-  because only a person can install the hook it names.
+  because only a person can install the hook it names. That warning alone
+  records none of the run's notes and errors as told.
 - On the harness protocol, the notice is a `tell` decision.
 - A blocking Stop on Cursor still uses `followup_message`.
 

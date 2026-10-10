@@ -156,9 +156,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         seen = spent.trees;
     }
     let quiet = || !moved && unchanged(root, mark.as_deref(), seen.as_ref());
-    let said = tell(args, root, code, note, &mut log, quiet);
+    let (said, noted) = tell(args, root, code, note, &mut log, quiet);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
-    if !lost && (log.blocked || log.told.contains(&"note")) {
+    if !lost && (log.blocked || noted) {
         turn::heard(root, &told);
     }
     observe_hook_report(log.result.as_ref());
@@ -366,8 +366,9 @@ fn key(text: &str) -> String {
     format!("{:016x}", state::hash(text.as_bytes()))
 }
 
-/// What this stop tells the person when nothing blocks it, as one `systemMessage`: the notes the
-/// run left, then the turn end and the week's headline. The turn end reads the journal, so it
+/// What this stop tells the person when nothing blocks it, as one `systemMessage`, and whether
+/// the run's own note is part of it: the notes the run left, then the turn end and the week's
+/// headline. The turn end reads the journal, so it
 /// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
 /// stamp says so when the verdict could not be written. The journal records each part by name.
 /// A `quiet` turn tells only that no prompt event reached the session. Spec 9.5, 10.7, 11.4.
@@ -378,7 +379,8 @@ fn tell(
     note: Option<String>,
     log: &mut journal::Stop,
     quiet: impl FnOnce() -> bool,
-) -> Option<String> {
+) -> (Option<String>, bool) {
+    let noting = note.is_some();
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_blocks > 0 || turn::intervened(root);
@@ -387,25 +389,28 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    let parts = kept(parts, quiet);
+    let (parts, noted) = kept(parts, noting, quiet);
     if parts.is_empty() {
-        return None;
+        return (None, noted);
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
-    Some(said.join("\n"))
+    (Some(said.join("\n")), noted)
 }
 
 /// What a Stop still tells: every part, or after a `quiet` turn only that no prompt event
-/// reached the session. Spec 10.7.
+/// reached the session. Also whether the run's own note, which the caller says it was `noting`,
+/// is still told, because only a told note records its notes and errors as told. Spec 2.3, 10.7.
 fn kept(
     mut parts: Vec<(&'static str, String)>,
+    noting: bool,
     quiet: impl FnOnce() -> bool,
-) -> Vec<(&'static str, String)> {
-    if !parts.is_empty() && quiet() {
-        parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
+) -> (Vec<(&'static str, String)>, bool) {
+    if parts.is_empty() || !quiet() {
+        return (parts, noting);
     }
-    parts
+    parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
+    (parts, false)
 }
 
 /// Whether the turn changed nothing: the working tree, and every tree a block of this prompt

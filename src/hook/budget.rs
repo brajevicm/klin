@@ -337,7 +337,8 @@ impl Count {
 /// The record as it stands on disk. A field that is missing or holds another type reads as
 /// absent. A record an older klin wrote names its build tree `tree` and its one gate block
 /// `gate_spent`, and names no gate tree or session, so it can never prove a second gate block or
-/// carry into a chain. Spec 16.3.
+/// carry into a chain. One with no `trees` holds only the last tree of each kind, so it counts as
+/// a block over a tree klin could not hash. Spec 10.7, 16.3.
 #[derive(Default)]
 struct Record {
     prompt: Option<u64>,
@@ -372,7 +373,8 @@ impl Record {
                 .flatten()
                 .filter_map(|tree| tree.as_str().map(str::to_string))
                 .collect(),
-            tree_lost: held.get("tree_lost").and_then(Value::as_bool) == Some(true),
+            tree_lost: held.get("tree_lost").and_then(Value::as_bool) == Some(true)
+                || held.get("trees").is_none(),
             tree: text("tree"),
             gate_spent: held.get("gate_spent").and_then(Value::as_bool) == Some(true),
         })
