@@ -1,0 +1,602 @@
+[
+  {
+    "language": "rust",
+    "repository": "clash-verge-rev/clash-verge-rev",
+    "commit": "84312a5cd171b338663c347d3182bd162306801f",
+    "production_files": 146
+  },
+  {
+    "language": "rust",
+    "repository": "rustdesk/rustdesk",
+    "commit": "c8532719c0cfc497c64b9f1e0bc9d981db9137db",
+    "production_files": 281
+  },
+  {
+    "language": "rust",
+    "repository": "tauri-apps/tauri",
+    "commit": "5b23c82ea5ba6b9aec420dd71f60493edc486aa9",
+    "production_files": 311
+  },
+  {
+    "language": "rust",
+    "repository": "rtk-ai/rtk",
+    "commit": "a4cddfc5ce6e6412c66e9729c4200792d822a964",
+    "production_files": 154
+  },
+  {
+    "language": "rust",
+    "repository": "dani-garcia/vaultwarden",
+    "commit": "64895524e481492130061b95aa4433118f6b1c59",
+    "production_files": 63
+  },
+  {
+    "language": "rust",
+    "repository": "alacritty/alacritty",
+    "commit": "29dc55375da817d53540f4caefbe708703c57b07",
+    "production_files": 86
+  },
+  {
+    "language": "rust",
+    "repository": "rust-lang/rustlings",
+    "commit": "bc8e51115c9304fbd036f5d6fca683e71363468f",
+    "production_files": 216
+  },
+  {
+    "language": "rust",
+    "repository": "FuelLabs/sway",
+    "commit": "102ab6cb0378c4e89b2c0679158ffbec41a0b26e",
+    "production_files": 684
+  },
+  {
+    "language": "rust",
+    "repository": "starship/starship",
+    "commit": "d4d0459c5c24ba8f64663af8714f7858d7fb357b",
+    "production_files": 255
+  },
+  {
+    "language": "rust",
+    "repository": "meilisearch/meilisearch",
+    "commit": "9d3365c81607e17ec9df1473f97d5dc9109bb1c4",
+    "production_files": 584
+  },
+  {
+    "language": "rust",
+    "repository": "typst/typst",
+    "commit": "d7dfb34ae79689ed78857ab38a3f6a24a1747770",
+    "production_files": 398
+  },
+  {
+    "language": "rust",
+    "repository": "bevyengine/bevy",
+    "commit": "0e93c7ab7d5ec016990dcb226ec544aee1636d70",
+    "production_files": 1844
+  },
+  {
+    "language": "rust",
+    "repository": "helix-editor/helix",
+    "commit": "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc",
+    "production_files": 224
+  },
+  {
+    "language": "rust",
+    "repository": "herdrdev/herdr",
+    "commit": "2563803dca97c040beaf3dc3acdcb5a3221b4238",
+    "production_files": 358
+  },
+  {
+    "language": "rust",
+    "repository": "FuelLabs/fuels-rs",
+    "commit": "d9a250a51818dda64bfeb5ef7cc19cf27bdcd623",
+    "production_files": 178
+  },
+  {
+    "language": "rust",
+    "repository": "sxyazi/yazi",
+    "commit": "ffb2e78cc70341946c04befa52e14a4494015ce8",
+    "production_files": 1322
+  },
+  {
+    "language": "rust",
+    "repository": "storytold/photocraft",
+    "commit": "ab76c242a1225efc680dc88bd761cc202e1e29df",
+    "production_files": 875
+  },
+  {
+    "language": "rust",
+    "repository": "nushell/nushell",
+    "commit": "246cd631a3545aca3068f058d2b0d7b4eece3c60",
+    "production_files": 1560
+  },
+  {
+    "language": "rust",
+    "repository": "DioxusLabs/dioxus",
+    "commit": "d2fba4974e2564c9b4d5fbc196b844b9d8c6c565",
+    "production_files": 756
+  },
+  {
+    "language": "rust",
+    "repository": "lapce/lapce",
+    "commit": "f66ffaa95387794205c35864517de70958b9ea8d",
+    "production_files": 141
+  },
+  {
+    "language": "rust",
+    "repository": "firecracker-microvm/firecracker",
+    "commit": "fd9fc7a9f164b73002d22065d17c150d8c262d91",
+    "production_files": 331
+  },
+  {
+    "language": "rust",
+    "repository": "casey/just",
+    "commit": "a1951a5ff7626f2dca436cd13cfd99cea7a84ca7",
+    "production_files": 153
+  },
+  {
+    "language": "rust",
+    "repository": "qdrant/qdrant",
+    "commit": "016542aa5deb6c66380bb137badf73d54f742bde",
+    "production_files": 1744
+  },
+  {
+    "language": "rust",
+    "repository": "jdx/mise",
+    "commit": "19e8c8f0d03d555145dc3678e87c26930775f89b",
+    "production_files": 847
+  },
+  {
+    "language": "rust",
+    "repository": "rustfs/rustfs",
+    "commit": "a424d10fa0317a1fd973c1cdae77db85adc5263b",
+    "production_files": 1580
+  },
+  {
+    "language": "rust",
+    "repository": "google/comprehensive-rust",
+    "commit": "1b82ec405d6346932e10363248b23cd6e38df050",
+    "production_files": 83
+  },
+  {
+    "language": "rust",
+    "repository": "tokio-rs/tokio",
+    "commit": "09a57c27ea64bb546fe16822b9d2e65c599f0fb4",
+    "production_files": 506
+  },
+  {
+    "language": "rust",
+    "repository": "surrealdb/surrealdb",
+    "commit": "18971ffba781a796c0ad3897bb4b82432c241e4c",
+    "production_files": 1577
+  },
+  {
+    "language": "rust",
+    "repository": "yewstack/yew",
+    "commit": "bfa6c19af971084f9547495388bde9aceeb81aaa",
+    "production_files": 320
+  },
+  {
+    "language": "rust",
+    "repository": "dandavison/delta",
+    "commit": "3c2269c6b845913965575f11b0196d70ef5352f3",
+    "production_files": 79
+  },
+  {
+    "language": "rust",
+    "repository": "BigPizzaV3/CodexPlusPlus",
+    "commit": "ef72e0d81799fecc8dfe9eb51558c25d98d574ab",
+    "production_files": 109
+  },
+  {
+    "language": "rust",
+    "repository": "atuinsh/atuin",
+    "commit": "56525ac6a7a90e9792bc7cb47d3d37453fe2d8b6",
+    "production_files": 504
+  },
+  {
+    "language": "rust",
+    "repository": "ankitects/anki",
+    "commit": "d64812b680426c6dd55f9de7004070e560361d4b",
+    "production_files": 364
+  },
+  {
+    "language": "rust",
+    "repository": "iced-rs/iced",
+    "commit": "a8231fd9ddf3570f95affba2d45a9be092007f71",
+    "production_files": 359
+  },
+  {
+    "language": "rust",
+    "repository": "Zackriya-Solutions/meetily",
+    "commit": "a2cb62e827da7ef59f65064c97233efb2313878e",
+    "production_files": 145
+  },
+  {
+    "language": "rust",
+    "repository": "emilk/egui",
+    "commit": "8f6d3d6ed99cb24d2e14c43951803d2868db40b1",
+    "production_files": 378
+  },
+  {
+    "language": "rust",
+    "repository": "h4ckf0r0day/obscura",
+    "commit": "2bda71a557247bd2d6fabf01fa66eb4b07dcb2e8",
+    "production_files": 78
+  },
+  {
+    "language": "rust",
+    "repository": "niri-wm/niri",
+    "commit": "d0cd58ec5ac6b2d41d42478fb4f3cc7c0c687db9",
+    "production_files": 162
+  },
+  {
+    "language": "rust",
+    "repository": "BloopAI/vibe-kanban",
+    "commit": "d5cbb5380fa0b32e98ef9b8d987f63decce4be3a",
+    "production_files": 438
+  },
+  {
+    "language": "rust",
+    "repository": "cloudflare/pingora",
+    "commit": "4487f7b2ab50f159e4a2cf4f6a6b813f61bb6e19",
+    "production_files": 217
+  },
+  {
+    "language": "rust",
+    "repository": "GraphiteEditor/Graphite",
+    "commit": "7477cd2fab315494e4c2613bc446c707733e6e7b",
+    "production_files": 698
+  },
+  {
+    "language": "rust",
+    "repository": "tokio-rs/axum",
+    "commit": "dcfd5e3442b2a8b021ccc954501157ebd602d2a2",
+    "production_files": 171
+  },
+  {
+    "language": "rust",
+    "repository": "xai-org/grok-build",
+    "commit": "2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8",
+    "production_files": 3195
+  },
+  {
+    "language": "rust",
+    "repository": "tree-sitter/tree-sitter",
+    "commit": "fbfb07e93de82e12784cd0f646e291b8f2e4126e",
+    "production_files": 82
+  },
+  {
+    "language": "rust",
+    "repository": "TheAlgorithms/Rust",
+    "commit": "fed66cb0c74c4a939ec5163648458a8c2b46fd4c",
+    "production_files": 421
+  },
+  {
+    "language": "rust",
+    "repository": "clockworklabs/SpacetimeDB",
+    "commit": "2f8905d6aaf3e9ffcbce3a8a1a1e30e715ad5db7",
+    "production_files": 895
+  },
+  {
+    "language": "rust",
+    "repository": "actix/actix-web",
+    "commit": "5c7b0554dedf7dcd43f4ee70e90a75611a4f5409",
+    "production_files": 250
+  },
+  {
+    "language": "rust",
+    "repository": "uutils/coreutils",
+    "commit": "01a8fc075ff4bb91e16d97b561211e40d381f722",
+    "production_files": 542
+  },
+  {
+    "language": "rust",
+    "repository": "slint-ui/slint",
+    "commit": "67fa5a30ccfbc495dc4aab25832be431ef184ab5",
+    "production_files": 774
+  },
+  {
+    "language": "rust",
+    "repository": "ayangweb/BongoCat",
+    "commit": "65425b75c39b345781b37a50fd13e7c71509fbbc",
+    "production_files": 414
+  },
+  {
+    "language": "typescript",
+    "repository": "garrytan/gstack",
+    "commit": "91bbd9e6c4c582f9404464517a8845b8618dc654",
+    "production_files": 413
+  },
+  {
+    "language": "typescript",
+    "repository": "excalidraw/excalidraw",
+    "commit": "4c00f31ddcc20086bac1020428819fe0b9a30bce",
+    "production_files": 509
+  },
+  {
+    "language": "typescript",
+    "repository": "shadcn-ui/ui",
+    "commit": "c2a67849be260701852b0977ba15eb5f3a0ce2a4",
+    "production_files": 3614
+  },
+  {
+    "language": "typescript",
+    "repository": "earendil-works/pi",
+    "commit": "ea448f454af474f3e2fe9733b331e17b0662f5d6",
+    "production_files": 848
+  },
+  {
+    "language": "typescript",
+    "repository": "google-gemini/gemini-cli",
+    "commit": "9b6e0265d16bbd29ca51e33c9e0c01dc4cec5e83",
+    "production_files": 1197
+  },
+  {
+    "language": "typescript",
+    "repository": "tailwindlabs/tailwindcss",
+    "commit": "de2255ba3f3a9bbcfb2955711bcf8dece43db14e",
+    "production_files": 195
+  },
+  {
+    "language": "typescript",
+    "repository": "modelcontextprotocol/servers",
+    "commit": "956d36f8a148908b2e2394669ef5ae1f1230c9e9",
+    "production_files": 51
+  },
+  {
+    "language": "typescript",
+    "repository": "ChatGPTNextWeb/NextChat",
+    "commit": "839a24df5d655eb8c3477fb35e8da578dc206f39",
+    "production_files": 148
+  },
+  {
+    "language": "typescript",
+    "repository": "Egonex-AI/Understand-Anything",
+    "commit": "000fbf3f36b5e534a0a8d3461cf24f5dc9ae43fe",
+    "production_files": 193
+  },
+  {
+    "language": "typescript",
+    "repository": "vitejs/vite",
+    "commit": "3b72997d42e7dd2b31898d0e68461e3025e836b6",
+    "production_files": 315
+  },
+  {
+    "language": "typescript",
+    "repository": "hoppscotch/hoppscotch",
+    "commit": "63273f8e599e73f0fb38c0739314e8d46b6bc83d",
+    "production_files": 861
+  },
+  {
+    "language": "typescript",
+    "repository": "Eugeny/tabby",
+    "commit": "467ce8ebfa467fb88cf6d154c9a5891e3d3647f0",
+    "production_files": 291
+  },
+  {
+    "language": "typescript",
+    "repository": "Fission-AI/OpenSpec",
+    "commit": "9111a7654d7800391459431fff4eaf66e33a3d2e",
+    "production_files": 235
+  },
+  {
+    "language": "typescript",
+    "repository": "morluto/rea",
+    "commit": "de0d341524dc68250a45b41eb7e49fcecc1e32a9",
+    "production_files": 1118
+  },
+  {
+    "language": "typescript",
+    "repository": "socketio/socket.io",
+    "commit": "1eaa582d3b453e3e6f522300ed05b10da0a0799b",
+    "production_files": 122
+  },
+  {
+    "language": "typescript",
+    "repository": "upstash/context7",
+    "commit": "522c4db4fa2e1e31f1b320f09fa8c8fab376987a",
+    "production_files": 101
+  },
+  {
+    "language": "typescript",
+    "repository": "marktext/marktext",
+    "commit": "8cba56242db52919877ba1f6c43f7bbcd3941099",
+    "production_files": 482
+  },
+  {
+    "language": "typescript",
+    "repository": "reduxjs/redux",
+    "commit": "56abca4749921d68f40cda20afd2043af9751f72",
+    "production_files": 51
+  },
+  {
+    "language": "typescript",
+    "repository": "nuxt/nuxt",
+    "commit": "9a348c8be40860e6e78be7957f3860b4b40e1ba7",
+    "production_files": 517
+  },
+  {
+    "language": "typescript",
+    "repository": "remix-run/react-router",
+    "commit": "dee9ad2dab41889e8fbdc6848b5781255d9f133a",
+    "production_files": 480
+  },
+  {
+    "language": "typescript",
+    "repository": "agalwood/Motrix",
+    "commit": "d9049a932425499ed876c6980410359367f7aaff",
+    "production_files": 1262
+  },
+  {
+    "language": "typescript",
+    "repository": "vuejs/core",
+    "commit": "4ab865a848a1da3d10fb674f857e5fff13094644",
+    "production_files": 275
+  },
+  {
+    "language": "typescript",
+    "repository": "lyswhut/lx-music-desktop",
+    "commit": "ad95d5091c9ed689fa72b5e5c849df65f5a679ce",
+    "production_files": 313
+  },
+  {
+    "language": "typescript",
+    "repository": "ChromeDevTools/chrome-devtools-mcp",
+    "commit": "f08dbe152502d66e75fa07fb2588dc0feb42bc20",
+    "production_files": 112
+  },
+  {
+    "language": "typescript",
+    "repository": "justjavac/wechat-miniapp-radar",
+    "commit": "fd7363bee3bb0e458d9b6a9f5f2305092a751865",
+    "production_files": 135
+  },
+  {
+    "language": "typescript",
+    "repository": "chenglou/pretext",
+    "commit": "3345c1f82d6dffa9389abc36ff9f0f821bacf849",
+    "production_files": 70
+  },
+  {
+    "language": "typescript",
+    "repository": "TanStack/query",
+    "commit": "30a3b73767ce7317b004da78df652b298e7257e8",
+    "production_files": 731
+  },
+  {
+    "language": "typescript",
+    "repository": "slidevjs/slidev",
+    "commit": "73053ab2b9653ed475960301b56e1ce4439d9c75",
+    "production_files": 234
+  },
+  {
+    "language": "typescript",
+    "repository": "KeygraphHQ/shannon",
+    "commit": "2468b67d9e40d70d0b189462c5041c24e1dc886c",
+    "production_files": 205
+  },
+  {
+    "language": "typescript",
+    "repository": "pixijs/pixijs",
+    "commit": "65552017d23255c1442a7d4ac7f0d49e3225fb1d",
+    "production_files": 834
+  },
+  {
+    "language": "typescript",
+    "repository": "abhigyanpatwari/GitNexus",
+    "commit": "191a954bf67583447dac5c71cc8d679aabd101d8",
+    "production_files": 1137
+  },
+  {
+    "language": "typescript",
+    "repository": "fastapi/full-stack-fastapi-template",
+    "commit": "7257e606cb94eada1dca40173e2b7f99dd549bc6",
+    "production_files": 78
+  },
+  {
+    "language": "typescript",
+    "repository": "react-hook-form/react-hook-form",
+    "commit": "9899a278a41394dcda4960ca9c30ee8e8ca42c29",
+    "production_files": 252
+  },
+  {
+    "language": "typescript",
+    "repository": "AykutSarac/jsoncrack.com",
+    "commit": "a46d0d0adb098e12e577a083e87ead7f61f90098",
+    "production_files": 98
+  },
+  {
+    "language": "typescript",
+    "repository": "mifi/lossless-cut",
+    "commit": "70f2663a7a7c995903701acd2f616d057f4fdc2f",
+    "production_files": 161
+  },
+  {
+    "language": "typescript",
+    "repository": "babel/babel",
+    "commit": "b8bcd42f43759c5eec8516a85a82eabee8750f68",
+    "production_files": 651
+  },
+  {
+    "language": "typescript",
+    "repository": "colinhacks/zod",
+    "commit": "284243fb0d6532665afdc9239188773bb624f73c",
+    "production_files": 305
+  },
+  {
+    "language": "typescript",
+    "repository": "HeyPuter/puter",
+    "commit": "d4589caefe8a14021d739d22006eefe38f157b10",
+    "production_files": 408
+  },
+  {
+    "language": "typescript",
+    "repository": "FuelLabs/fuels-ts",
+    "commit": "b3f37c91aca4aa9d5e4c0d3967f66237190826ea",
+    "production_files": 805
+  },
+  {
+    "language": "typescript",
+    "repository": "chatboxai/chatbox",
+    "commit": "0ac6385ae1ff5bf778777826da3c5edcd55b61b8",
+    "production_files": 1073
+  },
+  {
+    "language": "typescript",
+    "repository": "nolimits4web/swiper",
+    "commit": "fbf9ddb555edd2e0332e813dd69972ab9ee4b8b4",
+    "production_files": 127
+  },
+  {
+    "language": "typescript",
+    "repository": "styled-components/styled-components",
+    "commit": "2698155f6a14b408ab1bfe691d4f0c75bde95d6d",
+    "production_files": 303
+  },
+  {
+    "language": "typescript",
+    "repository": "vuetifyjs/vuetify",
+    "commit": "9f3f165ab1ca9e899d8cadbc08fada84ff4a959c",
+    "production_files": 649
+  },
+  {
+    "language": "typescript",
+    "repository": "trpc/trpc",
+    "commit": "796700d8653b3832409fff997e6f5789519b9ea7",
+    "production_files": 462
+  },
+  {
+    "language": "typescript",
+    "repository": "THU-MAIC/OpenMAIC",
+    "commit": "7d324aa84a36360eb42742a8478537d3507f6bb8",
+    "production_files": 1750
+  },
+  {
+    "language": "typescript",
+    "repository": "vadimdemedes/ink",
+    "commit": "26d2c3f83008142061c22267482489588cc3823c",
+    "production_files": 130
+  },
+  {
+    "language": "typescript",
+    "repository": "Kong/insomnia",
+    "commit": "93e93d5d079efba1b3f642b6b3c0d5975b2855ed",
+    "production_files": 1274
+  },
+  {
+    "language": "typescript",
+    "repository": "Yeachan-Heo/oh-my-claudecode",
+    "commit": "454bae017356ed1d056182cd929b6eb6cf6143ad",
+    "production_files": 649
+  },
+  {
+    "language": "typescript",
+    "repository": "Crosstalk-Solutions/project-nomad",
+    "commit": "54ee30a44902e5c252b477f8685c26ec3064ab72",
+    "production_files": 446
+  },
+  {
+    "language": "typescript",
+    "repository": "umami-software/umami",
+    "commit": "ec0ff50388c264ed8ce46f00967e92f7e71476ae",
+    "production_files": 1078
+  }
+]

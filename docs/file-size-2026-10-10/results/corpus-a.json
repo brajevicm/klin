@@ -1,0 +1,1600 @@
+{
+ "rules": {
+  "min": 90,
+  "p_values": [
+   75,
+   80,
+   85,
+   90,
+   95
+  ],
+  "percentile": "nearest rank",
+  "tail": 90
+ },
+ "rust": {
+  "files": {
+   "all": 32536,
+   "generated": 651,
+   "parse_errors": 171,
+   "production": 27852,
+   "test": 4033
+  },
+  "per_system_p95": {
+   "BigPizzaV3/CodexPlusPlus": {
+    "code": 3740,
+    "functions": 179,
+    "items": 117,
+    "lines": 4122,
+    "named": 179,
+    "prodcode": 2308,
+    "production": 113
+   },
+   "BloopAI/vibe-kanban": {
+    "code": 654,
+    "functions": 23,
+    "items": 21,
+    "lines": 745,
+    "named": 23,
+    "prodcode": 647,
+    "production": 22
+   },
+   "DioxusLabs/dioxus": {
+    "code": 610,
+    "functions": 37,
+    "items": 24,
+    "lines": 818,
+    "named": 37,
+    "prodcode": 546,
+    "production": 37
+   },
+   "FuelLabs/fuels-rs": {
+    "code": 530,
+    "functions": 35,
+    "items": 16,
+    "lines": 635,
+    "named": 35,
+    "prodcode": 299,
+    "production": 21
+   },
+   "FuelLabs/sway": {
+    "code": 999,
+    "functions": 36,
+    "items": 28,
+    "lines": 1257,
+    "named": 36,
+    "prodcode": 988,
+    "production": 35
+   },
+   "GraphiteEditor/Graphite": {
+    "code": 939,
+    "functions": 50,
+    "items": 35,
+    "lines": 1189,
+    "named": 50,
+    "prodcode": 805,
+    "production": 46
+   },
+   "TheAlgorithms/Rust": {
+    "code": 308,
+    "functions": 21,
+    "items": 11,
+    "lines": 433,
+    "named": 21,
+    "prodcode": 172,
+    "production": 11
+   },
+   "Zackriya-Solutions/meetily": {
+    "code": 815,
+    "functions": 34,
+    "items": 26,
+    "lines": 1110,
+    "named": 34,
+    "prodcode": 743,
+    "production": 27
+   },
+   "actix/actix-web": {
+    "code": 878,
+    "functions": 46,
+    "items": 22,
+    "lines": 1156,
+    "named": 46,
+    "prodcode": 465,
+    "production": 34
+   },
+   "alacritty/alacritty": {
+    "code": 1128,
+    "functions": 58,
+    "items": 31,
+    "lines": 1452,
+    "named": 58,
+    "prodcode": 922,
+    "production": 44
+   },
+   "ankitects/anki": {
+    "code": 659,
+    "functions": 41,
+    "items": 21,
+    "lines": 813,
+    "named": 41,
+    "prodcode": 438,
+    "production": 32
+   },
+   "atuinsh/atuin": {
+    "code": 1064,
+    "functions": 51,
+    "items": 34,
+    "lines": 1231,
+    "named": 51,
+    "prodcode": 659,
+    "production": 32
+   },
+   "ayangweb/BongoCat": {
+    "code": 705,
+    "functions": 35,
+    "items": 31,
+    "lines": 878,
+    "named": 35,
+    "prodcode": 696,
+    "production": 27
+   },
+   "bevyengine/bevy": {
+    "code": 871,
+    "functions": 53,
+    "items": 37,
+    "lines": 1281,
+    "named": 53,
+    "prodcode": 704,
+    "production": 44
+   },
+   "casey/just": {
+    "code": 765,
+    "functions": 28,
+    "items": 8,
+    "lines": 883,
+    "named": 28,
+    "prodcode": 678,
+    "production": 19
+   },
+   "clash-verge-rev/clash-verge-rev": {
+    "code": 908,
+    "functions": 42,
+    "items": 30,
+    "lines": 1081,
+    "named": 42,
+    "prodcode": 599,
+    "production": 32
+   },
+   "clockworklabs/SpacetimeDB": {
+    "code": 1067,
+    "functions": 66,
+    "items": 46,
+    "lines": 1439,
+    "named": 66,
+    "prodcode": 805,
+    "production": 51
+   },
+   "cloudflare/pingora": {
+    "code": 1080,
+    "functions": 83,
+    "items": 27,
+    "lines": 1490,
+    "named": 83,
+    "prodcode": 702,
+    "production": 62
+   },
+   "dandavison/delta": {
+    "code": 1007,
+    "functions": 35,
+    "items": 21,
+    "lines": 1254,
+    "named": 35,
+    "prodcode": 564,
+    "production": 19
+   },
+   "dani-garcia/vaultwarden": {
+    "code": 1298,
+    "functions": 70,
+    "items": 92,
+    "lines": 1846,
+    "named": 70,
+    "prodcode": 1298,
+    "production": 69
+   },
+   "emilk/egui": {
+    "code": 825,
+    "functions": 56,
+    "items": 29,
+    "lines": 1275,
+    "named": 56,
+    "prodcode": 822,
+    "production": 52
+   },
+   "firecracker-microvm/firecracker": {
+    "code": 983,
+    "functions": 54,
+    "items": 26,
+    "lines": 1291,
+    "named": 54,
+    "prodcode": 564,
+    "production": 32
+   },
+   "google/comprehensive-rust": {
+    "code": 136,
+    "functions": 13,
+    "items": 11,
+    "lines": 181,
+    "named": 13,
+    "prodcode": 123,
+    "production": 10
+   },
+   "h4ckf0r0day/obscura": {
+    "code": 10062,
+    "functions": 315,
+    "items": 224,
+    "lines": 11159,
+    "named": 315,
+    "prodcode": 6753,
+    "production": 200
+   },
+   "helix-editor/helix": {
+    "code": 1118,
+    "functions": 51,
+    "items": 37,
+    "lines": 1393,
+    "named": 51,
+    "prodcode": 964,
+    "production": 41
+   },
+   "herdrdev/herdr": {
+    "code": 2367,
+    "functions": 102,
+    "items": 67,
+    "lines": 2577,
+    "named": 102,
+    "prodcode": 1431,
+    "production": 64
+   },
+   "iced-rs/iced": {
+    "code": 590,
+    "functions": 43,
+    "items": 22,
+    "lines": 790,
+    "named": 43,
+    "prodcode": 590,
+    "production": 43
+   },
+   "jdx/mise": {
+    "code": 1904,
+    "functions": 90,
+    "items": 52,
+    "lines": 2253,
+    "named": 90,
+    "prodcode": 1239,
+    "production": 60
+   },
+   "lapce/lapce": {
+    "code": 1715,
+    "functions": 43,
+    "items": 21,
+    "lines": 1821,
+    "named": 43,
+    "prodcode": 1715,
+    "production": 43
+   },
+   "meilisearch/meilisearch": {
+    "code": 794,
+    "functions": 35,
+    "items": 29,
+    "lines": 965,
+    "named": 35,
+    "prodcode": 770,
+    "production": 34
+   },
+   "niri-wm/niri": {
+    "code": 1665,
+    "functions": 74,
+    "items": 38,
+    "lines": 2174,
+    "named": 74,
+    "prodcode": 1572,
+    "production": 68
+   },
+   "nushell/nushell": {
+    "code": 659,
+    "functions": 30,
+    "items": 20,
+    "lines": 823,
+    "named": 30,
+    "prodcode": 576,
+    "production": 23
+   },
+   "qdrant/qdrant": {
+    "code": 701,
+    "functions": 33,
+    "items": 20,
+    "lines": 871,
+    "named": 33,
+    "prodcode": 526,
+    "production": 28
+   },
+   "rtk-ai/rtk": {
+    "code": 2546,
+    "functions": 137,
+    "items": 60,
+    "lines": 3321,
+    "named": 137,
+    "prodcode": 1226,
+    "production": 53
+   },
+   "rust-lang/rustlings": {
+    "code": 150,
+    "functions": 12,
+    "items": 8,
+    "lines": 192,
+    "named": 12,
+    "prodcode": 123,
+    "production": 6
+   },
+   "rustdesk/rustdesk": {
+    "code": 1718,
+    "functions": 94,
+    "items": 75,
+    "lines": 2075,
+    "named": 94,
+    "prodcode": 1563,
+    "production": 78
+   },
+   "rustfs/rustfs": {
+    "code": 3036,
+    "functions": 133,
+    "items": 91,
+    "lines": 3429,
+    "named": 133,
+    "prodcode": 1653,
+    "production": 76
+   },
+   "slint-ui/slint": {
+    "code": 1405,
+    "functions": 67,
+    "items": 41,
+    "lines": 1725,
+    "named": 67,
+    "prodcode": 1159,
+    "production": 57
+   },
+   "starship/starship": {
+    "code": 731,
+    "functions": 36,
+    "items": 14,
+    "lines": 870,
+    "named": 36,
+    "prodcode": 290,
+    "production": 13
+   },
+   "storytold/photocraft": {
+    "code": 1101,
+    "functions": 57,
+    "items": 46,
+    "lines": 1277,
+    "named": 57,
+    "prodcode": 898,
+    "production": 41
+   },
+   "surrealdb/surrealdb": {
+    "code": 833,
+    "functions": 39,
+    "items": 26,
+    "lines": 1063,
+    "named": 39,
+    "prodcode": 666,
+    "production": 31
+   },
+   "sxyazi/yazi": {
+    "code": 165,
+    "functions": 15,
+    "items": 11,
+    "lines": 197,
+    "named": 15,
+    "prodcode": 162,
+    "production": 14
+   },
+   "tauri-apps/tauri": {
+    "code": 867,
+    "functions": 39,
+    "items": 30,
+    "lines": 1110,
+    "named": 39,
+    "prodcode": 658,
+    "production": 35
+   },
+   "tokio-rs/axum": {
+    "code": 623,
+    "functions": 31,
+    "items": 28,
+    "lines": 833,
+    "named": 31,
+    "prodcode": 418,
+    "production": 24
+   },
+   "tokio-rs/tokio": {
+    "code": 414,
+    "functions": 36,
+    "items": 23,
+    "lines": 1130,
+    "named": 36,
+    "prodcode": 398,
+    "production": 36
+   },
+   "tree-sitter/tree-sitter": {
+    "code": 1871,
+    "functions": 63,
+    "items": 49,
+    "lines": 2218,
+    "named": 63,
+    "prodcode": 1518,
+    "production": 47
+   },
+   "typst/typst": {
+    "code": 832,
+    "functions": 53,
+    "items": 46,
+    "lines": 1294,
+    "named": 53,
+    "prodcode": 783,
+    "production": 52
+   },
+   "uutils/coreutils": {
+    "code": 968,
+    "functions": 40,
+    "items": 35,
+    "lines": 1181,
+    "named": 40,
+    "prodcode": 745,
+    "production": 33
+   },
+   "xai-org/grok-build": {
+    "code": 1934,
+    "functions": 84,
+    "items": 50,
+    "lines": 2247,
+    "named": 84,
+    "prodcode": 983,
+    "production": 43
+   },
+   "yewstack/yew": {
+    "code": 385,
+    "functions": 24,
+    "items": 19,
+    "lines": 457,
+    "named": 24,
+    "prodcode": 319,
+    "production": 19
+   }
+  },
+  "production": {
+   "code": {
+    "files": 27852,
+    "max": 30494,
+    "percentiles": {
+     "50": 121,
+     "70": 254,
+     "75": 309,
+     "80": 382,
+     "90": 700,
+     "95": 1132,
+     "99": 2951
+    },
+    "top_decile_share": 0.534
+   },
+   "functions": {
+    "files": 27852,
+    "max": 1173,
+    "percentiles": {
+     "50": 7,
+     "70": 13,
+     "75": 16,
+     "80": 21,
+     "90": 36,
+     "95": 56,
+     "99": 134
+    },
+    "top_decile_share": 0.506
+   },
+   "items": {
+    "files": 27852,
+    "max": 592,
+    "percentiles": {
+     "50": 5,
+     "70": 10,
+     "75": 12,
+     "80": 15,
+     "90": 24,
+     "95": 37,
+     "99": 91
+    },
+    "top_decile_share": 0.467
+   },
+   "lines": {
+    "files": 27852,
+    "max": 33207,
+    "percentiles": {
+     "50": 158,
+     "70": 325,
+     "75": 394,
+     "80": 486,
+     "90": 862,
+     "95": 1416,
+     "99": 3454
+    },
+    "top_decile_share": 0.519
+   },
+   "named": {
+    "files": 27852,
+    "max": 1173,
+    "percentiles": {
+     "50": 7,
+     "70": 13,
+     "75": 16,
+     "80": 21,
+     "90": 36,
+     "95": 56,
+     "99": 134
+    },
+    "top_decile_share": 0.506
+   },
+   "prodcode": {
+    "files": 27852,
+    "max": 17803,
+    "percentiles": {
+     "50": 96,
+     "70": 196,
+     "75": 240,
+     "80": 298,
+     "90": 519,
+     "95": 807,
+     "99": 1888
+    },
+    "top_decile_share": 0.5
+   },
+   "production": {
+    "files": 27852,
+    "max": 701,
+    "percentiles": {
+     "50": 5,
+     "70": 10,
+     "75": 12,
+     "80": 15,
+     "90": 26,
+     "95": 40,
+     "99": 88
+    },
+    "top_decile_share": 0.482
+   }
+  },
+  "spearman": {
+   "code~functions": 0.864,
+   "code~items": 0.789,
+   "code~longest": 0.756,
+   "code~named": 0.864,
+   "code~prodcode": 0.943,
+   "code~production": 0.799,
+   "functions~longest": 0.598,
+   "functions~named": 1.0,
+   "functions~prodcode": 0.797,
+   "functions~production": 0.935,
+   "items~functions": 0.807,
+   "items~longest": 0.508,
+   "items~named": 0.807,
+   "items~prodcode": 0.759,
+   "items~production": 0.782,
+   "lines~code": 0.989,
+   "lines~functions": 0.864,
+   "lines~items": 0.793,
+   "lines~longest": 0.735,
+   "lines~named": 0.864,
+   "lines~prodcode": 0.934,
+   "lines~production": 0.801,
+   "named~longest": 0.598,
+   "named~prodcode": 0.797,
+   "named~production": 0.935,
+   "prodcode~longest": 0.802,
+   "production~longest": 0.621,
+   "production~prodcode": 0.837
+  },
+  "systems": 50,
+  "test": {
+   "code": {
+    "files": 4033,
+    "max": 9951,
+    "percentiles": {
+     "50": 105,
+     "70": 222,
+     "75": 271,
+     "80": 345,
+     "90": 609,
+     "95": 1006,
+     "99": 2903
+    },
+    "top_decile_share": 0.546
+   },
+   "functions": {
+    "files": 4033,
+    "max": 415,
+    "percentiles": {
+     "50": 5,
+     "70": 10,
+     "75": 13,
+     "80": 16,
+     "90": 28,
+     "95": 43,
+     "99": 127
+    },
+    "top_decile_share": 0.515
+   },
+   "items": {
+    "files": 4033,
+    "max": 387,
+    "percentiles": {
+     "50": 5,
+     "70": 11,
+     "75": 13,
+     "80": 16,
+     "90": 26,
+     "95": 41,
+     "99": 112
+    },
+    "top_decile_share": 0.494
+   },
+   "lines": {
+    "files": 4033,
+    "max": 10807,
+    "percentiles": {
+     "50": 129,
+     "70": 269,
+     "75": 327,
+     "80": 417,
+     "90": 715,
+     "95": 1156,
+     "99": 3294
+    },
+    "top_decile_share": 0.534
+   },
+   "named": {
+    "files": 4033,
+    "max": 415,
+    "percentiles": {
+     "50": 5,
+     "70": 10,
+     "75": 13,
+     "80": 16,
+     "90": 28,
+     "95": 43,
+     "99": 127
+    },
+    "top_decile_share": 0.515
+   },
+   "prodcode": {
+    "files": 4033,
+    "max": 0,
+    "percentiles": {
+     "50": 0,
+     "70": 0,
+     "75": 0,
+     "80": 0,
+     "90": 0,
+     "95": 0,
+     "99": 0
+    },
+    "top_decile_share": 0.0
+   },
+   "production": {
+    "files": 4033,
+    "max": 0,
+    "percentiles": {
+     "50": 0,
+     "70": 0,
+     "75": 0,
+     "80": 0,
+     "90": 0,
+     "95": 0,
+     "99": 0
+    },
+    "top_decile_share": 0.0
+   }
+  },
+  "thresholds": {
+   "code": {
+    "compliance_rate": 88.0,
+    "k": 610,
+    "median_tail": 605.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "h4ckf0r0day/obscura",
+     "herdrdev/herdr",
+     "rtk-ai/rtk",
+     "rustdesk/rustdesk",
+     "rustfs/rustfs"
+    ],
+    "p": 75,
+    "penalty": 0.03
+   },
+   "functions": {
+    "compliance_rate": 90.0,
+    "k": 27,
+    "median_tail": 32.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "h4ckf0r0day/obscura",
+     "herdrdev/herdr",
+     "rtk-ai/rtk",
+     "rustfs/rustfs"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "items": {
+    "compliance_rate": 86.0,
+    "k": 20,
+    "median_tail": 20.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "dani-garcia/vaultwarden",
+     "h4ckf0r0day/obscura",
+     "herdrdev/herdr",
+     "rtk-ai/rtk",
+     "rustfs/rustfs",
+     "storytold/photocraft"
+    ],
+    "p": 75,
+    "penalty": 0.044
+   },
+   "lines": {
+    "compliance_rate": 92.0,
+    "k": 785,
+    "median_tail": 778.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "h4ckf0r0day/obscura",
+     "rtk-ai/rtk",
+     "rustfs/rustfs"
+    ],
+    "p": 75,
+    "penalty": 0.009
+   },
+   "named": {
+    "compliance_rate": 90.0,
+    "k": 27,
+    "median_tail": 32.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "h4ckf0r0day/obscura",
+     "herdrdev/herdr",
+     "rtk-ai/rtk",
+     "rustfs/rustfs"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "prodcode": {
+    "compliance_rate": 90.0,
+    "k": 492,
+    "median_tail": 483.5,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "dani-garcia/vaultwarden",
+     "h4ckf0r0day/obscura",
+     "lapce/lapce",
+     "rustdesk/rustdesk"
+    ],
+    "p": 75,
+    "penalty": 0.018
+   },
+   "production": {
+    "compliance_rate": 92.0,
+    "k": 25,
+    "median_tail": 25.0,
+    "outliers": [
+     "BigPizzaV3/CodexPlusPlus",
+     "dani-garcia/vaultwarden",
+     "h4ckf0r0day/obscura",
+     "rustfs/rustfs"
+    ],
+    "p": 80,
+    "penalty": 0
+   }
+  }
+ },
+ "typescript": {
+  "files": {
+   "all": 43231,
+   "generated": 487,
+   "parse_errors": 958,
+   "production": 27748,
+   "test": 14996
+  },
+  "per_system_p95": {
+   "AykutSarac/jsoncrack.com": {
+    "code": 226,
+    "functions": 18,
+    "items": 11,
+    "lines": 278,
+    "named": 7,
+    "prodcode": 226,
+    "production": 7
+   },
+   "ChatGPTNextWeb/NextChat": {
+    "code": 778,
+    "functions": 50,
+    "items": 19,
+    "lines": 843,
+    "named": 19,
+    "prodcode": 778,
+    "production": 19
+   },
+   "ChromeDevTools/chrome-devtools-mcp": {
+    "code": 581,
+    "functions": 40,
+    "items": 18,
+    "lines": 622,
+    "named": 27,
+    "prodcode": 581,
+    "production": 27
+   },
+   "Crosstalk-Solutions/project-nomad": {
+    "code": 488,
+    "functions": 37,
+    "items": 14,
+    "lines": 580,
+    "named": 16,
+    "prodcode": 488,
+    "production": 16
+   },
+   "Egonex-AI/Understand-Anything": {
+    "code": 434,
+    "functions": 28,
+    "items": 16,
+    "lines": 513,
+    "named": 15,
+    "prodcode": 434,
+    "production": 15
+   },
+   "Eugeny/tabby": {
+    "code": 294,
+    "functions": 38,
+    "items": 9,
+    "lines": 347,
+    "named": 24,
+    "prodcode": 294,
+    "production": 24
+   },
+   "Fission-AI/OpenSpec": {
+    "code": 657,
+    "functions": 33,
+    "items": 27,
+    "lines": 826,
+    "named": 25,
+    "prodcode": 657,
+    "production": 25
+   },
+   "FuelLabs/fuels-ts": {
+    "code": 141,
+    "functions": 11,
+    "items": 15,
+    "lines": 204,
+    "named": 7,
+    "prodcode": 141,
+    "production": 7
+   },
+   "HeyPuter/puter": {
+    "code": 1016,
+    "functions": 60,
+    "items": 25,
+    "lines": 1373,
+    "named": 39,
+    "prodcode": 1016,
+    "production": 39
+   },
+   "KeygraphHQ/shannon": {
+    "code": 652,
+    "functions": 53,
+    "items": 40,
+    "lines": 800,
+    "named": 31,
+    "prodcode": 652,
+    "production": 31
+   },
+   "Kong/insomnia": {
+    "code": 511,
+    "functions": 36,
+    "items": 18,
+    "lines": 558,
+    "named": 13,
+    "prodcode": 511,
+    "production": 13
+   },
+   "THU-MAIC/OpenMAIC": {
+    "code": 581,
+    "functions": 42,
+    "items": 28,
+    "lines": 730,
+    "named": 21,
+    "prodcode": 581,
+    "production": 21
+   },
+   "TanStack/query": {
+    "code": 239,
+    "functions": 18,
+    "items": 11,
+    "lines": 373,
+    "named": 11,
+    "prodcode": 239,
+    "production": 11
+   },
+   "Yeachan-Heo/oh-my-claudecode": {
+    "code": 806,
+    "functions": 57,
+    "items": 46,
+    "lines": 1026,
+    "named": 32,
+    "prodcode": 806,
+    "production": 32
+   },
+   "abhigyanpatwari/GitNexus": {
+    "code": 790,
+    "functions": 50,
+    "items": 39,
+    "lines": 1170,
+    "named": 32,
+    "prodcode": 790,
+    "production": 32
+   },
+   "agalwood/Motrix": {
+    "code": 549,
+    "functions": 37,
+    "items": 21,
+    "lines": 640,
+    "named": 18,
+    "prodcode": 549,
+    "production": 18
+   },
+   "babel/babel": {
+    "code": 487,
+    "functions": 28,
+    "items": 21,
+    "lines": 615,
+    "named": 23,
+    "prodcode": 487,
+    "production": 23
+   },
+   "chatboxai/chatbox": {
+    "code": 489,
+    "functions": 41,
+    "items": 20,
+    "lines": 565,
+    "named": 16,
+    "prodcode": 489,
+    "production": 16
+   },
+   "chenglou/pretext": {
+    "code": 806,
+    "functions": 65,
+    "items": 92,
+    "lines": 980,
+    "named": 37,
+    "prodcode": 806,
+    "production": 37
+   },
+   "colinhacks/zod": {
+    "code": 398,
+    "functions": 34,
+    "items": 49,
+    "lines": 451,
+    "named": 18,
+    "prodcode": 398,
+    "production": 18
+   },
+   "earendil-works/pi": {
+    "code": 800,
+    "functions": 70,
+    "items": 37,
+    "lines": 949,
+    "named": 42,
+    "prodcode": 800,
+    "production": 42
+   },
+   "excalidraw/excalidraw": {
+    "code": 912,
+    "functions": 43,
+    "items": 28,
+    "lines": 1014,
+    "named": 23,
+    "prodcode": 912,
+    "production": 23
+   },
+   "fastapi/full-stack-fastapi-template": {
+    "code": 222,
+    "functions": 12,
+    "items": 11,
+    "lines": 237,
+    "named": 10,
+    "prodcode": 222,
+    "production": 10
+   },
+   "garrytan/gstack": {
+    "code": 935,
+    "functions": 73,
+    "items": 51,
+    "lines": 1103,
+    "named": 37,
+    "prodcode": 935,
+    "production": 37
+   },
+   "google-gemini/gemini-cli": {
+    "code": 670,
+    "functions": 37,
+    "items": 22,
+    "lines": 796,
+    "named": 21,
+    "prodcode": 670,
+    "production": 21
+   },
+   "hoppscotch/hoppscotch": {
+    "code": 437,
+    "functions": 38,
+    "items": 18,
+    "lines": 573,
+    "named": 18,
+    "prodcode": 437,
+    "production": 18
+   },
+   "justjavac/wechat-miniapp-radar": {
+    "code": 412,
+    "functions": 29,
+    "items": 53,
+    "lines": 453,
+    "named": 13,
+    "prodcode": 412,
+    "production": 13
+   },
+   "lyswhut/lx-music-desktop": {
+    "code": 254,
+    "functions": 33,
+    "items": 20,
+    "lines": 326,
+    "named": 19,
+    "prodcode": 254,
+    "production": 19
+   },
+   "marktext/marktext": {
+    "code": 391,
+    "functions": 32,
+    "items": 21,
+    "lines": 498,
+    "named": 22,
+    "prodcode": 391,
+    "production": 22
+   },
+   "mifi/lossless-cut": {
+    "code": 541,
+    "functions": 69,
+    "items": 25,
+    "lines": 702,
+    "named": 22,
+    "prodcode": 541,
+    "production": 22
+   },
+   "modelcontextprotocol/servers": {
+    "code": 348,
+    "functions": 25,
+    "items": 21,
+    "lines": 483,
+    "named": 7,
+    "prodcode": 348,
+    "production": 7
+   },
+   "morluto/rea": {
+    "code": 491,
+    "functions": 32,
+    "items": 25,
+    "lines": 530,
+    "named": 18,
+    "prodcode": 491,
+    "production": 18
+   },
+   "nolimits4web/swiper": {
+    "code": 397,
+    "functions": 29,
+    "items": 10,
+    "lines": 569,
+    "named": 17,
+    "prodcode": 397,
+    "production": 17
+   },
+   "nuxt/nuxt": {
+    "code": 347,
+    "functions": 39,
+    "items": 24,
+    "lines": 486,
+    "named": 18,
+    "prodcode": 347,
+    "production": 18
+   },
+   "pixijs/pixijs": {
+    "code": 309,
+    "functions": 20,
+    "items": 9,
+    "lines": 592,
+    "named": 17,
+    "prodcode": 309,
+    "production": 17
+   },
+   "react-hook-form/react-hook-form": {
+    "code": 231,
+    "functions": 12,
+    "items": 8,
+    "lines": 265,
+    "named": 4,
+    "prodcode": 231,
+    "production": 4
+   },
+   "reduxjs/redux": {
+    "code": 256,
+    "functions": 14,
+    "items": 10,
+    "lines": 419,
+    "named": 7,
+    "prodcode": 256,
+    "production": 7
+   },
+   "remix-run/react-router": {
+    "code": 742,
+    "functions": 49,
+    "items": 25,
+    "lines": 917,
+    "named": 18,
+    "prodcode": 742,
+    "production": 18
+   },
+   "shadcn-ui/ui": {
+    "code": 334,
+    "functions": 13,
+    "items": 11,
+    "lines": 364,
+    "named": 9,
+    "prodcode": 334,
+    "production": 9
+   },
+   "slidevjs/slidev": {
+    "code": 227,
+    "functions": 27,
+    "items": 15,
+    "lines": 303,
+    "named": 13,
+    "prodcode": 227,
+    "production": 13
+   },
+   "socketio/socket.io": {
+    "code": 485,
+    "functions": 43,
+    "items": 17,
+    "lines": 787,
+    "named": 27,
+    "prodcode": 485,
+    "production": 27
+   },
+   "styled-components/styled-components": {
+    "code": 521,
+    "functions": 41,
+    "items": 50,
+    "lines": 693,
+    "named": 17,
+    "prodcode": 521,
+    "production": 17
+   },
+   "tailwindlabs/tailwindcss": {
+    "code": 445,
+    "functions": 35,
+    "items": 27,
+    "lines": 657,
+    "named": 19,
+    "prodcode": 445,
+    "production": 19
+   },
+   "trpc/trpc": {
+    "code": 259,
+    "functions": 19,
+    "items": 15,
+    "lines": 320,
+    "named": 8,
+    "prodcode": 259,
+    "production": 8
+   },
+   "umami-software/umami": {
+    "code": 204,
+    "functions": 13,
+    "items": 9,
+    "lines": 228,
+    "named": 6,
+    "prodcode": 204,
+    "production": 6
+   },
+   "upstash/context7": {
+    "code": 484,
+    "functions": 35,
+    "items": 24,
+    "lines": 561,
+    "named": 15,
+    "prodcode": 484,
+    "production": 15
+   },
+   "vadimdemedes/ink": {
+    "code": 327,
+    "functions": 19,
+    "items": 15,
+    "lines": 406,
+    "named": 10,
+    "prodcode": 327,
+    "production": 10
+   },
+   "vitejs/vite": {
+    "code": 658,
+    "functions": 41,
+    "items": 30,
+    "lines": 813,
+    "named": 27,
+    "prodcode": 658,
+    "production": 27
+   },
+   "vuejs/core": {
+    "code": 723,
+    "functions": 40,
+    "items": 41,
+    "lines": 945,
+    "named": 27,
+    "prodcode": 723,
+    "production": 27
+   },
+   "vuetifyjs/vuetify": {
+    "code": 368,
+    "functions": 39,
+    "items": 12,
+    "lines": 426,
+    "named": 13,
+    "prodcode": 368,
+    "production": 13
+   }
+  },
+  "production": {
+   "code": {
+    "files": 27748,
+    "max": 12980,
+    "percentiles": {
+     "50": 59,
+     "70": 119,
+     "75": 145,
+     "80": 183,
+     "90": 328,
+     "95": 516,
+     "99": 1168
+    },
+    "top_decile_share": 0.503
+   },
+   "functions": {
+    "files": 27748,
+    "max": 684,
+    "percentiles": {
+     "50": 3,
+     "70": 8,
+     "75": 9,
+     "80": 12,
+     "90": 22,
+     "95": 35,
+     "99": 78
+    },
+    "top_decile_share": 0.53
+   },
+   "items": {
+    "files": 27748,
+    "max": 417,
+    "percentiles": {
+     "50": 3,
+     "70": 6,
+     "75": 7,
+     "80": 9,
+     "90": 15,
+     "95": 23,
+     "99": 50
+    },
+    "top_decile_share": 0.471
+   },
+   "lines": {
+    "files": 27748,
+    "max": 12982,
+    "percentiles": {
+     "50": 76,
+     "70": 151,
+     "75": 186,
+     "80": 232,
+     "90": 410,
+     "95": 638,
+     "99": 1487
+    },
+    "top_decile_share": 0.498
+   },
+   "named": {
+    "files": 27748,
+    "max": 293,
+    "percentiles": {
+     "50": 2,
+     "70": 4,
+     "75": 5,
+     "80": 7,
+     "90": 12,
+     "95": 19,
+     "99": 43
+    },
+    "top_decile_share": 0.531
+   },
+   "prodcode": {
+    "files": 27748,
+    "max": 12980,
+    "percentiles": {
+     "50": 59,
+     "70": 119,
+     "75": 145,
+     "80": 183,
+     "90": 328,
+     "95": 516,
+     "99": 1168
+    },
+    "top_decile_share": 0.503
+   },
+   "production": {
+    "files": 27748,
+    "max": 293,
+    "percentiles": {
+     "50": 2,
+     "70": 4,
+     "75": 5,
+     "80": 7,
+     "90": 12,
+     "95": 19,
+     "99": 43
+    },
+    "top_decile_share": 0.531
+   }
+  },
+  "spearman": {
+   "code~functions": 0.766,
+   "code~items": 0.663,
+   "code~longest": 0.781,
+   "code~named": 0.689,
+   "code~prodcode": 1.0,
+   "code~production": 0.689,
+   "functions~longest": 0.74,
+   "functions~named": 0.874,
+   "functions~prodcode": 0.766,
+   "functions~production": 0.874,
+   "items~functions": 0.606,
+   "items~longest": 0.394,
+   "items~named": 0.616,
+   "items~prodcode": 0.663,
+   "items~production": 0.616,
+   "lines~code": 0.981,
+   "lines~functions": 0.767,
+   "lines~items": 0.693,
+   "lines~longest": 0.753,
+   "lines~named": 0.701,
+   "lines~prodcode": 0.981,
+   "lines~production": 0.701,
+   "named~longest": 0.644,
+   "named~prodcode": 0.689,
+   "named~production": 1.0,
+   "prodcode~longest": 0.781,
+   "production~longest": 0.644,
+   "production~prodcode": 0.689
+  },
+  "systems": 50,
+  "test": {
+   "code": {
+    "files": 14996,
+    "max": 30817,
+    "percentiles": {
+     "50": 119,
+     "70": 219,
+     "75": 260,
+     "80": 314,
+     "90": 533,
+     "95": 826,
+     "99": 1953
+    },
+    "top_decile_share": 0.468
+   },
+   "functions": {
+    "files": 14996,
+    "max": 1085,
+    "percentiles": {
+     "50": 15,
+     "70": 26,
+     "75": 31,
+     "80": 38,
+     "90": 63,
+     "95": 95,
+     "99": 225
+    },
+    "top_decile_share": 0.459
+   },
+   "items": {
+    "files": 14996,
+    "max": 361,
+    "percentiles": {
+     "50": 4,
+     "70": 6,
+     "75": 8,
+     "80": 9,
+     "90": 13,
+     "95": 18,
+     "99": 35
+    },
+    "top_decile_share": 0.386
+   },
+   "lines": {
+    "files": 14996,
+    "max": 31596,
+    "percentiles": {
+     "50": 145,
+     "70": 261,
+     "75": 307,
+     "80": 371,
+     "90": 629,
+     "95": 967,
+     "99": 2266
+    },
+    "top_decile_share": 0.461
+   },
+   "named": {
+    "files": 14996,
+    "max": 204,
+    "percentiles": {
+     "50": 1,
+     "70": 2,
+     "75": 3,
+     "80": 4,
+     "90": 7,
+     "95": 11,
+     "99": 27
+    },
+    "top_decile_share": 0.563
+   },
+   "prodcode": {
+    "files": 14996,
+    "max": 0,
+    "percentiles": {
+     "50": 0,
+     "70": 0,
+     "75": 0,
+     "80": 0,
+     "90": 0,
+     "95": 0,
+     "99": 0
+    },
+    "top_decile_share": 0.0
+   },
+   "production": {
+    "files": 14996,
+    "max": 0,
+    "percentiles": {
+     "50": 0,
+     "70": 0,
+     "75": 0,
+     "80": 0,
+     "90": 0,
+     "95": 0,
+     "99": 0
+    },
+    "top_decile_share": 0.0
+   }
+  },
+  "thresholds": {
+   "code": {
+    "compliance_rate": 90.0,
+    "k": 263,
+    "median_tail": 305.5,
+    "outliers": [
+     "ChatGPTNextWeb/NextChat",
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "garrytan/gstack"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "functions": {
+    "compliance_rate": 90.0,
+    "k": 20,
+    "median_tail": 23.0,
+    "outliers": [
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "earendil-works/pi",
+     "garrytan/gstack"
+    ],
+    "p": 80,
+    "penalty": 0
+   },
+   "items": {
+    "compliance_rate": 88.0,
+    "k": 12,
+    "median_tail": 14.0,
+    "outliers": [
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "garrytan/gstack",
+     "justjavac/wechat-miniapp-radar",
+     "styled-components/styled-components"
+    ],
+    "p": 75,
+    "penalty": 0.022
+   },
+   "lines": {
+    "compliance_rate": 90.0,
+    "k": 352,
+    "median_tail": 378.0,
+    "outliers": [
+     "ChatGPTNextWeb/NextChat",
+     "HeyPuter/puter",
+     "Yeachan-Heo/oh-my-claudecode",
+     "abhigyanpatwari/GitNexus",
+     "chenglou/pretext"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "named": {
+    "compliance_rate": 90.0,
+    "k": 10,
+    "median_tail": 12.0,
+    "outliers": [
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "earendil-works/pi",
+     "garrytan/gstack"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "prodcode": {
+    "compliance_rate": 90.0,
+    "k": 263,
+    "median_tail": 305.5,
+    "outliers": [
+     "ChatGPTNextWeb/NextChat",
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "garrytan/gstack"
+    ],
+    "p": 75,
+    "penalty": 0
+   },
+   "production": {
+    "compliance_rate": 90.0,
+    "k": 10,
+    "median_tail": 12.0,
+    "outliers": [
+     "KeygraphHQ/shannon",
+     "Yeachan-Heo/oh-my-claudecode",
+     "chenglou/pretext",
+     "earendil-works/pi",
+     "garrytan/gstack"
+    ],
+    "p": 75,
+    "penalty": 0
+   }
+  }
+ }
+}
