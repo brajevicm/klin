@@ -11,6 +11,11 @@ impl fmt::Display for Error {
 }
 
 impl Error {
+    /// A problem a configuration file holds, named against that file.
+    pub fn at(file: &Path, why: impl fmt::Display) -> Error {
+        Error(format!("{}: {why}", file.display()))
+    }
+
     pub fn unreadable(path: &Path, problem: impl fmt::Display) -> Error {
         Error(format!("{} could not be read: {problem}", path.display()))
     }

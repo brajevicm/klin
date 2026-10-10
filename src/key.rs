@@ -23,7 +23,9 @@ pub enum Shape {
     Accepted,
     Radius,
     Journal,
-    Layers,
+    /// A non-empty map of named path sets, each with the names it may use, judged by the
+    /// reader of the check that declares it.
+    PathGraph(Reader),
 }
 
 #[derive(Clone, Copy)]
@@ -38,9 +40,9 @@ pub enum SectionShape {
     Sarif,
 }
 
-/// A check's judge of one convention's shape, the rules its gate reads first, which `config`
-/// runs at load so every command refuses them. What the gate alone refuses stays at the gate.
-/// Spec 8.4, 14.
+/// A check's judge of a value's shape, the rules its gate reads first, which `config` runs at
+/// load so every command refuses them. What the gate alone refuses stays at the gate.
+/// Spec 8.2.1, 8.4, 14.
 pub type Reader = fn(&serde_json::Value) -> Result<(), String>;
 
 /// What `config` knows of one section: enough to judge its shape before any gate runs, and

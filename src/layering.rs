@@ -49,7 +49,7 @@ const LAYERS: Key = Key {
     required: true,
     rule: None,
     default: "",
-    shape: crate::key::Shape::Layers,
+    shape: crate::key::Shape::PathGraph(read),
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, ACYCLIC, LAYERS];
@@ -385,71 +385,87 @@ fn acyclic(config: &Config, fields: &Map<String, Value>) -> Result<bool, Error> 
 }
 
 fn layers(config: &Config, fields: &Map<String, Value>) -> Result<Vec<Layer>, Error> {
-    let listed = fields
-        .get(LAYERS.name)
-        .and_then(Value::as_object)
-        .filter(|layers| !layers.is_empty())
-        .ok_or_else(|| {
-            refused(
-                config,
-                "needs \"layers\", a map of layer name to the layer's \"in\" and \"can_use\"",
-            )
-        })?;
+    let listed = shaped(fields.get(LAYERS.name).unwrap_or(&Value::Null))
+        .map_err(|why| Error::at(&config.file, why))?;
     listed
-        .iter()
-        .map(|(name, fields)| layer(config, name, fields))
+        .into_iter()
+        .map(|layer| {
+            let within = scope::selectors(layer.fields, scope::IN)
+                .map_err(|why| refused(config, &format!("layer \"{}\" {why}", layer.name)))?;
+            Ok(Layer {
+                name: layer.name.to_string(),
+                within,
+                can_use: layer.can_use,
+            })
+        })
         .collect()
 }
 
-fn layer(config: &Config, name: &str, value: &Value) -> Result<Layer, Error> {
+/// The shape of `layers`, which config judges at load and drops. Spec 8.2.1, 14.
+pub fn read(layers: &Value) -> Result<(), String> {
+    shaped(layers).map(drop)
+}
+
+/// One layer as a load judges it: its fields, and the layers it may use, `None` for every layer.
+struct Shaped<'a> {
+    name: &'a str,
+    fields: &'a Map<String, Value>,
+    can_use: Option<Vec<String>>,
+}
+
+/// What a load refuses of `layers`. The gate runs it first, then the rules only it refuses: an
+/// `in` that is not a path, and a `can_use` that names no layer.
+fn shaped(layers: &Value) -> Result<Vec<Shaped<'_>>, String> {
+    layers
+        .as_object()
+        .filter(|layers| !layers.is_empty())
+        .ok_or_else(|| config::must_be(SECTION, LAYERS.name, "a non-empty map of layers"))?
+        .iter()
+        .map(|(name, value)| shaped_layer(name, value))
+        .collect()
+}
+
+fn shaped_layer<'a>(name: &'a str, value: &'a Value) -> Result<Shaped<'a>, String> {
     let fields = value
         .as_object()
-        .ok_or_else(|| refused(config, &format!("layer \"{name}\" must be an object")))?;
-    config::known_fields(
-        &config.file,
+        .ok_or_else(|| config::must_be(SECTION, name, "an object with an \"in\" path"))?;
+    config::unknown_field(
         &format!("{SECTION} layer {name}"),
         fields,
         &[scope::IN.name, CAN_USE],
     )?;
-    let within = scope::selectors(fields, scope::IN)
-        .map_err(|why| refused(config, &format!("layer \"{name}\" {why}")))?;
-    if within.is_empty() {
-        return Err(refused(
-            config,
-            &format!("layer \"{name}\" needs an \"in\""),
+    let within = fields
+        .get(scope::IN.name)
+        .ok_or_else(|| format!("\"{SECTION}\" layer \"{name}\" has no \"in\""))?;
+    if !config::string_or_list(within) {
+        return Err(config::must_be(
+            SECTION,
+            scope::IN.name,
+            "a non-empty path or list of paths",
         ));
     }
-    Ok(Layer {
-        name: name.to_string(),
-        within,
-        can_use: can_use(config, name, fields)?,
+    Ok(Shaped {
+        name,
+        fields,
+        can_use: can_use(fields)?,
     })
 }
 
 /// The layers one layer may use, and `None` for every layer. Absent, a layer uses only itself.
-fn can_use(
-    config: &Config,
-    name: &str,
-    fields: &Map<String, Value>,
-) -> Result<Option<Vec<String>>, Error> {
-    let malformed = || {
-        refused(
-            config,
-            &format!(
-                "layer \"{name}\" has a \"can_use\" that is not a list of layer names or null"
-            ),
-        )
-    };
+fn can_use(fields: &Map<String, Value>) -> Result<Option<Vec<String>>, String> {
     match fields.get(CAN_USE) {
         None => Ok(Some(Vec::new())),
         Some(Value::Null) => Ok(None),
-        Some(Value::Array(items)) => items
-            .iter()
-            .map(|item| item.as_str().map(str::to_string))
-            .collect::<Option<Vec<String>>>()
+        Some(used) => used
+            .as_array()
+            .and_then(|items| {
+                items
+                    .iter()
+                    .map(|item| item.as_str().map(str::to_string))
+                    .collect()
+            })
             .map(Some)
-            .ok_or_else(malformed),
-        Some(_) => Err(malformed()),
+            .ok_or_else(|| config::must_be(SECTION, CAN_USE, "a list of layer names or null")),
     }
 }
 

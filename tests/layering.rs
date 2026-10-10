@@ -1499,3 +1499,80 @@ fn a_catch_all_paths_rule_without_a_local_target_leaves_package_imports_external
         assert_eq!(run.says("REVIEW:"), reviewed, "{import}: {}", run.out);
     }
 }
+
+/// A rule only the gate judges is an error of the layering gate, and no other gate sees it.
+/// Spec 8.2.1, 14.
+#[test]
+fn a_layer_rule_only_the_gate_judges_is_an_error_of_the_layering_gate_alone() {
+    for (config, said) in [
+        (
+            r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":["ghost"]}}}}"#,
+            "\"layering\" layer \"ui\" can use \"ghost\", which names no layer",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":{"in":"src/*.rs"}}}}"#,
+            "\"layering\" layer \"ui\" has an \"in\" path \"src/*.rs\" that is not a path",
+        ),
+    ] {
+        let tree = Tree::new();
+        two_layers(&tree, "pub fn rule() {}\n");
+        tree.write("klin.json", config);
+
+        let complexity = tree.run(&["check", "complexity"]);
+        assert_eq!(complexity.code, 0, "{config}: {}", complexity.out);
+
+        let layering = tree.run(&["check", "layering"]);
+        assert_eq!(layering.code, 2, "{config}: {}", layering.out);
+        assert!(
+            layering.says("ERR   layering"),
+            "{config}: {}",
+            layering.out
+        );
+        assert!(layering.says(said), "{config}: {}", layering.out);
+    }
+}
+
+/// A rule a load judges refuses every command, in the words the load writes.
+#[test]
+fn a_layer_rule_a_load_judges_refuses_every_command() {
+    for (config, said) in [
+        (
+            r#"{"layering":{"layers":{}}}"#,
+            "a \"layering\" entry's \"layers\" must be a non-empty map of layers",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":"src/ui"}}}"#,
+            "a \"layering\" entry's \"ui\" must be an object with an \"in\" path",
+        ),
+        (
+            r#"{"layering":{"layers":{"layering":"src/ui"}}}"#,
+            "\"layering\" must be an object with an \"in\" path",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":{"can_use":[]}}}}"#,
+            "\"layering\" layer \"ui\" has no \"in\"",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":{"in":[]}}}}"#,
+            "a \"layering\" entry's \"in\" must be a non-empty path or list of paths",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":{"in":"src/ui","can_use":"domain"}}}}"#,
+            "a \"layering\" entry's \"can_use\" must be a list of layer names or null",
+        ),
+        (
+            r#"{"layering":{"layers":{"ui":{"in":"src/ui","allow_same":true}}}}"#,
+            "\"layering layer ui\" has unknown field \"allow_same\"",
+        ),
+    ] {
+        let tree = Tree::new();
+        two_layers(&tree, "pub fn rule() {}\n");
+        tree.write("klin.json", config);
+
+        let run = tree.run(&["check", "complexity"]);
+
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says(said), "{config}: {}", run.out);
+        assert!(!run.says("ERR   layering"), "{config}: {}", run.out);
+    }
+}
