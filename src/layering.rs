@@ -386,7 +386,7 @@ fn acyclic(config: &Config, fields: &Map<String, Value>) -> Result<bool, Error> 
 
 fn layers(config: &Config, fields: &Map<String, Value>) -> Result<Vec<Layer>, Error> {
     let listed = shaped(fields.get(LAYERS.name).unwrap_or(&Value::Null))
-        .map_err(|why| Error(format!("{}: {why}", config.file.display())))?;
+        .map_err(|why| Error::at(&config.file, why))?;
     listed
         .into_iter()
         .map(|layer| {

@@ -458,9 +458,7 @@ fn complex_value_shape(
         Shape::Accepted => accepted_shape(file, section, key, value),
         Shape::Radius => radius_shape(file, section, key, value),
         Shape::Journal => journal_shape(file, section, key, value),
-        Shape::PathGraph(read) => {
-            read(value).map_err(|why| Error(format!("{}: {why}", file.display())))
-        }
+        Shape::PathGraph(read) => read(value).map_err(|why| Error::at(file, why)),
         _ => Ok(()),
     }
 }
@@ -744,11 +742,7 @@ fn missing(file: &Path, section: &str, key: &str) -> Result<(), Error> {
 }
 
 fn shape_error(file: &Path, section: &str, key: &str, expected: &str) -> Error {
-    Error(format!(
-        "{}: {}",
-        file.display(),
-        must_be(section, key, expected)
-    ))
+    Error::at(file, must_be(section, key, expected))
 }
 
 /// What a key must hold, said of the section itself when the key is the section's name.
@@ -804,7 +798,7 @@ pub fn known_fields(
     fields: &Map<String, Value>,
     known: &[&str],
 ) -> Result<(), Error> {
-    unknown_field(section, fields, known).map_err(|why| Error(format!("{}: {why}", file.display())))
+    unknown_field(section, fields, known).map_err(|why| Error::at(file, why))
 }
 
 /// `known_fields` without the file, for a check's reader that config prefixes.
