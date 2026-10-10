@@ -35,8 +35,12 @@ fn commands() -> Tree {
 /// recorded, with the exit that document states. Only the hook reads the structural cache, since
 /// `check` checks the base out whole.
 fn stop(tree: &Tree, cwd: &Path) -> Run {
+    stop_with(tree, cwd, &[])
+}
+
+fn stop_with(tree: &Tree, cwd: &Path, environment: &[(&str, &str)]) -> Run {
     let _ = fs::remove_file(tree.state("turn"));
-    let (run, document) = harness::stop_report(cwd, A_STOP, &[]);
+    let (run, document) = harness::stop_report(cwd, A_STOP, environment);
     assert_eq!(
         document["command"], "check",
         "no check document in {}",
@@ -142,20 +146,28 @@ fn a_cached_decode_shares_reference_names_across_files() {
     tree.write("src/changed.rs", "fn changed() {}\n");
 
     changed(&tree);
-    let warm = changed(&tree);
+    let unasked = dead_symbols(&changed(&tree));
+    assert!(unasked["footprint"].is_null(), "{unasked}");
+    let warm = stop_with(&tree, tree.root(), &[("KLIN_FOOTPRINT", "1")]);
     let report = warm.json();
-    let row = harness::gate_rows(&report)
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|row| row["name"] == "dead-symbols")
-        .unwrap_or_else(|| panic!("no dead-symbols row in {report}"));
+    let row = dead_symbols(&warm);
     assert!(row["facts"]["cached"].as_u64() >= Some(2), "{report}");
     assert_eq!(row["footprint"]["references"], 2, "{report}");
     assert_eq!(
         row["footprint"]["reference_canonical_allocations"], 1,
         "{report}"
     );
+}
+
+fn dead_symbols(run: &Run) -> Value {
+    let report = run.json();
+    harness::gate_rows(&report)
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|row| row["name"] == "dead-symbols")
+        .cloned()
+        .unwrap_or_else(|| panic!("no dead-symbols row in {report}"))
 }
 
 #[test]

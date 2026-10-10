@@ -113,6 +113,7 @@ struct Resources {
     uncached_rss: Option<u64>,
     dead_symbols_rss: Option<u64>,
     strict_rss: Option<u64>,
+    footprint: BTreeMap<String, u64>,
 }
 
 struct Sample {
@@ -328,12 +329,33 @@ impl Fixture {
 
     /// A hook run, through the stand-in toolchain when the configuration derives the build.
     fn hook(&self) -> harness::Run {
-        let environment: Vec<(&str, &str)> = self
+        self.hook_with(&[])
+    }
+
+    fn hook_with(&self, extra: &[(&str, &str)]) -> harness::Run {
+        let mut environment: Vec<(&str, &str)> = self
             .toolchain
             .iter()
             .map(|(_, path)| ("PATH", path.as_str()))
             .collect();
+        environment.extend_from_slice(extra);
         harness::feed_with(self.tree.root(), &environment, hooked(), harness::STOP)
+    }
+
+    /// One untimed Stop that requests the footprint of 11.2, as the footprint counters of the
+    /// journal line it wrote. No timed Stop requests it, so no timed Stop pays for its walk.
+    fn footprinted_hook(&self) -> BTreeMap<String, u64> {
+        let run = self.hook_with(&[("KLIN_FOOTPRINT", "1")]);
+        assert_eq!(run.code, 0, "footprint hook: {}", run.out);
+        let lines = journal(&self.tree);
+        let mut held = BTreeMap::new();
+        let line = lines.last().expect("footprint hook wrote no journal line");
+        for gate in harness::gate_rows(line).as_array().into_iter().flatten() {
+            if let Some(name) = gate["name"].as_str() {
+                footprint_counters(&mut held, name, gate);
+            }
+        }
+        held
     }
 
     fn current_dense(&self) -> bool {
@@ -875,6 +897,7 @@ fn print_rows(fixture: &Fixture, rows: &Measurements, case: PerfCase) {
                 "resource: warm_hook_peak_rss_kb={}",
                 rss.map_or_else(|| "unavailable".to_string(), |kb| kb.to_string())
             );
+            print_footprint(&fixture.footprinted_hook());
             let experiment = worktree_experiment(fixture.tree.root())
                 .into_iter()
                 .map(|(name, ms)| format!("{name}={ms}"))
@@ -946,10 +969,10 @@ fn print_samples(size: usize, rows: &Measurements, case: PerfCase) {
 }
 
 /// The structural cache the cold rows removed is written again by one Stop first,
-/// so its size and the warm peak describe a Stop that reads it.
+/// so its size and the warm peak describe a Stop that reads it. That Stop is untimed, so it
+/// also requests the footprint.
 fn resources(fixture: &Fixture) -> Resources {
-    let primed = fixture.hook();
-    assert_eq!(primed.code, 0, "structural cache prime: {}", primed.out);
+    let footprint = fixture.footprinted_hook();
     let (files, bytes) = fixture.structural_cache();
     let warm = peak_rss(fixture, hooked());
     let dead_symbols = peak_rss(
@@ -966,6 +989,7 @@ fn resources(fixture: &Fixture) -> Resources {
         uncached_rss: uncached,
         dead_symbols_rss: dead_symbols,
         strict_rss: strict,
+        footprint,
     }
 }
 
@@ -982,6 +1006,16 @@ fn print_resources(resources: &Resources) {
         rss(resources.dead_symbols_rss),
         rss(resources.strict_rss)
     );
+    print_footprint(&resources.footprint);
+}
+
+fn print_footprint(held: &BTreeMap<String, u64>) {
+    let counters = held
+        .iter()
+        .map(|(name, value)| format!("{name}={value}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    println!("footprint: untimed stop, {counters}");
 }
 
 /// Peak RSS is controlled-machine evidence, not a contributor-test threshold. `/usr/bin/time`
@@ -1161,7 +1195,6 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         }
         work_counters(&mut times, name, gate);
         name_counters(&mut times, name, gate);
-        footprint_counters(&mut times, name, gate);
     }
     times
 }

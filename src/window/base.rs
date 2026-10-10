@@ -57,6 +57,9 @@ pub struct Layout {
     pub cache_name: Duration,
     pub ignored: Duration,
     pub walk: Duration,
+    /// The structural cache a light layout read and decoded, which the run reports as the
+    /// view's `cache_read`, so the base's own cost leaves it out.
+    pub cache_read: Duration,
 }
 
 /// What removing the whole base's linked worktree took: `worktree remove --force` and
@@ -292,6 +295,7 @@ fn lightly(
     let started = Instant::now();
     let outcomes = cache.read()?;
     let read = started.elapsed();
+    layout.cache_read = read;
 
     let root = dir.join(inside);
     let started = Instant::now();

@@ -270,6 +270,9 @@ fn sides<'a, T>(
     })?;
     if let Some(layout) = layout {
         *layout = prior.layout();
+        if let Some(laid) = layout {
+            names.base = names.base.saturating_sub(laid.cache_read);
+        }
     }
     let mut after = timed(&mut names.after.measure, || {
         measure_after(unchanged.as_ref())

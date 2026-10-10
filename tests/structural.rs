@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 const GATES: [&str; 3] = ["complexity", "dead-symbols", "reachability"];
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
+const FOOTPRINT: &str = "KLIN_FOOTPRINT";
 
 /// A base with three reached command files, so `reachability` derives a family, under this
 /// configuration.
@@ -29,6 +30,13 @@ fn judged(tree: &Tree, flags: &[&str], gates: &[&str]) -> Value {
     args.extend_from_slice(flags);
     args.extend_from_slice(gates);
     tree.run(&args).json()
+}
+
+/// The same run with the footprint of 11.2 requested.
+fn footprinted(tree: &Tree, gates: &[&str]) -> Value {
+    let mut args = vec!["check", "--json"];
+    args.extend_from_slice(gates);
+    tree.run_with(&[(FOOTPRINT, "1")], &args).json()
 }
 
 /// Every structural gate in one run, each gate's own part of the report the same as that gate
@@ -428,7 +436,7 @@ fn the_structural_footprint_counts_each_extern_crate_with_its_names_and_nesting(
     );
     tree.base();
 
-    let report = judged(&tree, &[], &["dead-symbols"]);
+    let report = footprinted(&tree, &["dead-symbols"]);
 
     let held = &row(&report, "dead-symbols")["footprint"];
     assert_eq!(held["files"], 2, "{report}");
@@ -449,7 +457,7 @@ fn the_structural_footprint_counts_what_the_facts_of_one_run_hold() {
     );
     tree.base();
 
-    let report = judged(&tree, &[], &["dead-symbols", "reachability"]);
+    let report = footprinted(&tree, &["dead-symbols", "reachability"]);
 
     let held = &row(&report, "dead-symbols")["footprint"];
     assert_eq!(held["files"], 10, "{report}");
@@ -531,7 +539,7 @@ fn repeated_reference_names_share_storage_across_tree_files() {
     tree.write("src/two.rs", "fn two() { helper(); }\n");
     tree.base();
 
-    let report = judged(&tree, &[], &["dead-symbols"]);
+    let report = footprinted(&tree, &["dead-symbols"]);
     let footprint = &row(&report, "dead-symbols")["footprint"];
     assert_eq!(footprint["references"], 4, "{report}");
     assert_eq!(footprint["reference_distinct_names"], 1, "{report}");

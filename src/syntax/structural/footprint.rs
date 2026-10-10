@@ -97,6 +97,12 @@ impl Footprint {
     }
 }
 
+/// Whether this run was asked for the footprint, through `KLIN_FOOTPRINT`. The walk hashes every
+/// reference name, so a run that nobody reads it from does not pay for it. Issue #538.
+pub fn requested() -> bool {
+    std::env::var_os("KLIN_FOOTPRINT").is_some_and(|value| !value.is_empty())
+}
+
 /// The facts of both trees, each file counted once however many trees hold the same extraction.
 pub fn of(trees: [&[Rc<FileFacts>]; 2]) -> Footprint {
     let mut held = HashSet::new();
