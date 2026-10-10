@@ -28,9 +28,6 @@ use crate::stamp::Verdict;
 use crate::syntax::{LanguageId, structural};
 use crate::{build, handoff, journal, stamp, state, stats, survey, turn};
 
-/// The `ERR` row of 11.1 as `--json` names it, which a run that could not measure prints
-/// whatever exit code it ends with.
-const ERROR: &str = "ERROR";
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
 /// the stop ends with. Spec 9.1.
@@ -514,7 +511,7 @@ fn ran(
     match failure {
         Some(failure) => {
             let blocks = budgeted(project.root(), lost, log, Budget::build_block);
-            let (code, text) = reported(args, &failure, &said, window, &blocks, out);
+            let (code, text) = reported(&failure, &said, &blocks);
             log.result = Some(Report::unbuilt(
                 Report::config_of(project),
                 window,
@@ -692,35 +689,14 @@ fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> 
     }
 }
 
-/// The build failure as a person and an agent read it, and as `--json` records it. The text
+/// The build failure as a person and an agent read it. The text
 /// opens with where each command came from, so a derived build is never a command with no
 /// origin, and the note says why klin did not block, because the exit code alone no longer
 /// says it. Spec 11, ADR 0040.
-fn reported(
-    args: &Args,
-    failure: &str,
-    built: &[contract::Said],
-    window: Option<&Window>,
-    blocks: &BuildBlock,
-    out: &mut String,
-) -> (u8, String) {
+fn reported(failure: &str, built: &[contract::Said], blocks: &BuildBlock) -> (u8, String) {
     let (blocking, said, note) = blocks.outcome();
     let code = if blocking { BLOCKED } else { 0 };
     let note = note.map(|note| format!("{note} {OWN_CI}."));
-    let mut records = Recorded {
-        derived: built
-            .iter()
-            .filter_map(|(_, entry)| entry.clone())
-            .collect(),
-        ..Recorded::default()
-    };
-    records
-        .findings
-        .push(record("error", &format!("{said}:\n{failure}")));
-    if let Some(note) = &note {
-        records.notes.push(record("note", note));
-    }
-    let object = as_json(ERROR, code, &format!("klin: {said}."), records, window);
     let mut text = String::new();
     for (line, _) in built {
         let _ = writeln!(text, "klin: {line}");
@@ -730,12 +706,7 @@ fn reported(
     if let Some(note) = &note {
         let _ = writeln!(text, "klin: {note}");
     }
-    if !args.json {
-        eprint!("{text}");
-        return (code, text);
-    }
-    out.clear();
-    let _ = writeln!(out, "{object}");
+    eprint!("{text}");
     (code, text)
 }
 
@@ -802,22 +773,12 @@ fn judge(
         .iter()
         .filter_map(|(_, entry)| entry.clone())
         .collect();
-    let (mut tally, mut records) = each(args, &wanted, project, &against, &mut doc, out);
+    let mut tally = each(args, &wanted, project, &against, &mut doc, out);
     tally.document = Some(doc.stopped_with(&plan, unbuilt, rootless.as_deref()));
     tally.told += usize::from(rootless.is_some());
-    records
-        .notes
-        .extend(rootless.map(|said| record("note", &said)));
-    let gone = gone_moves(args, project, &wanted, out);
-    tally.told += gone.len();
-    records.notes.extend(gone);
-    if let Some(unbuilt) = unbuilt {
-        records.notes.push(record(UNBUILT, unbuilt));
-        tally.told += 1;
-    }
-    let derived = built.iter().filter_map(|(_, entry)| entry.clone());
-    records.derived.splice(0..0, derived);
-    finish(args, &plan, wanted.len(), &tally, records, &against, out);
+    tally.told += gone_moves(args, project, &wanted, out);
+    tally.told += usize::from(unbuilt.is_some());
+    finish(args, &plan, wanted.len(), &tally, out);
     Ok(tally)
 }
 
@@ -965,15 +926,7 @@ fn pins_in(project: &Project, check: &catalogue::Row) -> bool {
         .is_some_and(|section| section.get("in").is_some())
 }
 
-fn finish(
-    args: &Args,
-    plan: &Plan,
-    gates: usize,
-    tally: &Tally,
-    records: Recorded,
-    against: &Against,
-    out: &mut String,
-) {
+fn finish(args: &Args, plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
     let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
@@ -983,20 +936,9 @@ fn finish(
         "klin: {gates} gate(s), {excluded}{}",
         summary(failed, errored)
     );
-    let code = code(tally);
-    let object = as_json(
-        status_row(code),
-        code,
-        &line,
-        records,
-        against.base.as_ref(),
-    );
     if !args.json {
         let _ = writeln!(out, "{line}");
-        return;
     }
-    out.clear();
-    let _ = writeln!(out, "{object}");
 }
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
@@ -1010,34 +952,8 @@ fn said(args: &Args, built: &[contract::Said], out: &mut String) {
     }
 }
 
-/// The row of 11.1 a run's own exit code names, for the runs whose status and code agree.
-fn status_row(code: u8) -> &'static str {
-    match code {
-        0 => "PASS",
-        1 => "FAIL",
-        _ => ERROR,
-    }
-}
-
-/// The object of spec 11.2. `status` is the row of 11.1, which a caller gives rather than reads
-/// off `code`, because a build failure that stops blocking is an `ERROR` row that exits 0.
-fn as_json(status: &str, code: u8, tally: &str, records: Recorded, base: Option<&Window>) -> Value {
-    let mut out = Map::new();
-    out.insert("status".into(), status.into());
-    out.insert("summary".into(), tally.into());
-    if let Some(base) = base {
-        out.insert("window".into(), base.record());
-    }
-    out.insert("derived".into(), Value::Array(records.derived));
-    out.insert("gates".into(), Value::Array(records.gates));
-    out.insert("findings".into(), Value::Array(records.findings));
-    out.insert("notes".into(), Value::Array(records.notes));
-    out.insert("exit".into(), code.into());
-    Value::Object(out)
-}
-
 /// The records of spec 11.2 only the runner writes: the findings, notes and derived entries it
-/// renders from each gate's typed result or records itself, and one row per gate.
+/// renders from each gate's typed result or records itself.
 #[derive(Default, Clone)]
 struct Recorded {
     findings: Vec<Value>,
@@ -1045,7 +961,6 @@ struct Recorded {
     derived: Vec<Value>,
     holes: Vec<Value>,
     reviews: Vec<Value>,
-    gates: Vec<Value>,
 }
 
 impl From<render::Json> for Recorded {
@@ -1056,7 +971,6 @@ impl From<render::Json> for Recorded {
             derived: rendered.derived,
             holes: rendered.holes,
             reviews: rendered.reviews,
-            gates: Vec::new(),
         }
     }
 }
@@ -1265,7 +1179,7 @@ fn each(
     against: &Against,
     doc: &mut Report,
     out: &mut String,
-) -> (Tally, Recorded) {
+) -> Tally {
     let mut tally = Tally::default();
     let mut totals = Recorded::default();
     let mut reported = Vec::new();
@@ -1280,9 +1194,6 @@ fn each(
         if rendered(args, code, &recorded) {
             printed(args, (&gate.name, status(code)), (&told, &text), out);
         }
-        totals
-            .gates
-            .push(row(gate, code, (&records, &recorded), ms));
         reported.extend(unmeasured_by(&gate.name, &told));
         gather(&mut totals, recorded.clone(), &gate.name);
         let ran = (code, told, records, recorded);
@@ -1311,7 +1222,7 @@ fn each(
     );
     tally.told += totals.notes.iter().filter(|note| told(note)).count();
     (tally.reported, tally.unasked) = asked_sites(&totals.findings);
-    (tally, totals)
+    tally
 }
 
 /// The site id of every finding a Stop reports, which a block records as asked, and the deleted
@@ -1666,17 +1577,6 @@ fn gather(totals: &mut Recorded, mut records: Recorded, name: &str) {
     }
     totals.findings.append(&mut records.findings);
     totals.notes.append(&mut records.notes);
-    totals.derived.append(&mut records.derived);
-}
-
-fn code(tally: &Tally) -> u8 {
-    if tally.errored > 0 {
-        2
-    } else if tally.failed > 0 {
-        1
-    } else {
-        0
-    }
 }
 
 /// One gate's run: its exit code, what it told, what it recorded and its findings as JSON.
@@ -1965,16 +1865,15 @@ fn measured(
 /// What the Stop notes of a moved pinned path, one whose files went with no rename or that
 /// selects nothing in either tree, and of a file moved under a skipped directory. A pin whose
 /// files were all renamed is followed in silence, and `klin check` names it. Spec 7.3.
-fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> Vec<Value> {
+fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> usize {
     let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
     gone.filter_map(Moved::said)
-        .map(|said| {
+        .inspect(|said| {
             if !args.json {
                 let _ = writeln!(out, "  NOTE: {said}");
             }
-            record("note", &said)
         })
-        .collect()
+        .count()
 }
 
 /// The moves of the sections whose gates this run selected, and every move no section decides,
