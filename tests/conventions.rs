@@ -1218,3 +1218,65 @@ fn a_pattern_that_is_only_a_hole_is_refused_because_it_matches_everything() {
 
     assert!(run.says("reads it as none of"), "{}", run.out);
 }
+
+const A_TEXT_WITH_A_LINE_BREAK: &str = r#"{
+  "no-todo": { "text": "a\nb", "remedy": "Remove it." }
+}"#;
+
+/// A rule only the gate judges is an error of the conventions gate, and no other gate sees it.
+/// Spec 8.4, 14.
+#[test]
+fn a_text_with_a_line_break_is_an_error_of_the_conventions_gate_alone() {
+    let tree = tree(A_TEXT_WITH_A_LINE_BREAK);
+
+    let every = tree.run(&["check"]);
+    assert_eq!(every.code, 2, "{}", every.out);
+    assert!(every.says("ERR   conventions"), "{}", every.out);
+    assert!(
+        every.says("has a \"text\" with a line break, and text is matched a line at a time"),
+        "{}",
+        every.out
+    );
+
+    let complexity = tree.run(&["check", "complexity"]);
+    assert_eq!(complexity.code, 3, "{}", complexity.out);
+    assert!(!complexity.says("line break"), "{}", complexity.out);
+}
+
+/// A convention its gate refuses holds no Stop open alone, so the failure beside it still blocks.
+#[test]
+fn a_stop_blocks_on_a_failing_gate_beside_a_convention_its_gate_refuses() {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        &format!(
+            r#"{{ "doc_size": {{"README.md": 10}}, "conventions": {A_TEXT_WITH_A_LINE_BREAK} }}"#
+        ),
+    );
+    tree.words("README.md", 5);
+    tree.base();
+    tree.words("README.md", 30);
+
+    let run = tree.stop();
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("gate block 1 of 2"), "{}", run.out);
+    assert!(run.says("FAIL  doc-size"), "{}", run.out);
+    assert!(run.says("ERR   conventions"), "{}", run.out);
+}
+
+/// A rule a load judges refuses every command, whichever gate it names.
+#[test]
+fn a_language_on_a_text_convention_refuses_every_command() {
+    let tree =
+        tree(r#"{ "no-todo": { "text": "TODO", "language": "rust", "remedy": "Remove it." } }"#);
+
+    let run = tree.run(&["check", "complexity"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("convention \"no-todo\" sets \"language\" on a rule that is not \"code\""),
+        "{}",
+        run.out
+    );
+}
