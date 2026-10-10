@@ -1,0 +1,59 @@
+repository	path	label	reason
+Open-Dev-Society/OpenStock	app/(marketing)/sponsor/page.tsx	cohesive	one page: its data constants and its component
+Open-Dev-Society/OpenStock	components/shell/TabBar.tsx	cohesive	one component and two helpers
+Open-Dev-Society/OpenStock	lib/actions/finnhub.actions.ts	split	a request pool and cache apart from the Finnhub endpoints
+Open-Dev-Society/OpenStock	lib/constants.ts	table	configuration constants and widget configs
+Open-Dev-Society/OpenStock	lib/inngest/functions.ts	split	four independent background jobs
+Open-Dev-Society/OpenStock	lib/utils.ts	split	grab bag: class names, dates, news, prices, TradingView symbols
+apollographql/apollo-client	integration-tests/type-tests/cacheOverride/classicSignature/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/cacheOverride/defaults/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/cacheOverride/invalid/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-any/differentTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-any/empty/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-any/matchingTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-any/mixed/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-structured/empty/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-unknown/differentTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-unknown/empty/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-unknown/matchingTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/all-unknown/mixed/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/differentTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	integration-tests/type-tests/customScalars/matchingTypes/index.ts	test	type test under integration-tests
+apollographql/apollo-client	src/cache/core/cache.ts	cohesive	one abstract class
+apollographql/apollo-client	src/cache/inmemory/entityStore.ts	cohesive	one class hierarchy (EntityStore, Root, Layer, Stump)
+apollographql/apollo-client	src/cache/inmemory/inMemoryCache.ts	cohesive	one class
+apollographql/apollo-client	src/cache/inmemory/policies.ts	split	about twenty public policy types apart from the Policies class
+apollographql/apollo-client	src/cache/inmemory/readFromStore.ts	cohesive	one class and its private helpers
+apollographql/apollo-client	src/cache/inmemory/types.ts	cohesive	a types module that gained types
+apollographql/apollo-client	src/core/ApolloClient.ts	cohesive	one class
+apollographql/apollo-client	src/core/ObservableQuery.ts	cohesive	one class and its private helpers
+apollographql/apollo-client	src/core/QueryManager.ts	cohesive	one class and its private helpers
+apollographql/apollo-client	src/incremental/__benches__/types.bench.ts	test	benchmark file
+apollographql/apollo-client	src/react/hooks/useQuery.ts	cohesive	one hook and its helpers
+apollographql/apollo-client	src/testing/core/mocking/mockLink.ts	cohesive	one shipped test helper class
+denisidoro/navi	src/commands/core/actor.rs	cohesive	one command and its tests
+denisidoro/navi	src/parser.rs	cohesive	one parser and its tests
+firecrawl/pdf-inspector	napi/src/lib.rs	cohesive	a binding layer: mirror types, conversions, exports
+firecrawl/pdf-inspector	src/extractor/content_stream.rs	split	path transforms, spacing, rotation votes and a large inline test module
+firecrawl/pdf-inspector	src/extractor/fonts.rs	split	widths, encodings, predefined tables and CMap decisions
+firecrawl/pdf-inspector	src/extractor/mod.rs	split	a module root that also holds dozens of API wrappers and logic
+firecrawl/pdf-inspector	src/lib.rs	split	a crate root that also holds the processing pipeline and result types
+firecrawl/pdf-inspector	src/tounicode.rs	split	CMap parsing, glyph-program fallback and gap filling
+gfx-rs/wgpu	wgpu/src/backend/wgpu_core.rs	split	one struct and impl per resource type, each a seam
+louis-e/arnis	src/block_definitions.rs	table	hundreds of block constants
+louis-e/arnis	src/element_processing/buildings.rs	split	styles, palettes, windows, roofs and placement in one file
+louis-e/arnis	src/element_processing/highways.rs	split	tunnels apart from surface roads
+louis-e/arnis	src/elevation/postprocess.rs	split	water repair, Gaussian blur and terrain scaling
+louis-e/arnis	src/ground.rs	cohesive	one ground model and its tests
+louis-e/arnis	src/mapillary/displays.rs	split	image cropping apart from panel placement
+louis-e/arnis	src/osm_parser.rs	split	element types, style hints and parsing
+louis-e/arnis	src/overture/mod.rs	split	fetching, OSM hints and deduplication in the module root
+louis-e/arnis	src/world_editor/common.rs	split	world-bound globals apart from chunk storage
+louis-e/arnis	src/world_editor/mod.rs	cohesive	one editor type and its impl
+mountain-loop/yaak	apps/yaak-client/components/EnvironmentEditDialog.tsx	cohesive	one dialog and its sidebar parts
+mountain-loop/yaak	apps/yaak-client/components/core/Editor/Editor.tsx	split	editor-state persistence apart from the component
+mountain-loop/yaak	plugins/importer-insomnia/src/common.ts	split	a JSON scanner apart from the import helpers
+mountain-loop/yaak	plugins/importer-insomnia/src/templates.ts	cohesive	one template converter
+whyour/qinglong	back/services/cron.ts	cohesive	one service class; the outline shows no seam
+louis-e/arnis	src/element_processing/signage.rs	split	sign selection per feature kind apart from post placement
+denisidoro/navi	src/finder/mod.rs	cohesive	one finder choice and its parsing
