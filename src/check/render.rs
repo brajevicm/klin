@@ -693,6 +693,14 @@ impl Finding {
         self.outcome != Outcome::Held
     }
 
+    /// The site as `file:line  text`, which a Stop records for a deleted test it has not asked
+    /// about. Spec 9.2.
+    pub fn site(&self) -> String {
+        let line = self.line.unwrap_or_default();
+        let text = self.text.as_deref().unwrap_or_default();
+        format!("{}:{line}  {text}", self.file)
+    }
+
     pub fn json(&self) -> Value {
         serde_json::json!({
             "id": self.id,

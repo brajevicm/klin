@@ -1,5 +1,5 @@
 //! The check document of spec 11.7, and the one loop that fills it. `klin check` and the Stop
-//! each run every selected gate through `Document::ran`, which records what each gate found in
+//! each run every selected gate through `CheckDocument::ran`, which records what each gate found in
 //! the document's own types. The text a person reads and the JSON are views of those records.
 //! Spec 7, 11.3, 11.7, 13.1.
 
@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use crate::base::{self, Prior, Window};
 use crate::changed::Change;
@@ -25,8 +25,7 @@ use crate::error::{ErrorKind, Fault};
 use crate::plan::{Gate, Plan, State, every_check};
 use crate::project::Project;
 use crate::scope::{Moved, Moves};
-use crate::syntax::{LanguageId, structural};
-use crate::{journal, survey};
+use crate::{diagnostics, journal, survey};
 
 const INVENTORY: &str = "inventory";
 
@@ -144,6 +143,11 @@ impl Axes {
             (Worst::Review, false) => "REVIEW",
             _ => "ok  ",
         }
+    }
+
+    /// The word a gate's diagnostics row carries, which names only what an agent acts on.
+    fn status(self) -> &'static str {
+        self.state(true).trim_end()
     }
 
     fn measurement(self) -> &'static str {
@@ -416,7 +420,7 @@ impl Measured {
 
 /// What one run came to, gathered for the check document and its text. Spec 11.7.
 #[derive(Default)]
-pub struct Document {
+pub struct CheckDocument {
     config: Option<Value>,
     window: Option<Value>,
     tree: Option<Value>,
@@ -433,21 +437,22 @@ pub struct Document {
     measured: Measured,
     not_measured: BTreeSet<String>,
     /// What each gate could not measure, as it saw it, for the run to sort once. Spec 7.2.
-    reported: Vec<(String, String, Seen)>,
+    seen: Vec<(String, String, Seen)>,
     /// The derived build commands the Stop ran before it measured, in the run's basis. Spec 8.1.
     built: Vec<Value>,
     reviews: Vec<Review>,
     problems: Vec<Problem>,
     gates: Vec<Value>,
-    /// How many notes the Stop tells a person beside the findings it blocks on, which a stop
-    /// nothing blocks still tells. Spec 8.2, 9.5.
+    /// How many things the Stop tells a person beside the findings it blocks on: the notes its
+    /// gates told that the hook tells, and each NOTE line it printed of the run itself. A stop
+    /// nothing blocks still tells them. Spec 8.2, 9.5.
     told: usize,
     /// Whether a file the base parsed is lost to a parse, which a person may hold where the
     /// grammar lags. Spec 7.2.
     grammar_lag: bool,
 }
 
-impl Document {
+impl CheckDocument {
     /// The configuration a run judged under, as the check document names it. Spec 11.7.
     pub fn config_of(project: &Project) -> Value {
         json!({
@@ -457,32 +462,32 @@ impl Document {
     }
 
     /// The document a Stop gathers: the configuration it ran under and the commands it built.
-    pub fn stopping(project: &Project, built: Vec<Value>) -> Document {
-        Document {
-            config: Some(Document::config_of(project)),
+    pub fn stopping(project: &Project, built: Vec<Value>) -> CheckDocument {
+        CheckDocument {
+            config: Some(CheckDocument::config_of(project)),
             built,
-            ..Document::default()
+            ..CheckDocument::default()
         }
     }
 
     /// The document of a Stop whose build failed, so no capability measured. Spec 6.4, 13.1.
-    pub fn unbuilt(config: Value, window: Option<&Window>, failure: &str) -> Document {
-        Document {
+    pub fn unbuilt(config: Value, window: Option<&Window>, failure: &str) -> CheckDocument {
+        CheckDocument {
             config: Some(config),
             window: window.map(Window::record),
             stopped: true,
             notes: vec![Note::of_run("build", failure)],
-            ..Document::default()
+            ..CheckDocument::default()
         }
     }
 
     /// The document of a Stop that stopped before any capability measured, with the error that
     /// stopped it. Spec 7.3, 13.1.
-    pub fn stopped_by(config: Value, window: Option<&Window>, fault: Fault) -> Document {
-        let mut doc = Document {
+    pub fn stopped_by(config: Value, window: Option<&Window>, fault: Fault) -> CheckDocument {
+        let mut doc = CheckDocument {
             config: Some(config),
             window: window.map(Window::record),
-            ..Document::default()
+            ..CheckDocument::default()
         };
         doc.stop(fault);
         doc
@@ -503,7 +508,6 @@ impl Document {
     /// A run-scope error, which stops the run before any capability measures. Spec 7.3.
     pub fn stop(&mut self, fault: Fault) {
         self.stopped = true;
-        self.axes.error = true;
         self.problems
             .push(Problem::of_run(fault.kind, &fault.error.to_string()));
     }
@@ -544,11 +548,7 @@ impl Document {
         self.findings
             .iter()
             .filter(|finding| finding.check.as_deref() == Some(INVENTORY))
-            .map(|finding| {
-                let line = finding.line.unwrap_or_default();
-                let text = finding.text.as_deref().unwrap_or_default();
-                format!("{}:{line}  {text}", finding.file)
-            })
+            .map(Finding::site)
             .collect()
     }
 
@@ -588,8 +588,8 @@ impl Document {
             self.gate(args, gate, project, against, out);
         }
         let base = against.base.as_ref().map(|base| base.before.as_str());
-        let reported = std::mem::take(&mut self.reported);
-        let sorted = holes::sorted(project, base, reported);
+        let seen = std::mem::take(&mut self.seen);
+        let sorted = holes::sorted(project, base, seen);
         self.settled(args, (project, wanted, against), &sorted, out);
         if !args.changed
             && let Some(hole) = unmeasured_run(args, (plan, wanted), project, self.measured)
@@ -615,7 +615,6 @@ impl Document {
         out: &mut String,
     ) {
         if let Some(why) = failed {
-            self.axes.error = true;
             self.problems.push(Problem::of_run(ErrorKind::Git, why));
             if !args.json {
                 let _ = writeln!(out, "  ERR: {why}");
@@ -713,8 +712,15 @@ impl Document {
             printed(&gate.name, axes.state(args.hook), (&told, &text), out);
         }
         self.told += shown.notes.iter().filter(|note| note.told()).count();
-        self.gates
-            .push(row(gate, (code, axes), (&records, &shown), ms));
+        let erred = usize::from(code == 2 && !records.errors.is_empty());
+        let counts = (shown.findings.len() + erred, shown.notes.len());
+        self.gates.push(diagnostics::row(
+            &gate.name,
+            axes.status(),
+            counts,
+            &records,
+            ms,
+        ));
         self.measured.add(gate.check, &records);
         self.capabilities
             .push(Capability::active(gate, axes, &records));
@@ -722,7 +728,7 @@ impl Document {
         self.measurements
             .push(measurement(&gate.name, axes, &shown.holes, basis));
         self.problems.extend(gate_errors(&gate.name, code, &told));
-        self.reported.extend(unmeasured_by(&gate.name, &told));
+        self.seen.extend(unmeasured_by(&gate.name, &told));
         self.reviews.extend(shown.reviews);
         self.findings.extend(shown.findings);
         self.notes.extend(shown.notes);
@@ -740,7 +746,10 @@ impl Document {
     ) {
         let held = holes::held_files(&project.config);
         let row = render::lost_row(sorted, &held);
-        let failing = row.is_some() && self.lost(sorted, &held);
+        let mut failing = false;
+        if row.is_some() {
+            failing = self.lost(sorted, &held);
+        }
         self.reviewed(sorted);
         let unmatched: Vec<String> = unmatched_lost(&held, sorted, wanted).collect();
         self.reviews.extend(
@@ -906,10 +915,11 @@ impl Document {
         );
     }
 
-    /// The run's axes once every record is in: a hole makes it incomplete, and a review item
-    /// makes a pass a review. Spec 7.5.
+    /// The run's axes once every record is in: an error row or a run-scope error makes it an
+    /// error, a hole makes it incomplete, and a review item makes a pass a review. Spec 7.5.
     fn totals(&self) -> Axes {
         let mut axes = self.axes;
+        axes.error |= self.errored() > 0;
         axes.incomplete |= !self.holes.is_empty();
         if !self.reviews.is_empty() {
             axes.judgement = axes.judgement.max(Judgement::Review);
@@ -1222,193 +1232,6 @@ fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
         .collect()
 }
 
-/// What one gate's structural work came to, with the declaration states of the gate that builds
-/// them. A gate that reads no structural facts records none. Spec 11.2.
-fn facts(records: &Records) -> Value {
-    let Some(facts) = records.facts else {
-        return Value::Null;
-    };
-    let mut out = json!({
-        "reads": facts.reads,
-        "parses": facts.parses,
-        "extracted": facts.extracted,
-        "shared": facts.shared,
-        "cached": facts.cached,
-        "ms": journal::millis(facts.time),
-        "cache_read_ms": journal::millis(facts.cache_read),
-        "cache_write_ms": journal::millis(facts.cache_write),
-    });
-    if let (Some(fields), Some(states)) = (out.as_object_mut(), records.states) {
-        fields.insert("states".into(), states.into());
-    }
-    out
-}
-
-/// What one name-resolving gate's evidence cost, each tree apart. Spec 11.2.
-fn name_evidence(
-    cost: &crate::syntax::structural::NameCost,
-    layout: Option<base::Layout>,
-) -> Value {
-    let mut out = Map::new();
-    out.insert(
-        "layout".into(),
-        layout.map_or(Value::Null, |layout| {
-            json!({
-                "written": layout.written,
-                "worktree_add_ms": journal::millis(layout.worktree_add),
-                "changes_ms": journal::millis(layout.changes),
-                "renames_ms": journal::millis(layout.renames),
-                "cache_name_ms": journal::millis(layout.cache_name),
-                "ignored_ms": journal::millis(layout.ignored),
-                "walk_ms": journal::millis(layout.walk),
-            })
-        }),
-    );
-    out.insert("base_ms".into(), journal::millis(cost.base).into());
-    if let Some(lost) = cost.lost {
-        out.insert("lost_ms".into(), journal::millis(lost).into());
-    }
-    for (tree, part) in [("before", &cost.before), ("after", &cost.after)] {
-        let part = json!({
-            "measure_ms": journal::millis(part.measure),
-            "index_ms": journal::millis(part.index),
-            "query_ms": journal::millis(part.query),
-            "files": part.files,
-            "declarations": part.declarations,
-            "references": part.references,
-            "distinct_names": part.distinct_names,
-        });
-        out.insert(tree.into(), part);
-    }
-    Value::Object(out)
-}
-
-/// What the facts one gate held cost, and what one of each structural value costs. Spec 11.2.
-fn footprint(held: &crate::syntax::structural::footprint::Footprint) -> Value {
-    let mut out = Map::new();
-    for (name, value) in held.rows() {
-        out.insert(name.into(), value.into());
-    }
-    let mut sizes = Map::new();
-    for (name, value) in crate::syntax::structural::footprint::sizes() {
-        sizes.insert(name.into(), value.into());
-    }
-    out.insert("sizes".into(), Value::Object(sizes));
-    out.insert(
-        "reference_canonical_allocation_ratio".into(),
-        json!(if held.reference_distinct_names == 0 {
-            0.0
-        } else {
-            held.reference_canonical_allocations as f64 / held.reference_distinct_names as f64
-        }),
-    );
-    Value::Object(out)
-}
-
-fn coverage_json(coverage: &Coverage) -> Value {
-    json!({
-        "found": coverage.found,
-        "measured": coverage.measured,
-        "not_measured": coverage.not_measured,
-        "excluded": coverage.excluded,
-        "unreadable": coverage.unreadable,
-    })
-}
-
-/// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
-/// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
-/// line prints as held at the base, and the structural facts it extracted or shared. A gate that
-/// is exit 2 beside reasons it named where it names no site counts one `error` finding. Spec 11.2.
-fn row(
-    gate: &Gate,
-    (code, axes): (u8, Axes),
-    (records, shown): (&Records, &GateRecords),
-    ms: u64,
-) -> Value {
-    let erred = usize::from(code == 2 && !records.errors.is_empty());
-    let mut out = Map::new();
-    out.insert("name".into(), gate.name.clone().into());
-    out.insert("status".into(), axes.state(true).trim_end().into());
-    out.insert("findings".into(), (shown.findings.len() + erred).into());
-    out.insert("notes".into(), shown.notes.len().into());
-    out.insert(
-        "coverage".into(),
-        records.coverage.as_ref().map_or(Value::Null, coverage_json),
-    );
-    out.insert("ms".into(), ms.into());
-    out.insert("held".into(), records.held.map_or(Value::Null, Value::from));
-    out.insert(
-        "accepted".into(),
-        records.accepted.map_or(Value::Null, Value::from),
-    );
-    out.insert("facts".into(), facts(records));
-    out.insert(
-        "names".into(),
-        records
-            .names
-            .as_ref()
-            .map_or(Value::Null, |names| name_evidence(names, records.layout)),
-    );
-    out.insert(
-        "footprint".into(),
-        records.footprint.as_ref().map_or(Value::Null, footprint),
-    );
-    costs(&mut out, records);
-    Value::Object(out)
-}
-
-/// The content, module-graph and public-surface work of one gate's row. Spec 11.2.
-fn costs(out: &mut Map<String, Value>, records: &Records) {
-    out.insert(
-        "work".into(),
-        records.work.map_or(Value::Null, |work| {
-            json!({
-                "reads": work.reads,
-                "parses": work.parses,
-            })
-        }),
-    );
-    out.insert(
-        "graph".into(),
-        records.graph.map_or(Value::Null, |graph| {
-            json!({
-                "modules": graph.modules,
-                "sources": graph.sources,
-                "dependencies": graph.dependencies,
-                "edges": graph.edges,
-                "dispatches": by_language(graph.dispatched()),
-                "ms": journal::millis(graph.time),
-            })
-        }),
-    );
-    out.insert(
-        "surface".into(),
-        records.surface.map_or(Value::Null, |surface| {
-            json!({
-                "surfaces": surface.surfaces,
-                "items": surface.items,
-                "measured": surface.measured,
-                "opaque": surface.opaque,
-                "holes": surface.holes,
-                "dispatches": by_language(surface.dispatched()),
-                "ms": journal::millis(surface.time),
-            })
-        }),
-    );
-}
-
-/// One count per structural language, under the name a config names the language by.
-fn by_language(counts: impl Iterator<Item = (LanguageId, usize)>) -> Value {
-    let names = structural::languages();
-    counts
-        .filter_map(|(language, count)| {
-            let (name, _) = names.iter().find(|(_, id)| *id == language)?;
-            Some((name.to_string(), Value::from(count)))
-        })
-        .collect::<Map<String, Value>>()
-        .into()
-}
-
 fn hole_record(hole: &Incomplete) -> Value {
     json!({ "reason": hole.reason.name(), "detail": hole.detail, "text": hole.text })
 }
@@ -1468,7 +1291,7 @@ fn basis(
     basis["integration"] = integration.into();
     basis["scope"] = json!({
         "changed": against.scope.is_some(),
-        "coverage": records.coverage.as_ref().map(coverage_json),
+        "coverage": records.coverage.as_ref().map(diagnostics::coverage_json),
     });
     basis["window"] = against.base.as_ref().map_or(Value::Null, |base| {
         json!({ "kind": base.kind.name(), "before": base.before, "after": "the working tree" })

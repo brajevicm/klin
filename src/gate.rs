@@ -13,7 +13,7 @@ use crate::check::render::{Note, Slot};
 use crate::check::{catalogue, render};
 use crate::config;
 use crate::config::MEASUREMENT_LOST;
-use crate::document::{Against, Args, Document, leaves_code, no_source_root_said};
+use crate::document::{Against, Args, CheckDocument, leaves_code, no_source_root_said};
 use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::host;
 use crate::host::adapter::{Event, Stop};
@@ -102,7 +102,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         kind: ErrorKind::Configuration,
         error: Error(problem.to_string()),
     };
-    log.result = Some(Document::stopped_by(config, None, fault).json());
+    log.result = Some(CheckDocument::stopped_by(config, None, fault).json());
     let said = fresh.then_some(said);
     log.notice = noticed(root, said.as_deref(), Some(event));
     journal::stop(root, &log);
@@ -496,8 +496,9 @@ fn ran(
         Some(failure) => {
             let blocks = budgeted(project.root(), lost, log, Budget::build_block);
             let (code, text) = reported(&failure, &said, &blocks);
-            log.result =
-                Some(Document::unbuilt(Document::config_of(project), window, &failure).json());
+            log.result = Some(
+                CheckDocument::unbuilt(CheckDocument::config_of(project), window, &failure).json(),
+            );
             (
                 blocked_build(project.root(), event, text, code),
                 Leaves::Verdict(Verdict::red()),
@@ -511,7 +512,10 @@ fn ran(
                 eprintln!("klin: {note}");
             }
             let verdict = judged_verdict(&judged);
-            let reported = judged.as_ref().map(Document::reported).unwrap_or_default();
+            let reported = judged
+                .as_ref()
+                .map(CheckDocument::reported)
+                .unwrap_or_default();
             let (code, note, advised) = handed(args, project, judged, handing, log, out);
             let asked = (code == BLOCKED).then_some(reported);
             let leaves = Leaves::measured(verdict, asked.is_some(), advised);
@@ -525,7 +529,7 @@ fn ran(
 /// failed before it measured reaches none, so the `aborted` the Stop wrote stays and the stamp
 /// never moves past work no Stop judged. Only a klin.json klin cannot read writes `unjudged`.
 /// Spec 6.6, 10.4.
-fn judged_verdict(judged: &Result<Document, Fault>) -> Option<Verdict> {
+fn judged_verdict(judged: &Result<CheckDocument, Fault>) -> Option<Verdict> {
     let doc = judged.as_ref().ok()?;
     Some(match doc.failed() {
         0 => Verdict::Green,
@@ -565,7 +569,7 @@ struct Handing<'a> {
 fn handed(
     args: &Args,
     project: &Project,
-    outcome: Result<Document, Fault>,
+    outcome: Result<CheckDocument, Fault>,
     Handing {
         window,
         event,
@@ -578,8 +582,8 @@ fn handed(
         Ok(doc) => (doc, true),
         Err(fault) => {
             let _ = writeln!(out, "ERR: {}", fault.error);
-            let config = Document::config_of(project);
-            (Document::stopped_by(config, window, fault), false)
+            let config = CheckDocument::config_of(project);
+            (CheckDocument::stopped_by(config, window, fault), false)
         }
     };
     log.result = Some(doc.json());
@@ -685,7 +689,7 @@ fn judge(
     built: &[contract::Said],
     unbuilt: Option<&str>,
     out: &mut String,
-) -> Result<Document, Fault> {
+) -> Result<CheckDocument, Fault> {
     let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
     let wanted: Vec<&Gate> = plan
         .select(&args.gates, project)
@@ -704,7 +708,7 @@ fn judge(
         .iter()
         .filter_map(|(_, entry)| entry.clone())
         .collect();
-    let mut doc = Document::stopping(project, commands);
+    let mut doc = CheckDocument::stopping(project, commands);
     doc.ran(args, project, (&plan, &wanted, Vec::new()), &against, out);
     doc.stopped_with(unbuilt, rootless.as_deref());
     doc.gone_moves(project, &wanted, out);
@@ -818,7 +822,7 @@ fn rootless(args: &Args, plan: &Plan, wanted: &[&Gate], project: &Project) -> bo
     project.found_no_source_root() && leaves_code(args, plan, wanted, project)
 }
 
-fn summary_line(plan: &Plan, gates: usize, doc: &Document, out: &mut String) {
+fn summary_line(plan: &Plan, gates: usize, doc: &CheckDocument, out: &mut String) {
     let excluded = match plan.excluded.len() {
         0 => String::new(),
         count => format!("{count} excluded, "),
@@ -840,7 +844,7 @@ fn said(built: &[contract::Said], out: &mut String) {
 
 fn hook(
     args: &Args,
-    doc: &Document,
+    doc: &CheckDocument,
     report: &str,
     root: &Path,
     event: Option<&Event>,
@@ -885,7 +889,7 @@ fn hook(
 /// What an advisory Stop tells in place of a block: that the history moved, that klin blocks
 /// nothing until it settles, and what the run found, once, because the fresh stamp it takes
 /// makes the next Stop ordinary. Spec 6.6.
-fn advised(reason: &str, doc: &Document, report: &str) -> String {
+fn advised(reason: &str, doc: &CheckDocument, report: &str) -> String {
     let line = format!(
         "klin: the history moved under this turn ({reason}), so klin does not block until the \
          history settles, and `klin check` judges the branch."
@@ -901,7 +905,7 @@ fn advised(reason: &str, doc: &Document, report: &str) -> String {
 /// hears them only through a channel the agent does not read. Spec 7.2, ADR 0052.
 fn not_blocked(
     args: &Args,
-    doc: &Document,
+    doc: &CheckDocument,
     report: &str,
     event: &Event,
     why: &str,
@@ -919,7 +923,7 @@ fn not_blocked(
 /// What a failing Stop that spends no gate block still tells the person: the run's notes and
 /// errors, which the told-once record filters, and how to hold a file lost to a parse. A spent
 /// budget never keeps a new limitation from the person. Spec 2.3, 7.2.
-fn person_note(doc: &Document, report: &str) -> Option<String> {
+fn person_note(doc: &CheckDocument, report: &str) -> Option<String> {
     let mut parts = Vec::new();
     if doc.told() + doc.errored() > 0 {
         parts.push(format!(
@@ -1049,7 +1053,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
     let located = config::located(args.config.as_deref(), start);
     let named_nothing =
         args.config.is_some() && !located.as_ref().is_some_and(|file| file.exists());
-    let mut report = Document::default();
+    let mut report = CheckDocument::default();
     let measured = loaded
         .map_err(fault(match named_nothing {
             true => ErrorKind::Invocation,
@@ -1081,7 +1085,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
 fn measured(
     args: &Args,
     project: &mut Project,
-    report: &mut Document,
+    report: &mut CheckDocument,
     out: &mut String,
 ) -> Result<(), Fault> {
     let window = base::choose(project.root()).ok();

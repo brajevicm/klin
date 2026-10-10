@@ -11,6 +11,7 @@ mod config;
 mod conventions;
 mod coverage;
 mod dead_symbols;
+mod diagnostics;
 mod doc_citations;
 mod doc_size;
 mod document;
