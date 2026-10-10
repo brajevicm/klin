@@ -22,7 +22,7 @@
     "single-git-boundary": {
       "code": "Command::new(\"git\")",
       "in": "src",
-      "except": ["src/git.rs", "src/changed.rs"],
+      "except": ["src/sys/git.rs", "src/sys/changed.rs"],
       "remedy": "Use the shared Git boundary."
     },
     "no-old-flags": {
@@ -50,127 +50,18 @@
   "layering": {
     "acyclic": true,
     "layers": {
-      "render": {
-        "in": ["src/check/render.rs"],
-        "can_use": ["contract", "core"]
-      },
-      "runner": {
-        "in": [
-          "src/main.rs",
-          "src/gate.rs",
-          "src/guard.rs",
-          "src/hooks.rs",
-          "src/init.rs",
-          "src/update.rs"
-        ],
-        "can_use": null
-      },
-      "document": {
-        "in": ["src/diagnostics.rs", "src/document.rs"],
-        "can_use": [
-          "plan",
-          "catalogue",
-          "contract",
-          "project",
-          "render",
-          "syntax",
-          "core"
-        ]
-      },
-      "checks": {
-        "in": [
-          "src/complexity.rs",
-          "src/conventions.rs",
-          "src/dead_symbols.rs",
-          "src/doc_citations.rs",
-          "src/doc_size.rs",
-          "src/escapes.rs",
-          "src/inventory.rs",
-          "src/layering.rs",
-          "src/lockfile.rs",
-          "src/public_api.rs",
-          "src/reachability.rs",
-          "src/conventions/rules.rs",
-          "src/sarif.rs",
-          "src/stubs.rs"
-        ],
-        "can_use": [
-          "catalogue",
-          "contract",
-          "project",
-          "syntax",
-          "core",
-          "window"
-        ]
-      },
-      "syntax": {
-        "in": "src/syntax",
-        "can_use": ["catalogue", "project", "core"]
-      },
-      "plan": {
-        "in": ["src/plan.rs"],
-        "can_use": ["catalogue", "contract", "project", "core"]
-      },
-      "project": {
-        "in": [
-          "src/files.rs",
-          "src/project.rs",
-          "src/survey.rs",
-          "src/tree.rs"
-        ],
-        "can_use": ["catalogue", "syntax", "core", "window"]
-      },
-      "catalogue": {
-        "in": ["src/check/catalogue.rs", "src/reference.rs"],
-        "can_use": ["checks", "contract", "project", "syntax", "core"]
-      },
-      "host": { "in": "src/host", "can_use": ["core"] },
-      "journal": {
-        "in": "src/journal.rs",
-        "can_use": ["catalogue", "host", "core"]
-      },
-      "stats": {
-        "in": "src/stats.rs",
-        "can_use": ["catalogue", "contract", "journal", "window", "core"]
-      },
-      "window": {
-        "in": ["src/budget.rs", "src/radius.rs", "src/turn.rs"],
-        "can_use": ["catalogue", "host", "journal", "core"]
-      },
-      "contract": {
-        "in": [
-          "src/check/contract.rs",
-          "src/check/holes.rs",
-          "src/measurement.rs"
-        ],
-        "can_use": ["project", "syntax", "core"]
-      },
-      "core": {
-        "in": [
-          "src/base.rs",
-          "src/build.rs",
-          "src/cache.rs",
-          "src/ceiling.rs",
-          "src/changed.rs",
-          "src/clock.rs",
-          "src/config.rs",
-          "src/coverage.rs",
-          "src/error.rs",
-          "src/git.rs",
-          "src/hunks.rs",
-          "src/key.rs",
-          "src/markers.rs",
-          "src/modules",
-          "src/ratchet.rs",
-          "src/record.rs",
-          "src/scope.rs",
-          "src/stamp.rs",
-          "src/state.rs",
-          "src/surface",
-          "src/write.rs"
-        ],
-        "can_use": ["catalogue", "contract", "project", "syntax", "core"]
-      }
+      "sys": { "in": "src/sys", "can_use": [] },
+      "config": { "in": "src/config", "can_use": ["sys"] },
+      "syntax": { "in": "src/syntax", "can_use": ["config", "sys"] },
+      "facts": { "in": "src/facts", "can_use": ["syntax", "config", "sys"] },
+      "modules": { "in": "src/modules", "can_use": ["facts", "syntax", "config", "sys"] },
+      "surface": { "in": "src/surface", "can_use": ["modules", "facts", "syntax", "config", "sys"] },
+      "window": { "in": "src/window", "can_use": ["surface", "modules", "facts", "syntax", "config", "sys"] },
+      "contract": { "in": "src/contract", "can_use": ["window", "surface", "modules", "facts", "syntax", "config", "sys"] },
+      "checks": { "in": "src/checks", "can_use": ["contract", "window", "surface", "modules", "facts", "syntax", "config", "sys"] },
+      "engine": { "in": "src/engine", "can_use": ["checks", "contract", "window", "surface", "modules", "facts", "syntax", "config", "sys"] },
+      "hook": { "in": "src/hook", "can_use": ["engine", "checks", "contract", "window", "surface", "modules", "facts", "syntax", "config", "sys"] },
+      "cli": { "in": ["src/cli", "src/main.rs"], "can_use": ["hook", "engine", "checks", "contract", "window", "surface", "modules", "facts", "syntax", "config", "sys"] }
     }
   }
 }

@@ -13,12 +13,12 @@ use std::time::{Duration, Instant};
 
 use tree_sitter::{Node, Query, QueryCursor, StreamingIterator};
 
-use crate::changed::Change;
-use crate::config::Config;
-use crate::error::Error;
+use crate::config::file::Config;
 pub use crate::syntax::LanguageId;
 use crate::syntax::convention;
 use crate::syntax::{LANGUAGES, Language, Parsed, ParsedFile, line_at, parse, walk};
+use crate::sys::changed::Change;
+use crate::sys::error::Error;
 
 mod adapter;
 mod cache;

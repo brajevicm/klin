@@ -13,9 +13,9 @@ use serde_json::Value;
 use super::item::{
     Found, Hole, ITEM, Inapplicable, Item, NAMESPACE, Surface, TYPE, declared, opaque,
 };
+use crate::facts::survey;
 use crate::modules::ModuleGraph;
 use crate::modules::resolver::{Topology, directory, joined};
-use crate::survey;
 use crate::syntax::structural::facts::{DeclarationKind, Export, FileFacts, Visibility};
 
 pub(super) const LANGUAGE: &str = "TypeScript";

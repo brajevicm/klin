@@ -1,0 +1,560 @@
+//! The `dead-symbols` check: private Rust and TypeScript declarations with no reference outside
+//! their own declaration. Identity is file plus declaration line/text, and the `dead` metric
+//! ratchets from 0 (referenced) to 1 (unreferenced). The check discovers every structural
+//! language and accepts only `in`, `except` and name `ignore` as policy. The structural index
+//! owns parsing, declaration kinds and references; this module chooses eligibility and ratchets
+//! the result. ADR 0035, spec 8.4.
+
+use std::collections::BTreeSet;
+
+use serde_json::Value;
+
+use crate::config::file::Config;
+use crate::config::key::Key;
+use crate::config::scope::{self, Moves, Scope};
+use crate::contract::check::{
+    self as contract, Context, HeldAtBase, Line, Listed, Located, Measured, Sink,
+};
+use crate::contract::coverage;
+use crate::contract::holes;
+use crate::contract::measurement;
+use crate::contract::project::Project;
+use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
+use crate::facts::files;
+use crate::facts::tree::Tree;
+use crate::syntax::{self, structural};
+use crate::sys::error::Error;
+use crate::sys::record::Values;
+use crate::window::base::{Layout, Prior};
+
+pub const SECTION: &str = "dead_symbols";
+
+const IGNORE_NAME: &str = "ignore";
+const DEAD: &str = "dead";
+const LOST_REFERENCE: &str = "lost_reference";
+const REMEDY: &str =
+    "Delete the declaration if the refactor made it obsolete, or restore a real reference to it.";
+
+pub const IGNORE: Key = Key {
+    name: IGNORE_NAME,
+    holds: "name globs for declarations the check leaves out",
+    required: false,
+    rule: None,
+    default: "Rust `main`, test functions and declarations marked externally visible",
+    shape: crate::config::key::Shape::Strings,
+};
+
+pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, IGNORE];
+
+#[derive(Clone)]
+struct Selection {
+    extensions: Vec<&'static str>,
+    scope: Scope,
+}
+
+struct Spec {
+    selection: Selection,
+    ignore: Vec<String>,
+}
+
+/// What a changed, non-strict run judges: the files, and the names the index needs for them.
+struct Impact {
+    scope: Vec<String>,
+    names: structural::NameSet,
+}
+
+struct State {
+    file: String,
+    name: String,
+    line: u64,
+    end: u64,
+    text: String,
+    dead: bool,
+}
+
+pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
+    evaluate(at, false, out)
+}
+
+fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
+    let project = at.project;
+    let spec = spec(project)?;
+    let commit = contract::base_commit(project.root(), at)?;
+    let mut names = structural::NameCost::default();
+    let mut layout = None;
+    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout, out)?;
+    let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
+    let widened = at.scoped(
+        impact
+            .as_ref()
+            .map_or(at.only, |impact| Some(&impact.scope)),
+    );
+    let at = &widened;
+    let judged_scope = at.only.filter(|_| at.changes.is_some());
+    let wanted = impact.as_ref().map(|impact| &impact.names);
+    let (before_states, before_index) = judgement(
+        &before,
+        &mut names.before,
+        &spec.ignore,
+        judged_scope,
+        wanted,
+    );
+    let (after_states, after_index) =
+        judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
+    let built = (before_states.len() + after_states.len()) as u64;
+    let held_before = held(&before_states, at);
+    let prior = held_before.iter().map(|state| finding(state)).collect();
+    let now = structural::timed(names.lost.get_or_insert_default(), || {
+        dead_findings(&after_states, &before_index, &after_index, &held_before)
+    });
+    out.record(|records| {
+        records.states = Some(built);
+        records.names = Some(names);
+        records.layout = layout;
+        records.footprint = Some(structural::footprint::of([before.facts(), after.facts()]));
+    });
+    let judged = after_states
+        .iter()
+        .filter(|state| coverage::in_scope(&state.file, at.only))
+        .count();
+    let dead = now.len();
+    let said = out.covered(&after.files.coverage(at.only));
+    let evaluator = evaluator();
+    let code = evaluator.evaluate(
+        now,
+        prior,
+        ratchet::accepted(&project.config, at.gate, evaluator.metrics)?,
+        at,
+        Line::new(Measured::DeadSymbols { judged, dead }, said),
+        out,
+    );
+    let files = (&after.files, &before.files);
+    holes::closed(files, &after.unparsed, at.only, at, out);
+    reports(report, &after_states, &held_before, at.only, out);
+    Ok(code)
+}
+
+/// The two trees measured over `spec`'s selection, the base under its own scope. Spec 8.4.
+fn sweeps(
+    at: &Context,
+    spec: &Spec,
+    commit: &str,
+    names: &mut structural::NameCost,
+    layout: &mut Option<Layout>,
+    out: &mut Sink,
+) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
+    let sides = measurement::sides_counted(
+        at,
+        commit,
+        measurement::Counted { names, layout },
+        |unchanged| measure(at.project.tree(), &spec.selection, unchanged),
+        |prior| Ok((before(at, spec, prior)?, ())),
+        out,
+    )?;
+    Ok((sides.before, sides.after))
+}
+
+/// The effective judgement scope of a changed, non-strict run, and the names judging it needs:
+/// the physical scope the runner gave, plus every file declaring a name whose reference evidence
+/// this turn changed. A declaration that did not move can still change from referenced to dead
+/// when its last caller changed, so the physical scope alone is not the semantic impact scope.
+/// A name a changed file references on both sides cannot flip one, so only the names one side
+/// holds alone widen anything: no type, import or receiver resolution enters here, and a name
+/// with several declarations widens to all of them, which fails less. Issue #237, spec 8.4.
+///
+/// A state reads the references of the names its own declaration binds, and a lost reference
+/// reads the same names in both trees, so the index needs the names the judged files declare,
+/// and no other. Issue #540, ADR 0038.
+fn impact(
+    at: &Context,
+    before: &measurement::Measurement,
+    after: &measurement::Measurement,
+) -> Option<Impact> {
+    let only = at.only.filter(|_| at.changes.is_some())?;
+    let mut affected = structural::NameSet::new();
+    for change in at.changes? {
+        if !measured_after(after, &change.path) {
+            continue;
+        }
+        let now = reference_names(after.file(&change.path));
+        let was = change
+            .was
+            .as_ref()
+            .map(|was| reference_names(before.file(was)))
+            .unwrap_or_default();
+        for (language, name) in now.symmetric_difference(&was) {
+            affected.entry(*language).or_default().insert(name.clone());
+        }
+    }
+    let both = || before.facts().iter().chain(after.facts());
+    let mut scope: BTreeSet<&str> = only.iter().map(String::as_str).collect();
+    scope.extend(
+        both()
+            .filter(|file| declares_any(file, &affected))
+            .map(|file| file.file.as_str()),
+    );
+    let mut names = affected;
+    for file in both().filter(|file| scope.contains(file.file.as_str())) {
+        let declared = names.entry(file.language).or_default();
+        for declaration in &file.declarations {
+            declared.extend(declaration.names().map(structural::facts::Name::new));
+        }
+    }
+    Some(Impact {
+        scope: scope.into_iter().map(str::to_string).collect(),
+        names,
+    })
+}
+
+fn declares_any(file: &structural::facts::FileFacts, names: &structural::NameSet) -> bool {
+    names.get(&file.language).is_some_and(|names| {
+        file.declarations
+            .iter()
+            .flat_map(structural::facts::Declaration::names)
+            .any(|name| names.contains(name))
+    })
+}
+
+fn reference_names(
+    file: Option<&structural::facts::FileFacts>,
+) -> BTreeSet<(syntax::LanguageId, structural::facts::Name)> {
+    let Some(file) = file else {
+        return BTreeSet::new();
+    };
+    file.references
+        .iter()
+        .map(|reference| (file.language, reference.name.clone()))
+        .collect()
+}
+
+/// Whether the working tree's structural evidence for this path is a measurement. A changed
+/// file the analyzer could not read is a coverage hole the run already reports, and its old
+/// reference names are not proof that the references went away, so nothing widens from it.
+fn measured_after(after: &measurement::Measurement, path: &str) -> bool {
+    !after.unparsed.iter().any(|held| held.file == path)
+        && !after.unsupported.iter().any(|held| held.file == path)
+}
+
+/// The tree's states, with the index they were judged against, which every later name query
+/// of the run reads.
+fn judgement(
+    measured: &measurement::Measurement,
+    cost: &mut structural::TreeNameCost,
+    ignore: &[String],
+    only: Option<&[String]>,
+    wanted: Option<&structural::NameSet>,
+) -> (Vec<State>, structural::SourceIndex) {
+    let index = measured.indexed(cost, wanted);
+    let states = structural::timed(&mut cost.query, || states(&index, ignore, only));
+    (states, index)
+}
+
+fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
+    let today = (SECTION, &spec.selection.scope);
+    contract::at_base(at, contract::Lay::Whole(prior), today, |prior, scope| {
+        let selection = Selection {
+            scope,
+            ..spec.selection.clone()
+        };
+        measure(prior.tree(), &selection, None)
+    })
+}
+
+impl contract::Based for Vec<&State> {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
+        self.retain(|state| was_held(&state.file));
+    }
+}
+
+fn held<'a>(states: &'a [State], at: &Context) -> Vec<&'a State> {
+    let mut held = states.iter().collect();
+    contract::keep_held(at, &mut held);
+    held
+}
+
+fn dead_findings(
+    states: &[State],
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
+    held_before: &[&State],
+) -> Vec<Finding> {
+    states
+        .iter()
+        .filter(|state| state.dead)
+        .map(|state| finding_with_lost_reference(state, before, after, held_before))
+        .collect()
+}
+
+fn reports(
+    report: bool,
+    after_states: &[State],
+    held_before: &[&State],
+    only: Option<&[String]>,
+    out: &mut Sink,
+) {
+    if report {
+        report_dead(after_states, only, out);
+    }
+    base_note(held_before, only, out);
+}
+
+fn spec(project: &Project) -> Result<Spec, Error> {
+    let config = &project.config;
+    let values = config.policy(SECTION, KEYS)?;
+    let selection = selection(config, project.moves(), &values)?;
+    if selection.scope.has_in() && !applicable(project.tree(), &selection)? {
+        return Err(Error(format!(
+            "{}: \"{SECTION}\" has an \"in\" scope with no applicable file",
+            config.file.display()
+        )));
+    }
+    Ok(Spec {
+        selection,
+        ignore: files::strings(config, SECTION, &values, IGNORE)?,
+    })
+}
+
+fn selection(config: &Config, moves: &Moves, values: &Values) -> Result<Selection, Error> {
+    Ok(Selection {
+        extensions: structural::selected_extensions(&[]).unwrap_or_default(),
+        scope: Scope::read(config, moves, SECTION, values)?,
+    })
+}
+
+pub fn language_extensions() -> Vec<(&'static str, String)> {
+    structural::language_extensions()
+}
+
+fn measure(
+    tree: &Tree,
+    selection: &Selection,
+    unchanged: Option<&measurement::Unchanged>,
+) -> Result<measurement::Measurement, Error> {
+    let repo_root = tree.root();
+    let skip_dirs = files::default_skip_dirs();
+    let wanted = files::Wanted {
+        extensions: &selection.extensions,
+        skip_dirs: &skip_dirs,
+        exclude: &[],
+        exclude_except: &[],
+        skip_hidden: true,
+    };
+    let mut found = files::found(
+        tree.root(),
+        || tree.files(),
+        &[repo_root.to_path_buf()],
+        &wanted,
+    )?;
+    let mut excluded = Vec::new();
+    found.kept.retain(|file| {
+        let keep = selection.scope.selects(&files::relative(file, repo_root));
+        if !keep {
+            excluded.push(file.clone());
+        }
+        keep
+    });
+    found.excluded.extend(excluded);
+    measurement::measure(found, tree, unchanged)
+}
+
+fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
+    Ok(tree.files()?.iter().any(|file| {
+        selection.scope.inside(file) && selection.extensions.iter().any(|end| file.ends_with(end))
+    }))
+}
+
+/// The declaration state of one tree, built only for the files the run judges. The index holds
+/// every file of the tree and at least the names those files declare, so a declaration in scope
+/// is judged against every reference the repository holds to it, and only the states nothing
+/// can report are left unbuilt. Spec 8.4.
+fn states(
+    index: &structural::SourceIndex,
+    ignore: &[String],
+    only: Option<&[String]>,
+) -> Vec<State> {
+    let mut out = Vec::new();
+    for file in index.files() {
+        if !coverage::in_scope(&file.file, only) {
+            continue;
+        }
+        for declaration in &file.declarations {
+            if !eligible(declaration, ignore) {
+                continue;
+            }
+            out.push(state(index, file, declaration));
+        }
+    }
+    out.sort_by(|a, b| (&a.file, a.line, &a.name).cmp(&(&b.file, b.line, &b.name)));
+    out
+}
+
+fn eligible(declaration: &structural::facts::Declaration, ignore: &[String]) -> bool {
+    !declaration.externally_visible
+        && !declaration.entry_point
+        && !declaration.names().all(|name| {
+            ignore
+                .iter()
+                .any(|glob| files::glob_matches(glob.as_bytes(), name.as_bytes()))
+        })
+}
+
+fn state(
+    index: &structural::SourceIndex,
+    file: &structural::facts::FileFacts,
+    declaration: &structural::facts::Declaration,
+) -> State {
+    let dead = !declaration.names().any(|name| {
+        index.references(file.language, name).any(|reference| {
+            reference.file != file.file
+                || reference.line < declaration.line
+                || reference.line > declaration.end
+        })
+    });
+    State {
+        file: file.file.clone(),
+        name: declaration.name.clone(),
+        line: declaration.line,
+        end: declaration.end,
+        text: declaration.text.clone(),
+        dead,
+    }
+}
+
+fn finding(state: &State) -> Finding {
+    let mut values = Values::new();
+    values.insert(DEAD.into(), u64::from(state.dead).into());
+    Finding {
+        file: state.file.clone(),
+        line: state.line,
+        text: state.text.clone(),
+        values,
+        body: None,
+    }
+}
+
+fn finding_with_lost_reference(
+    state: &State,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
+    before_states: &[&State],
+) -> Finding {
+    let mut finding = finding(state);
+    if let Some(file) = lost_reference(state, before, after, before_states) {
+        finding.values.insert(LOST_REFERENCE.into(), file.into());
+    }
+    finding
+}
+
+/// The first base state at this site. The states are in file, line and name order, so the
+/// site is found by halving them.
+fn held_at<'a>(states: &[&'a State], state: &State) -> Option<&'a State> {
+    let from = states.partition_point(|held| site(held) < site(state));
+    states[from..]
+        .iter()
+        .take_while(|held| site(held) == site(state))
+        .find(|held| held.text == state.text)
+        .copied()
+}
+
+fn site(state: &State) -> (&str, u64, &str) {
+    (&state.file, state.line, &state.name)
+}
+
+fn lost_reference(
+    state: &State,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
+    before_states: &[&State],
+) -> Option<String> {
+    let held = held_at(before_states, state)?;
+    if held.dead {
+        return None;
+    }
+    let file = before.file(&state.file)?;
+    let declaration = file.declarations.iter().find(|declaration| {
+        (declaration.line, &declaration.name, &declaration.text)
+            == (held.line, &held.name, &held.text)
+    })?;
+    declaration
+        .names()
+        .filter_map(|name| {
+            let now: BTreeSet<(&str, u64)> = after
+                .references(file.language, name)
+                .map(|reference| (reference.file, reference.line))
+                .collect();
+            before
+                .references(file.language, name)
+                .filter(|reference| {
+                    reference.file != held.file
+                        || reference.line < held.line
+                        || reference.line > held.end
+                })
+                .find(|reference| !now.contains(&(reference.file, reference.line)))
+                .map(|reference| reference.file)
+        })
+        .min()
+        .map(str::to_string)
+}
+
+fn evaluator() -> Evaluator<'static> {
+    Evaluator {
+        metrics: &[DEAD],
+        unit: "dead symbol(s)",
+        condition: "where no reference named the declaration exists outside its own declaration",
+        fix_advice: Remedy::Fixed(REMEDY),
+        ceiling: None,
+        format_metrics: show,
+        nested: None,
+    }
+}
+
+fn show(values: &Values) -> String {
+    let state = match values.get(DEAD).and_then(Value::as_u64) {
+        Some(0) => "referenced",
+        Some(1) => "dead",
+        _ => "unknown",
+    };
+    match values.get(LOST_REFERENCE).and_then(Value::as_str) {
+        Some(file) => format!("{state}, lost reference in {file}"),
+        None => state.to_string(),
+    }
+}
+
+fn report_dead(states: &[State], only: Option<&[String]>, out: &mut Sink) {
+    let dead: Vec<&State> = states
+        .iter()
+        .filter(|state| state.dead && coverage::in_scope(&state.file, only))
+        .collect();
+    out.tell(Listed::DeadSymbols(
+        dead.into_iter()
+            .map(|state| {
+                let site = Located {
+                    file: state.file.clone(),
+                    line: state.line,
+                    text: state.text.clone(),
+                };
+                (site, state.name.clone())
+            })
+            .collect(),
+    ));
+}
+
+fn base_note(states: &[&State], only: Option<&[String]>, out: &mut Sink) {
+    let dead: Vec<&State> = states
+        .iter()
+        .filter(|state| state.dead && coverage::in_scope(&state.file, only))
+        .copied()
+        .collect();
+    if dead.is_empty() {
+        return;
+    }
+    out.tell(Listed::Held(HeldAtBase::DeadSymbols(
+        dead.iter()
+            .map(|state| Located {
+                file: state.file.clone(),
+                line: state.line,
+                text: state.text.clone(),
+            })
+            .collect(),
+    )));
+}

@@ -5,8 +5,8 @@
 
 use tree_sitter::{Node, Parser, Tree};
 
-use crate::error::Error;
-use crate::key;
+use crate::config::key;
+use crate::sys::error::Error;
 
 pub mod convention;
 pub mod pattern;
