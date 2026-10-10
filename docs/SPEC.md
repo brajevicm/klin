@@ -3282,7 +3282,10 @@ renamed in the declaration is renamed where it is read. A key inside one of them
 entry, is stated in what the key above it holds and is not a row of its own.
 The sections the reference prints, and the built-in language coverage it
 prints beside them, come off the same table of checks a run gates from, so a
-check cannot be gated and left out of the reference.
+check cannot be gated and left out of the reference. The coverage opens with
+one matrix of every language name a check's table prints against every check
+that names languages, before the per-check tables of extensions. The matrix
+takes the names as the tables print them and merges none.
 
 `schemas/klin.json` is generated from those same declarations by `klin
 reference --schema`. SchemaStore registers the exact filename `klin.json`, so

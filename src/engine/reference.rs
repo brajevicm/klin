@@ -5,6 +5,7 @@
 //! a string of its own, so a key the reference does not print is a key no module can read.
 //! Spec 5.8.
 
+use std::collections::BTreeSet;
 use std::fmt::Write;
 
 use serde_json::{Map, Value, json};
@@ -390,18 +391,44 @@ fn languages(out: &mut String) {
     let _ = writeln!(
         out,
         "\n## Built-in language coverage\n\n\
-         These tables report the source extensions each check discovers automatically. They \
-         are capabilities of the binary, not selectors accepted in `klin.json`."
+         The matrix reports which check discovers which language, and the tables after it \
+         report the source extensions each check discovers automatically. They are \
+         capabilities of the binary, not selectors accepted in `klin.json`."
     );
-    let named = catalogue::CATALOGUE
+    let named: Vec<_> = catalogue::CATALOGUE
         .iter()
-        .filter_map(|spec| Some((spec.section, spec.languages?)));
-    for (section, rows) in named {
+        .filter_map(|spec| Some((spec.section, spec.languages?())))
+        .collect();
+    matrix(out, &named);
+    for (section, rows) in &named {
         let _ = writeln!(out, "\n### `{section}`\n");
         let _ = writeln!(out, "| Name | Extensions |\n| --- | --- |");
-        for (name, extensions) in rows() {
+        for (name, extensions) in rows {
             let _ = writeln!(out, "| `{name}` | {extensions} |");
         }
+    }
+}
+
+fn matrix(out: &mut String, named: &[(&str, Vec<(&str, String)>)]) {
+    let names: BTreeSet<&str> = named
+        .iter()
+        .flat_map(|(_, rows)| rows.iter().map(|(name, _)| *name))
+        .collect();
+    let _ = write!(out, "\n| Language |");
+    for (section, _) in named {
+        let _ = write!(out, " `{section}` |");
+    }
+    let _ = writeln!(out, "\n| --- |{}", " --- |".repeat(named.len()));
+    for name in names {
+        let _ = write!(out, "| `{name}` |");
+        for (_, rows) in named {
+            let mark = match rows.iter().any(|(row, _)| *row == name) {
+                true => "yes",
+                false => NONE,
+            };
+            let _ = write!(out, " {mark} |");
+        }
+        let _ = writeln!(out);
     }
 }
 
