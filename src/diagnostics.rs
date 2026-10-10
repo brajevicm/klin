@@ -102,21 +102,21 @@ pub fn coverage_json(coverage: &Coverage) -> Value {
     })
 }
 
+/// How many findings and notes one gate's row says it left.
+pub struct Counts {
+    pub findings: usize,
+    pub notes: usize,
+}
+
 /// One gate's row in the JSON: what it is called, what it came to, how many findings and notes
 /// it left, the scope it measured, how long its own measure and judge took, the count its `OK:`
 /// line prints as held at the base, and the structural facts it extracted or shared. Spec 11.2.
-pub fn row(
-    name: &str,
-    status: &str,
-    (findings, notes): (usize, usize),
-    records: &Records,
-    ms: u64,
-) -> Value {
+pub fn row(name: &str, status: &str, counts: Counts, records: &Records, ms: u64) -> Value {
     let mut out = Map::new();
     out.insert("name".into(), name.into());
     out.insert("status".into(), status.into());
-    out.insert("findings".into(), findings.into());
-    out.insert("notes".into(), notes.into());
+    out.insert("findings".into(), counts.findings.into());
+    out.insert("notes".into(), counts.notes.into());
     out.insert(
         "coverage".into(),
         records.coverage.as_ref().map_or(Value::Null, coverage_json),

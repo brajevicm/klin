@@ -13,7 +13,7 @@ use crate::check::render::{Note, Slot};
 use crate::check::{catalogue, render};
 use crate::config;
 use crate::config::MEASUREMENT_LOST;
-use crate::document::{Against, Args, CheckDocument, leaves_code, no_source_root_said};
+use crate::document::{Against, Args, CheckDocument, View, leaves_code, no_source_root_said};
 use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::host;
 use crate::host::adapter::{Event, Stop};
@@ -48,8 +48,10 @@ pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error>
         config: check.config.clone(),
         gates: check.checks.clone(),
         changed: check.changed,
-        json: check.json,
-        ..Args::default()
+        view: match check.json {
+            true => View::Json,
+            false => View::Text,
+        },
     };
     run(&args, start, out)
 }
@@ -59,7 +61,7 @@ pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error>
 pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
     let args = Args {
         changed: true,
-        hook: true,
+        view: View::Stop,
         ..Args::default()
     };
     let Some(_claim) = state::claimed(start, &event.identity) else {
@@ -102,7 +104,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         kind: ErrorKind::Configuration,
         error: Error(problem.to_string()),
     };
-    log.result = Some(CheckDocument::stopped_by(config, None, fault).json());
+    log.result = Some(CheckDocument::stopped_by(config, None, fault).into_json());
     let said = fresh.then_some(said);
     log.notice = noticed(root, said.as_deref(), Some(event));
     journal::stop(root, &log);
@@ -124,7 +126,7 @@ fn noticed(root: &Path, said: Option<&str>, event: Option<&Event>) -> Option<jou
 }
 
 fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    if !args.json {
+    if !args.json() {
         for note in config::notes(args.config.as_deref(), start) {
             let _ = writeln!(out, "{note}");
         }
@@ -406,7 +408,7 @@ fn tell(
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_blocks > 0 || turn::intervened(root);
-    if code == 0 && !args.json && log.host.is_some() && intervened {
+    if code == 0 && !args.json() && log.host.is_some() && intervened {
         let tail = stats::stop_tail(root);
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
@@ -497,7 +499,8 @@ fn ran(
             let blocks = budgeted(project.root(), lost, log, Budget::build_block);
             let (code, text) = reported(&failure, &said, &blocks);
             log.result = Some(
-                CheckDocument::unbuilt(CheckDocument::config_of(project), window, &failure).json(),
+                CheckDocument::unbuilt(CheckDocument::config_of(project), window, &failure)
+                    .into_json(),
             );
             (
                 blocked_build(project.root(), event, text, code),
@@ -586,9 +589,9 @@ fn handed(
             (CheckDocument::stopped_by(config, window, fault), false)
         }
     };
-    log.result = Some(doc.json());
     if let Some(reason) = log.advisory.filter(|_| measured) {
         let said = advised(reason, &doc, &std::mem::take(out));
+        log.result = Some(doc.into_json());
         return (0, Some(said), true);
     }
     let (code, note) = hook(
@@ -600,6 +603,7 @@ fn handed(
         lost,
         log,
     );
+    log.result = Some(doc.into_json());
     (code, note, false)
 }
 
@@ -771,7 +775,7 @@ fn base(
         return Ok(None);
     }
     let base = chosen(window, project)?;
-    if !args.json {
+    if !args.json() {
         let _ = writeln!(out, "  {}", base.line());
     }
     Ok(Some(base))
@@ -807,7 +811,7 @@ fn no_source_root(
         return Ok(None);
     }
     let said = no_source_root_said(project);
-    if !args.json {
+    if !args.json() {
         let _ = writeln!(out, "  NOTE: {said}");
     }
     Ok(Some(said))
@@ -916,7 +920,7 @@ fn not_blocked(
         "klin: not blocking again; {why}, and the window stays open until a person \
          fixes, accepts or resets it."
     );
-    let person = (!args.json).then(|| person_note(doc, report)).flatten();
+    let person = (!args.json()).then(|| person_note(doc, report)).flatten();
     (event.host.stop(&Stop::Pass), person)
 }
 
@@ -951,7 +955,7 @@ fn nothing_blocks(
         return (0, None);
     }
     let said = format!("klin: nothing blocks the stop, and the run left a note:\n{report}");
-    if args.json || event.is_none() {
+    if args.json() || event.is_none() {
         eprint!("{said}");
         return (1, None);
     }
@@ -1021,7 +1025,7 @@ fn changes<'a>(
         return Ok(None);
     };
     let changed = project.changes(&base.before)?;
-    if !args.json {
+    if !args.json() {
         let _ = writeln!(
             out,
             "  changed: {} file(s) against the base — the scoped gates judge those; \
@@ -1074,7 +1078,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
                 "present": located.as_ref().is_some_and(|file| file.is_file()),
             })
         });
-        if !args.json {
+        if !args.json() {
             let _ = writeln!(out, "ERR: {}", fault.error);
         }
         report.stop(fault);
@@ -1094,7 +1098,7 @@ fn measured(
     }
     let project = &*project;
     if let Some(note) = deleted_config(args, project, window.as_ref()) {
-        if !args.json {
+        if !args.json() {
             let _ = writeln!(out, "  NOTE: {}", note.message);
         }
         report.note(note);

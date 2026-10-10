@@ -9,10 +9,10 @@ use serde_json::{Map, Value};
 
 use crate::ceiling::Ceiling;
 use crate::check::contract::{
-    self, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION, Derived,
-    Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed, Located,
-    Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNBUILT,
-    UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
+    self, AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION,
+    Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed,
+    Located, Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNBUILT,
+    UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
 };
 use crate::check::holes::{self, Unmeasured};
 use crate::config::MEASUREMENT_LOST;
@@ -630,17 +630,18 @@ pub enum Slot<T> {
 }
 
 impl<T: Clone + Into<Value>> Slot<T> {
-    fn put(&self, out: &mut Map<String, Value>, key: &str) {
+    fn entry(&self, key: &str) -> Option<(String, Value)> {
         match self {
-            Slot::Absent => (),
-            Slot::Null => {
-                out.insert(key.into(), Value::Null);
-            }
-            Slot::Is(value) => {
-                out.insert(key.into(), value.clone().into());
-            }
+            Slot::Absent => None,
+            Slot::Null => Some((key.to_string(), Value::Null)),
+            Slot::Is(value) => Some((key.to_string(), value.clone().into())),
         }
     }
+}
+
+/// A key a record writes only when it holds a value.
+fn entry<T: Into<Value>>(key: &str, value: Option<T>) -> Option<(String, Value)> {
+    value.map(|value| (key.to_string(), value.into()))
 }
 
 impl Slot<String> {
@@ -720,7 +721,7 @@ impl Finding {
 }
 
 /// A note of the check document: the words a person reads, and what the note is about. Spec 11.7.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Note {
     pub check: Option<String>,
     pub kind: &'static str,
@@ -731,23 +732,14 @@ pub struct Note {
     pub values: Option<Map<String, Value>>,
 }
 
-/// The reason of a form a resolver found two answers for, which the Stop tells as it tells an
-/// unresolved one. Spec 7.2.
-const AMBIGUOUS: &str = "ambiguous";
-/// An accepted entry that matched nothing, which the Stop tells as a note. Spec 15.
-const UNMATCHED: &str = "unmatched";
-
 impl Note {
     /// A note about the run, with no check and no site.
     pub fn of_run(kind: &'static str, message: &str) -> Note {
         Note {
-            check: None,
             kind,
             message: message.to_string(),
             coverage: Some(false),
-            file: Slot::Absent,
-            line: None,
-            values: None,
+            ..Note::default()
         }
     }
 
@@ -766,22 +758,16 @@ impl Note {
         out.insert("check".into(), self.check.clone().into());
         out.insert("kind".into(), self.kind.into());
         out.insert("message".into(), self.message.clone().into());
-        if let Some(coverage) = self.coverage {
-            out.insert("coverage".into(), coverage.into());
-        }
-        self.file.put(&mut out, "file");
-        if let Some(line) = self.line {
-            out.insert("line".into(), line.into());
-        }
-        if let Some(values) = &self.values {
-            out.insert("values".into(), values.clone().into());
-        }
+        out.extend(entry("coverage", self.coverage));
+        out.extend(self.file.entry("file"));
+        out.extend(entry("line", self.line));
+        out.extend(entry("values", self.values.clone()));
         Value::Object(out)
     }
 }
 
 /// A review item of the check document, which never changes an exit code. Spec 11.7.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Review {
     pub check: Option<String>,
     pub kind: &'static str,
@@ -798,18 +784,17 @@ impl Review {
         out.insert("check".into(), self.check.clone().into());
         out.insert("kind".into(), self.kind.into());
         out.insert("file".into(), self.file.clone().into());
-        self.line.put(&mut out, "line");
+        out.extend(self.line.entry("line"));
         out.insert("text".into(), self.text.clone().into());
-        self.reason.put(&mut out, "reason");
-        if let Some(values) = &self.values {
-            out.insert("values".into(), values.clone().into());
-        }
+        out.extend(self.reason.entry("reason"));
+        out.extend(entry("values", self.values.clone()));
         Value::Object(out)
     }
 }
 
 /// What one gate's result adds to the check document of spec 11.7: its findings, notes and
 /// review items under the gate's name, the derived entries of its policy, and its holes.
+#[derive(Default)]
 pub struct GateRecords {
     gate: String,
     pub findings: Vec<Finding>,
@@ -823,11 +808,7 @@ pub struct GateRecords {
 pub fn records(gate: &str, told: &[Told]) -> GateRecords {
     let mut out = GateRecords {
         gate: gate.to_string(),
-        findings: Vec::new(),
-        notes: Vec::new(),
-        reviews: Vec::new(),
-        derived: Vec::new(),
-        holes: Vec::new(),
+        ..GateRecords::default()
     };
     for item in told {
         record_one(item, &mut out);
@@ -914,7 +895,7 @@ fn site_note(
         coverage: Some(false),
         file: Slot::file(file),
         line,
-        values: None,
+        ..Note::default()
     }
 }
 
@@ -985,8 +966,7 @@ fn located_review(gate: &str, kind: &'static str, site: &Located, text: String) 
         file: site.file.clone(),
         line: Slot::Is(site.line),
         text,
-        reason: Slot::Absent,
-        values: None,
+        ..Review::default()
     }
 }
 
@@ -1067,8 +1047,8 @@ fn unmatched_record(site: &Entry, caller: Caller, out: &mut GateRecords) {
             file: site.file.clone(),
             line: site.line.map_or(Slot::Absent, Slot::Is),
             text: site.text.clone(),
-            reason: Slot::Absent,
             values,
+            ..Review::default()
         }),
         Caller::Hook => out.notes.push(Note {
             values,
@@ -1227,26 +1207,23 @@ pub fn lost_finding(item: &Unmeasured, held: bool) -> Finding {
 /// The review item of one opened gap. Spec 7.2, 11.7.
 pub fn opened_review(item: &Unmeasured) -> Review {
     Review {
-        check: None,
         kind: holes::UNMEASURED,
         file: item.file.clone(),
         line: Slot::Null,
         text: item.text.clone(),
         reason: Slot::Is(item.reason.name().to_string()),
-        values: None,
+        ..Review::default()
     }
 }
 
 /// The coverage note of one file klin's own limit leaves unmeasured. Spec 7.2, 11.7.
 pub fn limit_note(item: &Unmeasured) -> Note {
     Note {
-        check: None,
         kind: item.reason.name(),
         message: unmeasured_said(item),
         coverage: Some(true),
         file: Slot::Is(item.file.clone()),
-        line: None,
-        values: None,
+        ..Note::default()
     }
 }
 
@@ -1260,7 +1237,7 @@ pub fn unmatched_lost_review(file: &str) -> Review {
         line: Slot::Null,
         text: unmatched_lost_text(file),
         reason: Slot::Null,
-        values: None,
+        ..Review::default()
     }
 }
 

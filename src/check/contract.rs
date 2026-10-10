@@ -51,6 +51,14 @@ pub const DELETED_TEST: &str = "deleted-test";
 /// Spec 7.6.
 pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
 
+/// The reason of a form a resolver found two answers for, which the Stop tells as it tells an
+/// unresolved one. Spec 7.2.
+pub const AMBIGUOUS: &str = "ambiguous";
+
+/// The kind of an accepted entry that matched nothing at the Stop, which the Stop tells as a
+/// note. Spec 15.
+pub const UNMATCHED: &str = "unmatched";
+
 /// The outcome of a derived ceiling whose recorded scope fell back to the whole repository or
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
 pub const DERIVATION: &str = "derivation";

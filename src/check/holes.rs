@@ -9,7 +9,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::changed::{self, Change};
-use crate::check::contract::{Cause, Class, Context, Hole, Located, Sink, Site, Unresolvable};
+use crate::check::contract::{
+    AMBIGUOUS, Cause, Class, Context, Hole, Located, Sink, Site, UNRESOLVED, Unresolvable,
+};
 use crate::coverage::{Files, Left, Lost, Unresolved, held_at, in_scope};
 use crate::files::{self, Form};
 use crate::project::Project;
@@ -162,8 +164,8 @@ pub fn form_reason(why: &str) -> &'static str {
         "modules declare a type of that name",
     ];
     match ambiguous.iter().any(|said| why.contains(said)) {
-        true => "ambiguous",
-        false => "unresolved",
+        true => AMBIGUOUS,
+        false => UNRESOLVED,
     }
 }
 

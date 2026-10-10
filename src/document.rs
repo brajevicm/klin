@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use crate::base::{self, Prior, Window};
 use crate::changed::Change;
@@ -29,14 +29,32 @@ use crate::{diagnostics, journal, survey};
 
 const INVENTORY: &str = "inventory";
 
+/// What a run writes: the text of `klin check`, its JSON document, or the report of the Stop hook.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum View {
+    #[default]
+    Text,
+    Json,
+    Stop,
+}
+
 /// What one run of the runner is asked: by `check` or by the Stop hook.
 #[derive(Default)]
 pub struct Args {
     pub config: Option<PathBuf>,
     pub gates: Vec<String>,
     pub changed: bool,
-    pub hook: bool,
-    pub json: bool,
+    pub view: View,
+}
+
+impl Args {
+    pub fn json(&self) -> bool {
+        self.view == View::Json
+    }
+
+    pub fn at_stop(&self) -> bool {
+        self.view == View::Stop
+    }
 }
 
 /// What this run judges the working tree against: the base commit, laid out, and the files
@@ -135,19 +153,19 @@ impl Axes {
     /// The row word: the first of `ERR`, `FAIL`, `INCOMPLETE`, `REVIEW`, `ok`. The Stop's row
     /// says only what its agent acts on, so an incomplete or reviewed gate there is `ok`.
     /// Spec 9.5, 11.3.
-    fn state(self, at_stop: bool) -> &'static str {
-        match (self.worst(), at_stop) {
+    fn state(self, view: View) -> &'static str {
+        match (self.worst(), view) {
             (Worst::Error, _) => "ERR ",
             (Worst::Fail, _) => "FAIL",
-            (Worst::Incomplete, false) => "INCOMPLETE",
-            (Worst::Review, false) => "REVIEW",
-            _ => "ok  ",
+            (Worst::Incomplete, View::Text | View::Json) => "INCOMPLETE",
+            (Worst::Review, View::Text | View::Json) => "REVIEW",
+            (Worst::Incomplete | Worst::Review, View::Stop) | (Worst::Ok, _) => "ok  ",
         }
     }
 
     /// The word a gate's diagnostics row carries, which names only what an agent acts on.
     fn status(self) -> &'static str {
-        self.state(true).trim_end()
+        self.state(View::Stop).trim_end()
     }
 
     fn measurement(self) -> &'static str {
@@ -202,9 +220,9 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
         base: against.base.as_ref().map(|base| base.before.as_str()),
         only: against.scope.as_deref().filter(|_| gate.check.takes_scope),
         changes: against.changes.as_deref(),
-        caller: match args.hook {
-            true => Caller::Hook,
-            false => Caller::Gate,
+        caller: match args.view {
+            View::Stop => Caller::Hook,
+            View::Text | View::Json => Caller::Gate,
         },
     };
     let outcome = (gate.check.run)(
@@ -616,7 +634,7 @@ impl CheckDocument {
     ) {
         if let Some(why) = failed {
             self.problems.push(Problem::of_run(ErrorKind::Git, why));
-            if !args.json {
+            if !args.json() {
                 let _ = writeln!(out, "  ERR: {why}");
             }
         }
@@ -636,9 +654,9 @@ impl CheckDocument {
         base: Option<&Window>,
         out: &mut String,
     ) {
-        let says = !args.json && !args.hook;
+        let says = args.view == View::Text;
         self.window = base.map(Window::record);
-        self.tree = (!args.hook).then(|| base::tree_record(project.root()));
+        self.tree = (!args.at_stop()).then(|| base::tree_record(project.root()));
         for review in selected(project.moves(), wanted).filter_map(moved_review) {
             if says {
                 let _ = writeln!(out, "  REVIEW: {}", review.text);
@@ -705,15 +723,18 @@ impl CheckDocument {
         let axes = axes_of(code, &shown);
         self.axes = self.axes.and(axes);
         if shows(args, code, &shown) {
-            let text = match args.hook {
-                true => render::stop(&told, code == 0),
-                false => render::text(&told),
+            let text = match args.view {
+                View::Stop => render::stop(&told, code == 0),
+                View::Text | View::Json => render::text(&told),
             };
-            printed(&gate.name, axes.state(args.hook), (&told, &text), out);
+            printed(&gate.name, axes.state(args.view), (&told, &text), out);
         }
         self.told += shown.notes.iter().filter(|note| note.told()).count();
         let erred = usize::from(code == 2 && !records.errors.is_empty());
-        let counts = (shown.findings.len() + erred, shown.notes.len());
+        let counts = diagnostics::Counts {
+            findings: shown.findings.len() + erred,
+            notes: shown.notes.len(),
+        };
         self.gates.push(diagnostics::row(
             &gate.name,
             axes.status(),
@@ -746,10 +767,10 @@ impl CheckDocument {
     ) {
         let held = holes::held_files(&project.config);
         let row = render::lost_row(sorted, &held);
-        let mut failing = false;
-        if row.is_some() {
-            failing = self.lost(sorted, &held);
-        }
+        let failing = match row {
+            Some(_) => self.lost(sorted, &held),
+            None => false,
+        };
         self.reviewed(sorted);
         let unmatched: Vec<String> = unmatched_lost(&held, sorted, wanted).collect();
         self.reviews.extend(
@@ -759,20 +780,18 @@ impl CheckDocument {
         );
         let unread = sorted.iter().filter(|item| item.class != Class::Lost);
         self.told += unmatched.len() + unread.count();
-        if args.json {
+        if args.json() {
             return;
         }
-        match args.hook {
-            true => {
-                let row = row.filter(|_| failing).unwrap_or_default();
-                out.push_str(&row);
-                for file in &unmatched {
-                    let _ = writeln!(out, "  NOTE: {}", render::unmatched_lost_text(file));
-                }
+        if args.at_stop() {
+            out.push_str(&row.filter(|_| failing).unwrap_or_default());
+            for file in &unmatched {
+                let _ = writeln!(out, "  NOTE: {}", render::unmatched_lost_text(file));
             }
-            false => out.push_str(&row.unwrap_or_default()),
+        } else {
+            out.push_str(&row.unwrap_or_default());
         }
-        out.push_str(&render::unmeasured_lines(sorted, args.hook));
+        out.push_str(&render::unmeasured_lines(sorted, args.at_stop()));
     }
 
     /// A review item per opened gap and a coverage note per limit, every sorted file counted as
@@ -826,27 +845,27 @@ impl CheckDocument {
             .iter()
             .filter(|item| item.class == Class::Lost)
             .collect();
-        let failing: Vec<&&Unmeasured> = lost
-            .iter()
-            .filter(|item| !held.contains(&item.file))
-            .collect();
-        let accepted = lost.len() - failing.len();
+        let failing = |item: &&&Unmeasured| !held.contains(&item.file);
+        let failed = lost.iter().filter(failing).count();
         let axes = Axes {
-            judgement: match failing.is_empty() {
-                true => Judgement::Pass,
-                false => Judgement::Fail,
+            judgement: match failed {
+                0 => Judgement::Pass,
+                _ => Judgement::Fail,
             },
             ..Axes::default()
         };
         self.axes = self.axes.and(axes);
-        self.grammar_lag = failing.iter().any(|item| item.reason == Cause::Parse);
+        self.grammar_lag = lost
+            .iter()
+            .filter(failing)
+            .any(|item| item.reason == Cause::Parse);
         self.findings.extend(
             lost.iter()
                 .map(|item| render::lost_finding(item, held.contains(&item.file))),
         );
         self.capabilities
-            .push(Capability::lost(axes, accepted as u64));
-        !failing.is_empty()
+            .push(Capability::lost(axes, (lost.len() - failed) as u64));
+        failed > 0
     }
 
     /// The row of a gate that reads the base tree klin could not lay out. The other gates still
@@ -859,10 +878,10 @@ impl CheckDocument {
             ..Axes::default()
         };
         self.axes = self.axes.and(axes);
-        if !args.json {
+        if !args.json() {
             printed(
                 &gate.name,
-                axes.state(false),
+                axes.state(args.view),
                 (&told, &render::text(&told)),
                 out,
             );
@@ -892,10 +911,10 @@ impl CheckDocument {
             ..Axes::default()
         };
         self.axes = self.axes.and(axes);
-        if !args.json {
+        if !args.json() {
             printed(
                 check.name,
-                axes.state(false),
+                axes.state(args.view),
                 (&told, &render::text(&told)),
                 out,
             );
@@ -929,14 +948,14 @@ impl CheckDocument {
 
     /// The text of a `klin check` that did not print JSON, or the JSON document, and the exit
     /// code of spec 7.4.
-    pub fn finish(&self, args: &Args, out: &mut String) -> u8 {
+    pub fn finish(self, args: &Args, out: &mut String) -> u8 {
         let totals = self.totals();
         let exit = totals.exit();
         let (judgement, measurement) = match self.stopped {
             true => ("none", "none"),
             false => (totals.judgement.name(), totals.measurement()),
         };
-        if !args.json {
+        if !args.json() {
             for hole in &self.holes {
                 let mut said = String::new();
                 render::incomplete(hole, &mut said);
@@ -950,39 +969,55 @@ impl CheckDocument {
             return exit;
         }
         out.clear();
-        let _ = writeln!(out, "{}", self.json());
+        let _ = writeln!(out, "{}", self.into_json());
         exit
     }
 
     /// The check document of spec 11.7, which the journal line of a Stop holds under `result`.
     /// Spec 13.1.
-    pub fn json(&self) -> Value {
+    pub fn into_json(self) -> Value {
         let totals = self.totals();
         let ran = !self.stopped;
-        let mut measurements = self.measurements.clone();
-        if ran {
-            measurements.insert(0, self.measured_run());
-        }
-        json!({
-            "schema_version": 1,
-            "command": "check",
-            "klin": { "version": env!("CARGO_PKG_VERSION") },
-            "config": self.config,
-            "window": self.window,
-            "tree": self.tree,
-            "judgement": ran.then(|| totals.judgement.name()),
-            "measurement": ran.then(|| totals.measurement()),
-            "execution": totals.execution(),
-            "exit": totals.exit(),
-            "capabilities": self.capabilities.iter().map(Capability::json).collect::<Vec<_>>(),
-            "findings": self.findings.iter().map(Finding::json).collect::<Vec<_>>(),
-            "reviews": self.reviews.iter().map(Review::json).collect::<Vec<_>>(),
-            "notes": self.notes.iter().map(Note::json).collect::<Vec<_>>(),
-            "measurements": measurements,
-            "not_measured": self.not_measured.len(),
-            "errors": self.problems.iter().map(Problem::json).collect::<Vec<_>>(),
-            "diagnostics": { "gates": self.gates },
-        })
+        let run = ran.then(|| self.measured_run());
+        let list = Value::Array;
+        let mut out = Map::new();
+        let mut put = |key: &str, value: Value| out.insert(key.to_string(), value);
+        put("schema_version", 1.into());
+        put("command", "check".into());
+        put("klin", json!({ "version": env!("CARGO_PKG_VERSION") }));
+        put("config", self.config.into());
+        put("window", self.window.into());
+        put("tree", self.tree.into());
+        put("judgement", ran.then(|| totals.judgement.name()).into());
+        put("measurement", ran.then(|| totals.measurement()).into());
+        put("execution", totals.execution().into());
+        put("exit", totals.exit().into());
+        put(
+            "capabilities",
+            list(self.capabilities.iter().map(Capability::json).collect()),
+        );
+        put(
+            "findings",
+            list(self.findings.iter().map(Finding::json).collect()),
+        );
+        put(
+            "reviews",
+            list(self.reviews.iter().map(Review::json).collect()),
+        );
+        put("notes", list(self.notes.iter().map(Note::json).collect()));
+        put(
+            "measurements",
+            list(run.into_iter().chain(self.measurements).collect()),
+        );
+        put("not_measured", self.not_measured.len().into());
+        put(
+            "errors",
+            list(self.problems.iter().map(Problem::json).collect()),
+        );
+        let mut diagnostics = Map::new();
+        diagnostics.insert("gates".to_string(), list(self.gates));
+        put("diagnostics", Value::Object(diagnostics));
+        Value::Object(out)
     }
 
     /// The measurement record of the run itself, which holds the run-level holes.
@@ -1005,7 +1040,11 @@ impl CheckDocument {
 /// passing gate only where it left a note the hook tells, so the agent reads what it must act
 /// on. Every other run prints every gate. The records keep every gate either way. Spec 9.5.
 fn shows(args: &Args, code: u8, shown: &GateRecords) -> bool {
-    !args.json && (!args.hook || code != 0 || shown.notes.iter().any(Note::told))
+    match args.view {
+        View::Json => false,
+        View::Text => true,
+        View::Stop => code != 0 || shown.notes.iter().any(Note::told),
+    }
 }
 
 /// One gate's block of the text report: its provenance, its status row, and its rendered result.
@@ -1368,7 +1407,7 @@ mod tests {
     fn a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3() {
         let gate = axes_of(0, &work_limited());
 
-        assert_eq!(gate.state(false), "INCOMPLETE");
+        assert_eq!(gate.state(View::Text), "INCOMPLETE");
         assert_eq!(gate.measurement(), "incomplete");
         assert_eq!(Axes::default().and(gate).exit(), 3);
         assert_eq!(work_limited().holes[0].reason.name(), "work-limit");
