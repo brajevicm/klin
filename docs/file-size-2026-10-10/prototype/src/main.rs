@@ -49,6 +49,7 @@ struct Row {
     named: usize,
     production: usize,
     longest: usize,
+    prodcode: usize,
 }
 
 fn lang_of(path: &str) -> Option<Lang> {
@@ -170,6 +171,7 @@ struct Walk<'a> {
     lang: Lang,
     src: &'a [u8],
     rows: BTreeSet<usize>,
+    prod_rows: BTreeSet<usize>,
     functions: usize,
     named: usize,
     production: usize,
@@ -185,6 +187,9 @@ impl Walk<'_> {
         if node.child_count() == 0 {
             for row in node.start_position().row..=node.end_position().row {
                 self.rows.insert(row);
+                if !in_test {
+                    self.prod_rows.insert(row);
+                }
             }
             return;
         }
@@ -195,7 +200,9 @@ impl Walk<'_> {
                     in_test = true;
                 }
                 if kind == "function_item" {
-                    self.count(node, true, in_test || rust_test_function(node, self.src));
+                    let test = in_test || rust_test_function(node, self.src);
+                    self.count(node, true, test);
+                    in_test = test;
                 }
             }
             Lang::Ts | Lang::Tsx => {
@@ -259,6 +266,7 @@ fn measure(path: &str, src: &[u8], parsers: &mut [Parser; 3]) -> Option<Row> {
         lang,
         src,
         rows: BTreeSet::new(),
+        prod_rows: BTreeSet::new(),
         functions: 0,
         named: 0,
         production: 0,
@@ -287,6 +295,7 @@ fn measure(path: &str, src: &[u8], parsers: &mut [Parser; 3]) -> Option<Row> {
         named: walk.named,
         production: walk.production,
         longest: walk.longest,
+        prodcode: walk.prod_rows.len(),
     })
 }
 
@@ -303,7 +312,7 @@ fn git(repo: &str, args: &[&str]) -> String {
 fn print_header(out: &mut impl Write) {
     writeln!(
         out,
-        "path\tlang\ttest\tgenerated\terror\tlines\tcode\titems\tfunctions\tnamed\tproduction\tlongest"
+        "path\tlang\ttest\tgenerated\terror\tlines\tcode\titems\tfunctions\tnamed\tproduction\tlongest\tprodcode"
     )
     .unwrap();
 }
@@ -311,7 +320,7 @@ fn print_header(out: &mut impl Write) {
 fn print_row(out: &mut impl Write, row: &Row) {
     writeln!(
         out,
-        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
         row.path,
         row.lang,
         u8::from(row.test),
@@ -323,7 +332,8 @@ fn print_row(out: &mut impl Write, row: &Row) {
         row.functions,
         row.named,
         row.production,
-        row.longest
+        row.longest,
+        row.prodcode
     )
     .unwrap();
 }
@@ -396,7 +406,7 @@ fn main() {
             let (repo, base, head) = (&args[2], &args[3], &args[4]);
             let names = git(repo, &["diff", "--no-renames", "--name-only", base, head]);
             let changed: BTreeSet<String> = names.lines().map(str::to_string).collect();
-            writeln!(out, "side\t{}", "path\tlang\ttest\tgenerated\terror\tlines\tcode\titems\tfunctions\tnamed\tproduction\tlongest").unwrap();
+            writeln!(out, "side\t{}", "path\tlang\ttest\tgenerated\terror\tlines\tcode\titems\tfunctions\tnamed\tproduction\tlongest\tprodcode").unwrap();
             for (side, rev) in [("base", base), ("head", head)] {
                 for row in scan(repo, rev, Some(&changed)) {
                     write!(out, "{side}\t").unwrap();
