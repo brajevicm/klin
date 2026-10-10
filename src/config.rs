@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::error::Error;
-use crate::key::{Key, Reader, Refused, Section, SectionShape, Shape};
+use crate::key::{Key, Reader, Section, SectionShape, Shape};
 
 pub const FILENAME: &str = "klin.json";
 
@@ -681,15 +681,11 @@ fn dynamic_conventions(
     match value {
         Value::Bool(false) => Ok(()),
         Value::Object(conventions) if !conventions.is_empty() => {
-            conventions
-                .iter()
-                .try_for_each(|(name, value)| match read(name, value) {
-                    Err(Refused::Load(why)) => Err(Error(format!(
-                        "{}: convention \"{name}\" {why}",
-                        file.display()
-                    ))),
-                    _ => Ok(()),
+            conventions.iter().try_for_each(|(name, value)| {
+                read(value).map_err(|why| {
+                    Error(format!("{}: convention \"{name}\" {why}", file.display()))
                 })
+            })
         }
         Value::Object(_) => Err(Error(format!(
             "{}: \"{}\" names no convention — write one, or set the section to false",

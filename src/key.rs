@@ -33,29 +33,15 @@ pub enum SectionShape {
     DocumentMap(&'static Key),
     /// A section that reads no policy, with what a person may write instead.
     FalseOnly(&'static str),
-    /// A map of named conventions, with the check's reader of one of them, which `config` runs
-    /// at load and refuses only what it says is refused at load.
+    /// A map of named conventions, with the check's judge of one convention's shape.
     Conventions(Reader),
     Sarif,
 }
 
-/// Why a convention is refused, and when: at load, for every command, or at its own gate, which
-/// reports it as an `ERR` row while every other gate runs. Spec 8.4, 14.
-pub enum Refused {
-    Load(String),
-    Gate(String),
-}
-
-impl Refused {
-    pub fn why(self) -> String {
-        match self {
-            Refused::Load(why) | Refused::Gate(why) => why,
-        }
-    }
-}
-
-/// A check's reader of one named convention, which judges it as its gate does.
-pub type Reader = fn(&str, &serde_json::Value) -> Result<(), Refused>;
+/// A check's judge of one convention's shape, the rules its gate reads first, which `config`
+/// runs at load so every command refuses them. What the gate alone refuses stays at the gate.
+/// Spec 8.4, 14.
+pub type Reader = fn(&serde_json::Value) -> Result<(), String>;
 
 /// What `config` knows of one section: enough to judge its shape before any gate runs, and
 /// nothing a gate does. The catalogue builds these and the runner passes them to `config`, so

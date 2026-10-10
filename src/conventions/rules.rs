@@ -11,7 +11,7 @@ use crate::check::contract::{self, Context};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
-use crate::key::{Key, Refused, Shape};
+use crate::key::{Key, Shape};
 use crate::ratchet::Finding;
 use crate::record::Values;
 use crate::scope::{self, Moves, Selector};
@@ -74,7 +74,7 @@ pub const KEYS: &[Key] = &[TEXT, CODE, FILES, REMEDY, IN, EXCEPT, LANGUAGE];
 
 /// The keys a person writes for a convention that belong to another shape of rule, each with the
 /// key a convention reads for the same intent, so a near miss names the key to use.
-pub const INSTEAD: &[(&str, &str)] = &[
+const INSTEAD: &[(&str, &str)] = &[
     ("exclude", EXCEPT.name),
     ("exceptions", EXCEPT.name),
     ("roots", IN.name),
@@ -84,6 +84,8 @@ pub const INSTEAD: &[(&str, &str)] = &[
     ("regex", TEXT.name),
     ("glob", FILES.name),
 ];
+
+const NO_REMEDY: &str = "has no \"remedy\" — write the exact action to take instead";
 
 const MATCHERS: [Key; 3] = [TEXT, CODE, FILES];
 
@@ -292,7 +294,6 @@ pub(super) fn conventions(config: &Config, moves: &Moves) -> Result<Vec<Conventi
         .map(|(name, rule)| {
             convention(name, rule)
                 .map(|convention| convention.followed(moves))
-                .map_err(Refused::why)
                 .map_err(|why| {
                     Error(format!(
                         "{}: convention \"{name}\" {why}",
@@ -303,22 +304,20 @@ pub(super) fn conventions(config: &Config, moves: &Moves) -> Result<Vec<Conventi
         .collect()
 }
 
-/// One convention judged as its gate judges it, which config runs at load and drops.
-pub fn read(name: &str, rule: &Value) -> Result<(), Refused> {
-    convention(name, rule).map(drop)
+/// One convention's shape, which config judges at load and drops.
+pub fn read(rule: &Value) -> Result<(), String> {
+    shaped(rule).map(drop)
 }
 
-/// One convention as its gate runs it. Every rule a load refuses is judged first, so a load sees
-/// each of them, and the rules a gate refuses follow. Spec 8.4, 14.
-fn convention(name: &str, rule: &Value) -> Result<Convention, Refused> {
-    let shaped = shaped(rule).map_err(Refused::Load)?;
+/// One convention as its gate runs it: its shape first, which a load already judged, then the
+/// rules only its gate refuses. Spec 8.4, 14.
+fn convention(name: &str, rule: &Value) -> Result<Convention, String> {
+    let shaped = shaped(rule)?;
     if name.trim().is_empty() {
-        return Err(Refused::Gate(
-            "has no name — the key is the convention's identity".into(),
-        ));
+        return Err("has no name — the key is the convention's identity".into());
     }
-    let (matcher, written) = matcher(shaped.fields, shaped.kind).map_err(Refused::Gate)?;
-    let (within, except) = scope(shaped.fields).map_err(Refused::Gate)?;
+    let (matcher, written) = matcher(shaped.fields, shaped.kind)?;
+    let (within, except) = scope(shaped.fields)?;
     Ok(Convention {
         name: name.to_string(),
         language: shaped.language,
@@ -361,7 +360,7 @@ fn remedy(fields: &Map<String, Value>) -> Result<&str, String> {
         .get(REMEDY.name)
         .and_then(Value::as_str)
         .filter(|remedy| !remedy.trim().is_empty())
-        .ok_or_else(|| "has no \"remedy\" — write the exact action to take instead".to_string())
+        .ok_or_else(|| NO_REMEDY.to_string())
 }
 
 /// A key a convention does not read would measure nothing, so it is refused, naming the key a
@@ -400,22 +399,19 @@ fn shapes(fields: &Map<String, Value>) -> Result<(), String> {
         .map_or(Ok(()), Err)
 }
 
-/// Why a key's value is not the shape the key reads, which `language` leaves to `language`.
+/// Why a key's value is not the shape the key reads. `language` judges its own value.
 fn misshapen(key: &Key, value: &Value) -> Option<String> {
-    let shaped = match key.shape {
-        Shape::String => value.is_string(),
-        Shape::Text => config::is_text(value),
-        Shape::StringOrList => config::string_or_list(value),
-        _ => true,
-    };
-    (!shaped).then(|| match key.shape {
-        Shape::Text => "has no \"remedy\" — write the exact action to take instead".to_string(),
-        Shape::StringOrList => format!(
+    match key.shape {
+        Shape::String if !value.is_string() => {
+            Some(format!("has a \"{}\" that is not a string", key.name))
+        }
+        Shape::Text if !config::is_text(value) => Some(NO_REMEDY.to_string()),
+        Shape::StringOrList if !config::string_or_list(value) => Some(format!(
             "has an \"{}\" that is not a repository-relative path or a non-empty list of them",
             key.name
-        ),
-        _ => format!("has a \"{}\" that is not a string", key.name),
-    })
+        )),
+        _ => None,
+    }
 }
 
 fn scope(fields: &Map<String, Value>) -> Result<(Vec<Selector>, Vec<Selector>), String> {
