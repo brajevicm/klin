@@ -137,6 +137,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.base_prune_ms = clock::millis(teardown.prune);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
+    let moved = log.advisory.is_some();
     let advised = matches!(leaves, Leaves::Fresh);
     let fresh = fresh.filter(|_| advised);
     log.advisory = log.advisory.filter(|_| advised);
@@ -147,14 +148,14 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
-    let mut seen = BTreeSet::new();
+    let mut seen = None;
     if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
         log.gate_blocks = spent.gate_blocks;
         log.build_blocks = spent.builds;
         log.prompt = spent.prompt;
         seen = spent.trees;
     }
-    let quiet = || !advised && unchanged(root, mark.as_deref(), &seen);
+    let quiet = || !moved && unchanged(root, mark.as_deref(), seen.as_ref());
     let said = tell(args, root, code, note, &mut log, quiet);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || log.told.contains(&"note")) {
@@ -369,7 +370,7 @@ fn key(text: &str) -> String {
 /// run left, then the turn end and the week's headline. The turn end reads the journal, so it
 /// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
 /// stamp says so when the verdict could not be written. The journal records each part by name.
-/// A `quiet` turn tells nothing. Spec 9.5, 10.7, 11.4.
+/// A `quiet` turn tells only that no prompt event reached the session. Spec 9.5, 10.7, 11.4.
 fn tell(
     args: &Args,
     root: &Path,
@@ -386,7 +387,10 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    if parts.is_empty() || quiet() {
+    if !parts.is_empty() && quiet() {
+        parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
+    }
+    if parts.is_empty() {
         return None;
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
@@ -396,9 +400,9 @@ fn tell(
 
 /// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
 /// `seen`, is the tree the prompt `mark` was taken over. False when klin cannot read the mark's
-/// tree or the working tree. Spec 10.7.
-fn unchanged(root: &Path, mark: Option<&str>, seen: &BTreeSet<String>) -> bool {
-    let (Some(mark), Ok(at)) = (mark, state::ready(root)) else {
+/// tree, the working tree, or the tree of a block. Spec 10.7.
+fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -> bool {
+    let (Some(mark), Some(seen), Ok(at)) = (mark, seen, state::ready(root)) else {
         return false;
     };
     let Some(prompted) = stamp::tree_of(root, mark) else {
@@ -416,14 +420,14 @@ fn add_prompt_note(
     if log.gate_blocks > 0 && log.verdict == "red" && no_prompt_event(tail, log.session.as_deref())
     {
         log.flags.push("no-prompt-event");
-        parts.push((
-            "note",
-            "klin: no prompt event reached this session; klin grants no fresh gate blocks until \
-             the host runs klin's session and prompt hooks."
-                .to_string(),
-        ));
+        parts.push(("note", NO_PROMPT_EVENT.to_string()));
     }
 }
+
+/// The one part a turn that changed nothing still tells, because only a person can install the
+/// hook it names. Spec 10.7, 16.3.
+const NO_PROMPT_EVENT: &str = "klin: no prompt event reached this session; klin grants no fresh \
+                               gate blocks until the host runs klin's session and prompt hooks.";
 
 /// Whether no `prompt` line of this stop's session reached the journal. The tail the stop read
 /// reaches back past the turn stamp, which the prompt event that appends that line takes

@@ -817,3 +817,23 @@ fn status_names_an_advisory_stop_that_lost_the_lock() {
     let last = &status["window"]["last_advisory"];
     assert_eq!(last["reason"], "incoming-commits", "{status}");
 }
+
+/// A Stop that sees the history move tells the person, even where the tree is the one its
+/// prompt saw and the run then faults before it measures: here no base can be laid out.
+/// Spec 10.7.
+#[test]
+fn a_moved_history_over_the_prompts_tree_tells_a_run_that_could_not_measure() {
+    let remote = Remote::new();
+    remote.tree.git(&["checkout", "-q", "main"]);
+
+    let run = harness::feed_with(
+        remote.tree.root(),
+        &[("TMPDIR", "/nonexistent/klin-tmp")],
+        harness::AGENT,
+        A_STOP,
+    );
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("ERR"), "{}", run.out);
+    assert!(run.printed.contains("systemMessage"), "{}", run.out);
+}

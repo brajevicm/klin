@@ -47,8 +47,9 @@ pub struct Spent {
     pub prompt: u64,
     pub builds: u64,
     pub gate_blocks: u64,
-    /// Every tree a block of this prompt was taken over. Spec 10.7.
-    pub trees: BTreeSet<String>,
+    /// Every tree a block of this prompt was taken over, and `None` when klin could not hash
+    /// the tree of one of them. Spec 10.7.
+    pub trees: Option<BTreeSet<String>>,
 }
 
 /// What a build failure at this stop spends: the block it took and its number in this turn, no
@@ -95,7 +96,7 @@ impl Budget<'_> {
             prompt: count.prompt,
             builds: count.builds,
             gate_blocks: count.gate_blocks,
-            trees: count.trees,
+            trees: (!count.tree_lost).then_some(count.trees),
         })
     }
 
@@ -126,6 +127,7 @@ impl Budget<'_> {
         let count = Count {
             builds: held.builds + 1,
             trees: held.trees.into_iter().chain(tree.clone()).collect(),
+            tree_lost: held.tree_lost || tree.is_none(),
             build_tree: tree,
             ..held
         };
@@ -164,6 +166,7 @@ impl Budget<'_> {
         let recorded = Count {
             gate_blocks: number,
             trees: count.trees.into_iter().chain(tree.clone()).collect(),
+            tree_lost: count.tree_lost || tree.is_none(),
             gate_tree: tree,
             ..count
         };
@@ -202,6 +205,7 @@ impl Budget<'_> {
             gate_blocks: held.gate_blocks.unwrap_or(u64::from(held.gate_spent)),
             gate_tree: held.gate_tree,
             trees,
+            tree_lost: held.tree_lost,
         }
     }
 }
@@ -317,6 +321,9 @@ struct Count {
     gate_tree: Option<String>,
     /// Every tree a block of this prompt was taken over, of either kind. Spec 10.7.
     trees: BTreeSet<String>,
+    /// Whether a block of this prompt was taken over a tree klin could not hash, so `trees`
+    /// cannot prove the turn changed nothing. Spec 10.7.
+    tree_lost: bool,
 }
 
 /// The record as it stands on disk. A field that is missing or holds another type reads as
@@ -332,6 +339,7 @@ struct Record {
     gate_blocks: Option<u64>,
     gate_tree: Option<String>,
     trees: BTreeSet<String>,
+    tree_lost: bool,
     tree: Option<String>,
     gate_spent: bool,
 }
@@ -356,6 +364,7 @@ impl Record {
                 .flatten()
                 .filter_map(|tree| tree.as_str().map(str::to_string))
                 .collect(),
+            tree_lost: held.get("tree_lost").and_then(Value::as_bool) == Some(true),
             tree: text("tree"),
             gate_spent: held.get("gate_spent").and_then(Value::as_bool) == Some(true),
         })
@@ -381,6 +390,7 @@ fn counted(at: &Path, count: &Count) -> bool {
         "gate_blocks": count.gate_blocks,
         "gate_tree": count.gate_tree,
         "trees": count.trees,
+        "tree_lost": count.tree_lost,
     })
     .to_string()
         + "\n";

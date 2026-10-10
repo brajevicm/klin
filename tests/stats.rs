@@ -1475,6 +1475,56 @@ fn a_turn_that_changed_a_file_back_after_a_block_still_tells() {
     assert_ne!(told(&through), "", "{}", through.out);
 }
 
+/// The warning that no prompt event reached the session survives a turn that changed nothing,
+/// because only a person can install the missing hook. Spec 10.7.
+#[test]
+fn a_turn_that_changed_nothing_still_says_no_prompt_event_reached_the_session() {
+    const STARTED: &str = r#"{"hook_event_name": "SessionStart", "session_id": "s-2",
+                              "source": "startup"}"#;
+    const STOPPED: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
+                              "session_id": "s-2"}"#;
+    const STOPPED_AGAIN: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true,
+                                    "session_id": "s-2"}"#;
+    let tree = hooked();
+    blocked(&tree);
+    assert_eq!(hook(&tree, STARTED).code, 0);
+    assert_eq!(hook(&tree, STOPPED).code, 2);
+
+    let through = hook(&tree, STOPPED_AGAIN);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert!(
+        told(&through).contains("no prompt event reached this session"),
+        "{}",
+        through.out
+    );
+    assert!(!told(&through).contains("still need"), "{}", through.out);
+}
+
+/// A block klin took over a tree it could not hash proves nothing about that tree, so a turn
+/// that changed a file back after it still tells. A file where the build index keeps its
+/// captures makes the hash fail. Spec 10.7.
+#[test]
+fn a_block_over_a_tree_klin_could_not_hash_never_proves_the_turn_unchanged() {
+    let tree = hooked();
+    prompt(&tree);
+    tree.write("src/lib.rs", &an_escape());
+    std::fs::write(tree.state("build-index.captures"), "").expect("write");
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    std::fs::remove_file(tree.state("build-index.captures")).expect("remove");
+    tree.write("src/lib.rs", CLEAN);
+
+    let fixed = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(fixed.code, 0, "{}", fixed.out);
+    assert_eq!(
+        told(&fixed),
+        "klin caught 1 regression this turn. It was fixed after klin flagged it.",
+        "{}",
+        fixed.out
+    );
+}
+
 /// A library crate with `lib` as its root, hooked and committed as the base.
 fn library(lib: &str) -> Tree {
     let tree = Tree::new();
