@@ -298,3 +298,10 @@ facts, catalogue and edge modules to explicit layers. It permits the existing
 inward edges while refusing inner-to-runner dependencies and check or syntax
 dependencies on host, journal and stats presentation. Its enabled cycle rule
 ratchets only the resolved V1 graph; unsupported forms remain unguessed.
+
+## Amendment: one layer per `src/` folder (#600)
+
+ADR 0067 replaces the self-hosted layers that "Final self-enforcement" names
+with one layer per folder of `src/` (#602). `Project` moves to
+`src/contract/project.rs`. The rule that the config is policy, the tree is
+fact and the runner composes them does not change.

@@ -2,6 +2,7 @@
 
 > Governs the architecture foundation of #370. The inventory that applies it
 > is `docs/architecture-cycles-2026-10-01.md`.
+> ADR 0067 records the final directory normalization of rule 8.
 
 At `bffa48cd`, `klin layering` on klin's own tree holds 282 cyclic edges.
 Two strongly connected components hold them: one of 46 of the 64 Rust

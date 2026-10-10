@@ -186,3 +186,10 @@ Each catalogue row also declares its placement and its semantics version
 The table stays ordered cheapest first, and placement does not change the
 order. A row's kind, `check` or `integration`, follows its activation: an
 Integration row is an integration, and every other row is a check.
+
+## Amendment: the paths after ADR 0067 (#600)
+
+#376 split `src/check.rs` into `src/check/contract.rs`, which holds the check
+contract (`Context`, `Sink`, `Records`), and `src/check/catalogue.rs`, which
+holds `CATALOGUE`. ADR 0067 moves them to `src/contract/check.rs` and
+`src/engine/catalogue.rs` (#602). The rules of this ADR do not change.
