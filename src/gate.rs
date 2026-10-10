@@ -761,8 +761,8 @@ fn judge(
         .filter(|gate| gate.check.placement.at_stop())
         .collect();
     let against = against_or_stop(args, &wanted, project, window, out)?;
-    said(args, built, out);
-    if let (Some(unbuilt), false) = (unbuilt, args.json) {
+    said(built, out);
+    if let Some(unbuilt) = unbuilt {
         let _ = writeln!(out, "  {unbuilt}");
     }
     let rootless =
@@ -777,7 +777,7 @@ fn judge(
     tally.told += usize::from(rootless.is_some());
     tally.told += gone_moves(project, &wanted, out);
     tally.told += usize::from(unbuilt.is_some());
-    finish(&plan, wanted.len(), &tally, out);
+    summary_line(&plan, wanted.len(), &tally, out);
     Ok(tally)
 }
 
@@ -925,7 +925,7 @@ fn pins_in(project: &Project, check: &catalogue::Row) -> bool {
         .is_some_and(|section| section.get("in").is_some())
 }
 
-fn finish(plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
+fn summary_line(plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
     let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
@@ -940,10 +940,7 @@ fn finish(plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
 /// its own values beside its row. Spec 4.3.
-fn said(args: &Args, built: &[contract::Said], out: &mut String) {
-    if args.json {
-        return;
-    }
+fn said(built: &[contract::Said], out: &mut String) {
     for (line, _) in built {
         let _ = writeln!(out, "  {line}");
     }
@@ -1178,7 +1175,7 @@ fn each(
     out: &mut String,
 ) -> Tally {
     let mut tally = Tally::default();
-    let mut totals = Recorded::default();
+    let mut totals = Totals::default();
     let mut reported = Vec::new();
     for gate in wanted {
         let ((code, told, records, recorded), ms) =
@@ -1192,7 +1189,7 @@ fn each(
             printed(args, (&gate.name, status(code)), (&told, &text), out);
         }
         reported.extend(unmeasured_by(&gate.name, &told));
-        gather(&mut totals, recorded.clone(), &gate.name);
+        totals.gather(&recorded, &gate.name);
         let ran = (code, told, records, recorded);
         doc.took(
             &QUIET,
@@ -1210,13 +1207,7 @@ fn each(
         &sorted,
         &mut String::new(),
     );
-    stop_unmeasured(
-        args,
-        (project, wanted),
-        sorted,
-        (&mut tally, &mut totals),
-        out,
-    );
+    stop_unmeasured((project, wanted), sorted, (&mut tally, &mut totals), out);
     tally.told += totals.notes.iter().filter(|note| told(note)).count();
     (tally.reported, tally.unasked) = asked_sites(&totals.findings);
     tally
@@ -1254,17 +1245,14 @@ fn word<'a>(record: &'a Value, key: &str) -> &'a str {
 /// not hold fails like any gate, and an opened gap and a coverage limit the change did not open
 /// are notes the Stop tells. Spec 2.3, 7.2.
 fn stop_unmeasured(
-    args: &Args,
     (project, wanted): (&Project, &[&Gate]),
     (sorted, failed): (Vec<Unmeasured>, Option<String>),
-    (tally, totals): (&mut Tally, &mut Recorded),
+    (tally, totals): (&mut Tally, &mut Totals),
     out: &mut String,
 ) {
     if let Some(why) = failed {
         tally.errored += 1;
-        if !args.json {
-            let _ = writeln!(out, "  ERR: {why}");
-        }
+        let _ = writeln!(out, "  ERR: {why}");
     }
     let sorted = sorted.as_slice();
     let held = holes::held_files(&project.config);
@@ -1283,9 +1271,6 @@ fn stop_unmeasured(
             .filter(|item| item.class != Class::Lost)
             .count();
     totals.notes.extend(sorted.iter().map(journal_note));
-    if args.json {
-        return;
-    }
     if !failing.is_empty() {
         out.push_str(&render::lost_row(sorted, &held).unwrap_or_default());
     }
@@ -1566,14 +1551,26 @@ fn unmeasured_by(gate: &str, told: &[Told]) -> Vec<(String, String, Seen)> {
         .collect()
 }
 
-fn gather(totals: &mut Recorded, mut records: Recorded, name: &str) {
-    for record in records.findings.iter_mut().chain(records.notes.iter_mut()) {
-        if let Some(fields) = record.as_object_mut() {
-            fields.insert("gate".into(), name.into());
-        }
+/// The findings and notes of every gate a Stop ran, each under its gate's name, which the Stop
+/// counts its told notes and asked sites from.
+#[derive(Default)]
+struct Totals {
+    findings: Vec<Value>,
+    notes: Vec<Value>,
+}
+
+impl Totals {
+    fn gather(&mut self, recorded: &Recorded, name: &str) {
+        let named = |record: &Value| {
+            let mut record = record.clone();
+            if let Some(fields) = record.as_object_mut() {
+                fields.insert("gate".into(), name.into());
+            }
+            record
+        };
+        self.findings.extend(recorded.findings.iter().map(named));
+        self.notes.extend(recorded.notes.iter().map(named));
     }
-    totals.findings.append(&mut records.findings);
-    totals.notes.append(&mut records.notes);
 }
 
 /// One gate's run: its exit code, what it told, what it recorded and its findings as JSON.
