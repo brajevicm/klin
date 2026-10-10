@@ -213,7 +213,7 @@ fn judgement(
     families: &[Family],
 ) -> (Vec<State>, usize) {
     let index = measured.indexed(cost, None);
-    structural::timed(&mut cost.query, || states(index, families))
+    structural::timed(&mut cost.query, || states(&index, families))
 }
 
 fn families(project: &Project) -> Result<Vec<Family>, Error> {

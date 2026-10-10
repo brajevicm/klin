@@ -55,6 +55,12 @@ struct Spec {
     ignore: Vec<String>,
 }
 
+/// What a changed, non-strict run judges: the files, and the names the index needs for them.
+struct Impact {
+    scope: Vec<String>,
+    names: structural::NameSet,
+}
+
 struct State {
     file: String,
     name: String,
@@ -75,14 +81,15 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
-    let (affected, wanted) = structural::timed(&mut names.after.index, || {
-        affected_scope(at, &before, &after)
-    })
-    .unzip();
-    let widened = at.scoped(affected.as_deref().or(at.only));
+    let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
+    let widened = at.scoped(
+        impact
+            .as_ref()
+            .map_or(at.only, |impact| Some(&impact.scope)),
+    );
     let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some());
-    let wanted = wanted.as_ref();
+    let wanted = impact.as_ref().map(|impact| &impact.names);
     let (before_states, before_index) = judgement(
         &before,
         &mut names.before,
@@ -96,7 +103,7 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = structural::timed(names.lost.get_or_insert_default(), || {
-        dead_findings(&after_states, before_index, after_index, &held_before)
+        dead_findings(&after_states, &before_index, &after_index, &held_before)
     });
     out.record(|records| {
         records.facts = Some(before.cost + after.cost);
@@ -165,11 +172,11 @@ fn sweeps(
 /// A state reads the references of the names its own declaration binds, and a lost reference
 /// reads the same names in both trees, so the index needs the names the judged files declare,
 /// and no other. Issue #540, ADR 0038.
-fn affected_scope(
+fn impact(
     at: &Context,
     before: &measurement::Measurement,
     after: &measurement::Measurement,
-) -> Option<(Vec<String>, structural::NameSet)> {
+) -> Option<Impact> {
     let only = at.only.filter(|_| at.changes.is_some())?;
     let mut affected = structural::NameSet::new();
     for change in at.changes? {
@@ -193,14 +200,17 @@ fn affected_scope(
             .filter(|file| declares_any(file, &affected))
             .map(|file| file.file.as_str()),
     );
-    let mut wanted = affected;
+    let mut names = affected;
     for file in both().filter(|file| scope.contains(file.file.as_str())) {
-        let names = wanted.entry(file.language).or_default();
+        let declared = names.entry(file.language).or_default();
         for declaration in &file.declarations {
-            names.extend(declaration.names().map(structural::facts::Name::new));
+            declared.extend(declaration.names().map(structural::facts::Name::new));
         }
     }
-    Some((scope.into_iter().map(str::to_string).collect(), wanted))
+    Some(Impact {
+        scope: scope.into_iter().map(str::to_string).collect(),
+        names,
+    })
 }
 
 fn declares_any(file: &structural::facts::FileFacts, names: &structural::NameSet) -> bool {
@@ -234,15 +244,15 @@ fn measured_after(after: &measurement::Measurement, path: &str) -> bool {
 
 /// The tree's states, with the index they were judged against, which every later name query
 /// of the run reads.
-fn judgement<'a>(
-    measured: &'a measurement::Measurement,
+fn judgement(
+    measured: &measurement::Measurement,
     cost: &mut structural::TreeNameCost,
     ignore: &[String],
     only: Option<&[String]>,
     wanted: Option<&structural::NameSet>,
-) -> (Vec<State>, &'a structural::SourceIndex) {
+) -> (Vec<State>, structural::SourceIndex) {
     let index = measured.indexed(cost, wanted);
-    let states = structural::timed(&mut cost.query, || states(index, ignore, only));
+    let states = structural::timed(&mut cost.query, || states(&index, ignore, only));
     (states, index)
 }
 

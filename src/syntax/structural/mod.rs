@@ -802,18 +802,16 @@ impl SourceIndex {
     /// every name when it is `None`. A file outside the names still sits in `files`.
     pub fn of(mut files: Vec<Rc<FileFacts>>, wanted: Option<&NameSet>) -> SourceIndex {
         files.sort_by(|a, b| a.file.cmp(&b.file));
-        let kept = |language: LanguageId, name: &str| {
-            wanted.is_none_or(|wanted| {
-                wanted
-                    .get(&language)
-                    .is_some_and(|names| names.contains(name))
-            })
+        let kept = |language: LanguageId| {
+            let names = wanted.map(|wanted| wanted.get(&language));
+            move |name: &str| names.is_none_or(|names| names.is_some_and(|n| n.contains(name)))
         };
         let mut names: HashMap<LanguageId, HashMap<Name, Sites>> = HashMap::new();
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
+            let kept = kept(file.language);
             for reference in &file.references {
-                if !kept(file.language, reference.name.as_str()) {
+                if !kept(reference.name.as_str()) {
                     continue;
                 }
                 record_name(named, reference.name.clone(), |sites| {
@@ -823,8 +821,9 @@ impl SourceIndex {
         }
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
+            let kept = kept(file.language);
             for (which, declaration) in file.declarations.iter().enumerate() {
-                for name in declaration.names().filter(|name| kept(file.language, name)) {
+                for name in declaration.names().filter(|name| kept(name)) {
                     record_text(named, name, |sites| {
                         sites.declarations.push((at, which));
                     });
