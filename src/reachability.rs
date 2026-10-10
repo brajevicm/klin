@@ -135,11 +135,26 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let (before, before_families, after) = sweeps(at, &families, &commit, &mut names, &mut layout)?;
+    let timer = measurement::Timer {
+        names: &mut names,
+        layout: &mut layout,
+    };
+    let measurement::Sides {
+        before,
+        beside: before_families,
+        after,
+        ..
+    } = measurement::sides(
+        at,
+        &commit,
+        Some(timer),
+        |unchanged| measure(project.tree(), &families, unchanged),
+        |prior| before(at, &families, prior),
+        out,
+    )?;
     let (before_states, _) = judgement(&before, &mut names.before, &before_families);
     let (after_states, unjudged) = judgement(&after, &mut names.after, &families);
     out.record(|records| {
-        records.facts = Some(before.cost + after.cost);
         records.names = Some(names);
         records.layout = layout;
     });
@@ -178,33 +193,6 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     coverage_result(at, (&before, &before_families), (&after, &families), out);
     base_note(&held_before, out);
     Ok(code)
-}
-
-/// The two trees measured, over one base extraction in a changed run that is not strict, and the
-/// families under the base's scope. Spec 8.4.
-fn sweeps(
-    at: &Context,
-    families: &[Family],
-    commit: &str,
-    names: &mut structural::NameCost,
-    layout: &mut Option<base::Layout>,
-) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || contract::whole_base(at, commit))?;
-    let unchanged = structural::timed(&mut names.base, || {
-        contract::unchanged_base(at, prior, commit)
-    })?;
-    *layout = prior.layout();
-    let mut after = structural::timed(&mut names.after.measure, || {
-        measure(at.project.tree(), families, unchanged.as_ref())
-    })?;
-    let (before, before_families) =
-        structural::timed(&mut names.before.measure, || before(at, families, prior))?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            measurement::Unchanged::publish,
-        );
-    Ok((before, before_families, after))
 }
 
 fn judgement(

@@ -7,15 +7,17 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::base::{Prior, Run};
+use crate::base::{Layout, Prior, Run};
 use crate::changed::Change;
+use crate::check::contract::{Context, Sink};
 use crate::coverage::Files;
 use crate::error::Error;
 use crate::files::{self, Found};
 use crate::syntax::Unparsed;
 use crate::syntax::structural::facts::{FileFacts, Outcome, Unsupported};
 use crate::syntax::structural::{
-    Cache, ExtractionCost, NameSet, SourceIndex, TreeNameCost, file_at, selected_extensions, timed,
+    Cache, ExtractionCost, NameCost, NameSet, SourceIndex, TreeNameCost, file_at,
+    selected_extensions, timed,
 };
 use crate::tree::Tree;
 
@@ -171,7 +173,7 @@ pub fn measure(
 /// The base's view of the working tree's unchanged files, for a changed run that is not strict,
 /// with the structural cache of the base commit where klin keeps state. `shared` holds the
 /// changes of such a run, and any other run shares nothing and reads no cache. Spec 8.4.
-pub fn unchanged<'a>(
+fn unchanged<'a>(
     run: &impl Run,
     shared: Option<&'a [Change]>,
     prior: &'a Prior,
@@ -185,6 +187,87 @@ pub fn unchanged<'a>(
         prior.cache(dir, run.root(), commit)
     })
     .map(Some)
+}
+
+/// The base and the working tree a structural check judges, each measured, with what the check
+/// measured beside the base. `prior` is the base laid out whole.
+pub struct Sides<'a, T> {
+    pub prior: &'a Prior,
+    pub before: Measurement,
+    pub beside: T,
+    pub after: Measurement,
+}
+
+/// What a name-resolving check counts: the name cost its measurements add to, and the base
+/// layout it records, taken from `prior` once. Spec 11.2.
+pub struct Timer<'n> {
+    pub names: &'n mut NameCost,
+    pub layout: &'n mut Option<Layout>,
+}
+
+/// Every structural file of both trees measured, over one base extraction in a changed run that
+/// is not strict. A check that reads a module graph or a public surface judges every file of both
+/// trees whatever its scope. Spec 8.4.
+pub fn sides_all<'a>(
+    at: &Context<'a>,
+    commit: &str,
+    out: &mut Sink,
+) -> Result<Sides<'a, ()>, Error> {
+    let tree = at.project.tree();
+    sides(
+        at,
+        commit,
+        None,
+        |unchanged| measure_all(tree, unchanged),
+        |prior| Ok((measure_all(prior.tree(), None)?, ())),
+        out,
+    )
+}
+
+/// The two trees measured, with the extraction cost of both recorded as `facts`. A changed run
+/// that is not strict measures them over one base extraction: the working tree takes the base's
+/// facts for every file its `Change` set leaves out, and extracts only the files it changed.
+/// Strict and whole runs extract both trees. `after` measures the working tree, and `before` the
+/// base with what the check keeps beside it. ADR 0038, ADR 0042, spec 8.4.
+pub fn sides<'a, T>(
+    at: &Context<'a>,
+    commit: &str,
+    timer: Option<Timer>,
+    after: impl FnOnce(Option<&Unchanged>) -> Result<Measurement, Error>,
+    before: impl FnOnce(&'a Prior) -> Result<(Measurement, T), Error>,
+    out: &mut Sink,
+) -> Result<Sides<'a, T>, Error> {
+    let mut untimed = NameCost::default();
+    let (names, layout) = match timer {
+        Some(Timer { names, layout }) => (names, Some(layout)),
+        None => (&mut untimed, None),
+    };
+    let prior = timed(&mut names.base, || whole_base(at, commit))?;
+    let unchanged = timed(&mut names.base, || {
+        unchanged(at.project, at.changes, prior, commit)
+    })?;
+    if let Some(layout) = layout {
+        *layout = prior.layout();
+    }
+    let mut after = timed(&mut names.after.measure, || after(unchanged.as_ref()))?;
+    let (before, beside) = timed(&mut names.before.measure, || before(prior))?;
+    after.cost = after.cost + unchanged.map_or_else(ExtractionCost::default, Unchanged::publish);
+    out.record(|records| records.facts = Some(before.cost + after.cost));
+    Ok(Sides {
+        prior,
+        before,
+        beside,
+        after,
+    })
+}
+
+/// The base laid out whole for this run: the runner's own when it laid the whole base out, which
+/// a changed run never does, and otherwise the run's one checkout. Spec 8.4, ADR 0038.
+fn whole_base<'a>(at: &Context<'a>, commit: &str) -> Result<&'a Prior, Error> {
+    match at.prior.filter(|_| at.changes.is_none()) {
+        Some(prior) => Ok(prior),
+        None => at.project.whole_base(commit, at.changes),
+    }
 }
 
 #[cfg(test)]

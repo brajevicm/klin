@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 
 use serde_json::Value;
 
-use crate::base::{self, Prior};
+use crate::base::Prior;
 use crate::check::contract::{self, Context, HeldAtBase, Line, Listed, Located, Measured, Sink};
 use crate::check::holes;
 use crate::config::Config;
@@ -80,7 +80,18 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let commit = contract::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
-    let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
+    let timer = measurement::Timer {
+        names: &mut names,
+        layout: &mut layout,
+    };
+    let measurement::Sides { before, after, .. } = measurement::sides(
+        at,
+        &commit,
+        Some(timer),
+        |unchanged| measure(project.tree(), &spec.selection, unchanged),
+        |prior| Ok((before(at, &spec, prior)?, ())),
+        out,
+    )?;
     let impact = structural::timed(&mut names.after.index, || impact(at, &before, &after));
     let widened = at.scoped(
         impact
@@ -106,7 +117,6 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         dead_findings(&after_states, &before_index, &after_index, &held_before)
     });
     out.record(|records| {
-        records.facts = Some(before.cost + after.cost);
         records.states = Some(built);
         records.names = Some(names);
         records.layout = layout;
@@ -132,33 +142,6 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     holes::unread_said(&after.unparsed, at, out);
     reports(report, &after_states, &held_before, at.only, out);
     Ok(code)
-}
-
-/// The two trees measured. A changed run that is not strict measures them over one base
-/// extraction: the working tree takes the base's facts for every file its `Change` set leaves
-/// out, and extracts only the files it changed. Strict and whole runs extract both trees.
-fn sweeps(
-    at: &Context,
-    spec: &Spec,
-    commit: &str,
-    names: &mut structural::NameCost,
-    layout: &mut Option<base::Layout>,
-) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
-    let prior = structural::timed(&mut names.base, || contract::whole_base(at, commit))?;
-    let unchanged = structural::timed(&mut names.base, || {
-        contract::unchanged_base(at, prior, commit)
-    })?;
-    *layout = prior.layout();
-    let mut after = structural::timed(&mut names.after.measure, || {
-        measure(at.project.tree(), &spec.selection, unchanged.as_ref())
-    })?;
-    let before = structural::timed(&mut names.before.measure, || before(at, spec, prior))?;
-    after.cost = after.cost
-        + unchanged.map_or_else(
-            structural::ExtractionCost::default,
-            measurement::Unchanged::publish,
-        );
-    Ok((before, after))
 }
 
 /// The effective judgement scope of a changed, non-strict run, and the names judging it needs:
