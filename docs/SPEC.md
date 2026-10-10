@@ -1850,7 +1850,8 @@ and `last_stop {time, verdict, historical: true}` or null.
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
 `green` (section 6.6). `open` and `unasked` are empty unless the verdict is
-`red`. Each `unasked` entry is the site as `file:line  text`. `error` is null
+`red`. Each `unasked` entry is the site as `file:line  text` of a deleted test, so a gate
+that errors adds none. `error` is null
 unless the verdict is `unjudged`, and `aborted_since` is null unless it is
 `aborted`. The text prints an `unjudged` window as "nothing judged" with its
 error.
@@ -2498,6 +2499,7 @@ Stop:
 - a coverage note is told once per stamp, not at every Stop;
 - a FAIL beside a capability-scope error still spends its block;
 - a Stop with a FAIL and an unasked deleted test spends one block for both;
+- a gate that errors beside a FAIL adds no `unasked` entry to the red window;
 - a turn that changes no measurable file leaves the stamp green;
 - after a merge, a fast-forward pull and a `pull --rebase` of the default
   branch, including after a fetch done before the stamp, the Stop is

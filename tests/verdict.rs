@@ -13,6 +13,11 @@ const A_BROKEN_GATE: &str = r#"{
   "doc_size": {"README.md": 10},
   "escapes": { "in": "README.md" }
 }"#;
+/// A config whose inventory scope holds no test file, so that capability errors.
+const AN_ERRORING_INVENTORY: &str = r#"{
+  "doc_size": {"README.md": 10},
+  "inventory": { "in": "src" }
+}"#;
 const AN_ACCEPTED_LOST_FILE: &str = r#"{
   "accepted": [{"gate": "measurement-lost", "file": "src/lib.rs", "reason": "grammar lag"}],
   "doc_size": {"README.md": 10}
@@ -332,6 +337,29 @@ fn status_names_the_open_findings_and_the_unasked_deleted_tests() {
     let unasked = held["unasked"].to_string();
     assert!(unasked.contains("tests/test_two.py"), "{held}");
     assert!(!unasked.contains("tests/test_one.py"), "{held}");
+}
+
+/// A gate that errors beside a FAIL names no deleted test, so the red window a capped Stop leaves
+/// holds no unasked site for it. Spec 11.7.
+#[test]
+fn a_gate_that_errors_beside_a_fail_leaves_no_unasked_site() {
+    let tree = tree(AN_ERRORING_INVENTORY);
+    tree.words("README.md", 30);
+
+    let first = stop(&tree);
+    assert_eq!(first.code, 2, "{}", first.out);
+    assert!(first.says("ERR   inventory"), "{}", first.out);
+    assert!(first.says("FAIL  doc-size"), "{}", first.out);
+    tree.words("README.md", 31);
+    let second = second_stop(&tree);
+    assert!(second.says("gate block 2 of 2"), "{}", second.out);
+    tree.words("README.md", 32);
+    let capped = second_stop(&tree);
+    assert_eq!(capped.code, 0, "{}", capped.out);
+
+    let held = window(&tree);
+    assert_eq!(held["verdict"], "red", "{held}");
+    assert_eq!(held["unasked"], serde_json::json!([]), "{held}");
 }
 
 /// An accepted entry that matched nothing is a note the Stop tells, and it blocks nothing.
