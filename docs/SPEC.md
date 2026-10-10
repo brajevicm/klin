@@ -1549,8 +1549,10 @@ them."), a configuration error, the turn-end line or the weekly line.
   leaves a note, and the turn-end line only repeats what an earlier Stop
   told. That Stop still writes its verdict and its journal line, and records
   no part as told, so the next turn that changes a file tells the person
-  again. A Stop that cannot read either tree tells as usual, and so does an
-  advisory Stop (6.6), because the history moved under the turn.
+  again. Three Stops still tell as usual: a Stop that cannot read the mark's
+  tree or the working tree, an advisory Stop (6.6), because the history
+  moved under the turn, and a Stop under a `klin.json` klin cannot read,
+  which tells once per stamp.
 - On the harness protocol, the notice is a `tell` decision.
 - A blocking Stop on Cursor still uses `followup_message`.
 
@@ -3497,9 +3499,9 @@ written in the same atomic write.
 The prompt mark is the window the radius report measures. A Stop reads it
 for one other thing: whether the turn changed the tree, which decides whether
 the Stop leaves a notice (10.7). A stop judges the stamp, `klin turn reset`
-moves the stamp, and the derivation commit of 6.6 comes from the stamp. A mark the `turn` file has lost
-is read from the ref. With neither, the report prints nothing, which is what
-it does with any window it cannot measure. Deleting the mark costs a report
+moves the stamp, and the derivation commit of 6.6 comes from the stamp. A
+mark the `turn` file has lost is read from the ref. With neither, the report
+prints nothing, which is what it does with any window it cannot measure. Deleting the mark costs a report
 and no block, so the mark needs no recovery beyond its ref.
 
 #### B.6.3 `klin gate` by hand and in CI

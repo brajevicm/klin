@@ -1452,7 +1452,27 @@ fn a_turn_that_changed_nothing_after_a_gate_block_sends_no_turn_end_line() {
 
     assert_eq!(quiet.code, 0, "{}", quiet.out);
     assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert!(quiet.says("changed: 1 file(s)"), "{}", quiet.out);
     assert_eq!(tree.field("verdict"), "red", "{}", quiet.out);
+}
+
+/// A turn that changed a file, took a block, and changed it back still tells, though its last
+/// block saw the tree its prompt saw. Spec 10.7.
+#[test]
+fn a_turn_that_changed_a_file_back_after_a_block_still_tells() {
+    let tree = hooked();
+    blocked(&tree);
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 0);
+
+    prompt(&tree);
+    tree.write("src/other.rs", &an_escape());
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    tree.remove("src/other.rs");
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 2);
+    let through = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert_ne!(told(&through), "", "{}", through.out);
 }
 
 /// A library crate with `lib` as its root, hooked and committed as the base.

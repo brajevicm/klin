@@ -46,7 +46,7 @@ pub struct Spent {
     pub prompt: u64,
     pub builds: u64,
     pub gate_blocks: u64,
-    /// The trees this prompt's blocks were taken over. Spec 10.7.
+    /// Every tree a block of this prompt was taken over. Spec 10.7.
     pub trees: Vec<String>,
 }
 
@@ -94,10 +94,7 @@ impl Budget<'_> {
             prompt: count.prompt,
             builds: count.builds,
             gate_blocks: count.gate_blocks,
-            trees: [count.build_tree, count.gate_tree]
-                .into_iter()
-                .flatten()
-                .collect(),
+            trees: count.trees,
         })
     }
 
@@ -127,6 +124,7 @@ impl Budget<'_> {
         }
         let count = Count {
             builds: held.builds + 1,
+            trees: with(held.trees, tree.as_deref()),
             build_tree: tree,
             ..held
         };
@@ -164,6 +162,7 @@ impl Budget<'_> {
         };
         let recorded = Count {
             gate_blocks: number,
+            trees: with(count.trees, tree.as_deref()),
             gate_tree: tree,
             ..count
         };
@@ -187,13 +186,18 @@ impl Budget<'_> {
                 held.taken_under(prompt) || self.continued && held.taken_by(self.session)
             })
             .unwrap_or_default();
+        let build_tree = held.build_tree.or(held.tree);
+        let trees = [&build_tree, &held.gate_tree]
+            .into_iter()
+            .fold(held.trees, |trees, tree| with(trees, tree.as_deref()));
         Count {
             prompt,
             session: self.session.map(str::to_string),
             builds: held.builds.unwrap_or_default(),
-            build_tree: held.build_tree.or(held.tree),
+            build_tree,
             gate_blocks: held.gate_blocks.unwrap_or(u64::from(held.gate_spent)),
             gate_tree: held.gate_tree,
+            trees,
         }
     }
 }
@@ -307,6 +311,18 @@ struct Count {
     /// The working tree the last gate block was taken over. Only a tree klin recorded here can
     /// prove that a later stop changed it. ADR 0052.
     gate_tree: Option<String>,
+    /// Every tree a block of this prompt was taken over, of either kind. Spec 10.7.
+    trees: Vec<String>,
+}
+
+/// The `trees` with one more, each held once.
+fn with(mut trees: Vec<String>, tree: Option<&str>) -> Vec<String> {
+    if let Some(tree) = tree
+        && !trees.iter().any(|held| held == tree)
+    {
+        trees.push(tree.to_string());
+    }
+    trees
 }
 
 /// The record as it stands on disk. A field that is missing or holds another type reads as
@@ -321,6 +337,7 @@ struct Record {
     build_tree: Option<String>,
     gate_blocks: Option<u64>,
     gate_tree: Option<String>,
+    trees: Vec<String>,
     tree: Option<String>,
     gate_spent: bool,
 }
@@ -338,6 +355,13 @@ impl Record {
             build_tree: text("build_tree"),
             gate_blocks: number("gate_blocks"),
             gate_tree: text("gate_tree"),
+            trees: held
+                .get("trees")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|tree| tree.as_str().map(str::to_string))
+                .collect(),
             tree: text("tree"),
             gate_spent: held.get("gate_spent").and_then(Value::as_bool) == Some(true),
         })
@@ -362,6 +386,7 @@ fn counted(at: &Path, count: &Count) -> bool {
         "build_tree": count.build_tree,
         "gate_blocks": count.gate_blocks,
         "gate_tree": count.gate_tree,
+        "trees": count.trees,
     })
     .to_string()
         + "\n";
