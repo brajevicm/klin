@@ -16,7 +16,7 @@ use crate::ceiling::Ceiling;
 use crate::changed::Change;
 use crate::config::Config;
 use crate::coverage::{Coverage, Left};
-use crate::error::Error;
+use crate::error::{Error, Fault};
 use crate::files::Form;
 use crate::key::Key;
 use crate::measurement::{self, Unchanged};
@@ -839,7 +839,9 @@ pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 pub type Derive = fn(&Project) -> Result<Vec<Provenance>, Error>;
 
 /// A check's own explanation of its derived policy, of every entry or of the one a person names.
-pub type Explain = fn(&Project, Option<&str>) -> Result<Explained, Error>;
+/// A check's explanation, where an entry the check does not have is an invocation error and
+/// anything else that stops it is a configuration error. Spec 7.3, 11.7.
+pub type Explain = fn(&Project, Option<&str>) -> Result<Explained, Fault>;
 
 /// What a check's explanation says: the lines a person reads, and the values it names beyond
 /// the ones a person pinned, which the JSON carries. Spec 11.6.

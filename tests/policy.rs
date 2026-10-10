@@ -393,3 +393,93 @@ fn policy_json_types_a_built_in_value_as_a_pinned_one() {
     assert_eq!(pinned["provenance"], "pinned", "{pinned}");
     assert_eq!(pinned["value"], omitted["value"], "{pinned}");
 }
+
+/// A configuration klin cannot read is still the policy document under `--json`, which names
+/// the error and exits 2. Spec 11.6, 11.7.
+#[test]
+fn policy_json_names_a_configuration_error_in_the_policy_document() {
+    let tree = tree(r#"{"complexity": {"nope": 1}}"#);
+
+    let run = tree.run(&["policy", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    let json = run.json();
+    assert_eq!(json["schema_version"], 1, "{json}");
+    assert_eq!(json["command"], "policy", "{json}");
+    assert_eq!(json["config"]["present"], true, "{json}");
+    let keys: Vec<&String> = json
+        .as_object()
+        .into_iter()
+        .flat_map(|all| all.keys())
+        .collect();
+    assert_eq!(
+        keys,
+        ["command", "config", "errors", "schema_version"],
+        "{json}"
+    );
+    let error = &json["errors"][0];
+    assert_eq!(error["kind"], "configuration", "{json}");
+    assert_eq!(error["check"], Value::Null, "{json}");
+    assert!(
+        error["message"]
+            .as_str()
+            .is_some_and(|said| said.contains("nope")),
+        "{json}"
+    );
+}
+
+/// The text of a configuration klin cannot read is the `FAIL:` line, with exit 2. Spec 11.6.
+#[test]
+fn policy_text_names_a_configuration_error_and_exits_2() {
+    let tree = tree(r#"{"complexity": {"nope": 1}}"#);
+
+    let run = tree.run(&["policy"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.out.starts_with("FAIL: "), "{}", run.out);
+    assert!(run.says("unknown field \"nope\""), "{}", run.out);
+}
+
+/// A name, an entry or a `--config` that `policy` cannot take is an invocation error in the
+/// policy document, with exit 2. Spec 7.3, 11.7.
+#[test]
+fn policy_json_names_an_argument_it_cannot_take_as_an_invocation_error() {
+    let tree = tree(
+        r#"{"complexity": {"cc": 8}, "conventions": {"no-todo": {"text": "TODO", "remedy": "Do it."}}}"#,
+    );
+
+    for args in [
+        &["policy", "--json", "nope"][..],
+        &["policy", "--json", "complexity", "cc"],
+        &["policy", "--json", "conventions", "nope"],
+        &["policy", "--json", "--config", "missing.json"],
+        &["policy", "--json", "--config", "."],
+        &["policy", "--json", "public-api", "nope"],
+    ] {
+        let run = tree.run(args);
+
+        assert_eq!(run.code, 2, "{args:?}: {}", run.out);
+        let json = run.json();
+        assert_eq!(json["command"], "policy", "{args:?}: {json}");
+        assert_eq!(json["errors"][0]["kind"], "invocation", "{args:?}: {json}");
+    }
+}
+
+/// The error document names the configuration the run loaded, as the policy document does, even
+/// where no klin.json is written. Spec 11.7.
+#[test]
+fn policy_json_error_names_the_configuration_the_run_loaded() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let listed = tree.run(&["policy", "--json"]).json();
+    let refused = tree.run(&["policy", "--json", "nope"]).json();
+
+    assert_eq!(refused["errors"][0]["kind"], "invocation", "{refused}");
+    assert_eq!(
+        refused["config"]["path"], listed["config"]["path"],
+        "{refused}"
+    );
+    assert_eq!(refused["config"]["present"], false, "{refused}");
+}

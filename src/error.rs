@@ -23,3 +23,41 @@ impl Error {
         ))
     }
 }
+
+/// The error kinds of spec 7.3 the runners tell apart.
+#[derive(Clone, Copy)]
+pub enum ErrorKind {
+    Invocation,
+    Configuration,
+    Base,
+    Git,
+    Internal,
+}
+
+impl ErrorKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            ErrorKind::Invocation => "invocation",
+            ErrorKind::Configuration => "configuration",
+            ErrorKind::Base => "base",
+            ErrorKind::Git => "git",
+            ErrorKind::Internal => "internal",
+        }
+    }
+}
+
+/// One error of spec 7.3: its kind, and what went wrong.
+pub struct Fault {
+    pub kind: ErrorKind,
+    pub error: Error,
+}
+
+impl From<Fault> for Error {
+    fn from(fault: Fault) -> Error {
+        fault.error
+    }
+}
+
+pub fn fault(kind: ErrorKind) -> impl Fn(Error) -> Fault {
+    move |error| Fault { kind, error }
+}
