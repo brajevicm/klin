@@ -126,11 +126,10 @@ impl Budget<'_> {
         }
         let count = Count {
             builds: held.builds + 1,
-            trees: held.trees.into_iter().chain(tree.clone()).collect(),
-            tree_lost: held.tree_lost || tree.is_none(),
-            build_tree: tree,
+            build_tree: tree.clone(),
             ..held
-        };
+        }
+        .seen(tree.as_deref());
         match counted(&at, &count) {
             true => BuildBlock::Spent(count.builds),
             false => unbounded(
@@ -165,11 +164,10 @@ impl Budget<'_> {
         };
         let recorded = Count {
             gate_blocks: number,
-            trees: count.trees.into_iter().chain(tree.clone()).collect(),
-            tree_lost: count.tree_lost || tree.is_none(),
-            gate_tree: tree,
+            gate_tree: tree.clone(),
             ..count
-        };
+        }
+        .seen(tree.as_deref());
         if counted(&at, &recorded) {
             return GateBlock::Spent(number);
         }
@@ -324,6 +322,16 @@ struct Count {
     /// Whether a block of this prompt was taken over a tree klin could not hash, so `trees`
     /// cannot prove the turn changed nothing. Spec 10.7.
     tree_lost: bool,
+}
+
+impl Count {
+    /// The count with the tree a block was just taken over, or with the mark of a block over a
+    /// tree klin could not hash. Spec 10.7.
+    fn seen(mut self, tree: Option<&str>) -> Count {
+        self.tree_lost |= tree.is_none();
+        self.trees.extend(tree.map(str::to_string));
+        self
+    }
 }
 
 /// The record as it stands on disk. A field that is missing or holds another type reads as

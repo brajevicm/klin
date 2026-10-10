@@ -387,15 +387,25 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    if !parts.is_empty() && quiet() {
-        parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
-    }
+    let parts = kept(parts, quiet);
     if parts.is_empty() {
         return None;
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     Some(said.join("\n"))
+}
+
+/// What a Stop still tells: every part, or after a `quiet` turn only that no prompt event
+/// reached the session. Spec 10.7.
+fn kept(
+    mut parts: Vec<(&'static str, String)>,
+    quiet: impl FnOnce() -> bool,
+) -> Vec<(&'static str, String)> {
+    if !parts.is_empty() && quiet() {
+        parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
+    }
+    parts
 }
 
 /// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
