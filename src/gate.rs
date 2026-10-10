@@ -689,10 +689,9 @@ fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> 
     }
 }
 
-/// The build failure as a person and an agent read it. The text
-/// opens with where each command came from, so a derived build is never a command with no
-/// origin, and the note says why klin did not block, because the exit code alone no longer
-/// says it. Spec 11, ADR 0040.
+/// The build failure as a person and an agent read it. The text opens with where each command
+/// came from, so a derived build is never a command with no origin, and the note says why klin
+/// did not block, because the exit code alone no longer says it. Spec 11, ADR 0040.
 fn reported(failure: &str, built: &[contract::Said], blocks: &BuildBlock) -> (u8, String) {
     let (blocking, said, note) = blocks.outcome();
     let code = if blocking { BLOCKED } else { 0 };
@@ -776,9 +775,9 @@ fn judge(
     let mut tally = each(args, &wanted, project, &against, &mut doc, out);
     tally.document = Some(doc.stopped_with(&plan, unbuilt, rootless.as_deref()));
     tally.told += usize::from(rootless.is_some());
-    tally.told += gone_moves(args, project, &wanted, out);
+    tally.told += gone_moves(project, &wanted, out);
     tally.told += usize::from(unbuilt.is_some());
-    finish(args, &plan, wanted.len(), &tally, out);
+    finish(&plan, wanted.len(), &tally, out);
     Ok(tally)
 }
 
@@ -926,7 +925,7 @@ fn pins_in(project: &Project, check: &catalogue::Row) -> bool {
         .is_some_and(|section| section.get("in").is_some())
 }
 
-fn finish(args: &Args, plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
+fn finish(plan: &Plan, gates: usize, tally: &Tally, out: &mut String) {
     let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
@@ -936,9 +935,7 @@ fn finish(args: &Args, plan: &Plan, gates: usize, tally: &Tally, out: &mut Strin
         "klin: {gates} gate(s), {excluded}{}",
         summary(failed, errored)
     );
-    if !args.json {
-        let _ = writeln!(out, "{line}");
-    }
+    let _ = writeln!(out, "{line}");
 }
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
@@ -952,7 +949,7 @@ fn said(args: &Args, built: &[contract::Said], out: &mut String) {
     }
 }
 
-/// The records of spec 11.2 only the runner writes: the findings, notes and derived entries it
+/// The records of spec 11.7 only the runner writes: the findings, notes and derived entries it
 /// renders from each gate's typed result or records itself.
 #[derive(Default, Clone)]
 struct Recorded {
@@ -1862,18 +1859,18 @@ fn measured(
     Ok(())
 }
 
-/// What the Stop notes of a moved pinned path, one whose files went with no rename or that
-/// selects nothing in either tree, and of a file moved under a skipped directory. A pin whose
-/// files were all renamed is followed in silence, and `klin check` names it. Spec 7.3.
-fn gone_moves(args: &Args, project: &Project, wanted: &[&Gate], out: &mut String) -> usize {
+/// The notes the Stop prints of a moved pinned path, one whose files went with no rename or that
+/// selects nothing in either tree, and of a file moved under a skipped directory, and how many it
+/// printed. A pin whose files were all renamed is followed in silence, and `klin check` names it.
+/// Spec 7.3.
+fn gone_moves(project: &Project, wanted: &[&Gate], out: &mut String) -> usize {
     let gone = selected(project.moves(), wanted).filter(|moved| moved.gone());
-    gone.filter_map(Moved::said)
-        .inspect(|said| {
-            if !args.json {
-                let _ = writeln!(out, "  NOTE: {said}");
-            }
-        })
-        .count()
+    let mut count = 0;
+    for said in gone.filter_map(Moved::said) {
+        let _ = writeln!(out, "  NOTE: {said}");
+        count += 1;
+    }
+    count
 }
 
 /// The moves of the sections whose gates this run selected, and every move no section decides,
