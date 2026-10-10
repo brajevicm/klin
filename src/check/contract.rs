@@ -811,12 +811,12 @@ pub fn at_base<T>(
     let mut owned = None;
     let prior = match lay {
         Lay::Whole(prior) => prior,
-        Lay::Announced | Lay::At(_) => base::laid(at.prior, &mut owned, || {
-            let commit = match lay {
-                Lay::At(commit) => commit.to_string(),
-                _ => announced(at.project.root())?.before,
-            };
-            base::materialize(at.project, &commit, None)
+        Lay::At(commit) => base::laid(at.prior, &mut owned, || {
+            base::materialize(at.project, commit, None)
+        })?,
+        Lay::Announced => base::laid(at.prior, &mut owned, || {
+            let base = announced(at.project.root())?;
+            base::materialize(at.project, &base.before, None)
         })?,
     };
     read(
