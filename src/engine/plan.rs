@@ -1,7 +1,8 @@
 use serde_json::Value;
 
 use crate::config::file::MEASUREMENT_LOST;
-use crate::contract::check::{self as contract, Activation};
+use crate::contract;
+use crate::contract::check::Activation;
 use crate::contract::project::Project;
 use crate::engine::catalogue;
 use crate::sys::error::Error;
@@ -153,7 +154,7 @@ fn add(project: &Project, check: &'static catalogue::Row, plan: &mut Plan) -> Re
     match stated {
         Value::Bool(false) => plan.excluded.push(check.name.to_string()),
         _ if check.gate_per_entry => {
-            for (name, _) in contract::named_entries(&project.config, check.section)? {
+            for (name, _) in contract::check::named_entries(&project.config, check.section)? {
                 plan.gates.push(Gate { name, check });
             }
         }

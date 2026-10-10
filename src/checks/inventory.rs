@@ -13,7 +13,8 @@ use serde_json::Value;
 
 use crate::config::key::Key;
 use crate::config::scope::{self, Roots, Scope};
-use crate::contract::check::{self as contract, Context, Counted, Line, Listed, Sink};
+use crate::contract;
+use crate::contract::check::{Context, Counted, Line, Listed, Sink};
 use crate::contract::coverage::{self, Coverage};
 use crate::contract::holes;
 use crate::contract::project::Project;
@@ -115,7 +116,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let config = &project.config;
     let today = today(project)?;
     out.tell_each(derive(project)?);
-    let commit = contract::base_commit(config.root(), at)?;
+    let commit = contract::check::base_commit(config.root(), at)?;
     let Found {
         judged,
         mut paired,
@@ -157,8 +158,8 @@ struct Found {
 fn found(at: &Context, commit: &str, today: &Scope) -> Result<Found, Error> {
     let project = at.project;
     let root = project.config.root();
-    let lay = contract::Lay::At(commit);
-    contract::at_base(at, lay, (SECTION, today), |prior, scope| {
+    let lay = contract::check::Lay::At(commit);
+    contract::check::at_base(at, lay, (SECTION, today), |prior, scope| {
         let tests = Tests {
             roots: Roots::new(&project.facts().found.test_roots),
             scope,
@@ -210,12 +211,12 @@ fn today(project: &Project) -> Result<Scope, Error> {
 }
 
 /// The test roots this run found, as the one `derived:` line and its JSON entry.
-pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {
     let roots = &project.facts().found.test_roots;
     if roots.is_empty() {
         return Ok(Vec::new());
     }
-    let said = contract::Derived::bare(
+    let said = contract::check::Derived::bare(
         SECTION,
         TEST_ROOTS,
         roots.clone().into(),
@@ -413,8 +414,8 @@ fn deleted(went: &[Finding], at: &Context, out: &mut Sink) {
 }
 
 /// A finding as the site a report lists.
-fn told(site: &Finding) -> contract::Located {
-    contract::Located {
+fn told(site: &Finding) -> contract::check::Located {
+    contract::check::Located {
         file: site.file.clone(),
         line: site.line,
         text: site.text.clone(),
@@ -430,7 +431,7 @@ fn orphaned(orphans: &[Function], out: &mut Sink) {
     out.tell(Listed::TestFunctionsOrphaned(
         orphans
             .iter()
-            .map(|function| contract::Located {
+            .map(|function| contract::check::Located {
                 file: function.site.file.clone(),
                 line: function.site.line,
                 text: function.site.text.clone(),
@@ -448,7 +449,7 @@ fn noted(paired: &[Site], out: &mut Sink) {
     out.tell(Listed::TestFilesPaired {
         files: paired
             .iter()
-            .map(|site| contract::Site {
+            .map(|site| contract::check::Site {
                 file: site.path.clone(),
                 text: site.subject.clone().unwrap_or_default(),
             })

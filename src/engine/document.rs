@@ -12,9 +12,10 @@ use serde_json::{Map, Value, json};
 
 use crate::config::file::MEASUREMENT_LOST;
 use crate::config::scope::{Moved, Moves};
+use crate::contract;
 use crate::contract::check::{
-    self as contract, Activation, Caller, Cause, Class, Context, Hole, Incomplete, NO_SOURCE_ROOT,
-    Plain, Reason, Records, Sink, Told, UNBUILT,
+    Activation, Caller, Cause, Class, Context, Hole, Incomplete, NO_SOURCE_ROOT, Plain, Reason,
+    Records, Sink, Told, UNBUILT,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Seen, Unmeasured};
@@ -672,7 +673,7 @@ impl CheckDocument {
             }
             self.notes.push(Note {
                 check: None,
-                kind: contract::WINDOW,
+                kind: contract::check::WINDOW,
                 message: note.clone(),
                 coverage: None,
                 file: Slot::Null,
@@ -1080,8 +1081,8 @@ fn selected<'a>(moves: &'a Moves, wanted: &'a [&Gate]) -> impl Iterator<Item = &
 /// Spec 7.3, 11.7.
 fn moved_review(moved: &Moved) -> Option<Review> {
     let (kind, path) = match moved {
-        Moved::Pin { path, .. } => (contract::MOVED_PIN, path),
-        Moved::Skipped { path, .. } => (contract::MOVED_SKIPPED, path),
+        Moved::Pin { path, .. } => (contract::check::MOVED_PIN, path),
+        Moved::Skipped { path, .. } => (contract::check::MOVED_SKIPPED, path),
         Moved::Out { .. } => return None,
     };
     let check = moved
@@ -1349,7 +1350,10 @@ fn pinned_entry<'a>(gate: &Gate, project: &'a Project) -> Option<&'a Value> {
     let section = project.config.pinned(gate.check.section)?;
     match gate.check.gate_per_entry {
         true => section.as_array()?.iter().find(|entry| {
-            entry.get(contract::NAMED.name).and_then(Value::as_str) == Some(gate.name.as_str())
+            entry
+                .get(contract::check::NAMED.name)
+                .and_then(Value::as_str)
+                == Some(gate.name.as_str())
         }),
         false => Some(section),
     }

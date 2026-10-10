@@ -11,7 +11,8 @@ use serde_json::Value;
 
 use crate::config::key::Key;
 use crate::config::scope::{self, Scope};
-use crate::contract::check::{self as contract, Class, Context, Counted, Hole, Line, Sink, Site};
+use crate::contract;
+use crate::contract::check::{Class, Context, Counted, Hole, Line, Sink, Site};
 use crate::contract::coverage::Coverage;
 use crate::contract::holes;
 use crate::contract::project::Project;
@@ -235,7 +236,7 @@ fn surveyed(at: &Context, out: &mut Sink) -> Result<Sites, Error> {
     out.tell(said(&found));
     let (judged, dropped): (Vec<_>, Vec<_>) =
         found.iter().partition(|(path, _)| scope.selects(path));
-    let commit = contract::base_commit(config.root(), at)?;
+    let commit = contract::check::base_commit(config.root(), at)?;
     let changes = at.project.changes(&commit)?;
     let renamed = renamed(&changes, &judged);
     let judged: Vec<(&str, &str, &Format)> = judged
@@ -307,15 +308,15 @@ fn scope(at: &Context, found: &[(&str, &Format)]) -> Result<Scope, Error> {
     Ok(scope)
 }
 
-pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {
     Ok(vec![said(&manifests(project)).into()])
 }
 
 /// The manifests this run judges, as the one `derived:` line and its JSON entry.
-fn said(found: &[(&str, &Format)]) -> contract::Derived {
+fn said(found: &[(&str, &Format)]) -> contract::check::Derived {
     let names: Vec<&str> = found.iter().map(|(path, _)| *path).collect();
     let shown = names.join(", ");
-    contract::Derived::keyed(SECTION, Some("manifests"), names.into(), shown, RULE)
+    contract::check::Derived::keyed(SECTION, Some("manifests"), names.into(), shown, RULE)
 }
 
 /// Every path a judged manifest could read in one tree: the manifest, and each lockfile name its

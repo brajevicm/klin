@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value, json};
 
-use crate::config::file as config;
-use crate::contract::check::{self as contract, Activation, Derivation, Told};
+use crate::config;
+use crate::contract;
+use crate::contract::check::{Activation, Derivation, Told};
 use crate::contract::project::Project;
 use crate::engine::plan::{Gate, Plan, State};
 use crate::engine::{catalogue, render};
@@ -43,7 +44,7 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
         return reference::run(args.schema, out);
     }
     if !args.json {
-        for note in config::notes(args.config.as_deref(), start) {
+        for note in config::file::notes(args.config.as_deref(), start) {
             let _ = writeln!(out, "{note}");
         }
     }
@@ -65,7 +66,7 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Err(refused.error);
     }
     let config = config.unwrap_or_else(|| {
-        let located = config::located(args.config.as_deref(), start);
+        let located = config::file::located(args.config.as_deref(), start);
         json!({
             "path": located.as_ref().map(|file| file.display().to_string()),
             "present": located.as_ref().is_some_and(|file| file.is_file()),
@@ -86,7 +87,7 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
 /// invocation error. Spec 7.3.
 fn loaded(args: &Policy, start: &Path) -> Result<Project, Fault> {
     let named_nothing = args.config.is_some()
-        && !config::located(args.config.as_deref(), start).is_some_and(|file| file.is_file());
+        && !config::file::located(args.config.as_deref(), start).is_some_and(|file| file.is_file());
     Project::load(args.config.as_deref(), start, &catalogue::sections())
         .map(Project::read_only)
         .map_err(fault(match named_nothing {
@@ -179,7 +180,7 @@ impl<'a> Shared<'a> {
             build: Build::of(project)?,
             accepted: project
                 .config
-                .pinned(config::ACCEPTED.name)
+                .pinned(config::file::ACCEPTED.name)
                 .and_then(Value::as_array)
                 .map(Vec::as_slice)
                 .unwrap_or_default(),
@@ -200,10 +201,14 @@ struct Build {
 impl Build {
     fn of(project: &Project) -> Result<Build, Error> {
         let plan = build::plan(project)?;
-        if let Some(value) = project.config.pinned(config::BUILD.name) {
+        if let Some(value) = project.config.pinned(config::file::BUILD.name) {
             return Ok(Build {
                 said: "pinned",
-                lines: vec![format!("pinned: {} {}", config::BUILD.name, shown(value))],
+                lines: vec![format!(
+                    "pinned: {} {}",
+                    config::file::BUILD.name,
+                    shown(value)
+                )],
                 json: json!({ "value": value, "provenance": "pinned" }),
             });
         }
@@ -360,7 +365,7 @@ fn said_by(
 }
 
 fn explained(
-    explain: contract::Explain,
+    explain: contract::check::Explain,
     project: &Project,
     args: &Policy,
 ) -> Result<(Vec<String>, Vec<Value>), Fault> {
@@ -435,7 +440,7 @@ fn section_of(project: &Project, gate: &Gate, entry: Option<&str>) -> Map<String
     let fields = match section {
         Some(Value::Array(entries)) => entries
             .iter()
-            .find(|entry| entry.get(contract::NAMED.name) == Some(&json!(gate.name))),
+            .find(|entry| entry.get(contract::check::NAMED.name) == Some(&json!(gate.name))),
         other => other,
     };
     let mut fields = fields
@@ -443,7 +448,7 @@ fn section_of(project: &Project, gate: &Gate, entry: Option<&str>) -> Map<String
         .cloned()
         .unwrap_or_default();
     if gate.check.gate_per_entry {
-        fields.remove(contract::NAMED.name);
+        fields.remove(contract::check::NAMED.name);
     }
     fields.retain(|key, _| entry.is_none_or(|entry| entry == key));
     fields
@@ -454,14 +459,16 @@ fn section_of(project: &Project, gate: &Gate, entry: Option<&str>) -> Map<String
 fn said_keys(told: &[Told]) -> Vec<&str> {
     told.iter()
         .filter_map(|item| match item {
-            Told::Provenance(contract::Provenance::Pinned { key, .. }) => Some(key.as_str()),
-            Told::Provenance(contract::Provenance::Derived(derived)) => derived.key.as_deref(),
+            Told::Provenance(contract::check::Provenance::Pinned { key, .. }) => Some(key.as_str()),
+            Told::Provenance(contract::check::Provenance::Derived(derived)) => {
+                derived.key.as_deref()
+            }
             _ => None,
         })
         .collect()
 }
 
-fn as_told(said: Vec<contract::Provenance>) -> Vec<Told> {
+fn as_told(said: Vec<contract::check::Provenance>) -> Vec<Told> {
     said.into_iter().map(Told::Provenance).collect()
 }
 
@@ -519,7 +526,7 @@ fn accepted_values(entry: &Value) -> String {
         .into_iter()
         .flatten()
         .filter(|(key, _)| {
-            !["gate", "file", "text", config::ACCEPTED_REASON].contains(&key.as_str())
+            !["gate", "file", "text", config::file::ACCEPTED_REASON].contains(&key.as_str())
         })
         .map(|(key, value)| format!("{key} {}", shown(value)))
         .collect();
@@ -550,7 +557,7 @@ fn policy_json(project: &Project, capabilities: &[Capability], shared: &Shared, 
         "config": {
             "path": project.config.file.display().to_string(),
             "present": project.config.written(),
-            "ignored": config::ignored(project.start()),
+            "ignored": config::file::ignored(project.start()),
         },
         "derivation": { "commit": project.facts().commit },
         "capabilities": capabilities.iter().map(Capability::json).collect::<Vec<_>>(),

@@ -2,17 +2,19 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::config::key::{BUILD_ROOT, BUILD_RUN};
 use crate::config::scope;
-use crate::contract::check::{self as contract, Said};
+use crate::contract;
+use crate::contract::check::Said;
 use crate::contract::project::Project;
 use crate::facts::survey;
 use crate::sys::changed::Change;
 use crate::sys::error::Error;
 use crate::sys::shell;
 
-const BUILD: &str = config::BUILD.name;
+const BUILD: &str = config::file::BUILD.name;
 
 /// A manifest names a project klin can build, the file that must sit beside it, and the command
 /// that builds it. A manifest with no command builds no project of its own. ADR 0012.
@@ -128,7 +130,7 @@ fn derived(project: &Project) -> Plan {
     let entries = found.into_iter().map(|(entry, _)| entry).collect();
     let said = vec![(
         line,
-        Some(contract::derived_entry(BUILD, None, value, RULE)),
+        Some(contract::check::derived_entry(BUILD, None, value, RULE)),
     )];
     Plan { entries, said }
 }

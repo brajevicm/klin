@@ -14,7 +14,8 @@ use serde_json::{Map, Value};
 use crate::config::file::Config;
 use crate::config::key::{self, Key};
 use crate::config::scope::{self, Scope, under_or_at};
-use crate::contract::check::{self as contract, Context, HeldAtBase, Line, Listed, Measured, Sink};
+use crate::contract;
+use crate::contract::check::{Context, HeldAtBase, Line, Listed, Measured, Sink};
 use crate::contract::coverage;
 use crate::contract::holes;
 use crate::contract::measurement::{self, Measurement};
@@ -132,7 +133,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     if let Some(said) = said_families(&families) {
         out.tell(said);
     }
-    let commit = contract::base_commit(config.root(), at)?;
+    let commit = contract::check::base_commit(config.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, before_families, after) =
@@ -144,7 +145,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         records.layout = layout;
     });
     let mut held_before: Vec<&State> = before_states.iter().collect();
-    contract::keep_held(at, &mut held_before);
+    contract::check::keep_held(at, &mut held_before);
     let prior = held_before
         .iter()
         .map(|state| finding(state, None))
@@ -328,7 +329,7 @@ fn measure(
     measurement::measure(found, tree, unchanged)
 }
 
-pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {
     let families = families(project)?;
     Ok(said_families(&families)
         .into_iter()
@@ -337,7 +338,7 @@ pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
 }
 
 /// The derived families as one provenance line and its JSON entry, and nothing when none is.
-fn said_families(families: &[Family]) -> Option<contract::Derived> {
+fn said_families(families: &[Family]) -> Option<contract::check::Derived> {
     if families.is_empty() {
         return None;
     }
@@ -348,7 +349,9 @@ fn said_families(families: &[Family]) -> Option<contract::Derived> {
         .join(", ");
     let value = Value::Array(families.iter().map(Family::record).collect());
     let rule = "the file families the derivation commit proves reached";
-    Some(contract::Derived::keyed(SECTION, None, value, names, rule))
+    Some(contract::check::Derived::keyed(
+        SECTION, None, value, names, rule,
+    ))
 }
 
 /// The base tree measured, with the families under the scope the base commit recorded, so a
@@ -362,8 +365,8 @@ fn before(
         .first()
         .map(|family| family.scope.clone())
         .unwrap_or_default();
-    let lay = contract::Lay::Whole(prior);
-    contract::at_base(at, lay, (SECTION, &today), |prior, scope| {
+    let lay = contract::check::Lay::Whole(prior);
+    contract::check::at_base(at, lay, (SECTION, &today), |prior, scope| {
         let before_families = base_families(families, &scope);
         Ok((
             measure(prior.tree(), &before_families, None)?,
@@ -619,7 +622,7 @@ fn covered(measured: &Measurement, families: &[Family]) -> coverage::Files {
     }
 }
 
-impl contract::Based for Vec<&State> {
+impl contract::check::Based for Vec<&State> {
     fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
         self.retain(|state| was_held(&state.file));
     }

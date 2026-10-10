@@ -9,11 +9,12 @@ use serde_json::{Map, Value};
 
 use crate::config::ceiling::Ceiling;
 use crate::config::file::MEASUREMENT_LOST;
+use crate::contract;
 use crate::contract::check::{
-    self as contract, AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST,
-    DERIVATION, Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line,
-    Listed, Located, Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told,
-    UNBUILT, UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
+    AMBIGUOUS, Caller, Cause, Class, Complexity, Counted, DELETED, DELETED_TEST, DERIVATION,
+    Derived, Entry, Failed, Held, HeldAtBase, Hole, Incomplete, Judged, Layering, Line, Listed,
+    Located, Matched, Measured, Plain, Provenance, PublicApi, Ratchet, Standing, Told, UNBUILT,
+    UNMATCHED, UNMATCHED_ACCEPTED, UNRESOLVED, Unmatched, Unresolvable, Wording,
 };
 use crate::contract::coverage::Coverage;
 use crate::contract::holes::{self, Unmeasured};
@@ -860,7 +861,7 @@ fn derived_json(said: &Provenance) -> Option<Value> {
         Wording::Sampled(recorded) => format!("{}{recorded}", derived.rule),
         Wording::Keyed | Wording::Bare => derived.rule.clone(),
     };
-    Some(contract::derived_entry(
+    Some(contract::check::derived_entry(
         derived.section,
         derived.key.as_deref(),
         derived.value.clone(),

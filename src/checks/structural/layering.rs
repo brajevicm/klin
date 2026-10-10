@@ -15,11 +15,13 @@ use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::config::key::Key;
 use crate::config::scope::{self, Moves, Scope, Selector};
+use crate::contract;
 use crate::contract::check::{
-    self as contract, Context, HeldAtBase, Line, Listed, Measured, Sink, Site, Unresolvable,
+    Context, HeldAtBase, Line, Listed, Measured, Sink, Site, Unresolvable,
 };
 use crate::contract::coverage;
 use crate::contract::holes;
@@ -165,7 +167,7 @@ impl Placed<'_> {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let policy = policy(at.config(), at.project.moves())?;
-    let commit = contract::base_commit(at.project.root(), at)?;
+    let commit = contract::check::base_commit(at.project.root(), at)?;
     let (was, now, base_scoped) = sides(at, &commit, out)?;
     policy.applies(at.config(), &was, &now)?;
     let started = Instant::now();
@@ -356,7 +358,7 @@ fn policy(config: &Config, moves: &Moves) -> Result<Policy, Error> {
         .as_object()
         .ok_or_else(|| refused(config, "must be an object with \"layers\", or false"))?;
     let names: Vec<&str> = KEYS.iter().map(|key| key.name).collect();
-    config::known_fields(&config.file, SECTION, fields, &names)?;
+    config::file::known_fields(&config.file, SECTION, fields, &names)?;
     let layers = layers(config, fields)?;
     names_layers(config, &layers)?;
     Ok(Policy {
@@ -412,7 +414,7 @@ fn shaped(layers: &Value) -> Result<Vec<Shaped<'_>>, String> {
     layers
         .as_object()
         .filter(|layers| !layers.is_empty())
-        .ok_or_else(|| config::must_be(SECTION, LAYERS.name, "a non-empty map of layers"))?
+        .ok_or_else(|| config::file::must_be(SECTION, LAYERS.name, "a non-empty map of layers"))?
         .iter()
         .map(|(name, value)| shaped_layer(name, value))
         .collect()
@@ -421,8 +423,8 @@ fn shaped(layers: &Value) -> Result<Vec<Shaped<'_>>, String> {
 fn shaped_layer<'a>(name: &'a str, value: &'a Value) -> Result<Shaped<'a>, String> {
     let fields = value
         .as_object()
-        .ok_or_else(|| config::must_be(SECTION, name, "an object with an \"in\" path"))?;
-    config::unknown_field(
+        .ok_or_else(|| config::file::must_be(SECTION, name, "an object with an \"in\" path"))?;
+    config::file::unknown_field(
         &format!("{SECTION} layer {name}"),
         fields,
         &[scope::IN.name, CAN_USE],
@@ -430,8 +432,8 @@ fn shaped_layer<'a>(name: &'a str, value: &'a Value) -> Result<Shaped<'a>, Strin
     let within = fields
         .get(scope::IN.name)
         .ok_or_else(|| format!("\"{SECTION}\" layer \"{name}\" has no \"in\""))?;
-    if !config::string_or_list(within) {
-        return Err(config::must_be(
+    if !config::file::string_or_list(within) {
+        return Err(config::file::must_be(
             SECTION,
             scope::IN.name,
             "a non-empty path or list of paths",
@@ -458,7 +460,9 @@ fn can_use(fields: &Map<String, Value>) -> Result<Option<Vec<String>>, String> {
                     .collect()
             })
             .map(Some)
-            .ok_or_else(|| config::must_be(SECTION, CAN_USE, "a list of layer names or null")),
+            .ok_or_else(|| {
+                config::file::must_be(SECTION, CAN_USE, "a list of layer names or null")
+            }),
     }
 }
 
@@ -829,7 +833,7 @@ fn judged(
         .iter()
         .filter(|dependency| placed.judges(&now.graph, dependency))
         .count();
-    let state = Measured::Layering(contract::Layering {
+    let state = Measured::Layering(contract::check::Layering {
         sites,
         forbidden,
         cyclic,
@@ -889,7 +893,7 @@ fn prior(physicals: &Physicals, (was_edges, now_edges): (&Edges, &Edges)) -> Vec
 /// How the working tree's files came to be modules, and how many dependencies V1 left alone.
 /// How the module graph attached the files, as the `OK:` line counts them. The caller sets the
 /// counts of what it judged.
-fn attachment(graph: &ModuleGraph) -> contract::Layering {
+fn attachment(graph: &ModuleGraph) -> contract::check::Layering {
     let count = |kind: Attachment| {
         graph
             .attached
@@ -897,13 +901,13 @@ fn attachment(graph: &ModuleGraph) -> contract::Layering {
             .filter(|held| **held == kind)
             .count()
     };
-    contract::Layering {
+    contract::check::Layering {
         attached: graph.attached.len(),
         by_manifest: count(Attachment::Manifest),
         by_convention: count(Attachment::Convention),
         unattached: graph.unattached.len(),
         external: graph.external,
-        ..contract::Layering::default()
+        ..contract::check::Layering::default()
     }
 }
 

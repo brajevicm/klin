@@ -9,7 +9,8 @@ use tree_sitter::Node;
 use crate::config::ceiling::{self, Ceiling};
 use crate::config::key::Key;
 use crate::config::scope::{self, Scope};
-use crate::contract::check::{self as contract, ContentCost, Context, Line, Sink};
+use crate::contract;
+use crate::contract::check::{ContentCost, Context, Line, Sink};
 use crate::contract::coverage::Files;
 use crate::contract::holes;
 use crate::contract::project::Project;
@@ -364,7 +365,7 @@ struct Spec {
     notes: Notes,
 }
 
-type Provenance = Vec<contract::Provenance>;
+type Provenance = Vec<contract::check::Provenance>;
 type Notes = Vec<(String, String)>;
 
 pub fn derive(project: &Project) -> Result<Provenance, Error> {
@@ -375,7 +376,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let mut spec = spec(project)?;
     out.tell_each(std::mem::take(&mut spec.provenance));
-    ratchet::noted_as(contract::DERIVATION, &spec.notes, out);
+    ratchet::noted_as(contract::check::DERIVATION, &spec.notes, out);
     let sweep = measure(
         project.tree(),
         &spec.selection,
@@ -402,7 +403,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         )?,
         at,
         Line::new(
-            contract::Measured::Complexity(contract::Complexity {
+            contract::check::Measured::Complexity(contract::check::Complexity {
                 judged,
                 over: count,
                 steps: spec.ceilings.steps(),
@@ -427,7 +428,7 @@ struct AtBase {
     unjudged: (usize, Vec<String>),
 }
 
-impl contract::Based for AtBase {
+impl contract::check::Based for AtBase {
     fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
         self.found.retain(|finding| was_held(&finding.file));
     }
@@ -435,25 +436,30 @@ impl contract::Based for AtBase {
 
 fn at_the_base(spec: &Spec, tests: &Unjudged, at: &Context) -> Result<AtBase, Error> {
     let today = (SECTION, &spec.selection.scope);
-    contract::base_findings(at, contract::Lay::Announced, today, |prior, scope| {
-        let selection = Selection {
-            scope,
-            ..spec.selection.clone()
-        };
-        let before = measure(
-            prior.tree(),
-            &selection,
-            prior.root(),
-            None,
-            Some(prior.renamed()),
-        )?;
-        Ok(AtBase {
-            found: over(&before.functions, spec),
-            files: before.files,
-            work: before.work,
-            unjudged: tests.said(prior),
-        })
-    })
+    contract::check::base_findings(
+        at,
+        contract::check::Lay::Announced,
+        today,
+        |prior, scope| {
+            let selection = Selection {
+                scope,
+                ..spec.selection.clone()
+            };
+            let before = measure(
+                prior.tree(),
+                &selection,
+                prior.root(),
+                None,
+                Some(prior.renamed()),
+            )?;
+            Ok(AtBase {
+                found: over(&before.functions, spec),
+                files: before.files,
+                work: before.work,
+                unjudged: tests.said(prior),
+            })
+        },
+    )
 }
 
 fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {
@@ -582,7 +588,7 @@ fn pinned(
     project: &Project,
     key: Key,
     value: &Value,
-) -> Result<(Ceiling, contract::Provenance), Error> {
+) -> Result<(Ceiling, contract::check::Provenance), Error> {
     let ceiling = ceiling::read(
         &project.config.file,
         SECTION,
@@ -590,7 +596,7 @@ fn pinned(
         value,
         "a whole number",
     )?;
-    let said = contract::Provenance::Pinned {
+    let said = contract::check::Provenance::Pinned {
         section: SECTION,
         key: key.name.to_string(),
         shown: ceiling.to_string(),
@@ -611,7 +617,7 @@ fn ceilings(project: &Project, section: &Values, scope: &Scope) -> Result<Resolv
             .as_ref()
             .map(|_| format!("; recorded scope: {}", found.scope.description()))
             .unwrap_or_default();
-        let said = contract::Derived::sampled(
+        let said = contract::check::Derived::sampled(
             (SECTION, key.name),
             value.into(),
             value.to_string(),

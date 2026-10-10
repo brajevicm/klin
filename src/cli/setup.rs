@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::config::file as config;
+use crate::config;
 use crate::hook::host::ADAPTERS;
 use crate::hook::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::sys::error::Error;
@@ -130,7 +130,7 @@ struct Scope {
 
 impl Scope {
     fn of(user: bool, start: &Path) -> Result<Scope, Error> {
-        let repository = config::repository(start);
+        let repository = config::file::repository(start);
         let at = match user {
             true => std::env::home_dir().ok_or_else(|| Error(NO_HOME.to_string()))?,
             false => repository

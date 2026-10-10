@@ -8,7 +8,8 @@ use serde_json::Value;
 use crate::config::file::Config;
 use crate::config::key::{self, Key};
 use crate::config::scope::Scope;
-use crate::contract::check::{self as contract, ContentCost, Context, Counted, Line, Sink};
+use crate::contract;
+use crate::contract::check::{ContentCost, Context, Counted, Line, Sink};
 use crate::contract::coverage::Files;
 use crate::contract::holes;
 use crate::contract::project::Project;
@@ -291,7 +292,7 @@ pub fn gate(kind: &Kind, at: &Context, out: &mut Sink) -> Result<u8, Error> {
     Ok(code)
 }
 
-impl contract::Based for Read {
+impl contract::check::Based for Read {
     fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
         self.findings.retain(|finding| was_held(&finding.file));
         self.marks.retain(|(file, _), _| was_held(file));
@@ -300,13 +301,18 @@ impl contract::Based for Read {
 
 fn at_the_base(kind: &Kind, spec: &Spec, at: &Context) -> Result<Read, Error> {
     let today = (kind.section, &spec.search.scope);
-    contract::base_findings(at, contract::Lay::Announced, today, |prior, scope| {
-        let search = Search {
-            scope,
-            ..spec.search.clone()
-        };
-        findings(kind, &search, prior.tree(), prior.root(), None)
-    })
+    contract::check::base_findings(
+        at,
+        contract::check::Lay::Announced,
+        today,
+        |prior, scope| {
+            let search = Search {
+                scope,
+                ..spec.search.clone()
+            };
+            findings(kind, &search, prior.tree(), prior.root(), None)
+        },
+    )
 }
 
 /// The lines of each site keyed by its row whose text the base file lacks, one base line taken

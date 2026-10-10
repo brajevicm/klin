@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::contract::check::{
     Context, Entry, Failed, Held, Line, Matched, Plain, Ratchet, Sink, Told, Unmatched, Was,
 };
@@ -15,7 +16,7 @@ use crate::sys::error::Error;
 use crate::sys::record::Values;
 
 /// The key a finding carries when it matched an accepted entry, which is a record field of spec
-/// 11.2 and not the config key `config::ACCEPTED` of the same spelling.
+/// 11.2 and not the config key `config::file::ACCEPTED` of the same spelling.
 const ACCEPTED: &str = "accepted";
 
 const BODY: &str = "body_hash";
@@ -96,7 +97,7 @@ pub fn accepted_leaving_out(
     metrics: &[&str],
     optional: &[&str],
 ) -> Result<Vec<Values>, Error> {
-    let section = config::ACCEPTED.name;
+    let section = config::file::ACCEPTED.name;
     let Some(listed) = config.pinned(section) else {
         return Ok(Vec::new());
     };
@@ -119,7 +120,7 @@ pub fn accepted_leaving_out(
         }
         names_every_value(config, gate, &entry, metrics, optional)?;
         entry.remove(BODY);
-        entry.remove(config::ACCEPTED_REASON);
+        entry.remove(config::file::ACCEPTED_REASON);
         entry.insert(ACCEPTED.into(), true.into());
         out.push(entry);
     }

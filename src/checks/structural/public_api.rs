@@ -13,9 +13,8 @@ use std::fmt::Write;
 use serde_json::{Value, json};
 
 use crate::config::key::Key;
-use crate::contract::check::{
-    self as contract, Context, Line, Listed, Measured, Sink, Site, Unresolvable,
-};
+use crate::contract;
+use crate::contract::check::{Context, Line, Listed, Measured, Sink, Site, Unresolvable};
 use crate::contract::coverage::{self, Coverage};
 use crate::contract::holes;
 use crate::contract::measurement;
@@ -76,7 +75,7 @@ struct Side {
 
 pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     at.config().policy(SECTION, KEYS)?;
-    let commit = contract::base_commit(at.project.root(), at)?;
+    let commit = contract::check::base_commit(at.project.root(), at)?;
     let (was, now) = sides(at, &commit, out)?;
     out.record(|records| {
         records.graph = Some(was.graph.cost() + now.graph.cost());
@@ -295,13 +294,13 @@ fn judged(at: &Context, now: &Side, findings: Vec<Finding>, out: &mut Sink) -> R
 
 /// Where the working tree's surfaces came from, and what klin found and derived nothing from.
 /// The items judged and the surfaces discovered, as the `OK:` line counts them.
-fn discovered(derived: &Derived, cost: &surface::SurfaceCost) -> contract::PublicApi {
+fn discovered(derived: &Derived, cost: &surface::SurfaceCost) -> contract::check::PublicApi {
     let rust = derived
         .surfaces
         .iter()
         .filter(|surface| surface.language == "Rust")
         .count();
-    contract::PublicApi {
+    contract::check::PublicApi {
         items: cost.items,
         surfaces: cost.surfaces,
         measured: cost.measured,
@@ -436,7 +435,10 @@ fn inapplicable_note(derived: &Derived, out: &mut Sink) {
 
 /// The derived contract of the working tree, item by item, so automatic derivation is
 /// inspectable. Nothing is judged and no base is read. ADR 0044.
-pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Explained, Fault> {
+pub fn explain(
+    project: &Project,
+    named: Option<&str>,
+) -> Result<contract::check::Explained, Fault> {
     if let Some(named) = named {
         return Err(fault(ErrorKind::Invocation)(Error(format!(
             "{NAME} explains every surface at once, so drop {named}"
@@ -445,7 +447,7 @@ pub fn explain(project: &Project, named: Option<&str>) -> Result<contract::Expla
     explain_all(project).map_err(fault(ErrorKind::Configuration))
 }
 
-fn explain_all(project: &Project) -> Result<contract::Explained, Error> {
+fn explain_all(project: &Project) -> Result<contract::check::Explained, Error> {
     project.config.policy(SECTION, KEYS)?;
     let tree = project.tree();
     let measured = measurement::measure_all(tree, None)?;
@@ -473,7 +475,7 @@ fn explain_all(project: &Project) -> Result<contract::Explained, Error> {
     for held in &derived.inapplicable {
         let _ = writeln!(out, "not applicable: {}: {}", held.what, held.why);
     }
-    Ok(contract::Explained {
+    Ok(contract::check::Explained {
         lines: out.lines().map(str::to_string).collect(),
         values: surface_values(&derived),
     })
