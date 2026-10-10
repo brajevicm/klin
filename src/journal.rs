@@ -28,7 +28,8 @@ const SCHEMA: Schema = Schema::Two;
 /// written as one line at its end.
 pub struct Stop {
     /// The check document of spec 11.7 the Stop's run built, which the line holds under
-    /// `result`, the Stop tells from, and `KLIN_HOOK_REPORT` receives. Spec 13.1.
+    /// `result`, the Stop tells from, and `KLIN_HOOK_REPORT` receives from a Stop that judged.
+    /// Spec 13.1.
     pub result: Option<Value>,
     /// The non-blocking notice this Stop left for the person. Spec 10.7.
     pub notice: Option<Notice>,
