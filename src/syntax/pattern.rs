@@ -16,7 +16,7 @@ use ast_grep_core::matcher::{PatternBuilder, PatternNode};
 use ast_grep_core::tree_sitter::{LanguageExt, StrDoc, TSLanguage};
 use ast_grep_core::{AstGrep, PatternError};
 
-use crate::key;
+use crate::config::key;
 use crate::syntax::{LANGUAGES, Language, LanguageId, ParsedFile, tree_of, walk};
 
 /// What a language's code patterns need: the character a hole is written with once a pattern

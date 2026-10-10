@@ -2462,7 +2462,7 @@ Result model and exit codes:
   pin under the AGENTS.md exception until one ships. The pins are
   `a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3` and
   `a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2` in
-  `src/document.rs`;
+  `src/engine/document.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities
@@ -5021,7 +5021,7 @@ unit tests
 `a_site_is_its_file_and_line`,
 `a_moved_semantic_edge_is_held_once` and
 `a_semantic_edge_is_paired_before_its_findings_are_made` in
-`src/layering.rs`, and
+`src/checks/structural/layering.rs`, and
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file

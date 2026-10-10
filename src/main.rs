@@ -1,64 +1,15 @@
-mod agent;
-mod base;
-mod budget;
-mod build;
-mod cache;
-mod ceiling;
-mod changed;
-mod check;
-mod clock;
-mod complexity;
+mod checks;
+mod cli;
 mod config;
-mod conventions;
-mod coverage;
-mod dead_symbols;
-mod diagnostics;
-mod doc_citations;
-mod doc_size;
-mod document;
-mod error;
-mod escapes;
-mod files;
-mod gate;
-mod git;
-mod guard;
-mod handoff;
-mod hooks;
-mod host;
-mod hunks;
-mod init;
-mod inventory;
-mod journal;
-mod key;
-mod layering;
-mod lockfile;
-mod markers;
-mod measurement;
+mod contract;
+mod engine;
+mod facts;
+mod hook;
 mod modules;
-mod plan;
-mod policy;
-mod project;
-mod public_api;
-mod radius;
-mod ratchet;
-mod reachability;
-mod record;
-mod reference;
-mod sarif;
-mod scope;
-mod shell;
-mod stamp;
-mod state;
-mod stats;
-mod status;
-mod stubs;
 mod surface;
-mod survey;
 mod syntax;
-mod tree;
-mod turn;
-mod update;
-mod write;
+mod sys;
+mod window;
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -66,7 +17,9 @@ use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
 
-use crate::error::Error;
+use crate::cli::{agent, policy, setup, status, update};
+use crate::hook::{stats, stop};
+use crate::sys::{error::Error, shell};
 
 #[derive(Parser)]
 #[command(
@@ -83,9 +36,9 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Set up or repair klin integration for this repository, or for one person's host files
-    Setup(hooks::Args),
+    Setup(setup::Args),
     /// Measure the repository against klin's quality policy, optionally only the named checks
-    Check(gate::Check),
+    Check(stop::Check),
     /// Read repository, setup, integration and local window state without running any check
     Status(status::Args),
     /// Explain the effective policy and where each value came from
@@ -112,8 +65,8 @@ fn main() -> ExitCode {
 
 fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
-        Command::Setup(args) => hooks::run(args, start, out),
-        Command::Check(args) => gate::check(args, start, out),
+        Command::Setup(args) => setup::run(args, start, out),
+        Command::Check(args) => stop::check(args, start, out),
         Command::Status(args) => status::run(args, start, out),
         Command::Policy(args) => policy::run(args, start, out),
         Command::Report(args) => stats::run(args, start, out),

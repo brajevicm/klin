@@ -5,11 +5,11 @@
 
 use tree_sitter::Node;
 
-use crate::error::Error;
-use crate::record;
 use crate::syntax::{
     Language, Parsed, ParsedFile, Unparsed, language_of, line_at, read, tolerant, walk,
 };
+use crate::sys::error::Error;
+use crate::sys::record;
 
 /// The declaration a language's test convention names a test function by, anywhere on the
 /// declaration line, so a modifier before it is allowed. Fixed in the binary, the way the

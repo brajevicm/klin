@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use cargo_toml::{AbstractFilesystem, Edition, Manifest, Value};
 
 use super::resolver::{Attachment, Builder, TargetKind, Topology, directory, joined};
-use crate::survey;
+use crate::facts::survey;
 use crate::syntax::structural::facts::{DeclarationKind, ModuleDecl};
 
 const MANIFEST: &str = "Cargo.toml";

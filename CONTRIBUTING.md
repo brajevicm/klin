@@ -14,6 +14,32 @@ AI help is welcome. klin is built with agents, too. Just keep a person in the lo
 
 Pull requests from agents working alone are closed.
 
+## Reading the code
+
+`src/` has `main.rs` and twelve folders, one per klin component. Each folder is a layer, and a layer may use any layer below it. `klin.json` enforces that order. From the top down:
+
+| Folder | Holds | Start at |
+|---|---|---|
+| `cli/` | the public commands and the hidden agent ingress (SPEC 11) | `cli/<command>.rs` |
+| `hook/` | the host protocol: the Stop, guard, journal, turn and radius (SPEC 10) | `hook/stop.rs` |
+| `engine/` | the catalogue, plan, check document and renderers (SPEC 3.1) | `engine/document.rs` |
+| `checks/` | one file per check, and `structural/` for the two-tree checks (SPEC 9.1) | `checks/<check>.rs` |
+| `contract/` | what a check gets and returns: holes, measurement, ratchet, coverage, project (SPEC 7, 8) | `contract/check.rs` |
+| `window/` | the window and its base | `window/stamp.rs` |
+| `surface/` | the public surfaces (ADR 0044) | `surface/mod.rs` |
+| `modules/` | the module graph (ADR 0043) | `modules/mod.rs` |
+| `facts/` | the tree, its files and the survey | `facts/tree.rs` |
+| `syntax/` | the parsers (ADR 0035) | `syntax/mod.rs` |
+| `config/` | `klin.json`, keys, ceilings and scopes | `config/file.rs` |
+| `sys/` | git, the shell, state, cache and errors, with no klin concept | `sys/git.rs` |
+
+Language support lives in three folders, one file per language: `syntax/structural/`, `modules/` and `surface/`.
+
+There are two ways in:
+
+- A command runs `main.rs`, then `cli/<command>.rs`. `klin check` and `klin report` still live in `hook/stop.rs` and `hook/stats.rs`.
+- A Stop runs `cli/agent.rs`, then `hook/stop.rs`, then `engine/document.rs`, then the checks in `checks/`.
+
 ## Before you open a pull request
 
 ```sh

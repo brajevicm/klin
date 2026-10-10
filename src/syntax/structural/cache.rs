@@ -14,7 +14,7 @@ use super::facts::{
     Names, Outcome, QualifiedPath, Reference, Visibility,
 };
 use crate::syntax::{LANGUAGES, Language, LanguageId, Unparsed};
-use crate::write::{AtomicWrite, atomic_write};
+use crate::sys::write::{AtomicWrite, atomic_write};
 
 /// Raise this when what a file's facts mean changes in a way the sources below do not show.
 const EPOCH: u64 = 6;
