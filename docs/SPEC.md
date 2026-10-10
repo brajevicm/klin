@@ -1541,6 +1541,16 @@ them."), a configuration error, the turn-end line or the weekly line.
   notice records as `stamp`, is the current one.
   The stamp records the notes and errors of the notice as told (section 6.6),
   so a later Stop under the same stamp leaves no second notice for them.
+- A Stop whose working tree is the tree of the prompt mark (B.6.2.1) leaves
+  no notice when every block of the same prompt was taken over that tree too
+  (B.9.3), because the turn changed nothing. A turn that changed a file and
+  then changed it back after a block still tells. The stamp moves only after a
+  green or unjudged verdict, so its window can still hold earlier work that
+  leaves a note, and the turn-end line only repeats what an earlier Stop
+  told. That Stop still writes its verdict and its journal line, and records
+  no part as told, so the next turn that changes a file tells the person
+  again. A Stop that cannot read either tree tells as usual, and so does an
+  advisory Stop (6.6), because the history moved under the turn.
 - On the harness protocol, the notice is a `tell` decision.
 - A blocking Stop on Cursor still uses `followup_message`.
 
@@ -3484,9 +3494,10 @@ It moves on every session start and on every prompt submitted, whatever
 verdict the last stop left. It is held in the `turn` file beside the stamp and
 written in the same atomic write.
 
-The prompt mark is the window the radius report measures, and nothing else
-reads it. A stop judges the stamp, `klin turn reset` moves the stamp, and the
-derivation commit of 6.6 comes from the stamp. A mark the `turn` file has lost
+The prompt mark is the window the radius report measures. A Stop reads it
+for one other thing: whether the turn changed the tree, which decides whether
+the Stop leaves a notice (10.7). A stop judges the stamp, `klin turn reset`
+moves the stamp, and the derivation commit of 6.6 comes from the stamp. A mark the `turn` file has lost
 is read from the ref. With neither, the report prints nothing, which is what
 it does with any window it cannot measure. Deleting the mark costs a report
 and no block, so the mark needs no recovery beyond its ref.

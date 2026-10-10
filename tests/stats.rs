@@ -1400,6 +1400,61 @@ fn a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression() {
     assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
 }
 
+fn journal_lines(tree: &Tree) -> usize {
+    std::fs::read_to_string(tree.state("journal.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .count()
+}
+
+/// A turn that changed nothing tells the person nothing, even where the window still holds
+/// earlier work that leaves a note, and it still writes its verdict and its journal line.
+/// Spec 10.7.
+#[test]
+fn a_stop_over_the_tree_its_prompt_saw_tells_nothing_and_still_writes_its_verdict() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"escapes": {"in": "README.md"}}"#);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    prompt(&tree);
+    tree.write("src/work.rs", CLEAN);
+    let edited = hook(&tree, A_STOP);
+    assert_eq!(edited.code, 0, "{}", edited.out);
+    assert!(told(&edited).contains("left a note"), "{}", edited.out);
+
+    prompt(&tree);
+    let before = journal_lines(&tree);
+    let quiet = hook(&tree, A_STOP);
+
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert_ne!(tree.field("verdict"), "aborted", "{}", quiet.out);
+    assert_eq!(journal_lines(&tree), before + 1, "{}", quiet.out);
+
+    tree.write("src/more.rs", CLEAN);
+    let changed = hook(&tree, A_STOP);
+    assert!(told(&changed).contains("left a note"), "{}", changed.out);
+}
+
+/// After a gate block, a turn that changed nothing repeats no turn-end line: the verdict stays
+/// red, so the next turn that changes a file tells the person again. Spec 10.7.
+#[test]
+fn a_turn_that_changed_nothing_after_a_gate_block_sends_no_turn_end_line() {
+    let tree = hooked();
+    blocked(&tree);
+    let through = hook(&tree, A_SECOND_STOP);
+    assert!(told(&through).contains("still need"), "{}", through.out);
+
+    prompt(&tree);
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    let quiet = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert_eq!(tree.field("verdict"), "red", "{}", quiet.out);
+}
+
 /// A library crate with `lib` as its root, hooked and committed as the base.
 fn library(lib: &str) -> Tree {
     let tree = Tree::new();

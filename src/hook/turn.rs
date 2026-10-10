@@ -146,6 +146,14 @@ pub fn stamp_commit(root: &Path) -> Option<String> {
         .and_then(|held| held.commit)
 }
 
+/// The prompt mark the `turn` file holds, read before a Stop moves it, and `None` when no stamp
+/// is readable or it holds no mark. Spec 10.7.
+pub fn prompt_mark(root: &Path) -> Option<String> {
+    state::dir(root)
+        .and_then(|at| stamp::read(&at))
+        .and_then(|held| held.mark)
+}
+
 /// When the current turn stamp was taken, and `None` when no stamp is readable. Spec 11.5.
 pub fn taken_at(root: &Path) -> Option<u64> {
     state::dir(root)

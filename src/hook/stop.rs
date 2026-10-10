@@ -117,6 +117,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         clock::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
+    let mark = turn::prompt_mark(root);
     let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
     budgeted(root, lost, &mut log, Budget::open);
@@ -145,12 +146,15 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
+    let mut seen = Vec::new();
     if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
         log.gate_blocks = spent.gate_blocks;
         log.build_blocks = spent.builds;
         log.prompt = spent.prompt;
+        seen = spent.trees;
     }
-    let said = tell(args, root, code, note, &mut log);
+    let quiet = || !advised && unchanged(root, mark.as_deref(), &seen);
+    let said = tell(args, root, code, note, &mut log, quiet);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || log.told.contains(&"note")) {
         turn::heard(root, &told);
@@ -364,13 +368,14 @@ fn key(text: &str) -> String {
 /// run left, then the turn end and the week's headline. The turn end reads the journal, so it
 /// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
 /// stamp says so when the verdict could not be written. The journal records each part by name.
-/// Spec 9.5, 11.4.
+/// A `quiet` turn tells nothing. Spec 9.5, 10.7, 11.4.
 fn tell(
     args: &Args,
     root: &Path,
     code: u8,
     note: Option<String>,
     log: &mut journal::Stop,
+    quiet: impl FnOnce() -> bool,
 ) -> Option<String> {
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
@@ -380,9 +385,36 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
+    if parts.is_empty() || quiet() {
+        return None;
+    }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
-    (!said.is_empty()).then(|| said.join("\n"))
+    Some(said.join("\n"))
+}
+
+/// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
+/// `seen`, is the tree the prompt `mark` was taken over. False when klin cannot read the mark's
+/// tree or the working tree. Spec 10.7.
+fn unchanged(root: &Path, mark: Option<&str>, seen: &[String]) -> bool {
+    let (Some(mark), Ok(at)) = (mark, state::ready(root)) else {
+        return false;
+    };
+    let prompted = stamp::git(
+        root,
+        None,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("{mark}^{{tree}}"),
+        ],
+    );
+    let Some(prompted) = prompted else {
+        return false;
+    };
+    seen.iter().all(|tree| *tree == prompted)
+        && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
 }
 
 fn add_prompt_note(

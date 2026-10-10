@@ -46,6 +46,8 @@ pub struct Spent {
     pub prompt: u64,
     pub builds: u64,
     pub gate_blocks: u64,
+    /// The trees this prompt's blocks were taken over. Spec 10.7.
+    pub trees: Vec<String>,
 }
 
 /// What a build failure at this stop spends: the block it took and its number in this turn, no
@@ -92,6 +94,10 @@ impl Budget<'_> {
             prompt: count.prompt,
             builds: count.builds,
             gate_blocks: count.gate_blocks,
+            trees: [count.build_tree, count.gate_tree]
+                .into_iter()
+                .flatten()
+                .collect(),
         })
     }
 
@@ -281,7 +287,7 @@ fn unbounded(why: &str, flags: &mut Vec<&'static str>) -> BuildBlock {
 }
 
 /// The working tree as the build stamp records it, hashed through the build stamp's own index.
-fn working_tree(root: &Path, at: &Path) -> Option<String> {
+pub fn working_tree(root: &Path, at: &Path) -> Option<String> {
     stamp::tree_through(root, &at.join(BUILD_INDEX))
 }
 
