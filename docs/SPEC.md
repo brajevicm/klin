@@ -1877,9 +1877,15 @@ supported surface as an `unsupported` value.
 When `policy` exits 2, the document carries only `schema_version`,
 `command`, `config {path, present}` and `errors`, and no other field. Each
 error has the shape of a `check` error: `kind` (section 7.3), `check` (null),
-`message`. A configuration klin cannot read is a `configuration` error. A
-`--config` that names no file, a name that is no capability, and an entry
-named for a capability with no entries are `invocation` errors.
+`message`. These are `invocation` errors:
+
+- a `--config` that names no file
+- a name that names no capability
+- an entry named for a capability with no entries
+- an entry name that the capability does not have
+
+Any other error, such as a configuration klin cannot read, is a
+`configuration` error.
 
 ### 11.8 `klin update`
 

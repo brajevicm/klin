@@ -7,7 +7,7 @@ use crate::base;
 use crate::check::contract::{self, Activation, Derivation, Told};
 use crate::check::{catalogue, render};
 use crate::config;
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 use crate::plan::{Gate, Plan, State};
 use crate::project::Project;
 use crate::{build, ceiling, reference, state};
@@ -47,13 +47,13 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
             let _ = writeln!(out, "{note}");
         }
     }
-    let listed = loaded(args, start).and_then(|mut project| {
+    let outcome = loaded(args, start).and_then(|mut project| {
         if let Ok(window) = base::choose(project.root()) {
             project.bind(&window);
         }
         listed(args, &project, out)
     });
-    let Err(refused) = listed else {
+    let Err(refused) = outcome else {
         return Ok(0);
     };
     if !args.json {
@@ -67,7 +67,7 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
             "path": located.as_ref().map(|file| file.display().to_string()),
             "present": located.as_ref().is_some_and(|file| file.is_file()),
         },
-        "errors": [{ "kind": refused.kind, "check": null, "message": refused.error.to_string() }],
+        "errors": [{ "kind": refused.kind.name(), "check": null, "message": refused.error.to_string() }],
     });
     out.clear();
     let _ = writeln!(out, "{document}");
@@ -76,20 +76,20 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
 
 /// Why `policy` printed no policy, with the kind of error of spec 7.3 its document names.
 struct Refused {
-    kind: &'static str,
+    kind: ErrorKind,
     error: Error,
 }
 
 fn configuration(error: Error) -> Refused {
     Refused {
-        kind: "configuration",
+        kind: ErrorKind::Configuration,
         error,
     }
 }
 
 fn invocation(error: Error) -> Refused {
     Refused {
-        kind: "invocation",
+        kind: ErrorKind::Invocation,
         error,
     }
 }
@@ -116,8 +116,7 @@ fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Refu
     let mut capabilities = wanted
         .into_iter()
         .map(|gate| capability(args, project, gate))
-        .collect::<Result<Vec<_>, Error>>()
-        .map_err(configuration)?;
+        .collect::<Result<Vec<_>, Refused>>()?;
     capabilities.extend(inactive(args, &plan));
     let shared = Shared::of(project).map_err(configuration)?;
     match args.json {
@@ -322,7 +321,7 @@ fn capability<'a>(
     args: &Policy,
     project: &Project,
     gate: &'a Gate,
-) -> Result<Capability<'a>, Error> {
+) -> Result<Capability<'a>, Refused> {
     let check = gate.check;
     let fields = section_of(project, gate, args.entry.as_deref());
     let (mut lines, mut values) = said_by(gate, project, args, &fields)?;
@@ -350,7 +349,7 @@ fn said_by(
     project: &Project,
     args: &Policy,
     fields: &Map<String, Value>,
-) -> Result<(Vec<String>, Vec<Value>), Error> {
+) -> Result<(Vec<String>, Vec<Value>), Refused> {
     let check = gate.check;
     match check.derivation {
         Derivation::Explained(explain) => explained(explain, project, args),
@@ -365,19 +364,27 @@ fn said_by(
             Vec::new(),
         )),
         Derivation::Values(derive) => {
-            derive(project).map(|said| said_values(check, as_told(said), fields))
+            let said = derive(project).map_err(configuration)?;
+            Ok(said_values(check, as_told(said), fields))
         }
         Derivation::Nothing => Ok(said_values(check, Vec::new(), fields)),
     }
 }
 
+/// What a check's explanation says, where an entry it does not have is an invocation error,
+/// and anything else that stops the explanation is a configuration error. Spec 7.3, 11.7.
 fn explained(
     explain: contract::Explain,
     project: &Project,
     args: &Policy,
-) -> Result<(Vec<String>, Vec<Value>), Error> {
-    let explained = explain(project, args.entry.as_deref())?;
-    Ok((explained.lines, explained.values))
+) -> Result<(Vec<String>, Vec<Value>), Refused> {
+    match explain(project, args.entry.as_deref()) {
+        Ok(explained) => Ok((explained.lines, explained.values)),
+        Err(error) if args.entry.is_some() && explain(project, None).is_ok() => {
+            Err(invocation(error))
+        }
+        Err(error) => Err(configuration(error)),
+    }
 }
 
 /// A value a person pinned, and for a dated schedule the step in force as the value, with the

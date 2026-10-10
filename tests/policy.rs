@@ -407,6 +407,16 @@ fn policy_json_names_a_configuration_error_in_the_policy_document() {
     assert_eq!(json["schema_version"], 1, "{json}");
     assert_eq!(json["command"], "policy", "{json}");
     assert_eq!(json["config"]["present"], true, "{json}");
+    let keys: Vec<&String> = json
+        .as_object()
+        .into_iter()
+        .flat_map(|all| all.keys())
+        .collect();
+    assert_eq!(
+        keys,
+        ["command", "config", "errors", "schema_version"],
+        "{json}"
+    );
     let error = &json["errors"][0];
     assert_eq!(error["kind"], "configuration", "{json}");
     assert_eq!(error["check"], Value::Null, "{json}");
@@ -428,4 +438,27 @@ fn policy_text_names_a_configuration_error_and_exits_2() {
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.out.starts_with("FAIL: "), "{}", run.out);
     assert!(run.says("unknown field \"nope\""), "{}", run.out);
+}
+
+/// A name, an entry or a `--config` that `policy` cannot take is an invocation error in the
+/// policy document, with exit 2. Spec 7.3, 11.7.
+#[test]
+fn policy_json_names_an_argument_it_cannot_take_as_an_invocation_error() {
+    let tree = tree(
+        r#"{"complexity": {"cc": 8}, "conventions": {"no-todo": {"text": "TODO", "remedy": "Do it."}}}"#,
+    );
+
+    for args in [
+        &["policy", "--json", "nope"][..],
+        &["policy", "--json", "complexity", "cc"],
+        &["policy", "--json", "conventions", "nope"],
+        &["policy", "--json", "--config", "missing.json"],
+    ] {
+        let run = tree.run(args);
+
+        assert_eq!(run.code, 2, "{args:?}: {}", run.out);
+        let json = run.json();
+        assert_eq!(json["command"], "policy", "{args:?}: {json}");
+        assert_eq!(json["errors"][0]["kind"], "invocation", "{args:?}: {json}");
+    }
 }

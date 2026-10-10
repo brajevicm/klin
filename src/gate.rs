@@ -18,7 +18,7 @@ use crate::check::holes::{self, Seen, Unmeasured};
 use crate::check::{catalogue, render};
 use crate::config;
 use crate::config::MEASUREMENT_LOST;
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::plan::{Gate, Plan, State, every_check};
@@ -1764,28 +1764,6 @@ struct Fault {
 impl From<Fault> for Error {
     fn from(fault: Fault) -> Error {
         fault.error
-    }
-}
-
-/// The error kinds of spec 7.3 the runner tells apart.
-#[derive(Clone, Copy)]
-enum ErrorKind {
-    Invocation,
-    Configuration,
-    Base,
-    Git,
-    Internal,
-}
-
-impl ErrorKind {
-    fn name(self) -> &'static str {
-        match self {
-            ErrorKind::Invocation => "invocation",
-            ErrorKind::Configuration => "configuration",
-            ErrorKind::Base => "base",
-            ErrorKind::Git => "git",
-            ErrorKind::Internal => "internal",
-        }
     }
 }
 
