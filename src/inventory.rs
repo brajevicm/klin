@@ -11,7 +11,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::base::{self, Prior};
+use crate::base::Prior;
 use crate::check::contract::{self, Context, Counted, Line, Listed, Sink};
 use crate::check::holes;
 use crate::coverage::{self, Coverage};
@@ -116,15 +116,11 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let today = today(project)?;
     out.tell_each(derive(project)?);
     let commit = contract::base_commit(config.root(), at)?;
-    let mut owned = None;
-    let prior = base::laid(at.prior, &mut owned, || {
-        base::materialize(project, &commit, None)
-    })?;
     let Found {
         judged,
         mut paired,
         measured,
-    } = found(at, (&commit, prior), &today)?;
+    } = found(at, &commit, &today)?;
     let (mut orphans, functions): (Vec<Function>, Vec<Function>) =
         measured.functions.into_iter().partition(Function::orphaned);
     if let Some(only) = at.only {
@@ -158,21 +154,24 @@ struct Found {
 
 /// The base laid out, when the runner did not lay it out already, and read under the scope it
 /// records, which is also the scope the working tree is read under.
-fn found(at: &Context, (commit, prior): (&str, &Prior), today: &Scope) -> Result<Found, Error> {
+fn found(at: &Context, commit: &str, today: &Scope) -> Result<Found, Error> {
     let project = at.project;
-    let config = &project.config;
-    let tests = Tests {
-        roots: Roots::new(&project.facts().found.test_roots),
-        scope: Scope::at_base(config, SECTION, prior.root(), today),
-    };
-    let listed = at_the_base(config.root(), commit)?;
-    let (judged, paired) = sites(&tests, &listed, config.root())
-        .into_iter()
-        .partition(|site| site.subject.is_none());
-    Ok(Found {
-        judged,
-        paired,
-        measured: tests_of(&tests, at, prior)?,
+    let root = project.config.root();
+    let lay = contract::Lay::At(commit);
+    contract::at_base(at, lay, (SECTION, today), |prior, scope| {
+        let tests = Tests {
+            roots: Roots::new(&project.facts().found.test_roots),
+            scope,
+        };
+        let listed = at_the_base(root, commit)?;
+        let (judged, paired) = sites(&tests, &listed, root)
+            .into_iter()
+            .partition(|site| site.subject.is_none());
+        Ok(Found {
+            judged,
+            paired,
+            measured: tests_of(&tests, at, prior)?,
+        })
     })
 }
 

@@ -388,15 +388,12 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
     let judged = scoped(sweep.functions.iter().map(|function| &function.file), at);
     let count = scoped(now.iter().map(|finding| &finding.file), at);
     let said = out.covered(&sweep.files.coverage(at.only));
-    let mut owned = None;
-    let laid = base::laid(at.prior, &mut owned, || contract::own_base(at))?;
-    let (prior, before, before_work) = at_the_base(&spec, at, laid)?;
-    out.record(|records| records.work = Some(sweep.work + before_work));
-    let lost = sweep.files.lost(&before, project, at.only);
-    let unjudged = tests.said(laid);
+    let before = at_the_base(&spec, &tests, at)?;
+    out.record(|records| records.work = Some(sweep.work + before.work));
+    let unjudged = before.unjudged;
     let code = evaluator(&spec).evaluate(
         now,
-        prior,
+        before.found,
         ratchet::accepted_leaving_out(
             &project.config,
             at.gate,
@@ -416,37 +413,47 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         ),
         out,
     );
-    holes::lost_said(&lost, out);
-    holes::files_formed(&sweep.files, &before, at, out);
-    holes::unread_said(&sweep.unparsed, at, out);
+    let files = (&sweep.files, &before.files);
+    holes::closed(files, &sweep.unparsed, at.only, at, out);
     Ok(code)
 }
 
-fn at_the_base(
-    spec: &Spec,
-    at: &Context,
-    prior: &base::Prior,
-) -> Result<(Vec<Finding>, Files, ContentCost), Error> {
-    let project = at.project;
-    let selection = Selection {
-        scope: Scope::at_base(
-            &project.config,
-            SECTION,
+/// What the base holds over the ceilings, what it measured and what reading it cost, and the
+/// test functions not judged on length with the files among them the window added or renamed.
+struct AtBase {
+    found: Vec<Finding>,
+    files: Files,
+    work: ContentCost,
+    unjudged: (usize, Vec<String>),
+}
+
+impl contract::Based for AtBase {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
+        self.found.retain(|finding| was_held(&finding.file));
+    }
+}
+
+fn at_the_base(spec: &Spec, tests: &Unjudged, at: &Context) -> Result<AtBase, Error> {
+    let today = (SECTION, &spec.selection.scope);
+    contract::base_findings(at, contract::Lay::Announced, today, |prior, scope| {
+        let selection = Selection {
+            scope,
+            ..spec.selection.clone()
+        };
+        let before = measure(
+            prior.tree(),
+            &selection,
             prior.root(),
-            &spec.selection.scope,
-        ),
-        ..spec.selection.clone()
-    };
-    let before = measure(
-        prior.tree(),
-        &selection,
-        prior.root(),
-        None,
-        Some(prior.renamed()),
-    )?;
-    let mut found = over(&before.functions, spec);
-    found.retain(|finding| project.was_held(&finding.file));
-    Ok((found, before.files, before.work))
+            None,
+            Some(prior.renamed()),
+        )?;
+        Ok(AtBase {
+            found: over(&before.functions, spec),
+            files: before.files,
+            work: before.work,
+            unjudged: tests.said(prior),
+        })
+    })
 }
 
 fn over(functions: &[Function], spec: &Spec) -> Vec<Finding> {

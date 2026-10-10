@@ -204,17 +204,15 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
         (&physicals, &was_edges, &now_edges),
         out,
     )?;
-    holes::lost_said(&left, out);
-    holes::files_formed(&now_files, &was_files, at, out);
-    holes_said((&was, &now), &policy, (&was_ambiguous, &ambiguous), at, out);
     let unparsed: Vec<syntax::Unparsed> = now
         .unparsed
         .iter()
         .filter(|file| policy.scope.selects(&file.file))
         .cloned()
         .collect();
+    holes::closed((&now_files, &was_files), &unparsed, None, at, out);
+    holes_said((&was, &now), &policy, (&was_ambiguous, &ambiguous), at, out);
     held_note(&physicals, out);
-    holes::unread_said(&unparsed, at, out);
     Ok(code)
 }
 

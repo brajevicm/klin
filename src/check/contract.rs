@@ -21,6 +21,7 @@ use crate::files::Form;
 use crate::key::Key;
 use crate::project::Project;
 use crate::record::Values;
+use crate::scope::Scope;
 use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
 
 use crate::{modules, surface};
@@ -783,10 +784,64 @@ pub fn announced(root: &Path) -> Result<Window, Error> {
     base::choose(root)
 }
 
-/// The base tree for a gate the runner did not lay out, such as a gate run by its own command.
-pub fn own_base(at: &Context) -> Result<Prior, Error> {
-    let base = announced(at.project.root())?;
-    base::materialize(at.project, &base.before, None)
+/// Which base a check reads: the one the runner laid out, or where it laid none, a base the check
+/// lays out at the commit it chooses for itself or at the one it names; or the whole base a check
+/// that resolves names already holds. Spec 6.1, 8.4.
+#[derive(Clone, Copy)]
+pub enum Lay<'a> {
+    Announced,
+    At(&'a str),
+    Whole(&'a Prior),
+}
+
+/// What a check read at the base, which keeps only what lies in files the derivation commit's
+/// survey held, so a directory that becomes a root brings no inherited debt with it. Spec 7.1.
+pub trait Based {
+    fn keep_held(&mut self, was_held: impl Fn(&str) -> bool);
+}
+
+/// The base read under the scope the base commit recorded for `section`, so a file this run's
+/// scope takes out shows as lost rather than vanishing. ADR 0042, spec 8.6.
+pub fn at_base<T>(
+    at: &Context,
+    lay: Lay,
+    (section, today): (&str, &Scope),
+    read: impl FnOnce(&Prior, Scope) -> Result<T, Error>,
+) -> Result<T, Error> {
+    let mut owned = None;
+    let prior = match lay {
+        Lay::Whole(prior) => prior,
+        Lay::At(commit) => base::laid(at.prior, &mut owned, || {
+            base::materialize(at.project, commit, None)
+        })?,
+        Lay::Announced => base::laid(at.prior, &mut owned, || {
+            let base = announced(at.project.root())?;
+            base::materialize(at.project, &base.before, None)
+        })?,
+    };
+    read(
+        prior,
+        Scope::at_base(at.config(), section, prior.root(), today),
+    )
+}
+
+/// The findings a file-local check reads at the base: the base read under its own scope, keeping
+/// only what lies in files the base held. Spec 7.1, 8.6.
+pub fn base_findings<T: Based>(
+    at: &Context,
+    lay: Lay,
+    scoped: (&str, &Scope),
+    read: impl FnOnce(&Prior, Scope) -> Result<T, Error>,
+) -> Result<T, Error> {
+    let mut found = at_base(at, lay, scoped, read)?;
+    keep_held(at, &mut found);
+    Ok(found)
+}
+
+/// Keeps only what lies in files the base held, for a check that reads its base findings out of
+/// what it resolved over both trees. Spec 7.1.
+pub fn keep_held(at: &Context, found: &mut impl Based) {
+    found.keep_held(|file| at.project.was_held(file));
 }
 
 impl Sink<'_> {
