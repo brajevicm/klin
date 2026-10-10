@@ -33,6 +33,7 @@ mod markers;
 mod measurement;
 mod modules;
 mod plan;
+mod policy;
 mod project;
 mod public_api;
 mod radius;
@@ -85,7 +86,7 @@ enum Command {
     /// Read repository, setup, integration and local window state without running any check
     Status(status::Args),
     /// Explain the effective policy and where each value came from
-    Policy(gate::Policy),
+    Policy(policy::Policy),
     /// Show what klin caught, what was resolved, and what still needs attention
     Report(stats::Args),
     /// Install the newest release over this binary, through the klin-update beside it
@@ -111,7 +112,7 @@ fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error
         Command::Setup(args) => hooks::run(args, start, out),
         Command::Check(args) => gate::check(args, start, out),
         Command::Status(args) => status::run(args, start, out),
-        Command::Policy(args) => gate::policy(args, start, out),
+        Command::Policy(args) => policy::run(args, start, out),
         Command::Report(args) => stats::run(args, start, out),
         Command::Update => Ok(update::run()),
     }

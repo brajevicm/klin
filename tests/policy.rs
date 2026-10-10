@@ -393,3 +393,39 @@ fn policy_json_types_a_built_in_value_as_a_pinned_one() {
     assert_eq!(pinned["provenance"], "pinned", "{pinned}");
     assert_eq!(pinned["value"], omitted["value"], "{pinned}");
 }
+
+/// A configuration klin cannot read is still the policy document under `--json`, which names
+/// the error and exits 2. Spec 11.6, 11.7.
+#[test]
+fn policy_json_names_a_configuration_error_in_the_policy_document() {
+    let tree = tree(r#"{"complexity": {"nope": 1}}"#);
+
+    let run = tree.run(&["policy", "--json"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    let json = run.json();
+    assert_eq!(json["schema_version"], 1, "{json}");
+    assert_eq!(json["command"], "policy", "{json}");
+    assert_eq!(json["config"]["present"], true, "{json}");
+    let error = &json["errors"][0];
+    assert_eq!(error["kind"], "configuration", "{json}");
+    assert_eq!(error["check"], Value::Null, "{json}");
+    assert!(
+        error["message"]
+            .as_str()
+            .is_some_and(|said| said.contains("nope")),
+        "{json}"
+    );
+}
+
+/// The text of a configuration klin cannot read is the `FAIL:` line, with exit 2. Spec 11.6.
+#[test]
+fn policy_text_names_a_configuration_error_and_exits_2() {
+    let tree = tree(r#"{"complexity": {"nope": 1}}"#);
+
+    let run = tree.run(&["policy"]);
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.out.starts_with("FAIL: "), "{}", run.out);
+    assert!(run.says("unknown field \"nope\""), "{}", run.out);
+}

@@ -1874,6 +1874,13 @@ carries only that entry. `klin policy --json public-api` carries each surface
 as a `surface` value with its items and holes, and each package with no
 supported surface as an `unsupported` value.
 
+When `policy` exits 2, the document carries only `schema_version`,
+`command`, `config {path, present}` and `errors`, and no other field. Each
+error has the shape of a `check` error: `kind` (section 7.3), `check` (null),
+`message`. A configuration klin cannot read is a `configuration` error. A
+`--config` that names no file, a name that is no capability, and an entry
+named for a capability with no entries are `invocation` errors.
+
 ### 11.8 `klin update`
 
 Unchanged from B.19.6. It uses the network to fetch the release. When
