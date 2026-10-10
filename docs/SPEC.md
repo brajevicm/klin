@@ -2461,7 +2461,7 @@ Result model and exit codes:
   pin under the AGENTS.md exception until one ships. The pins are
   `a_work_limit_hole_makes_the_gate_incomplete_and_the_run_exit_3` and
   `a_failing_gate_beside_a_work_limit_hole_exits_1_and_an_error_exits_2` in
-  `src/gate.rs`;
+  `src/document.rs`;
 - `klin check --changed` over a change with no measurable file exits 0;
 - an invalid configuration exits 2 with `execution: error` and null axes;
 - a capability-scope configuration error exits 2, and the other capabilities

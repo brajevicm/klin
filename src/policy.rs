@@ -397,8 +397,7 @@ fn said_values(
 ) -> (Vec<String>, Vec<Value>) {
     let keys = said_keys(&told);
     let mut lines = render::provenance(&told);
-    let mut values: Vec<Value> = render::json(&told)
-        .derived
+    let mut values: Vec<Value> = render::derived(&told)
         .iter()
         .map(|entry| {
             json!({

@@ -13,6 +13,7 @@ mod coverage;
 mod dead_symbols;
 mod doc_citations;
 mod doc_size;
+mod document;
 mod error;
 mod escapes;
 mod files;
