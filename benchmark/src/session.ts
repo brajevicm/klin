@@ -428,7 +428,7 @@ export function wholeRunReport(parsed: unknown): unknown {
     gates,
     findings: records(document.findings).map(({ check, remedy, ...finding }) => ({
       ...finding,
-      gate: check ?? (finding.kind === MEASUREMENT_LOST ? MEASUREMENT_LOST : check),
+      gate: check ?? (finding.kind === MEASUREMENT_LOST ? MEASUREMENT_LOST : null),
       ...(remedy === undefined ? {} : { fix_advice: remedy }),
     })),
     notes: [

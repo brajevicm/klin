@@ -439,6 +439,7 @@ fn the_ninth_build_failure_says_that_klin_stopped_blocking() {
     assert_eq!(ninth.code, 0, "{}", ninth.out);
     assert!(ninth.says("stops blocking"), "{}", ninth.out);
     assert_eq!(report["command"], "check", "{report}");
+    assert_eq!(report["judgement"], serde_json::Value::Null, "{report}");
     assert_eq!(report["notes"][0]["kind"], "build", "{report}");
 }
 

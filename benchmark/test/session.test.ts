@@ -51,9 +51,9 @@ test("an error outranks a failing finding, and a failing finding outranks a hole
   assert.equal((wholeRunReport(erred) as { status: string }).status, "ERROR");
 });
 
-/** A Stop's check document whose build failed, as the binary writes it to `KLIN_HOOK_REPORT`: no
- * capability measured, so it judged nothing. A Stop that blocked and one whose build blocks are
- * spent write the same document apart from the window. */
+/** A Stop's check document whose build failed, as the binary wrote it to `KLIN_HOOK_REPORT`: no
+ * capability measured, so it judged nothing. tests/build.rs holds the binary to `judgement: null`
+ * both for a Stop that blocked and for one whose build blocks were spent. */
 function unbuilt(kind: "branch" | "turn"): Record<string, unknown> {
   return {
     schema_version: 1,
@@ -77,7 +77,7 @@ function unbuilt(kind: "branch" | "turn"): Record<string, unknown> {
   };
 }
 
-test("a Stop whose build failed is an ERROR, whether it blocked or its build blocks were spent", () => {
+test("a Stop document that judged nothing, as a failed build writes it, is an ERROR in either window", () => {
   for (const kind of ["branch", "turn"] as const) {
     const report = wholeRunReport(unbuilt(kind));
 
@@ -86,7 +86,8 @@ test("a Stop whose build failed is an ERROR, whether it blocked or its build blo
   }
 });
 
-/** A Stop's check document with a lost file, an opened gap, and a gate's own review item. */
+/** A Stop's check document with a lost file and an opened gap, as the binary wrote them, and a
+ * gate's own review item. */
 function lostAndOpened(): Record<string, unknown> {
   return {
     ...unbuilt("branch"),

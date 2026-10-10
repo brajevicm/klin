@@ -126,9 +126,10 @@ fn an_unmatched_accepted_lost_file_is_told_once_per_stamp() {
 }
 
 /// A held lost file is keyed by its file, reason and position, so a later Stop under the same
-/// stamp that finds it lost with other words tells nothing again. Spec 2.3, 7.2.
+/// stamp that finds it lost with other words tells nothing again, and one that finds it lost for
+/// another reason tells the note again. Spec 2.3, 7.2.
 #[test]
-fn a_held_lost_file_whose_message_alone_changed_is_not_told_again() {
+fn a_held_lost_file_whose_message_alone_changed_is_not_told_again_and_another_loss_is() {
     let tree = tree(A_HELD_LOST_FILE);
     tree.write("src/broken.rs", "fn broken( {\n");
     tree.base();
@@ -163,6 +164,15 @@ fn a_held_lost_file_whose_message_alone_changed_is_not_told_again() {
             .as_str()
             .is_some_and(|said| said.contains("line 2")),
         "{document}"
+    );
+
+    tree.write("src/lib.rs", "pub fn kept( -> u8 {\n");
+    let reparsed = second_stop(&tree);
+    assert_eq!(reparsed.code, 0, "{}", reparsed.out);
+    assert!(
+        told(&reparsed).contains("src/broken.rs"),
+        "{}",
+        reparsed.out
     );
 }
 
