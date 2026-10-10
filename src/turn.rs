@@ -153,16 +153,6 @@ pub fn taken_at(root: &Path) -> Option<u64> {
         .map(|held| held.time)
 }
 
-/// The findings a stop's block already put in front of the agent under the current stamp. The
-/// record lives beside the stamp and not in the build stamp, so a prompt event between two
-/// stops keeps it, and it goes when the stamp moves. Empty when no stamp is readable. Spec 8.2.
-pub fn asked(root: &Path) -> Vec<String> {
-    state::dir(root)
-        .and_then(|at| stamp::read(&at))
-        .map(|held| held.asked)
-        .unwrap_or_default()
-}
-
 /// Whether a stop under the current stamp spent a gate block. False when no stamp is readable.
 /// Spec 9.5.
 pub fn intervened(root: &Path) -> bool {

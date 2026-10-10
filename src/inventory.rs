@@ -22,11 +22,11 @@ use crate::project::Project;
 use crate::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::record::Values;
 use crate::scope::{self, Roots, Scope};
+use crate::stamp;
 use crate::survey::{self, TEST_DIRS, TEST_PREFIXES, TEST_SUFFIXES};
 use crate::syntax::convention::{self, Test};
 use crate::syntax::{self, Unparsed};
 use crate::tree::Tree;
-use crate::turn;
 
 pub const SECTION: &str = "inventory";
 
@@ -375,7 +375,7 @@ fn gone(site: &Finding) -> bool {
 /// accepted entry naming it still takes the match. Spec 8.2, 16.4.
 fn let_through(now: &[Finding], at: &Context, root: &Path) -> (Vec<Finding>, Vec<Finding>) {
     let asked = match at.hook() {
-        true => turn::asked(root),
+        true => stamp::asked(root),
         false => Vec::new(),
     };
     let through = |site: &Finding| {

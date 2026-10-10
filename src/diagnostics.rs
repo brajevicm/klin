@@ -5,8 +5,8 @@ use serde_json::{Map, Value, json};
 
 use crate::base;
 use crate::check::contract::Records;
+use crate::clock;
 use crate::coverage::Coverage;
-use crate::journal;
 use crate::syntax::{LanguageId, structural};
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
@@ -21,9 +21,9 @@ fn facts(records: &Records) -> Value {
         "extracted": facts.extracted,
         "shared": facts.shared,
         "cached": facts.cached,
-        "ms": journal::millis(facts.time),
-        "cache_read_ms": journal::millis(facts.cache_read),
-        "cache_write_ms": journal::millis(facts.cache_write),
+        "ms": clock::millis(facts.time),
+        "cache_read_ms": clock::millis(facts.cache_read),
+        "cache_write_ms": clock::millis(facts.cache_write),
     });
     if let (Some(fields), Some(states)) = (out.as_object_mut(), records.states) {
         fields.insert("states".into(), states.into());
@@ -42,24 +42,24 @@ fn name_evidence(
         layout.map_or(Value::Null, |layout| {
             json!({
                 "written": layout.written,
-                "worktree_add_ms": journal::millis(layout.worktree_add),
-                "changes_ms": journal::millis(layout.changes),
-                "renames_ms": journal::millis(layout.renames),
-                "cache_name_ms": journal::millis(layout.cache_name),
-                "ignored_ms": journal::millis(layout.ignored),
-                "walk_ms": journal::millis(layout.walk),
+                "worktree_add_ms": clock::millis(layout.worktree_add),
+                "changes_ms": clock::millis(layout.changes),
+                "renames_ms": clock::millis(layout.renames),
+                "cache_name_ms": clock::millis(layout.cache_name),
+                "ignored_ms": clock::millis(layout.ignored),
+                "walk_ms": clock::millis(layout.walk),
             })
         }),
     );
-    out.insert("base_ms".into(), journal::millis(cost.base).into());
+    out.insert("base_ms".into(), clock::millis(cost.base).into());
     if let Some(lost) = cost.lost {
-        out.insert("lost_ms".into(), journal::millis(lost).into());
+        out.insert("lost_ms".into(), clock::millis(lost).into());
     }
     for (tree, part) in [("before", &cost.before), ("after", &cost.after)] {
         let part = json!({
-            "measure_ms": journal::millis(part.measure),
-            "index_ms": journal::millis(part.index),
-            "query_ms": journal::millis(part.query),
+            "measure_ms": clock::millis(part.measure),
+            "index_ms": clock::millis(part.index),
+            "query_ms": clock::millis(part.query),
             "files": part.files,
             "declarations": part.declarations,
             "references": part.references,
@@ -163,7 +163,7 @@ fn costs(out: &mut Map<String, Value>, records: &Records) {
                 "dependencies": graph.dependencies,
                 "edges": graph.edges,
                 "dispatches": by_language(graph.dispatched()),
-                "ms": journal::millis(graph.time),
+                "ms": clock::millis(graph.time),
             })
         }),
     );
@@ -177,7 +177,7 @@ fn costs(out: &mut Map<String, Value>, records: &Records) {
                 "opaque": surface.opaque,
                 "holes": surface.holes,
                 "dispatches": by_language(surface.dispatched()),
-                "ms": journal::millis(surface.time),
+                "ms": clock::millis(surface.time),
             })
         }),
     );

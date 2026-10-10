@@ -25,7 +25,7 @@ use crate::error::{ErrorKind, Fault};
 use crate::plan::{Gate, Plan, State, every_check};
 use crate::project::Project;
 use crate::scope::{Moved, Moves};
-use crate::{diagnostics, journal, survey};
+use crate::{clock, diagnostics, survey};
 
 const INVENTORY: &str = "inventory";
 
@@ -700,7 +700,7 @@ impl CheckDocument {
         if let (Some(why), true) = (&against.unlaid, gate.check.needs.the_tree()) {
             return self.unlaid(args, gate, why, out);
         }
-        let (ran, ms) = journal::timed(|| one(args, gate, project, against));
+        let (ran, ms) = clock::timed(|| one(args, gate, project, against));
         self.took(args, (gate, project, against), ran, ms, out);
     }
 

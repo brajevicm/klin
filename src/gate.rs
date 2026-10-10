@@ -20,7 +20,7 @@ use crate::host::adapter::{Event, Stop};
 use crate::plan::{Gate, Plan};
 use crate::project::Project;
 use crate::stamp::Verdict;
-use crate::{build, handoff, journal, stamp, state, stats, turn};
+use crate::{build, clock, handoff, journal, stamp, state, stats, turn};
 
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
@@ -147,7 +147,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     let root = &project.root().to_path_buf();
     let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
     let (lock, lock_ms) =
-        journal::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
+        clock::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
     let (window, fresh) = windowed(project, lost, &mut log, out);
@@ -164,8 +164,8 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         out,
     );
     let teardown = project.teardown_base();
-    log.timing.base_remove_ms = journal::millis(teardown.remove);
-    log.timing.base_prune_ms = journal::millis(teardown.prune);
+    log.timing.base_remove_ms = clock::millis(teardown.remove);
+    log.timing.base_prune_ms = clock::millis(teardown.prune);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
     let advised = matches!(leaves, Leaves::Fresh);
@@ -189,7 +189,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         turn::heard(root, &told);
     }
     observe_hook_report(log.result.as_ref());
-    log.timing.total_ms = journal::millis(begun.elapsed());
+    log.timing.total_ms = clock::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
@@ -481,7 +481,7 @@ fn ran(
         event,
         lost,
     };
-    let (outcome, build_ms) = journal::timed(|| built(args, project, window));
+    let (outcome, build_ms) = clock::timed(|| built(args, project, window));
     log.timing.build_ms = build_ms;
     let (failure, said, unbuilt) = match outcome {
         Ok(outcome) => sorted(outcome),

@@ -6,6 +6,7 @@ mod cache;
 mod ceiling;
 mod changed;
 mod check;
+mod clock;
 mod complexity;
 mod config;
 mod conventions;

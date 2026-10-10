@@ -859,6 +859,17 @@ fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
     assert_eq!(counted(&again_report), [1, 1, 1, 3], "{again_report}");
     assert_eq!(first["status"], again["status"]);
     assert!(again["graph"]["modules"].as_u64() >= Some(6), "{again}");
+    assert!(again["graph"]["ms"].is_u64(), "{again}");
+    let facts = harness::gate_rows(&again_report)
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|row| &row["facts"])
+        .find(|facts| facts.is_object())
+        .expect("one row carries the extraction facts");
+    for timing in ["ms", "cache_read_ms", "cache_write_ms"] {
+        assert!(facts[timing].is_u64(), "{timing}: {again_report}");
+    }
 }
 
 #[test]

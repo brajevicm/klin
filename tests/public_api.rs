@@ -1671,6 +1671,7 @@ fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
     assert_eq!(first["status"], again["status"]);
     assert_eq!(again["surface"]["surfaces"], 2, "{again}");
     assert!(again["surface"]["items"].as_u64() >= Some(11), "{again}");
+    assert!(again["surface"]["ms"].is_u64(), "{again}");
 }
 
 #[test]
