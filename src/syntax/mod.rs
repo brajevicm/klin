@@ -382,11 +382,12 @@ pub fn extensions(named: &[String]) -> Vec<&'static str> {
 
 /// Every language name the table holds, with the extensions that name selects.
 pub fn language_extensions() -> Vec<(&'static str, String)> {
-    key::extensions_by_name(
-        LANGUAGES
-            .iter()
-            .map(|language| (language.names.to_vec(), language.extensions.to_vec())),
-    )
+    key::extensions_by_name(LANGUAGES.iter().map(|language| {
+        (
+            language.names.iter().copied(),
+            language.extensions.iter().copied(),
+        )
+    }))
 }
 
 /// The suffixes of the one language no grammar here reads, which the survey still calls source.
@@ -394,11 +395,14 @@ const SHELL: &[&str] = &[".sh", ".bash", ".zsh"];
 
 /// The name a config calls a language by.
 pub fn name(id: LanguageId) -> &'static str {
+    if id == LanguageId::Shell {
+        return "shell";
+    }
     LANGUAGES
         .iter()
         .find(|row| row.id == id)
         .and_then(|row| row.names.first().copied())
-        .unwrap_or("shell")
+        .expect("every language but shell has a grammar row")
 }
 
 /// The suffixes of one language: each grammar's first suffix, then the rest of each, in grammar

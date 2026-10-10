@@ -302,7 +302,12 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
         LANGUAGES
             .iter()
             .filter(|row| adapter(row.id).is_some())
-            .map(|row| (row.names[..1].to_vec(), row.extensions.to_vec())),
+            .map(|row| {
+                (
+                    row.names[..1].iter().copied(),
+                    row.extensions.iter().copied(),
+                )
+            }),
     )
 }
 
