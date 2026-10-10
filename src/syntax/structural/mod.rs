@@ -747,6 +747,14 @@ impl<'a, 'b> Reading<'a, 'b> {
     }
 }
 
+/// The facts of the file at this path among files sorted by path, and `None` when none is.
+pub fn file_at<'a>(files: &'a [Rc<FileFacts>], path: &str) -> Option<&'a FileFacts> {
+    let at = files
+        .binary_search_by(|held| held.file.as_str().cmp(path))
+        .ok()?;
+    files.get(at).map(Rc::as_ref)
+}
+
 /// Names grouped by logical language, the set a filtered `SourceIndex` records.
 pub type NameSet = HashMap<LanguageId, HashSet<Name>>;
 
@@ -836,11 +844,7 @@ impl SourceIndex {
 
     /// The facts of the file at this path, and `None` when the index holds no such file.
     pub fn file(&self, path: &str) -> Option<&FileFacts> {
-        let at = self
-            .files
-            .binary_search_by(|held| held.file.as_str().cmp(path))
-            .ok()?;
-        self.files.get(at).map(Rc::as_ref)
+        file_at(&self.files, path)
     }
 
     /// The sites of one name in one logical language, and `None` when no file of that language

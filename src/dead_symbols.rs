@@ -75,24 +75,28 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
-    let (affected, wanted) = affected_scope(at, &before, &after).unzip();
+    let (affected, wanted) = structural::timed(&mut names.after.index, || {
+        affected_scope(at, &before, &after)
+    })
+    .unzip();
     let widened = at.scoped(affected.as_deref().or(at.only));
     let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some());
     let wanted = wanted.as_ref();
-    let before_states = judgement(
+    let (before_states, before_index) = judgement(
         &before,
         &mut names.before,
         &spec.ignore,
         judged_scope,
         wanted,
     );
-    let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
+    let (after_states, after_index) =
+        judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
     let built = (before_states.len() + after_states.len()) as u64;
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
     let now = structural::timed(names.lost.get_or_insert_default(), || {
-        dead_findings(&after_states, &before, &after, &held_before)
+        dead_findings(&after_states, before_index, after_index, &held_before)
     });
     out.record(|records| {
         records.facts = Some(before.cost + after.cost);
@@ -228,15 +232,18 @@ fn measured_after(after: &measurement::Measurement, path: &str) -> bool {
         && !after.unsupported.iter().any(|held| held.file == path)
 }
 
-fn judgement(
-    measured: &measurement::Measurement,
+/// The tree's states, with the index they were judged against, which every later name query
+/// of the run reads.
+fn judgement<'a>(
+    measured: &'a measurement::Measurement,
     cost: &mut structural::TreeNameCost,
     ignore: &[String],
     only: Option<&[String]>,
     wanted: Option<&structural::NameSet>,
-) -> Vec<State> {
+) -> (Vec<State>, &'a structural::SourceIndex) {
     let index = measured.indexed(cost, wanted);
-    structural::timed(&mut cost.query, || states(index, ignore, only))
+    let states = structural::timed(&mut cost.query, || states(index, ignore, only));
+    (states, index)
 }
 
 fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
@@ -261,8 +268,8 @@ fn held<'a>(states: &'a [State], project: &Project) -> Vec<&'a State> {
 
 fn dead_findings(
     states: &[State],
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     held_before: &[&State],
 ) -> Vec<Finding> {
     states
@@ -421,8 +428,8 @@ fn finding(state: &State) -> Finding {
 
 fn finding_with_lost_reference(
     state: &State,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     before_states: &[&State],
 ) -> Finding {
     let mut finding = finding(state);
@@ -449,15 +456,15 @@ fn site(state: &State) -> (&str, u64, &str) {
 
 fn lost_reference(
     state: &State,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
+    before: &structural::SourceIndex,
+    after: &structural::SourceIndex,
     before_states: &[&State],
 ) -> Option<String> {
     let held = held_at(before_states, state)?;
     if held.dead {
         return None;
     }
-    let file = before.index().file(&state.file)?;
+    let file = before.file(&state.file)?;
     let declaration = file.declarations.iter().find(|declaration| {
         (declaration.line, &declaration.name, &declaration.text)
             == (held.line, &held.name, &held.text)
@@ -466,12 +473,10 @@ fn lost_reference(
         .names()
         .filter_map(|name| {
             let now: BTreeSet<(&str, u64)> = after
-                .index()
                 .references(file.language, name)
                 .map(|reference| (reference.file, reference.line))
                 .collect();
             before
-                .index()
                 .references(file.language, name)
                 .filter(|reference| {
                     reference.file != held.file

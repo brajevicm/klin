@@ -281,7 +281,10 @@ declare one of them, and builds each tree's index over every file but only
 the names the judged files declare plus those changed names. A state reads
 the references of the names its own declaration binds, and a lost reference
 reads the same names in both trees, so no other name reaches a verdict.
-Strict and whole runs pass no set and index every name, as before.
+Strict and whole runs pass no set and index every name, as before. The scan
+that finds the changed names and the judged names reads both trees, and its
+time counts in the working tree's `index_ms`, so a row still sees what
+preparing the smaller index costs.
 
 Each check still builds its own index from the facts it selected. The set
 only narrows which names that index records, and the `distinct_names` counter

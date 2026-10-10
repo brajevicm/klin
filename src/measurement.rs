@@ -16,7 +16,7 @@ use crate::files::{self, Found};
 use crate::syntax::Unparsed;
 use crate::syntax::structural::facts::{FileFacts, Outcome, Unsupported};
 use crate::syntax::structural::{
-    Cache, ExtractionCost, NameSet, SourceIndex, TreeNameCost, selected_extensions, timed,
+    Cache, ExtractionCost, NameSet, SourceIndex, TreeNameCost, file_at, selected_extensions, timed,
 };
 use crate::tree::Tree;
 
@@ -41,23 +41,13 @@ impl Measurement {
 
     /// The facts of the selected file at this path, found without building the index.
     pub fn file(&self, path: &str) -> Option<&FileFacts> {
-        let at = self
-            .facts
-            .binary_search_by(|held| held.file.as_str().cmp(path))
-            .ok()?;
-        self.facts.get(at).map(Rc::as_ref)
+        file_at(&self.facts, path)
     }
 
-    /// The name-resolution index, built once only when a consumer asks for it, and over every
-    /// name when no `indexed` call built it first.
-    pub fn index(&self) -> &SourceIndex {
-        self.index
-            .get_or_init(|| SourceIndex::of(self.facts.clone(), None))
-    }
-
-    /// The name-resolution index over only the `wanted` names, or every name, with what
-    /// building it took and what it holds counted into the tree's name cost. The first call
-    /// builds it, so the measurement's index holds the names that call asked for. Spec 11.2.
+    /// The name-resolution index over only the `wanted` names, or every name, built once only
+    /// when a consumer asks for it, with what building it took and what it holds counted into
+    /// the tree's name cost. One consumer owns a measurement, so its first call decides the
+    /// names. Spec 11.2.
     pub fn indexed(&self, cost: &mut TreeNameCost, wanted: Option<&NameSet>) -> &SourceIndex {
         let index = timed(&mut cost.index, || {
             self.index
@@ -229,7 +219,7 @@ mod tests {
         assert_eq!(read, vec!["src/one.rs", "src/two.rs"]);
         assert!(measured.index.get().is_none(), "facts() built an index");
         let indexed: Vec<&str> = measured
-            .index()
+            .indexed(&mut TreeNameCost::default(), None)
             .files()
             .iter()
             .map(|f| f.file.as_str())
