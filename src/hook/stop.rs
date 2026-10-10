@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::Path;
 use std::time::Duration;
@@ -117,6 +118,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         clock::timed(|| state::ready(root).ok().map(|at| state::lock(&at, BUDGET)));
     log.timing.lock_ms = lock_ms;
     let lost = matches!(&lock, Some(None));
+    let mark = turn::prompt_mark(root);
     let (window, fresh) = windowed(project, lost, &mut log, out);
     let project = &*project;
     budgeted(root, lost, &mut log, Budget::open);
@@ -135,6 +137,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.base_prune_ms = clock::millis(teardown.prune);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
+    let moved = log.advisory.is_some();
     let advised = matches!(leaves, Leaves::Fresh);
     let fresh = fresh.filter(|_| advised);
     log.advisory = log.advisory.filter(|_| advised);
@@ -145,14 +148,17 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
+    let mut seen = None;
     if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
         log.gate_blocks = spent.gate_blocks;
         log.build_blocks = spent.builds;
         log.prompt = spent.prompt;
+        seen = spent.trees;
     }
-    let said = tell(args, root, code, note, &mut log);
+    let quiet = || !moved && unchanged(root, mark.as_deref(), seen.as_ref());
+    let (said, noted) = tell(args, root, code, note, &mut log, quiet);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
-    if !lost && (log.blocked || log.told.contains(&"note")) {
+    if !lost && (log.blocked || noted) {
         turn::heard(root, &told);
     }
     observe_hook_report(log.result.as_ref());
@@ -360,18 +366,21 @@ fn key(text: &str) -> String {
     format!("{:016x}", state::hash(text.as_bytes()))
 }
 
-/// What this stop tells the person when nothing blocks it, as one `systemMessage`: the notes the
-/// run left, then the turn end and the week's headline. The turn end reads the journal, so it
+/// What this stop tells the person when nothing blocks it, as one `systemMessage`, and whether
+/// the run's own note is part of it: the notes the run left, then the turn end and the week's
+/// headline. The turn end reads the journal, so it
 /// runs only in a turn whose stamp says a stop spent a gate block, or under a prompt whose build
 /// stamp says so when the verdict could not be written. The journal records each part by name.
-/// Spec 9.5, 11.4.
+/// A `quiet` turn tells only that no prompt event reached the session. Spec 9.5, 10.7, 11.4.
 fn tell(
     args: &Args,
     root: &Path,
     code: u8,
     note: Option<String>,
     log: &mut journal::Stop,
-) -> Option<String> {
+    quiet: impl FnOnce() -> bool,
+) -> (Option<String>, bool) {
+    let noting = note.is_some();
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_blocks > 0 || turn::intervened(root);
@@ -380,9 +389,42 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
+    let (parts, noted) = kept(parts, noting, quiet);
+    if parts.is_empty() {
+        return (None, noted);
+    }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
-    (!said.is_empty()).then(|| said.join("\n"))
+    (Some(said.join("\n")), noted)
+}
+
+/// What a Stop still tells: every part, or after a `quiet` turn only that no prompt event
+/// reached the session. Also whether the run's own note, which the caller says it was `noting`,
+/// is still told, because only a told note records its notes and errors as told. Spec 2.3, 10.7.
+fn kept(
+    mut parts: Vec<(&'static str, String)>,
+    noting: bool,
+    quiet: impl FnOnce() -> bool,
+) -> (Vec<(&'static str, String)>, bool) {
+    if parts.is_empty() || !quiet() {
+        return (parts, noting);
+    }
+    parts.retain(|(_, text)| text == NO_PROMPT_EVENT);
+    (parts, false)
+}
+
+/// Whether the turn changed nothing: the working tree, and every tree a block of this prompt
+/// `seen`, is the tree the prompt `mark` was taken over. False when klin cannot read the mark's
+/// tree, the working tree, or the tree of a block. Spec 10.7.
+fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -> bool {
+    let (Some(mark), Some(seen), Ok(at)) = (mark, seen, state::ready(root)) else {
+        return false;
+    };
+    let Some(prompted) = stamp::tree_of(root, mark) else {
+        return false;
+    };
+    seen.iter().all(|tree| *tree == prompted)
+        && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
 }
 
 fn add_prompt_note(
@@ -393,14 +435,14 @@ fn add_prompt_note(
     if log.gate_blocks > 0 && log.verdict == "red" && no_prompt_event(tail, log.session.as_deref())
     {
         log.flags.push("no-prompt-event");
-        parts.push((
-            "note",
-            "klin: no prompt event reached this session; klin grants no fresh gate blocks until \
-             the host runs klin's session and prompt hooks."
-                .to_string(),
-        ));
+        parts.push(("note", NO_PROMPT_EVENT.to_string()));
     }
 }
+
+/// The one part a turn that changed nothing still tells, because only a person can install the
+/// hook it names. Spec 10.7, 16.3.
+const NO_PROMPT_EVENT: &str = "klin: no prompt event reached this session; klin grants no fresh \
+                               gate blocks until the host runs klin's session and prompt hooks.";
 
 /// Whether no `prompt` line of this stop's session reached the journal. The tail the stop read
 /// reaches back past the turn stamp, which the prompt event that appends that line takes

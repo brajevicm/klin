@@ -1400,6 +1400,219 @@ fn a_deleted_test_whose_file_went_after_klin_asked_is_not_a_fixed_regression() {
     assert_eq!(outcomes(&json, "fixed-next"), 0, "{json}");
 }
 
+fn journal_lines(tree: &Tree) -> usize {
+    std::fs::read_to_string(tree.state("journal.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .count()
+}
+
+/// A turn that changed nothing tells the person nothing, even where the window still holds
+/// earlier work that leaves a note, and it still writes its verdict and its journal line.
+/// Spec 10.7.
+#[test]
+fn a_stop_over_the_tree_its_prompt_saw_tells_nothing_and_still_writes_its_verdict() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"escapes": {"in": "README.md"}}"#);
+    tree.words("README.md", 5);
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+    prompt(&tree);
+    tree.write("src/work.rs", CLEAN);
+    let edited = hook(&tree, A_STOP);
+    assert_eq!(edited.code, 0, "{}", edited.out);
+    assert!(told(&edited).contains("left a note"), "{}", edited.out);
+
+    prompt(&tree);
+    let before = journal_lines(&tree);
+    let quiet = hook(&tree, A_STOP);
+
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert_ne!(tree.field("verdict"), "aborted", "{}", quiet.out);
+    assert_eq!(journal_lines(&tree), before + 1, "{}", quiet.out);
+
+    tree.write("src/more.rs", CLEAN);
+    let changed = hook(&tree, A_STOP);
+    assert!(told(&changed).contains("left a note"), "{}", changed.out);
+}
+
+/// Under a red stamp that did not move, the window still holds earlier work, and here that work
+/// leaves a note no Stop told yet. A turn that changed nothing still tells none of it, and its
+/// Stop writes the verdict. Spec 10.7.
+#[test]
+fn a_note_from_earlier_work_under_a_red_stamp_is_not_told_after_a_turn_that_changed_nothing() {
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/lib.rs", CLEAN);
+    tree.write("src/new.rs", "pub fn one(a: i32 -> i32 {\n    a + 1\n}\n");
+    prompt(&tree);
+    assert_eq!(tree.field("verdict"), "red");
+    let before = journal_lines(&tree);
+
+    let quiet = hook(&tree, A_STOP);
+
+    let text = std::fs::read_to_string(tree.state("journal.jsonl")).unwrap_or_default();
+    let line: Value = text
+        .lines()
+        .last()
+        .and_then(|line| serde_json::from_str(line).ok())
+        .unwrap_or_default();
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(line["result"]["reviews"][0]["file"], "src/new.rs", "{line}");
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert_ne!(tree.field("verdict"), "aborted", "{}", quiet.out);
+    assert_eq!(journal_lines(&tree), before + 1, "{}", quiet.out);
+}
+
+/// After a gate block, a turn that changed nothing repeats no turn-end line: the verdict stays
+/// red, so the next turn that changes a file tells the person again. Spec 10.7.
+#[test]
+fn a_turn_that_changed_nothing_after_a_gate_block_sends_no_turn_end_line() {
+    let tree = hooked();
+    blocked(&tree);
+    let through = hook(&tree, A_SECOND_STOP);
+    assert!(told(&through).contains("still need"), "{}", through.out);
+
+    prompt(&tree);
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    let quiet = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert_eq!(told(&quiet), "", "{}", quiet.out);
+    assert!(quiet.says("changed: 1 file(s)"), "{}", quiet.out);
+    assert_eq!(tree.field("verdict"), "red", "{}", quiet.out);
+}
+
+/// A turn that changed a file, took a block, and changed it back still tells, though its last
+/// block saw the tree its prompt saw. Spec 10.7.
+#[test]
+fn a_turn_that_changed_a_file_back_after_a_block_still_tells() {
+    let tree = hooked();
+    blocked(&tree);
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 0);
+
+    prompt(&tree);
+    tree.write("src/other.rs", &an_escape());
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    tree.remove("src/other.rs");
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 2);
+    let through = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert_ne!(told(&through), "", "{}", through.out);
+}
+
+/// The warning that no prompt event reached the session survives a turn that changed nothing,
+/// because only a person can install the missing hook. Spec 10.7.
+#[test]
+fn a_turn_that_changed_nothing_still_says_no_prompt_event_reached_the_session() {
+    const STARTED: &str = r#"{"hook_event_name": "SessionStart", "session_id": "s-2",
+                              "source": "startup"}"#;
+    const STOPPED: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
+                              "session_id": "s-2"}"#;
+    const STOPPED_AGAIN: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": true,
+                                    "session_id": "s-2"}"#;
+    let tree = hooked();
+    blocked(&tree);
+    assert_eq!(hook(&tree, STARTED).code, 0);
+    assert_eq!(hook(&tree, STOPPED).code, 2);
+
+    let through = hook(&tree, STOPPED_AGAIN);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert!(
+        told(&through).contains("no prompt event reached this session"),
+        "{}",
+        through.out
+    );
+    assert!(!told(&through).contains("still need"), "{}", through.out);
+}
+
+/// A block klin took over a tree it could not hash proves nothing about that tree, so a turn
+/// that changed a file back after it still tells. A file where the build index keeps its
+/// captures makes the hash fail. Spec 10.7.
+#[test]
+fn a_block_over_a_tree_klin_could_not_hash_never_proves_the_turn_unchanged() {
+    let tree = hooked();
+    prompt(&tree);
+    tree.write("src/lib.rs", &an_escape());
+    std::fs::write(tree.state("build-index.captures"), "").expect("write");
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    std::fs::remove_file(tree.state("build-index.captures")).expect("remove");
+    tree.write("src/lib.rs", CLEAN);
+
+    let fixed = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(fixed.code, 0, "{}", fixed.out);
+    assert_eq!(
+        told(&fixed),
+        "klin caught 1 regression this turn. It was fixed after klin flagged it.",
+        "{}",
+        fixed.out
+    );
+}
+
+/// A quiet turn that tells only that no prompt event reached the session records none of the
+/// run's own notes as told, so the next Stop that changed a file still tells them. The block
+/// record says this prompt spent both gate blocks over the mark's tree. Spec 2.3, 10.7.
+#[test]
+fn the_prompt_event_warning_alone_records_no_note_of_the_run_as_told() {
+    const STARTED: &str = r#"{"hook_event_name": "SessionStart", "session_id": "s-2",
+                              "source": "startup"}"#;
+    const STOPPED: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false,
+                              "session_id": "s-2"}"#;
+    let tree = hooked();
+    blocked(&tree);
+    tree.write("src/new.rs", "pub fn one(a: i32 -> i32 {\n    a + 1\n}\n");
+    assert_eq!(hook(&tree, STARTED).code, 0);
+    let spent = json!({
+        "prompt": tree.field("prompts").parse::<u64>().expect("prompts"),
+        "session": "s-2",
+        "builds": 0,
+        "gate_blocks": 2,
+        "gate_tree": tree.revision("refs/worktree/klin/mark^{tree}"),
+        "trees": [tree.revision("refs/worktree/klin/mark^{tree}")],
+    });
+    std::fs::write(tree.state("build-blocked"), spent.to_string()).expect("write");
+
+    let quiet = hook(&tree, STOPPED);
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert!(told(&quiet).contains("no prompt event"), "{}", quiet.out);
+    assert!(!told(&quiet).contains("src/new.rs"), "{}", quiet.out);
+
+    tree.write("src/other.rs", CLEAN);
+    let changed = hook(&tree, STOPPED);
+
+    assert_eq!(changed.code, 0, "{}", changed.out);
+    assert!(told(&changed).contains("src/new.rs"), "{}", changed.out);
+}
+
+/// A block record an older klin wrote holds only the last tree of each kind, so it cannot prove
+/// that every block of the prompt saw the mark's tree, and the Stop tells as usual. Spec 10.7.
+#[test]
+fn a_block_record_with_no_list_of_trees_never_proves_the_turn_unchanged() {
+    let tree = hooked();
+    blocked(&tree);
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 0);
+    prompt(&tree);
+    tree.write("src/other.rs", &an_escape());
+    assert_eq!(hook(&tree, A_STOP).code, 2);
+    tree.remove("src/other.rs");
+    assert_eq!(hook(&tree, A_SECOND_STOP).code, 2);
+    let text = std::fs::read_to_string(tree.state("build-blocked")).expect("read");
+    let mut older: Value = serde_json::from_str(&text).expect("json");
+    let fields = older.as_object_mut().expect("object");
+    fields.remove("trees");
+    fields.remove("tree_lost");
+    std::fs::write(tree.state("build-blocked"), older.to_string()).expect("write");
+
+    let through = hook(&tree, A_SECOND_STOP);
+
+    assert_eq!(through.code, 0, "{}", through.out);
+    assert_ne!(told(&through), "", "{}", through.out);
+}
+
 /// A library crate with `lib` as its root, hooked and committed as the base.
 fn library(lib: &str) -> Tree {
     let tree = Tree::new();

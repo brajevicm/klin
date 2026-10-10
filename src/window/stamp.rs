@@ -597,6 +597,12 @@ pub fn resolve(root: &Path, reference: &str) -> Option<String> {
     Repo::at(root).rev_parse(&["--verify", "--quiet", &refspec])
 }
 
+/// The tree a commit was taken over, and `None` when the name resolves to no commit.
+pub fn tree_of(root: &Path, commit: &str) -> Option<String> {
+    let refspec = format!("{commit}^{{tree}}");
+    Repo::at(root).rev_parse(&["--verify", "--quiet", &refspec])
+}
+
 /// A git call with klin as the author of any commit it makes and an optional index of its own,
 /// so nothing here touches what a person staged.
 pub fn git(root: &Path, index: Option<&Path>, args: &[&str]) -> Option<String> {

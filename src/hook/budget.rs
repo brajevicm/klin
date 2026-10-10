@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use serde_json::{Value, json};
@@ -46,6 +47,9 @@ pub struct Spent {
     pub prompt: u64,
     pub builds: u64,
     pub gate_blocks: u64,
+    /// Every tree a block of this prompt was taken over, and `None` when klin could not hash
+    /// the tree of one of them. Spec 10.7.
+    pub trees: Option<BTreeSet<String>>,
 }
 
 /// What a build failure at this stop spends: the block it took and its number in this turn, no
@@ -92,6 +96,7 @@ impl Budget<'_> {
             prompt: count.prompt,
             builds: count.builds,
             gate_blocks: count.gate_blocks,
+            trees: (!count.tree_lost).then_some(count.trees),
         })
     }
 
@@ -121,9 +126,10 @@ impl Budget<'_> {
         }
         let count = Count {
             builds: held.builds + 1,
-            build_tree: tree,
+            build_tree: tree.clone(),
             ..held
-        };
+        }
+        .seen(tree.as_deref());
         match counted(&at, &count) {
             true => BuildBlock::Spent(count.builds),
             false => unbounded(
@@ -158,9 +164,10 @@ impl Budget<'_> {
         };
         let recorded = Count {
             gate_blocks: number,
-            gate_tree: tree,
+            gate_tree: tree.clone(),
             ..count
-        };
+        }
+        .seen(tree.as_deref());
         if counted(&at, &recorded) {
             return GateBlock::Spent(number);
         }
@@ -181,13 +188,22 @@ impl Budget<'_> {
                 held.taken_under(prompt) || self.continued && held.taken_by(self.session)
             })
             .unwrap_or_default();
+        let build_tree = held.build_tree.or(held.tree);
+        let trees = held
+            .trees
+            .into_iter()
+            .chain(build_tree.clone())
+            .chain(held.gate_tree.clone())
+            .collect();
         Count {
             prompt,
             session: self.session.map(str::to_string),
             builds: held.builds.unwrap_or_default(),
-            build_tree: held.build_tree.or(held.tree),
+            build_tree,
             gate_blocks: held.gate_blocks.unwrap_or(u64::from(held.gate_spent)),
             gate_tree: held.gate_tree,
+            trees,
+            tree_lost: held.tree_lost,
         }
     }
 }
@@ -281,7 +297,7 @@ fn unbounded(why: &str, flags: &mut Vec<&'static str>) -> BuildBlock {
 }
 
 /// The working tree as the build stamp records it, hashed through the build stamp's own index.
-fn working_tree(root: &Path, at: &Path) -> Option<String> {
+pub fn working_tree(root: &Path, at: &Path) -> Option<String> {
     stamp::tree_through(root, &at.join(BUILD_INDEX))
 }
 
@@ -301,12 +317,28 @@ struct Count {
     /// The working tree the last gate block was taken over. Only a tree klin recorded here can
     /// prove that a later stop changed it. ADR 0052.
     gate_tree: Option<String>,
+    /// Every tree a block of this prompt was taken over, of either kind. Spec 10.7.
+    trees: BTreeSet<String>,
+    /// Whether a block of this prompt was taken over a tree klin could not hash, so `trees`
+    /// cannot prove the turn changed nothing. Spec 10.7.
+    tree_lost: bool,
+}
+
+impl Count {
+    /// The count with the tree a block was just taken over, or with the mark of a block over a
+    /// tree klin could not hash. Spec 10.7.
+    fn seen(mut self, tree: Option<&str>) -> Count {
+        self.tree_lost |= tree.is_none();
+        self.trees.extend(tree.map(str::to_string));
+        self
+    }
 }
 
 /// The record as it stands on disk. A field that is missing or holds another type reads as
 /// absent. A record an older klin wrote names its build tree `tree` and its one gate block
 /// `gate_spent`, and names no gate tree or session, so it can never prove a second gate block or
-/// carry into a chain. Spec 16.3.
+/// carry into a chain. One with no `trees` holds only the last tree of each kind, so it counts as
+/// a block over a tree klin could not hash. Spec 10.7, 16.3.
 #[derive(Default)]
 struct Record {
     prompt: Option<u64>,
@@ -315,6 +347,8 @@ struct Record {
     build_tree: Option<String>,
     gate_blocks: Option<u64>,
     gate_tree: Option<String>,
+    trees: BTreeSet<String>,
+    tree_lost: bool,
     tree: Option<String>,
     gate_spent: bool,
 }
@@ -332,6 +366,15 @@ impl Record {
             build_tree: text("build_tree"),
             gate_blocks: number("gate_blocks"),
             gate_tree: text("gate_tree"),
+            trees: held
+                .get("trees")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|tree| tree.as_str().map(str::to_string))
+                .collect(),
+            tree_lost: held.get("tree_lost").and_then(Value::as_bool) == Some(true)
+                || held.get("trees").is_none(),
             tree: text("tree"),
             gate_spent: held.get("gate_spent").and_then(Value::as_bool) == Some(true),
         })
@@ -356,6 +399,8 @@ fn counted(at: &Path, count: &Count) -> bool {
         "build_tree": count.build_tree,
         "gate_blocks": count.gate_blocks,
         "gate_tree": count.gate_tree,
+        "trees": count.trees,
+        "tree_lost": count.tree_lost,
     })
     .to_string()
         + "\n";
