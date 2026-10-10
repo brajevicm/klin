@@ -9,7 +9,7 @@ use crate::hook::host::ADAPTERS;
 use crate::hook::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::sys::error::Error;
 use crate::{
-    cli::starter as init,
+    cli::starter,
     sys::{state, write},
 };
 
@@ -71,11 +71,11 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let file = configuration(args, &scope, start)?;
     let components = planned(args, &scope, file.as_deref())?;
     if let Some(file) = file.as_deref().filter(|_| args.pin) {
-        init::pin(file, out)?;
+        starter::pin(file, out)?;
     }
     applied(&components, out)?;
     if let Some(root) = &scope.repository {
-        init::inert(root, out);
+        starter::inert(root, out);
     }
     let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
     Ok(0)
