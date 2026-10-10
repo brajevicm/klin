@@ -73,7 +73,6 @@
           "contract",
           "project",
           "render",
-          "journal",
           "syntax",
           "core"
         ]
@@ -153,6 +152,7 @@
           "src/cache.rs",
           "src/ceiling.rs",
           "src/changed.rs",
+          "src/clock.rs",
           "src/config.rs",
           "src/coverage.rs",
           "src/error.rs",
