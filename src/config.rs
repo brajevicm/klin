@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::error::Error;
-use crate::key::{Key, Section, SectionShape, Shape};
+use crate::key::{Key, Reader, Section, SectionShape, Shape};
 
 pub const FILENAME: &str = "klin.json";
 
@@ -257,7 +257,7 @@ fn section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Erro
         SectionShape::Object => object_section_shape(file, check, value),
         SectionShape::DocumentMap(document) => document_map_shape(file, check, document, value),
         SectionShape::FalseOnly(_) => false_only_shape(file, check, value),
-        SectionShape::Conventions(instead) => dynamic_conventions(file, check, instead, value),
+        SectionShape::Conventions(read) => dynamic_conventions(file, check, read, value),
         SectionShape::Sarif => named_entries_shape(file, check, value),
     }
 }
@@ -675,14 +675,16 @@ fn layers_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<
 fn dynamic_conventions(
     file: &Path,
     check: &Section,
-    instead: &[(&'static str, &'static str)],
+    read: Reader,
     value: &Value,
 ) -> Result<(), Error> {
     match value {
         Value::Bool(false) => Ok(()),
         Value::Object(conventions) if !conventions.is_empty() => {
             conventions.iter().try_for_each(|(name, value)| {
-                convention_shape_entry(file, check.keys, instead, name, value)
+                read(value).map_err(|why| {
+                    Error(format!("{}: convention \"{name}\" {why}", file.display()))
+                })
             })
         }
         Value::Object(_) => Err(Error(format!(
@@ -696,59 +698,6 @@ fn dynamic_conventions(
             check.name
         ))),
     }
-}
-
-fn convention_shape_entry(
-    file: &Path,
-    keys: &[Key],
-    instead: &[(&'static str, &'static str)],
-    name: &str,
-    value: &Value,
-) -> Result<(), Error> {
-    let fields = value.as_object().ok_or_else(|| {
-        Error(format!(
-            "{}: convention \"{name}\" must be an object with a matcher and a remedy",
-            file.display()
-        ))
-    })?;
-    known_convention(fields, keys, instead)
-        .map_err(|why| Error(format!("{}: convention \"{name}\" {why}", file.display())))?;
-    convention_fields(file, keys, name, fields)?;
-    convention_matcher(file, name, fields)?;
-    convention_language(file, keys, name, fields)?;
-    convention_remedy(file, name, fields)
-}
-
-/// A key a convention does not read would measure nothing, so it is refused, naming the key a
-/// person most likely meant: one the convention reads, or the one `instead` maps a near miss to.
-pub fn known_convention(
-    fields: &Map<String, Value>,
-    keys: &[Key],
-    instead: &[(&'static str, &'static str)],
-) -> Result<(), String> {
-    let Some(unknown) = fields
-        .keys()
-        .find(|key| !keys.iter().any(|held| held.name == *key))
-    else {
-        return Ok(());
-    };
-    let candidates = || {
-        keys.iter()
-            .map(|key| (key.name, key.name))
-            .chain(instead.iter().copied())
-    };
-    let meant = nearest(unknown, candidates().map(|(near, _)| near))
-        .and_then(|near| candidates().find(|(held, _)| *held == near));
-    Err(match meant {
-        Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
-        None => format!(
-            "has unknown field \"{unknown}\" — a convention reads only: {}",
-            keys.iter()
-                .map(|key| key.name)
-                .collect::<Vec<&str>>()
-                .join(", ")
-        ),
-    })
 }
 
 /// Each convention a `Conventions` section names runs as its own gate, so an accepted entry for one
@@ -786,125 +735,6 @@ fn no_stale_debt(file: &Path, data: &Value, sections: &[Section]) -> Result<(), 
     Ok(())
 }
 
-fn convention_fields(
-    file: &Path,
-    keys: &[Key],
-    name: &str,
-    fields: &Map<String, Value>,
-) -> Result<(), Error> {
-    for key in keys {
-        if key.name != "language"
-            && let Some(value) = fields.get(key.name)
-            && !convention_shape(key, value)
-        {
-            return Err(convention_shape_error(file, name, key.name, value));
-        }
-    }
-    Ok(())
-}
-
-fn convention_matcher(file: &Path, name: &str, fields: &Map<String, Value>) -> Result<(), Error> {
-    let matchers: Vec<&str> = ["text", "code", "files"]
-        .into_iter()
-        .filter(|matcher| fields.contains_key(*matcher))
-        .collect();
-    match matchers.as_slice() {
-        [] => Err(Error(format!(
-            "{}: convention \"{name}\" defines none of: text, code, files\nChoose exactly one of: text, code, files.",
-            file.display()
-        ))),
-        [first, second, ..] => Err(Error(format!(
-            "{}: convention \"{name}\" defines both \"{first}\" and \"{second}\"\nChoose exactly one of: text, code, files.",
-            file.display()
-        ))),
-        [_] => Ok(()),
-    }
-}
-
-fn convention_language(
-    file: &Path,
-    keys: &[Key],
-    name: &str,
-    fields: &Map<String, Value>,
-) -> Result<(), Error> {
-    let Some(language) = fields.get("language") else {
-        return Ok(());
-    };
-    if !fields.contains_key("code") {
-        return Err(Error(format!(
-            "{}: convention \"{name}\" sets \"language\" on a rule that is not \"code\"",
-            file.display()
-        )));
-    }
-    if !language_is_known(keys, language) {
-        let named = language.as_str().unwrap_or_default();
-        let known = language_names(keys).join(", ");
-        return Err(Error(format!(
-            "{}: convention \"{name}\" names language \"{named}\", which no code pattern is written in — one of: {known}",
-            file.display()
-        )));
-    }
-    Ok(())
-}
-
-fn convention_remedy(file: &Path, name: &str, fields: &Map<String, Value>) -> Result<(), Error> {
-    if fields.get("remedy").is_some_and(is_text) {
-        return Ok(());
-    }
-    Err(Error(format!(
-        "{}: convention \"{name}\" has no \"remedy\" — write the exact action to take instead",
-        file.display()
-    )))
-}
-
-fn convention_shape(key: &Key, value: &Value) -> bool {
-    match key.shape {
-        Shape::String => value.is_string(),
-        Shape::Text => is_text(value),
-        Shape::StringOrList => string_or_list(value),
-        Shape::Language(languages) => value
-            .as_str()
-            .is_some_and(|name| languages().iter().any(|(known, _)| *known == name)),
-        _ => true,
-    }
-}
-
-fn convention_shape_error(file: &Path, name: &str, key: &str, value: &Value) -> Error {
-    let expected = match key {
-        "in" | "except" => format!(
-            "has an \"{key}\" that is not a repository-relative path or a non-empty list of them"
-        ),
-        "language" => format!(
-            "names language \"{}\", which no code pattern is written in",
-            value.as_str().unwrap_or_default()
-        ),
-        "remedy" => "has no \"remedy\" — write the exact action to take instead".to_string(),
-        key => format!("has a \"{key}\" that is not a string"),
-    };
-    Error(format!(
-        "{}: convention \"{name}\" {expected}",
-        file.display()
-    ))
-}
-
-fn language_is_known(keys: &[Key], value: &Value) -> bool {
-    keys.iter()
-        .find(|key| key.name == "language")
-        .is_some_and(|key| convention_shape(key, value))
-}
-
-fn language_names(keys: &[Key]) -> Vec<&'static str> {
-    keys.iter()
-        .find(|key| key.name == "language")
-        .and_then(|key| match key.shape {
-            Shape::Language(languages) => {
-                Some(languages().into_iter().map(|(name, _)| name).collect())
-            }
-            _ => None,
-        })
-        .unwrap_or_default()
-}
-
 fn named_entries_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
     let Value::Bool(false) = value else {
         let Some(entries) = value.as_array() else {
@@ -930,11 +760,11 @@ fn named_entries_shape(file: &Path, check: &Section, value: &Value) -> Result<()
     Ok(())
 }
 
-fn is_text(value: &Value) -> bool {
+pub fn is_text(value: &Value) -> bool {
     value.as_str().is_some_and(|text| !text.trim().is_empty())
 }
 
-fn string_or_list(value: &Value) -> bool {
+pub fn string_or_list(value: &Value) -> bool {
     match value {
         Value::String(value) => !value.is_empty(),
         Value::Array(values) => {

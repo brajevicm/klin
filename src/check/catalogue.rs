@@ -331,7 +331,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "convention breaches",
         },
         gate_per_entry: false,
-        shape: SectionShape::Conventions(conventions::rules::INSTEAD),
+        shape: SectionShape::Conventions(conventions::rules::read),
     },
     Row {
         name: "sarif",

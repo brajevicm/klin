@@ -11,7 +11,7 @@ use crate::check::contract::{self, Context};
 use crate::config::{self, Config};
 use crate::coverage::Files;
 use crate::error::Error;
-use crate::key::Key;
+use crate::key::{Key, Shape};
 use crate::ratchet::Finding;
 use crate::record::Values;
 use crate::scope::{self, Moves, Selector};
@@ -74,7 +74,7 @@ pub const KEYS: &[Key] = &[TEXT, CODE, FILES, REMEDY, IN, EXCEPT, LANGUAGE];
 
 /// The keys a person writes for a convention that belong to another shape of rule, each with the
 /// key a convention reads for the same intent, so a near miss names the key to use.
-pub const INSTEAD: &[(&str, &str)] = &[
+const INSTEAD: &[(&str, &str)] = &[
     ("exclude", EXCEPT.name),
     ("exceptions", EXCEPT.name),
     ("roots", IN.name),
@@ -84,6 +84,8 @@ pub const INSTEAD: &[(&str, &str)] = &[
     ("regex", TEXT.name),
     ("glob", FILES.name),
 ];
+
+const NO_REMEDY: &str = "has no \"remedy\" — write the exact action to take instead";
 
 const MATCHERS: [Key; 3] = [TEXT, CODE, FILES];
 
@@ -302,37 +304,114 @@ pub(super) fn conventions(config: &Config, moves: &Moves) -> Result<Vec<Conventi
         .collect()
 }
 
+/// One convention's shape, which config judges at load and drops.
+pub fn read(rule: &Value) -> Result<(), String> {
+    shaped(rule).map(drop)
+}
+
+/// One convention as its gate runs it: its shape first, which a load already judged, then the
+/// rules only its gate refuses. Spec 8.4, 14.
 fn convention(name: &str, rule: &Value) -> Result<Convention, String> {
+    let shaped = shaped(rule)?;
     if name.trim().is_empty() {
         return Err("has no name — the key is the convention's identity".into());
     }
-    let fields = rule
-        .as_object()
-        .ok_or("must be an object with a \"remedy\" and one of: text, code, files")?;
-    config::known_convention(fields, KEYS, INSTEAD)?;
-    let (matcher, written) = matcher(fields)?;
-    let (within, except) = scope(fields)?;
+    let (matcher, written) = matcher(shaped.fields, shaped.kind)?;
+    let (within, except) = scope(shaped.fields)?;
     Ok(Convention {
         name: name.to_string(),
-        language: language(fields, &matcher)?,
+        language: shaped.language,
         matcher,
         written,
         within,
         except,
-        remedy: remedy(fields)?,
+        remedy: shaped.remedy.trim().to_string(),
         moved: Vec::new(),
         kept: Vec::new(),
     })
 }
 
-fn remedy(fields: &Map<String, Value>) -> Result<String, String> {
+/// What a load refuses of a convention: the fields it reads, the one matcher it states, the
+/// language a code pattern is written in, and its remedy.
+struct Shaped<'a> {
+    fields: &'a Map<String, Value>,
+    kind: &'static str,
+    language: Option<&'static str>,
+    remedy: &'a str,
+}
+
+fn shaped(rule: &Value) -> Result<Shaped<'_>, String> {
+    let fields = rule
+        .as_object()
+        .ok_or("must be an object with a matcher and a remedy")?;
+    known(fields)?;
+    shapes(fields)?;
+    let kind = chosen(fields)?;
+    Ok(Shaped {
+        fields,
+        kind,
+        language: language(fields, kind)?,
+        remedy: remedy(fields)?,
+    })
+}
+
+fn remedy(fields: &Map<String, Value>) -> Result<&str, String> {
     fields
         .get(REMEDY.name)
         .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|remedy| !remedy.is_empty())
-        .map(str::to_string)
-        .ok_or_else(|| "has no \"remedy\" — write the exact action to take instead".to_string())
+        .filter(|remedy| !remedy.trim().is_empty())
+        .ok_or_else(|| NO_REMEDY.to_string())
+}
+
+/// A key a convention does not read would measure nothing, so it is refused, naming the key a
+/// person most likely meant: one the convention reads, or the one `INSTEAD` maps a near miss to.
+fn known(fields: &Map<String, Value>) -> Result<(), String> {
+    let Some(unknown) = fields
+        .keys()
+        .find(|key| !KEYS.iter().any(|held| held.name == *key))
+    else {
+        return Ok(());
+    };
+    let candidates = || {
+        KEYS.iter()
+            .map(|key| (key.name, key.name))
+            .chain(INSTEAD.iter().copied())
+    };
+    let meant = config::nearest(unknown, candidates().map(|(near, _)| near))
+        .and_then(|near| candidates().find(|(held, _)| *held == near));
+    Err(match meant {
+        Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
+        None => format!(
+            "has unknown field \"{unknown}\" — a convention reads only: {}",
+            KEYS.iter()
+                .map(|key| key.name)
+                .collect::<Vec<&str>>()
+                .join(", ")
+        ),
+    })
+}
+
+/// The first key whose value is not the shape the key reads, in the order the keys are declared.
+fn shapes(fields: &Map<String, Value>) -> Result<(), String> {
+    KEYS.iter()
+        .filter_map(|key| misshapen(key, fields.get(key.name)?))
+        .next()
+        .map_or(Ok(()), Err)
+}
+
+/// Why a key's value is not the shape the key reads. `language` judges its own value.
+fn misshapen(key: &Key, value: &Value) -> Option<String> {
+    match key.shape {
+        Shape::String if !value.is_string() => {
+            Some(format!("has a \"{}\" that is not a string", key.name))
+        }
+        Shape::Text if !config::is_text(value) => Some(NO_REMEDY.to_string()),
+        Shape::StringOrList if !config::string_or_list(value) => Some(format!(
+            "has an \"{}\" that is not a repository-relative path or a non-empty list of them",
+            key.name
+        )),
+        _ => None,
+    }
 }
 
 fn scope(fields: &Map<String, Value>) -> Result<(Vec<Selector>, Vec<Selector>), String> {
@@ -359,8 +438,7 @@ fn chosen(fields: &Map<String, Value>) -> Result<&'static str, String> {
     }
 }
 
-fn matcher(fields: &Map<String, Value>) -> Result<(Matcher, String), String> {
-    let kind = chosen(fields)?;
+fn matcher(fields: &Map<String, Value>, kind: &str) -> Result<(Matcher, String), String> {
     let written = fields
         .get(kind)
         .and_then(Value::as_str)
@@ -445,19 +523,12 @@ fn class<'a>(rest: &'a str, expression: &mut String) -> Option<&'a str> {
     Some(&rest[end + 1..])
 }
 
-fn language(
-    fields: &Map<String, Value>,
-    matcher: &Matcher,
-) -> Result<Option<&'static str>, String> {
+fn language(fields: &Map<String, Value>, kind: &str) -> Result<Option<&'static str>, String> {
     let Some(stated) = fields.get(LANGUAGE.name) else {
         return Ok(None);
     };
-    if !matches!(matcher, Matcher::Code(_)) {
-        return Err(
-            "sets \"language\" on a rule that is not \"code\" — only a code pattern is written in \
-             a language"
-                .into(),
-        );
+    if kind != CODE.name {
+        return Err("sets \"language\" on a rule that is not \"code\"".into());
     }
     let named = stated.as_str().unwrap_or_default();
     let known = pattern::languages();

@@ -33,11 +33,15 @@ pub enum SectionShape {
     DocumentMap(&'static Key),
     /// A section that reads no policy, with what a person may write instead.
     FalseOnly(&'static str),
-    /// A map of named conventions, with the fields a person may write for a key a convention
-    /// reads, which an unknown-field error names.
-    Conventions(&'static [(&'static str, &'static str)]),
+    /// A map of named conventions, with the check's judge of one convention's shape.
+    Conventions(Reader),
     Sarif,
 }
+
+/// A check's judge of one convention's shape, the rules its gate reads first, which `config`
+/// runs at load so every command refuses them. What the gate alone refuses stays at the gate.
+/// Spec 8.4, 14.
+pub type Reader = fn(&serde_json::Value) -> Result<(), String>;
 
 /// What `config` knows of one section: enough to judge its shape before any gate runs, and
 /// nothing a gate does. The catalogue builds these and the runner passes them to `config`, so
