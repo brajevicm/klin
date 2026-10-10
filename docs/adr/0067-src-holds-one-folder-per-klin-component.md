@@ -7,13 +7,13 @@ ADR 0065 rule 8 says that broad decomposition and final directory
 normalization wait until `klin layering` reports zero cycles. #427 reached
 zero at `748d01fc`, and #370 is closed. This ADR records that last step.
 
-At `80188ef5`, 60 files sit at the root of `src/`. Their names mix domain
-terms (`turn`, `radius`, `guard`), mechanisms (`cache`, `write`, `key`,
-`record`) and checks (`complexity`, `escapes`). Command names do not match
-file names: `klin report` is in `stats.rs`, `klin setup` is in `hooks.rs`, and
-`klin check` and the Stop are both in `gate.rs`. The `layering` section of
-`klin.json` names 60 paths in 14 layers, and its `core` layer holds 20 of
-them.
+At `80188ef5`, 55 modules sit at the root of `src/` beside `main.rs`. Their
+names mix domain terms (`turn`, `radius`, `guard`), mechanisms (`cache`,
+`write`, `key`, `record`) and checks (`complexity`, `escapes`). Command names
+do not match file names: `klin report` is in `stats.rs`, `klin setup` is in
+`hooks.rs`, and `klin check` and the Stop are both in `gate.rs`. The
+`layering` section of `klin.json` names 60 paths in 14 layers, and its `core`
+layer holds 20 of them.
 
 ## The decision
 
@@ -21,7 +21,8 @@ them.
 component, named by its `CONTEXT.md` or SPEC 3.1 term, and each folder is one
 layer of `klin.json`.**
 
-From the bottom layer to the top:
+From the bottom layer to the top. The names are the module names after #602
+and #603. #602 holds the mapping from each file of today to its new path.
 
 | Folder | Holds | Term |
 | --- | --- | --- |
@@ -36,20 +37,21 @@ From the bottom layer to the top:
 | `checks/` | one file per check, and `structural/` for `layering`, `reachability`, `dead_symbols` and `public_api` | Check, SPEC 9.1 |
 | `engine/` | `catalogue`, `plan`, `document`, `diagnostics`, `render`, `reference`, `against` | SPEC 3.1 Catalogue, Engine and Renderers |
 | `hook/` | `stop`, `stats`, `budget`, `build`, `guard`, `handoff`, `journal`, `radius`, `turn`, `host/` | the host protocol, Guard, Journal, Turn, Radius (SPEC 10) |
-| `cli/` | `agent`, `check`, `setup`, `starter`, `status`, `report`, `policy`, `update` | SPEC 11, and the hidden ingress of SPEC 10.1 |
+| `cli/` | one file per command: `agent`, `check`, `setup`, `starter`, `status`, `report`, `policy`, `update` | SPEC 11, and the hidden ingress of SPEC 10.1 |
 
 ### Rules
 
 1. Each layer is one folder. A layer may use every layer below it in the
    table. A dependency on a layer above it fails the `layering` gate, and
    `acyclic: true` fails a cycle.
-2. `cli/` holds entry points only. A command file holds its clap `Args` and
-   its `run`. The logic lives in the layers below.
+2. `cli/` holds entry points only, one file per command. A command file holds
+   its clap `Args` and its `run`. The logic lives in the layers below.
 3. The `mod.rs` of a new folder holds only `mod` lines, as `src/check/mod.rs`
    does at `80188ef5`. The `mod.rs` files of `syntax/`,
    `syntax/structural/`, `modules/`, `surface/` and `hook/host/` keep their
-   code. Containment is not an edge (ADR 0043), and the children of these
-   files use their siblings, not their parent.
+   code. Containment is not an edge (ADR 0043), so a child that uses its
+   parent, as `src/syntax/pattern.rs:320` uses `syntax::language_of`, makes
+   no cycle while the parent does not use that child.
 4. No module has the name of the folder that holds it. clippy's
    `module_inception` lint fails under the `-D warnings` that CI passes
    (`.github/workflows/quality.yml:108`). A scratch crate confirmed it for
@@ -67,19 +69,17 @@ From the bottom layer to the top:
    rename keeps each file above git's `-M50%` rename limit, so held findings
    keep their sites (spec 7.2).
 
-The order of the layers is in `klin.json` and in the code map of
-`CONTRIBUTING.md`. A folder listing sorts by name, so it cannot show the
-order.
+The order of the layers is in `klin.json`, and #602 adds a code map with the
+same order to `CONTRIBUTING.md`. A folder listing sorts by name, so it cannot
+show the order.
 
 ## Known costs
 
-- Every `use crate::` line changes one time, in the move of #602. Each branch
-  that is open at that time must rebase across it.
-- Paths are one segment longer for each moved module, for example
-  `crate::contract::check` in place of `crate::check::contract`.
-- Folders do not keep parallel sessions apart. Of the 489 non-merge commits
-  that touch `src/` up to `80188ef5`, 269 touch two or more of the twelve
-  folders. Worktrees keep sessions apart (#590 rule 3).
+- Most `use crate::` lines change one time, in the move of #602. The paths
+  into `syntax/`, `modules/` and `surface/` stay. Each branch that is open at
+  that time must rebase across the move.
+- A module that moved from the root of `src/` gets one more path segment, for
+  example `crate::sys::git` in place of `crate::git`.
 - The structural cache checksums its own source files
   (`src/syntax/structural/cache.rs:29-38`). The move changes their `use`
   lines, so every cached base is built again one time after the move.
@@ -89,15 +89,18 @@ order.
 ## Rejected
 
 - **One folder per lane of #590**, as an inverse Conway maneuver over the
-  agent sessions. #590 is a roadmap, so its lanes change. Git conflicts occur
-  per file and hunk, not per folder.
+  agent sessions. #590 is a roadmap, so its lanes change. Of the 489
+  non-merge commits up to `80188ef5` that change a file that still exists
+  there, 269 change files in two or more of the twelve folders. Git conflicts
+  occur per file and hunk, not per folder, and worktrees keep sessions apart
+  (#590 rule 3).
 - **One `languages/<lang>/` folder per language.** Of the 26 commits that
   changed `syntax/structural/rust.rs` up to `80188ef5`, 18 also changed
   `typescript.rs`, so a change goes across the languages of one seam. To
   move a check's rows out of the check contradicts ADR 0035. It also turns
   held sites into new findings: `SLASH` at `src/stubs.rs:25` matches its own
   row, and `escapes.rs` would fall below `-M50%`.
-- **Tier folders above the twelve** (`integration/`, `measurement/`,
+- **Group folders above the twelve** (`integration/`, `measurement/`,
   `policy/`, `platform/`). They show the layers in one listing, but they add
   a segment to every path, and a reader must classify a component before
   they can find it. They also claim the SPEC 3.2 groups, which the code does
@@ -105,14 +108,16 @@ order.
   the renderer.
 - **One folder per SPEC 3.1 component**, with `ratchet/`, `guard/` and
   `journal/` apart. Several folders would hold one file each.
-- **A Cargo workspace with flat `crates/`.** `public-api` treats a sibling
-  crate as external (`CONTEXT.md` "External", ADR 0044), so every item that
-  crosses a crate would become ratcheted surface. The `layering` gate already
+- **A Cargo workspace with flat `crates/`**, as in matklad's "Large Rust
+  Workspaces". `public-api` treats a sibling crate as external (`CONTEXT.md`
+  "External", ADR 0044), so every item that crosses a crate would become
+  ratcheted surface. The `layering` gate already
   enforces the boundaries.
 - **A language registry that every seam imports.** A language file that
   reaches a seam table through any path closes a cycle. One such path exists
-  at `80188ef5`: `src/modules/rust.rs:160` calls `survey::surveyed`, and
-  `src/tree.rs:5` imports `syntax::structural::Extracted`. Self-registration
+  at `80188ef5`: `src/modules/rust.rs:160` calls `survey::surveyed`,
+  `survey.rs` imports `tree`, and `src/tree.rs:5` imports
+  `syntax::structural::Extracted`. Self-registration
   (`linkme`, `inventory`) or a build script would hide the wiring from klin's
   own `layering` and `reachability`. #606 holds the deferred design that
   avoids the cycle.
