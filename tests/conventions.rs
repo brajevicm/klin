@@ -1238,6 +1238,10 @@ fn a_text_with_a_line_break_is_an_error_of_the_conventions_gate_alone() {
         every.out
     );
 
+    let conventions = tree.run(&["check", "conventions"]);
+    assert_eq!(conventions.code, 2, "{}", conventions.out);
+    assert!(conventions.says("ERR   conventions"), "{}", conventions.out);
+
     let complexity = tree.run(&["check", "complexity"]);
     assert_eq!(complexity.code, 3, "{}", complexity.out);
     assert!(!complexity.says("line break"), "{}", complexity.out);
