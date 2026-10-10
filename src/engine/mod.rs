@@ -1,3 +1,4 @@
+pub mod against;
 pub mod catalogue;
 pub mod diagnostics;
 pub mod document;

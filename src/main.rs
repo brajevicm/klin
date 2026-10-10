@@ -17,8 +17,7 @@ use std::sync::LazyLock;
 
 use clap::{Parser, Subcommand};
 
-use crate::cli::{agent, policy, setup, status, update};
-use crate::hook::{stats, stop};
+use crate::cli::{agent, check, policy, report, setup, status, update};
 use crate::sys::{error::Error, shell};
 
 #[derive(Parser)]
@@ -38,13 +37,13 @@ enum Command {
     /// Set up or repair klin integration for this repository, or for one person's host files
     Setup(setup::Args),
     /// Measure the repository against klin's quality policy, optionally only the named checks
-    Check(stop::Check),
+    Check(check::Check),
     /// Read repository, setup, integration and local window state without running any check
     Status(status::Args),
     /// Explain the effective policy and where each value came from
     Policy(policy::Policy),
     /// Show what klin caught, what was resolved, and what still needs attention
-    Report(stats::Args),
+    Report(report::Args),
     /// Install the newest release over this binary, through the klin-update beside it
     Update,
 }
@@ -66,10 +65,10 @@ fn main() -> ExitCode {
 fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error> {
     match command {
         Command::Setup(args) => setup::run(args, start, out),
-        Command::Check(args) => stop::check(args, start, out),
+        Command::Check(args) => check::check(args, start, out),
         Command::Status(args) => status::run(args, start, out),
         Command::Policy(args) => policy::run(args, start, out),
-        Command::Report(args) => stats::run(args, start, out),
+        Command::Report(args) => report::run(args, start, out),
         Command::Update => Ok(update::run()),
     }
 }

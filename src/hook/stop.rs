@@ -1,26 +1,25 @@
 use std::borrow::Cow;
 use std::fmt::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use crate::config::file as config;
-use crate::config::file::MEASUREMENT_LOST;
-use crate::contract::check as contract;
+use crate::config::file::{MEASUREMENT_LOST, located};
+use crate::contract::check::Said;
 use crate::contract::project::Project;
+use crate::engine::against::{against, chosen};
 use crate::engine::document::{
     Against, Args, CheckDocument, View, leaves_code, no_source_root_said,
 };
 use crate::engine::plan::{Gate, Plan};
-use crate::engine::render::{Note, Slot};
 use crate::engine::{catalogue, render};
 use crate::hook::budget::{self, Budget, BuildBlock, GateBlock};
 use crate::hook::host;
 use crate::hook::host::adapter::{Event, Stop};
 use crate::sys::changed::Change;
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
-use crate::window::base::{self, Kind, Prior, Window};
+use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
     hook::{build, handoff, journal, stats, turn},
@@ -29,38 +28,10 @@ use crate::{
 };
 
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
+
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
 /// the stop ends with. Spec 9.1.
 const BLOCKED: u8 = 2;
-
-#[derive(clap::Args)]
-pub struct Check {
-    /// Run only these checks, by the name a gate takes
-    #[arg(value_name = "CHECK")]
-    checks: Vec<String>,
-    /// Judge only the files changed against the base
-    #[arg(long)]
-    changed: bool,
-    /// Print one JSON object for the run instead of the human report
-    #[arg(long)]
-    json: bool,
-    /// The klin.json to run under (default: the nearest one above the working directory)
-    #[arg(long)]
-    config: Option<PathBuf>,
-}
-
-pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let args = Args {
-        config: check.config.clone(),
-        gates: check.checks.clone(),
-        changed: check.changed,
-        view: match check.json {
-            true => View::Json,
-            false => View::Text,
-        },
-    };
-    run(&args, start, out)
-}
 
 /// One Stop of the agent ingress, over the tree the event names, after the opt-in walk found
 /// the worktree root's `klin.json`. Spec 10.2, 10.3.
@@ -103,7 +74,7 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
     };
     written(root, false, left, &mut log);
     let config = json!({
-        "path": config::located(None, root).map(|file| file.display().to_string()),
+        "path": located(None, root).map(|file| file.display().to_string()),
         "present": true,
     });
     let fault = Fault {
@@ -129,16 +100,6 @@ fn noticed(root: &Path, said: Option<&str>, event: Option<&Event>) -> Option<jou
         delivered: host::answering(event).delivers_notices(),
         stamp: turn::stamp_commit(root),
     })
-}
-
-fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
-    if !args.json() {
-        for note in config::notes(args.config.as_deref(), start) {
-            let _ = writeln!(out, "{note}");
-        }
-    }
-    let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
-    Ok(checked(args, start, loaded, out))
 }
 
 /// How long a stop waits for the stop before it to finish. A fraction of the hook's five
@@ -552,8 +513,8 @@ fn judged_verdict(judged: &Result<CheckDocument, Fault>) -> Option<Verdict> {
 /// A finished build sorted into what blocks and what is told: the failure text of a build that
 /// ran and failed, the provenance lines, and the note for a command the shell could not find.
 fn sorted(
-    (failure, said): (Option<build::Failure>, Vec<contract::Said>),
-) -> (Option<String>, Vec<contract::Said>, Option<String>) {
+    (failure, said): (Option<build::Failure>, Vec<Said>),
+) -> (Option<String>, Vec<Said>, Option<String>) {
     match failure {
         Some(build::Failure::Failed(failure)) => (Some(failure), said, None),
         Some(build::Failure::Missing { run, output }) => {
@@ -639,7 +600,7 @@ fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> 
 /// The build failure as a person and an agent read it. The text opens with where each command
 /// came from, so a derived build is never a command with no origin, and the note says why klin
 /// did not block, because the exit code alone no longer says it. Spec 11, ADR 0040.
-fn reported(failure: &str, built: &[contract::Said], blocks: &BuildBlock) -> (u8, String) {
+fn reported(failure: &str, built: &[Said], blocks: &BuildBlock) -> (u8, String) {
     let (blocking, said, note) = blocks.outcome();
     let code = if blocking { BLOCKED } else { 0 };
     let note = note.map(|note| format!("{note} {OWN_CI}."));
@@ -663,7 +624,7 @@ fn built(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-) -> Result<(Option<build::Failure>, Vec<contract::Said>), Error> {
+) -> Result<(Option<build::Failure>, Vec<Said>), Error> {
     let plan = build::plan(project)?;
     if plan.entries.is_empty() {
         return Ok((None, plan.said));
@@ -696,7 +657,7 @@ fn judge(
     args: &Args,
     project: &Project,
     window: Option<&Window>,
-    built: &[contract::Said],
+    built: &[Said],
     unbuilt: Option<&str>,
     out: &mut String,
 ) -> Result<CheckDocument, Fault> {
@@ -742,57 +703,6 @@ fn against_or_stop<'a>(
             error: Error(why),
         }),
         None => Ok(against),
-    }
-}
-
-fn against<'a>(
-    args: &Args,
-    wanted: &[&Gate],
-    project: &'a Project,
-    window: Option<&Window>,
-    out: &mut String,
-) -> Result<Against<'a>, Fault> {
-    let base = base(args, wanted, project, window, out).map_err(fault(ErrorKind::Base))?;
-    let changes = changes(args, project, base.as_ref(), out).map_err(fault(ErrorKind::Base))?;
-    let scope = changes
-        .as_ref()
-        .map(|changed| changed.iter().map(|change| change.path.clone()).collect());
-    let (prior, unlaid) = match prior(project, base.as_ref(), changes.as_deref(), wanted) {
-        Ok(prior) => (prior, None),
-        Err(why) => (None, Some(why.to_string())),
-    };
-    Ok(Against {
-        scope,
-        changes,
-        prior,
-        base,
-        unlaid,
-    })
-}
-
-fn base(
-    args: &Args,
-    wanted: &[&Gate],
-    project: &Project,
-    window: Option<&Window>,
-    out: &mut String,
-) -> Result<Option<Window>, Error> {
-    if !args.changed && !wanted.iter().any(|gate| gate.check.needs.the_commit()) {
-        return Ok(None);
-    }
-    let base = chosen(window, project)?;
-    if !args.json() {
-        let _ = writeln!(out, "  {}", base.line());
-    }
-    Ok(Some(base))
-}
-
-/// The window the run judges: the one the hook already read, or the base a run by hand and CI
-/// choose for themselves. Spec 6.1, 6.3.
-fn chosen(window: Option<&Window>, project: &Project) -> Result<Window, Error> {
-    match window {
-        Some(window) => Ok(window.clone()),
-        None => base::choose(project.root()),
     }
 }
 
@@ -846,7 +756,7 @@ fn summary_line(plan: &Plan, gates: usize, doc: &CheckDocument, out: &mut String
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
 /// its own values beside its row. Spec 4.3.
-fn said(built: &[contract::Said], out: &mut String) {
+fn said(built: &[Said], out: &mut String) {
     for (line, _) in built {
         let _ = writeln!(out, "  {line}");
     }
@@ -1007,41 +917,6 @@ fn lead(errored: usize) -> &'static str {
     }
 }
 
-fn prior(
-    project: &Project,
-    base: Option<&Window>,
-    changes: Option<&[Change]>,
-    wanted: &[&Gate],
-) -> Result<Option<Prior>, Error> {
-    let Some(base) = base.filter(|_| wanted.iter().any(|gate| gate.check.needs.the_tree())) else {
-        return Ok(None);
-    };
-    base::materialize(project, &base.before, changes).map(Some)
-}
-
-/// The changed set the scoped gates judge, computed once for the run and reused by the base
-/// laid out for them. Spec 4.5, ADR 0038.
-fn changes<'a>(
-    args: &Args,
-    project: &'a Project,
-    base: Option<&Window>,
-    out: &mut String,
-) -> Result<Option<Cow<'a, [Change]>>, Error> {
-    let (true, Some(base)) = (args.changed, base) else {
-        return Ok(None);
-    };
-    let changed = project.changes(&base.before)?;
-    if !args.json() {
-        let _ = writeln!(
-            out,
-            "  changed: {} file(s) against the base — the scoped gates judge those; \
-             CI judges everything",
-            changed.len()
-        );
-    }
-    Ok(Some(changed))
-}
-
 fn summary(failed: usize, errored: usize) -> String {
     let mut parts = Vec::new();
     if failed > 0 {
@@ -1055,120 +930,4 @@ fn summary(failed: usize, errored: usize) -> String {
         true => "all passed.".to_string(),
         false => parts.join(", ") + ".",
     }
-}
-
-/// One `klin check`: each run-scope step under the kind of error it can raise, every selected
-/// gate, and the check document or its text. Spec 7, 11.3, 11.7.
-fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut String) -> u8 {
-    let located = config::located(args.config.as_deref(), start);
-    let named_nothing =
-        args.config.is_some() && !located.as_ref().is_some_and(|file| file.exists());
-    let mut report = CheckDocument::default();
-    let measured = loaded
-        .map_err(fault(match named_nothing {
-            true => ErrorKind::Invocation,
-            false => ErrorKind::Configuration,
-        }))
-        .and_then(|mut project| {
-            report.set_config(json!({
-                "path": project.config.file.display().to_string(),
-                "present": project.config.written(),
-                "ignored": config::ignored(start),
-            }));
-            measured(args, &mut project, &mut report, out)
-        });
-    if let Err(fault) = measured {
-        report.config_or(|| {
-            json!({
-                "path": located.as_ref().map(|file| file.display().to_string()),
-                "present": located.as_ref().is_some_and(|file| file.is_file()),
-            })
-        });
-        if !args.json() {
-            let _ = writeln!(out, "ERR: {}", fault.error);
-        }
-        report.stop(fault);
-    }
-    report.finish(args, out)
-}
-
-fn measured(
-    args: &Args,
-    project: &mut Project,
-    report: &mut CheckDocument,
-    out: &mut String,
-) -> Result<(), Fault> {
-    let window = base::choose(project.root()).ok();
-    if let Some(window) = &window {
-        project.bind(window);
-    }
-    let project = &*project;
-    if let Some(note) = deleted_config(args, project, window.as_ref()) {
-        if !args.json() {
-            let _ = writeln!(out, "  NOTE: {}", note.message);
-        }
-        report.note(note);
-    }
-    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
-    let (wanted, unsupported) = chosen_gates(&args.gates, &plan, project)?;
-    let against = against(args, &wanted, project, window.as_ref(), out)?;
-    report.ran(args, project, (&plan, &wanted, unsupported), &against, out);
-    Ok(())
-}
-
-/// The note of a run under `{}` whose base still holds the worktree root's `klin.json`, so the
-/// change deleted the policy the base was judged under. Spec 5.1.
-fn deleted_config(args: &Args, project: &Project, window: Option<&Window>) -> Option<Note> {
-    if args.config.is_some() || project.config.written() {
-        return None;
-    }
-    let window = window?;
-    crate::sys::git::Repo::at(project.root()).blob(&window.before, config::FILENAME)?;
-    Some(Note {
-        check: None,
-        kind: "config-deleted",
-        message: format!(
-            "{} is deleted: the base holds it and the working tree does not, so this run is \
-             under {{}}",
-            config::FILENAME
-        ),
-        coverage: None,
-        file: Slot::Is(config::FILENAME.to_string()),
-        line: None,
-        values: None,
-    })
-}
-
-/// The gates a run selects, and the capabilities a selector named that do not apply to this
-/// tree or need a section the configuration does not hold. A name klin does not know, and a gate
-/// a person set to `false`, is an invocation error. Spec 7.2, 7.3.
-fn chosen_gates<'a>(
-    named: &[String],
-    plan: &'a Plan,
-    project: &Project,
-) -> Result<(Vec<&'a Gate>, Vec<&'static catalogue::Row>), Fault> {
-    if named.is_empty() && plan.gates.is_empty() && !plan.excluded.is_empty() {
-        return Err(Fault {
-            kind: ErrorKind::Configuration,
-            error: plan.no_gate(project),
-        });
-    }
-    let mut unsupported = Vec::new();
-    for name in named {
-        let missing = plan.needs_a_section.iter().find(|check| check.name == name);
-        match missing {
-            Some(check) if !plan.gates.iter().any(|gate| &gate.name == name) => {
-                unsupported.push(*check)
-            }
-            _ => plan
-                .known(name, project)
-                .map_err(fault(ErrorKind::Invocation))?,
-        }
-    }
-    let wanted = plan
-        .gates
-        .iter()
-        .filter(|gate| named.is_empty() || named.contains(&gate.name))
-        .collect();
-    Ok((wanted, unsupported))
 }
