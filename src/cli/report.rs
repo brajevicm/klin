@@ -182,6 +182,58 @@ impl Confidence {
     }
 }
 
+impl Outcome {
+    fn name(self) -> &'static str {
+        match self {
+            Outcome::FixedNext => "fixed-next",
+            Outcome::FixedLater => "fixed-later",
+            Outcome::ConfigChanged => "config-changed",
+            Outcome::SetAside => "set-aside",
+            Outcome::NotCompared => "not-compared",
+            Outcome::Open => "open",
+            Outcome::AskedOnce => "asked-once",
+        }
+    }
+
+    /// The state the report document names: a fix under another policy is still a fix, because
+    /// a policy change does not decide comparability. Spec 8.3, 13.3.
+    fn state(self) -> &'static str {
+        match self {
+            Outcome::FixedNext | Outcome::FixedLater | Outcome::ConfigChanged => "fixed",
+            Outcome::SetAside => "set-aside",
+            Outcome::NotCompared => "not-compared",
+            Outcome::Open | Outcome::AskedOnce => "open",
+        }
+    }
+
+    /// What the person reads about how it ended. The journal proves that a site was there and
+    /// later absent from a measurement. It proves nothing about who edited the code, so no
+    /// sentence here names an author.
+    fn sentence(self, tries: usize) -> String {
+        match self {
+            Outcome::FixedNext => "Fixed after klin flagged it on the next measured try.".into(),
+            Outcome::FixedLater => {
+                format!("Fixed after klin flagged it {tries} measured tries later.")
+            }
+            Outcome::ConfigChanged => "Resolved after the config changed.".into(),
+            Outcome::SetAside => "Set aside when the window moved before klin judged it.".into(),
+            Outcome::NotCompared => "Measurement changed; not compared.".into(),
+            Outcome::Open => "Still open.".into(),
+            Outcome::AskedOnce => "klin asked about it once and let it through.".into(),
+        }
+    }
+}
+
+impl Regression {
+    /// Where the site is, as one token a person can paste into an editor.
+    fn site(&self) -> String {
+        match self.line {
+            Some(line) if line > 0 => format!("{}:{line}", self.file),
+            _ => self.file.clone(),
+        }
+    }
+}
+
 /// One review item of the scope, keyed by its check, kind, file and text. Spec 13.2.
 struct Review {
     check: Value,
