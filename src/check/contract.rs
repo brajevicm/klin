@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::base::{self, Prior, Window};
 use crate::ceiling::Ceiling;
@@ -25,10 +25,6 @@ use crate::record::Values;
 use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
 
 use crate::{modules, surface};
-
-/// The outcome of a file no grammar reads. The hook counts these to report the holes a
-/// person must close, and nothing else in a run turns on it.
-pub const UNPARSED: &str = "unparsed";
 
 /// The outcome of a test the base holds that went in the window, which fails nothing. A stop the
 /// hook lets end hands it to a person. Spec 8.2.
@@ -55,9 +51,13 @@ pub const DELETED_TEST: &str = "deleted-test";
 /// Spec 7.6.
 pub const UNMATCHED_ACCEPTED: &str = "unmatched-accepted";
 
-/// The outcome of a file `before` measured and `after` did not, which a run records so a report
-/// never reads a window it stopped measuring as a whole one. Spec 8.6.
-pub const LOST: &str = "lost";
+/// The reason of a form a resolver found two answers for, which the Stop tells as it tells an
+/// unresolved one. Spec 7.2.
+pub const AMBIGUOUS: &str = "ambiguous";
+
+/// The kind of an accepted entry that matched nothing at the Stop, which the Stop tells as a
+/// note. Spec 15.
+pub const UNMATCHED: &str = "unmatched";
 
 /// The outcome of a derived ceiling whose recorded scope fell back to the whole repository or
 /// differs from today's. The hook tells it, so a scope lag is never silent. Spec 5.4, ADR 0039.
@@ -97,11 +97,11 @@ impl std::ops::Add for ContentCost {
 /// notes and derived entries are not here: the runner renders them from the gate's `Told`.
 #[derive(Default)]
 pub struct Records {
-    /// Why a gate that is exit 2 failed where it names no site. The runner records them as one
-    /// `error` finding, and only for a gate that recorded no other finding.
+    /// Why a gate that is exit 2 failed where it names no site. The runner counts them as one
+    /// `error` finding on the gate's row.
     pub errors: Vec<String>,
     /// What scope the gate measured, which every check records once. Spec 11.2.
-    pub coverage: Option<Value>,
+    pub coverage: Option<Coverage>,
     /// The findings the ratchet passed, which the runner puts on the gate's row. `None` for a
     /// gate that never got that far. Spec 11.2.
     pub held: Option<u64>,
@@ -245,6 +245,7 @@ impl Reason {
 
 /// One explicit reason why a required measurement is not complete, with the detail a consumer
 /// branches on and the words a person reads. Spec 7.2.
+#[derive(Clone)]
 pub struct Incomplete {
     pub reason: Reason,
     pub detail: Option<&'static str>,
@@ -816,19 +817,9 @@ impl Sink<'_> {
     /// What every `OK:` line adds after what the gate judged, recorded for `--json` on the way
     /// past so one call per check carries both. Spec 8.6.
     pub fn covered(&mut self, coverage: &Coverage) -> Option<Coverage> {
-        self.record(|records| records.coverage = Some(coverage_record(coverage)));
+        self.record(|records| records.coverage = Some(*coverage));
         Some(*coverage)
     }
-}
-
-fn coverage_record(coverage: &Coverage) -> Value {
-    let mut out = Map::new();
-    out.insert("found".into(), coverage.found.into());
-    out.insert("measured".into(), coverage.measured.into());
-    out.insert("not_measured".into(), coverage.not_measured.into());
-    out.insert("excluded".into(), coverage.excluded.into());
-    out.insert("unreadable".into(), coverage.unreadable.into());
-    Value::Object(out)
 }
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
