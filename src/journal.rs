@@ -1,6 +1,6 @@
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::Path;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
@@ -331,17 +331,6 @@ fn append(at: &Path, line: &Value) {
     if let Ok(mut file) = opened {
         let _ = file.write_all((line.to_string() + "\n").as_bytes());
     }
-}
-
-/// One clock for the work the journal times: the check run, the build and the lock wait.
-pub fn timed<T>(work: impl FnOnce() -> T) -> (T, u64) {
-    let begun = Instant::now();
-    let out = work();
-    (out, millis(begun.elapsed()))
-}
-
-pub fn millis(spent: Duration) -> u64 {
-    u64::try_from(spent.as_millis()).unwrap_or(u64::MAX)
 }
 
 fn now() -> u64 {

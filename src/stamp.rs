@@ -437,6 +437,16 @@ pub fn unwindowed(root: &Path) -> Option<String> {
     derivation(root, state::ready(root).ok().as_deref())
 }
 
+/// The findings a stop's block already put in front of the agent under the current stamp. The
+/// record lives beside the stamp and not in the build stamp, so a prompt event between two
+/// stops keeps it, and it goes when the stamp moves. Empty when no stamp is readable. Spec 8.2.
+pub fn asked(root: &Path) -> Vec<String> {
+    state::dir(root)
+        .and_then(|at| read(&at))
+        .map(|held| held.asked)
+        .unwrap_or_default()
+}
+
 /// The stamp the `turn` file holds, and `None` when the file is missing or unreadable.
 /// Spec 6.5.
 pub fn read(at: &Path) -> Option<Stamp> {
