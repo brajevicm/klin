@@ -540,7 +540,7 @@ function fakeKlin(
       "    *'\"Stop\"'*) ;;",
       "    *) exit 0 ;;",
       "  esac",
-      "  echo '" + JSON.stringify(hook) + "'" + (writesReport ? " > \"$KLIN_HOOK_REPORT\"" : ""),
+      "  echo '" + JSON.stringify(checkDocument(hook)) + "'" + (writesReport ? " > \"$KLIN_HOOK_REPORT\"" : ""),
       "  exit " + String(exits.hook),
       "fi",
       "echo '" + JSON.stringify(whole) + "'",
@@ -549,6 +549,37 @@ function fakeKlin(
   );
   fs.chmodSync(binary, 0o755);
   return binary;
+}
+
+/** The check document a Stop writes to `KLIN_HOOK_REPORT` for the report the harness reads. Its
+ * `exit` is the check's exit, which a host's block code does not equal. */
+function checkDocument(report: GateReport): unknown {
+  const axes = (status: unknown) => ({
+    judgement: status === "FAIL" ? "fail" : "pass",
+    measurement: "complete",
+    execution: status === "ERROR" || status === "ERR" ? "error" : "ok",
+  });
+  const exits: Record<string, number> = { PASS: 0, FAIL: 1, ERROR: 2 };
+  return {
+    command: "check",
+    exit: exits[report.status],
+    window: null,
+    ...axes(report.status),
+    capabilities: (report.gates as Record<string, unknown>[]).map((row) => ({
+      name: row.name,
+      state: "active",
+      ...axes(row.status),
+    })),
+    findings: (report.findings as Record<string, unknown>[]).map(({ gate, ...finding }) => ({ ...finding, check: gate })),
+    notes: (report.notes as Record<string, unknown>[]).map(({ gate, outcome, text, ...note }) => ({
+      ...note,
+      check: gate,
+      kind: outcome,
+      message: text,
+    })),
+    measurements: [],
+    diagnostics: { gates: [] },
+  };
 }
 
 function gateReport(status: string, row: string, findings: unknown[], notes: unknown[]): GateReport {
@@ -657,24 +688,19 @@ test(
 
 test("a verdict whose exit status contradicts its own report is refused", () => {
   const passed = gateReport("PASS", "ok", [], []);
-  for (const [exits, label] of [
-    [{ whole: 2, hook: 0 }, "gate"],
-    [{ whole: 0, hook: 2 }, "hook"],
-  ] as const) {
-    const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-"));
-    try {
-      for (const tree of ["base", "subject"]) {
-        fs.mkdirSync(path.join(room, tree));
-        fs.writeFileSync(path.join(room, tree, "README.md"), tree + "\n");
-      }
-      const binary = fakeKlin(room, passed, passed, true, exits);
-      assert.throws(
-        () => trial.wholeRun("inventory", path.join(room, "base"), path.join(room, "subject"), [DELETED], room, binary),
-        new RegExp("seeded whole-run " + label + " exited 2 and its report states exit 0"),
-      );
-    } finally {
-      fs.rmSync(room, { recursive: true, force: true });
+  const room = fs.mkdtempSync(path.join(os.tmpdir(), "klin-bench-whole-run-"));
+  try {
+    for (const tree of ["base", "subject"]) {
+      fs.mkdirSync(path.join(room, tree));
+      fs.writeFileSync(path.join(room, tree, "README.md"), tree + "\n");
     }
+    const binary = fakeKlin(room, passed, passed, true, { whole: 2, hook: 0 });
+    assert.throws(
+      () => trial.wholeRun("inventory", path.join(room, "base"), path.join(room, "subject"), [DELETED], room, binary),
+      /seeded whole-run gate exited 2 and its report states exit 0/,
+    );
+  } finally {
+    fs.rmSync(room, { recursive: true, force: true });
   }
 });
 

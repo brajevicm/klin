@@ -320,9 +320,10 @@ function slurp(file: string): string {
   return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
 }
 
+/** The check document a Stop wrote to `KLIN_HOOK_REPORT`, in the report shape this harness reads. */
 function reportOf(text: string): GateReport | null {
   try {
-    const held = JSON.parse(text);
+    const held = wholeRunReport(JSON.parse(text));
     return isGateReport(held) ? held : null;
   } catch {
     return null;
@@ -391,6 +392,8 @@ function records(value: unknown): Fields[] {
   return Array.isArray(value) ? value.filter((one): one is Fields => typeof one === "object" && one !== null) : [];
 }
 
+const MEASUREMENT_LOST = "measurement-lost";
+
 /** The word a gate row or a whole run takes from its three axes: an error, then a failing finding,
  * then a hole, which is never a pass because a measurement is missing. SPEC 7.4. */
 function worst(axes: Fields, ok: string, error: string): string {
@@ -401,7 +404,10 @@ function worst(axes: Fields, ok: string, error: string): string {
 }
 
 /** The report shape this harness reads, from the `klin check` document of #499, or the report as
- * it is from a binary built before it. The status words are the row words a Stop report prints. */
+ * it is from a binary built before it. The status words are the row words a Stop report prints.
+ * A document that judged nothing, such as a Stop whose build failed, is an `ERROR`. A lost file
+ * keeps its built-in row as its gate, and each review item reads as a note. An opened gap names
+ * no check, so it holds no gate. */
 export function wholeRunReport(parsed: unknown): unknown {
   if (typeof parsed !== "object" || parsed === null || (parsed as Fields).command !== "check") return parsed;
   const document = parsed as Fields;
@@ -414,14 +420,21 @@ export function wholeRunReport(parsed: unknown): unknown {
       status: worst(row, "ok", "ERR"),
     }));
   return {
-    status: worst(document, "PASS", "ERROR"),
+    status: document.judgement === null ? "ERROR" : worst(document, "PASS", "ERROR"),
     summary: "",
     window: document.window,
     exit: document.exit,
     derived: records(document.measurements).flatMap((one) => records((one.basis as Fields | undefined)?.policy)),
     gates,
-    findings: records(document.findings).map(({ check, remedy, ...finding }) => ({ ...finding, gate: check, fix_advice: remedy })),
-    notes: records(document.notes).map(({ check, kind, message, ...note }) => ({ ...note, gate: check, outcome: kind, text: message })),
+    findings: records(document.findings).map(({ check, remedy, ...finding }) => ({
+      ...finding,
+      gate: check ?? (finding.kind === MEASUREMENT_LOST ? MEASUREMENT_LOST : null),
+      ...(remedy === undefined ? {} : { fix_advice: remedy }),
+    })),
+    notes: [
+      ...records(document.notes).map(({ check, kind, message, ...note }) => ({ ...note, gate: check, outcome: kind, text: message })),
+      ...records(document.reviews).map(({ check, kind, ...review }) => ({ ...review, gate: check, outcome: kind })),
+    ],
   };
 }
 

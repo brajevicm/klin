@@ -638,10 +638,14 @@ prompt cannot move the stamp past work no Stop judged.
 Review items, notes, coverage notes and errors the base had too do not keep
 the stamp.
 
-**What the stamp records as told.** The `told` record keys each note and
-each error of a Stop's report by its record. A Stop records them only after
+**What the stamp records as told.** The `told` record keys each note, each
+error and each review item of the Stop's check document (11.7) by its record,
+the ones its text does not print too. It keys each `measurement-lost`
+finding by its file, its reason and its position where the loss has one, so
+new words for the same loss are not a new record.
+A Stop records them only after
 the host took the block or the notice, so a notice klin could not deliver,
-such as one whose follow-up record would not write, is told at a later Stop. A later Stop under the same stamp whose every note and error
+such as one whose follow-up record would not write, is told at a later Stop. A later Stop under the same stamp whose every record
 is already in `told` tells nothing. A Stop with at least one new record tells
 its whole note, with the records told before it.
 
@@ -1822,7 +1826,8 @@ A note: `check` (or null), `kind`, `coverage` (boolean, true for a coverage
 note), optional `file`, `line` and `text`, and `message`. A coverage note's
 `kind` is its reason of section 7.2. Other kinds include the
 0.x note outcomes that stay notes: `unmatched` at the Stop, `derivation`,
-`config`, and `window` for what choosing the base found (section 6.5).
+`config`, `window` for what choosing the base found (section 6.5), and
+`no-source-root` for a Stop in a tree whose survey found no source root.
 
 A measurement record: `check` (null for the run), `basis` (section 8.1),
 `state` (`complete`, `incomplete`), `holes` (list of `{reason, detail, text}`,

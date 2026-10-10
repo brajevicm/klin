@@ -44,6 +44,10 @@ pub const MOVED_SKIPPED: &str = "moved-skipped";
 /// The note kind of what choosing the base of a `klin check` window found. Spec 6.5.
 pub const WINDOW: &str = "window";
 
+/// The note kind of a Stop in a tree whose survey found no source root, so no gate that reads
+/// code ran. ADR 0016, spec 11.7.
+pub const NO_SOURCE_ROOT: &str = "no-source-root";
+
 /// The review item kind of a deleted test at `klin check`. Spec 9.2, 11.7.
 pub const DELETED_TEST: &str = "deleted-test";
 

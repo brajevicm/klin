@@ -160,10 +160,11 @@ fn a_failing_build_under_json_prints_one_json_object() {
 
     let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(run.code, 2, "{}", run.out);
-    assert_eq!(report["status"], "ERROR", "{report}");
-    assert_eq!(report["exit"], serde_json::json!(2), "{report}");
+    assert_eq!(report["command"], "check", "{report}");
+    assert_eq!(report["judgement"], serde_json::Value::Null, "{report}");
+    assert_eq!(report["notes"][0]["kind"], "build", "{report}");
     assert!(
-        report["findings"][0]["text"]
+        report["notes"][0]["message"]
             .as_str()
             .unwrap_or_default()
             .contains("the-compiler-spoke"),
@@ -429,22 +430,17 @@ fn a_build_block_between_gate_blocks_keeps_the_tree_the_first_gate_block_saw() {
 }
 
 #[test]
-fn the_ninth_build_failure_under_json_records_that_klin_stopped_blocking() {
+fn the_ninth_build_failure_says_that_klin_stopped_blocking() {
     let tree = tree(r#""build": "exit 1","#);
     blocked(&tree, 8);
 
     tree.write("edited", "9");
     let (ninth, report) = harness::stop_report(tree.root(), A_STOP, &[]);
     assert_eq!(ninth.code, 0, "{}", ninth.out);
-    assert!(
-        report["notes"][0]["text"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("stops blocking"),
-        "{report}"
-    );
-    assert_eq!(report["exit"], serde_json::json!(0), "{report}");
-    assert_eq!(report["status"], "ERROR", "{report}");
+    assert!(ninth.says("stops blocking"), "{}", ninth.out);
+    assert_eq!(report["command"], "check", "{report}");
+    assert_eq!(report["judgement"], serde_json::Value::Null, "{report}");
+    assert_eq!(report["notes"][0]["kind"], "build", "{report}");
 }
 
 #[test]

@@ -94,8 +94,10 @@ function commandFailure(label: string, ran: ReturnType<typeof spawnSync>): Error
   );
 }
 
+/** One run's verdict on the gate. Only `klin check` exits with its document's `exit`: a Stop
+ * exits with its host's code, so the hook's document is not held to its process status. */
 function verdictOf(
-  label: string,
+  label: "gate" | "hook",
   ran: ReturnType<typeof spawnSync>,
   text: string,
   gate: string,
@@ -110,7 +112,7 @@ function verdictOf(
   } catch (why) {
     throw new Error("seeded whole-run " + label + " returned invalid JSON: " + String(why));
   }
-  if (report.exit !== ran.status) {
+  if (label === "gate" && report.exit !== ran.status) {
     throw new Error(
       "seeded whole-run " + label + " exited " + String(ran.status) + " and its report states exit " + String(report.exit),
     );

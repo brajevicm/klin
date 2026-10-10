@@ -27,11 +27,9 @@ const SCHEMA: Schema = Schema::Two;
 /// What one stop knew beyond the check document its run built: gathered as the stop goes,
 /// written as one line at its end.
 pub struct Stop {
-    /// The 0.x object the hook tells from, which the benchmark wrapper reads and the journal
-    /// does not hold.
-    pub report: Option<Value>,
     /// The check document of spec 11.7 the Stop's run built, which the line holds under
-    /// `result`. Spec 13.1.
+    /// `result`, the Stop tells from, and `KLIN_HOOK_REPORT` receives from a Stop that judged.
+    /// Spec 13.1.
     pub result: Option<Value>,
     /// The non-blocking notice this Stop left for the person. Spec 10.7.
     pub notice: Option<Notice>,
@@ -92,7 +90,6 @@ pub struct Timing {
 impl Stop {
     pub fn begun(event: Option<&Event>, config_hash: String) -> Stop {
         Stop {
-            report: None,
             result: None,
             notice: None,
             host: event.map(|event| event.host.name().to_string()),

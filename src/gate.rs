@@ -10,8 +10,8 @@ use crate::base::{self, Kind, Prior, Window};
 use crate::budget::{self, Budget, BuildBlock, GateBlock};
 use crate::changed::Change;
 use crate::check::contract::{
-    self, Activation, Caller, Context, DELETED, DERIVATION, Derivation, Hole, Incomplete, Plain,
-    Reason, Records, Sink, Told, UNBUILT, UNRESOLVED,
+    self, Activation, Caller, Context, DELETED, DERIVATION, Derivation, Hole, Incomplete,
+    NO_SOURCE_ROOT, Plain, Reason, Records, Sink, Told, UNBUILT, UNRESOLVED,
 };
 use crate::check::contract::{Cause, Class};
 use crate::check::holes::{self, Seen, Unmeasured};
@@ -153,9 +153,6 @@ fn unjudged(event: &Event, root: &Path, problem: &Error) -> u8 {
         asked: None,
     };
     written(root, false, left, &mut log);
-    let mut records = Recorded::default();
-    records.findings.push(record("error", &problem.to_string()));
-    log.report = Some(as_json(ERROR, 0, &said, records, None));
     let config = json!({
         "path": config::located(None, root).map(|file| file.display().to_string()),
         "present": true,
@@ -239,7 +236,6 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     log.timing.base_remove_ms = journal::millis(teardown.remove);
     log.timing.base_prune_ms = journal::millis(teardown.prune);
     let exit = exit_code(code, event.as_ref());
-    finish_report(&mut log, exit, window.as_ref());
     log.blocked = code == BLOCKED;
     let advised = matches!(leaves, Leaves::Fresh);
     let fresh = fresh.filter(|_| advised);
@@ -261,7 +257,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     if !lost && (log.blocked || log.told.contains(&"note")) {
         turn::heard(root, &told);
     }
-    observe_hook_report(log.report.as_ref());
+    observe_hook_report(log.result.as_ref());
     log.timing.total_ms = journal::millis(begun.elapsed());
     journal::stop(root, &log);
     if let Some(said) = said {
@@ -309,19 +305,9 @@ fn leave(
         refreshed(root, fresh, log);
         return (note, Vec::new());
     }
-    let kept = once(root, note, log.report.as_ref());
+    let kept = once(root, note, log.result.as_ref());
     written(root, lost, left, log);
     kept
-}
-
-/// The exit and the window, beside the report the run built. Spec 11.4.
-fn finish_report(log: &mut journal::Stop, exit: u8, window: Option<&Window>) {
-    if let Some(Value::Object(report)) = &mut log.report {
-        report.insert("exit".into(), exit.into());
-        if let Some(window) = window {
-            report.entry("window").or_insert_with(|| window.record());
-        }
-    }
 }
 
 /// The note this stop still tells, and the records it tells, which the stamp holds as told once
@@ -370,8 +356,8 @@ fn exit_code(code: u8, event: Option<&Event>) -> u8 {
     }
 }
 
-/// The benchmark wrapper may observe the report this stop already built. A failed write leaves
-/// the harness without evidence and cannot change the hook's verdict or delivery.
+/// The benchmark wrapper may observe the check document this stop already built. A failed write
+/// leaves the harness without evidence and cannot change the hook's verdict or delivery.
 fn observe_hook_report(report: Option<&Value>) {
     let Some(path) = std::env::var_os(HOOK_REPORT) else {
         return;
@@ -451,21 +437,24 @@ fn refreshed(root: &Path, fresh: stamp::Capture, log: &mut journal::Stop) {
     eprint!("{said}");
 }
 
-/// What a Stop's report tells that no later Stop under the same stamp repeats: each note and each
-/// error, keyed by its record. Spec 2.3.
-fn told_records(report: Option<&Value>) -> Vec<String> {
-    let Some(report) = report else {
+/// What a Stop's check document tells that no later Stop under the same stamp repeats: each
+/// note, error and review item, keyed by its record, and each file lost to measurement, keyed
+/// by its file, reason and position, so new words for the same loss are not a new record.
+/// Spec 2.3.
+fn told_records(document: Option<&Value>) -> Vec<String> {
+    let Some(document) = document else {
         return Vec::new();
     };
-    let notes = report["notes"].as_array().into_iter().flatten();
-    let errors = report["findings"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|finding| finding["outcome"] == "error");
-    notes
-        .chain(errors)
-        .map(|record| key(&record.to_string()))
+    let listed = |field: &str| document[field].as_array().into_iter().flatten();
+    let lost = listed("findings")
+        .filter(|finding| finding["kind"] == MEASUREMENT_LOST)
+        .map(|finding| json!([MEASUREMENT_LOST, finding["file"], finding["values"]]));
+    listed("notes")
+        .chain(listed("errors"))
+        .chain(listed("reviews"))
+        .map(Value::to_string)
+        .chain(lost.map(|site| site.to_string()))
+        .map(|record| key(&record))
         .collect()
 }
 
@@ -577,7 +566,7 @@ fn ran(
     match failure {
         Some(failure) => {
             let blocks = budgeted(project.root(), lost, log, Budget::build_block);
-            let (code, text) = does_not_build(args, &failure, &said, window, &blocks, log, out);
+            let (code, text) = reported(args, &failure, &said, window, &blocks, out);
             log.result = Some(Report::unbuilt(
                 Report::config_of(project),
                 window,
@@ -672,23 +661,13 @@ fn handed(
                 fault,
             ));
             let _ = writeln!(out, "ERR: {problem}");
-            let mut records = Recorded::default();
-            records.findings.push(record("error", &problem));
             let tally = Tally {
                 errored: 1,
-                record: Some(as_json(
-                    ERROR,
-                    2,
-                    &format!("klin: {problem}"),
-                    records,
-                    None,
-                )),
                 ..Tally::default()
             };
             (tally, false)
         }
     };
-    log.report = tally.record.take();
     if let Some(document) = tally.document.take() {
         log.result = Some(document);
     }
@@ -722,9 +701,8 @@ struct Tally {
     reported: Vec<String>,
     /// The deleted tests among those findings, as sites, which klin has not asked about yet.
     unasked: Vec<String>,
-    /// The 11.2 object the run built, which the hook tells from. Spec 11.4.
-    record: Option<Value>,
-    /// The check document the run built, which the journal line holds. Spec 13.1.
+    /// The check document the run built, which the Stop tells from and the journal line holds.
+    /// Spec 13.1.
     document: Option<Value>,
 }
 
@@ -757,20 +735,6 @@ fn unbuilt_said(run: &str, output: &str) -> String {
     )
 }
 
-fn does_not_build(
-    args: &Args,
-    failure: &str,
-    said: &[contract::Said],
-    window: Option<&Window>,
-    blocks: &BuildBlock,
-    log: &mut journal::Stop,
-    out: &mut String,
-) -> (u8, String) {
-    let (code, report, text) = reported(args, failure, said, window, blocks, out);
-    log.report = Some(report);
-    (code, text)
-}
-
 /// A host that cannot read stderr still has to show the build failure. An adapter whose stop
 /// already reads stderr ignores the text and returns 2.
 fn blocked_build(root: &Path, event: Option<&Event>, text: String, code: u8) -> u8 {
@@ -791,7 +755,7 @@ fn reported(
     window: Option<&Window>,
     blocks: &BuildBlock,
     out: &mut String,
-) -> (u8, Value, String) {
+) -> (u8, String) {
     let (blocking, said, note) = blocks.outcome();
     let code = if blocking { BLOCKED } else { 0 };
     let note = note.map(|note| format!("{note} {OWN_CI}."));
@@ -820,11 +784,11 @@ fn reported(
     }
     if !args.json {
         eprint!("{text}");
-        return (code, object, text);
+        return (code, text);
     }
     out.clear();
     let _ = writeln!(out, "{object}");
-    (code, object, text)
+    (code, text)
 }
 
 /// The build a person chose or the one the manifests derive, run before any gate judges the
@@ -894,9 +858,11 @@ fn judge(
         .filter_map(|(_, entry)| entry.clone())
         .collect();
     let (mut tally, mut records) = each(args, &wanted, project, &against, &mut doc, out);
-    tally.document = Some(doc.stopped_with(&plan, unbuilt));
+    tally.document = Some(doc.stopped_with(&plan, unbuilt, rootless.as_deref()));
     tally.told += usize::from(rootless.is_some());
-    records.notes.extend(rootless);
+    records
+        .notes
+        .extend(rootless.map(|said| record("note", &said)));
     let gone = gone_moves(args, project, &wanted, out);
     tally.told += gone.len();
     records.notes.extend(gone);
@@ -906,15 +872,7 @@ fn judge(
     }
     let derived = built.iter().filter_map(|(_, entry)| entry.clone());
     records.derived.splice(0..0, derived);
-    tally.record = Some(finish(
-        args,
-        &plan,
-        wanted.len(),
-        &tally,
-        records,
-        &against,
-        out,
-    ));
+    finish(args, &plan, wanted.len(), &tally, records, &against, out);
     Ok(tally)
 }
 
@@ -1494,7 +1452,7 @@ fn no_source_root(
     wanted: &[&Gate],
     project: &Project,
     out: &mut String,
-) -> Result<Option<Value>, Error> {
+) -> Result<Option<String>, Error> {
     if !rootless(args, plan, wanted, project) {
         return Ok(None);
     }
@@ -1502,7 +1460,7 @@ fn no_source_root(
     if !args.json {
         let _ = writeln!(out, "  NOTE: {said}");
     }
-    Ok(Some(record("note", &said)))
+    Ok(Some(said))
 }
 
 fn no_source_root_said(project: &Project) -> String {
@@ -1547,7 +1505,7 @@ fn finish(
     records: Recorded,
     against: &Against,
     out: &mut String,
-) -> Value {
+) {
     let (failed, errored) = (tally.failed, tally.errored);
     let excluded = match plan.excluded.len() {
         0 => String::new(),
@@ -1567,11 +1525,10 @@ fn finish(
     );
     if !args.json {
         let _ = writeln!(out, "{line}");
-        return object;
+        return;
     }
     out.clear();
     let _ = writeln!(out, "{object}");
-    object
 }
 
 /// Where the build the hook ran came from, printed once above the gates, each of which says
@@ -1625,7 +1582,6 @@ fn refused(args: &Args, outcome: Result<Tally, Error>, out: &mut String) -> Resu
     let _ = writeln!(out, "{object}");
     Ok(Tally {
         errored: 1,
-        record: Some(object),
         ..Tally::default()
     })
 }
@@ -2832,11 +2788,14 @@ impl Report {
         })
     }
 
-    /// The Stop's document once every gate ran: the note of a build that could not run, and the
-    /// rows of the capabilities that do not apply. Spec 11.7, 13.1.
-    fn stopped_with(mut self, plan: &Plan, unbuilt: Option<&str>) -> Value {
+    /// The Stop's document once every gate ran: the note of a build that could not run, the note
+    /// of a tree with no source root, and the rows of the capabilities that do not apply.
+    /// Spec 11.7, 13.1.
+    fn stopped_with(mut self, plan: &Plan, unbuilt: Option<&str>, rootless: Option<&str>) -> Value {
         self.notes
             .extend(unbuilt.map(|unbuilt| note(UNBUILT, unbuilt)));
+        self.notes
+            .extend(rootless.map(|said| note(NO_SOURCE_ROOT, said)));
         self.not_applicable(plan);
         self.closed()
     }
