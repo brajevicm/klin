@@ -12,9 +12,8 @@ use serde_json::Value;
 use crate::config::file::Config;
 use crate::config::key::Key;
 use crate::config::scope::{self, Moves, Scope};
-use crate::contract::check::{
-    self as contract, Context, HeldAtBase, Line, Listed, Located, Measured, Sink,
-};
+use crate::contract;
+use crate::contract::check::{Context, HeldAtBase, Line, Listed, Located, Measured, Sink};
 use crate::contract::coverage;
 use crate::contract::holes;
 use crate::contract::measurement;
@@ -79,7 +78,7 @@ pub fn gate(at: &Context, out: &mut Sink) -> Result<u8, Error> {
 fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let project = at.project;
     let spec = spec(project)?;
-    let commit = contract::base_commit(project.root(), at)?;
+    let commit = contract::check::base_commit(project.root(), at)?;
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout, out)?;
@@ -251,16 +250,21 @@ fn judgement(
 
 fn before(at: &Context, spec: &Spec, prior: &Prior) -> Result<measurement::Measurement, Error> {
     let today = (SECTION, &spec.selection.scope);
-    contract::at_base(at, contract::Lay::Whole(prior), today, |prior, scope| {
-        let selection = Selection {
-            scope,
-            ..spec.selection.clone()
-        };
-        measure(prior.tree(), &selection, None)
-    })
+    contract::check::at_base(
+        at,
+        contract::check::Lay::Whole(prior),
+        today,
+        |prior, scope| {
+            let selection = Selection {
+                scope,
+                ..spec.selection.clone()
+            };
+            measure(prior.tree(), &selection, None)
+        },
+    )
 }
 
-impl contract::Based for Vec<&State> {
+impl contract::check::Based for Vec<&State> {
     fn keep_held(&mut self, was_held: impl Fn(&str) -> bool) {
         self.retain(|state| was_held(&state.file));
     }
@@ -268,7 +272,7 @@ impl contract::Based for Vec<&State> {
 
 fn held<'a>(states: &'a [State], at: &Context) -> Vec<&'a State> {
     let mut held = states.iter().collect();
-    contract::keep_held(at, &mut held);
+    contract::check::keep_held(at, &mut held);
     held
 }
 

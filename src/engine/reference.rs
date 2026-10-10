@@ -10,7 +10,7 @@ use std::fmt::Write;
 use serde_json::{Map, Value, json};
 
 use crate::checks::doc_citations;
-use crate::config::file as config;
+use crate::config;
 use crate::config::key::{Key, Languages, SectionShape, Shape};
 use crate::engine::catalogue;
 use crate::sys::error::Error;
@@ -52,7 +52,7 @@ fn schema(out: &mut String) {
 
 fn schema_value() -> Value {
     let mut properties = Map::new();
-    for key in config::KEYS {
+    for key in config::file::KEYS {
         properties.insert(key.name.into(), field(key));
     }
     for spec in catalogue::CATALOGUE {
@@ -327,7 +327,7 @@ fn preamble(out: &mut String) {
 
 fn top_level(out: &mut String) {
     let _ = writeln!(out, "\n## Top-level keys\n");
-    table(config::KEYS, out);
+    table(config::file::KEYS, out);
 }
 
 fn sections(out: &mut String) {

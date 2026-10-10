@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::contract::project::Project;
 use crate::engine::catalogue;
 use crate::sys::error::Error;
@@ -114,7 +115,7 @@ fn radius_pins(project: &Project) -> Result<Vec<Pin>, String> {
 /// What suggests the pins of one section.
 type Suggest = fn(&Project) -> Vec<Pin>;
 
-const RADIUS: &str = config::RADIUS.name;
+const RADIUS: &str = config::file::RADIUS.name;
 
 fn excluded(config: &Map<String, Value>, section: &str) -> bool {
     config.get(section) == Some(&Value::Bool(false))

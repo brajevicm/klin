@@ -12,7 +12,8 @@ use serde_json::Value;
 
 use crate::config::file::Config;
 use crate::config::key::Key;
-use crate::contract::check::{self as contract, Context, Counted, Line, Sink};
+use crate::contract;
+use crate::contract::check::{Context, Counted, Line, Sink};
 use crate::contract::coverage::Coverage;
 use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
@@ -86,7 +87,7 @@ fn evaluate(
     if named.is_none() {
         out.tell_each(derive(at.project)?);
     }
-    let commit = contract::base_commit(&listing.root, at)?;
+    let commit = contract::check::base_commit(&listing.root, at)?;
     let (now, before) = sides(&listing, at.project.tree(), &commit)?;
     let sites = now.len();
     let accepted = match &listing.config {
@@ -105,13 +106,18 @@ fn evaluate(
 }
 
 /// The documents a run reads, as the one `derived:` line and its JSON entry.
-pub fn derive(project: &Project) -> Result<Vec<contract::Provenance>, Error> {
+pub fn derive(project: &Project) -> Result<Vec<contract::check::Provenance>, Error> {
     let names = &project.facts().found.documents;
     if names.is_empty() {
         return Ok(Vec::new());
     }
-    let said =
-        contract::Derived::keyed(SECTION, None, names.clone().into(), names.join(", "), RULE);
+    let said = contract::check::Derived::keyed(
+        SECTION,
+        None,
+        names.clone().into(),
+        names.join(", "),
+        RULE,
+    );
     Ok(vec![said.into()])
 }
 

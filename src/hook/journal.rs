@@ -4,7 +4,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Map, Value};
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::hook::host::adapter::Event;
 use crate::sys::state;
 
@@ -291,7 +292,7 @@ fn excerpt(text: &str) -> String {
 /// config already loaded, so a caller with one loaded for another reason reads klin.json once
 /// and not twice. Spec 5.2.
 pub fn prompt_enabled(loaded: &Config) -> bool {
-    match loaded.pinned(config::JOURNAL.name) {
+    match loaded.pinned(config::file::JOURNAL.name) {
         Some(Value::Object(section)) => match section.get("prompt") {
             Some(Value::Bool(enabled)) => *enabled,
             Some(_) => false,

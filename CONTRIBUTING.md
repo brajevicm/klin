@@ -37,7 +37,7 @@ Each supported language has its own files in `syntax/structural/`, `modules/` an
 
 There are two ways in:
 
-- A command runs `src/main.rs`, then the command's file in `src/cli/`. `klin check` and `klin report` still live in `src/hook/stop.rs` and `src/hook/stats.rs`.
+- A command runs `src/main.rs`, then the command's file in `src/cli/`. `klin check` runs `src/cli/check.rs`, which chooses its window in `src/engine/against.rs`, the same file the Stop uses.
 - A Stop runs `src/cli/agent.rs`, then `src/hook/stop.rs`, then `src/engine/document.rs`, then the checks in `checks/`.
 
 ## Before you open a pull request

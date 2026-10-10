@@ -14,7 +14,8 @@ use serde_json::{Map, Value};
 
 use crate::config::file::Config;
 use crate::config::key::Key;
-use crate::contract::check::{self as contract, Context, Incomplete, Line, Measured, Reason, Sink};
+use crate::contract;
+use crate::contract::check::{Context, Incomplete, Line, Measured, Reason, Sink};
 use crate::contract::coverage::Coverage;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::sys::error::Error;
@@ -25,7 +26,7 @@ use crate::sys::shell;
 pub const SECTION: &str = "sarif";
 
 /// The keys this section reads, which `klin policy --reference` prints. Spec 5.4, 5.8.
-pub const KEYS: &[Key] = &[contract::NAMED, REPORT, RUN, DIFFERENTIAL];
+pub const KEYS: &[Key] = &[contract::check::NAMED, REPORT, RUN, DIFFERENTIAL];
 
 const REPORT: Key = Key {
     name: "report",
@@ -128,7 +129,7 @@ fn distinct<'a>(places: impl Iterator<Item = &'a str>) -> usize {
 /// The one entry of the section this gate runs under, found by the name the runner gave it.
 /// Spec 8.3.
 fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
-    let entries = contract::named_entries(config, SECTION)?;
+    let entries = contract::check::named_entries(config, SECTION)?;
     let (_, held) = entries
         .into_iter()
         .find(|(name, _)| name == gate)
@@ -139,7 +140,7 @@ fn entry(config: &Config, gate: &str) -> Result<Entry, Error> {
         SECTION,
         held,
         &[
-            contract::NAMED.name,
+            contract::check::NAMED.name,
             REPORT.name,
             RUN.name,
             DIFFERENTIAL.name,
@@ -201,7 +202,7 @@ fn read(
         Ok(data) => data,
         Err(hole) => return Ok(Err(hole)),
     };
-    let changed = Hunks::read(root, &contract::base_commit(root, at)?, None)?;
+    let changed = Hunks::read(root, &contract::check::base_commit(root, at)?, None)?;
     if let (None, Err(hole)) = (&entry.run, fresh(&entry.report, root, &changed)) {
         return Ok(Err(hole));
     }

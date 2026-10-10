@@ -7,10 +7,12 @@ use std::path::PathBuf;
 use regex::Regex;
 use serde_json::{Map, Value};
 
-use crate::config::file::{self as config, Config};
+use crate::config;
+use crate::config::file::Config;
 use crate::config::key::{Key, Shape};
 use crate::config::scope::{self, Moves, Selector};
-use crate::contract::check::{self as contract, Context};
+use crate::contract;
+use crate::contract::check::Context;
 use crate::contract::coverage::Files;
 use crate::contract::ratchet::Finding;
 use crate::facts::tree::Tree;
@@ -377,7 +379,7 @@ fn known(fields: &Map<String, Value>) -> Result<(), String> {
             .map(|key| (key.name, key.name))
             .chain(INSTEAD.iter().copied())
     };
-    let meant = config::nearest(unknown, candidates().map(|(near, _)| near))
+    let meant = config::file::nearest(unknown, candidates().map(|(near, _)| near))
         .and_then(|near| candidates().find(|(held, _)| *held == near));
     Err(match meant {
         Some((_, key)) => format!("has unknown field \"{unknown}\"\nDid you mean \"{key}\"?"),
@@ -405,8 +407,8 @@ fn misshapen(key: &Key, value: &Value) -> Option<String> {
         Shape::String if !value.is_string() => {
             Some(format!("has a \"{}\" that is not a string", key.name))
         }
-        Shape::Text if !config::is_text(value) => Some(NO_REMEDY.to_string()),
-        Shape::StringOrList if !config::string_or_list(value) => Some(format!(
+        Shape::Text if !config::file::is_text(value) => Some(NO_REMEDY.to_string()),
+        Shape::StringOrList if !config::file::string_or_list(value) => Some(format!(
             "has an \"{}\" that is not a repository-relative path or a non-empty list of them",
             key.name
         )),
@@ -795,7 +797,7 @@ pub(super) fn at_the_base(rules: &[Rule], at: &Context) -> Result<Measured, Erro
     let (prior, commit) = match (at.prior, at.base) {
         (Some(prior), Some(commit)) => (prior, commit.to_string()),
         _ => {
-            let window = contract::announced(project.root())?;
+            let window = contract::check::announced(project.root())?;
             owned = base::materialize(project, &window.before, None)?;
             (&owned, window.before)
         }
