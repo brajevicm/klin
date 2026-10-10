@@ -350,11 +350,21 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
 
     let report = judged(&tree, &["--changed"], &GATES);
 
+    let names = &row(&report, "reachability")["names"];
+    assert_eq!(indexed(&names["before"]), [4, 4, 3, 4], "{report}");
+    assert_eq!(indexed(&names["after"]), [4, 5, 3, 5], "{report}");
+    let names = &row(&report, "dead-symbols")["names"];
+    assert_eq!(
+        indexed(&names["before"]),
+        [4, 4, 1, 1],
+        "a changed run indexes only the names the changed file declares: {report}"
+    );
+    assert_eq!(indexed(&names["after"]), [4, 5, 1, 2], "{report}");
     for gate in ["dead-symbols", "reachability"] {
-        let names = &row(&report, gate)["names"];
-        assert_eq!(indexed(&names["before"]), [4, 4, 3, 4], "{gate}: {report}");
-        assert_eq!(indexed(&names["after"]), [4, 5, 3, 5], "{gate}: {report}");
-        assert!(names["base_ms"].is_u64(), "{gate}: {report}");
+        assert!(
+            row(&report, gate)["names"]["base_ms"].is_u64(),
+            "{gate}: {report}"
+        );
     }
     assert!(row(&report, "dead-symbols")["names"]["lost_ms"].is_u64());
     assert!(row(&report, "reachability")["names"]["lost_ms"].is_null());
@@ -373,6 +383,26 @@ fn a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took()
     assert!(
         row(&report, "reachability")["names"]["layout"].is_null(),
         "the run lays the base out once, so one row carries the parts: {report}"
+    );
+}
+
+#[test]
+fn a_changed_dead_symbols_run_indexes_the_names_whose_references_the_turn_changed() {
+    let tree = commands("{}");
+    tree.base();
+    tree.write("src/main.rs", "fn main() { run_beta(); run_gamma(); }\n");
+
+    let changed = judged(&tree, &["--changed"], &["dead-symbols"]);
+    let strict = judged(&tree, &[], &["dead-symbols"]);
+
+    let names = &row(&changed, "dead-symbols")["names"];
+    assert_eq!(indexed(&names["before"]), [4, 4, 1, 2], "{changed}");
+    assert_eq!(indexed(&names["after"]), [4, 4, 0, 2], "{changed}");
+    let names = &row(&strict, "dead-symbols")["names"];
+    assert_eq!(indexed(&names["after"]), [4, 4, 2, 4], "{strict}");
+    assert_eq!(
+        found(&changed, "dead-symbols"),
+        found(&strict, "dead-symbols")
     );
 }
 

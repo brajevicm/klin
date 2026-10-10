@@ -4217,7 +4217,16 @@ declaration file (8.2) reads that path too, so a rename such as `.d.ts` to
 Each tree still selects its
 own files under its own scope and keeps the facts it selected; a
 name-resolving check builds its own index lazily from those facts, and no parse
-tree outlives its extraction. A strict run, a run that
+tree outlives its extraction. In that run, each tree's `dead-symbols` index
+holds every file of the tree and records only the names its judgement reads:
+the names the judged files declare, after the semantic impact scope widened
+them, and the names whose references the turn changed. Its `distinct_names`
+counter (`diagnostics.names`) counts those names. A strict run and a whole run
+index every name. Pinned by
+`a_name_resolving_gate_records_what_each_index_holds_and_what_each_part_took`
+and
+`a_changed_dead_symbols_run_indexes_the_names_whose_references_the_turn_changed`
+in `tests/structural.rs`. A strict run, a run that
 is not changed, and the check by hand extract both trees. Known limit: a
 change git does not report, such as an edit to a file marked `assume-unchanged`
 or `skip-worktree` or bytes a clean filter hides, reads as the base's bytes in

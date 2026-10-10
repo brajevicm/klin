@@ -16,7 +16,7 @@ use crate::files::{self, Found};
 use crate::syntax::Unparsed;
 use crate::syntax::structural::facts::{FileFacts, Outcome, Unsupported};
 use crate::syntax::structural::{
-    Cache, ExtractionCost, SourceIndex, TreeNameCost, selected_extensions, timed,
+    Cache, ExtractionCost, NameSet, SourceIndex, TreeNameCost, selected_extensions, timed,
 };
 use crate::tree::Tree;
 
@@ -39,16 +39,30 @@ impl Measurement {
         &self.facts
     }
 
-    /// The name-resolution index, built once only when a consumer asks for it.
-    pub fn index(&self) -> &SourceIndex {
-        self.index
-            .get_or_init(|| SourceIndex::of(self.facts.clone()))
+    /// The facts of the selected file at this path, found without building the index.
+    pub fn file(&self, path: &str) -> Option<&FileFacts> {
+        let at = self
+            .facts
+            .binary_search_by(|held| held.file.as_str().cmp(path))
+            .ok()?;
+        self.facts.get(at).map(Rc::as_ref)
     }
 
-    /// The name-resolution index, with what building it took and what it holds counted into
-    /// the tree's name cost. Spec 11.2.
-    pub fn indexed(&self, cost: &mut TreeNameCost) -> &SourceIndex {
-        let index = timed(&mut cost.index, || self.index());
+    /// The name-resolution index, built once only when a consumer asks for it, and over every
+    /// name when no `indexed` call built it first.
+    pub fn index(&self) -> &SourceIndex {
+        self.index
+            .get_or_init(|| SourceIndex::of(self.facts.clone(), None))
+    }
+
+    /// The name-resolution index over only the `wanted` names, or every name, with what
+    /// building it took and what it holds counted into the tree's name cost. The first call
+    /// builds it, so the measurement's index holds the names that call asked for. Spec 11.2.
+    pub fn indexed(&self, cost: &mut TreeNameCost, wanted: Option<&NameSet>) -> &SourceIndex {
+        let index = timed(&mut cost.index, || {
+            self.index
+                .get_or_init(|| SourceIndex::of(self.facts.clone(), wanted))
+        });
         index.tally(cost);
         index
     }

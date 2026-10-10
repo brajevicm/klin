@@ -75,12 +75,19 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
     let mut names = structural::NameCost::default();
     let mut layout = None;
     let (before, after) = sweeps(at, &spec, &commit, &mut names, &mut layout)?;
-    let affected = affected_scope(at, &before, &after, &mut names);
+    let (affected, wanted) = affected_scope(at, &before, &after).unzip();
     let widened = at.scoped(affected.as_deref().or(at.only));
     let at = &widened;
     let judged_scope = at.only.filter(|_| at.changes.is_some());
-    let before_states = judgement(&before, &mut names.before, &spec.ignore, judged_scope);
-    let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope);
+    let wanted = wanted.as_ref();
+    let before_states = judgement(
+        &before,
+        &mut names.before,
+        &spec.ignore,
+        judged_scope,
+        wanted,
+    );
+    let after_states = judgement(&after, &mut names.after, &spec.ignore, judged_scope, wanted);
     let built = (before_states.len() + after_states.len()) as u64;
     let held_before = held(&before_states, project);
     let prior = held_before.iter().map(|state| finding(state)).collect();
@@ -143,55 +150,62 @@ fn sweeps(
     Ok((before, after))
 }
 
-/// The effective judgement scope of a changed, non-strict run: the physical scope the runner
-/// gave, plus every file declaring a name whose reference evidence this turn changed. A
-/// declaration that did not move can still change from referenced to dead when its last caller
-/// changed, so the physical scope alone is not the semantic impact scope. A name a changed file
-/// references on both sides cannot flip one, so only the names one side holds alone widen
-/// anything: no type, import or receiver resolution enters here, and a name with several
-/// declarations widens to all of them, which fails less. Issue #237, spec 8.4.
+/// The effective judgement scope of a changed, non-strict run, and the names judging it needs:
+/// the physical scope the runner gave, plus every file declaring a name whose reference evidence
+/// this turn changed. A declaration that did not move can still change from referenced to dead
+/// when its last caller changed, so the physical scope alone is not the semantic impact scope.
+/// A name a changed file references on both sides cannot flip one, so only the names one side
+/// holds alone widen anything: no type, import or receiver resolution enters here, and a name
+/// with several declarations widens to all of them, which fails less. Issue #237, spec 8.4.
+///
+/// A state reads the references of the names its own declaration binds, and a lost reference
+/// reads the same names in both trees, so the index needs the names the judged files declare,
+/// and no other. Issue #540, ADR 0038.
 fn affected_scope(
     at: &Context,
     before: &measurement::Measurement,
     after: &measurement::Measurement,
-    names: &mut structural::NameCost,
-) -> Option<Vec<String>> {
+) -> Option<(Vec<String>, structural::NameSet)> {
     let only = at.only.filter(|_| at.changes.is_some())?;
-    structural::timed(&mut names.before.index, || before.index());
-    structural::timed(&mut names.after.index, || after.index());
-    let mut affected = BTreeSet::new();
+    let mut affected = structural::NameSet::new();
     for change in at.changes? {
         if !measured_after(after, &change.path) {
             continue;
         }
-        let now = reference_names(after.index().file(&change.path));
+        let now = reference_names(after.file(&change.path));
         let was = change
             .was
             .as_ref()
-            .map(|was| reference_names(before.index().file(was)))
+            .map(|was| reference_names(before.file(was)))
             .unwrap_or_default();
-        affected.extend(now.symmetric_difference(&was).cloned());
-    }
-    let mut scope: BTreeSet<String> = only.iter().cloned().collect();
-    scope.extend(declaring_files(&affected, before, after));
-    Some(scope.into_iter().collect())
-}
-
-/// Every file that declares one of these names in either tree.
-fn declaring_files(
-    names: &BTreeSet<(syntax::LanguageId, structural::facts::Name)>,
-    before: &measurement::Measurement,
-    after: &measurement::Measurement,
-) -> BTreeSet<String> {
-    let mut files = BTreeSet::new();
-    for (language, name) in names {
-        for index in [before.index(), after.index()] {
-            for declared in index.declarations(*language, name.as_str()) {
-                files.insert(declared.file.to_string());
-            }
+        for (language, name) in now.symmetric_difference(&was) {
+            affected.entry(*language).or_default().insert(name.clone());
         }
     }
-    files
+    let both = || before.facts().iter().chain(after.facts());
+    let mut scope: BTreeSet<&str> = only.iter().map(String::as_str).collect();
+    scope.extend(
+        both()
+            .filter(|file| declares_any(file, &affected))
+            .map(|file| file.file.as_str()),
+    );
+    let mut wanted = affected;
+    for file in both().filter(|file| scope.contains(file.file.as_str())) {
+        let names = wanted.entry(file.language).or_default();
+        for declaration in &file.declarations {
+            names.extend(declaration.names().map(structural::facts::Name::new));
+        }
+    }
+    Some((scope.into_iter().map(str::to_string).collect(), wanted))
+}
+
+fn declares_any(file: &structural::facts::FileFacts, names: &structural::NameSet) -> bool {
+    names.get(&file.language).is_some_and(|names| {
+        file.declarations
+            .iter()
+            .flat_map(structural::facts::Declaration::names)
+            .any(|name| names.contains(name))
+    })
 }
 
 fn reference_names(
@@ -219,8 +233,9 @@ fn judgement(
     cost: &mut structural::TreeNameCost,
     ignore: &[String],
     only: Option<&[String]>,
+    wanted: Option<&structural::NameSet>,
 ) -> Vec<State> {
-    let index = measured.indexed(cost);
+    let index = measured.indexed(cost, wanted);
     structural::timed(&mut cost.query, || states(index, ignore, only))
 }
 
@@ -335,9 +350,10 @@ fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {
     }))
 }
 
-/// The declaration state of one tree, built only for the files the run judges. The index stays
-/// complete over both trees, so a declaration in scope is judged against every reference the
-/// repository holds, and only the states nothing can report are left unbuilt. Spec 8.4.
+/// The declaration state of one tree, built only for the files the run judges. The index holds
+/// every file of the tree and at least the names those files declare, so a declaration in scope
+/// is judged against every reference the repository holds to it, and only the states nothing
+/// can report are left unbuilt. Spec 8.4.
 fn states(
     index: &structural::SourceIndex,
     ignore: &[String],

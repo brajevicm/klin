@@ -212,7 +212,7 @@ fn judgement(
     cost: &mut structural::TreeNameCost,
     families: &[Family],
 ) -> (Vec<State>, usize) {
-    let index = measured.indexed(cost);
+    let index = measured.indexed(cost, None);
     structural::timed(&mut cost.query, || states(index, families))
 }
 
@@ -763,7 +763,7 @@ fn evidence(root: &Path, commit: &str, paths: &[String]) -> BTreeMap<String, Mem
             facts.push(found);
         }
     });
-    let index = SourceIndex::of(facts);
+    let index = SourceIndex::of(facts, None);
     let naming = Naming::of(&index);
     index
         .files()
