@@ -189,10 +189,10 @@ fn sweeps(
     layout: &mut Option<base::Layout>,
     out: &mut Sink,
 ) -> Result<(Measurement, Vec<Family>, Measurement), Error> {
-    let sides = measurement::sides(
+    let sides = measurement::sides_counted(
         at,
         commit,
-        Some(measurement::Counted { names, layout }),
+        measurement::Counted { names, layout },
         |unchanged| measure(at.project.tree(), families, unchanged),
         |prior| before(at, families, prior),
         out,

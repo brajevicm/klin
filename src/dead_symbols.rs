@@ -142,10 +142,10 @@ fn sweeps(
     layout: &mut Option<Layout>,
     out: &mut Sink,
 ) -> Result<(measurement::Measurement, measurement::Measurement), Error> {
-    let sides = measurement::sides(
+    let sides = measurement::sides_counted(
         at,
         commit,
-        Some(measurement::Counted { names, layout }),
+        measurement::Counted { names, layout },
         |unchanged| measure(at.project.tree(), &spec.selection, unchanged),
         |prior| Ok((before(at, spec, prior)?, ())),
         out,

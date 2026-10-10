@@ -224,12 +224,34 @@ pub fn sides_all<'a>(
     )
 }
 
+/// The two trees measured for a name-resolving check, with the time each step took added to
+/// `counted.names` and the base layout taken into `counted.layout` before either tree is
+/// measured. `measure_after` measures the working tree, and `measure_before` the base with what
+/// the check keeps from it. Spec 8.4, spec 11.2.
+pub fn sides_counted<'a, T>(
+    at: &Context<'a>,
+    commit: &str,
+    counted: Counted,
+    measure_after: impl FnOnce(Option<&Unchanged>) -> Result<Measurement, Error>,
+    measure_before: impl FnOnce(&'a Prior) -> Result<(Measurement, T), Error>,
+    out: &mut Sink,
+) -> Result<Sides<'a, T>, Error> {
+    sides(
+        at,
+        commit,
+        Some(counted),
+        measure_after,
+        measure_before,
+        out,
+    )
+}
+
 /// The two trees measured, with the extraction cost of both recorded as `facts`. A changed run
 /// that is not strict measures them over one base extraction: the working tree takes the base's
 /// facts for every file its `Change` set leaves out, and extracts only the files it changed.
-/// Strict and whole runs extract both trees. `measure_after` measures the working tree, and
-/// `measure_before` the base with what the check keeps from it. ADR 0038, ADR 0042, spec 8.4.
-pub fn sides<'a, T>(
+/// Strict and whole runs extract both trees. Only `counted` takes the base layout, which
+/// `Prior::layout` hands out once. ADR 0038, ADR 0042, spec 8.4.
+fn sides<'a, T>(
     at: &Context<'a>,
     commit: &str,
     counted: Option<Counted>,
