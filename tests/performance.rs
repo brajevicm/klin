@@ -1195,6 +1195,7 @@ fn gate_times(report: &Value) -> BTreeMap<String, u64> {
         }
         work_counters(&mut times, name, gate);
         name_counters(&mut times, name, gate);
+        footprint_counters(&mut times, name, gate);
     }
     times
 }

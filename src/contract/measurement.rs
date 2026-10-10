@@ -269,10 +269,7 @@ fn sides<'a, T>(
         unchanged(at.project, at.changes, prior, commit)
     })?;
     if let Some(layout) = layout {
-        *layout = prior.layout();
-        if let Some(laid) = layout {
-            names.base = names.base.saturating_sub(laid.cache_read);
-        }
+        *layout = handed(prior, names);
     }
     let mut after = timed(&mut names.after.measure, || {
         measure_after(unchanged.as_ref())
@@ -286,6 +283,14 @@ fn sides<'a, T>(
         kept,
         after,
     })
+}
+
+/// The base's layout handed to the counted gate, with the structural cache read it holds taken
+/// out of the base's cost, because the view reports that read as `cache_read`. Spec B.13.
+fn handed(prior: &Prior, names: &mut NameCost) -> Option<Layout> {
+    let layout = prior.layout()?;
+    names.base = names.base.saturating_sub(layout.cache_read);
+    Some(layout)
 }
 
 /// The base laid out whole for this run: the runner's own when it laid the whole base out, which

@@ -6571,17 +6571,17 @@ each with the median printed as `worktree_<name>_ms`: a whole detached
 a `read-tree` into it, an `ls-files --stage` listing of it, a `checkout-index`
 of the changed files' base paths into it, its removal, and `worktree prune`.
 Those medians are an estimate of a candidate, not a measurement of klin.
-`dead-symbols` builds the `footprint` group of 11.2 only when
-`KLIN_FOOTPRINT` is set and not empty, because its walk hashes every
-reference name, and a run without it records `footprint` as null. No timed
-stop of the rows sets it, so each timed stop runs the program users run. One
-untimed stop after the timed ones sets it: the stop that writes the
+The `dead-symbols` row prints each type size of the `footprint` group of
+11.2 as `footprint_size_<name>`. `dead-symbols` counts the group's other
+fields only when `KLIN_FOOTPRINT` is set and not empty, because that walk
+hashes every reference name, and a run without it records `sizes` alone. No
+timed stop of the rows sets it, so each timed stop runs the program users
+run. One untimed stop after the timed ones sets it: the stop that writes the
 structural cache again in a full row, and one more warm hook after the peak
 RSS hook in a targeted warm row. The output prints that stop's
 `dead-symbols` footprint on a `footprint:` line, each counter as
-`dead-symbols_footprint_<name>` and each type size as
-`dead-symbols_footprint_size_<name>`, so the row carries the population,
-sparsity and byte proxies of the facts that stop held. `KLIN_PERF_CASE=warm20` or `warm100` runs
+`dead-symbols_footprint_<name>`, so the row carries the population, sparsity
+and byte proxies of the facts that stop held. `KLIN_PERF_CASE=warm20` or `warm100` runs
 one targeted warm scenario of either dense row, so a 1M warm row needs no cold
 or strict run. A row that runs one
 targeted warm scenario prints the structural cache's file count and bytes

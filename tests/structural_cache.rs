@@ -147,7 +147,10 @@ fn a_cached_decode_shares_reference_names_across_files() {
 
     changed(&tree);
     let unasked = dead_symbols(&changed(&tree));
-    assert!(unasked["footprint"].is_null(), "{unasked}");
+    let sizes_alone = unasked["footprint"]
+        .as_object()
+        .map(|held| held.keys().map(String::as_str).collect::<Vec<_>>());
+    assert_eq!(sizes_alone, Some(vec!["sizes"]), "{unasked}");
     let warm = stop_with(&tree, tree.root(), &[("KLIN_FOOTPRINT", "1")]);
     let report = warm.json();
     let row = dead_symbols(&warm);

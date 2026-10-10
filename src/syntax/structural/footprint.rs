@@ -97,8 +97,15 @@ impl Footprint {
     }
 }
 
-/// Whether this run was asked for the footprint, through `KLIN_FOOTPRINT`. The walk hashes every
-/// reference name, so a run that nobody reads it from does not pay for it. Issue #538.
+/// What a gate records of the footprint: the type sizes, which cost nothing, and the counters of
+/// the facts it held only when the run requested them. Issue #538.
+pub enum Recorded {
+    Sizes,
+    Counted(Box<Footprint>),
+}
+
+/// Whether this run requested the footprint's counters, through `KLIN_FOOTPRINT`. Their walk
+/// hashes every reference name, so a run that does not request them does not pay for it.
 pub fn requested() -> bool {
     std::env::var_os("KLIN_FOOTPRINT").is_some_and(|value| !value.is_empty())
 }
