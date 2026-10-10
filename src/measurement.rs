@@ -190,17 +190,17 @@ fn unchanged<'a>(
 }
 
 /// The base and the working tree a structural check judges, each measured, with what the check
-/// measured beside the base. `prior` is the base laid out whole.
+/// kept from the base. `prior` is the base laid out whole.
 pub struct Sides<'a, T> {
     pub prior: &'a Prior,
     pub before: Measurement,
-    pub beside: T,
+    pub kept: T,
     pub after: Measurement,
 }
 
 /// What a name-resolving check counts: the name cost its measurements add to, and the base
 /// layout it records, taken from `prior` once. Spec 11.2.
-pub struct Timer<'n> {
+pub struct Counted<'n> {
     pub names: &'n mut NameCost,
     pub layout: &'n mut Option<Layout>,
 }
@@ -227,19 +227,19 @@ pub fn sides_all<'a>(
 /// The two trees measured, with the extraction cost of both recorded as `facts`. A changed run
 /// that is not strict measures them over one base extraction: the working tree takes the base's
 /// facts for every file its `Change` set leaves out, and extracts only the files it changed.
-/// Strict and whole runs extract both trees. `after` measures the working tree, and `before` the
-/// base with what the check keeps beside it. ADR 0038, ADR 0042, spec 8.4.
+/// Strict and whole runs extract both trees. `measure_after` measures the working tree, and
+/// `measure_before` the base with what the check keeps from it. ADR 0038, ADR 0042, spec 8.4.
 pub fn sides<'a, T>(
     at: &Context<'a>,
     commit: &str,
-    timer: Option<Timer>,
-    after: impl FnOnce(Option<&Unchanged>) -> Result<Measurement, Error>,
-    before: impl FnOnce(&'a Prior) -> Result<(Measurement, T), Error>,
+    counted: Option<Counted>,
+    measure_after: impl FnOnce(Option<&Unchanged>) -> Result<Measurement, Error>,
+    measure_before: impl FnOnce(&'a Prior) -> Result<(Measurement, T), Error>,
     out: &mut Sink,
 ) -> Result<Sides<'a, T>, Error> {
     let mut untimed = NameCost::default();
-    let (names, layout) = match timer {
-        Some(Timer { names, layout }) => (names, Some(layout)),
+    let (names, layout) = match counted {
+        Some(Counted { names, layout }) => (names, Some(layout)),
         None => (&mut untimed, None),
     };
     let prior = timed(&mut names.base, || whole_base(at, commit))?;
@@ -249,14 +249,16 @@ pub fn sides<'a, T>(
     if let Some(layout) = layout {
         *layout = prior.layout();
     }
-    let mut after = timed(&mut names.after.measure, || after(unchanged.as_ref()))?;
-    let (before, beside) = timed(&mut names.before.measure, || before(prior))?;
+    let mut after = timed(&mut names.after.measure, || {
+        measure_after(unchanged.as_ref())
+    })?;
+    let (before, kept) = timed(&mut names.before.measure, || measure_before(prior))?;
     after.cost = after.cost + unchanged.map_or_else(ExtractionCost::default, Unchanged::publish);
     out.record(|records| records.facts = Some(before.cost + after.cost));
     Ok(Sides {
         prior,
         before,
-        beside,
+        kept,
         after,
     })
 }

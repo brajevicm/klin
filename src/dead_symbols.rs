@@ -145,7 +145,7 @@ fn sweeps(
     let sides = measurement::sides(
         at,
         commit,
-        Some(measurement::Timer { names, layout }),
+        Some(measurement::Counted { names, layout }),
         |unchanged| measure(at.project.tree(), &spec.selection, unchanged),
         |prior| Ok((before(at, spec, prior)?, ())),
         out,

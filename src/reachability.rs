@@ -192,12 +192,12 @@ fn sweeps(
     let sides = measurement::sides(
         at,
         commit,
-        Some(measurement::Timer { names, layout }),
+        Some(measurement::Counted { names, layout }),
         |unchanged| measure(at.project.tree(), families, unchanged),
         |prior| before(at, families, prior),
         out,
     )?;
-    Ok((sides.before, sides.beside, sides.after))
+    Ok((sides.before, sides.kept, sides.after))
 }
 
 fn judgement(
