@@ -18,7 +18,7 @@ use crate::check::holes::{self, Seen, Unmeasured};
 use crate::check::{catalogue, render};
 use crate::config;
 use crate::config::MEASUREMENT_LOST;
-use crate::error::{Error, ErrorKind};
+use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::host;
 use crate::host::adapter::{Event, Stop};
 use crate::plan::{Gate, Plan, State, every_check};
@@ -1753,22 +1753,6 @@ fn summary(failed: usize, errored: usize) -> String {
         true => "all passed.".to_string(),
         false => parts.join(", ") + ".",
     }
-}
-
-/// One error of spec 7.3: its kind, and what went wrong.
-struct Fault {
-    kind: ErrorKind,
-    error: Error,
-}
-
-impl From<Fault> for Error {
-    fn from(fault: Fault) -> Error {
-        fault.error
-    }
-}
-
-fn fault(kind: ErrorKind) -> impl Fn(Error) -> Fault {
-    move |error| Fault { kind, error }
 }
 
 /// A judgement of spec 7.1, in the order aggregation takes the worst of.

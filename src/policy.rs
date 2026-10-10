@@ -7,7 +7,7 @@ use crate::base;
 use crate::check::contract::{self, Activation, Derivation, Told};
 use crate::check::{catalogue, render};
 use crate::config;
-use crate::error::{Error, ErrorKind};
+use crate::error::{Error, ErrorKind, Fault, fault};
 use crate::plan::{Gate, Plan, State};
 use crate::project::Project;
 use crate::{build, ceiling, reference, state};
@@ -74,51 +74,31 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
     Ok(2)
 }
 
-/// Why `policy` printed no policy, with the kind of error of spec 7.3 its document names.
-struct Refused {
-    kind: ErrorKind,
-    error: Error,
-}
-
-fn configuration(error: Error) -> Refused {
-    Refused {
-        kind: ErrorKind::Configuration,
-        error,
-    }
-}
-
-fn invocation(error: Error) -> Refused {
-    Refused {
-        kind: ErrorKind::Invocation,
-        error,
-    }
-}
-
 /// The project `policy` reads, where a `--config` that names no file is an invocation error,
 /// as under `klin check`.
-fn loaded(args: &Policy, start: &Path) -> Result<Project, Refused> {
+fn loaded(args: &Policy, start: &Path) -> Result<Project, Fault> {
     let named_nothing = args.config.is_some()
         && !config::located(args.config.as_deref(), start).is_some_and(|file| file.exists());
     Project::load(args.config.as_deref(), start, &catalogue::sections())
         .map(Project::read_only)
-        .map_err(match named_nothing {
-            true => invocation,
-            false => configuration,
-        })
+        .map_err(fault(match named_nothing {
+            true => ErrorKind::Invocation,
+            false => ErrorKind::Configuration,
+        }))
 }
 
 /// The effective policy of every gate, or of the one `policy` names: its state, and each value
 /// it uses with where the value came from. Each check's own derivation step gives the values, so
 /// no gate runs, no base is laid out and no file is measured. Spec 11.6.
-fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Refused> {
-    let plan = Plan::of(project).map_err(configuration)?;
-    let wanted = asked(args, project, &plan).map_err(invocation)?;
+fn listed(args: &Policy, project: &Project, out: &mut String) -> Result<(), Fault> {
+    let plan = Plan::of(project).map_err(fault(ErrorKind::Configuration))?;
+    let wanted = asked(args, project, &plan).map_err(fault(ErrorKind::Invocation))?;
     let mut capabilities = wanted
         .into_iter()
         .map(|gate| capability(args, project, gate))
-        .collect::<Result<Vec<_>, Refused>>()?;
+        .collect::<Result<Vec<_>, Fault>>()?;
     capabilities.extend(inactive(args, &plan));
-    let shared = Shared::of(project).map_err(configuration)?;
+    let shared = Shared::of(project).map_err(fault(ErrorKind::Configuration))?;
     match args.json {
         true => policy_json(project, &capabilities, &shared, out),
         false => policy_text(&capabilities, args.section.is_none(), &shared, out),
@@ -321,7 +301,7 @@ fn capability<'a>(
     args: &Policy,
     project: &Project,
     gate: &'a Gate,
-) -> Result<Capability<'a>, Refused> {
+) -> Result<Capability<'a>, Fault> {
     let check = gate.check;
     let fields = section_of(project, gate, args.entry.as_deref());
     let (mut lines, mut values) = said_by(gate, project, args, &fields)?;
@@ -349,7 +329,7 @@ fn said_by(
     project: &Project,
     args: &Policy,
     fields: &Map<String, Value>,
-) -> Result<(Vec<String>, Vec<Value>), Refused> {
+) -> Result<(Vec<String>, Vec<Value>), Fault> {
     let check = gate.check;
     match check.derivation {
         Derivation::Explained(explain) => explained(explain, project, args),
@@ -364,7 +344,7 @@ fn said_by(
             Vec::new(),
         )),
         Derivation::Values(derive) => {
-            let said = derive(project).map_err(configuration)?;
+            let said = derive(project).map_err(fault(ErrorKind::Configuration))?;
             Ok(said_values(check, as_told(said), fields))
         }
         Derivation::Nothing => Ok(said_values(check, Vec::new(), fields)),
@@ -377,13 +357,13 @@ fn explained(
     explain: contract::Explain,
     project: &Project,
     args: &Policy,
-) -> Result<(Vec<String>, Vec<Value>), Refused> {
+) -> Result<(Vec<String>, Vec<Value>), Fault> {
     match explain(project, args.entry.as_deref()) {
         Ok(explained) => Ok((explained.lines, explained.values)),
         Err(error) if args.entry.is_some() && explain(project, None).is_ok() => {
-            Err(invocation(error))
+            Err(fault(ErrorKind::Invocation)(error))
         }
-        Err(error) => Err(configuration(error)),
+        Err(error) => Err(fault(ErrorKind::Configuration)(error)),
     }
 }
 

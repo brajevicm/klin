@@ -45,3 +45,19 @@ impl ErrorKind {
         }
     }
 }
+
+/// One error of spec 7.3: its kind, and what went wrong.
+pub struct Fault {
+    pub kind: ErrorKind,
+    pub error: Error,
+}
+
+impl From<Fault> for Error {
+    fn from(fault: Fault) -> Error {
+        fault.error
+    }
+}
+
+pub fn fault(kind: ErrorKind) -> impl Fn(Error) -> Fault {
+    move |error| Fault { kind, error }
+}
