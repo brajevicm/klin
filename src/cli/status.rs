@@ -168,12 +168,12 @@ fn text(
     if let Some(expected) = unmet {
         let _ = writeln!(out, "{}", expected.note(release::route(), None));
     }
-    if let (Some(tag), Some(route)) = (newer, release::route()) {
+    if let Some(tag) = newer {
         let news = release::News::Available(tag.clone());
         let _ = writeln!(
             out,
             "{}",
-            release::Audience::Person.note(route, &news, None)
+            release::Audience::Person.note(release::route(), &news, None)
         );
         if let Some(why) = release::refused(tag) {
             let _ = writeln!(out, "klin could not install it on its own: {why}");

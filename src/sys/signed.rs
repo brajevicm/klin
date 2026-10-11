@@ -56,6 +56,14 @@ pub fn install(tag: &str, exe: &Path) -> Result<(), Failure> {
     replace(&binary, exe).map_err(Failure::Transient)
 }
 
+/// Whether klin may create a file beside `exe`, tried with a probe it removes at once.
+pub fn writable(exe: &Path) -> std::io::Result<()> {
+    let probe = exe.with_file_name(format!(".klin-probe-{}", std::process::id()));
+    fs::File::create_new(&probe)?;
+    let _probe = Scratch(probe);
+    Ok(())
+}
+
 /// A path klin made for one install, removed when the install ends, whatever way it ends.
 struct Scratch(PathBuf);
 

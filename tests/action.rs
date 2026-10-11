@@ -435,16 +435,33 @@ fn the_action_fails_when_its_klin_is_older_than_klin_json_expects() {
 }
 
 /// A `klin` value of another shape is not compared: `klin check` refuses it as a configuration
-/// error, and the Action reports that run. Spec 12.3.
+/// error, and the Action reports that run. The values are the ones klin's reader refuses, so the
+/// Action's copy of the shape agrees with klin's. Spec 12.3.
 #[test]
 fn the_action_leaves_a_malformed_expected_version_to_klin_check() {
-    let tree = tree();
-    tree.write("klin.json", r#"{"klin": "99.0.0"}"#);
-    tree.base();
+    for written in [
+        "99.0.0",
+        ">=99.0",
+        ">=99.0.0.1",
+        ">= 99.0.0",
+        ">=99.0.0-beta",
+    ] {
+        let tree = tree();
+        tree.write("klin.json", &format!(r#"{{"klin": "{written}"}}"#));
+        tree.base();
 
-    let gated = gated(&tree, "");
+        let gated = gated(&tree, "");
 
-    assert_eq!(gated.code, 2, "{}", gated.printed);
-    assert!(!gated.printed.contains("expects klin"), "{}", gated.printed);
-    assert!(gated.summary.contains("\"klin\""), "{}", gated.summary);
+        assert_eq!(gated.code, 2, "{written}: {}", gated.printed);
+        assert!(
+            !gated.printed.contains("expects klin"),
+            "{written}: {}",
+            gated.printed
+        );
+        assert!(
+            gated.summary.contains("\"klin\""),
+            "{written}: {}",
+            gated.summary
+        );
+    }
 }

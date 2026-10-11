@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 
 use crate::config::key::{Key, Reader, Section, SectionShape, Shape};
 use crate::sys::error::Error;
-use crate::sys::release::Expected;
+use crate::sys::release::{EXPECTED_SHAPE, Expected};
 
 pub const FILENAME: &str = "klin.json";
 
@@ -473,8 +473,10 @@ fn complex_value_shape(
 fn string_rule_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
     let (holds, expected) = match key.shape {
         Shape::Expected => (
-            value.as_str().and_then(Expected::parse).is_some(),
-            "\">=\" and a version of three dot-separated numbers, such as \">=0.5.4\"",
+            value
+                .as_str()
+                .is_some_and(|text| text.parse::<Expected>().is_ok()),
+            EXPECTED_SHAPE,
         ),
         _ => (is_text(value), "a string that is not blank"),
     };
@@ -922,7 +924,7 @@ pub fn notes(explicit: Option<&Path>, start: &Path) -> Vec<String> {
 pub fn expected(start: &Path) -> Option<Expected> {
     let file = find(start)?;
     let data: Value = serde_json::from_slice(&std::fs::read(file).ok()?).ok()?;
-    Expected::parse(data.get(KLIN.name)?.as_str()?)
+    data.get(KLIN.name)?.as_str()?.parse().ok()
 }
 
 /// The paths of every `klin.json` the walk from `start` passed and never read. Spec 5.1.

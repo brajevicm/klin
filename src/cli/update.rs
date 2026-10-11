@@ -38,11 +38,10 @@ fn install() -> u8 {
         Ok(Some(tag)) => {
             println!("klin updated to {tag}. Release notes: {}", tag.notes());
             if let Some(other) = release::shadowed() {
+                let other = other.display();
                 println!(
-                    "klin: NOTE: PATH finds another klin first, at {}, and a shell and klin's \
-                     hooks run that one. Run {} update, or remove it.",
-                    other.display(),
-                    other.display()
+                    "klin: NOTE: PATH finds another klin first, at {other}, and a shell and \
+                     klin's hooks run that one. Run {other} update, or remove it."
                 );
             }
             reconcile_hint();
@@ -98,7 +97,7 @@ fn check() -> u8 {
         true => println!(
             "{}",
             release::Audience::Person.note(
-                release::route().unwrap_or(release::Route::Release),
+                release::route(),
                 &release::News::Available(tag.clone()),
                 None
             )

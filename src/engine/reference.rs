@@ -15,6 +15,7 @@ use crate::config;
 use crate::config::key::{Key, Languages, SectionShape, Shape};
 use crate::engine::catalogue;
 use crate::sys::error::Error;
+use crate::sys::release;
 
 const HEAD: &str = "| Key | Holds | Required | Source | Derivation rule | Default |";
 const RULE: &str = "| --- | --- | --- | --- | --- | --- |";
@@ -203,7 +204,7 @@ fn schema_for_shape(shape: Shape) -> Value {
 
 fn string_rule_schema(shape: Shape) -> Value {
     let pattern = match shape {
-        Shape::Expected => "^>=[0-9]+\\.[0-9]+\\.[0-9]+$",
+        Shape::Expected => release::EXPECTED_PATTERN,
         _ => NOT_BLANK,
     };
     json!({"type": "string", "pattern": pattern})

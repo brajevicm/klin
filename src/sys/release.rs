@@ -14,6 +14,7 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -42,6 +43,18 @@ const CACHE_WAIT: Duration = Duration::from_millis(500);
 const AUTO_FILE: &str = "auto-update";
 /// The hidden argument the detached child runs under. It is not a public command.
 pub const CHILD: &str = "__release";
+/// The child's flag that names the expected version it asks early for.
+const EARLY: &str = "--expected";
+/// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
+/// compile time. A debug build reads `KLIN_TEST_RELEASE_BUILD` at run time instead, so a test
+/// stands for one.
+const RELEASE_BUILD: bool =
+    matches!(option_env!("KLIN_RELEASE_BUILD"), Some(value) if !value.is_empty());
+/// The shape of the `klin` key, which the schema and the Action read too.
+pub const EXPECTED_PATTERN: &str = r"^>=[0-9]+\.[0-9]+\.[0-9]+$";
+/// The words a configuration error uses for that shape.
+pub const EXPECTED_SHAPE: &str =
+    "\">=\" and a version of three dot-separated numbers, such as \">=0.5.4\"";
 
 /// A release version as numbers. Only dot-separated digits parse, so a version never carries
 /// text klin did not expect into a message.
@@ -82,8 +95,11 @@ impl Version {
 #[derive(Clone, PartialEq, Eq)]
 pub struct Expected(Version);
 
-impl Expected {
-    pub fn parse(text: &str) -> Option<Expected> {
+impl FromStr for Expected {
+    type Err = &'static str;
+
+    /// `>=` and three dot-separated numbers, or the shape it should have.
+    fn from_str(text: &str) -> Result<Expected, &'static str> {
         text.strip_prefix(">=")
             .filter(|version| {
                 version
@@ -93,8 +109,11 @@ impl Expected {
             .and_then(Version::parse)
             .filter(|version| version.0.len() == 3)
             .map(Expected)
+            .ok_or(EXPECTED_SHAPE)
     }
+}
 
+impl Expected {
     /// Whether this build meets it. True when the build's own version does not parse, so an
     /// unknown build is never told to update.
     pub fn met(&self) -> bool {
@@ -107,12 +126,12 @@ impl Expected {
     }
 
     /// What the person reads when this build does not meet it, with the step that installs a
-    /// newer klin on `route`, `klin update` when the binary is on neither.
-    pub fn note(&self, route: Option<Route>, host_step: Option<String>) -> String {
+    /// newer klin on `route`.
+    pub fn note(&self, route: Route, host_step: Option<String>) -> String {
         format!(
             "This repository expects klin {self} (you have {}). {}",
             env!("CARGO_PKG_VERSION"),
-            route.unwrap_or(Route::Release).step(host_step)
+            route.step(host_step)
         )
     }
 
@@ -152,13 +171,14 @@ pub enum Audience {
 
 impl Audience {
     /// Each route keeps its own records, so a machine with both a release build and a
-    /// plugin's klin at two versions never reads the switch between them as an update.
+    /// plugin's klin at two versions never reads the switch between them as an update. A build
+    /// from source keeps no record, because it never tells, and names the release build's.
     fn record(self, route: Route) -> &'static str {
         match (route, self) {
             (Route::Plugin, Audience::Person) => "release-plugin-person.json",
             (Route::Plugin, Audience::Agent) => "release-plugin-agent.json",
-            (Route::Release, Audience::Person) => "release-person.json",
-            (Route::Release, Audience::Agent) => "release-agent.json",
+            (Route::Release | Route::Source, Audience::Person) => "release-person.json",
+            (Route::Release | Route::Source, Audience::Agent) => "release-agent.json",
         }
     }
 
@@ -207,8 +227,8 @@ struct Releases {
 
 impl Releases {
     fn here() -> Option<Releases> {
-        let route = Route::here()?;
-        let on = !set("CI") && !set("KLIN_NO_UPDATE_CHECK");
+        let route = Route::here();
+        let on = route != Route::Source && !set("CI") && !set("KLIN_NO_UPDATE_CHECK");
         cache_dir()
             .filter(|_| on)
             .map(|dir| Releases { dir, route })
@@ -230,7 +250,7 @@ struct Latest {
     tried: Option<Version>,
     refused: Option<String>,
     retry: bool,
-    expected: Option<Version>,
+    asked_early: Option<Version>,
 }
 
 impl Latest {
@@ -242,7 +262,7 @@ impl Latest {
             tried: version(&held["tried"]),
             refused: held["refused"].as_str().map(str::to_string),
             retry: held["retry"].as_bool().unwrap_or_default(),
-            expected: version(&held["expected"]),
+            asked_early: version(&held["asked_early"]),
         }
     }
 
@@ -253,7 +273,7 @@ impl Latest {
             "tried": self.tried.as_ref().map(ToString::to_string),
             "refused": self.refused,
             "retry": self.retry,
-            "expected": self.expected.as_ref().map(ToString::to_string),
+            "asked_early": self.asked_early.as_ref().map(ToString::to_string),
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -289,7 +309,7 @@ impl Latest {
             && auto()
             && !wanted.met()
             && !wanted.met_by(self.tag.as_ref())
-            && self.expected.as_ref() != Some(wanted.version())
+            && self.asked_early.as_ref() != Some(wanted.version())
     }
 
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
@@ -356,23 +376,23 @@ impl Record {
 }
 
 /// How this binary reached the machine: through a host's plugin, whose wrapper sets
-/// `KLIN_PLUGIN`, or as a release build, from the installer or an archive.
+/// `KLIN_PLUGIN`, as a release build, from the installer or an archive, or built from source.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Route {
     Release,
     Plugin,
+    Source,
 }
 
 impl Route {
-    /// The wrapper's marker comes first, because a plugin runs a release build too. A binary
-    /// built from source is on neither route.
-    fn here() -> Option<Route> {
+    /// The wrapper's marker comes first, because a plugin runs a release build too.
+    fn here() -> Route {
         if set("KLIN_PLUGIN") {
-            Some(Route::Plugin)
-        } else if release_build() {
-            Some(Route::Release)
+            Route::Plugin
+        } else if RELEASE_BUILD || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD")) {
+            Route::Release
         } else {
-            None
+            Route::Source
         }
     }
 
@@ -380,7 +400,7 @@ impl Route {
     /// step of the host a hook event came from.
     fn step(self, host_step: Option<String>) -> String {
         match self {
-            Route::Release => "Run klin update.".to_string(),
+            Route::Release | Route::Source => "Run klin update.".to_string(),
             Route::Plugin => {
                 host_step.unwrap_or_else(|| "Update the klin plugin in your host.".to_string())
             }
@@ -388,8 +408,8 @@ impl Route {
     }
 }
 
-/// The route of this binary, or none when it may not ask, update or tell.
-pub fn route() -> Option<Route> {
+/// The route of this binary.
+pub fn route() -> Route {
     Route::here()
 }
 
@@ -413,9 +433,12 @@ pub fn refresh(expected: Option<&Expected>) {
     }
     if let Ok(exe) = installed() {
         let mut child = Command::new(exe);
-        child
-            .arg(CHILD)
-            .args(early.map(|wanted| wanted.version().to_string()));
+        child.arg(CHILD).args(
+            early
+                .map(|wanted| [EARLY.to_string(), wanted.version().to_string()])
+                .into_iter()
+                .flatten(),
+        );
         let _ = silent(&mut child).process_group(0).spawn();
     }
 }
@@ -434,7 +457,11 @@ pub fn child() {
     let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
-    let early = std::env::args().nth(2).as_deref().and_then(Version::parse);
+    let early = std::env::args()
+        .skip_while(|arg| arg != EARLY)
+        .nth(1)
+        .as_deref()
+        .and_then(Version::parse);
     ask_today(dir, early);
     install_untried(dir, releases.route);
 }
@@ -445,12 +472,12 @@ pub fn child() {
 /// once for that version, whatever the day's ask did.
 fn ask_today(dir: &Path, early: Option<Version>) {
     let latest = Latest::read(dir);
-    let early = early.filter(|wanted| latest.expected.as_ref() != Some(wanted));
+    let early = early.filter(|wanted| latest.asked_early.as_ref() != Some(wanted));
     if (latest.stale() || early.is_some())
         && Latest::change(dir, |latest| {
             latest.checked = now();
             if early.is_some() {
-                latest.expected.clone_from(&early);
+                latest.asked_early.clone_from(&early);
             }
             if latest.retry {
                 latest.tried = None;
@@ -526,7 +553,7 @@ pub fn refused(tag: &Version) -> Option<String> {
 /// newest. Any binary but a plugin's updates, a build from source too. One in a directory klin
 /// cannot write says so before it asks.
 pub fn update() -> Result<Option<Version>, String> {
-    if Route::here() == Some(Route::Plugin) {
+    if Route::here() == Route::Plugin {
         return Err(PLUGIN_UPDATE.to_string());
     }
     let exe = installed()
@@ -664,23 +691,17 @@ const INSTALLER: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                          https://github.com/brajevicm/klin/releases/latest/download/\
                          klin-installer.sh | sh";
 
-/// Whether klin may put a new binary in the directory that holds `exe`, tried by creating a file
-/// there. The error names the installer, which installs where the person can write. It names no
-/// `sudo`: a root klin would write root's files into the person's cache.
+/// Whether klin may put a new binary beside `exe`. The error names the installer, which
+/// installs where the person can write. It names no `sudo`: a root klin would write root's files
+/// into the person's cache.
 fn writable(exe: &Path) -> Result<(), String> {
-    let dir = exe.parent().unwrap_or(Path::new("/"));
-    let probe = dir.join(format!(".klin-probe-{}", std::process::id()));
-    match std::fs::File::create_new(&probe) {
-        Ok(_) => {
-            let _ = std::fs::remove_file(&probe);
-            Ok(())
-        }
-        Err(why) => Err(format!(
+    signed::writable(exe).map_err(|why| {
+        format!(
             "klin cannot write {}, where this klin is installed: {why}. Install klin where you \
              can write with the installer, and remove this klin: {INSTALLER}",
-            dir.display()
-        )),
-    }
+            exe.parent().unwrap_or(Path::new("/")).display()
+        )
+    })
 }
 
 /// The first other `klin` PATH finds before the binary `klin update` replaced, which a shell
@@ -702,9 +723,9 @@ pub fn shadowed() -> Option<PathBuf> {
 /// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
     match Route::here() {
-        Some(Route::Release) => {}
-        Some(Route::Plugin) => return Err(PLUGIN_SETTING.to_string()),
-        None => return Err(SOURCE_BUILD.to_string()),
+        Route::Release => {}
+        Route::Plugin => return Err(PLUGIN_SETTING.to_string()),
+        Route::Source => return Err(SOURCE_BUILD.to_string()),
     }
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
     let file = dir.join(AUTO_FILE);
@@ -726,13 +747,6 @@ pub fn installed() -> io::Result<PathBuf> {
             None => exe,
         },
     )
-}
-
-/// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
-/// compile time. A debug build reads `KLIN_TEST_RELEASE_BUILD` instead, so a test stands for one.
-fn release_build() -> bool {
-    option_env!("KLIN_RELEASE_BUILD").is_some_and(|value| !value.is_empty())
-        || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD"))
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.
