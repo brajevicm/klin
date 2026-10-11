@@ -114,10 +114,15 @@ impl FromStr for Expected {
 }
 
 impl Expected {
-    /// Whether this build meets it. True when the build's own version does not parse, so an
-    /// unknown build is never told to update.
+    /// Whether this build meets it. A pre-release comes before its release, as in SemVer, so
+    /// `0.5.4-rc.1` does not meet `>=0.5.4`. True when the build's own version does not parse,
+    /// so an unknown build is never told to update.
     pub fn met(&self) -> bool {
-        Version::current().is_none_or(|own| own >= self.0)
+        let own = own_version();
+        let (numbers, pre_release) = own
+            .split_once('-')
+            .map_or((own.as_str(), false), |(numbers, _)| (numbers, true));
+        Version::parse(numbers).is_none_or(|own| own > self.0 || (own == self.0 && !pre_release))
     }
 
     /// Whether the release `tag` meets it.
@@ -130,7 +135,7 @@ impl Expected {
     pub fn note(&self, route: Route, host_step: Option<String>) -> String {
         format!(
             "This repository expects klin {self} (you have {}). {}",
-            env!("CARGO_PKG_VERSION"),
+            own_version(),
             route.step(host_step)
         )
     }
@@ -752,16 +757,32 @@ pub fn installed() -> io::Result<PathBuf> {
     )
 }
 
-/// Whether this binary sits in the plugin wrapper's cache of releases, `CACHE/bin/VERSION/klin`.
+/// Whether this binary sits where the plugin wrapper keeps a pinned release,
+/// `CACHE/bin/VERSION/klin`. The path alone answers, never the caller's `HOME` or
+/// `KLIN_CACHE_DIR`, which a person running the binary by hand may have changed.
 fn in_plugin_cache() -> bool {
-    let held = |path: PathBuf| path.canonicalize().ok();
-    match (
-        installed().ok().and_then(held),
-        cache_dir().map(|dir| dir.join("bin")).and_then(held),
-    ) {
-        (Some(exe), Some(cache)) => exe.starts_with(cache),
-        _ => false,
+    let Some(exe) = installed().ok().and_then(|exe| exe.canonicalize().ok()) else {
+        return false;
+    };
+    let mut up = exe.ancestors().skip(1).map(Path::file_name);
+    let (Some(Some(pinned)), Some(Some(bin))) = (up.next(), up.next()) else {
+        return false;
+    };
+    let pinned = pinned.to_string_lossy();
+    bin == "bin" && Version::parse(pinned.split('-').next().unwrap_or(&pinned)).is_some()
+}
+
+/// This build's version as `--version` prints it. A debug build reads `KLIN_TEST_VERSION`
+/// instead, so a test stands for another release.
+fn own_version() -> String {
+    #[cfg(debug_assertions)]
+    if let Some(version) = std::env::var("KLIN_TEST_VERSION")
+        .ok()
+        .filter(|version| !version.is_empty())
+    {
+        return version;
     }
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.

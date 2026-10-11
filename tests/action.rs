@@ -487,3 +487,36 @@ fn the_action_reads_the_expected_version_from_the_config_args_names() {
         );
     }
 }
+
+/// The Action orders a pre-release before its release: `0.5.4-rc.1` fails `>=0.5.4`, and
+/// `0.5.4` and `0.5.5` pass. Spec 12.3.
+#[test]
+fn the_action_fails_a_pre_release_of_the_expected_version() {
+    for (version, code) in [("0.5.4-rc.1", 2), ("0.5.4", 0), ("0.5.5", 0)] {
+        let tree = tree();
+        tree.write("klin.json", r#"{"klin": ">=0.5.4"}"#);
+        tree.base();
+        let klin = format!(
+            "#!/bin/sh\n[ \"$1\" = --version ] && {{ echo 'klin {version}'; exit 0; }}\nexec '{}' \"$@\"\n",
+            harness::binary()
+        );
+        let path = bin(
+            &tree,
+            &["cat", "git", "tee", "jq", "sed", "sort", "head"],
+            &[("klin", &klin)],
+        );
+
+        let gated = gated_on(&tree, "", &path);
+
+        assert_eq!(gated.code, code, "{version}: {}", gated.printed);
+        if code == 2 {
+            assert!(
+                gated
+                    .printed
+                    .contains("expects klin >=0.5.4, and the Action installed klin 0.5.4-rc.1"),
+                "{}",
+                gated.printed
+            );
+        }
+    }
+}

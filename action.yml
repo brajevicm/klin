@@ -50,14 +50,15 @@ runs:
         done
         expected="$(jq -r '.klin | strings | select(test("^>=[0-9]+\\.[0-9]+\\.[0-9]+$"))' "$config" 2>/dev/null || true)"
         if [ -n "$expected" ]; then
-          installed="$(klin --version 2>/dev/null | sed 's/^klin //; s/-.*//')"
+          full="$(klin --version 2>/dev/null | sed 's/^klin //')"
+          installed="${full%%-*}"
           if [ -z "$installed" ]; then
             echo "::error title=klin::$config expects klin $expected, and the Action could not read the version of the klin it installed."
             exit 2
           fi
           lowest="$(printf '%s\n%s\n' "${expected#>=}" "$installed" | sort -s -t. -k1,1n -k2,2n -k3,3n | head -1)"
-          if [ "$lowest" != "${expected#>=}" ]; then
-            echo "::error title=klin::$config expects klin $expected, and the Action installed klin $installed. Pin a newer version in the Action."
+          if [ "$lowest" != "${expected#>=}" ] || { [ "$installed" = "${expected#>=}" ] && [ "$full" != "$installed" ]; }; then
+            echo "::error title=klin::$config expects klin $expected, and the Action installed klin $full. Pin a newer version in the Action."
             exit 2
           fi
         fi

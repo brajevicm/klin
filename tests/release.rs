@@ -1462,3 +1462,48 @@ fn a_plugin_stop_never_names_the_expected_version_as_a_release() {
     );
     assert!(!run.says("v98.0.0"), "{}", run.out);
 }
+
+/// A pre-release of the expected version is older than it, so it does not meet the floor, and
+/// the release itself and a later one do. Spec 11.9.
+#[test]
+fn a_pre_release_of_the_expected_version_does_not_meet_it() {
+    let tree = expecting(">=0.5.4");
+
+    for (version, met) in [("0.5.4-rc.1", false), ("0.5.4", true), ("0.5.5", true)] {
+        let run = tree.run_with(&[("KLIN_TEST_VERSION", version)], &["status", "--json"]);
+
+        assert_eq!(
+            run.json()["klin"]["expected_met"],
+            met,
+            "{version}: {}",
+            run.out
+        );
+    }
+}
+
+/// A plugin's cached binary run by hand under another HOME and cache directory is still a
+/// plugin's, because its path names the version the plugin pins. Spec 11.8.
+#[test]
+fn update_never_replaces_a_plugin_cache_binary_under_another_home() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let cached = installed
+        .home
+        .path(&format!("pinned/.cache/klin/bin/{VERSION}/klin"));
+    fs::create_dir_all(cached.parent().expect("cache bin")).expect("cache bin");
+    fs::copy(harness::binary(), &cached).expect("copy klin");
+    let elsewhere = installed.home.at("elsewhere");
+
+    let run = installed.run_as(
+        &cached.display().to_string(),
+        &[("HOME", &elsewhere), ("KLIN_CACHE_DIR", &elsewhere)],
+        &["update"],
+        "",
+    );
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert!(
+        !fs::read_to_string(&cached).is_ok_and(|text| text.contains("KLIN_TEST_REAL")),
+        "the cached binary was replaced"
+    );
+}
