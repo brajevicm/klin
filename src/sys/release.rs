@@ -15,6 +15,7 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -43,6 +44,8 @@ const CACHE_WAIT: Duration = Duration::from_millis(500);
 const AUTO_FILE: &str = "auto-update";
 /// The hidden argument the detached child runs under. It is not a public command.
 pub const CHILD: &str = "__release";
+/// This binary's route. See `Route::compute`.
+static ROUTE: LazyLock<Route> = LazyLock::new(Route::compute);
 /// The child's flag that names the expected version it asks early for.
 const EARLY: &str = "--expected";
 /// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
@@ -71,8 +74,7 @@ impl Version {
 
     /// This build's version, without a pre-release suffix such as `-beta.1`.
     fn current() -> Option<Version> {
-        let own = env!("CARGO_PKG_VERSION");
-        Version::parse(own.split('-').next().unwrap_or(own))
+        Build::current().map(|build| build.numbers)
     }
 
     /// Whether this release is newer than the build. False when the build's own version does
@@ -87,6 +89,42 @@ impl Version {
 
     pub fn notes(&self) -> String {
         format!("{TAGGED}{self}")
+    }
+}
+
+/// A klin build's version as `--version` prints it: its release numbers, and whether a
+/// pre-release suffix such as `-rc.1` follows them. A pre-release comes before its release, as
+/// in SemVer.
+struct Build {
+    numbers: Version,
+    pre_release: bool,
+}
+
+impl FromStr for Build {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Build, ()> {
+        let (numbers, pre_release) = text
+            .split_once('-')
+            .map_or((text, false), |(numbers, _)| (numbers, true));
+        Version::parse(numbers)
+            .map(|numbers| Build {
+                numbers,
+                pre_release,
+            })
+            .ok_or(())
+    }
+}
+
+impl Build {
+    /// This build, or none when its version does not parse.
+    fn current() -> Option<Build> {
+        own_version().parse().ok()
+    }
+
+    /// Whether this build is at least `floor`.
+    fn meets(&self, floor: &Version) -> bool {
+        self.numbers > *floor || (self.numbers == *floor && !self.pre_release)
     }
 }
 
@@ -118,11 +156,7 @@ impl Expected {
     /// `0.5.4-rc.1` does not meet `>=0.5.4`. True when the build's own version does not parse,
     /// so an unknown build is never told to update.
     pub fn met(&self) -> bool {
-        let own = own_version();
-        let (numbers, pre_release) = own
-            .split_once('-')
-            .map_or((own.as_str(), false), |(numbers, _)| (numbers, true));
-        Version::parse(numbers).is_none_or(|own| own > self.0 || (own == self.0 && !pre_release))
+        Build::current().is_none_or(|own| own.meets(&self.0))
     }
 
     /// Whether the release `tag` meets it.
@@ -200,7 +234,7 @@ impl Audience {
         match (self, news) {
             (Audience::Person, News::Available(tag)) => format!(
                 "klin {tag} is available (you have {}). {}",
-                env!("CARGO_PKG_VERSION"),
+                own_version(),
                 route.step(host_step)
             ),
             (Audience::Agent, News::Available(tag)) if route == Route::Plugin => format!(
@@ -313,7 +347,7 @@ impl Latest {
         route == Route::Release
             && auto()
             && !wanted.met()
-            && !self.tag.as_ref().is_some_and(|tag| wanted.met_by(tag))
+            && self.tag.as_ref().is_none_or(|tag| !wanted.met_by(tag))
             && self.asked_early.as_ref() != Some(wanted.version())
     }
 
@@ -390,10 +424,15 @@ pub enum Route {
 }
 
 impl Route {
+    /// This binary's route, worked out once: nothing it reads changes while klin runs.
+    fn here() -> Route {
+        *ROUTE
+    }
+
     /// The wrapper's marker comes first, because a plugin runs a release build too. A binary in
     /// the cache the wrapper keeps the plugin's releases in is a plugin's, even when a person
     /// runs it without the marker, because its directory names the version the plugin pins.
-    fn here() -> Route {
+    fn compute() -> Route {
         if set("KLIN_PLUGIN") || in_plugin_cache() {
             Route::Plugin
         } else if RELEASE_BUILD || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD")) {
@@ -540,11 +579,8 @@ fn older_on_disk(exe: &Path, tag: &Version) -> bool {
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
-        .and_then(|text| {
-            let own = text.trim().strip_prefix("klin ")?;
-            Version::parse(own.split('-').next().unwrap_or(own))
-        })
-        .is_none_or(|on_disk| on_disk < *tag)
+        .and_then(|text| text.trim().strip_prefix("klin ")?.parse::<Build>().ok())
+        .is_none_or(|on_disk| on_disk.numbers < *tag)
 }
 
 /// Why auto-update did not install `tag`, when it tried and was refused.
@@ -768,8 +804,11 @@ fn in_plugin_cache() -> bool {
     let (Some(Some(pinned)), Some(Some(bin))) = (up.next(), up.next()) else {
         return false;
     };
-    let pinned = pinned.to_string_lossy();
-    bin == "bin" && Version::parse(pinned.split('-').next().unwrap_or(&pinned)).is_some()
+    bin == "bin"
+        && pinned
+            .to_str()
+            .and_then(|pinned| pinned.parse::<Build>().ok())
+            .is_some_and(|build| build.numbers.0.len() == 3)
 }
 
 /// This build's version as `--version` prints it. A debug build reads `KLIN_TEST_VERSION`
