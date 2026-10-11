@@ -780,6 +780,17 @@ fn a_line_of_another_schema_in_the_scope_counts() {
 }
 
 #[test]
+fn a_line_of_another_schema_does_not_name_the_newest_session() {
+    let mut newer = stop(100, false, vec![], vec![]);
+    newer["schema"] = json!(99);
+    newer["session"] = json!("s-2");
+    let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
+
+    let json = tree.run(&["report", "--json"]).json();
+    assert_eq!(json["skipped_lines"], 0, "{json}");
+}
+
+#[test]
 fn a_line_that_does_not_parse_counts_under_every_scope() {
     let tree = tree(&[stop(100, false, vec![], vec![])]);
     let at = tree.state("journal.jsonl");
