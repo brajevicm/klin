@@ -352,18 +352,18 @@ impl Reader<'_, '_> {
         None
     }
 
-    /// A count, never more than the bytes left could hold, so a corrupt one reserves no more
-    /// items than those bytes.
+    /// A count, never more than the bytes left could hold.
     fn count(&mut self) -> Option<usize> {
         usize::try_from(self.number()?)
             .ok()
             .filter(|count| *count <= self.0.len())
     }
 
-    /// A counted run of items, and `None` when any one of them does not read.
+    /// A counted run of items, and `None` when any one of them does not read. It reserves no more
+    /// memory than the bytes left, so a forged count cannot reserve many times the file's size.
     fn list<T>(&mut self, each: fn(&mut Self) -> Option<T>) -> Option<Vec<T>> {
         let count = self.count()?;
-        let mut items = Vec::with_capacity(count);
+        let mut items = Vec::with_capacity(count.min(self.0.len() / size_of::<T>().max(1)));
         for _ in 0..count {
             items.push(each(self)?);
         }
