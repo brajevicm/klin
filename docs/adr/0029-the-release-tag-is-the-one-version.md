@@ -38,8 +38,9 @@ Each route updates with the tool the person already uses:
 - The plugin, through `/plugin marketplace update` or Claude Code's
   auto-update. The new plugin pins the new version and the wrapper fetches it
   on the next run, then drops the versions before it from the cache.
-- The installer and a hand download, through `klin update`, which runs the
-  `klin-update` the installer placed beside the binary.
+- The installer, through `klin update`, which installs the newest signed
+  archive over the binary (ADR 0070). A hand download has no `klin-update`
+  beside it, so `klin update` names the installer.
 - CI, by moving the tag in `uses: brajevicm/klin@vX.Y.Z`, which Renovate and
   Dependabot do.
 

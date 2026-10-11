@@ -12,9 +12,10 @@ the version, so add the heading again after each release.
 - No new checks.
 - klin checks for newer releases daily. It notifies you once per release
   and can remind your agent daily until you update.
-  `klin update --auto on` installs a new release by itself on the
-  installer's route.
-  `CI` or `KLIN_NO_UPDATE_CHECK` turns this off.
+  `klin update` checks a new release's signature before it installs it.
+  `klin update --auto on` installs each new release by itself on the
+  installer's route, with the same check.
+  `CI` or `KLIN_NO_UPDATE_CHECK` turns all of this off.
 - TypeScript files with six valid forms the old grammar rejected (#390) are
   measured again instead of failing as measurement lost.
 - `dead-symbols` leaves declarations in a TypeScript `declare global` block

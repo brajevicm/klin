@@ -1,13 +1,15 @@
 //! klin keeps itself current, or says how to update the plugin that carries it. A session
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
-//! in a detached child, so nothing waits on the network. Under `KLIN_AUTO_UPDATE=1` the child
-//! also runs the `klin-update` beside the binary. Every other command, a Stop among them, reads
-//! only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
-//! updates or tells, and so does a plugin's binary, which the plugin wrapper marks with
-//! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
+//! in a detached child, so nothing waits on the network. When the person turned auto-update
+//! on, the child also installs a newer release whose signature checks out. Every other command, a Stop among
+//! them, reads only the cache. Only a binary the installer placed, with its `klin-update`
+//! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
+//! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
+use std::ffi::OsStr;
 use std::fmt;
 use std::io;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -15,6 +17,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
+use crate::sys::signed;
 use crate::sys::state::{self, Lock};
 use crate::sys::write::{AtomicWrite, atomic_write};
 
@@ -22,12 +25,15 @@ const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
-/// Held by the one detached child that asks and updates, for as long as it runs.
+/// Held by the one detached child that asks and updates, for as long as it runs, and by
+/// `klin update`, so two installs never run at once.
 const ASK_LOCK: &str = "release-ask.lock";
 /// Held around every read and rewrite of a cache file, never across the network or a host's
 /// delivery, so two klin processes never lose each other's change or tell one piece of news
 /// twice.
 const CACHE_LOCK: &str = "release-cache.lock";
+/// How long `klin update` waits for an install or an ask in progress to end.
+const INSTALL_WAIT: Duration = Duration::from_secs(60);
 /// How long a hook waits for the cache lock before it leaves the news for a later event.
 const CACHE_WAIT: Duration = Duration::from_millis(500);
 /// The person's own auto-update setting, which `klin update --auto` writes. A file reaches a hook
@@ -163,13 +169,16 @@ impl Releases {
     }
 }
 
-/// What `latest.json` holds: the newest tag GitHub named, when klin last asked, and the release
-/// auto-update last tried.
+/// What `latest.json` holds: the newest tag GitHub named, when klin last asked, the release
+/// auto-update last tried, why that release was not installed, and whether a later try may
+/// pass.
 #[derive(Default)]
 struct Latest {
     tag: Option<Version>,
     checked: u64,
     tried: Option<Version>,
+    refused: Option<String>,
+    retry: bool,
 }
 
 impl Latest {
@@ -179,6 +188,8 @@ impl Latest {
             tag: version(&held["tag"]),
             checked: held["checked"].as_u64().unwrap_or_default(),
             tried: version(&held["tried"]),
+            refused: held["refused"].as_str().map(str::to_string),
+            retry: held["retry"].as_bool().unwrap_or_default(),
         }
     }
 
@@ -187,6 +198,8 @@ impl Latest {
             "tag": self.tag.as_ref().map(ToString::to_string),
             "checked": self.checked,
             "tried": self.tried.as_ref().map(ToString::to_string),
+            "refused": self.refused,
+            "retry": self.retry,
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -330,7 +343,7 @@ pub fn refresh() {
     for who in [Audience::Person, Audience::Agent] {
         first_sight(&releases, who);
     }
-    if let Ok(exe) = std::env::current_exe() {
+    if let Ok(exe) = installed() {
         let _ = silent(Command::new(exe).arg(CHILD))
             .process_group(0)
             .spawn();
@@ -338,9 +351,10 @@ pub fn refresh() {
 }
 
 /// The detached child, under the ask lock: the day's ask, which counts from its start so a
-/// failed or slow ask is the day's ask, then under auto-update the updater, once for each newer
-/// release. A child that finds the ask lock taken does nothing. Every change to the cache takes
-/// the cache lock for that change alone.
+/// failed or slow ask is the day's ask, then under auto-update the signed install, once for each
+/// newer release. A refused install keeps its reason for `klin status`. A child that finds the
+/// ask lock taken does nothing. Every change to the cache takes the cache lock for that change
+/// alone.
 pub fn child() {
     let Some(releases) = Releases::here() else {
         return;
@@ -349,9 +363,21 @@ pub fn child() {
     let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
+    ask_today(dir);
+    install_untried(dir, releases.route);
+}
+
+/// The day's ask, which counts from its start. A release whose last try failed in a way that
+/// may pass is tried again with the day's ask, so a failure that passes costs a day, and one
+/// that does not pass is tried once a day at most.
+fn ask_today(dir: &Path) {
     if Latest::read(dir).stale()
         && Latest::change(dir, |latest| {
             latest.checked = now();
+            if latest.retry {
+                latest.tried = None;
+                latest.retry = false;
+            }
             Some(())
         })
         .is_some()
@@ -362,15 +388,82 @@ pub fn child() {
             Some(())
         });
     }
-    let route = releases.route;
+}
+
+/// Under auto-update, install the newer release not tried yet, unless the binary on disk is
+/// already that release or newer, and keep why it failed.
+/// The attempt counts as one that may pass until it ends, so a child killed during it leaves
+/// the release to the next day's ask.
+fn install_untried(dir: &Path, route: Route) {
+    let Ok(exe) = installed() else {
+        return;
+    };
     let claimed = Latest::change(dir, |latest| {
         let tag = latest.untried(route).cloned()?;
         latest.tried = Some(tag.clone());
+        latest.refused = None;
+        latest.retry = true;
         Some(tag)
     });
-    if let (Some(_), Some(updater)) = (claimed, updater_path()) {
-        let _ = silent(&mut Command::new(updater)).status();
+    let Some(tag) = claimed.filter(|tag| older_on_disk(&exe, tag)) else {
+        return;
+    };
+    if let Err(failure) = signed::install(&tag.to_string(), &exe, dir) {
+        Latest::change(dir, |latest| {
+            latest.refused = Some(failure.to_string());
+            latest.retry = failure.retry();
+            Some(())
+        });
     }
+}
+
+/// Whether the klin at `exe` is older than `tag`. Another klin may have replaced it since this
+/// process started, so the file itself answers. A klin whose version it cannot read counts as
+/// older.
+fn older_on_disk(exe: &Path, tag: &Version) -> bool {
+    Command::new(exe)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|text| {
+            let own = text.trim().strip_prefix("klin ")?;
+            Version::parse(own.split('-').next().unwrap_or(own))
+        })
+        .is_none_or(|on_disk| on_disk < *tag)
+}
+
+/// Why auto-update did not install `tag`, when it tried and was refused.
+pub fn refused(tag: &Version) -> Option<String> {
+    let latest = Latest::read(&Releases::here()?.dir);
+    latest
+        .refused
+        .filter(|_| latest.tried.as_ref() == Some(tag))
+}
+
+/// `klin update`: ask GitHub now, and install the newest release when it is newer than this
+/// binary and its signature checks out. The release installed, or none when this build is the
+/// newest. Only the installer's binary updates itself, so any other says why and installs
+/// nothing.
+pub fn update() -> Result<Option<Version>, String> {
+    installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
+    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
+    let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
+    let exe = installed().map_err(|why| format!("klin could not find itself: {why}"))?;
+    let Some(tag) = newer_than(&exe)? else {
+        return Ok(None);
+    };
+    signed::install(&tag.to_string(), &exe, &scratch).map_err(|failure| failure.to_string())?;
+    Ok(Some(tag))
+}
+
+/// The newest release, asked of GitHub now, when it is newer than this build and than the klin
+/// at `exe`, which another klin may have replaced since this one started.
+fn newer_than(exe: &Path) -> Result<Option<Version>, String> {
+    let tag = asked().ok_or("klin could not ask GitHub for the newest release.")?;
+    Ok(Some(tag).filter(|tag| tag.is_newer() && older_on_disk(exe, tag)))
 }
 
 /// Ask GitHub now and wait, whatever the cache holds, and keep the answer: the tag GitHub
@@ -460,7 +553,7 @@ pub fn claim(who: Audience, route: Route, news: &News) -> bool {
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
-/// `klin update --auto` wrote, else off until releases are signed (#627).
+/// `klin update --auto` wrote, else off: a person opts in to a binary that replaces itself.
 fn auto() -> bool {
     match std::env::var_os("KLIN_AUTO_UPDATE") {
         Some(value) if value == "1" => true,
@@ -479,18 +572,32 @@ pub fn auto_update() -> bool {
 
 const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates the plugin. Turn \
                               on the host's own plugin auto-update instead.";
-const NO_UPDATER: &str = "auto-update runs the klin-update the installer puts beside klin, and \
-                          none is there.";
+const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
+                          itself, and none is there.";
+const BUSY: &str = "another klin is still asking for or installing a release after a minute. Run \
+                    klin update again when it ends.";
+const PLUGIN_UPDATE: &str = "this klin came with a plugin, and its host updates the plugin.";
+const NO_INSTALLER: &str = "klin-update was not found beside klin, so the installer did not \
+                            place this klin. The installer: curl --proto '=https' --tlsv1.2 \
+                            -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
+                            klin-installer.sh | sh. A plugin install updates with its plugin \
+                            instead.";
+
+/// Pass only on the installer's route, the one route whose binary changes itself. A plugin's
+/// binary fails with `plugin`, and a binary on neither route with `none`.
+fn installer_only(plugin: &str, none: &str) -> Result<(), String> {
+    match Route::here() {
+        Some(Route::Installer) => Ok(()),
+        Some(Route::Plugin) => Err(plugin.to_string()),
+        None => Err(none.to_string()),
+    }
+}
 
 /// Write the person's auto-update setting. Only the installer's binary updates itself, so a
 /// plugin's binary or one with no updater beside it says why the setting would change nothing.
 /// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
-    match Route::here() {
-        Some(Route::Installer) => {}
-        Some(Route::Plugin) => return Err(PLUGIN_SETTING.to_string()),
-        None => return Err(NO_UPDATER.to_string()),
-    }
+    installer_only(PLUGIN_SETTING, NO_UPDATER)?;
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
     let file = dir.join(AUTO_FILE);
     write(&file, if on { b"on\n" } else { b"off\n" })
@@ -501,8 +608,20 @@ fn set(name: &str) -> bool {
     std::env::var_os(name).is_some_and(|value| !value.is_empty())
 }
 
+/// Where this binary is installed. Linux names a running binary that another process replaced
+/// on disk with a ` (deleted)` suffix, and the klin now installed is at the path without it.
+pub fn installed() -> io::Result<PathBuf> {
+    let exe = std::env::current_exe()?;
+    Ok(
+        match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
+            Some(path) => PathBuf::from(OsStr::from_bytes(path)),
+            None => exe,
+        },
+    )
+}
+
 fn updater_path() -> Option<PathBuf> {
-    std::env::current_exe()
+    installed()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
         .filter(|path| path.is_file())

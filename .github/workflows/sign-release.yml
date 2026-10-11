@@ -1,0 +1,62 @@
+# dist calls this workflow between the builds and the host job (global-artifacts-jobs in
+# dist-workspace.toml). It signs each release archive with the minisign key klin checks before
+# it installs an update, with the trusted comment `klin VERSION TARGET`, so a signature never
+# passes for another release or another machine. The host job publishes the signatures with
+# the archives, and it runs only when this job succeeded. ADR 0070.
+name: sign-release
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+
+jobs:
+  sign:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Fetch the archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: artifacts-build-local-*
+          path: dist/
+          merge-multiple: true
+      - name: Install minisign
+        run: sudo apt-get install -y minisign
+      - name: Sign each archive and check it against the key klin carries
+        env:
+          PLAN: ${{ inputs.plan }}
+          SIGNING_KEY: ${{ secrets.KLIN_RELEASE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SIGNING_KEY" ]]; then
+            echo "::error title=No signing key::KLIN_RELEASE_SIGNING_KEY is not set."
+            exit 1
+          fi
+          tag=$(jq -r '.announcement_tag' <<< "$PLAN")
+          key="$RUNNER_TEMP/release.key"
+          (umask 077 && printf '%s\n' "$SIGNING_KEY" > "$key")
+          shopt -s nullglob
+          archives=(dist/klin-*.tar.xz)
+          if [[ ${#archives[@]} -eq 0 ]]; then
+            echo "::error title=No archives::The builds left no klin-*.tar.xz to sign."
+            exit 1
+          fi
+          for archive in "${archives[@]}"; do
+            target=$(basename "$archive" .tar.xz)
+            target=${target#klin-}
+            minisign -S -s "$key" -m "$archive" -t "klin ${tag#v} $target" -x "$archive.minisig"
+            minisign -V -p src/sys/release.pub -m "$archive"
+          done
+          rm -f "$key"
+      - name: Upload the signatures
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: artifacts-signatures
+          path: dist/*.minisig

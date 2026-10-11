@@ -155,6 +155,9 @@ fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, ou
             "{}",
             release::Audience::Person.note(route, &news, None)
         );
+        if let Some(why) = release::refused(tag) {
+            let _ = writeln!(out, "klin could not install it on its own: {why}");
+        }
     }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {
