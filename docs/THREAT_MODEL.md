@@ -178,7 +178,10 @@ klin does not sandbox the coding agent, harden the developer machine, manage
 secrets, or automate organization policy. It reads no secrets. No native check
 or recipe reads the network, and no measurement sends anything anywhere.
 `klin update` uses the network to fetch a release, and the guard denies it to
-an agent. A user-owned SARIF integration command may use the network as the
+an agent. On a binary the installer placed, `klin status` and `klin setup` ask
+GitHub for the newest release tag at most once a day, and send nothing about
+the repository. Hooks never ask. `KLIN_NO_UPDATE_CHECK=1` or `CI` turns the
+ask off (SPEC section 11.9). A user-owned SARIF integration command may use the network as the
 project's own choice. The `build` and `run` commands execute shell lines the
 config owner wrote, under bounded execution. A derived build command comes
 from a fixed table and is printed before it runs. klin never invokes `npx`,

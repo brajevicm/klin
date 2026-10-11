@@ -405,6 +405,17 @@ pub fn feed_as(klin: &str, cwd: &Path, args: &[&str], stdin: &str) -> Run {
     spawn_binary(klin, cwd, args, stdin, &[])
 }
 
+/// A run of a klin binary at another path, such as a copy beside an updater, with `environment`.
+pub fn feed_as_with(
+    klin: &str,
+    cwd: &Path,
+    environment: &[(&str, &str)],
+    args: &[&str],
+    stdin: &str,
+) -> Run {
+    spawn_binary(klin, cwd, args, stdin, environment)
+}
+
 fn spawn(cwd: &Path, args: &[&str], stdin: &str, environment: &[(&str, &str)]) -> Run {
     spawn_binary(&binary(), cwd, args, stdin, environment)
 }

@@ -8,6 +8,7 @@ use crate::config;
 use crate::hook::host::ADAPTERS;
 use crate::hook::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::sys::error::Error;
+use crate::sys::release;
 use crate::{
     cli::starter,
     sys::{state, write},
@@ -78,6 +79,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         starter::inert(root, out);
     }
     let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
+    release::refresh();
     Ok(0)
 }
 

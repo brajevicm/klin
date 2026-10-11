@@ -45,7 +45,7 @@ enum Command {
     /// Show what klin caught, what was resolved, and what still needs attention
     Report(report::Args),
     /// Install the newest release over this binary, through the klin-update beside it
-    Update,
+    Update(update::Args),
 }
 
 /// The agent ingress answers before the command line is parsed, so an argument it does not know
@@ -57,7 +57,7 @@ fn main() -> ExitCode {
         return agent::run();
     }
     match Cli::parse().command {
-        Command::Update => ExitCode::from(update::run()),
+        Command::Update(args) => ExitCode::from(update::run(&args)),
         command => report(|start, out| public(&command, start, out)),
     }
 }
@@ -69,7 +69,7 @@ fn public(command: &Command, start: &Path, out: &mut String) -> Result<u8, Error
         Command::Status(args) => status::run(args, start, out),
         Command::Policy(args) => policy::run(args, start, out),
         Command::Report(args) => report::run(args, start, out),
-        Command::Update => Ok(update::run()),
+        Command::Update(args) => Ok(update::run(args)),
     }
 }
 

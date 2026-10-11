@@ -7,11 +7,22 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::cli::setup;
+use crate::sys::release;
 
 const INSTALL: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                        https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh";
 
-pub fn run() -> u8 {
+#[derive(clap::Args)]
+pub struct Args {
+    /// Ask GitHub for the newest release and name it, without installing anything
+    #[arg(long)]
+    check: bool,
+}
+
+pub fn run(args: &Args) -> u8 {
+    if args.check {
+        return check();
+    }
     let beside = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
@@ -31,6 +42,26 @@ pub fn run() -> u8 {
             2
         }
     }
+}
+
+/// The installed version and the newest release, which GitHub is asked for now. Spec 11.8.
+fn check() -> u8 {
+    let version = env!("CARGO_PKG_VERSION");
+    let Some(tag) = release::fetch() else {
+        eprintln!("FAIL: klin {version} could not ask GitHub for the newest release.");
+        return 2;
+    };
+    match release::is_newer(&tag) {
+        true => println!(
+            "klin {tag} is available (you have {version}): {}. Run klin update, then klin setup.",
+            release::notes(&tag)
+        ),
+        false => println!(
+            "klin {version} is the newest release: {}.",
+            release::notes(&tag)
+        ),
+    }
+    0
 }
 
 /// After an update, the new binary reads this repository's integrations, and any that is not

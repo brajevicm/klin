@@ -11,6 +11,7 @@ use crate::cli::setup::{self, Integration};
 use crate::config::file::{Config, Discovered};
 use crate::engine::catalogue;
 use crate::sys::error::Error;
+use crate::sys::release;
 use crate::window::stamp::{Here, Verdict};
 use crate::{hook::journal, sys::state, window::stamp};
 
@@ -28,6 +29,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(root) = found.root.as_deref() else {
         return Err(Error(NO_REPOSITORY.to_string()));
     };
+    release::refresh();
     let document = document(&found, root, start);
     match args.json {
         true => {
@@ -48,7 +50,7 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
     json!({
         "schema_version": 1,
         "command": "status",
-        "klin": {"version": env!("CARGO_PKG_VERSION")},
+        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": release::known()},
         "config": {
             "path": found.config.as_ref().map(|file| file.display().to_string()),
             "present": found.config.is_some(),
@@ -132,7 +134,17 @@ fn last_stop(lines: &[Value]) -> Value {
 }
 
 fn text(document: &Value, notes: &[String], out: &mut String) {
-    let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
+    let version = word(&document["klin"], "version");
+    let _ = writeln!(out, "klin {version}");
+    if let Some(tag) = document["klin"]["latest_known"]
+        .as_str()
+        .filter(|tag| release::is_newer(tag))
+    {
+        let _ = writeln!(
+            out,
+            "klin {tag} is available (you have {version}). Run klin update, then klin setup."
+        );
+    }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {
         (Some(path), None) => {

@@ -24,7 +24,7 @@ use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
     hook::{build, handoff, journal, stats, turn},
-    sys::{clock, state},
+    sys::{clock, release, state},
     window::stamp,
 };
 
@@ -385,14 +385,19 @@ fn tell(
     let mut parts: Vec<(&'static str, String)> =
         note.into_iter().map(|note| ("note", note)).collect();
     let intervened = log.gate_blocks > 0 || turn::intervened(root);
-    if code == 0 && !args.json() && log.host.is_some() && intervened {
+    let telling = code == 0 && !args.json() && log.host.is_some();
+    if telling && intervened {
         let tail = stats::stop_tail(root);
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
+    let heard = telling.then(|| release_part(&mut parts)).flatten();
     let (parts, noted) = kept(parts, noting, quiet);
     if parts.is_empty() {
         return (None, noted);
+    }
+    if let Some(heard) = heard.filter(|_| parts.iter().any(|(part, _)| *part == "release")) {
+        heard();
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
@@ -426,6 +431,23 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
     };
     seen.iter().all(|tree| *tree == prompted)
         && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
+}
+
+/// The note of a newer release the agent has not heard of, and what records it as heard once
+/// the Stop tells it. Spec 11.9.
+fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<impl FnOnce() + use<>> {
+    let (tag, heard) = release::untold()?;
+    parts.push(("release", release_note(&tag)));
+    Some(heard)
+}
+
+/// What a Stop tells the agent of a newer release, which only a person installs, because the
+/// guard denies `klin update` to an agent. Spec 10.8, 11.9.
+fn release_note(tag: &str) -> String {
+    format!(
+        "klin {tag} is available. Tell the person to run klin update, then klin setup. Do not \
+         run it yourself."
+    )
 }
 
 fn add_prompt_note(

@@ -5,6 +5,7 @@ pub mod error;
 pub mod git;
 pub mod hunks;
 pub mod record;
+pub mod release;
 pub mod shell;
 pub mod state;
 pub mod write;
