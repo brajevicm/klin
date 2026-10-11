@@ -294,16 +294,7 @@ impl Context<'_> {
     where
         Self: 'b,
     {
-        Context {
-            only,
-            gate: self.gate,
-            project: self.project,
-            prior: self.prior,
-            base: self.base,
-            changes: self.changes,
-            caller: self.caller,
-            footprint: self.footprint,
-        }
+        Context { only, ..*self }
     }
 }
 
