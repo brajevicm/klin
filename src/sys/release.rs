@@ -2,9 +2,9 @@
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
 //! in a detached child, so nothing waits on the network. Unless auto-update is off, the child
 //! also installs a newer release whose signature checks out. Every other command, a Stop among
-//! them, reads only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
-//! updates or tells, and so does a plugin's binary, which the plugin wrapper marks with
-//! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
+//! them, reads only the cache. Only a binary the installer placed, with its `klin-update`
+//! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
+//! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
 use std::fmt;
 use std::io;
@@ -394,8 +394,10 @@ pub fn refused(tag: &Version) -> Option<String> {
 
 /// `klin update`: ask GitHub now, and install the newest release when it is newer than this
 /// binary and its signature checks out. The release installed, or none when this build is the
-/// newest. Only the installer's binary updates itself, which the caller checks.
+/// newest. Only the installer's binary updates itself, so any other says why and installs
+/// nothing.
 pub fn update() -> Result<Option<Version>, String> {
+    installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
     let tag = asked().ok_or("klin could not ask GitHub for the newest release.")?;
     if !tag.is_newer() {
         return Ok(None);
@@ -515,16 +517,28 @@ const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates
                               on the host's own plugin auto-update instead.";
 const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
                           itself, and none is there.";
+const PLUGIN_UPDATE: &str = "this klin came with a plugin, and its host updates the plugin.";
+const NO_INSTALLER: &str = "klin-update was not found beside klin, so the installer did not \
+                            place this klin. The installer: curl --proto '=https' --tlsv1.2 \
+                            -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
+                            klin-installer.sh | sh. A plugin install updates with its plugin \
+                            instead.";
+
+/// Pass only on the installer's route, the one route whose binary changes itself. A plugin's
+/// binary fails with `plugin`, and a binary on neither route with `none`.
+fn installer_only(plugin: &str, none: &str) -> Result<(), String> {
+    match Route::here() {
+        Some(Route::Installer) => Ok(()),
+        Some(Route::Plugin) => Err(plugin.to_string()),
+        None => Err(none.to_string()),
+    }
+}
 
 /// Write the person's auto-update setting. Only the installer's binary updates itself, so a
 /// plugin's binary or one with no updater beside it says why the setting would change nothing.
 /// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
-    match Route::here() {
-        Some(Route::Installer) => {}
-        Some(Route::Plugin) => return Err(PLUGIN_SETTING.to_string()),
-        None => return Err(NO_UPDATER.to_string()),
-    }
+    installer_only(PLUGIN_SETTING, NO_UPDATER)?;
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
     let file = dir.join(AUTO_FILE);
     write(&file, if on { b"on\n" } else { b"off\n" })

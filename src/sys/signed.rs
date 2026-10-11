@@ -19,18 +19,24 @@ const KEY: &str = include_str!("release.pub");
 pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), String> {
     let archive = format!("klin-{}.tar.xz", target()?);
     let url = format!("{DOWNLOAD}{tag}/{archive}");
-    let work = scratch.join(format!("update-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&work);
-    fs::create_dir_all(&work).map_err(|why| format!("{}: {why}", work.display()))?;
-    let installed = download(&url, &work.join(&archive))
-        .and_then(|bytes| {
-            let signature = download(&format!("{url}.minisig"), &work.join("minisig"))?;
-            check(&bytes, &signature, tag)?;
-            unpack(&bytes, &work)
-        })
-        .and_then(|binary| replace(&binary, exe));
-    let _ = fs::remove_dir_all(&work);
-    installed
+    let work = Scratch(scratch.join(format!("update-{}", std::process::id())));
+    let _ = fs::remove_dir_all(&work.0);
+    fs::create_dir_all(&work.0).map_err(|why| format!("{}: {why}", work.0.display()))?;
+    let bytes = download(&url, &work.0.join(&archive))?;
+    let signature = download(&format!("{url}.minisig"), &work.0.join("minisig"))?;
+    check(&bytes, &signature, tag)?;
+    let binary = unpack(&bytes, &work.0)?;
+    replace(&binary, exe)
+}
+
+/// A path klin made for one install, removed when the install ends, whatever way it ends.
+struct Scratch(PathBuf);
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+        let _ = fs::remove_file(&self.0);
+    }
 }
 
 /// This machine's name in a release archive, for the four targets the release builds.
@@ -121,12 +127,9 @@ fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, String> {
 /// Copy `binary` beside `exe` and rename it over `exe`, so `exe` is either the old klin or the
 /// new one, never part of either.
 fn replace(binary: &Path, exe: &Path) -> Result<(), String> {
-    let beside = exe.with_file_name(format!(".klin-new-{}", std::process::id()));
+    let beside = Scratch(exe.with_file_name(format!(".klin-new-{}", std::process::id())));
     let failed = |why: std::io::Error| format!("{}: {why}", exe.display());
-    fs::copy(binary, &beside).map_err(failed)?;
-    fs::set_permissions(&beside, fs::Permissions::from_mode(0o755)).map_err(failed)?;
-    fs::rename(&beside, exe).map_err(|why| {
-        let _ = fs::remove_file(&beside);
-        failed(why)
-    })
+    fs::copy(binary, &beside.0).map_err(failed)?;
+    fs::set_permissions(&beside.0, fs::Permissions::from_mode(0o755)).map_err(failed)?;
+    fs::rename(&beside.0, exe).map_err(failed)
 }

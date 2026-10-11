@@ -9,9 +9,6 @@ use std::process::Command;
 use crate::cli::setup;
 use crate::sys::release;
 
-const INSTALL: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
-                       https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh";
-
 #[derive(Clone, Copy, clap::ValueEnum)]
 enum Switch {
     On,
@@ -40,21 +37,6 @@ pub fn run(args: &Args) -> u8 {
 
 /// Install the newest release over the binary the installer placed. Spec 11.8.
 fn install() -> u8 {
-    match release::route() {
-        Some(release::Route::Installer) => {}
-        Some(release::Route::Plugin) => {
-            eprintln!("FAIL: this klin came with a plugin, and its host updates the plugin.");
-            return 2;
-        }
-        None => {
-            eprintln!(
-                "FAIL: klin-update was not found beside klin, so the installer did not place \
-                 this klin. The installer: {INSTALL}. A plugin install updates with its plugin \
-                 instead."
-            );
-            return 2;
-        }
-    }
     match release::update() {
         Ok(Some(tag)) => {
             println!("klin updated to {tag}. Release notes: {}", tag.notes());
