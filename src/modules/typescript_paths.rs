@@ -8,10 +8,24 @@ pub(super) struct Paths {
     scopes: HashMap<String, Scope>,
 }
 
+/// The directory paths targets resolve from: a written `baseUrl`, or the config's own directory.
+#[derive(Clone)]
+enum Anchor {
+    Config(String),
+    BaseUrl(String),
+}
+
+impl Anchor {
+    fn path(&self) -> &str {
+        match self {
+            Anchor::Config(path) | Anchor::BaseUrl(path) => path,
+        }
+    }
+}
+
 struct Config {
     directory: String,
-    anchor: Option<String>,
-    base_url: bool,
+    anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
     uncertain: bool,
@@ -48,7 +62,10 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.exact.is_empty() && scope.wildcards.is_empty() && !scope.base_url {
+                if scope.exact.is_empty()
+                    && scope.wildcards.is_empty()
+                    && !matches!(scope.anchor, Some(Anchor::BaseUrl(_)))
+                {
                     return None;
                 }
                 let root = scope
@@ -74,8 +91,7 @@ fn contains(directory: &str, file: &str) -> bool {
 
 struct Scope {
     roots: Option<Roots>,
-    anchor: Option<String>,
-    base_url: bool,
+    anchor: Option<Anchor>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
@@ -94,11 +110,13 @@ impl FilePaths<'_> {
 
     /// The path a bare specifier names under a written `baseUrl`, where the config is proved.
     pub(super) fn under_base_url(self, specifier: &str) -> Option<String> {
-        let scope = self.scope;
-        if !scope.base_url || scope.uncertain || !self.root || absolute(specifier) {
+        let Some(Anchor::BaseUrl(base)) = &self.scope.anchor else {
+            return None;
+        };
+        if self.scope.uncertain || !self.root || absolute(specifier) {
             return None;
         }
-        joined(scope.anchor.as_deref()?, specifier)
+        joined(base, specifier)
     }
 }
 
@@ -119,7 +137,6 @@ impl Scope {
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
-            base_url: owners.first().is_some_and(|config| config.base_url),
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
@@ -187,7 +204,7 @@ impl Scope {
                 "{specifier} is a local paths alias whose target klin cannot prove"
             ));
         };
-        joined(anchor, &target.replace('*', wild))
+        joined(anchor.path(), &target.replace('*', wild))
             .ok_or_else(|| format!("{specifier} is a local paths alias that leaves the tree"))
     }
 }
@@ -335,16 +352,16 @@ impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = match value.pointer("/compilerOptions/baseUrl") {
-            None => Some(directory(file).to_string()),
+            None => Some(Anchor::Config(directory(file).to_string())),
             Some(value) => value
                 .as_str()
                 .filter(|path| !absolute(path))
-                .and_then(|path| joined(directory(file), path)),
+                .and_then(|path| joined(directory(file), path))
+                .map(Anchor::BaseUrl),
         };
         Self {
             directory: directory(file).to_string(),
             anchor,
-            base_url: value.pointer("/compilerOptions/baseUrl").is_some(),
             rules: rules(file, parsed),
             roots: Roots::read(file, value),
             uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"

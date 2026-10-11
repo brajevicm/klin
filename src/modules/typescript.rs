@@ -69,17 +69,11 @@ fn resolved(
         paths.and_then(|scope| scope.resolve(specifier))
     };
     match base {
-        Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
+        Some(Ok(base)) => dependency(builder, modules, site, specifier, &base, Missing::Judged),
         Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
         None => match paths.and_then(|scope| scope.under_base_url(specifier)) {
-            Some(base)
-                if candidates(&base)
-                    .iter()
-                    .any(|file| modules.contains_key(file.as_str())) =>
-            {
-                dependency(builder, modules, site, specifier, &base);
-            }
-            _ => builder.external += 1,
+            Some(base) => dependency(builder, modules, site, specifier, &base, Missing::External),
+            None => builder.external += 1,
         },
     }
     if !relative(specifier) {
@@ -89,12 +83,21 @@ fn resolved(
     }
 }
 
+/// What a specifier that names no held TypeScript file is: judged by its form, or external,
+/// as a `baseUrl` miss is because TypeScript then tries packages.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Missing {
+    Judged,
+    External,
+}
+
 fn dependency(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
     site: &Site,
     specifier: &str,
     base: &str,
+    missing: Missing,
 ) {
     let topology = builder.topology;
     let candidates = candidates(base);
@@ -110,6 +113,7 @@ fn dependency(
             site.line,
             site.start_byte,
         ),
+        [] if missing == Missing::External => builder.external += 1,
         [] if another_kind(topology, base, &candidates) => builder.external += 1,
         [] if !relative(specifier) && package_name(specifier) => builder.external += 1,
         [] => builder.hole_at(

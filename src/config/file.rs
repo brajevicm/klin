@@ -291,17 +291,17 @@ fn asks(file: &Path, section: &str, keys: &[&str], value: &Value) -> Result<(), 
     if keys.iter().any(|key| {
         fields
             .get(*key)
-            .is_some_and(|value| value != &Value::Bool(false))
+            .is_some_and(|value| value.as_bool() != Some(false))
     }) {
         return Ok(());
     }
     Err(Error(format!(
-        "{}: a \"{section}\" entry has no {}",
+        "{}: \"{section}\" must state one of {} with a value other than false",
         file.display(),
         keys.iter()
             .map(|key| format!("\"{key}\""))
             .collect::<Vec<_>>()
-            .join(" and no true ")
+            .join(", ")
     )))
 }
 
