@@ -6,6 +6,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::contract::check::{Context, Sink};
 use crate::contract::coverage::Files;
@@ -82,6 +83,13 @@ impl<'a> Unchanged<'a> {
             changed: changes.iter().map(|change| change.path.as_str()).collect(),
             cost,
         })
+    }
+
+    /// The time reading and decoding the base's cache took, which this view reports as its
+    /// `cache_read`, however the base was laid out: a light layout read it before this view
+    /// existed, and a checkout reads it here. The base's own cost leaves it out. Spec B.13.
+    pub fn cache_read(&self) -> Duration {
+        self.cost.cache_read
     }
 
     /// The base's outcomes written to its cache once both trees are measured, and what reading
@@ -268,8 +276,13 @@ fn sides<'a, T>(
     let unchanged = timed(&mut names.base, || {
         unchanged(at.project, at.changes, prior, commit)
     })?;
+    names.base = names.base.saturating_sub(
+        unchanged
+            .as_ref()
+            .map_or(Duration::ZERO, Unchanged::cache_read),
+    );
     if let Some(layout) = layout {
-        *layout = handed(prior, names);
+        *layout = prior.layout();
     }
     let mut after = timed(&mut names.after.measure, || {
         measure_after(unchanged.as_ref())
@@ -283,14 +296,6 @@ fn sides<'a, T>(
         kept,
         after,
     })
-}
-
-/// The base's layout handed to the counted gate, with the structural cache read it holds taken
-/// out of the base's cost, because the view reports that read as `cache_read`. Spec B.13.
-fn handed(prior: &Prior, names: &mut NameCost) -> Option<Layout> {
-    let layout = prior.layout()?;
-    names.base = names.base.saturating_sub(layout.cache_read);
-    Some(layout)
 }
 
 /// The base laid out whole for this run: the runner's own when it laid the whole base out, which

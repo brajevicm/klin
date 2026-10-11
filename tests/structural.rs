@@ -5,7 +5,6 @@ use serde_json::{Value, json};
 
 const GATES: [&str; 3] = ["complexity", "dead-symbols", "reachability"];
 const A_STOP: &str = r#"{"hook_event_name": "Stop", "stop_hook_active": false}"#;
-const FOOTPRINT: &str = "KLIN_FOOTPRINT";
 
 /// A base with three reached command files, so `reachability` derives a family, under this
 /// configuration.
@@ -36,7 +35,7 @@ fn judged(tree: &Tree, flags: &[&str], gates: &[&str]) -> Value {
 fn footprinted(tree: &Tree, gates: &[&str]) -> Value {
     let mut args = vec!["check", "--json"];
     args.extend_from_slice(gates);
-    tree.run_with(&[(FOOTPRINT, "1")], &args).json()
+    tree.run_with(&[(harness::FOOTPRINT, "1")], &args).json()
 }
 
 /// Every structural gate in one run, each gate's own part of the report the same as that gate

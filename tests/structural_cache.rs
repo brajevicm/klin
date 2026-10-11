@@ -151,7 +151,7 @@ fn a_cached_decode_shares_reference_names_across_files() {
         .as_object()
         .map(|held| held.keys().map(String::as_str).collect::<Vec<_>>());
     assert_eq!(sizes_alone, Some(vec!["sizes"]), "{unasked}");
-    let warm = stop_with(&tree, tree.root(), &[("KLIN_FOOTPRINT", "1")]);
+    let warm = stop_with(&tree, tree.root(), &[(harness::FOOTPRINT, "1")]);
     let report = warm.json();
     let row = dead_symbols(&warm);
     assert!(row["facts"]["cached"].as_u64() >= Some(2), "{report}");

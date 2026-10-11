@@ -345,7 +345,7 @@ impl Fixture {
     /// One untimed Stop that requests the footprint of 11.2, as the footprint counters of the
     /// journal line it wrote. No timed Stop requests it, so no timed Stop pays for its walk.
     fn footprinted_hook(&self) -> BTreeMap<String, u64> {
-        let run = self.hook_with(&[("KLIN_FOOTPRINT", "1")]);
+        let run = self.hook_with(&[(harness::FOOTPRINT, "1")]);
         assert_eq!(run.code, 0, "footprint hook: {}", run.out);
         let lines = journal(&self.tree);
         let mut held = BTreeMap::new();
@@ -1028,7 +1028,7 @@ fn peak_rss(fixture: &Fixture, args: &[&str]) -> Option<u64> {
     };
     let mut command = Command::new("/usr/bin/time");
     command.args(time_args);
-    command.env("LC_ALL", "C");
+    command.env("LC_ALL", "C").env_remove(harness::FOOTPRINT);
     for (name, _) in std::env::vars().filter(|(name, _)| name.starts_with("GITHUB_")) {
         command.env_remove(name);
     }
