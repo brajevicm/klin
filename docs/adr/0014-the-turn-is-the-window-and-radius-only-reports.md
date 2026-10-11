@@ -14,6 +14,9 @@
 > start and prompt alike, and it is guarded. The paragraph "The stamp is not
 > guarded" no longer holds. ADR 0019 moves it out of `.klin/`.
 
+> ADR 0073 amends this record. A row in a tier that allows it may block with
+> a remedy that deletes code or changes behavior.
+
 ADR 0008 took `diff-radius` from the Klin spec as a gate worth having. Building
 it showed that the gate shape does not survive contact with what klin is. What
 survives is a report on a window klin did not previously own.
