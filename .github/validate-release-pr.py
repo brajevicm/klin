@@ -11,6 +11,7 @@ import tomllib
 EXPECTED = [
     ".agents/plugins/marketplace.json",
     ".claude-plugin/marketplace.json",
+    "CHANGELOG.md",
     "Cargo.lock",
     "Cargo.toml",
     "README.md",
@@ -138,6 +139,8 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
             f'"ref": "v{previous}"'.encode(),
             path,
         )
+    if path == "CHANGELOG.md":
+        return replace_once(data, f"## {current}\n".encode(), b"## Unreleased\n", path)
     if path == "README.md":
         data = replace_once(
             data,
@@ -152,6 +155,14 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
             path,
         )
     fail(f"no release normalizer for {path}")
+
+
+def release_notes(changelog: bytes, version: str) -> str:
+    text = changelog.decode("utf-8", errors="replace")
+    section = re.search(
+        rf"^## {re.escape(version)}\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL
+    )
+    return section.group(1).strip() if section else ""
 
 
 def changed_files(base: str, head: str) -> list[str]:
@@ -199,6 +210,15 @@ def main() -> None:
                 f"{path}: release PR changes bytes beyond the expected "
                 f"{previous} -> {current} version substitution"
             )
+
+    notes = release_notes(show(head, "CHANGELOG.md"), current).splitlines()
+    if not notes or notes[0] != "### What changes for you" or not any(
+        line.strip() for line in notes[1:]
+    ):
+        fail(
+            f"CHANGELOG.md: the {current} section must open with a filled "
+            "'### What changes for you' section, which the GitHub release shows first"
+        )
 
     print(f"release diff is exactly the {previous} -> {current} version transformation")
 

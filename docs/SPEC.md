@@ -7341,8 +7341,13 @@ that changes `plugins/klin` reaches a plugin user only with the next release.
 The generated release pull request rewrites the `ref` with the manifests.
 It MUST differ from its `main` base only by the configured release-version
 substitutions, including the crate/lock versions, the two manifest versions,
-the two marketplace refs and the two README pins; file modes and all other
-bytes MUST remain unchanged. The required `quality / gates` check MUST prove
+the two marketplace refs, the two README pins and the `## Unreleased` heading
+of `CHANGELOG.md`, which becomes `## X.Y.Z`; file modes and all other bytes
+MUST remain unchanged. That section MUST open with a filled
+`### What changes for you` subsection that a person wrote: new checks, verdicts
+that change, and whether `klin setup` must run again. cargo-dist puts it above
+the install table of the GitHub Release, and a release without it MUST NOT
+merge. The required `quality / gates` check MUST prove
 that exact transformation and MUST run `dist plan` before the release PR may
 merge. After merge, `publish-release` MUST revalidate the transformation,
 MUST create `vX.Y.Z` only on that exact merged commit, and MUST NOT move an
@@ -7355,7 +7360,8 @@ Cursor verification is required only for host-sensitive changes or when that
 evidence is stale, red or inconclusive; a version-only generated release PR
 does not require a manual host smoke. CLI/static release tests fail when a
 marketplace `ref` disagrees with the crate version, when the configured
-release rewrites anything outside the intended version fields, when exact
+release rewrites anything outside the intended version fields, when a release
+PR's changelog section lacks the user notes, when exact
 release validation can ignore non-version bytes or file modes, or when
 `cargo-release` can push or tag. ADR 0029 records the decision.
 

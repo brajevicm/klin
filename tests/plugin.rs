@@ -20,6 +20,7 @@ const TAGGED_MARKETS: [(&str, &str); 2] =
     [(MARKET, "plugins/klin"), (CODEX_MARKET, "./plugins/klin")];
 const README: &str = "README.md";
 const DIST_WORKSPACE: &str = "dist-workspace.toml";
+const CHANGELOG: &str = "CHANGELOG.md";
 const SHARED_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*";
 /// The version the wrapper pins, which every test fetches into a cache of its own.
 const PINNED: &str = env!("CARGO_PKG_VERSION");
@@ -135,6 +136,19 @@ fn the_release_rewrites_each_marketplace_ref_to_the_new_tag() {
         };
         assert_eq!(rewritten, tagged, "{market}");
     }
+}
+
+/// The release names the notes a person wrote under Unreleased after the new version, which is
+/// the section cargo-dist puts above the install table of the GitHub release. #626.
+#[test]
+fn the_release_names_the_unreleased_notes_after_the_new_tag() {
+    let written = "# Changelog\n\n## Unreleased\n\n### What changes for you\n\n- A note.\n\n\
+                   ## 0.5.3\n\n- Older.\n";
+
+    assert_eq!(
+        cargo_release_rewrite(CHANGELOG, written, "9.9.9"),
+        written.replacen("## Unreleased\n", "## 9.9.9\n", 1)
+    );
 }
 
 /// cargo-release prepares the release commit, but GitHub owns the branch, PR and tag.
@@ -295,6 +309,16 @@ fn the_readme_names_the_codex_hook_trust_step() {
     assert!(
         readme.contains("`/hooks`, review and trust the klin hooks, then start a fresh session."),
         "the README omits the Codex hook trust step"
+    );
+}
+
+/// The README tells a CI user how Dependabot raises a PR for each new klin Action version.
+/// #626.
+#[test]
+fn the_readme_tells_ci_users_how_to_get_a_pr_for_each_release() {
+    assert!(
+        text(README).contains("package-ecosystem: github-actions"),
+        "the README omits Dependabot's github-actions ecosystem"
     );
 }
 
@@ -1200,6 +1224,10 @@ fn cargo_release_config() -> cargo_toml::Value {
 }
 
 fn after_cargo_release(relative: &str, version: &str) -> String {
+    cargo_release_rewrite(relative, &text(relative), version)
+}
+
+fn cargo_release_rewrite(relative: &str, held: &str, version: &str) -> String {
     let rewrites: Vec<cargo_toml::Value> = cargo_release_config()
         .get("pre-release-replacements")
         .and_then(cargo_toml::Value::as_array)
@@ -1213,7 +1241,7 @@ fn after_cargo_release(relative: &str, version: &str) -> String {
         "the release does not rewrite {relative}"
     );
 
-    rewrites.iter().fold(text(relative), |held, rewrite| {
+    rewrites.iter().fold(held.to_string(), |held, rewrite| {
         let field = |key: &str| {
             rewrite
                 .get(key)
