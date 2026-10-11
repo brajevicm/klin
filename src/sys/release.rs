@@ -1,7 +1,7 @@
 //! klin keeps itself current, or says how to update the plugin that carries it. A session
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
-//! in a detached child, so nothing waits on the network. Under `KLIN_AUTO_UPDATE=1` the child
-//! also runs the `klin-update` beside the binary. Every other command, a Stop among them, reads
+//! in a detached child, so nothing waits on the network. Unless auto-update is off, the child
+//! also installs a newer release whose signature checks out. Every other command, a Stop among them, reads
 //! only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
 //! updates or tells, and so does a plugin's binary, which the plugin wrapper marks with
 //! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
@@ -15,6 +15,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
+use crate::sys::signed;
 use crate::sys::state::{self, Lock};
 use crate::sys::write::{AtomicWrite, atomic_write};
 
@@ -163,13 +164,14 @@ impl Releases {
     }
 }
 
-/// What `latest.json` holds: the newest tag GitHub named, when klin last asked, and the release
-/// auto-update last tried.
+/// What `latest.json` holds: the newest tag GitHub named, when klin last asked, the release
+/// auto-update last tried, and why that release was not installed.
 #[derive(Default)]
 struct Latest {
     tag: Option<Version>,
     checked: u64,
     tried: Option<Version>,
+    refused: Option<String>,
 }
 
 impl Latest {
@@ -179,6 +181,7 @@ impl Latest {
             tag: version(&held["tag"]),
             checked: held["checked"].as_u64().unwrap_or_default(),
             tried: version(&held["tried"]),
+            refused: held["refused"].as_str().map(str::to_string),
         }
     }
 
@@ -187,6 +190,7 @@ impl Latest {
             "tag": self.tag.as_ref().map(ToString::to_string),
             "checked": self.checked,
             "tried": self.tried.as_ref().map(ToString::to_string),
+            "refused": self.refused,
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -338,8 +342,8 @@ pub fn refresh() {
 }
 
 /// The detached child, under the ask lock: the day's ask, which counts from its start so a
-/// failed or slow ask is the day's ask, then under auto-update the updater, once for each newer
-/// release. A child that finds the ask lock taken does nothing. Every change to the cache takes
+/// failed or slow ask is the day's ask, then under auto-update the signed install, once for each
+/// newer release. A refused install keeps its reason for `klin status`. A child that finds the ask lock taken does nothing. Every change to the cache takes
 /// the cache lock for that change alone.
 pub fn child() {
     let Some(releases) = Releases::here() else {
@@ -366,11 +370,40 @@ pub fn child() {
     let claimed = Latest::change(dir, |latest| {
         let tag = latest.untried(route).cloned()?;
         latest.tried = Some(tag.clone());
+        latest.refused = None;
         Some(tag)
     });
-    if let (Some(_), Some(updater)) = (claimed, updater_path()) {
-        let _ = silent(&mut Command::new(updater)).status();
+    if let (Some(tag), Ok(exe)) = (claimed, std::env::current_exe())
+        && let Err(why) = signed::install(&tag.to_string(), &exe, dir)
+    {
+        Latest::change(dir, |latest| {
+            latest.refused = Some(why);
+            Some(())
+        });
     }
+}
+
+/// Why auto-update did not install `tag`, when it tried and was refused.
+pub fn refused(tag: &Version) -> Option<String> {
+    let latest = Latest::read(&Releases::here()?.dir);
+    latest
+        .refused
+        .filter(|_| latest.tried.as_ref() == Some(tag))
+}
+
+/// `klin update`: ask GitHub now, and install the newest release when it is newer than this
+/// binary and its signature checks out. The release installed, or none when this build is the
+/// newest. Only the installer's binary updates itself, which the caller checks.
+pub fn update() -> Result<Option<Version>, String> {
+    let tag = asked().ok_or("klin could not ask GitHub for the newest release.")?;
+    if !tag.is_newer() {
+        return Ok(None);
+    }
+    let exe =
+        std::env::current_exe().map_err(|why| format!("klin could not find itself: {why}"))?;
+    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
+    signed::install(&tag.to_string(), &exe, &scratch)?;
+    Ok(Some(tag))
 }
 
 /// Ask GitHub now and wait, whatever the cache holds, and keep the answer: the tag GitHub
@@ -460,14 +493,14 @@ pub fn claim(who: Audience, route: Route, news: &News) -> bool {
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
-/// `klin update --auto` wrote, else off until releases are signed (#627).
+/// `klin update --auto` wrote, else on, because an install checks the release's signature.
 fn auto() -> bool {
     match std::env::var_os("KLIN_AUTO_UPDATE") {
         Some(value) if value == "1" => true,
         Some(value) if value == "0" => false,
         _ => cache_dir()
             .and_then(|dir| std::fs::read_to_string(dir.join(AUTO_FILE)).ok())
-            .is_some_and(|held| held.trim() == "on"),
+            .is_none_or(|held| held.trim() != "off"),
     }
 }
 
@@ -479,8 +512,8 @@ pub fn auto_update() -> bool {
 
 const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates the plugin. Turn \
                               on the host's own plugin auto-update instead.";
-const NO_UPDATER: &str = "auto-update runs the klin-update the installer puts beside klin, and \
-                          none is there.";
+const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
+                          itself, and none is there.";
 
 /// Write the person's auto-update setting. Only the installer's binary updates itself, so a
 /// plugin's binary or one with no updater beside it says why the setting would change nothing.

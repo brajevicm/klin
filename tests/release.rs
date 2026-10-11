@@ -11,14 +11,35 @@ use harness::{AGENT, Run, SESSION_START, STOP, Tree, feed_as_with};
 const NEWER: &str = "https://github.com/brajevicm/klin/releases/tag/v99.0.0";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// The `curl` of an installed klin. A download (`-o FILE`) of a signature or an archive copies the
+/// fixture, and an archive download is recorded in UPDATED. Any other call is an ask, which is
+/// recorded in CALLS and answered by ANSWER.
+const CURL: &str = r#"#!/bin/sh
+out=
+previous=
+for arg; do
+  [ "$previous" = -o ] && out=$arg
+  previous=$arg
+done
+case "$out:$previous" in
+  /dev/null:* | :*) ;;
+  *.minisig) cp 'SIGNATURE' "$out"; exit 0 ;;
+  *) echo "$previous" >> 'UPDATED'; cp 'ARCHIVE' "$out"; exit 0 ;;
+esac
+echo called >> 'CALLS'
+ANSWER
+"#;
+
 /// One test at a time in this file. A pipe the harness opens while another thread starts a
 /// process can leak into that process and its detached child, which then holds the pipe open
 /// for as long as its `curl` runs, and a timing test would read that as klin waiting.
 static ALONE: Mutex<()> = Mutex::new(());
 
-/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it
-/// that records each run, a `curl` on PATH that answers `answer` and records each call, and a
-/// cache of its own.
+/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it,
+/// a `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
+/// download of a release archive is recorded in `updated`, and `curl` serves the fixture archive
+/// and signature `Installed::serving` names. By default the archive was changed after it was
+/// signed, so no install succeeds and the binary under test stays in place.
 struct Installed {
     home: Tree,
     tree: Tree,
@@ -28,6 +49,11 @@ struct Installed {
 
 impl Installed {
     fn new(answer: &str) -> Installed {
+        Installed::serving(answer, "tampered.tar.xz", "klin.tar.xz.minisig")
+    }
+
+    /// An installed klin whose `curl` downloads `archive` and `signature` from the fixtures.
+    fn serving(answer: &str, archive: &str, signature: &str) -> Installed {
         let alone = ALONE.lock().unwrap_or_else(PoisonError::into_inner);
         let home = Tree::bare();
         let klin = home.path("installed/klin");
@@ -36,18 +62,14 @@ impl Installed {
         if fs::hard_link(harness::binary(), &klin).is_err() {
             fs::copy(harness::binary(), &klin).expect("copy klin");
         }
-        let updated = home.at("updated");
-        executable(
-            &home,
-            "installed/klin-update",
-            &format!("#!/bin/sh\necho updated >> '{updated}'\n"),
-        );
-        let calls = home.at("calls");
-        executable(
-            &home,
-            "bin/curl",
-            &format!("#!/bin/sh\necho called >> '{calls}'\n{answer}\n"),
-        );
+        executable(&home, "installed/klin-update", "#!/bin/sh\nexit 9\n");
+        let script = CURL
+            .replace("UPDATED", &home.at("updated"))
+            .replace("CALLS", &home.at("calls"))
+            .replace("ARCHIVE", &fixture(archive))
+            .replace("SIGNATURE", &fixture(signature))
+            .replace("ANSWER", answer);
+        executable(&home, "bin/curl", &script);
         let tree = Tree::new();
         tree.write("klin.json", "{}\n");
         tree.write("README.md", "# readme\n");
@@ -74,6 +96,8 @@ impl Installed {
         let path = format!("{}:/usr/bin:/bin", self.home.at("bin"));
         let cache = self.home.at("cache");
         let user = self.home.at("user");
+        let key = fs::read_to_string(fixture("test.pub")).expect("test key");
+        let real = harness::binary();
         let mut environment = vec![
             ("PATH", path.as_str()),
             ("KLIN_CACHE_DIR", cache.as_str()),
@@ -82,6 +106,8 @@ impl Installed {
             ("KLIN_NO_UPDATE_CHECK", ""),
             ("KLIN_AUTO_UPDATE", ""),
             ("KLIN_PLUGIN", if self.plugin { "1" } else { "" }),
+            ("KLIN_RELEASE_KEY", key.as_str()),
+            ("KLIN_TEST_REAL", real.as_str()),
         ];
         environment.extend_from_slice(extra);
         feed_as_with(
@@ -112,6 +138,12 @@ impl Installed {
         until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
     }
 
+    /// Whether an install put the fixture's binary in place of the binary under test.
+    fn replaced(&self) -> bool {
+        fs::read_to_string(self.home.path("installed/klin"))
+            .is_ok_and(|text| text.contains("KLIN_TEST_REAL"))
+    }
+
     fn fetched(&self) -> usize {
         lines(&self.home.path("calls"))
     }
@@ -123,6 +155,13 @@ impl Installed {
             &format!("{{\"seen\":\"{version}\"}}"),
         );
     }
+}
+
+fn fixture(name: &str) -> String {
+    format!(
+        "{}/tests/fixtures/release/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    )
 }
 
 fn executable(tree: &Tree, relative: &str, text: &str) {
@@ -215,10 +254,10 @@ fn stop_never_asks() {
     assert_eq!(installed.fetched(), 0);
 }
 
-/// Under auto-update, a session start runs the updater beside the binary for a newer release,
-/// once. Spec 11.9.
+/// Under auto-update, a session start tries to install a newer release once, so a release that
+/// fails is not downloaded again. Spec 11.9.
 #[test]
-fn auto_update_runs_the_updater_once_for_a_newer_release() {
+fn auto_update_tries_a_newer_release_once() {
     let installed = Installed::new(&answers(NEWER));
     installed.warmed();
     let updated = installed.home.path("updated");
@@ -231,14 +270,20 @@ fn auto_update_runs_the_updater_once_for_a_newer_release() {
     assert_eq!(lines(&updated), 1);
 }
 
-/// Without auto-update, nothing installs a release on its own. Spec 11.9.
+/// With auto-update turned off, nothing installs a release on its own. Spec 11.9.
 #[test]
 fn without_auto_update_nothing_installs() {
     let installed = Installed::new(&answers(NEWER));
-    installed.warmed();
+    let off = [("KLIN_AUTO_UPDATE", "0")];
+    installed.status(&off);
+    let cache = installed.home.path("cache/latest.json");
+    until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
 
-    installed.session(&[]);
+    let status = installed.status(&off);
+    installed.session(&off);
     settle();
+
+    assert!(status.says("Run klin update."), "{}", status.out);
 
     assert!(!installed.home.path("updated").exists());
 }
@@ -597,10 +642,10 @@ fn the_update_notice_names_setup_user_when_a_home_copy_is_behind() {
 #[test]
 fn update_auto_turns_auto_update_on_and_off() {
     let installed = Installed::new(&answers(NEWER));
-    installed.warmed();
     let updated = installed.home.path("updated");
 
     let off = installed.run(&[], &["update", "--auto", "off"], "");
+    installed.warmed();
     installed.session(&[]);
     settle();
     assert_eq!(off.code, 0, "{}", off.out);
@@ -734,8 +779,10 @@ fn two_session_starts_at_once_tell_the_agent_once() {
 #[test]
 fn a_plugin_marker_wins_over_an_updater_beside_the_binary() {
     let installed = Installed::new(&answers(NEWER));
-    installed.warmed();
     let plugin = [("KLIN_PLUGIN", "1"), ("KLIN_AUTO_UPDATE", "1")];
+    installed.status(&plugin);
+    let cache = installed.home.path("cache/latest.json");
+    until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
 
     let status = installed.status(&plugin);
     installed.session(&plugin);
@@ -868,4 +915,136 @@ fn the_person_hears_of_an_available_release_once() {
     let run = installed.stop();
 
     assert!(!run.says("99.0.0"), "{}", run.out);
+}
+
+/// Without `KLIN_AUTO_UPDATE`, the child installs a newer release whose signature names it, in
+/// place of the binary. Spec 11.9.
+#[test]
+fn auto_update_is_on_by_default_and_installs_a_signed_release() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+
+    installed.status(&[]);
+    until(|| installed.replaced());
+
+    assert!(installed.replaced());
+}
+
+/// A release whose archive does not match its signature installs nothing, and `klin status`
+/// says why. Spec 11.9.
+#[test]
+fn auto_update_installs_nothing_when_the_signature_fails_and_status_says_why() {
+    let installed = Installed::new(&answers(NEWER));
+    let cache = installed.home.path("cache/latest.json");
+
+    installed.status(&[]);
+    until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("\"refused\":\"")));
+    let status = installed.status(&[]);
+
+    assert!(!installed.replaced());
+    assert!(
+        status.says(
+            "klin could not install it on its own: the signature of klin 99.0.0 does not match \
+             the release key, so nothing was installed."
+        ),
+        "{}",
+        status.out
+    );
+}
+
+/// `klin update` installs the newest release after its signature checks out. Spec 11.8.
+#[test]
+fn update_installs_a_signed_release() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+
+    let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin updated to 99.0.0."), "{}", run.out);
+    assert!(installed.replaced());
+}
+
+/// A changed archive, or a signature made for another release, installs nothing, and
+/// `klin update` says why. Spec 11.8.
+#[test]
+fn update_refuses_a_release_whose_signature_fails() {
+    for (archive, signature, why) in [
+        (
+            "tampered.tar.xz",
+            "klin.tar.xz.minisig",
+            "does not match the release key",
+        ),
+        ("klin.tar.xz", "other-tag.minisig", "names another release"),
+    ] {
+        let installed = Installed::serving(&answers(NEWER), archive, signature);
+
+        let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
+
+        assert_eq!(run.code, 2, "{}", run.out);
+        assert!(
+            run.says(&format!(
+                "the signature of klin 99.0.0 {why}, so nothing was installed."
+            )),
+            "{}",
+            run.out
+        );
+        assert!(!installed.replaced());
+    }
+}
+
+/// A plugin's binary never updates itself, so `klin update` names the host. Spec 11.8.
+#[test]
+fn update_on_a_plugin_names_the_host() {
+    let installed = Installed::plugin(&answers(NEWER));
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert_eq!(installed.fetched(), 0);
+}
+
+/// After an update, an integration that is not `current` is named with `klin setup`, which
+/// reconciles it, and a current one names nothing. Spec 11.8.
+#[test]
+fn update_names_setup_when_an_integration_is_not_current() {
+    let off = [("KLIN_AUTO_UPDATE", "0")];
+    let named = {
+        let stale = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+        fs::create_dir_all(stale.tree.path(".claude")).expect("claude directory");
+        stale.run(&off, &["update"], "")
+    };
+    let quiet = {
+        let current = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+        let set = current.run(&off, &["setup", "--host", "claude"], "");
+        assert_eq!(set.code, 0, "{}", set.out);
+        current.run(&off, &["update"], "")
+    };
+
+    assert_eq!(named.code, 0, "{}", named.out);
+    assert!(named.says("run klin setup"), "{}", named.out);
+    assert!(named.says("claude (project) is missing"), "{}", named.out);
+    assert_eq!(quiet.code, 0, "{}", quiet.out);
+    assert!(!quiet.says("klin setup"), "{}", quiet.out);
+}
+
+/// A copy in one person's home is reconciled by `klin setup --user`, so the hint names that
+/// command and the host, and never sends the person to write the repository's files. Spec 11.8.
+#[test]
+fn update_names_setup_user_for_a_skill_without_hook_lines() {
+    let off = [("KLIN_AUTO_UPDATE", "0")];
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    let setup = installed.run(&off, &["setup", "--user", "--host", "claude"], "");
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    installed.home.remove("user/.claude/settings.json");
+
+    let run = installed.run(&off, &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("run klin setup --user --host claude"),
+        "{}",
+        run.out
+    );
+    assert!(run.says("claude (user) is conflict"), "{}", run.out);
+    assert!(!run.says("this repository's integration"), "{}", run.out);
 }

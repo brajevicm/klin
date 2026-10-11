@@ -1,7 +1,8 @@
 # klin keeps itself current and says what changed
 
 > Amends the line of SPEC section 1 that said klin runs offline. Recorded for
-> #625, 2026-10-11.
+> #625, 2026-10-11. ADR 0070 amends items 2 and 3: klin installs a signed
+> release itself, and auto-update is on by default.
 
 A person who installed klin with the installer never learned that a newer
 release was out, and an update is routine work that SPEC section 2, goal 1

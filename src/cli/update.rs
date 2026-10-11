@@ -1,5 +1,5 @@
-//! `klin update` runs the `klin-update` program the installer puts beside this binary, which
-//! installs the newest release over it. Spec 19.5.
+//! `klin update` installs the newest release over the binary the installer placed, after its
+//! signature checks out. Spec 11.8.
 
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
@@ -35,22 +35,38 @@ pub fn run(args: &Args) -> u8 {
     if let Some(switch) = args.auto {
         return auto(switch);
     }
-    let beside = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
-        .filter(|path| path.is_file());
-    let program = beside.unwrap_or_else(|| PathBuf::from("klin-update"));
-    match Command::new(&program).status() {
-        Ok(status) if status.success() => {
+    install()
+}
+
+/// Install the newest release over the binary the installer placed. Spec 11.8.
+fn install() -> u8 {
+    match release::route() {
+        Some(release::Route::Installer) => {}
+        Some(release::Route::Plugin) => {
+            eprintln!("FAIL: this klin came with a plugin, and its host updates the plugin.");
+            return 2;
+        }
+        None => {
+            eprintln!(
+                "FAIL: klin-update was not found beside klin, so the installer did not place \
+                 this klin. The installer: {INSTALL}. A plugin install updates with its plugin \
+                 instead."
+            );
+            return 2;
+        }
+    }
+    match release::update() {
+        Ok(Some(tag)) => {
+            println!("klin updated to {tag}. Release notes: {}", tag.notes());
             reconcile_hint();
             0
         }
-        Ok(status) => u8::try_from(status.code().unwrap_or(2)).unwrap_or(2),
-        Err(_) => {
-            eprintln!(
-                "FAIL: klin-update was not found beside klin or on PATH. The installer puts it \
-                 there: {INSTALL}. A plugin install updates with its plugin instead."
-            );
+        Ok(None) => {
+            println!("klin {} is the newest release.", env!("CARGO_PKG_VERSION"));
+            0
+        }
+        Err(why) => {
+            eprintln!("FAIL: {why}");
             2
         }
     }
@@ -62,7 +78,8 @@ fn auto(switch: Switch) -> u8 {
     match release::set_auto(on) {
         Ok(()) if on => {
             println!(
-                "klin: auto-update is on. A session start installs a newer release on its own."
+                "klin: auto-update is on. A session start installs a newer signed release on \
+                 its own."
             );
             0
         }
