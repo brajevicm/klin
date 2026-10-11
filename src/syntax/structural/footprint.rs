@@ -104,11 +104,11 @@ pub enum Recorded {
     Counted(Box<Footprint>),
 }
 
-/// What a gate records of the facts of both trees: their counters when the run requested them
-/// through `KLIN_FOOTPRINT`, and the sizes alone otherwise, because the walk hashes every
-/// reference name and a run that does not request it does not pay for it.
-pub fn recorded(trees: [&[Rc<FileFacts>]; 2]) -> Recorded {
-    match std::env::var_os("KLIN_FOOTPRINT").is_some_and(|value| !value.is_empty()) {
+/// What a gate records of the facts of both trees: their counters when the run `requested` them,
+/// and the sizes alone otherwise, because the walk hashes every reference name and a run that
+/// does not request it does not pay for it.
+pub fn recorded(requested: bool, trees: [&[Rc<FileFacts>]; 2]) -> Recorded {
+    match requested {
         true => Recorded::Counted(Box::new(of(trees))),
         false => Recorded::Sizes,
     }

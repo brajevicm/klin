@@ -6572,9 +6572,11 @@ a `read-tree` into it, an `ls-files --stage` listing of it, a `checkout-index`
 of the changed files' base paths into it, its removal, and `worktree prune`.
 Those medians are an estimate of a candidate, not a measurement of klin.
 The `dead-symbols` row prints each type size of the `footprint` group of
-11.2 as `footprint_size_<name>`. `dead-symbols` counts the group's other
-fields only when `KLIN_FOOTPRINT` is set and not empty, because that walk
-hashes every reference name, and a run without it records `sizes` alone. No
+11.2 as `footprint_size_<name>`. A run MAY take `KLIN_FOOTPRINT` for the
+performance rows. When it is set and not empty, `dead-symbols` counts the
+group's other fields. The run reads it once, when it starts, and a run
+without it records `sizes` alone, because that walk hashes every reference
+name. No
 timed stop of the rows sets it, so each timed stop runs the program users
 run. One untimed stop after the timed ones sets it: the stop that writes the
 structural cache again in a full row, and one more warm hook after the peak

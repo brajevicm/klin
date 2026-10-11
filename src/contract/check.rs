@@ -271,6 +271,9 @@ pub struct Context<'a> {
     /// scope. Direct checks and unscoped runs have no changed-run context.
     pub changes: Option<&'a [Change]>,
     pub caller: Caller,
+    /// Whether the run requested the footprint's counters, which `dead-symbols` walks only then.
+    /// Spec B.13.
+    pub footprint: bool,
 }
 
 impl Context<'_> {
@@ -299,6 +302,7 @@ impl Context<'_> {
             base: self.base,
             changes: self.changes,
             caller: self.caller,
+            footprint: self.footprint,
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::engine::document::{
     Against, Args, CheckDocument, View, leaves_code, no_source_root_said,
 };
 use crate::engine::plan::{Gate, Plan};
-use crate::engine::{catalogue, render};
+use crate::engine::{catalogue, diagnostics, render};
 use crate::hook::budget::{self, Budget, BuildBlock, GateBlock};
 use crate::hook::host;
 use crate::hook::host::adapter::{Event, Stop};
@@ -40,6 +40,7 @@ pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
     let args = Args {
         changed: true,
         view: View::Stop,
+        footprint: diagnostics::footprint_requested(),
         ..Args::default()
     };
     let Some(_claim) = state::claimed(start, &event.identity) else {

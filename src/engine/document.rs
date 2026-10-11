@@ -46,6 +46,8 @@ pub struct Args {
     pub gates: Vec<String>,
     pub changed: bool,
     pub view: View,
+    /// Whether the run requested the footprint's counters. Spec B.13.
+    pub footprint: bool,
 }
 
 impl Args {
@@ -221,6 +223,7 @@ fn one(args: &Args, gate: &Gate, project: &Project, against: &Against) -> Ran {
         base: against.base.as_ref().map(|base| base.before.as_str()),
         only: against.scope.as_deref().filter(|_| gate.check.takes_scope),
         changes: against.changes.as_deref(),
+        footprint: args.footprint,
         caller: match args.view {
             View::Stop => Caller::Hook,
             View::Text | View::Json => Caller::Gate,

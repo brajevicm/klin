@@ -10,6 +10,12 @@ use crate::syntax::{LanguageId, structural};
 use crate::sys::clock;
 use crate::window::base;
 
+/// Whether this run requested the footprint's counters, through `KLIN_FOOTPRINT`, which only the
+/// performance rows set. Read once where a run starts. Spec B.13.
+pub fn footprint_requested() -> bool {
+    std::env::var_os("KLIN_FOOTPRINT").is_some_and(|value| !value.is_empty())
+}
+
 /// What one gate's structural work came to, with the declaration states of the gate that builds
 /// them. A gate that reads no structural facts records none. Spec 11.2.
 fn facts(records: &Records) -> Value {
