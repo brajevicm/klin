@@ -2596,6 +2596,14 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
   0073. A remedy that deletes code or changes behavior takes the stricter
   tier. A row that catches the reflexive form of a shortcut may block even
   when a cheap rewording passes it (ADR 0073).
+- Two tools measure a row. The recall suite, `tests/recall.rs`, plants 17
+  rows of agent slop in a Next.js tree, runs a Stop, and pins each row as
+  caught or missed by a catch rule. The rule names one check and finding
+  kind, or more than one when the row is open to more than one check, and
+  each has its own pin. A row that closes a gap changes its pin. It reports ride-along rows apart.
+  The precision replay, `scripts/replay/replay.py`, runs one row over a frozen
+  sample of app histories and prints its not-appropriate findings per 100
+  changes. It runs only locally, never in CI.
 - A contextual capability is a review item or stays out.
 - `{stop, check}` additionally needs the Stop rules of section 14.3 and a
   measured incremental cost at 1M/20. The proposal states why the capability
