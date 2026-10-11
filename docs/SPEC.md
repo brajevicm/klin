@@ -2467,10 +2467,10 @@ ticket that implements the area MUST measure them:
    that is a type keyword, a variance annotation on a type parameter,
    `export type *`, an import type with type arguments, an instantiation
    expression before a template literal, and a bare `&` in TSX text. It also
-   reads a `global` block inside `declare module`. The tests that call
-   `a_typescript_form_is_measured` in `tests/measurement_lost.rs` pin the six
-   forms and a type parameter named `out`. klin goes back to a crates.io
-   release once one reads them all.
+   reads a `global` block inside `declare module`, and keeps `out` and
+   `global` usable as names. The tests that call `assert_measured` in
+   `tests/measurement_lost.rs` pin the six forms and both names. klin goes
+   back to a crates.io release once one reads them all.
 2. **Teammates' commits on the same branch.** A pull of a teammate's commits
    on the agent's own feature branch does not move the default-branch
    merge-base, so it is not advisory, and those commits read as new at the

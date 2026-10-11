@@ -1144,9 +1144,8 @@ fn macros_that_name_each_other_many_times_are_decided_quickly() {
     assert_ne!(code, 2, "{report}");
 }
 
-/// Gives a measured TypeScript file and a new file the same valid `form`, and asserts that
-/// klin measures both: no `measurement-lost`, no `unmeasured` review item and no exit 2.
-fn a_typescript_form_is_measured(extension: &str, form: &str) {
+/// Gives a measured TypeScript file and a new file the same valid `form`, and asserts both measure.
+fn assert_measured(extension: &str, form: &str) {
     let measured = format!("src/lib.{extension}");
     let new = format!("src/new.{extension}");
     let tree = Tree::new();
@@ -1173,7 +1172,7 @@ fn a_typescript_form_is_measured(extension: &str, form: &str) {
 
 #[test]
 fn a_tuple_element_labelled_with_a_type_keyword_is_measured() {
-    a_typescript_form_is_measured(
+    assert_measured(
         "ts",
         "export type Labels = [symbol: string, string?: number];\n",
     );
@@ -1181,7 +1180,7 @@ fn a_tuple_element_labelled_with_a_type_keyword_is_measured() {
 
 #[test]
 fn a_type_parameter_marked_in_out_or_in_out_is_measured() {
-    a_typescript_form_is_measured(
+    assert_measured(
         "ts",
         "export interface Sink<in T> { put(value: T): void }\nexport type Source<out T> = () => T;\nexport type Exact<in out T> = T;\n",
     );
@@ -1189,7 +1188,7 @@ fn a_type_parameter_marked_in_out_or_in_out_is_measured() {
 
 #[test]
 fn a_type_only_star_export_is_measured() {
-    a_typescript_form_is_measured(
+    assert_measured(
         "ts",
         "export type * from \"./one\";\nexport type * as ns from \"./one\";\n",
     );
@@ -1197,12 +1196,12 @@ fn a_type_only_star_export_is_measured() {
 
 #[test]
 fn a_type_parameter_named_out_stays_measured() {
-    a_typescript_form_is_measured("ts", "export type F<out> = out[];\n");
+    assert_measured("ts", "export type F<out> = out[];\n");
 }
 
 #[test]
 fn an_import_type_with_type_arguments_is_measured() {
-    a_typescript_form_is_measured(
+    assert_measured(
         "ts",
         "export type Strings = import(\"./one\").Box<string>;\n",
     );
@@ -1210,7 +1209,7 @@ fn an_import_type_with_type_arguments_is_measured() {
 
 #[test]
 fn an_instantiation_expression_before_a_template_literal_is_measured() {
-    a_typescript_form_is_measured(
+    assert_measured(
         "ts",
         "declare function sql<T>(text: TemplateStringsArray): T;\nexport const rows = sql<never[]>`select 1`;\n",
     );
@@ -1218,5 +1217,13 @@ fn an_instantiation_expression_before_a_template_literal_is_measured() {
 
 #[test]
 fn a_bare_ampersand_in_tsx_text_is_measured() {
-    a_typescript_form_is_measured("tsx", "export const label = <p>Shipping & Handling</p>;\n");
+    assert_measured("tsx", "export const label = <p>Shipping & Handling</p>;\n");
+}
+
+#[test]
+fn global_used_as_an_identifier_stays_measured() {
+    assert_measured(
+        "ts",
+        "declare const global: { fetch: unknown };\nglobal.fetch = 1;\nexport class Wrapped extends global.constructor {}\n",
+    );
 }
