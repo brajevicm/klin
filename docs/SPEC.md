@@ -2598,8 +2598,9 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
   when a cheap rewording passes it (ADR 0073).
 - Two tools measure a row. The recall suite, `tests/recall.rs`, plants 17
   rows of agent slop in a Next.js tree, runs a Stop, and pins each row as
-  caught or missed by a catch rule that names its check and finding kind. A
-  row that closes a gap changes its pin. It reports ride-along rows apart.
+  caught or missed by a catch rule. The rule names one check and finding
+  kind, or more than one when the row is open to more than one check, and
+  each has its own pin. A row that closes a gap changes its pin. It reports ride-along rows apart.
   The precision replay, `scripts/replay/replay.py`, runs one row over a frozen
   sample of app histories and prints its not-appropriate findings per 100
   changes. It runs only locally, never in CI.

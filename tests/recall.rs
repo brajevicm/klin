@@ -399,170 +399,153 @@ enum Kind {
 
 use Kind::{Any, Has, Is};
 
+struct Rule(&'static str, Kind, Pin);
+
 struct Row {
     slop: &'static str,
-    check: &'static str,
-    kind: Kind,
+    rules: &'static [Rule],
     file: &'static str,
     text: &'static str,
     tier: Tier,
-    pin: Pin,
 }
 
 const fn row(
     slop: &'static str,
-    (check, kind): (&'static str, Kind),
+    rules: &'static [Rule],
     file: &'static str,
     text: &'static str,
-    pin: Pin,
 ) -> Row {
     Row {
         slop,
-        check,
-        kind,
+        rules,
         file,
         text,
         tier: Tier::Blocks,
-        pin,
     }
 }
 
 const ROWS: &[Row] = &[
     row(
         "an eslint-disable comment",
-        ("escapes", Is("escape", "eslint-disable")),
+        &[Rule("escapes", Is("escape", "eslint-disable"), Caught)],
         STATS_FILE,
         "",
-        Caught,
     ),
     row(
         "a test.skip",
-        ("escapes", Is("escape", "skipped test")),
+        &[Rule("escapes", Is("escape", "skipped test"), Caught)],
         TEST_FILE,
         "",
-        Caught,
     ),
     row(
         "a deleted test",
-        ("inventory", Has("missing")),
+        &[Rule("inventory", Has("missing"), Caught)],
         TEST_FILE,
         "multiline",
-        Caught,
     ),
     row(
         "a TODO comment",
-        ("stubs", Is("stub", "comment marker")),
+        &[Rule("stubs", Is("stub", "comment marker"), Caught)],
         ROUTE_FILE,
         "",
-        Caught,
     ),
     row(
         "a long copied component",
-        ("complexity", Has("lines")),
+        &[Rule("complexity", Has("lines"), Caught)],
         DASHBOARD_FILE,
         "",
-        Caught,
     ),
     row(
         "an orphan hook in a derived family",
-        ("reachability", Has("unreached")),
+        &[Rule("reachability", Has("unreached"), Caught)],
         STATS_FILE,
         "",
-        Caught,
     ),
     row(
         "an orphan component",
-        ("reachability", Has("unreached")),
+        &[Rule("reachability", Has("unreached"), Missed)],
         DASHBOARD_FILE,
         "",
-        Missed,
     ),
     row(
         "a file of exports nothing imports",
-        ("dead-symbols", Any),
+        &[
+            Rule("dead-symbols", Any, Missed),
+            Rule("reachability", Has("unreached"), Missed),
+        ],
         FORMAT_FILE,
         "",
-        Missed,
     ),
     row(
         "an exact -v2.tsx copy, which nothing imports",
-        ("reachability", Has("unreached")),
+        &[Rule("reachability", Has("unreached"), Missed)],
         COPY_FILE,
         "",
-        Missed,
     ),
     row(
         "a copied utility function",
-        ("duplication", Any),
+        &[Rule("duplication", Any, Missed)],
         FORMAT_FILE,
         "generateId",
-        Missed,
     ),
     row(
         "a .catch(() => {})",
-        ("escapes", Any),
+        &[Rule("escapes", Any, Missed)],
         STATS_FILE,
         ".catch(() => {})",
-        Missed,
     ),
     row(
         "a catch that returns zeros",
-        ("escapes", Any),
+        &[Rule("escapes", Any, Missed)],
         ROUTE_FILE,
         "catch",
-        Missed,
     ),
     row(
         "an as unknown as T",
-        ("escapes", Any),
+        &[Rule("escapes", Any, Missed)],
         STATS_FILE,
         "as unknown as",
-        Missed,
     ),
     row(
         "a hardcoded sk-proj- key",
-        ("secrets", Any),
+        &[Rule("secrets", Any, Missed)],
         ROUTE_FILE,
         "",
-        Missed,
     ),
     row(
         "mock data with \"In a real implementation\"",
-        ("stubs", Any),
+        &[Rule("stubs", Any, Missed)],
         DASHBOARD_FILE,
         "",
-        Missed,
     ),
     row(
         "a console.log",
-        ("escapes", Any),
+        &[Rule("escapes", Any, Missed)],
         DASHBOARD_FILE,
         "console.log",
-        Missed,
     ),
     row(
         "a removed expect",
-        ("inventory", Any),
+        &[Rule("inventory", Any, Missed)],
         TEST_FILE,
         "input accepts text",
-        Missed,
     ),
 ];
 
-fn catches(row: &Row, finding: &Value) -> bool {
-    let kind = match row.kind {
+fn catches(row: &Row, rule: &Rule, finding: &Value) -> bool {
+    let kind = match rule.1 {
         Any => true,
         Has(key) => !finding["values"][key].is_null(),
         Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
     };
-    finding["check"] == row.check
+    finding["check"] == rule.0
         && finding["file"] == row.file
         && kind
         && finding["text"].as_str().unwrap_or("").contains(row.text)
 }
 
-fn pin(row: &Row, findings: &[Value]) -> Pin {
-    match findings.iter().any(|finding| catches(row, finding)) {
+fn pin(row: &Row, rule: &Rule, findings: &[Value]) -> Pin {
+    match findings.iter().any(|finding| catches(row, rule, finding)) {
         true => Caught,
         false => Missed,
     }
@@ -583,18 +566,22 @@ fn recall(tier: Tier, findings: &[Value]) -> (String, Vec<&'static str>) {
     let mut wrong = Vec::new();
     let mut count = 0;
     for row in &rows {
-        let now = pin(row, findings);
-        count += usize::from(now == Caught);
-        if now != row.pin {
-            wrong.push(row.slop);
+        let pins: Vec<Pin> = row
+            .rules
+            .iter()
+            .map(|rule| pin(row, rule, findings))
+            .collect();
+        count += usize::from(pins.contains(&Caught));
+        for (rule, now) in row.rules.iter().zip(pins) {
+            if now != rule.2 {
+                wrong.push(row.slop);
+            }
+            let state = state(now, rule.2);
+            lines.push(format!(
+                "  {state}: {} ({} in {})",
+                row.slop, rule.0, row.file
+            ));
         }
-        lines.push(format!(
-            "  {}: {} ({} in {})",
-            state(now, row.pin),
-            row.slop,
-            row.check,
-            row.file
-        ));
     }
     let head = format!("{count} of {} caught", rows.len());
     (format!("{head}\n{}", lines.join("\n")), wrong)
