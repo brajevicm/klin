@@ -105,6 +105,13 @@ impl Audience {
         }
     }
 
+    /// Whether this audience hears of the same available release again each day until the
+    /// person updates. The agent forgets between sessions, so it is told daily. The person sees
+    /// the release in `klin status` and is told once.
+    fn daily(self) -> bool {
+        matches!(self, Audience::Agent)
+    }
+
     /// The text for this audience on `route`. On a plugin's route, `host_step` is the step the
     /// host a hook event came from takes to update the plugin.
     pub fn note(self, route: Route, news: &News, host_step: Option<String>) -> String {
@@ -222,6 +229,7 @@ impl Latest {
 struct Record {
     seen: Option<Version>,
     told: Option<Version>,
+    told_at: u64,
 }
 
 impl Record {
@@ -230,20 +238,27 @@ impl Record {
         Record {
             seen: version(&held["seen"]),
             told: version(&held["told"]),
+            told_at: held["told_at"].as_u64().unwrap_or_default(),
         }
     }
 
-    /// Record `news` as heard, and say whether it was new to this audience: an update to a
-    /// version newer than any it saw, or a release it was not told of. The one place the rule
-    /// lives, for the hook that reads the news and the hook that claims it.
-    fn hear(&mut self, news: &News) -> bool {
+    /// Record `news` as heard by `who`, and say whether it was news: an update to a version
+    /// newer than any it saw, or a release it was not told of. An audience that hears daily is
+    /// told of the same release again once a day has passed. The one place the rule lives, for
+    /// the hook that reads the news and the hook that claims it.
+    fn hear(&mut self, who: Audience, news: &News) -> bool {
+        let due = |record: &Record, tag: &Version| {
+            record.told.as_ref() != Some(tag)
+                || (who.daily() && now().saturating_sub(record.told_at) >= DAY)
+        };
         match news {
             News::Updated { to, .. } if self.seen.as_ref().is_none_or(|seen| seen < to) => {
                 self.seen = Some(to.clone());
                 true
             }
-            News::Available(tag) if self.told.as_ref() != Some(tag) => {
+            News::Available(tag) if due(self, tag) => {
                 self.told = Some(tag.clone());
+                self.told_at = now();
                 true
             }
             _ => false,
@@ -254,6 +269,7 @@ impl Record {
         let held = json!({
             "seen": self.seen.as_ref().map(ToString::to_string),
             "told": self.told.as_ref().map(ToString::to_string),
+            "told_at": self.told_at,
         });
         let file = releases.dir.join(who.record(releases.route));
         write(&file, held.to_string().as_bytes())
@@ -408,7 +424,10 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
             .filter(Version::is_newer)
             .map(News::Available)
     })?;
-    record.clone().hear(&news).then_some((releases.route, news))
+    record
+        .clone()
+        .hear(who, &news)
+        .then_some((releases.route, news))
 }
 
 /// Record this binary's version for `who` when its record holds none, so an update that runs
@@ -437,7 +456,7 @@ pub fn claim(who: Audience, route: Route, news: &News) -> bool {
         return false;
     };
     let mut record = Record::read(&releases, who);
-    record.hear(news) && record.write(&releases, who).is_ok()
+    record.hear(who, news) && record.write(&releases, who).is_ok()
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting

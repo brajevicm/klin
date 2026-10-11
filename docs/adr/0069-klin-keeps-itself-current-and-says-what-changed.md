@@ -42,7 +42,10 @@ and no hook waits on the network.**
    for a repository copy, and as `klin setup --user --host HOST` for a copy
    in the person's home. The agent hears it
    in the session-start text, because a Stop's notice reaches only the
-   person. Each audience hears each piece of news once.
+   person. An update is news once. The person hears of an available release
+   once, and `klin status` keeps showing it. The agent forgets between
+   sessions, so it hears of an available release at most once a day, until
+   the person updates (owner decision, 2026-10-11).
 6. The guard denies `klin update` and the hidden `klin __release` to an
    agent, so an agent never chooses the binary that judges it.
 

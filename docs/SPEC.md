@@ -2068,9 +2068,11 @@ names its host's own update step in place of `klin update`. ADR 0069.
   audience was not told of is news. A hook claims the news under the cache
   lock at the moment it tells it, and a hook that finds it claimed tells
   nothing, so each audience hears each piece of news once, also from two
-  hooks at once. The record is one per machine and route: the agent of the
-  first session start that claims a release hears of it, and a later
-  session does not.
+  hooks at once. The record is one per machine and route. The agent forgets
+  between sessions, so a session start tells it of a release it was already
+  told of again once a day has passed, until the person updates. The person
+  is told of a release once, because `klin status` keeps showing it. An update
+  is news once for both.
 - **The person.** `klin status` prints `klin TAG is available (you have
   VERSION). STEP` when the cached tag is newer. STEP is `Run klin update.` on
   the installer's route. On a plugin's route it names the host the hook event

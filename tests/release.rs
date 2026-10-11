@@ -829,3 +829,43 @@ fn update_check_says_when_it_could_not_save_the_answer() {
     assert!(run.says("99.0.0"), "{}", run.out);
     assert!(run.says("could not save this answer"), "{}", run.out);
 }
+
+/// The agent hears of a release it was already told of again once a day has passed, because it
+/// forgets between sessions, until the person updates. Spec 11.9.
+#[test]
+fn the_agent_hears_of_an_available_release_again_a_day_later() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let first = installed.session(&[]);
+    assert!(first.says("klin 99.0.0 is available"), "{}", first.out);
+
+    installed.home.write(
+        "cache/release-agent.json",
+        &format!("{{\"seen\":\"{VERSION}\",\"told\":\"99.0.0\",\"told_at\":1}}"),
+    );
+    let next_day = installed.session(&[]);
+    let same_day = installed.session(&[]);
+
+    assert!(
+        next_day.says("klin 99.0.0 is available"),
+        "{}",
+        next_day.out
+    );
+    assert!(!same_day.says("99.0.0"), "{}", same_day.out);
+}
+
+/// The person is told of a release once, also a day later, because `klin status` keeps showing
+/// it. Spec 11.9.
+#[test]
+fn the_person_hears_of_an_available_release_once() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    installed.home.write(
+        "cache/release-person.json",
+        &format!("{{\"seen\":\"{VERSION}\",\"told\":\"99.0.0\",\"told_at\":1}}"),
+    );
+
+    let run = installed.stop();
+
+    assert!(!run.says("99.0.0"), "{}", run.out);
+}
