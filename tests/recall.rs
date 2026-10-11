@@ -332,44 +332,49 @@ test.describe("chat", () => {
 });
 "#;
 
-fn plant(tree: &Tree) {
-    tree.write("components/chat/usage-dashboard.tsx", DASHBOARD);
-    tree.write(
-        "components/chat/usage-dashboard-v2.tsx",
-        &DASHBOARD.replace("UsageDashboard(", "UsageDashboardV2("),
-    );
-    tree.write("hooks/use-usage-stats.ts", USE_USAGE_STATS);
-    tree.write("lib/format.ts", FORMAT);
+const STATS_FILE: &str = "hooks/use-usage-stats.ts";
+const DASHBOARD_FILE: &str = "components/chat/usage-dashboard.tsx";
+const COPY_FILE: &str = "components/chat/usage-dashboard-v2.tsx";
+const FORMAT_FILE: &str = "lib/format.ts";
+const ROUTE_FILE: &str = "app/(chat)/api/usage/route.ts";
+const TEST_FILE: &str = "tests/e2e/chat.test.ts";
+
+const BASE: [(&str, &str); 12] = [
+    ("klin.json", "{}\n"),
+    ("package.json", PACKAGE),
+    ("app/layout.tsx", LAYOUT),
+    ("app/page.tsx", PAGE),
+    ("components/chat/chat.tsx", CHAT),
+    ("components/chat/header.tsx", HEADER),
+    ("components/chat/sidebar.tsx", SIDEBAR),
+    ("hooks/use-messages.ts", USE_MESSAGES),
+    ("hooks/use-scroll-to-bottom.ts", USE_SCROLL),
+    ("hooks/use-visibility.ts", USE_VISIBILITY),
+    ("lib/utils.ts", UTILS),
+    (TEST_FILE, CHAT_TEST),
+];
+
+fn planted() -> Vec<(&'static str, String)> {
     let key = [
         "sk",
         "-proj-",
         "AbC123dEf456GhI789jKl012MnO345pQr678StU901vWx",
     ]
     .concat();
-    tree.write(
-        "app/(chat)/api/usage/route.ts",
-        &ROUTE
-            .replace("@KEY@", &key)
-            .replace("@MARKER@", &["TO", "DO"].concat()),
-    );
-    tree.write("tests/e2e/chat.test.ts", CHAT_TEST_AFTER);
-}
-
-fn app() -> Tree {
-    let tree = Tree::new();
-    tree.write("klin.json", "{}\n");
-    tree.write("package.json", PACKAGE);
-    tree.write("app/layout.tsx", LAYOUT);
-    tree.write("app/page.tsx", PAGE);
-    tree.write("components/chat/chat.tsx", CHAT);
-    tree.write("components/chat/header.tsx", HEADER);
-    tree.write("components/chat/sidebar.tsx", SIDEBAR);
-    tree.write("hooks/use-messages.ts", USE_MESSAGES);
-    tree.write("hooks/use-scroll-to-bottom.ts", USE_SCROLL);
-    tree.write("hooks/use-visibility.ts", USE_VISIBILITY);
-    tree.write("lib/utils.ts", UTILS);
-    tree.write("tests/e2e/chat.test.ts", CHAT_TEST);
-    tree
+    let route = ROUTE
+        .replace("@KEY@", &key)
+        .replace("@MARKER@", &["TO", "DO"].concat());
+    vec![
+        (DASHBOARD_FILE, DASHBOARD.to_string()),
+        (
+            COPY_FILE,
+            DASHBOARD.replace("UsageDashboard(", "UsageDashboardV2("),
+        ),
+        (STATS_FILE, USE_USAGE_STATS.to_string()),
+        (FORMAT_FILE, FORMAT.to_string()),
+        (ROUTE_FILE, route),
+        (TEST_FILE, CHAT_TEST_AFTER.to_string()),
+    ]
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -379,169 +384,165 @@ enum Tier {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum Today {
+enum Pin {
     Caught,
     Missed,
 }
 
-/// The catch rule of one planted row: a finding of `check` on `file` counts as caught when its
-/// `values[key]` equals `value` (or merely exists, when `value` is empty; any finding, when `key`
-/// is empty) and its text holds `text`.
+use Pin::{Caught, Missed};
+
+enum Kind {
+    Any,
+    Has(&'static str),
+    Is(&'static str, &'static str),
+}
+
+use Kind::{Any, Has, Is};
+
 struct Row {
     slop: &'static str,
     check: &'static str,
-    key: &'static str,
-    value: &'static str,
+    kind: Kind,
     file: &'static str,
     text: &'static str,
     tier: Tier,
-    today: Today,
+    pin: Pin,
 }
 
 const fn row(
     slop: &'static str,
-    (check, key, value): (&'static str, &'static str, &'static str),
+    (check, kind): (&'static str, Kind),
     file: &'static str,
     text: &'static str,
-    today: Today,
+    pin: Pin,
 ) -> Row {
     Row {
         slop,
         check,
-        key,
-        value,
+        kind,
         file,
         text,
         tier: Tier::Blocks,
-        today,
+        pin,
     }
 }
 
-const STATS: &str = "hooks/use-usage-stats.ts";
-const DASHBOARD_FILE: &str = "components/chat/usage-dashboard.tsx";
-const COPY_FILE: &str = "components/chat/usage-dashboard-v2.tsx";
-const FORMAT_FILE: &str = "lib/format.ts";
-const ROUTE_FILE: &str = "app/(chat)/api/usage/route.ts";
-const TEST_FILE: &str = "tests/e2e/chat.test.ts";
-
-use Today::{Caught, Missed};
-
-const ROWS: [Row; 17] = [
+const ROWS: &[Row] = &[
     row(
         "an eslint-disable comment",
-        ("escapes", "escape", "eslint-disable"),
-        STATS,
+        ("escapes", Is("escape", "eslint-disable")),
+        STATS_FILE,
         "",
         Caught,
     ),
     row(
         "a test.skip",
-        ("escapes", "escape", "skipped test"),
+        ("escapes", Is("escape", "skipped test")),
         TEST_FILE,
         "",
         Caught,
     ),
     row(
         "a deleted test",
-        ("inventory", "missing", ""),
+        ("inventory", Has("missing")),
         TEST_FILE,
         "multiline",
         Caught,
     ),
     row(
         "a TODO comment",
-        ("stubs", "stub", "comment marker"),
+        ("stubs", Is("stub", "comment marker")),
         ROUTE_FILE,
         "",
         Caught,
     ),
     row(
         "a long copied component",
-        ("complexity", "lines", ""),
+        ("complexity", Has("lines")),
         DASHBOARD_FILE,
         "",
         Caught,
     ),
     row(
         "an orphan hook in a derived family",
-        ("reachability", "unreached", ""),
-        STATS,
+        ("reachability", Has("unreached")),
+        STATS_FILE,
         "",
         Caught,
     ),
     row(
         "an orphan component",
-        ("reachability", "unreached", ""),
+        ("reachability", Has("unreached")),
         DASHBOARD_FILE,
         "",
         Missed,
     ),
     row(
         "a file of exports nothing imports",
-        ("dead-symbols", "", ""),
+        ("dead-symbols", Any),
         FORMAT_FILE,
         "",
         Missed,
     ),
     row(
         "an exact -v2.tsx copy, which nothing imports",
-        ("reachability", "unreached", ""),
+        ("reachability", Has("unreached")),
         COPY_FILE,
         "",
         Missed,
     ),
     row(
         "a copied utility function",
-        ("duplication", "", ""),
+        ("duplication", Any),
         FORMAT_FILE,
         "generateId",
         Missed,
     ),
     row(
         "a .catch(() => {})",
-        ("escapes", "escape", "empty handler"),
-        STATS,
-        "",
+        ("escapes", Any),
+        STATS_FILE,
+        ".catch(() => {})",
         Missed,
     ),
     row(
         "a catch that returns zeros",
-        ("escapes", "escape", "default handler"),
+        ("escapes", Any),
         ROUTE_FILE,
-        "",
+        "catch",
         Missed,
     ),
     row(
         "an as unknown as T",
-        ("escapes", "escape", "as unknown as"),
-        STATS,
-        "",
+        ("escapes", Any),
+        STATS_FILE,
+        "as unknown as",
         Missed,
     ),
     row(
         "a hardcoded sk-proj- key",
-        ("secrets", "", ""),
+        ("secrets", Any),
         ROUTE_FILE,
         "",
         Missed,
     ),
     row(
         "mock data with \"In a real implementation\"",
-        ("stubs", "stub", "comment marker"),
+        ("stubs", Any),
         DASHBOARD_FILE,
         "",
         Missed,
     ),
     row(
         "a console.log",
-        ("escapes", "escape", "console.log"),
+        ("escapes", Any),
         DASHBOARD_FILE,
-        "",
+        "console.log",
         Missed,
     ),
     row(
         "a removed expect",
-        ("inventory", "assertions", ""),
+        ("inventory", Any),
         TEST_FILE,
         "input accepts text",
         Missed,
@@ -549,11 +550,10 @@ const ROWS: [Row; 17] = [
 ];
 
 fn catches(row: &Row, finding: &Value) -> bool {
-    let value = &finding["values"][row.key];
-    let kind = match (row.key, row.value) {
-        ("", _) => true,
-        (_, "") => !value.is_null(),
-        (_, wanted) => value.as_str() == Some(wanted),
+    let kind = match row.kind {
+        Any => true,
+        Has(key) => !finding["values"][key].is_null(),
+        Is(key, wanted) => finding["values"][key].as_str() == Some(wanted),
     };
     finding["check"] == row.check
         && finding["file"] == row.file
@@ -561,11 +561,14 @@ fn catches(row: &Row, finding: &Value) -> bool {
         && finding["text"].as_str().unwrap_or("").contains(row.text)
 }
 
-fn caught(row: &Row, findings: &[Value]) -> bool {
-    findings.iter().any(|finding| catches(row, finding))
+fn pin(row: &Row, findings: &[Value]) -> Pin {
+    match findings.iter().any(|finding| catches(row, finding)) {
+        true => Caught,
+        false => Missed,
+    }
 }
 
-fn state(now: Today, pinned: Today) -> &'static str {
+fn state(now: Pin, pinned: Pin) -> &'static str {
     match (now, pinned) {
         (Caught, Caught) => "caught",
         (Missed, Missed) => "missed, pinned",
@@ -578,45 +581,51 @@ fn recall(tier: Tier, findings: &[Value]) -> (String, Vec<&'static str>) {
     let rows: Vec<&Row> = ROWS.iter().filter(|row| row.tier == tier).collect();
     let mut lines = Vec::new();
     let mut wrong = Vec::new();
+    let mut count = 0;
     for row in &rows {
-        let now = match caught(row, findings) {
-            true => Caught,
-            false => Missed,
-        };
-        let state = state(now, row.today);
-        if now != row.today {
+        let now = pin(row, findings);
+        count += usize::from(now == Caught);
+        if now != row.pin {
             wrong.push(row.slop);
         }
         lines.push(format!(
-            "  {state}: {} ({} in {})",
-            row.slop, row.check, row.file
+            "  {}: {} ({} in {})",
+            state(now, row.pin),
+            row.slop,
+            row.check,
+            row.file
         ));
     }
-    let count = rows.iter().filter(|row| caught(row, findings)).count();
     let head = format!("{count} of {} caught", rows.len());
     (format!("{head}\n{}", lines.join("\n")), wrong)
 }
 
 #[test]
 fn the_planted_turn_catches_exactly_the_pinned_rows() {
-    let tree = app();
+    let tree = Tree::new();
+    for (path, text) in BASE {
+        tree.write(path, text);
+    }
     tree.base();
-    plant(&tree);
+    let planted = planted();
+    for (path, text) in &planted {
+        tree.write(path, text);
+    }
+    let texts = BASE.iter().map(|(_, text)| *text);
+    assert!(
+        !texts
+            .chain(planted.iter().map(|(_, text)| text.as_str()))
+            .any(|text| text.contains("usage-dashboard-v2")),
+        "the -v2 copy must stay imported by nothing"
+    );
 
     let (run, report) = harness::stop_report(tree.root(), A_STOP, &[]);
 
     assert_eq!(run.code, 2, "{}", run.out);
     let findings = report["findings"].as_array().cloned().unwrap_or_default();
-    assert!(
-        !findings
-            .iter()
-            .any(|finding| finding["check"] == "measurement-lost"),
-        "{report}"
-    );
-    assert!(
-        !report["reviews"].to_string().contains("unmeasured"),
-        "{report}"
-    );
+    let lost = report["findings"].to_string().contains("measurement-lost");
+    let unmeasured = report["reviews"].to_string().contains("unmeasured");
+    assert!(!lost && !unmeasured, "{report}");
     let (blocking, wrong_blocking) = recall(Tier::Blocks, &findings);
     let (riding, wrong_riding) = recall(Tier::RidesAlong, &findings);
     let summary = format!("blocking rows: {blocking}\nride-along rows: {riding}");

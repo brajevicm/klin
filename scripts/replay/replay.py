@@ -92,7 +92,10 @@ def report(klin, version, change, check):
     if cached.exists():
         return json.loads(cached.read_text())
     cwd = checkout(change["repo"])
-    prepare(cwd, change["commit"])
+    try:
+        prepare(cwd, change["commit"])
+    except subprocess.CalledProcessError as why:
+        return {"failed": str(why)}
     env = {name: value for name, value in os.environ.items() if not name.startswith(("KLIN_", "GITHUB_"))}
     done = subprocess.run([klin, "check", check, "--json"], cwd=cwd, env=env, capture_output=True, text=True)
     try:
@@ -136,7 +139,7 @@ def run(args):
     found = []
     for change in changes:
         result = report(klin, version, change, check)
-        if "failed" in result:
+        if result.get("measurement") != "complete":
             failed.append(change["commit"])
         for finding in result.get("findings", []):
             if matches(args.row, finding):
@@ -144,16 +147,16 @@ def run(args):
     for key in found:
         labels.setdefault(key, dict(zip(COLUMNS, [*key, "?", "", ""])))
     write_labels(path, labels)
-    summarize(args, changes, failed, [labels[key] for key in found])
+    summarize(f"{args.row}--{args.set}", changes, failed, [labels[key] for key in found])
 
 
-def summarize(args, changes, failed, findings):
+def summarize(name, changes, failed, findings):
     measured = len(changes) - len(failed)
     wrong = sum(label["label"] == "not-appropriate" for label in findings)
     unlabeled = sum(label["label"] not in ("appropriate", "not-appropriate") for label in findings)
-    spot = findings if len(findings) <= SPOT else random.Random(f"{args.row}--{args.set}").sample(findings, SPOT)
+    spot = findings if len(findings) <= SPOT else random.Random(name).sample(findings, SPOT)
     unreviewed = [label for label in spot if not label["reviewed"]]
-    print(f"{args.row} over {args.set}: {measured} changes measured, {len(failed)} failed to run, {len(findings)} findings")
+    print(f"{name}: {measured} changes measured, {len(failed)} not measured in full, {len(findings)} findings")
     print(f"N = {100 * wrong / max(measured, 1):.1f} not-appropriate findings per 100 changes")
     if unlabeled:
         print(f"not final: {unlabeled} finding(s) carry no label")
@@ -166,15 +169,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     freeze = commands.add_parser("sample")
+    freeze.set_defaults(command=sample)
     freeze.add_argument("set")
     freeze.add_argument("repos", nargs="+")
     freeze.add_argument("--changes", type=int, default=100)
     replay = commands.add_parser("run")
+    replay.set_defaults(command=run)
     replay.add_argument("set")
     replay.add_argument("row")
     replay.add_argument("--klin", default=str(ROOT / "target" / "release" / "klin"))
     args = parser.parse_args()
-    {"sample": sample, "run": run}[args.command](args)
+    args.command(args)
 
 
 if __name__ == "__main__":
