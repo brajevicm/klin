@@ -2461,7 +2461,16 @@ ticket that implements the area MUST measure them:
 
 1. **Grammar lag.** A `measurement-lost` finding from a construct klin's
    grammar does not read yet blocks until a person holds the file (section
-   7.2).
+   7.2). The TypeScript grammar is a fork of `tree-sitter-typescript`
+   0.23.2, pinned by `rev` (#390), because upstream has had no release
+   since 2024. The fork reads six forms that 0.23.2 rejects: a tuple label
+   that is a type keyword, a variance annotation on a type parameter,
+   `export type *`, an import type with type arguments, an instantiation
+   expression before a template literal, and a bare `&` in TSX text. It also
+   reads a `global` block inside `declare module`. The tests that call
+   `a_typescript_form_is_measured` in `tests/measurement_lost.rs` pin the six
+   forms and a type parameter named `out`. klin goes back to a crates.io
+   release once one reads them all.
 2. **Teammates' commits on the same branch.** A pull of a teammate's commits
    on the agent's own feature branch does not move the default-branch
    merge-base, so it is not advisory, and those commits read as new at the
@@ -4172,10 +4181,9 @@ alive. Declarations marked externally visible, Rust `main`, and functions the
 shared test convention recognizes are not judged. A TypeScript declaration
 inside a global augmentation, `declare global { ... }` or a `global { ... }`
 block a `declare module` holds, is externally visible, because it adds a name
-to the global scope that code reads without an import. The grammar parses the
-nested `global` block only once the #390 fork lands, so no test pins that
-form yet. The `declare global` form is pinned by
-`a_declaration_in_a_global_augmentation_is_not_judged` in
+to the global scope that code reads without an import. The two forms are
+pinned by `a_declaration_in_a_global_augmentation_is_not_judged` and
+`a_declaration_in_a_global_block_a_declare_module_holds_is_not_judged` in
 `tests/dead_symbols.rs`. The `ignore` list adds name
 globs. A glob is matched against each name a declaration binds, so a
 destructuring declaration is left out only when every name it binds matches
