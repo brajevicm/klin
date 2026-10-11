@@ -1594,3 +1594,79 @@ fn a_layer_rule_a_load_judges_refuses_every_command() {
         assert!(!run.says("ERR   layering"), "{config}: {}", run.out);
     }
 }
+
+#[test]
+fn acyclic_alone_fails_a_new_cycle_and_holds_the_cycles_the_base_holds() {
+    let tree = Tree::new();
+    tree.write("klin.json", r#"{"layering":{"acyclic":true}}"#);
+    tree.write(
+        "web/a.ts",
+        "import { b } from \"./b\";\nexport const a = 1;\n",
+    );
+    tree.write(
+        "web/b.ts",
+        "import { a } from \"./a\";\nexport const b = 1;\n",
+    );
+    tree.write("web/c.ts", "export const c = 1;\n");
+    tree.base();
+
+    let held = tree.run(&["check", "layering"]);
+    tree.write(
+        "web/c.ts",
+        "import { a } from \"./a\";\nexport const c = 1;\n",
+    );
+    tree.write(
+        "web/a.ts",
+        "import { b } from \"./b\";\nimport { c } from \"./c\";\nexport const a = 1;\n",
+    );
+    let new = tree.run(&["check", "layering"]);
+
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(held.says("the base already held"), "{}", held.out);
+    assert_eq!(new.code, 1, "{}", new.out);
+    assert!(new.says("cycle: web/c.ts"), "{}", new.out);
+}
+
+#[test]
+fn a_section_that_asks_for_neither_layers_nor_cycles_is_refused() {
+    for config in [
+        r#"{"layering":{"acyclic":false}}"#,
+        r#"{"layering":{"in":"web"}}"#,
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", config);
+        tree.write("web/a.ts", "export const a = 1;\n");
+
+        let run = tree.run(&["check", "layering"]);
+
+        assert_eq!(run.code, 2, "{config}: {}", run.out);
+        assert!(run.says("\"layers\""), "{config}: {}", run.out);
+    }
+}
+
+#[test]
+fn a_bare_import_under_the_base_url_is_a_local_edge() {
+    for (config, code) in [
+        (r#"{"compilerOptions":{"baseUrl":"."}}"#, 1),
+        (r#"{"compilerOptions":{}}"#, 0),
+    ] {
+        let tree = Tree::new();
+        tree.write(
+            "klin.json",
+            r#"{"layering":{"layers":{"ui":{"in":"components","can_use":["lib"]},"lib":{"in":"lib","can_use":[]}}}}"#,
+        );
+        tree.write("tsconfig.json", config);
+        tree.write("components/price.tsx", "export const price = 1;\n");
+        tree.write(
+            "lib/bad.ts",
+            "import { price } from \"components/price\";\nimport { useState } from \"react\";\nexport const bad = price;\n",
+        );
+
+        let run = tree.run(&["check", "layering"]);
+
+        assert_eq!(run.code, code, "{config}: {}", run.out);
+        if code == 1 {
+            assert!(run.says("lib → ui"), "{config}: {}", run.out);
+        }
+    }
+}

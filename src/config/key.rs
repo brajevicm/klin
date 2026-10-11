@@ -33,6 +33,9 @@ pub enum Shape {
 #[derive(Clone, Copy)]
 pub enum SectionShape {
     Object,
+    /// An object that must state one of these keys with a value other than `false`, since
+    /// without one the section asks for nothing.
+    Asks(&'static [&'static str]),
     /// A map of document path to the one key every document takes.
     DocumentMap(&'static Key),
     /// A section that reads no policy, with what a person may write instead.

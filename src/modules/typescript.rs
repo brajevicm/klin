@@ -71,7 +71,16 @@ fn resolved(
     match base {
         Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
         Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
-        None => builder.external += 1,
+        None => match paths.and_then(|scope| scope.under_base_url(specifier)) {
+            Some(base)
+                if candidates(&base)
+                    .iter()
+                    .any(|file| modules.contains_key(file.as_str())) =>
+            {
+                dependency(builder, modules, site, specifier, &base);
+            }
+            _ => builder.external += 1,
+        },
     }
     if !relative(specifier) {
         for hole in &mut builder.holes[before..] {

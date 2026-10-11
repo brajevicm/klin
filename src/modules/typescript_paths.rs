@@ -11,6 +11,7 @@ pub(super) struct Paths {
 struct Config {
     directory: String,
     anchor: Option<String>,
+    base_url: bool,
     rules: Vec<(String, Value)>,
     roots: Roots,
     uncertain: bool,
@@ -47,7 +48,7 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.exact.is_empty() && scope.wildcards.is_empty() {
+                if scope.exact.is_empty() && scope.wildcards.is_empty() && !scope.base_url {
                     return None;
                 }
                 let root = scope
@@ -74,6 +75,7 @@ fn contains(directory: &str, file: &str) -> bool {
 struct Scope {
     roots: Option<Roots>,
     anchor: Option<String>,
+    base_url: bool,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
@@ -88,6 +90,15 @@ pub(super) struct FilePaths<'a> {
 impl FilePaths<'_> {
     pub(super) fn resolve(self, specifier: &str) -> Option<Result<String, String>> {
         self.scope.resolve(specifier, self.root)
+    }
+
+    /// The path a bare specifier names under a written `baseUrl`, where the config is proved.
+    pub(super) fn under_base_url(self, specifier: &str) -> Option<String> {
+        let scope = self.scope;
+        if !scope.base_url || scope.uncertain || !self.root || absolute(specifier) {
+            return None;
+        }
+        joined(scope.anchor.as_deref()?, specifier)
     }
 }
 
@@ -108,6 +119,7 @@ impl Scope {
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
+            base_url: owners.first().is_some_and(|config| config.base_url),
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
@@ -332,6 +344,7 @@ impl Config {
         Self {
             directory: directory(file).to_string(),
             anchor,
+            base_url: value.pointer("/compilerOptions/baseUrl").is_some(),
             rules: rules(file, parsed),
             roots: Roots::read(file, value),
             uncertain: !file.ends_with("/tsconfig.json") && file != "tsconfig.json"
