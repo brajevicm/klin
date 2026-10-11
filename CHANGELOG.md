@@ -3,7 +3,7 @@
 Each release adds a section here before the release PR. The section opens with
 "What changes for you", which the GitHub release shows above the install
 table. Write it under `## Unreleased`; the release PR renames that heading to
-the version.
+the version, so add the heading again after each release.
 
 ## Unreleased
 

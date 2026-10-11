@@ -105,17 +105,26 @@ def main() -> None:
     if validate(*mode).returncode == 0:
         raise SystemExit("file-mode change was accepted")
 
-    silent = fixture(notes="")
-    if validate(*silent).returncode == 0:
-        raise SystemExit("a release without notes for the user was accepted")
-
-    unheaded = fixture(notes="- A new check starts green.\n\n")
-    if validate(*unheaded).returncode == 0:
-        raise SystemExit("notes without a What changes for you section were accepted")
-
-    kept = fixture(heading="Unreleased")
-    if validate(*kept).returncode == 0:
-        raise SystemExit("a release that keeps the Unreleased heading was accepted")
+    for label, case, reason in [
+        ("a release without notes for the user", fixture(notes=""), b"What changes for you"),
+        (
+            "notes without a What changes for you section",
+            fixture(notes="- A new check starts green.\n\n"),
+            b"What changes for you",
+        ),
+        (
+            "an empty What changes for you section",
+            fixture(notes="### What changes for you\n\n### Fixes\n\n- A fix.\n\n"),
+            b"What changes for you",
+        ),
+        (
+            "a release that keeps the Unreleased heading",
+            fixture(heading="Unreleased"),
+            b"unexpected files",
+        ),
+    ]:
+        if reason not in validate(*case).stderr:
+            raise SystemExit(f"{label} was not rejected for its notes")
 
     print("release validator rejects byte and mode drift and silent release notes")
 

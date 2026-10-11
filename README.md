@@ -245,7 +245,7 @@ GitHub Actions, as its own job:
 
 It fails on any non-zero exit and annotates findings and review items in pull requests.
 
-Dependabot opens a PR for each new klin release with this config:
+This Dependabot config opens a PR for each new klin Action version:
 
 ```yaml
 # .github/dependabot.yml

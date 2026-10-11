@@ -140,7 +140,11 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
             path,
         )
     if path == "CHANGELOG.md":
-        return replace_once(data, f"## {current}\n".encode(), b"## Unreleased\n", path)
+        heading = re.compile(rb"^## " + re.escape(current.encode()) + rb"$", re.MULTILINE)
+        renamed, count = heading.subn(b"## Unreleased", data)
+        if count != 1:
+            fail(f"{path}: expected exactly one '## {current}' heading, found {count}")
+        return renamed
     if path == "README.md":
         data = replace_once(
             data,
@@ -157,12 +161,17 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
     fail(f"no release normalizer for {path}")
 
 
-def release_notes(changelog: bytes, version: str) -> str:
-    text = changelog.decode("utf-8", errors="replace")
+def has_user_notes(changelog: bytes, version: str) -> bool:
+    try:
+        text = changelog.decode("utf-8")
+    except UnicodeDecodeError as why:
+        fail(f"CHANGELOG.md is not UTF-8: {why}")
     section = re.search(
-        rf"^## {re.escape(version)}\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL
+        rf"^## {re.escape(version)}\n\n### What changes for you\n(.*?)(?=^##|\Z)",
+        text,
+        re.MULTILINE | re.DOTALL,
     )
-    return section.group(1).strip() if section else ""
+    return section is not None and section.group(1).strip() != ""
 
 
 def changed_files(base: str, head: str) -> list[str]:
@@ -211,10 +220,7 @@ def main() -> None:
                 f"{previous} -> {current} version substitution"
             )
 
-    notes = release_notes(show(head, "CHANGELOG.md"), current).splitlines()
-    if not notes or notes[0] != "### What changes for you" or not any(
-        line.strip() for line in notes[1:]
-    ):
+    if not has_user_notes(show(head, "CHANGELOG.md"), current):
         fail(
             f"CHANGELOG.md: the {current} section must open with a filled "
             "'### What changes for you' section, which the GitHub release shows first"

@@ -7343,11 +7343,12 @@ It MUST differ from its `main` base only by the configured release-version
 substitutions, including the crate/lock versions, the two manifest versions,
 the two marketplace refs, the two README pins and the `## Unreleased` heading
 of `CHANGELOG.md`, which becomes `## X.Y.Z`; file modes and all other bytes
-MUST remain unchanged. That section MUST open with a filled
-`### What changes for you` subsection that a person wrote: new checks, verdicts
-that change, and whether `klin setup` must run again. cargo-dist puts it above
-the install table of the GitHub Release, and a release without it MUST NOT
-merge. The required `quality / gates` check MUST prove
+MUST remain unchanged. A person writes that section, and it opens with a
+`### What changes for you` subsection that names new checks, verdicts that
+change, and whether `klin setup` must run again. cargo-dist puts it above the
+install table of the GitHub Release. The release validation MUST reject a
+release PR whose section lacks that subsection or leaves it empty; it does not
+judge what the subsection says. The required `quality / gates` check MUST prove
 that exact transformation and MUST run `dist plan` before the release PR may
 merge. After merge, `publish-release` MUST revalidate the transformation,
 MUST create `vX.Y.Z` only on that exact merged commit, and MUST NOT move an
