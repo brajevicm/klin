@@ -309,12 +309,16 @@ row the decode fell to 26 ms with the reserved lists alone and to 24 ms with
 both, and the warm hook's peak RSS fell from 133,104 kB to 124,976 kB. Every
 count the row prints is unchanged.
 
-The 24 ms left builds one `String` for each path, name and text in the
-cache. A lazy format still does not help a changed Stop, which decodes every
-base file for `dead-symbols` and `reachability`. Cutting the rest needs facts
-that borrow from the read bytes or share their strings, which changes
-`FileFacts` for every consumer, so it is a ticket of its own, which no one has
-filed yet.
+In the 24 ms left, the decode builds one `String` for each path, name and
+text in the cache, and also reads the numbers, interns the names and builds
+the lists. No counter splits these parts. A lazy format still does not help a
+changed Stop, which decodes every base file for `dead-symbols` and
+`reachability`. Facts that borrow from the read bytes or share their strings
+would remove the `String`s, but they change `FileFacts` for every extractor and
+every check. The estimated gain is at most 10 to 15 ms at 300k/20, about 2% of
+a warm Stop of about 680 ms, and the spec sets no budget for a Stop. That gain
+does not pay for the change, so no ticket follows. A measurement that shows a
+larger share of the Stop in the decode reopens the question.
 
 ## Final self-enforcement
 
