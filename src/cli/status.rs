@@ -61,6 +61,7 @@ fn document(
         "command": "status",
         "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": latest.map(ToString::to_string),
             "update_available": latest.is_some_and(release::Version::is_newer),
+            "auto_update": release::auto_update(),
             "updated_from": release::updated_from().map(|from| from.to_string()),
         },
         "config": {

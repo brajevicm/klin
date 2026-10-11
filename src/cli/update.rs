@@ -12,8 +12,17 @@ use crate::sys::release;
 const INSTALL: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                        https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh";
 
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Switch {
+    On,
+    Off,
+}
+
 #[derive(clap::Args)]
 pub struct Args {
+    /// Install each newer release on its own at a session start, or stop doing so
+    #[arg(long, value_enum, conflicts_with = "check")]
+    auto: Option<Switch>,
     /// Ask GitHub for the newest release and name it, without installing anything
     #[arg(long)]
     check: bool,
@@ -22,6 +31,9 @@ pub struct Args {
 pub fn run(args: &Args) -> u8 {
     if args.check {
         return check();
+    }
+    if let Some(switch) = args.auto {
+        return auto(switch);
     }
     let beside = std::env::current_exe()
         .ok()
@@ -39,6 +51,27 @@ pub fn run(args: &Args) -> u8 {
                 "FAIL: klin-update was not found beside klin or on PATH. The installer puts it \
                  there: {INSTALL}. A plugin install updates with its plugin instead."
             );
+            2
+        }
+    }
+}
+
+/// Write the person's auto-update setting. Spec 11.8, 11.9.
+fn auto(switch: Switch) -> u8 {
+    let on = matches!(switch, Switch::On);
+    match release::set_auto(on) {
+        Ok(()) if on => {
+            println!(
+                "klin: auto-update is on. A session start installs a newer release on its own."
+            );
+            0
+        }
+        Ok(()) => {
+            println!("klin: auto-update is off. klin tells you when a newer release is out.");
+            0
+        }
+        Err(why) => {
+            eprintln!("FAIL: {why}");
             2
         }
     }

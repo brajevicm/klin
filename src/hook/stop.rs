@@ -34,8 +34,8 @@ use crate::{
 
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 
-/// Whether a repository copy of klin's integration is behind this binary.
-pub type Behind = fn(&Path) -> bool;
+/// The step that brings klin's integration copies up to date with this binary, or none.
+pub type Behind = fn(&Path) -> Option<String>;
 
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
 /// the stop ends with. Spec 9.1.
@@ -43,8 +43,8 @@ const BLOCKED: u8 = 2;
 
 /// One Stop of the agent ingress, over the tree the event names, after the opt-in walk found
 /// the worktree root's `klin.json`. Spec 10.2, 10.3.
-/// `behind` says whether a repository copy of klin's integration is behind this binary, a scan
-/// the command layer owns. Spec 11.9.
+/// `behind` names the step that brings klin's integration copies up to date with this binary, a
+/// scan the command layer owns. Spec 11.9.
 pub fn stop(event: Event, start: &Path, behind: Behind, out: &mut String) -> u8 {
     let args = Args {
         changed: true,
@@ -466,8 +466,8 @@ fn release_part(parts: &mut Vec<(&'static str, String)>, host: Option<&str>) -> 
 }
 
 /// The parts a Stop tells, once a quiet turn dropped what it drops. A release part still told
-/// is recorded as heard, and after an update that left a repository integration behind it also
-/// names `klin setup`, which only this Stop pays to find out. Spec 11.9.
+/// is recorded as heard, and after an update that left an integration copy behind it also names
+/// the `klin setup` step, which only this Stop pays to find out. Spec 11.9.
 fn released(
     behind: Behind,
     root: &Path,
@@ -480,8 +480,12 @@ fn released(
     let Some((_, said)) = parts.iter_mut().find(|(part, _)| *part == "release") else {
         return parts;
     };
-    if matches!(news, News::Updated { .. }) && behind(root) {
-        said.push_str(" Run klin setup and commit the changed hook files.");
+    if let Some(step) = matches!(news, News::Updated { .. })
+        .then(|| behind(root))
+        .flatten()
+    {
+        said.push(' ');
+        said.push_str(&step);
     }
     release::heard(Audience::Person, &news);
     parts

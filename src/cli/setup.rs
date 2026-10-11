@@ -956,13 +956,28 @@ impl State {
     }
 }
 
-/// Whether this binary would rewrite a copy of klin's integration in the repository at `root`:
-/// a project copy in conflict, which is what an earlier klin's hook lines or skill read as. A
-/// host that has no copy, or a copy in the person's home, asks for nothing to commit.
-pub fn behind(root: &Path) -> bool {
-    integrations(root)
-        .iter()
-        .any(|row| row.scope == Owner::Project && row.state == State::Conflict)
+/// The step that brings klin's integration up to date after an update, or none when every copy
+/// is current. A copy in conflict is what an earlier klin's hook lines or skill read as. A
+/// repository copy asks for `klin setup` and a commit, and a copy in the person's home for
+/// `klin setup --user` with its hosts, which leaves nothing to commit. A host with no copy was
+/// never set up, so it asks for nothing. Spec 11.8, 11.9.
+pub fn behind(root: &Path) -> Option<String> {
+    let rows = integrations(root);
+    let stale = |scope| {
+        rows.iter()
+            .filter(move |row| row.scope == scope && row.state == State::Conflict)
+    };
+    let mut steps = Vec::new();
+    if stale(Owner::Project).next().is_some() {
+        steps.push("Run klin setup and commit the changed hook files.".to_string());
+    }
+    let hosts: String = stale(Owner::User)
+        .map(|row| format!(" --host {}", row.host))
+        .collect();
+    if !hosts.is_empty() {
+        steps.push(format!("Run klin setup --user{hosts}."));
+    }
+    (!steps.is_empty()).then(|| steps.join(" "))
 }
 
 /// Every copy of klin's integration the repository at `root` and the person's home hold, and a

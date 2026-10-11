@@ -1921,7 +1921,7 @@ into a `measurement-lost` finding, a review item or a coverage note.
 
 #### The `status` document
 
-`schema_version`, `command`, `klin {version, latest_known, update_available, updated_from}`, `config {path, present,
+`schema_version`, `command`, `klin {version, latest_known, update_available, updated_from, auto_update}`, `config {path, present,
 valid, error}`, `integrations [{host, scope, route, state, detail}]`,
 `state_dir`, `cache_dir`, `window {verdict, age_seconds, open [finding
 ids], unasked [deleted-test sites], error, aborted_since,
@@ -1932,7 +1932,8 @@ and `last_stop {time, verdict, historical: true}` or null.
 `latest_known` is the release the release cache holds, or null where section
 11.9 tells nothing. `update_available` is true when that release is newer
 than the binary. `updated_from` is the version the person last saw klin run
-as when this binary is newer, and null otherwise.
+as when this binary is newer, and null otherwise. `auto_update` is true when
+this binary installs a newer release on its own (section 11.9).
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
 `green` (section 6.6). `open` and `unasked` are empty unless the verdict is
@@ -1987,7 +1988,14 @@ release cache holds, and writes the answer to it. It prints the installed
 version, the newest release and its release notes link, and installs
 nothing. It exits 0 when GitHub answered, and 2 when it did not. The rules of
 section 11.9 that keep a command from asking do not apply, because a person
-asked. The guard denies `--check` to an agent with the rest of `klin update`,
+asked.
+
+`klin update --auto on` and `klin update --auto off` write the person's
+auto-update setting (section 11.9) and install nothing. A plugin's binary,
+or one with no `klin-update` beside it, writes nothing, says why, and exits
+2. `--auto` and `--check` do not combine.
+
+The guard denies `--check` and `--auto` to an agent with the rest of `klin update`,
 and its refusal names `klin status`, which shows the same release.
 
 ### 11.9 Keeping klin current
@@ -2006,11 +2014,15 @@ names its host's own update step in place of `klin update`. ADR 0069.
   command and no hook waits for the child. The ask counts from the moment
   the child starts, so a failed or slow ask, or no `curl`, is the day's ask
   and changes nothing that the command prints or returns.
-- **Auto-update.** Under `KLIN_AUTO_UPDATE=1`, when the cached release is
-  newer than the binary, the child runs the `klin-update` beside the binary,
+- **Auto-update.** When auto-update is on and the cached release is newer
+  than the binary, the child runs the `klin-update` beside the binary,
   once for each release, so a failing updater does not run again. The
-  updater verifies the release's checksums. Auto-update is opt-in until
-  releases are signed (#627). One binary measures both trees at a Stop
+  updater verifies the release's checksums. Auto-update is on when
+  `KLIN_AUTO_UPDATE=1`, off when `KLIN_AUTO_UPDATE=0`, and otherwise as the
+  `auto-update` file in the cache says, which `klin update --auto` writes. A
+  file reaches a hook whatever environment its host passes, which a shell
+  profile does not for a host started outside a shell. Auto-update is opt-in
+  until releases are signed (#627). One binary measures both trees at a Stop
   (ADR 0001), so a binary replaced between two events of a turn changes no
   verdict.
 - **The cache.** `latest.json` under `KLIN_CACHE_DIR`, or under
@@ -2047,10 +2059,13 @@ names its host's own update step in place of `klin update`. ADR 0069.
   `Update the klin plugin` in the host. A Stop that
   blocks nothing tells the person's news as a `release` part of its notice
   (section 10.7): the same line, or `klin updated to VERSION (from OLD).
-  Release notes: LINK`. When a copy of klin's integration in the
-  repository is in `conflict` under the new binary, which is how an earlier
-  klin's hook lines or skill read, the update line adds `Run klin setup and
-  commit the changed hook files.` The notice never blocks and never makes the
+  Release notes: LINK`. When a copy of klin's integration is in
+  `conflict` under the new binary, which is how an earlier klin's hook lines
+  or skill read, the update line adds the step that rewrites it: for a
+  repository copy, `Run klin setup and commit the changed hook files.`, and
+  for a copy in the person's home, `Run klin setup --user --host HOST.` for
+  each such host, with nothing to commit. A host with no copy was never set
+  up and asks for nothing. The notice never blocks and never makes the
   window red. A turn that changed nothing does not tell it, and a later Stop
   does.
 - **The agent.** A session start tells the agent's news in the session-start

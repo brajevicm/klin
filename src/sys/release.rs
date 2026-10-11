@@ -22,6 +22,9 @@ const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
 const LOCK_FILE: &str = "release.lock";
+/// The person's own auto-update setting, which `klin update --auto` writes. A file reaches a hook
+/// whatever environment the host passes it, which a shell profile does not.
+const AUTO_FILE: &str = "auto-update";
 /// A lock older than this belongs to a child that died, and the next child takes it.
 const LOCK_STALE: u64 = 10 * 60;
 /// The hidden argument the detached child runs under. It is not a public command.
@@ -396,8 +399,46 @@ fn enabled() -> bool {
     !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && Route::here().is_some()
 }
 
+/// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
+/// `klin update --auto` wrote, else off until releases are signed (#627).
 fn auto() -> bool {
-    std::env::var_os("KLIN_AUTO_UPDATE").is_some_and(|value| value == "1")
+    match std::env::var_os("KLIN_AUTO_UPDATE") {
+        Some(value) if value == "1" => true,
+        Some(value) if value == "0" => false,
+        _ => cache_dir()
+            .and_then(|dir| std::fs::read_to_string(dir.join(AUTO_FILE)).ok())
+            .is_some_and(|held| held.trim() == "on"),
+    }
+}
+
+/// Whether this binary installs a newer release on its own: the installer's, with auto-update on.
+pub fn auto_update() -> bool {
+    Route::here() == Some(Route::Installer) && auto()
+}
+
+/// Write the person's auto-update setting. Only the installer's binary updates itself, so a
+/// plugin's binary or one with no updater beside it says why the setting would change nothing.
+pub fn set_auto(on: bool) -> Result<(), String> {
+    match Route::here() {
+        Some(Route::Installer) => {}
+        Some(Route::Plugin) => {
+            return Err(
+                "this klin came with a plugin, and its host updates the plugin. Turn on \
+                        the host's own plugin auto-update instead."
+                    .to_string(),
+            );
+        }
+        None => {
+            return Err(
+                "auto-update runs the klin-update the installer puts beside klin, and \
+                        none is there."
+                    .to_string(),
+            );
+        }
+    }
+    let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
+    write(&dir.join(AUTO_FILE), if on { b"on\n" } else { b"off\n" });
+    Ok(())
 }
 
 fn set(name: &str) -> bool {

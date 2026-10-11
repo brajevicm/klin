@@ -32,6 +32,7 @@ impl Installed {
         let home = Tree::bare();
         let klin = home.path("installed/klin");
         fs::create_dir_all(home.path("installed")).expect("installed directory");
+        fs::create_dir_all(home.path("user")).expect("home directory");
         if fs::hard_link(harness::binary(), &klin).is_err() {
             fs::copy(harness::binary(), &klin).expect("copy klin");
         }
@@ -72,9 +73,11 @@ impl Installed {
     fn run(&self, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
         let path = format!("{}:/usr/bin:/bin", self.home.at("bin"));
         let cache = self.home.at("cache");
+        let user = self.home.at("user");
         let mut environment = vec![
             ("PATH", path.as_str()),
             ("KLIN_CACHE_DIR", cache.as_str()),
+            ("HOME", user.as_str()),
             ("CI", ""),
             ("KLIN_NO_UPDATE_CHECK", ""),
             ("KLIN_AUTO_UPDATE", ""),
@@ -557,4 +560,67 @@ fn a_plugin_never_updates_itself() {
     settle();
 
     assert!(!installed.home.path("updated").exists());
+}
+
+/// An update that left a copy in the person's home behind names `klin setup --user` with its
+/// host, and asks for no commit, because nothing in the repository changed. Spec 11.8, 11.9.
+#[test]
+fn the_update_notice_names_setup_user_when_a_home_copy_is_behind() {
+    let installed = Installed::new(&answers(NEWER));
+    let setup = installed.run(&[], &["setup", "--user", "--host", "claude"], "");
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    installed.home.write(
+        "user/.claude/skills/klin/SKILL.md",
+        "an earlier klin's skill\n",
+    );
+    installed.ran_before("release-person.json", "0.0.1");
+
+    let run = installed.stop();
+
+    assert!(run.says("klin updated to"), "{}", run.out);
+    assert!(
+        run.says("Run klin setup --user --host claude."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("commit"), "{}", run.out);
+}
+
+/// `klin update --auto on` turns auto-update on without an environment variable, which a host
+/// started outside a shell would not pass to its hooks, and `--auto off` turns it off.
+/// Spec 11.8, 11.9.
+#[test]
+fn update_auto_turns_auto_update_on_and_off() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let updated = installed.home.path("updated");
+
+    let off = installed.run(&[], &["update", "--auto", "off"], "");
+    installed.session(&[]);
+    settle();
+    assert_eq!(off.code, 0, "{}", off.out);
+    assert!(!updated.exists());
+
+    let on = installed.run(&[], &["update", "--auto", "on"], "");
+    let status = installed.run(&[], &["status", "--json"], "");
+    installed.session(&[]);
+    until(|| lines(&updated) == 1);
+
+    assert_eq!(on.code, 0, "{}", on.out);
+    assert!(on.says("auto-update is on"), "{}", on.out);
+    assert_eq!(status.json()["klin"]["auto_update"], true, "{}", status.out);
+    assert_eq!(lines(&updated), 1);
+}
+
+/// A plugin's binary refuses the setting and names the host's own plugin auto-update.
+/// Spec 11.9.
+#[test]
+fn update_auto_on_a_plugin_names_the_hosts_switch() {
+    let installed = Installed::plugin(&answers(NEWER));
+
+    let run = installed.run(&[], &["update", "--auto", "on"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert!(!installed.home.path("cache/auto-update").exists());
 }

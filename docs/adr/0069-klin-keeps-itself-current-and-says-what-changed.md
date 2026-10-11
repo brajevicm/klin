@@ -19,8 +19,11 @@ and no hook waits on the network.**
    through `curl`. klin carries no HTTP client, and the redirect spends no
    API rate limit. The ask counts from the moment the child starts, so an
    offline machine tries once a day.
-2. Under `KLIN_AUTO_UPDATE=1`, the child runs the `klin-update` beside the
-   binary for a newer release, once for each release. One binary measures
+2. With auto-update on, the child runs the `klin-update` beside the binary
+   for a newer release, once for each release. `klin update --auto on|off`
+   writes the setting to a file in klin's cache, because a host started
+   outside a shell does not pass a shell profile's variables to its hooks.
+   `KLIN_AUTO_UPDATE=1` or `0` overrides the file. One binary measures
    both trees at a Stop (ADR 0001), so a swap between two events of a turn
    changes no verdict.
 3. Auto-update is opt-in until releases are signed and the updater checks
@@ -35,7 +38,9 @@ and no hook waits on the network.**
    `KLIN_NO_UPDATE_CHECK` turn everything off.
 5. The person hears the news in a Stop's notice: a newer release with the one
    command that installs it, or the update that happened, with `klin setup`
-   named only when an integration is no longer `current`. The agent hears it
+   named only when a copy of klin's integration is in conflict: with a commit
+   for a repository copy, and as `klin setup --user --host HOST` for a copy
+   in the person's home. The agent hears it
    in the session-start text, because a Stop's notice reaches only the
    person. Each audience hears each piece of news once.
 6. The guard denies `klin update` and the hidden `klin __release` to an
