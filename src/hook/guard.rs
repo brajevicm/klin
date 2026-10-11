@@ -1,23 +1,33 @@
 use std::cell::OnceCell;
 use std::path::{Component, Path, PathBuf};
 
+use crate::hook::copy;
 use crate::hook::host::adapter::{Decision, Event};
 use crate::hook::journal;
+use crate::hook::lexer::{self, Op, Segment};
 use crate::sys::state;
 
-const SPLIT: char = '\u{0}';
-/// The mark an unquoted `>` leaves in the flattened command. A `>` inside an argument keeps its
-/// own character, so a commit message that holds one cannot read as a redirect.
-const REDIRECT: &str = "\u{1}";
-const SEPARATORS: &[char] = &[';', '&', '|', '\n'];
 /// Every wildcard a shell expands. A token holding one proves nothing about the file it stands
 /// for, so the guard matches no path against it. ADR 0033.
 const WILDCARDS: &[char] = &['*', '?', '['];
-/// The shell klin does not read. A command holding any of these leaves every path it names
-/// unproven, so the guard matches none of them and answers `allow`. ADR 0033.
-const UNREADABLE: &[&str] = &["$(", "`", "${", "<<", "\\"];
+/// The mark of a parameter the shell expands. A shell token holding one proves nothing about
+/// its file, while a tool's own path holds it as a character. ADR 0068.
+const PARAMETER: char = '$';
 /// The command word that moves the ground every relative path stands on.
 const CD: &str = "cd";
+/// Words that move the directory in a way the guard does not follow, wherever they stand.
+const MOVERS: &[&str] = &["cd", "pushd", "popd", "source"];
+/// Command words that run another file's shell in this one, which may move the directory.
+const SOURCES: &[&str] = &[".", "source"];
+/// Command words that run the builtin named after them.
+const BUILTINS: &[&str] = &["builtin", "command"];
+/// The command word that runs its words as shell text in this shell.
+const EVAL: &str = "eval";
+/// How deep the guard reads shell text nested in shell text. Text deeper than this is unread,
+/// so a long chain of `eval` cannot make the work grow with its square.
+const NESTING: u8 = 4;
+/// The shells whose `-c` text, or whose heredoc, the guard reads as the command they run.
+const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
 const REFUSAL: &str = "klin: refused — this would change the configuration (klin.json). Fix \
     the code the gate names instead. Only a person changes it, in a reviewed commit.";
@@ -53,8 +63,8 @@ const READ_TOOLS: &[&str] = &["Read", "NotebookRead"];
 /// do with klin. ADR 0027, ADR 0032.
 const NAME: &str = "klin.json";
 /// The commands that write every argument they take, so a guarded path among the arguments is a
-/// write under any reading. `cp` and `install` read their first argument, so neither is here.
-/// ADR 0033.
+/// write under any reading. `cp` and `install` write their destination alone, which the copy
+/// reader finds. ADR 0033, ADR 0068.
 const WRITERS: &[&str] = &["rm", "rmdir", "unlink", "shred", "mv", "truncate", "tee"];
 /// The two that write the file they are given, and only under `-i`.
 const IN_PLACE: &[&str] = &["sed", "perl"];
@@ -69,8 +79,7 @@ pub fn run(event: &Event, root: &Path) -> u8 {
     let delivered = event.host.decide(&decision);
     let refused = !matches!(decision, Decision::Allow);
     if (refused || delivered != 0)
-        && let Some(paths) = guarded.paths()
-        && let Some(at) = paths.state.as_deref()
+        && let Some(at) = guarded.paths().state.as_deref()
         && let Some(_claim) = state::claim(at, &event.identity)
     {
         let named = match refused {
@@ -92,7 +101,7 @@ fn decided(guarded: &Guarded, event: &Event) -> (Decision, &'static str) {
             event
                 .file_paths
                 .iter()
-                .flat_map(|path| guarded.denied(path)),
+                .flat_map(|path| guarded.denied(guarded.here(), path)),
         )
     });
     match paths {
@@ -129,12 +138,12 @@ struct Guarded {
     named: Option<PathBuf>,
     /// The worktree root the opt-in walk found.
     root: PathBuf,
-    paths: OnceCell<Option<Paths>>,
+    /// Where the guard runs, which is what a relative path in a command names from.
+    here: OnceCell<Option<PathBuf>>,
+    paths: OnceCell<Paths>,
 }
 
 struct Paths {
-    /// Where the guard runs, which is what a relative path in a command names from.
-    here: PathBuf,
     config: PathBuf,
     state: Option<PathBuf>,
 }
@@ -150,19 +159,33 @@ impl Guarded {
         Guarded {
             named,
             root,
+            here: OnceCell::new(),
             paths: OnceCell::new(),
         }
     }
 
-    fn paths(&self) -> Option<&Paths> {
-        self.paths
-            .get_or_init(|| Paths::at(self.named.as_deref(), &self.root))
-            .as_ref()
+    /// The tree the event named, or the one the guard runs in.
+    fn here(&self) -> Option<&Path> {
+        self.here
+            .get_or_init(|| {
+                let at = match &self.named {
+                    Some(root) => root.clone(),
+                    None => std::env::current_dir().ok()?,
+                };
+                Some(real(&at))
+            })
+            .as_deref()
     }
 
-    fn which(&self, path: &str) -> Option<Which> {
-        let paths = self.paths()?;
-        let at = paths.resolved(path)?;
+    fn paths(&self) -> &Paths {
+        self.paths.get_or_init(|| Paths::at(&self.root))
+    }
+
+    /// Which guarded thing a path names from `base`, where a relative path needs a `base` the
+    /// guard can place.
+    fn which(&self, base: Option<&Path>, path: &str) -> Option<Which> {
+        let at = resolved(base, path)?;
+        let paths = self.paths();
         if at == paths.config {
             return Some(Which::Config);
         }
@@ -173,8 +196,8 @@ impl Guarded {
     /// What one path an edit tool or a redirect names is worth: a deny for the one file only a
     /// person changes, a deny for klin's own record of the turn, and nothing otherwise. Paired
     /// with the hyphenated reason a journal line names the deny by. Spec 9.6.
-    fn denied(&self, path: &str) -> Option<(Decision, &'static str)> {
-        let (why, reason) = match self.which(path)? {
+    fn denied(&self, base: Option<&Path>, path: &str) -> Option<(Decision, &'static str)> {
+        let (why, reason) = match self.which(base, path)? {
             Which::Config => (REFUSAL, "config-write"),
             Which::State => (STATE_REFUSAL, "state-write"),
         };
@@ -184,8 +207,8 @@ impl Guarded {
     /// The guarded path a writer takes as an argument. klin can prove the write, and a person
     /// decides whether it goes through. Paired with the hyphenated reason a journal line names
     /// the ask by. Spec 9.6.
-    fn asked(&self, token: &str) -> Option<(Decision, &'static str)> {
-        let (what, reason) = match self.which(token)? {
+    fn asked(&self, base: Option<&Path>, token: &str) -> Option<(Decision, &'static str)> {
+        let (what, reason) = match self.which(base, token)? {
             Which::Config => ("the configuration klin guards", "config-mention"),
             Which::State => ("klin's own record of the turn", "state-mention"),
         };
@@ -197,31 +220,29 @@ impl Guarded {
 }
 
 impl Paths {
-    /// The tree the event named, or the one the guard runs in, under the worktree root.
-    fn at(named: Option<&Path>, root: &Path) -> Option<Paths> {
-        let here = real(&match named {
-            Some(root) => root.to_path_buf(),
-            None => std::env::current_dir().ok()?,
-        });
-        Some(Paths {
+    fn at(root: &Path) -> Paths {
+        Paths {
             config: real(&root.join(NAME)),
             state: state::dir(root).map(|at| real(&at)),
-            here,
-        })
-    }
-
-    /// The file a token names, from where the guard runs, and `None` for a token that proves
-    /// nothing about any file.
-    fn resolved(&self, token: &str) -> Option<PathBuf> {
-        if token.is_empty() || token.contains(WILDCARDS) {
-            return None;
         }
-        let named = Path::new(token);
-        let at = match named.is_absolute() {
-            true => named.to_path_buf(),
-            false => self.here.join(named),
-        };
-        Some(real(&plain(&at)))
+    }
+}
+
+/// The file a token names from `base`, and `None` for a token that proves nothing about any
+/// file: one a shell expands, or a relative one where the guard cannot place the directory.
+fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
+    if token.is_empty() || token.contains(WILDCARDS) {
+        return None;
+    }
+    Some(real(&plain(&joined(base, token)?)))
+}
+
+/// The path a token names from `base`, and `None` for a relative one with no `base`.
+fn joined(base: Option<&Path>, token: &str) -> Option<PathBuf> {
+    let named = Path::new(token);
+    match named.is_absolute() {
+        true => Some(named.to_path_buf()),
+        false => Some(base?.join(named)),
     }
 }
 
@@ -258,103 +279,288 @@ fn basename(path: &str) -> &str {
 }
 
 fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str) {
-    let Some(segments) = segments(command) else {
-        return (Decision::Allow, "");
+    let mut cwd = Cwd {
+        at: guarded.here().map(Place::at),
+        ..Cwd::default()
     };
-    let words: Vec<Vec<&str>> = segments
-        .iter()
-        .map(|segment| segment.split_whitespace().collect())
-        .collect();
-    let proven = !UNREADABLE.iter().any(|shell| command.contains(shell))
-        && !words.iter().any(|words| words.first() == Some(&CD));
-    strictest(
-        words
-            .iter()
-            .map(|words| segment_decision(guarded, words, proven)),
-    )
+    walk(guarded, command, &mut cwd, 0)
 }
 
-fn segment_decision(guarded: &Guarded, words: &[&str], proven: bool) -> (Decision, &'static str) {
-    if let Some((why, reason)) = a_persons_command(words) {
+/// The strictest decision over every segment of a command, with the directory a static `cd`
+/// moves carried from one segment to the next. Shell the guard does not read suppresses path
+/// matching alone, and an open quote allows the whole command. Nested text the outer shell
+/// expanded is unread wherever it holds a `$`, because the expansion may change how it splits,
+/// and so is text nested deeper than `NESTING`. ADR 0033, ADR 0068.
+fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, depth: u8) -> (Decision, &'static str) {
+    let Some(lexed) = lexer::lexed(command) else {
+        cwd.set(None);
+        return (Decision::Allow, "");
+    };
+    let proven =
+        !lexed.unreadable && depth <= NESTING && !(depth > 0 && command.contains(PARAMETER));
+    let mut decisions = Vec::new();
+    let mut before = Op::List;
+    for segment in &lexed.segments {
+        cwd.enter(before);
+        let at = cwd.physical();
+        decisions.push(segment_decision(guarded, segment, at, proven));
+        let changes = cwd.changes;
+        let alone = cwd.alone(segment, before, lexed.grouped);
+        if proven {
+            decisions.extend(nested_decision(guarded, segment, cwd, depth));
+        }
+        let evaled = cwd.changes != changes;
+        cwd.leave(segment, alone, evaled);
+        before = segment.after;
+    }
+    if !proven {
+        cwd.set(None);
+    }
+    strictest(decisions)
+}
+
+/// The directory relative paths resolve from, `None` once the guard cannot place it, whether a
+/// command has moved it, whether the last segment was a `cd` the guard placed, and how many
+/// times it was set, so a caller sees whether nested text changed it.
+#[derive(Default)]
+struct Cwd {
+    at: Option<Place>,
+    moved: bool,
+    placed: bool,
+    changes: u32,
+}
+
+/// One directory under its two names. `physical` is where a process stands, with every link
+/// followed. `logical` is the shell's own name for it, which a `cd` without `-P` moves from, so
+/// `..` leaves a link the way the `cd` came in.
+#[derive(Clone)]
+struct Place {
+    physical: PathBuf,
+    logical: PathBuf,
+}
+
+impl Place {
+    /// A directory whose name holds no link.
+    fn at(path: &Path) -> Place {
+        Place {
+            physical: path.to_path_buf(),
+            logical: path.to_path_buf(),
+        }
+    }
+
+    /// Where a `cd` from `from` lands: from the logical name by default, from the physical one
+    /// under `-P`, and only at a directory that exists. An absolute `dir` needs no `from`.
+    fn landing(from: Option<&Place>, dir: &str, physical: bool) -> Option<Place> {
+        if physical {
+            let base = from.map(|place| place.physical.as_path());
+            let found = joined(base, dir)?.canonicalize().ok()?;
+            return found.is_dir().then(|| Place::at(&found));
+        }
+        let base = from.map(|place| place.logical.as_path());
+        let logical = plain(&joined(base, dir)?);
+        let physical = logical.canonicalize().ok().filter(|at| at.is_dir())?;
+        Some(Place { physical, logical })
+    }
+}
+
+impl Cwd {
+    fn set(&mut self, at: Option<Place>) {
+        self.at = at;
+        self.changes += 1;
+    }
+
+    fn physical(&self) -> Option<&Path> {
+        self.at.as_ref().map(|place| place.physical.as_path())
+    }
+
+    /// A command after `||` runs when the one before failed, which may be the `cd`.
+    fn enter(&mut self, before: Op) {
+        if before == Op::Or && self.moved {
+            self.set(None);
+        }
+    }
+
+    /// A `cd`, or an `eval` that ran one, moves the directory only when it surely runs in this
+    /// shell and the next command runs after it. A directory that is not there leaves the `cd`
+    /// failing, so the guard cannot place what runs next.
+    fn leave(&mut self, segment: &Segment, alone: bool, evaled: bool) {
+        match moves(&segment.words) {
+            Move::Stays if !evaled => {
+                self.placed = false;
+                return;
+            }
+            Move::Stays => {}
+            Move::To { dir, physical } => {
+                let place = Place::landing(self.at.as_ref(), dir, physical);
+                self.set(place);
+            }
+            Move::Lost => self.set(None),
+        }
+        if !alone {
+            self.set(None);
+        }
+        self.moved = true;
+        self.placed = self.at.is_some();
+    }
+
+    /// The segment runs in this shell whenever the command reaches it: not behind an `&&` whose
+    /// left side may fail, not in a pipe, a background job or a group, and not before `||`.
+    fn alone(&self, segment: &Segment, before: Op, grouped: bool) -> bool {
+        let runs =
+            matches!(before, Op::List | Op::Background) || (before == Op::And && self.placed);
+        !grouped && runs && matches!(segment.after, Op::List | Op::And)
+    }
+
+    /// A child shell starts where this one stands, and its `cd` stays its own.
+    fn child(&self) -> Cwd {
+        Cwd {
+            at: self.at.clone(),
+            ..Cwd::default()
+        }
+    }
+}
+
+/// What a segment does to the directory.
+enum Move<'a> {
+    Stays,
+    /// A static `cd` to the directory it names, under `-P` when `physical`.
+    To {
+        dir: &'a str,
+        physical: bool,
+    },
+    /// A move the guard does not follow.
+    Lost,
+}
+
+fn moves(words: &[String]) -> Move<'_> {
+    let Some((command, args)) = command(words) else {
+        return Move::Stays;
+    };
+    if command == CD {
+        return cd_target(args).map_or(Move::Lost, |(dir, physical)| Move::To { dir, physical });
+    }
+    let builtin = BUILTINS.contains(&command).then(|| args.first()).flatten();
+    let sourced =
+        SOURCES.contains(&command) || builtin.is_some_and(|word| SOURCES.contains(&word.as_str()));
+    match sourced || words.iter().any(|word| MOVERS.contains(&word.as_str())) {
+        true => Move::Lost,
+        false => Move::Stays,
+    }
+}
+
+/// The command word by its basename, found behind the prefixes of `a_prefix`, and the words
+/// after it.
+fn command(words: &[String]) -> Option<(&str, &[String])> {
+    let at = words.iter().position(|word| !a_prefix(word))?;
+    Some((basename(&words[at]), &words[at + 1..]))
+}
+
+/// The one directory a `cd` names, and whether `-P` makes it follow links, where the last of
+/// `-L` and `-P` wins.
+fn cd_target(args: &[String]) -> Option<(&str, bool)> {
+    let flags = args
+        .iter()
+        .take_while(|arg| matches!(arg.as_str(), "-L" | "-P" | "-e" | "-@" | "--"));
+    let physical = flags
+        .clone()
+        .filter(|arg| matches!(arg.as_str(), "-L" | "-P"))
+        .last()
+        .is_some_and(|arg| arg == "-P");
+    match &args[flags.count()..] {
+        [dir] if !dir.starts_with(['-', '~']) && !dir.contains(PARAMETER) => {
+            Some((dir.as_str(), physical))
+        }
+        _ => None,
+    }
+}
+
+fn segment_decision(
+    guarded: &Guarded,
+    segment: &Segment,
+    cwd: Option<&Path>,
+    proven: bool,
+) -> (Decision, &'static str) {
+    if let Some((why, reason)) = a_persons_command(&segment.words) {
         return (Decision::Deny(why.to_string()), reason);
     }
     if !proven {
         return (Decision::Allow, "");
     }
-    let written = written_by(words).unwrap_or_default();
+    let written = written_by(&segment.words, cwd);
     strictest(
-        redirect_targets(words)
-            .into_iter()
-            .flat_map(|target| guarded.denied(target))
-            .chain(written.iter().flat_map(|word| guarded.asked(word))),
+        segment
+            .targets
+            .iter()
+            .filter(|target| !target.contains(PARAMETER))
+            .flat_map(|target| guarded.denied(cwd, target))
+            .chain(
+                written
+                    .iter()
+                    .filter(|word| !word.contains(PARAMETER))
+                    .flat_map(|word| guarded.asked(cwd, word)),
+            ),
     )
 }
 
-/// The arguments a command writes, and `None` for a command that writes none of them. The
-/// command word is read by its basename and found behind the same prefixes klin's own name is
-/// found behind, so a script of the tree's own named `rm` is read as `rm`. ADR 0033.
-fn written_by<'a>(words: &'a [&'a str]) -> Option<&'a [&'a str]> {
-    let at = words.iter().position(|word| !a_prefix(word))?;
-    let command = basename(words[at]);
-    let writes = match IN_PLACE.contains(&command) {
-        true => words.iter().any(|word| word.starts_with("-i")),
-        false => WRITERS.contains(&command),
+/// The files a command writes. The command word is read by its basename and found behind the
+/// same prefixes klin's own name is found behind, so a script of the tree's own named `rm` is
+/// read as `rm`. ADR 0033, ADR 0068.
+fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
+    let Some((command, args)) = command(words) else {
+        return Vec::new();
     };
-    writes.then(|| &words[at + 1..])
+    let look = |path: &str| resolved(cwd, path).and_then(|at| at.metadata().ok());
+    match command {
+        "cp" => copy::destinations(&copy::CP, args, look),
+        "install" => copy::destinations(&copy::INSTALL, args, look),
+        command if IN_PLACE.contains(&command) => match args.iter().any(|w| w.starts_with("-i")) {
+            true => args.to_vec(),
+            false => Vec::new(),
+        },
+        command if WRITERS.contains(&command) => args.to_vec(),
+        _ => Vec::new(),
+    }
 }
 
-/// The same separators a shell honours, with the quoting honoured and the quotes taken out. A
-/// single quote makes everything literal, and a double quote makes a separator literal. `None`
-/// when a quote is left open, because then the command does not say where its arguments end.
-fn segments(command: &str) -> Option<Vec<String>> {
-    let mut flat = String::with_capacity(command.len());
-    let mut quotes = Quotes::default();
-    for c in command.chars() {
-        if quotes.toggled_by(c) {
-            continue;
+/// The decision over shell text a segment runs: `eval`'s words in this shell, and a shell's
+/// `-c` text or heredoc in a child. ADR 0068.
+fn nested_decision(
+    guarded: &Guarded,
+    segment: &Segment,
+    cwd: &mut Cwd,
+    depth: u8,
+) -> Option<(Decision, &'static str)> {
+    let (command, args) = command(&segment.words)?;
+    match command {
+        EVAL => Some(walk(guarded, &args.join(" "), cwd, depth + 1)),
+        command if SHELLS.contains(&command) => {
+            let text = shell_text(args, segment.body.as_deref())?;
+            Some(walk(guarded, text, &mut cwd.child(), depth + 1))
         }
-        if quotes.any() {
-            flat.push(c);
-        } else if SEPARATORS.contains(&c) {
-            flat.push(SPLIT);
-        } else if c == '>' {
-            flat.push(' ');
-            flat.push_str(REDIRECT);
-            flat.push(' ');
-        } else {
-            flat.push(c);
-        }
+        _ => None,
     }
-    if quotes.any() {
-        return None;
-    }
-    Some(flat.split(SPLIT).map(str::to_owned).collect())
 }
 
-#[derive(Default)]
-struct Quotes {
-    single: bool,
-    double: bool,
-}
-
-impl Quotes {
-    fn toggled_by(&mut self, c: char) -> bool {
-        match c {
-            '\'' if !self.double => self.single = !self.single,
-            '"' if !self.single => self.double = !self.double,
-            _ => return false,
+/// The text a shell runs: the word after a `-c` flag, or the heredoc it reads when it names no
+/// script. An option that takes an argument, or a long one, leaves the text unread.
+fn shell_text<'a>(args: &'a [String], body: Option<&'a str>) -> Option<&'a str> {
+    for (at, arg) in args.iter().enumerate() {
+        let flags = arg
+            .strip_prefix('-')
+            .filter(|flags| !flags.is_empty() && flags.chars().all(|c| c.is_ascii_alphabetic()))?;
+        if flags.contains(['o', 'O']) {
+            return None;
         }
-        true
+        if flags.contains('c') {
+            return args.get(at + 1).map(String::as_str);
+        }
     }
-
-    fn any(&self) -> bool {
-        self.single || self.double
-    }
+    body
 }
 
 /// One of klin's own subcommands that only a person runs, whatever flags it carries, paired
 /// with the hyphenated reason a journal line names the refusal by.
-fn a_persons_command(words: &[&str]) -> Option<(&'static str, &'static str)> {
+fn a_persons_command(words: &[String]) -> Option<(&'static str, &'static str)> {
     let at = words.iter().position(|word| {
         basename(word).trim_end_matches(".exe") == "klin" && !word.starts_with('-')
     })?;
@@ -363,7 +569,7 @@ fn a_persons_command(words: &[&str]) -> Option<(&'static str, &'static str)> {
     }
     let rest: Vec<&str> = words[at + 1..]
         .iter()
-        .copied()
+        .map(String::as_str)
         .filter(|word| !word.starts_with('-'))
         .collect();
     KLIN_REFUSED
@@ -379,13 +585,4 @@ fn a_prefix(word: &str) -> bool {
         || word.contains("$(")
         || word.contains('`')
         || ["env", "npx", "pnpm", "bunx", "time", "nice", "sudo"].contains(&word)
-}
-
-fn redirect_targets<'a>(words: &[&'a str]) -> Vec<&'a str> {
-    words
-        .iter()
-        .enumerate()
-        .filter(|(_, word)| **word == REDIRECT)
-        .filter_map(|(at, _)| words.get(at + 1).copied())
-        .collect()
 }

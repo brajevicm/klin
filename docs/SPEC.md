@@ -1582,6 +1582,61 @@ A deny reason says that a person changes the file in a reviewed commit, or
 names the command a person runs instead. It never names a command that
 accepts debt. The guard's journal line names the matched command.
 
+#### 10.8.1 Write targets the guard proves
+
+This section amends the shell reading of B.9.4. ADR 0068 records why. The
+proof rule stays: the guard answers only where the text proves a write, and
+everything else is `allow`. The guard never runs a shell or a subprocess to
+find a target.
+
+- **Directory.** A relative path resolves from the event's directory, moved by
+  each static `cd` before it. A `cd` moves it only when all of these hold: it
+  has one operand without `$`, `~` or a wildcard, the operand names a
+  directory that exists, `;`, `&` or a newline comes before it (or it is
+  first), and `&&`, `;` or a newline follows it. And the command holds no
+  subshell, group or function. A `cd` behind `&&` moves it only when the
+  segment before is a `cd` the guard placed. The same rules apply to an
+  `eval` that runs a `cd`. A `cd` resolves its operand as the shell does: by
+  name from the shell's own directory name by default, so `..` leaves a link
+  the way the `cd` came in, and through every link under `-P`. A file path
+  resolves from the directory the process stands in. After any
+  other `cd`, `pushd`, `popd`, `source` or `.`, also behind `builtin` or
+  `command`, and after a `||` that follows
+  a `cd`, a relative path proves nothing. An absolute path stays proven.
+- **Copies.** `cp` and `install` are writers of their destination alone, at
+  the `ask` level of B.9.4. The destination is the last operand, or each
+  source's name inside a destination directory that exists or that `-t`
+  names. `install -d` writes every operand. An option the guard does not
+  know, a letter GNU and BSD spell differently, or an abbreviated long
+  option leaves the command unproven. A source that names a directory's
+  contents (`dir/.`, `dir/`, `.`) proves only its destination directory,
+  which every copied name lands under. Under `--parents` each
+  source's path is kept under the destination. Under `-n`, or `-u` and an
+  `--update` value other than `all`, an existing destination may stay as it
+  is, so only a destination that does not exist yet is written. `-n` and `-i`
+  each override the one before, and `-f` after `-n` leaves the command
+  unproven, because GNU ignores it and BSD obeys it.
+- **Nested shell.** `sh`, `bash`, `zsh`, `dash` or `ksh` with `-c` runs the
+  next word in a child shell, and one with no script operand runs its heredoc
+  in a child shell. `eval` runs its words in this shell. The guard reads that
+  text as it reads a command. A `cd` in `eval` reaches the commands after it,
+  and a `cd` in a child shell does not. An option that takes an argument
+  leaves the text unread, and so does nested text that holds a `$`, because
+  the outer shell may expand it before the nested text splits. Text nested
+  more than four levels deep is unread, so the guard's work stays bounded.
+- **Text.** A heredoc body that no shell runs is data, and the rest of its
+  command line is read, so a redirect after `<<'EOF'` is proven. An unquoted
+  `#` at the start of a word starts a comment. A quoted path keeps its spaces.
+  A guarded name inside a `sed` or `perl` script, a comment or a quoted
+  argument is not a write.
+- **Unread shell.** `$(`, `${`, a backtick, a backslash, a here-string, a
+  process substitution and a heredoc left open suppress path matching, as
+  B.9.4 says for the list it names. `<<` and `cd` leave that list. A shell
+  token holding `$` proves nothing about its file. An edit tool's path is no
+  shell token, so a `$` in it is a character.
+
+`tests/guard.rs` holds the adversarial matrix of #426.
+
 ### 10.9 Harness protocol
 
 Protocol v1 (B.9.7, ADR 0047) carries forward unchanged in its event and
@@ -6050,8 +6105,9 @@ because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 - `ask`: a command that writes every argument it takes, with a guarded path
   among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
-  `install` are not writers here, because each reads its first argument. The
-  reason quotes the token that matched. The person decides.
+  `install` are not writers here, because each reads its first argument.
+  Section 10.8.1 makes each a writer of its destination. The reason quotes
+  the token that matched. The person decides.
 - `allow`: everything else, including every command that only names a guarded
   path.
 
@@ -6063,7 +6119,8 @@ it, and `rm *.json` in the tree root passes.
 
 The guard matches no path in a command that holds shell it does not read: an
 unbalanced quote, `$(`, a backtick, `${`, `<<`, a backslash, or a `cd`
-command word. An unbalanced quote allows the whole command, because the
+command word. Section 10.8.1 amends this list and the split below (ADR
+0068). An unbalanced quote allows the whole command, because the
 command then does not say where its arguments end. The other six suppress
 path matching alone. `init`, `install` and `turn reset` name no path, so their `deny`
 stands behind any of them, and a command substitution in command position is
