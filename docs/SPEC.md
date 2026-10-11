@@ -107,7 +107,7 @@ section is not in Appendix B.
 | 15 | Trust model | Replaced by section 16. |
 | 16.1 | The hook's window | Carried forward. Section 6.6 amends it: no `turn_reset`, no forced RED, the verdict table, advisory windows, and the fallback kept only without a remote. |
 | 16.4, 16.5 | Reference algorithms | Carried forward. Section 8.4 amends 16.5. |
-| 16.2 | `klin gate` and CI window | Carried forward. Section 6.5 amends it. |
+| 16.2 | `klin check` and CI window | Carried forward. Section 6.5 amends it. |
 | 16.3 | The hook run | Carried forward. Section 10.4 amends it. |
 | 17, 18 | Test matrix, checklist | Replaced by section 19. |
 | 19.0 to 19.5 | Installation and distribution | Carried forward. Section 17 amends the command names, and B.19.5 names the Action of section 12.3. |
@@ -2972,15 +2972,11 @@ Inside this appendix, a citation by bare number, such as "6.3" or "section
 that this appendix does not hold names the section of the main body that the
 table of section 0.3 lists as its replacement.
 
-The 0.x command names in this appendix map to vNext as section 0.5 records:
-
-| 0.x | vNext |
-| --- | --- |
-| `klin gate`, `klin gate --strict` | `klin check` (section 11.3) |
-| `klin gate --hook`, `klin radius`, `klin guard` | `klin __agent event` (section 10.1) |
-| `klin install`, `klin init` | `klin setup` (section 11.2) |
-| `klin stats` | `klin report` (section 13.2) |
-| `klin turn reset` | None. A history move makes one Stop advisory (section 6.6). |
+This appendix uses the vNext command names of section 11. Section 0.5
+records which 0.x command each one replaces. The Stop, the guard and the
+radius report run under `klin __agent event` (section 10.1). The 0.x command
+that moved the stamp by hand has no vNext equivalent: a history move makes one
+Stop advisory (section 6.6).
 
 ### B.4 Core Domain Model
 
@@ -2998,7 +2994,7 @@ Three kinds exist.
 | Kind | `before` | `after` | Who uses it |
 |---|---|---|---|
 | `turn` | the tree as it stood when the current turn's window opened | working tree | the Stop hook, `klin radius` |
-| `branch` | the merge-base with the default branch, or the pull request base | working tree, or HEAD in CI | `klin gate` by hand, CI on a pull request |
+| `branch` | the merge-base with the default branch, or the pull request base | working tree, or HEAD in CI | `klin check` by hand, CI on a pull request |
 | `push` | the push event's previous commit | HEAD | CI on a push |
 
 Every run MUST print the window it used, as one line, before any gate output.
@@ -3111,7 +3107,7 @@ configured or derived instance of a check. A check declares:
   Automatic check MUST judge against the base, so that a tree with no config is
   green (5.1). A check that judges one tree against a number exists only for a
   number a person pinned. A check that needs the commit or the tree is the
-  kind `--strict` reaches, because it has a comparison or an accepted list to
+  kind `klin check` reaches, because it has a comparison or an accepted list to
   judge. `sarif` needs the commit and not the tree: it reads which lines the
   window changed and runs the scanner once, over the working tree only (8.3).
 - `takes_scope`, whether a changed-file list narrows it. False says only that
@@ -3183,8 +3179,8 @@ nothing. Pinned by
 `an_accepted_entry_without_lines_holds_a_test_function_on_its_cc`,
 `an_accepted_entry_that_leaves_out_lines_does_not_hold_a_production_function`
 and `an_accepted_entry_that_names_some_of_the_values_is_a_tool_error` in
-`tests/complexity.rs`. An entry that matches nothing is a NOTE, and a failure
-under `--strict`.
+`tests/complexity.rs`. An entry that matches nothing is a NOTE at the Stop, and a
+review item under `klin check` (section 7.6).
 
 An entry may carry a `reason`, a string in which the person says why they
 accept the debt. It is not a value: klin never ratchets it, never compares
@@ -3201,7 +3197,7 @@ The accepted entry takes the match when the finding holds against it, unless
 a `before` entry the finding also holds against shares more values with it
 (4.4). When the finding rose against the accepted entry but not against
 `before`, or when `before` shares more values, the `before` entry takes the
-match and the accepted entry matches nothing. That is how `--strict` tells a
+match and the accepted entry matches nothing. That is how `klin check` tells a
 person to delete the line once the code has moved off the accepted value.
 
 ### B.5 Configuration Contract
@@ -3225,11 +3221,11 @@ the base either is a NOTE (8.6), so it keeps this promise too. A build that
 already fails is judged under the failure model of section 15 and is not part
 of this promise.
 
-Under `--hook` the file is the marker that the repository opted in. When no
-`klin.json` resolves, `klin gate --hook` MUST exit 0, print nothing and write
+For the hooks, the file is the marker that the repository opted in. When no
+`klin.json` resolves, the Stop hook MUST exit 0, print nothing and write
 no state, before it surveys the tree. A `--config PATH` that names no file
-reads the same way. `klin gate` without `--hook` keeps the exit 2 that names
-the file and the sections that would fill it. ADR 0028.
+reads the same way. `klin check` runs under `{}` instead, because a person or
+CI ran it on purpose (section 0.5, ADR 0028).
 
 One configuration per repository, at the root. Source checks discover every
 supported package in a monorepo from that one root. Discovery walks up only to
@@ -3545,14 +3541,14 @@ date it used on the `derived:` line for that ceiling. This is the shape issue
 A gate is excluded by setting its section to `false`. Naming an excluded gate
 on the command line is exit 2.
 
-#### B.5.7 What `init` does now
+#### B.5.7 What `klin setup` writes to the configuration
 
-`init` writes `{}` when no configuration exists, which is the repository's
+`setup` writes `{}` when no configuration exists, which is the repository's
 opt-in marker (5.1, ADR 0028), and says so. It reads no tree and derives
 nothing, because a run derives what the file leaves out. It MUST NOT change an
 existing configuration.
 
-`init --pin` writes today's suggested guardrails as policy a person reviews:
+`setup --pin` writes today's suggested guardrails as policy a person reviews:
 the complexity `cc` and `lines` the derivation commit gives, and no
 `test_lines`, which nothing derives (pinned by
 `pin_writes_no_test_lines_because_klin_never_derives_it` in `tests/init.rs`), a `doc_size`
@@ -3568,15 +3564,14 @@ roots, languages, document entries, manifests, test roots, reachability
 families, build commands or package structure (ADR 0040). The snapshot flags
 `--add` and `--force` are gone.
 
-`init` MUST write only the config. The guard denies `init` in every form from
-an agent. `init` MUST NOT edit `.gitignore`, because klin writes nothing that
-git could see.
+`setup` MUST write only the config and the host integration of 19.3. The
+guard denies `setup` in every form from an agent. `setup` MUST NOT edit
+`.gitignore`, because klin writes nothing that git could see.
 
-`init` carries no host integration. `klin install` owns it, and the `--hooks`,
-`--host` and `--global` flags of `init` are gone (19.3, ADR 0046). A command
+The 0.x `--hooks` and `--global` flags are gone (19.3, ADR 0046). A command
 line that names one is a usage error.
 
-`init` is a convenience, not a step. A tree with no `klin.json` is fully
+`setup` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
 
 #### B.5.8 The configuration reference
@@ -3684,7 +3679,7 @@ that drifted. A person regenerates it with `klin reference > docs/REFERENCE.md`.
 
 #### B.6.1 The hook uses the turn window
 
-In `--hook` mode `before` is the turn stamp. The stamp is a git tree object of
+In the Stop hook, `before` is the turn stamp. The stamp is a git tree object of
 the working tree, including uncommitted and untracked files that `.gitignore`
 does not exclude. `after` is the working tree. Committing inside the turn does
 not move either.
@@ -3717,11 +3712,10 @@ moves when that stop ends green. Accepting finding A while finding B is still
 open leaves B `new`. A rule that moved the stamp on acceptance would make B
 inherited debt, which is the route to green this section exists to close.
 
-A person who abandons the work has a third route: `klin turn reset` moves the
-stamp to the current working tree and prints that a person moved it. The guard
-denies the command by name from an agent, the way it denies `init`. Without
-this command a red window that nobody acts on degrades into a report that
-everyone learns to ignore.
+In 0.x, a person who abandoned the work had a third route: a reset command
+moved the stamp to the current working tree. vNext drops that command. A
+history move makes one Stop advisory, and that Stop takes a fresh stamp
+(section 6.6).
 
 A stamp describes the current turn only while current HEAD history still holds
 the commit it was taken over. That commit is the stamp's parent, HEAD at
@@ -3778,7 +3772,7 @@ and says so.
 
 The stamp holds the stamped commit id, the time, the verdict of the last
 stop, a prompt counter, the prompt mark of 6.2.1, and the `asked` record of
-8.2. `klin gate --hook` writes the verdict and adds to `asked`. A fresh stamp
+8.2. The Stop writes the verdict and adds to `asked`. A fresh stamp
 holds an empty `asked`, so the record goes whenever the stamp moves. `klin radius` applies the rule above and raises the
 counter by one on every session start and prompt submitted, whether or not
 the stamp moved. The counter is what makes the per-turn block budget of 9.3
@@ -3800,13 +3794,13 @@ written in the same atomic write.
 
 The prompt mark is the window the radius report measures. A Stop reads it
 for one other thing: whether the turn changed the tree, which decides whether
-the Stop leaves a notice (10.7). A stop judges the stamp, `klin turn reset`
-moves the stamp, and the derivation commit of 6.6 comes from the stamp. A
+the Stop leaves a notice (10.7). A stop judges the stamp, a history move
+replaces the stamp (section 6.6), and the derivation commit of 6.6 comes from the stamp. A
 mark the `turn` file has lost is read from the ref. With neither, the report
 prints nothing, which is what it does with any window it cannot measure. Deleting the mark costs a report
 and no block, so the mark needs no recovery beyond its ref.
 
-#### B.6.3 `klin gate` by hand and in CI
+#### B.6.3 `klin check` by hand and in CI
 
 Candidates, in order:
 
@@ -3900,13 +3894,13 @@ it would never hit.
 The window names its derivation commit, and a run takes that commit from the
 window before any fact of the tree reaches a check. A fact read before the
 window is known is read again under it. A run by hand or in CI, whether
-`klin gate` or one check's own command, derives from `before` whatever turn
+`klin check` with or without a check name, derives from `before` whatever turn
 stamp the checkout holds, so a change it judges never moves its own ceiling,
 even when the change is committed. The hook derives from the stamp's parent
 even when the state directory cannot be written, because the turn ref keeps
 the stamp. A run by hand that resolves no base has no `before`, and it
 derives from the stamp's parent, or from HEAD when no stamp is readable.
-`klin init --pin` judges nothing and has no window, so every value it pins
+`klin setup --pin` judges nothing and has no window, so every value it pins
 comes from that same commit, the stamp's parent or HEAD, as `radius` does.
 Pinned by `a_branch_run_derives_from_the_base_and_not_from_a_committed_change`,
 `init_pin_with_no_turn_stamp_derives_from_head_and_not_from_the_base`,
@@ -4006,14 +4000,14 @@ The invariant that makes tightening safe:
 Because of it, lowering a ceiling affects new code only. What tightens, in
 order of how much work it does:
 
-1. A person pins a dated schedule once (5.5). This is the mechanism. `init`
+1. A person pins a dated schedule once (5.5). This is the mechanism. `setup`
    MAY offer to write one from the derived ceiling to a target over a period,
    under a flag such as `--tighten 18m`, and MUST NOT write one unasked.
 2. A person pins a lower number.
 
 The derived ceiling tightens nothing. It can rise when simple code leaves the
 tree (5.4). A pinned number or schedule is the only ceiling that cannot
-loosen, and `init` writes one from today's derived value in one command.
+loosen, and `setup --pin` writes one from today's derived value in one command.
 
 Forced paydown, where a touched file must leave with less debt, is NOT
 RECOMMENDED. Its only remedy is a refactor nobody asked for, which the radius
@@ -4021,7 +4015,7 @@ report exists to discourage.
 
 #### B.7.4 What the tool writes, and where
 
-Nothing into the working tree. `init` writes `klin.json` and hook files, and
+Nothing into the working tree. `setup` writes `klin.json` and hook files, and
 only when a person runs it.
 
 klin's own state is six things: the turn stamp with the prompt mark of
@@ -4042,7 +4036,7 @@ in the state directory:
   two worktrees MUST never share a stamp. `~/.cache/klin` is the intended
   value.
 
-An implementation MUST print the state directory under `klin gate --list`.
+An implementation MUST print the state directory under `klin status`.
 `klin cache clean` MUST remove the cache for the current tree, and with
 `--all` the cache under every entry of `KLIN_STATE_DIR` whose repository
 no longer exists. It MUST NOT remove a stamp, and it MUST leave the journal
@@ -4056,7 +4050,7 @@ as a matter of routine and does not empty `.git/` or a home cache. ADR 0015's
 reason for `.klin/` was one `.gitignore` line, and neither location needs one.
 
 Anyone already running klin has `.klin-build-blocked` or `.klin/` in
-`.gitignore`. Those lines become inert. `init` MAY say so when it sees one.
+`.gitignore`. Those lines become inert. `setup` MAY say so when it sees one.
 
 ### B.8 Check Catalogue
 
@@ -4110,7 +4104,7 @@ Removing a test is ordinary work, and deleting a failing one is the
 cheapest route to green that section 1 names. klin cannot tell which it was, so it
 asks once and does not judge the answer (ADR 0031):
 
-- Under `--hook`, a vanished site is `worsened` and blocks the stop, and the
+- In the Stop hook, a vanished site is `worsened` and blocks the stop, and the
   remedy asks the agent to restore the test and fix the code if the test
   failed, or to say why the removal is intended and stop again. A stop that
   blocks records the site id (11.2) of every finding it reported in the
@@ -4119,11 +4113,11 @@ asks once and does not judge the answer (ADR 0031):
   holds it, and the run lists it in a NOTE. The report names every finding
   it records, so nothing reaches that record unasked. The record goes when
   the stamp moves, and the guard refuses an agent's write to the file that
-  holds it (9.4). The rule keys on `--hook` and not on the window kind,
+  holds it (9.4). The rule keys on the Stop hook and not on the window kind,
   because a stop whose stamp was deleted judges a branch window (6.2), and a
   stamp that went takes the record with it, so such a stop asks again.
 - Everywhere else, every vanished site is let through the same way and is a
-  NOTE, `--strict` included.
+  NOTE, `klin check` included.
 
 An accepted entry that names a vanished site still takes the match, by
 entry order (16.5), so it neither fails nor turns into an entry that matched
@@ -4328,9 +4322,9 @@ an edited `todo!()` line is a new site. An accepted entry written before
 ADR 0064 for a line that holds a marker and a code stub or a body shape keys
 the site of that code stub or body shape. Where the base holds that site,
 the base entry shares the exact count and takes the match (4.4), so the
-accepted entry matches nothing: a NOTE, and a failure under `--strict`. The
-marker is then held at the base. Where the base does not hold that site, the
-accepted entry holds it, `--strict` does not name it, and the marker fails
+accepted entry matches nothing: a NOTE at the Stop, and a review item under
+`klin check`. The marker is then held at the base. Where the base does not
+hold that site, the accepted entry holds it, `klin check` does not name it, and the marker fails
 as new. The pairing is `n log n` in the marks of a file, the line count is
 linear in the file for each pattern, and the quoted-span lookup is a binary
 search. Known limit: a reworded marker, or a marker deleted while another is
@@ -5188,7 +5182,7 @@ only where the base holds every semantic edge it merges. A line that starts to
 reach another module, an inline module of the same file included, is new, and
 so is a file two targets reach whose targets swap what each reaches. An
 accepted entry is matched by the file and text a person wrote and never
-follows a move, so under `--strict` an entry its edge moved away from is
+follows a move, so under `klin check` an entry its edge moved away from is
 stale. The check needs the commit
 and not the runner's tree: it reads the whole base through the run's one
 shared checkout, so a changed run lays out no partial tree for it. A new cyclic edge prints one shortest cycle through it,
@@ -5714,8 +5708,8 @@ line a result about a whole file is judged on.
 
 Several results of one rule in one file are one finding with a `count`, so an
 accepted entry holds that site at the count a person accepted. An accepted
-entry that matches nothing is a NOTE, and exit 1 under `--strict`, as for
-every other gate (10).
+entry that matches nothing is a NOTE at the Stop, and a review item under
+`klin check`, as for every other gate (section 7.6).
 
 A report klin did not write is judged fresh by modification time: klin
 compares the report file's time against the time of each file the window
@@ -6001,8 +5995,9 @@ Every check MUST:
 - name every file that is present in both trees, was measured in `before`,
   and was not measured in `after`. Such a file left through compact scope, a
   file the grammar stopped reading, or a discovery rule the tree no longer meets.
-  In the hook it is a NOTE. Under `--strict` it is exit 2, per the 0.x runner
-  contract that sections 11.3 and 12 replace.
+  In the hook it is a NOTE. Under `klin check` it is a `measurement-lost`
+  finding, a `left-scope` review item or a `left-scope` coverage note
+  (section 7.2).
   The rule binds a check whose scope is a set of source files. A check whose
   scope is a list a person writes, a report, or the very set it ratchets,
   such as `inventory`, has nothing to lose this way that it does not already
@@ -6012,9 +6007,9 @@ Every check MUST:
   this run took away. Every other rule is today's on both trees. A scoped run reports the
   loss among the files in its scope. The JSON carries the loss as a `lost`
   record under the gate's notes (11.2).
-- name a file it could not measure. Outside the hook that is exit 2, with or
-  without `--strict` (ADR 0021), when the base could measure the file or did
-  not hold it, because the change opened that hole. A file the base held and
+- name a file it could not measure. Outside the hook that is a `measurement-lost`
+  finding or a review item (section 7.2), when the base could measure the file
+  or did not hold it, because the change opened that hole. A file the base held and
   could not measure either is a NOTE in every run. It is not a hole the work
   opened, and no run could ever end green around it, so a tree that holds one
   is green the day klin arrives (5.1). The rule covers a file no grammar reads
@@ -6040,7 +6035,7 @@ Every check MUST:
   `a_rename_one_grammar_reads_at_both_paths_keeps_the_note`,
   `a_glob_the_base_holds_too_is_a_note_by_hand_and_under_strict` and
   `an_unparsed_file_is_named_by_each_caller_as_before`.
-- run under `klin gate` and under its own subcommand with the same output
+- run under `klin check` and under `klin check NAME` with the same output
 - carry tests through the binary only, on a throwaway tree with a base
 
 ### B.9 Hook Protocol
@@ -6190,7 +6185,7 @@ that reads a host's JSON.
 
 ADR 0004 and ADR 0012 hold in policy. A build failure blocks each stop until
 the tree builds. In the current product, the Stop hook is the only klin path
-that runs the build: `klin gate` outside the hook, `--strict` and CI included,
+that runs the build: `klin check`, by hand and in CI,
 runs no build entry, so the project's own CI must run the build. This describes
 the current CLI and does not constrain a future agent-readiness path from using
 local build feedback; project CI remains the authoritative build, type-check
@@ -6312,8 +6307,8 @@ catch.
 A build whose shell exits 127 is not a build failure. The shell could not
 find the command, so the tool is absent and the code is unjudged. The hook
 records the build as unmeasured: one NOTE names the command, quotes the
-shell, and says that klin judged the source as it stands, that `klin gate`
-outside the hook runs no build, so the project's own CI must run it, and
+shell, and says that klin judged the source as it stands, that `klin check`
+runs no build, so the project's own CI must run it, and
 that the action left is to install the project's dependencies or for a
 person to set `build` to `false`. The gates then run over the tree,
 so a `lockfile` finding for the dependency that was declared and never
@@ -6343,11 +6338,10 @@ path. Everything else is `allow`, and a write the guard misses costs nothing,
 because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
 - `deny`: an edit tool whose path is the configuration or reaches inside the
-  state directory, a redirect onto either, `init` in any form, `install` in
-  any form, and `turn reset`. The reason names the file and says a person changes it in a
-  reviewed commit, or names the command a person runs instead: `klin turn
-  reset` for the stamp, and `klin cache clean`, which stays open to an agent,
-  for the cache. Nothing else denies.
+  state directory, a redirect onto either, and `klin setup`, `klin update`
+  or `klin __agent` in any form. The reason names the file and says a person
+  changes it in a reviewed commit, or says that only a person, or only the
+  host, runs the command. Nothing else denies.
 - `ask`: a command that writes every argument it takes, with a guarded path
   among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
@@ -6368,7 +6362,7 @@ unbalanced quote, `$(`, a backtick, `${`, `<<`, a backslash, or a `cd`
 command word. Section 10.8.1 amends this list and the split below (ADR
 0068). An unbalanced quote allows the whole command, because the
 command then does not say where its arguments end. The other six suppress
-path matching alone. `init`, `install` and `turn reset` name no path, so their `deny`
+path matching alone. `setup`, `update` and `__agent` name no path, so their `deny`
 stands behind any of them, and a command substitution in command position is
 a prefix in front of klin's own name.
 
@@ -6479,7 +6473,7 @@ older failure and an event run by no copy would drop a block.
 - `klin radius` prints nothing and exits 0. It moves no stamp, no mark and no
   prompt counter, writes no journal line and consumes no follow-up of 9.1.
   The claim comes before the follow-up is consumed.
-- `klin gate --hook` prints nothing and exits 0, and runs no gate. It cannot
+- The Stop hook prints nothing and exits 0, and runs no gate. It cannot
   weaken the other copy's block: Claude Code and Codex apply the most
   restrictive answer across hooks.
 - `klin guard` gives its answer as every copy does, and writes no journal
@@ -6535,7 +6529,7 @@ One JSON line per event of 9.6. Every kind shares four fields:
 - `kind`, `"stop"`, `"prompt"`, `"guard"` or `"reset"`.
 - `session`, the host's id for its grouping of turns, null where the event
   carried none or named no host, and always null on a `reset` line, which
-  `klin turn reset` writes over no host event at all.
+  the 0.x reset command wrote over no host event at all.
 
 The `stop` line is the 11.2 object the stop's run built — the gates, a build
 failure, or an error alike — plus what only the hook knew:
@@ -6610,10 +6604,10 @@ tells a reader nothing.
   `config-write` and `state-write` for a proven write an edit tool's path or
   a redirect names, `config-mention` and `state-mention` for a command that
   only names a guarded path as a writer's argument, which klin cannot prove
-  the way it proves the first two (ADR 0033), and `init` and `turn-reset`
-  for one of klin's own subcommands that only a person runs.
+  the way it proves the first two (ADR 0033), and `setup`, `update` and `agent`
+  for one of klin's own subcommands that only a person or the host runs.
 
-The `reset` line is `klin turn reset`:
+The `reset` line is what the 0.x reset command wrote. vNext writes none:
 
 - `prompt`, the counter the stamp carried over. A reset does not end the
   turn, so the counter is unchanged by it (6.2).
@@ -6750,7 +6744,7 @@ The Stop hook, excluding the project's own build, SHOULD finish within 5
 seconds on a tree of 2,000 source files when scoped with `--changed` to 20
 files and the survey cache is warm. The first stop on a new base MAY take the
 whole-tree survey and SHOULD finish within 30 seconds on the same tree. A
-whole-tree `--strict` run in CI SHOULD finish within 60 seconds. An
+whole-tree `klin check` run in CI SHOULD finish within 60 seconds. An
 implementation MUST measure all three on a fixture and record the numbers in
 the release notes when they move by more than a third.
 
@@ -6767,7 +6761,7 @@ within these limits:
 | --- | ---: | ---: |
 | Warm Stop hook, 20 changed files and a warm structural cache | 5 seconds | 5 seconds |
 | Cold survey | 30 seconds | 60 seconds |
-| Whole-tree `--strict` run | 20 seconds | 45 seconds |
+| Whole-tree `klin check` run | 20 seconds | 45 seconds |
 
 These are product requirements, not the current implementation's medians.
 They are rounded limits with operating headroom, chosen from the final
@@ -7000,7 +6994,7 @@ hook_window():
   return Window(TURN, stamp.commit, WORKING, "since " + stamp.time)
 
 branch_stamp(stamp, mark):             # the base this stop judges, written back red
-  before = choose_window(strict=False).before or HEAD      # 16.2
+  before = choose_window().before or HEAD      # 16.2
   write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED,
                prompt=prompt_of(stamp), mark=mark,
                asked=[], intervened=False, followup=None)
@@ -7041,10 +7035,10 @@ roots(window):
   return survey(derivation_commit(window)).roots | survey_roots(window.after)
 ```
 
-#### B.16.2 `klin gate` and CI window
+#### B.16.2 `klin check` and CI window
 
 ```
-choose_window(strict):
+choose_window():
   for (ref, kind, source) in candidates():
     before = resolve(ref)
     if before is None: continue
@@ -7052,7 +7046,6 @@ choose_window(strict):
       if source == Remote: return Window(kind, before, WORKING, "same, remote agrees")
       tip = remote_default_tip()
       if tip is None:
-        if strict: fail("cannot tell whether history is hidden")
         return Window(kind, before, WORKING, "same, no remote to ask")
       if commits_between(tip, HEAD) > 0: fail("unpushed commits hidden")
       return Window(kind, before, WORKING, "same, remote holds HEAD")
@@ -7135,7 +7128,7 @@ counts the notes a person needs even when nothing blocks: a file no grammar
 read, a file measured in `before` only, and a deleted test the run let
 through. Only a stop that blocks on a gate adds to `asked`, so a question the
 agent never saw is asked again at the next stop that blocks. `inventory`
-reads `asked` under `--hook` (8.2).
+reads `asked` in the Stop hook (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
 the number of build blocks and the tree the last build block was taken over,
@@ -7267,7 +7260,7 @@ Delivery and interoperability:
    person makes from a release tag. It carries
    the host hooks, the klin skill and a pinned wrapper that fetches a pinned
    runtime. Section 19.2.
-2. **Standalone route.** The klin binary and `klin install`, the route
+2. **Standalone route.** The klin binary and `klin setup`, the route
    documents lead with on every first-class host, because it alone gives the
    person the `klin` command. It owns explicit
    hook files a repository or a person commits or keeps, standalone skill
@@ -7282,14 +7275,14 @@ Delivery and interoperability:
 first-class integration and is not a tier of support.
 
 A person on a first-class host takes either route, and documents lead with the
-standalone route: the installer, then `klin install` (ADR 0053). A plugin is
+standalone route: the installer, then `klin setup` (ADR 0053). A plugin is
 self-sufficient. The wrapper it carries fetches the runtime, so a plugin user
 installs no binary for the hooks to work. It gives the person no `klin`
 command, and it MUST NOT install one: the wrapper names the command that does,
 once (19.2). A custom harness integration uses the binary of 19.1 and not this
 route (19.4).
 
-No route gates a repository by itself. Under `--hook` a `klin.json` at the
+No route gates a repository by itself. For the hooks, a `klin.json` at the
 repository root is the marker that the repository opted in, and a tree without
 one stays silent (5.1, ADR 0028). Installing a plugin makes klin available to
 every repository the host opens. It opts none of them in.
@@ -7307,7 +7300,7 @@ The contract uses five scope words, and no others:
   protocol of 9.7.
 
 `global` is too broad a word for a user-scope install, so this contract does
-not use it for one. The CLI uses the same word: `klin install --user` writes
+not use it for one. The CLI uses the same word: `klin setup --user` writes
 the user scope, and no flag is called `--global`.
 
 #### B.19.1 The binary
@@ -7334,7 +7327,7 @@ Two routes ship:
    directory `KLIN_INSTALL_DIR` names. Each release carries the script that
    installs that release, so a URL under a tag pins a version.
 2. A GitHub Action, `action.yml` at the root of this repository, that
-   installs a pinned version and runs `klin gate --strict`. For CI only. A
+   installs a pinned version and runs `klin check`. For CI only. A
    workflow pins it by the release tag, `uses: brajevicm/klin@vX.Y.Z`, so one
    tag names the binary, the plugin and the Action.
 
@@ -7355,7 +7348,7 @@ the one on the runner that built the binary, which is 2.35 on `ubuntu-22.04`.
 klin ships no musl build. Native Windows is not a supported target: klin
 builds no Windows binary and ships none. WSL is not a documented supported route
 either, because klin has no compatibility evidence for it. A person on Windows
-has no shipped klin install today.
+has no shipped way to install klin today.
 
 #### B.19.2 The first-class plugins: Claude Code, Codex CLI and Cursor
 
@@ -7464,7 +7457,7 @@ The pre-tool matcher names the union
 `Write|Edit|MultiEdit|NotebookEdit|Bash|apply_patch|mcp__.*` of the tools
 Claude Code and Codex CLI emit, so the guard reads edits and MCP calls on both
 hosts. A name missing from this matcher leaves that host's corresponding tool
-call unguarded; a name the host never emits is dead text. `klin install` uses
+call unguarded; a name the host never emits is dead text. `klin setup` uses
 the same union for both hosts, keeping the standalone route aligned with the
 plugin. ADR 0030 records the decision.
 
@@ -7524,7 +7517,7 @@ and the failure that installs nothing.
 
 Installing the plugin is the whole install of the hooks for the host. It is
 not an install of the `klin` command, and it is not the install for a
-repository: no `init` runs, and the repository opts in through its own
+repository: no `setup` runs, and the repository opts in through its own
 `klin.json` (5.1). Once it has one, the first stop is gated.
 
 This reverses ADR 0002. Its first reason, a version pin beside committed
@@ -7532,21 +7525,21 @@ baselines, went with ADR 0009. Its second reason is handled by the PATH
 fallback above. A version difference between the wrapper's binary and a CI
 binary is a NOTE per 5.2, not a failure.
 
-#### B.19.3 The standalone route: `klin install`
+#### B.19.3 The standalone route: `klin setup`
 
 The standalone route is the one documents lead with (19.0, ADR 0053, ADR 0055,
-ADR 0056). On this route the binary comes from 19.1, and `klin install` is the
+ADR 0056). On this route the binary comes from 19.1, and `klin setup` is the
 one command that installs and repairs the integration. It serves the person who wants the
 `klin` command, a team that wants hooks committed and covered by CODEOWNERS,
 and a host surface that loads no plugin. A plugin user may take it later for
 the command, and the hooks it commits serve a teammate without the plugin. ADR
 0046 records the command.
 
-`klin install` does three things in one run: it opts the repository in, it
+`klin setup` does three things in one run: it opts the repository in, it
 selects the hosts to serve, and it reconciles the explicit hook files klin
 owns.
 
-**The repository opt-in.** Inside a git repository, `klin install` writes the
+**The repository opt-in.** Inside a git repository, `klin setup` writes the
 `klin.json` marker at the **repository root** that `git rev-parse
 --show-toplevel` names, and not at the directory the command was run from. So
 a run inside `repo/apps/web` writes `repo/klin.json`. A marker that already
@@ -7660,7 +7653,7 @@ At project scope the selected hosts receive:
 - Claude Code: `.claude/skills/klin/SKILL.md`
 - Codex and Cursor: `.agents/skills/klin/SKILL.md`
 
-At user scope, `klin install --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that serves the selected host and scope carries the skill too, and klin writes the standalone copy all the same, so a teammate without the plugin has it.
+At user scope, `klin setup --user` writes the corresponding paths under the person's home directory: `~/.claude/skills/klin/SKILL.md` for Claude Code and `~/.agents/skills/klin/SKILL.md` for Codex and Cursor. Codex and Cursor sharing a path produce one planned write and one output line. A native plugin that serves the selected host and scope carries the skill too, and klin writes the standalone copy all the same, so a teammate without the plugin has it.
 
 Skill targets participate in the same preflight as hooks. A missing file is written, and a byte-identical file is already current. A file that holds, byte for byte, a text that `plugins/klin/skills/klin/SKILL.md` held earlier in klin's history is klin's: klin wrote it and nobody changed it, so `setup` replaces it without asking. The binary carries a hash of every such earlier text, and a CLI test fails when that list misses a version from git history.
 
@@ -7706,9 +7699,9 @@ the integration is already current. So a second run over a complete
 installation writes no file and says exactly that. Raw host configuration is
 not printed unless there is an error.
 
-**Guard.** The hook files are not guarded (9.4), but `klin install` writes a
+**Guard.** The hook files are not guarded (9.4), but `klin setup` writes a
 person's configuration and integration files, so the guard refuses the command
-from an agent exactly as it refuses `klin init` and `klin turn reset`.
+from an agent.
 
 #### B.19.4 A custom harness
 
@@ -7716,7 +7709,7 @@ A harness klin does not maintain integrates through the harness protocol of
 9.7: klin's own versioned event on stdin, klin's own decision on stdout, and
 the same three commands. It supplies the binary from 19.1 and translates its
 own lifecycle into that protocol. klin ships no adapter, no hook file and no
-skill placement for such a harness, `klin install` connects none, and a
+skill placement for such a harness, `klin setup` connects none, and a
 custom integration is not part of the compatibility promise that covers the
 first-class plugins. The protocol is a
 portability seam, not a second engine: a protocol event normalizes into the one
@@ -7753,8 +7746,7 @@ is missing rather than claiming equivalence with a native one.
   (9.7).
 - **Gate** — an end-of-turn check that reports a failure, missing one or more
   of the pre-tool and turn-feedback capabilities. The missing ones are named.
-- **Manual / CI** — no reliable lifecycle hook. A person runs `klin gate`, and
-  CI runs `klin gate --strict`. There is no same-turn feedback contract, and
+- **Manual / CI** — no reliable lifecycle hook. A person or CI runs `klin check`. There is no same-turn feedback contract, and
   none is claimed.
 
 #### B.19.5 CI

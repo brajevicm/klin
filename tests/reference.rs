@@ -141,7 +141,7 @@ fn the_committed_reference_is_what_the_binary_prints() {
     assert_eq!(
         committed,
         printed(),
-        "docs/REFERENCE.md is not what `klin reference` prints — run `klin reference > \
+        "docs/REFERENCE.md is not what `klin policy --reference` prints — run `klin policy --reference > \
          docs/REFERENCE.md`"
     );
 }

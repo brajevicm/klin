@@ -52,3 +52,18 @@ cargo build --locked && ./target/debug/klin check
 If a gate fails, fix the code it points to. Leave `klin.json`, the hooks and the `accepted` list alone. Only the maintainer changes them, in a reviewed commit.
 
 Changing a check? Read `AGENTS.md` first.
+
+## Adding a check
+
+A new check touches these places:
+
+- [ ] The check itself, one file in `src/checks/` named after the check.
+- [ ] A `pub mod` line in `src/checks/mod.rs`.
+- [ ] A `Row` in `CATALOGUE` in `src/engine/catalogue.rs`. Fill every field.
+- [ ] `src/engine/reference.rs`, when the check's keys need a shape it does not print yet.
+- [ ] `docs/REFERENCE.md`, regenerated with `klin policy --reference > docs/REFERENCE.md`.
+- [ ] CLI tests through the binary, one file in `tests/` named after the check.
+- [ ] A row in SPEC section 9.1.
+- [ ] A paragraph in SPEC section B.8.2.1 with its measurement rules.
+
+The check needs no layer entry in `klin.json`. The `checks` layer covers the folder.
