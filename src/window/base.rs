@@ -294,8 +294,7 @@ fn lightly(
     layout.cache_name = started.elapsed();
     let started = Instant::now();
     let outcomes = cache.read()?;
-    let read = started.elapsed();
-    layout.cache_read = read;
+    layout.cache_read = started.elapsed();
 
     let root = dir.join(inside);
     let started = Instant::now();
@@ -330,7 +329,6 @@ fn lightly(
         root,
         cache,
         outcomes,
-        read,
         layout,
     })
 }
@@ -342,7 +340,6 @@ struct Laid {
     files: Vec<String>,
     cache: Cache,
     outcomes: HashMap<String, Outcome>,
-    read: Duration,
     layout: Layout,
 }
 
@@ -351,7 +348,7 @@ struct Laid {
 fn held(run: &impl Run, laid: Laid, dir: tempfile::TempDir, changes: &[Change]) -> Prior {
     let tree = Tree::listed(&laid.root, laid.files);
     tree.extracted()
-        .hold(laid.cache, laid.outcomes, changes, laid.read);
+        .hold(laid.cache, laid.outcomes, changes, laid.layout.cache_read);
     let mut prior = Prior::new(tree, dir, Some(run.root().to_path_buf()));
     prior.changed_by(changes);
     prior.layout.set(Some(laid.layout));
