@@ -21,7 +21,6 @@ use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::facts::files;
 use crate::facts::tree::Tree;
-use crate::syntax::structural::footprint::Recorded;
 use crate::syntax::{self, structural};
 use crate::sys::error::Error;
 use crate::sys::record::Values;
@@ -111,13 +110,10 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         records.states = Some(built);
         records.names = Some(names);
         records.layout = layout;
-        records.footprint = Some(match structural::footprint::requested() {
-            true => Recorded::Counted(Box::new(structural::footprint::of([
-                before.facts(),
-                after.facts(),
-            ]))),
-            false => Recorded::Sizes,
-        });
+        records.footprint = Some(structural::footprint::recorded([
+            before.facts(),
+            after.facts(),
+        ]));
     });
     let judged = after_states
         .iter()
