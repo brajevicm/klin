@@ -1980,11 +1980,14 @@ Any other error, such as a configuration klin cannot read, is a
 ### 11.8 `klin update`
 
 B.19.6 holds, except how the release is installed. On the installer's
-route, `klin update` asks GitHub for the newest release now. When it is newer
-than the binary, klin installs it as section 11.9 says, through the
-signature check, prints `klin updated to TAG. Release notes: LINK` and exits
-0. When the binary is the newest, it says so and exits 0. A failed ask,
-download or signature check installs nothing, prints why and exits 2. A
+route, `klin update` first takes `release-ask.lock`, the lock the detached
+child holds, and waits up to 60 seconds while an ask or an install runs. It
+then asks GitHub for the newest release. When it is newer than the binary
+and than the klin on disk, which an install in between may have replaced,
+klin installs it as section 11.9 says, through the signature check, prints `klin updated to TAG. Release notes: LINK` and exits
+0. When the binary is the newest, it says so and exits 0. A lock still held
+after the wait, or a failed ask, download or signature check, installs
+nothing, prints why and exits 2. A
 plugin's binary says that its host updates the plugin, and a binary on
 neither route names the installer. Both exit 2 and install nothing. It uses the network to fetch the release. When
 repository integration needs reconciliation after an update, it says to run
@@ -2035,8 +2038,11 @@ names its host's own update step in place of `klin update`. ADR 0069.
   the child starts, so a failed or slow ask, or no `curl`, is the day's ask
   and changes nothing that the command prints or returns.
 - **Auto-update.** When auto-update is on and the cached release is newer
-  than the binary, the child installs it, once for each release, so a
-  release that fails is not downloaded again. Auto-update is on when
+  than the binary and than the klin on disk, the child installs it, once for
+  each release. A release whose install failed in a way that may pass, such
+  as a download that did not finish, is tried again with the next day's ask.
+  A refused release, whose signature or archive failed the check, is not
+  tried again. Auto-update is on when
   `KLIN_AUTO_UPDATE=1`, off when `KLIN_AUTO_UPDATE=0`, and otherwise as the
   `auto-update` file in the cache says, which `klin update --auto` writes,
   and off when there is no file, so a person opts in. A
@@ -2048,16 +2054,17 @@ names its host's own update step in place of `klin update`. ADR 0069.
   (ADR 0001), so a binary replaced between two events of a turn changes no
   verdict.
 - **The signed install.** The release workflow signs each
-  `klin-TARGET.tar.xz` with minisign, with the trusted comment `klin TAG`,
-  and attests every artifact with a GitHub attestation that names the
+  `klin-TARGET.tar.xz` with minisign, with the trusted comment
+  `klin TAG TARGET`, and attests every artifact with a GitHub attestation that names the
   release workflow (ADR 0070). klin and `klin update` download the archive
   of the exact tag and its `.minisig` through `curl`. They install it only
   when the signature matches the public key built into klin and its trusted
-  comment names that tag. Then they extract the archive with `tar` and
+  comment names that tag and this machine's target. Then they extract the archive with `tar` and
   rename its `klin` over the running binary, so the binary is the old one or
   the new one and never part of either. A failed check installs nothing and
   says `the signature of klin TAG REASON, so nothing was installed.` klin
-  does not run `klin-update`, which cannot check a signature.
+  does not run `klin-update`, which cannot check a signature. The release
+  workflow publishes only after the signing job succeeded.
 - **The cache.** `latest.json` under `KLIN_CACHE_DIR`, or under
   `~/.cache/klin` when that is unset, holds the tag, the time of the last
   ask, the release auto-update tried and why it was not installed. `release-person.json` and

@@ -20,15 +20,24 @@ after it checks that signature. Auto-update stays opt-in.**
    `klin-TARGET.tar.xz` with minisign. The secret key is the repository
    secret `KLIN_RELEASE_SIGNING_KEY`, made with `minisign -G -W`, so it has
    no password and the job signs without a prompt. The trusted comment is
-   `klin VERSION`. The job checks each signature against the public key in the tree, so a
-   key that does not match fails the release before anything publishes.
+   `klin VERSION TARGET`. The job checks each signature against the public
+   key in the tree, so a key that does not match fails the release before
+   anything publishes. The host job publishes only after this job succeeded.
+   dist generates a condition that also accepts a skipped job, so
+   `release.yml` carries that one hand edit under `allow-dirty = ["ci"]`, and
+   `.github/check-release-workflow.py` fails quality CI on any other
+   difference from what dist generates.
 3. klin carries the public key (`src/sys/release.pub`). `klin update` and the
    auto-update child download the archive and its `.minisig` for the exact
    tag through `curl`. They check the signature and the trusted comment, and
    only then extract the archive and rename its `klin` over the running
    binary. A failed check installs nothing. `klin update` prints why and
    exits 2. The child keeps the reason, and `klin status` prints it with the
-   available release.
+   available release. Both hold `release-ask.lock` while they install, and
+   both read the version of the klin on disk first, so an install never
+   replaces a newer klin that another install put there. A failure that may
+   pass, such as a download that did not finish, is tried again with the
+   next day's ask. A refused release is not.
 4. klin installs itself and no longer runs `klin-update`, which cannot check
    a signature. `klin-update` beside the binary stays the mark of the
    installer's route.
@@ -54,8 +63,8 @@ after it checks that signature. Auto-update stays opt-in.**
 
 Anyone who can read `KLIN_RELEASE_SIGNING_KEY` can sign a release that klin
 installs. A new key needs a new klin, because the public key is built in.
-The trusted comment names the version, so a signed archive of an older
-release never installs as a newer one. A debug build reads a test key from
+The trusted comment names the version and the target, so a signed archive
+of an older release, or of another machine's build, never installs. A debug build reads a test key from
 `KLIN_RELEASE_KEY`, because the tests cannot sign with the release key. A
 release build never reads it. klin depends on `minisign-verify`, which has
 no dependencies of its own. A person without `curl`, `tar` or `xz` gets no

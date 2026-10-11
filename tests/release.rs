@@ -11,8 +11,9 @@ use harness::{AGENT, Run, SESSION_START, STOP, Tree, feed_as_with};
 const NEWER: &str = "https://github.com/brajevicm/klin/releases/tag/v99.0.0";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// The `curl` of an installed klin. A download (`-o FILE`) of a signature or an archive copies the
-/// fixture, and an archive download is recorded in UPDATED. Any other call is an ask, which is
+/// The `curl` of an installed klin. A download (`-o FILE`) of an archive copies the ARCHIVE
+/// fixture and is recorded in UPDATED, and a download of a signature copies the one of that name
+/// from the SIGNATURES fixture directory. Any other call is an ask, which is
 /// recorded in CALLS and answered by ANSWER.
 const CURL: &str = r#"#!/bin/sh
 out=
@@ -23,7 +24,7 @@ for arg; do
 done
 case "$out:$previous" in
   /dev/null:* | :*) ;;
-  *.minisig) cp 'SIGNATURE' "$out"; exit 0 ;;
+  *.minisig) cp "SIGNATURES/$(basename "$previous")" "$out"; exit 0 ;;
   *) echo "$previous" >> 'UPDATED'; cp 'ARCHIVE' "$out"; exit 0 ;;
 esac
 echo called >> 'CALLS'
@@ -38,7 +39,7 @@ static ALONE: Mutex<()> = Mutex::new(());
 /// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it,
 /// a `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
 /// download of a release archive is recorded in `updated`, and `curl` serves the fixture archive
-/// and signature `Installed::serving` names. By default the archive was changed after it was
+/// and signature directory `Installed::serving` names. By default the archive was changed after it was
 /// signed, so no install succeeds and the binary under test stays in place.
 struct Installed {
     home: Tree,
@@ -49,11 +50,12 @@ struct Installed {
 
 impl Installed {
     fn new(answer: &str) -> Installed {
-        Installed::serving(answer, "tampered.tar.xz", "klin.tar.xz.minisig")
+        Installed::serving(answer, "tampered.tar.xz", "signed")
     }
 
-    /// An installed klin whose `curl` downloads `archive` and `signature` from the fixtures.
-    fn serving(answer: &str, archive: &str, signature: &str) -> Installed {
+    /// An installed klin whose `curl` downloads `archive`, and the signatures in `signatures`,
+    /// from the fixtures.
+    fn serving(answer: &str, archive: &str, signatures: &str) -> Installed {
         let alone = ALONE.lock().unwrap_or_else(PoisonError::into_inner);
         let home = Tree::bare();
         let klin = home.path("installed/klin");
@@ -67,7 +69,7 @@ impl Installed {
             .replace("UPDATED", &home.at("updated"))
             .replace("CALLS", &home.at("calls"))
             .replace("ARCHIVE", &fixture(archive))
-            .replace("SIGNATURE", &fixture(signature))
+            .replace("SIGNATURES", &fixture(signatures))
             .replace("ANSWER", answer);
         executable(&home, "bin/curl", &script);
         let tree = Tree::new();
@@ -141,6 +143,15 @@ impl Installed {
         self.status(extra);
         let cache = self.home.path("cache/latest.json");
         until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
+    }
+
+    /// Make the day's ask due again, as if a day passed since the last one.
+    fn a_day_later(&self) {
+        let file = self.home.path("cache/latest.json");
+        let mut latest: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&file).expect("latest.json")).expect("json");
+        latest["checked"] = 0.into();
+        fs::write(&file, latest.to_string()).expect("write latest.json");
     }
 
     /// Whether an install put the fixture's binary in place of the binary under test.
@@ -279,7 +290,7 @@ fn auto_update_tries_a_newer_release_once() {
 /// and `klin status` names the command that does. Spec 11.9.
 #[test]
 fn without_auto_update_nothing_installs() {
-    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
     installed.warmed();
 
     let status = installed.status(&[]);
@@ -925,7 +936,7 @@ fn the_person_hears_of_an_available_release_once() {
 /// the binary. Spec 11.9.
 #[test]
 fn auto_update_installs_a_signed_release() {
-    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
 
     installed.status(&[("KLIN_AUTO_UPDATE", "1")]);
     until(|| installed.replaced());
@@ -958,7 +969,7 @@ fn auto_update_installs_nothing_when_the_signature_fails_and_status_says_why() {
 /// `klin update` installs the newest release after its signature checks out. Spec 11.8.
 #[test]
 fn update_installs_a_signed_release() {
-    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
 
     let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
 
@@ -971,15 +982,24 @@ fn update_installs_a_signed_release() {
 /// `klin update` says why. Spec 11.8.
 #[test]
 fn update_refuses_a_release_whose_signature_fails() {
-    for (archive, signature, why) in [
+    for (archive, signatures, why) in [
         (
             "tampered.tar.xz",
-            "klin.tar.xz.minisig",
+            "signed",
             "does not match the release key",
         ),
-        ("klin.tar.xz", "other-tag.minisig", "names another release"),
+        (
+            "klin.tar.xz",
+            "other-tag",
+            "names another release or another machine",
+        ),
+        (
+            "klin.tar.xz",
+            "other-target",
+            "names another release or another machine",
+        ),
     ] {
-        let installed = Installed::serving(&answers(NEWER), archive, signature);
+        let installed = Installed::serving(&answers(NEWER), archive, signatures);
 
         let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
 
@@ -1013,12 +1033,12 @@ fn update_on_a_plugin_names_the_host() {
 fn update_names_setup_when_an_integration_is_not_current() {
     let off = [("KLIN_AUTO_UPDATE", "0")];
     let named = {
-        let stale = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+        let stale = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
         fs::create_dir_all(stale.tree.path(".claude")).expect("claude directory");
         stale.run(&off, &["update"], "")
     };
     let quiet = {
-        let current = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+        let current = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
         let set = current.run(&off, &["setup", "--host", "claude"], "");
         assert_eq!(set.code, 0, "{}", set.out);
         current.run(&off, &["update"], "")
@@ -1036,7 +1056,7 @@ fn update_names_setup_when_an_integration_is_not_current() {
 #[test]
 fn update_names_setup_user_for_a_skill_without_hook_lines() {
     let off = [("KLIN_AUTO_UPDATE", "0")];
-    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
     let setup = installed.run(&off, &["setup", "--user", "--host", "claude"], "");
     assert_eq!(setup.code, 0, "{}", setup.out);
     installed.home.remove("user/.claude/settings.json");
@@ -1051,4 +1071,51 @@ fn update_names_setup_user_for_a_skill_without_hook_lines() {
     );
     assert!(run.says("claude (user) is conflict"), "{}", run.out);
     assert!(!run.says("this repository's integration"), "{}", run.out);
+}
+
+/// A download that failed is tried again with the next day's ask, and a release whose signature
+/// failed is not, because it will fail again. Spec 11.9.
+#[test]
+fn a_failed_download_is_retried_a_day_later_and_a_bad_signature_is_not() {
+    let on = [("KLIN_AUTO_UPDATE", "1")];
+    for (archive, retried) in [("missing.tar.xz", 2), ("tampered.tar.xz", 1)] {
+        let installed = Installed::serving(&answers(NEWER), archive, "signed");
+        let updated = installed.home.path("updated");
+        let cache = installed.home.path("cache/latest.json");
+        let refused =
+            || fs::read_to_string(&cache).is_ok_and(|text| text.contains("\"refused\":\""));
+
+        installed.status(&on);
+        until(|| lines(&updated) == 1 && refused());
+        installed.a_day_later();
+        installed.status(&on);
+        until(|| lines(&updated) == retried);
+        settle();
+
+        assert_eq!(lines(&updated), retried, "{archive}");
+        assert!(!installed.replaced(), "{archive}");
+    }
+}
+
+/// `klin update` waits while another install or ask holds the lock, so two installs never
+/// replace the binary in turn, and then installs. Spec 11.8.
+#[test]
+fn update_waits_for_another_install_to_end() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    fs::create_dir_all(installed.home.path("cache")).expect("cache directory");
+    let held = fs::File::create(installed.home.path("cache/release-ask.lock")).expect("lock file");
+    held.lock().expect("lock");
+    let release = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(1));
+        drop(held);
+    });
+
+    let start = Instant::now();
+    let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
+    let took = start.elapsed();
+    release.join().expect("lock holder");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(took >= Duration::from_secs(1), "{took:?}");
+    assert!(installed.replaced());
 }

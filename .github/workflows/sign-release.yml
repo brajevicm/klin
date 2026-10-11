@@ -1,7 +1,8 @@
 # dist calls this workflow between the builds and the host job (global-artifacts-jobs in
 # dist-workspace.toml). It signs each release archive with the minisign key klin checks before
-# it installs an update, with the trusted comment `klin VERSION`, so a signature never passes
-# for another release. The host job publishes the signatures with the archives. ADR 0070.
+# it installs an update, with the trusted comment `klin VERSION TARGET`, so a signature never
+# passes for another release or another machine. The host job publishes the signatures with
+# the archives, and it runs only when this job succeeded. ADR 0070.
 name: sign-release
 
 on:
@@ -48,7 +49,9 @@ jobs:
             exit 1
           fi
           for archive in "${archives[@]}"; do
-            minisign -S -s "$key" -m "$archive" -t "klin ${tag#v}" -x "$archive.minisig"
+            target=$(basename "$archive" .tar.xz)
+            target=${target#klin-}
+            minisign -S -s "$key" -m "$archive" -t "klin ${tag#v} $target" -x "$archive.minisig"
             minisign -V -p src/sys/release.pub -m "$archive"
           done
           rm -f "$key"

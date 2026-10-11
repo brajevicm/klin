@@ -21,6 +21,9 @@ create-release = true
 pr-run-mode = "skip"
 # Steps that verify the exact tag in the x86_64 Linux build before anything publishes
 github-build-setup = "../verify-tag.yml"
+# release.yml carries one hand edit: host requires a successful signing job. CI checks that it
+# is the only difference from what dist generates (.github/check-release-workflow.sh)
+allow-dirty = ["ci"]
 # Attest every artifact in the host job, so each names the release workflow
 github-attestations = true
 github-attestations-phase = "host"

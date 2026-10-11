@@ -1,8 +1,10 @@
 //! klin installs a newer release over itself only after its minisign signature checks out
 //! against the public key built into this binary. The release workflow signs each archive with
-//! the trusted comment `klin TAG`, so a signed archive of an older release never passes as a
-//! newer one. Nothing is replaced before the check passes. Spec 11.9, ADR 0070.
+//! the trusted comment `klin TAG TARGET`, so a signed archive of an older release, or of another
+//! machine's build, never passes. Nothing is replaced before the check passes. Spec 11.9,
+//! ADR 0070.
 
+use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -14,19 +16,43 @@ use minisign_verify::{PublicKey, Signature};
 const DOWNLOAD: &str = "https://github.com/brajevicm/klin/releases/download/v";
 const KEY: &str = include_str!("release.pub");
 
+/// Why an install did not happen. A refusal holds for that release on every later try. Any
+/// other failure, such as a download that did not finish, may pass on a later try.
+pub enum Failure {
+    Refused(String),
+    Transient(String),
+}
+
+impl Failure {
+    pub fn retry(&self) -> bool {
+        matches!(self, Failure::Transient(_))
+    }
+}
+
+impl fmt::Display for Failure {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Failure::Refused(why) | Failure::Transient(why) => out.write_str(why),
+        }
+    }
+}
+
 /// Download the archive of `tag` for this machine, check its signature, and put its `klin` in
-/// place of `exe`. On an error, `exe` is as it was and the message says why.
-pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), String> {
-    let archive = format!("klin-{}.tar.xz", target()?);
+/// place of `exe`. On an error, `exe` is as it was and the failure says why.
+pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), Failure> {
+    let target = target().map_err(Failure::Refused)?;
+    let archive = format!("klin-{target}.tar.xz");
     let url = format!("{DOWNLOAD}{tag}/{archive}");
     let work = Scratch(scratch.join(format!("update-{}", std::process::id())));
     let _ = fs::remove_dir_all(&work.0);
-    fs::create_dir_all(&work.0).map_err(|why| format!("{}: {why}", work.0.display()))?;
-    let bytes = download(&url, &work.0.join(&archive))?;
-    let signature = download(&format!("{url}.minisig"), &work.0.join("minisig"))?;
-    check(&bytes, &signature, tag)?;
+    fs::create_dir_all(&work.0)
+        .map_err(|why| Failure::Transient(format!("{}: {why}", work.0.display())))?;
+    let bytes = download(&url, &work.0.join(&archive)).map_err(Failure::Transient)?;
+    let signature =
+        download(&format!("{url}.minisig"), &work.0.join("minisig")).map_err(Failure::Transient)?;
+    check(&bytes, &signature, &format!("klin {tag} {target}"), tag).map_err(Failure::Refused)?;
     let binary = unpack(&bytes, &work.0)?;
-    replace(&binary, exe)
+    replace(&binary, exe).map_err(Failure::Transient)
 }
 
 /// A path klin made for one install, removed when the install ends, whatever way it ends.
@@ -66,8 +92,9 @@ fn download(url: &str, to: &Path) -> Result<Vec<u8>, String> {
     }
 }
 
-/// Whether `signature` is the release key's signature of `bytes`, made for `tag`.
-fn check(bytes: &[u8], signature: &[u8], tag: &str) -> Result<(), String> {
+/// Whether `signature` is the release key's signature of `bytes`, and its trusted comment is
+/// `names`: this release, for this machine.
+fn check(bytes: &[u8], signature: &[u8], names: &str, tag: &str) -> Result<(), String> {
     let refused =
         |why: &str| format!("the signature of klin {tag} {why}, so nothing was installed.");
     let key = PublicKey::decode(&key()).map_err(|_| refused("could not be checked: the key"))?;
@@ -77,9 +104,9 @@ fn check(bytes: &[u8], signature: &[u8], tag: &str) -> Result<(), String> {
         .ok_or_else(|| refused("is not a minisign signature"))?;
     key.verify(bytes, &signature, false)
         .map_err(|_| refused("does not match the release key"))?;
-    match signature.trusted_comment() == format!("klin {tag}") {
+    match signature.trusted_comment() == names {
         true => Ok(()),
-        false => Err(refused("names another release")),
+        false => Err(refused("names another release or another machine")),
     }
 }
 
@@ -94,10 +121,12 @@ fn key() -> String {
 }
 
 /// Extract the checked `archive` bytes into `work`, through `tar`'s standard input so nothing
-/// can change them on disk after the check, and return the path of the one `klin` they hold.
-fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, String> {
+/// can change them on disk after the check, and return the path of the one `klin` they hold. A
+/// `tar` that could not run may run later. A signed archive with no `klin` never changes.
+fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, Failure> {
     let unpacked = work.join("unpacked");
-    fs::create_dir_all(&unpacked).map_err(|why| format!("{}: {why}", unpacked.display()))?;
+    fs::create_dir_all(&unpacked)
+        .map_err(|why| Failure::Transient(format!("{}: {why}", unpacked.display())))?;
     let extracted = Command::new("tar")
         .args(["-xJf", "-", "-C"])
         .arg(&unpacked)
@@ -120,7 +149,12 @@ fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, String> {
         .find(|binary| binary.is_file());
     match (extracted, found) {
         (true, Some(binary)) => Ok(binary),
-        _ => Err("the release archive holds no klin, so nothing was installed.".to_string()),
+        (true, None) => Err(Failure::Refused(
+            "the release archive holds no klin, so nothing was installed.".to_string(),
+        )),
+        (false, _) => Err(Failure::Transient(
+            "tar could not extract the release archive, so nothing was installed.".to_string(),
+        )),
     }
 }
 

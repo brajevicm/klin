@@ -23,12 +23,15 @@ const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
-/// Held by the one detached child that asks and updates, for as long as it runs.
+/// Held by the one detached child that asks and updates, for as long as it runs, and by
+/// `klin update`, so two installs never run at once.
 const ASK_LOCK: &str = "release-ask.lock";
 /// Held around every read and rewrite of a cache file, never across the network or a host's
 /// delivery, so two klin processes never lose each other's change or tell one piece of news
 /// twice.
 const CACHE_LOCK: &str = "release-cache.lock";
+/// How long `klin update` waits for an install or an ask in progress to end.
+const INSTALL_WAIT: Duration = Duration::from_secs(60);
 /// How long a hook waits for the cache lock before it leaves the news for a later event.
 const CACHE_WAIT: Duration = Duration::from_millis(500);
 /// The person's own auto-update setting, which `klin update --auto` writes. A file reaches a hook
@@ -165,13 +168,15 @@ impl Releases {
 }
 
 /// What `latest.json` holds: the newest tag GitHub named, when klin last asked, the release
-/// auto-update last tried, and why that release was not installed.
+/// auto-update last tried, why that release was not installed, and whether a later try may
+/// pass.
 #[derive(Default)]
 struct Latest {
     tag: Option<Version>,
     checked: u64,
     tried: Option<Version>,
     refused: Option<String>,
+    retry: bool,
 }
 
 impl Latest {
@@ -182,6 +187,7 @@ impl Latest {
             checked: held["checked"].as_u64().unwrap_or_default(),
             tried: version(&held["tried"]),
             refused: held["refused"].as_str().map(str::to_string),
+            retry: held["retry"].as_bool().unwrap_or_default(),
         }
     }
 
@@ -191,6 +197,7 @@ impl Latest {
             "checked": self.checked,
             "tried": self.tried.as_ref().map(ToString::to_string),
             "refused": self.refused,
+            "retry": self.retry,
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -354,9 +361,21 @@ pub fn child() {
     let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
+    ask_today(dir);
+    install_untried(dir, releases.route);
+}
+
+/// The day's ask, which counts from its start. A release whose last try failed in a way that
+/// may pass is tried again with the day's ask, so a failure that passes costs a day, and one
+/// that does not pass is tried once a day at most.
+fn ask_today(dir: &Path) {
     if Latest::read(dir).stale()
         && Latest::change(dir, |latest| {
             latest.checked = now();
+            if latest.retry {
+                latest.tried = None;
+                latest.retry = false;
+            }
             Some(())
         })
         .is_some()
@@ -367,21 +386,49 @@ pub fn child() {
             Some(())
         });
     }
-    let route = releases.route;
+}
+
+/// Under auto-update, install the newer release not tried yet, unless the binary on disk is
+/// already that release or newer, and keep why it failed.
+fn install_untried(dir: &Path, route: Route) {
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
     let claimed = Latest::change(dir, |latest| {
         let tag = latest.untried(route).cloned()?;
         latest.tried = Some(tag.clone());
         latest.refused = None;
+        latest.retry = false;
         Some(tag)
     });
-    if let (Some(tag), Ok(exe)) = (claimed, std::env::current_exe())
-        && let Err(why) = signed::install(&tag.to_string(), &exe, dir)
-    {
+    let Some(tag) = claimed.filter(|tag| older_on_disk(&exe, tag)) else {
+        return;
+    };
+    if let Err(failure) = signed::install(&tag.to_string(), &exe, dir) {
         Latest::change(dir, |latest| {
-            latest.refused = Some(why);
+            latest.refused = Some(failure.to_string());
+            latest.retry = failure.retry();
             Some(())
         });
     }
+}
+
+/// Whether the klin at `exe` is older than `tag`. Another klin may have replaced it since this
+/// process started, so the file itself answers. A klin whose version it cannot read counts as
+/// older.
+fn older_on_disk(exe: &Path, tag: &Version) -> bool {
+    Command::new(exe)
+        .arg("--version")
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|text| {
+            let own = text.trim().strip_prefix("klin ")?;
+            Version::parse(own.split('-').next().unwrap_or(own))
+        })
+        .is_none_or(|on_disk| on_disk < *tag)
 }
 
 /// Why auto-update did not install `tag`, when it tried and was refused.
@@ -398,15 +445,22 @@ pub fn refused(tag: &Version) -> Option<String> {
 /// nothing.
 pub fn update() -> Result<Option<Version>, String> {
     installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
-    let tag = asked().ok_or("klin could not ask GitHub for the newest release.")?;
-    if !tag.is_newer() {
-        return Ok(None);
-    }
+    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
+    let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
     let exe =
         std::env::current_exe().map_err(|why| format!("klin could not find itself: {why}"))?;
-    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
-    signed::install(&tag.to_string(), &exe, &scratch)?;
+    let Some(tag) = newer_than(&exe)? else {
+        return Ok(None);
+    };
+    signed::install(&tag.to_string(), &exe, &scratch).map_err(|failure| failure.to_string())?;
     Ok(Some(tag))
+}
+
+/// The newest release, asked of GitHub now, when it is newer than this build and than the klin
+/// at `exe`, which another klin may have replaced since this one started.
+fn newer_than(exe: &Path) -> Result<Option<Version>, String> {
+    let tag = asked().ok_or("klin could not ask GitHub for the newest release.")?;
+    Ok(Some(tag).filter(|tag| tag.is_newer() && older_on_disk(exe, tag)))
 }
 
 /// Ask GitHub now and wait, whatever the cache holds, and keep the answer: the tag GitHub
@@ -517,6 +571,8 @@ const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates
                               on the host's own plugin auto-update instead.";
 const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
                           itself, and none is there.";
+const BUSY: &str = "another klin is still asking for or installing a release after a minute. Run \
+                    klin update again when it ends.";
 const PLUGIN_UPDATE: &str = "this klin came with a plugin, and its host updates the plugin.";
 const NO_INSTALLER: &str = "klin-update was not found beside klin, so the installer did not \
                             place this klin. The installer: curl --proto '=https' --tlsv1.2 \
