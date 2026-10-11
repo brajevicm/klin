@@ -110,9 +110,19 @@ const MEMBERS: &[&str] = &[
 const INFERRED: &str = ": ?";
 
 /// Whether this declaration leaves the file: an `export` above it says so, and a member of an
-/// exported class leaves with the class.
+/// exported class leaves with the class, and a global augmentation adds what it holds to the
+/// global scope.
 fn visible(node: Node) -> bool {
-    above(node, &["export_statement"]).is_some()
+    above(node, &["export_statement"]).is_some() || in_a_global_augmentation(node)
+}
+
+/// Whether `declare global { ... }`, or a `global { ... }` block a module declaration holds,
+/// encloses this node.
+fn in_a_global_augmentation(node: Node) -> bool {
+    std::iter::successors(node.parent(), Node::parent).any(|found| {
+        found.kind() == "global_namespace"
+            || (found.kind() == "ambient_declaration" && has_token(found, "global"))
+    })
 }
 
 /// The module specifier an import or a re-export names, without its quotes, and the names it
