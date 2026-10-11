@@ -711,13 +711,15 @@ fn now() -> u64 {
         .unwrap_or_default()
 }
 
-/// The release news the agent has not heard, in the session-start text the host hands the
-/// agent, and then the day's ask, which never waits. The guard denies `klin update` to the
+/// The release news the agent has not heard, claimed so two session starts at once tell it
+/// once, in the session-start text the host hands the agent, and then the day's ask, which
+/// never waits. The guard denies `klin update` to the
 /// agent, so news of a release asks it to tell the person. Spec 10.8, 11.9.
 fn tell_release(out: &mut String) {
-    if let Some((route, news)) = release::news(Audience::Agent) {
+    if let Some((route, news)) = release::news(Audience::Agent)
+        && release::claim(Audience::Agent, route, &news)
+    {
         let _ = writeln!(out, "{}", Audience::Agent.note(route, &news, None));
-        release::heard(Audience::Agent, route, &news);
     }
     release::refresh();
 }

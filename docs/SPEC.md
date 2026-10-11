@@ -1933,7 +1933,9 @@ and `last_stop {time, verdict, historical: true}` or null.
 11.9 tells nothing. `update_available` is true when that release is newer
 than the binary. `updated_from` is the version the person last saw klin run
 as when this binary is newer, and null otherwise. `auto_update` is true when
-this binary installs a newer release on its own (section 11.9).
+this binary installs a newer release on its own now: the installer's route,
+outside `CI`, without `KLIN_NO_UPDATE_CHECK`, and with auto-update on
+(section 11.9).
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
 `green` (section 6.6). `open` and `unasked` are empty unless the verdict is
@@ -1993,7 +1995,8 @@ asked.
 `klin update --auto on` and `klin update --auto off` write the person's
 auto-update setting (section 11.9) and install nothing. A plugin's binary,
 or one with no `klin-update` beside it, writes nothing, says why, and exits
-2. `--auto` and `--check` do not combine.
+2. A setting klin cannot write is an error with exit 2, never a report that
+the switch moved. `--auto` and `--check` do not combine.
 
 The guard denies `--check` and `--auto` to an agent with the rest of `klin update`,
 and its refusal names `klin status`, which shows the same release.
@@ -2006,10 +2009,14 @@ names its host's own update step in place of `klin update`. ADR 0069.
 
 - **The ask.** A session start, `klin status` and `klin setup` start a
   detached child (`klin __release`) when the last ask is 24 hours old, or
-  when auto-update holds a release it has not tried. The child takes a lock
-  file beside the cache, made new, and does nothing when another child holds
-  it, so two commands at once start one ask. A lock older than 10 minutes
-  belongs to a child that died. The child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
+  when auto-update holds a release it has not tried. The child takes the
+  advisory lock `release-ask.lock` beside the cache and does nothing when
+  another child holds it, so two commands at once start one ask. The system
+  drops an advisory lock with its process, so a child that died holds
+  nothing. Every read and rewrite of a cache file, by the child, by `klin
+  update --check` or by a hook, takes the short lock `release-cache.lock`,
+  which is never held across the network or a host's delivery, so no klin
+  process loses another's change. The child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
   through `curl`, with a timeout of 10 seconds, and does not follow it. No
   command and no hook waits for the child. The ask counts from the moment
   the child starts, so a failed or slow ask, or no `curl`, is the day's ask
@@ -2030,8 +2037,11 @@ names its host's own update step in place of `klin update`. ADR 0069.
   ask and the release auto-update tried. `release-person.json` and
   `release-agent.json` beside it hold, for each audience, the version it last
   saw klin run as and the release it was last told of.
-- **Routes.** A binary with `klin-update` beside it is the installer's. A
-  binary the plugin wrapper runs carries `KLIN_PLUGIN=1` and is a plugin's.
+- **Routes.** A binary the plugin wrapper runs carries `KLIN_PLUGIN=1` and is
+  a plugin's, on every call the wrapper makes, its first hook event
+  included. Otherwise a binary with `klin-update` beside it is the
+  installer's. The marker comes first, so a plugin's binary never runs an
+  updater that happens to sit beside it.
   A plugin's binary never runs an updater, because its host owns the plugin.
   Each route keeps its own audience records (`release-plugin-person.json`
   and `release-plugin-agent.json` for a plugin), so a machine with both
@@ -2043,12 +2053,18 @@ names its host's own update step in place of `klin update`. ADR 0069.
   only the cache. A cached tag that is not dot-separated digits is never
   shown. A build whose version has a pre-release suffix, such as `-beta.1`,
   compares its numbers without the suffix.
-- **News.** The first sight of a binary, and a binary older than the version
-  an audience last saw, records its version for that audience, so neither a
-  fresh install nor a downgrade is news. When the binary's version is newer than the version an audience
-  last saw, by auto-update or by `klin update`, the news is an update.
-  Otherwise, a cached release newer than the binary that the audience was not
-  told of is news. Each audience hears each piece of news once.
+- **News.** An audience's record keeps the newest version it saw klin run
+  as. The first sight of a binary records its version, and an older binary
+  changes nothing, so neither a fresh install, nor a downgrade, nor two hosts
+  whose plugins run two versions is news. When the binary's version is newer
+  than the recorded one, by auto-update or by `klin update`, the news is an
+  update. Otherwise, a cached release newer than the binary that the
+  audience was not told of is news. A hook claims the news under the cache
+  lock at the moment it tells it, and a hook that finds it claimed tells
+  nothing, so each audience hears each piece of news once, also from two
+  hooks at once. The record is one per machine and route: the agent of the
+  first session start that claims a release hears of it, and a later
+  session does not.
 - **The person.** `klin status` prints `klin TAG is available (you have
   VERSION). STEP` when the cached tag is newer. STEP is `Run klin update.` on
   the installer's route. On a plugin's route it names the host the hook event

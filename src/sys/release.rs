@@ -7,26 +7,32 @@
 //! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
 use std::fmt;
-use std::fs::OpenOptions;
+use std::io;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
+use crate::sys::state::{self, Lock};
 use crate::sys::write::{AtomicWrite, atomic_write};
 
 const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
-const LOCK_FILE: &str = "release.lock";
+/// Held by the one detached child that asks and updates, for as long as it runs.
+const ASK_LOCK: &str = "release-ask.lock";
+/// Held around every read and rewrite of a cache file, never across the network or a host's
+/// delivery, so two klin processes never lose each other's change or tell one piece of news
+/// twice.
+const CACHE_LOCK: &str = "release-cache.lock";
+/// How long a hook waits for the cache lock before it leaves the news for a later event.
+const CACHE_WAIT: Duration = Duration::from_millis(500);
 /// The person's own auto-update setting, which `klin update --auto` writes. A file reaches a hook
 /// whatever environment the host passes it, which a shell profile does not.
 const AUTO_FILE: &str = "auto-update";
-/// A lock older than this belongs to a child that died, and the next child takes it.
-const LOCK_STALE: u64 = 10 * 60;
 /// The hidden argument the detached child runs under. It is not a public command.
 pub const CHILD: &str = "__release";
 
@@ -127,9 +133,9 @@ impl Audience {
     }
 }
 
-/// The cache directory of a binary that may ask, update or tell: one the installer placed,
-/// outside CI, with the check on. Every public entry builds it first, so the rule is in one
-/// place.
+/// The cache directory of a binary that may ask, update or tell, outside CI and with the check
+/// on, and the route it reached the machine by. Every public entry builds it first, so the rule
+/// is in one place.
 struct Releases {
     dir: PathBuf,
     route: Route,
@@ -142,6 +148,11 @@ impl Releases {
         cache_dir()
             .filter(|_| on)
             .map(|dir| Releases { dir, route })
+    }
+
+    /// The short lock around one read and rewrite of a cache file.
+    fn cache_lock(&self) -> Option<Lock> {
+        locked(&self.dir, CACHE_LOCK, CACHE_WAIT)
     }
 }
 
@@ -164,13 +175,24 @@ impl Latest {
         }
     }
 
-    fn write(&self, dir: &Path) {
+    fn write(&self, dir: &Path) -> io::Result<()> {
         let held = json!({
             "tag": self.tag.as_ref().map(ToString::to_string),
             "checked": self.checked,
             "tried": self.tried.as_ref().map(ToString::to_string),
         });
-        write(&dir.join(LATEST_FILE), held.to_string().as_bytes());
+        write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
+    }
+
+    /// Read, change and rewrite `latest.json` under the cache lock, so a change another klin
+    /// made in between is never lost. False when the lock or the write failed.
+    fn change(dir: &Path, change: impl FnOnce(&mut Latest)) -> bool {
+        let Some(_lock) = locked(dir, CACHE_LOCK, CACHE_WAIT) else {
+            return false;
+        };
+        let mut latest = Latest::read(dir);
+        change(&mut latest);
+        latest.write(dir).is_ok()
     }
 
     fn stale(&self) -> bool {
@@ -187,7 +209,7 @@ impl Latest {
     }
 }
 
-/// What one audience's record holds: the version it last saw klin run as, and the release it
+/// What one audience's record holds: the newest version it saw klin run as, and the release it
 /// was last told of.
 #[derive(Default)]
 struct Record {
@@ -204,18 +226,18 @@ impl Record {
         }
     }
 
-    fn write(&self, releases: &Releases, who: Audience) {
+    fn write(&self, releases: &Releases, who: Audience) -> io::Result<()> {
         let held = json!({
             "seen": self.seen.as_ref().map(ToString::to_string),
             "told": self.told.as_ref().map(ToString::to_string),
         });
         let file = releases.dir.join(who.record(releases.route));
-        write(&file, held.to_string().as_bytes());
+        write(&file, held.to_string().as_bytes())
     }
 }
 
-/// How this binary reached the machine: through the installer, with `klin-update` beside it, or
-/// through a host's plugin, whose wrapper sets `KLIN_PLUGIN`.
+/// How this binary reached the machine: through a host's plugin, whose wrapper sets
+/// `KLIN_PLUGIN`, or through the installer, with `klin-update` beside it.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Route {
     Installer,
@@ -223,11 +245,13 @@ pub enum Route {
 }
 
 impl Route {
+    /// The wrapper's marker comes first, so a plugin's binary never runs an updater that
+    /// happens to sit beside it.
     fn here() -> Option<Route> {
-        if updater_path().is_some() {
-            Some(Route::Installer)
-        } else if set("KLIN_PLUGIN") {
+        if set("KLIN_PLUGIN") {
             Some(Route::Plugin)
+        } else if updater_path().is_some() {
+            Some(Route::Installer)
         } else {
             None
         }
@@ -252,7 +276,7 @@ pub fn route() -> Option<Route> {
 
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
 /// ask is a day old, or when auto-update holds a newer release it has not tried. The child
-/// decides under its lock, so two commands at once start at most one ask and one update.
+/// decides under its own lock, so two commands at once start at most one ask and one update.
 pub fn refresh() {
     let Some(releases) = Releases::here() else {
         return;
@@ -268,63 +292,34 @@ pub fn refresh() {
     }
 }
 
-/// The detached child, under the cache's lock: the day's ask, which counts from its start so a
+/// The detached child, under the ask lock: the day's ask, which counts from its start so a
 /// failed or slow ask is the day's ask, then under auto-update the updater, once for each newer
-/// release. A child that finds the lock taken does nothing.
+/// release. A child that finds the ask lock taken does nothing. Every change to the cache takes
+/// the cache lock for that change alone.
 pub fn child() {
     let Some(releases) = Releases::here() else {
         return;
     };
     let dir = &releases.dir;
-    let Some(_lock) = Lock::take(dir) else {
+    let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
-    let mut latest = Latest::read(dir);
-    if latest.stale() {
-        latest.checked = now();
-        latest.write(dir);
-        latest.tag = asked().or(latest.tag);
-        latest.write(dir);
+    if Latest::read(dir).stale()
+        && Latest::change(dir, |latest| latest.checked = now())
+        && let Some(tag) = asked()
+    {
+        Latest::change(dir, |latest| latest.tag = Some(tag));
     }
-    if let (Some(tag), Some(updater)) = (latest.untried(releases.route).cloned(), updater_path()) {
-        latest.tried = Some(tag);
-        latest.write(dir);
-        let _ = silent(&mut Command::new(updater)).status();
-    }
-}
-
-/// The cache's lock file, made new so only one child holds it, and removed when it drops.
-struct Lock(PathBuf);
-
-impl Lock {
-    /// A lock older than `LOCK_STALE` belongs to a child that died. Only one child can rename
-    /// it away, so two children never both take over the same stale lock.
-    fn take(dir: &Path) -> Option<Lock> {
-        let file = dir.join(LOCK_FILE);
-        let _ = std::fs::create_dir_all(dir);
-        let old = std::fs::metadata(&file)
-            .and_then(|held| held.modified())
-            .ok()
-            .and_then(|at| at.elapsed().ok())
-            .is_some_and(|age| age.as_secs() >= LOCK_STALE);
-        if old {
-            let away = dir.join(format!("{LOCK_FILE}.{}", std::process::id()));
-            if std::fs::rename(&file, &away).is_ok() {
-                let _ = std::fs::remove_file(&away);
-            }
+    let route = releases.route;
+    let mut claimed = None;
+    let tried = Latest::change(dir, |latest| {
+        claimed = latest.untried(route).cloned();
+        if claimed.is_some() {
+            latest.tried.clone_from(&claimed);
         }
-        OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&file)
-            .ok()
-            .map(|_| Lock(file))
-    }
-}
-
-impl Drop for Lock {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+    });
+    if let (true, Some(_), Some(updater)) = (tried, claimed, updater_path()) {
+        let _ = silent(&mut Command::new(updater)).status();
     }
 }
 
@@ -333,10 +328,10 @@ impl Drop for Lock {
 pub fn fetch() -> Option<Version> {
     let tag = asked();
     if let (Some(dir), Some(tag)) = (cache_dir(), &tag) {
-        let mut latest = Latest::read(&dir);
-        latest.tag = Some(tag.clone());
-        latest.checked = now();
-        latest.write(&dir);
+        Latest::change(&dir, |latest| {
+            latest.tag = Some(tag.clone());
+            latest.checked = now();
+        });
     }
     tag
 }
@@ -355,13 +350,14 @@ pub fn updated_from() -> Option<Version> {
 }
 
 /// The news `who` has not heard, and the route it reads it on: an update first, else a newer
-/// release. The first sight of a binary, and a binary older than the one last seen, records its
-/// version, so neither a fresh install nor a downgrade is an update.
+/// release. A record keeps the newest version an audience saw, so neither a fresh install, nor
+/// a downgrade, nor two hosts whose plugins run two versions ever reads as an update. The news
+/// is not yet the audience's: `claim` makes it so at delivery.
 pub fn news(who: Audience) -> Option<(Route, News)> {
     let releases = Releases::here()?;
     let current = Version::current()?;
-    let mut record = Record::read(&releases, who);
-    match record.seen.take() {
+    let record = Record::read(&releases, who);
+    match record.seen {
         Some(seen) if seen < current => {
             let news = News::Updated {
                 from: seen,
@@ -369,10 +365,12 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
             };
             return Some((releases.route, news));
         }
-        Some(seen) if seen == current => record.seen = Some(seen),
-        _ => {
-            record.seen = Some(current);
-            record.write(&releases, who);
+        Some(_) => {}
+        None => {
+            let _lock = releases.cache_lock()?;
+            let mut first = Record::read(&releases, who);
+            first.seen.get_or_insert(current);
+            let _ = first.write(&releases, who);
         }
     }
     Latest::read(&releases.dir)
@@ -381,18 +379,31 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
         .map(|tag| (releases.route, News::Available(tag)))
 }
 
-/// Record that `who` heard `news` on `route`.
-pub fn heard(who: Audience, route: Route, news: &News) {
+/// Make `news` the audience's own, at the moment it is told: under the cache lock, record it,
+/// and say whether this process is the one that tells it. Two hooks at once that read the same
+/// news both try, and one of them tells it. False when the lock or the write failed, so the
+/// news waits for a later event.
+pub fn claim(who: Audience, route: Route, news: &News) -> bool {
     let Some(dir) = cache_dir() else {
-        return;
+        return false;
     };
     let releases = Releases { dir, route };
+    let Some(_lock) = releases.cache_lock() else {
+        return false;
+    };
     let mut record = Record::read(&releases, who);
+    let fresh = match news {
+        News::Updated { to, .. } => record.seen.as_ref().is_none_or(|seen| seen < to),
+        News::Available(tag) => record.told.as_ref() != Some(tag),
+    };
+    if !fresh {
+        return false;
+    }
     match news {
         News::Updated { to, .. } => record.seen = Some(to.clone()),
         News::Available(tag) => record.told = Some(tag.clone()),
     }
-    record.write(&releases, who);
+    record.write(&releases, who).is_ok()
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
@@ -407,34 +418,30 @@ fn auto() -> bool {
     }
 }
 
-/// Whether this binary installs a newer release on its own: the installer's, with auto-update on.
+/// Whether this binary installs a newer release on its own now: the installer's, with the
+/// check on, outside CI, and with auto-update on.
 pub fn auto_update() -> bool {
-    Route::here() == Some(Route::Installer) && auto()
+    Releases::here().is_some_and(|releases| releases.route == Route::Installer) && auto()
 }
+
+const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates the plugin. Turn \
+                              on the host's own plugin auto-update instead.";
+const NO_UPDATER: &str = "auto-update runs the klin-update the installer puts beside klin, and \
+                          none is there.";
 
 /// Write the person's auto-update setting. Only the installer's binary updates itself, so a
 /// plugin's binary or one with no updater beside it says why the setting would change nothing.
+/// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
     match Route::here() {
         Some(Route::Installer) => {}
-        Some(Route::Plugin) => {
-            return Err(
-                "this klin came with a plugin, and its host updates the plugin. Turn on \
-                        the host's own plugin auto-update instead."
-                    .to_string(),
-            );
-        }
-        None => {
-            return Err(
-                "auto-update runs the klin-update the installer puts beside klin, and \
-                        none is there."
-                    .to_string(),
-            );
-        }
+        Some(Route::Plugin) => return Err(PLUGIN_SETTING.to_string()),
+        None => return Err(NO_UPDATER.to_string()),
     }
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
-    write(&dir.join(AUTO_FILE), if on { b"on\n" } else { b"off\n" });
-    Ok(())
+    let file = dir.join(AUTO_FILE);
+    write(&file, if on { b"on\n" } else { b"off\n" })
+        .map_err(|why| format!("{} could not be written: {why}", file.display()))
 }
 
 fn set(name: &str) -> bool {
@@ -454,6 +461,12 @@ fn cache_dir() -> Option<PathBuf> {
         .filter(|dir| !dir.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))
+}
+
+/// The advisory lock `name` in the cache directory, waiting up to `budget`.
+fn locked(dir: &Path, name: &str, budget: Duration) -> Option<Lock> {
+    std::fs::create_dir_all(dir).ok()?;
+    state::lock_file(&dir.join(name), budget)
 }
 
 /// A process with no terminal of its own: nothing in, nothing out.
@@ -499,15 +512,15 @@ fn read_json(file: &Path) -> Value {
         .unwrap_or_else(|| json!({}))
 }
 
-fn write(file: &Path, bytes: &[u8]) {
+fn write(file: &Path, bytes: &[u8]) -> io::Result<()> {
     if let Some(dir) = file.parent() {
-        let _ = std::fs::create_dir_all(dir);
+        std::fs::create_dir_all(dir)?;
     }
-    let _ = atomic_write(AtomicWrite {
+    atomic_write(AtomicWrite {
         target: file,
         bytes,
         keep_mode_from: None,
-    });
+    })
 }
 
 fn now() -> u64 {

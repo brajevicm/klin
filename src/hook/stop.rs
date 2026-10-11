@@ -424,6 +424,9 @@ fn tell(
         return (None, noted);
     }
     let parts = released(behind, root, untold, parts);
+    if parts.is_empty() {
+        return (None, noted);
+    }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     (Some(said.join("\n")), noted)
@@ -477,8 +480,9 @@ fn release_part(
 }
 
 /// The parts a Stop tells, once a quiet turn dropped what it drops. A release part still told
-/// is recorded as heard, and after an update that left an integration copy behind it also names
-/// the `klin setup` step, which only this Stop pays to find out. Spec 11.9.
+/// is claimed for the person at this moment, and another hook that claimed it first takes the
+/// part out. After an update that left an integration copy behind it also names the `klin
+/// setup` step, which only this Stop pays to find out. Spec 11.9.
 fn released(
     behind: Behind,
     root: &Path,
@@ -488,17 +492,20 @@ fn released(
     let Some((route, news)) = untold else {
         return parts;
     };
-    let Some((_, said)) = parts.iter_mut().find(|(part, _)| *part == "release") else {
+    let Some(at) = parts.iter().position(|(part, _)| *part == "release") else {
         return parts;
     };
+    if !release::claim(Audience::Person, route, &news) {
+        parts.remove(at);
+        return parts;
+    }
     if let Some(step) = matches!(news, News::Updated { .. })
         .then(|| behind(root))
         .flatten()
     {
-        said.push(' ');
-        said.push_str(&step);
+        parts[at].1.push(' ');
+        parts[at].1.push_str(&step);
     }
-    release::heard(Audience::Person, route, &news);
     parts
 }
 

@@ -548,6 +548,21 @@ fn the_wrapper_marks_the_binary_it_runs_as_a_plugins() {
     assert!(run.printed.contains("plugin=1"), "{}", run.out);
 }
 
+/// The first hook event in an opted-in repository, before the CLI hint, runs the binary as a
+/// plugin's too, so that event can tell of a release. Spec 11.9.
+#[test]
+fn the_wrappers_first_hook_event_marks_the_binary_as_a_plugins() {
+    let tree = Tree::bare();
+    made(&tree.path(".git"));
+    tree.write("klin.json", "{}\n");
+    release_running(&tree, "echo \"plugin=$KLIN_PLUGIN\"");
+
+    let run = fetch(&tree, &["__agent", "event"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.printed.contains("plugin=1"), "{}", run.out);
+}
+
 #[test]
 fn a_checksum_that_does_not_match_installs_nothing_and_lets_the_turn_end() {
     let tree = Tree::bare();

@@ -319,9 +319,11 @@ fn the_update_notice_does_not_name_setup_for_a_host_with_no_copy() {
     assert!(!run.says("klin setup"), "{}", run.out);
 }
 
-/// A binary older than the one last seen is a downgrade, which is no update news. Spec 11.9.
+/// A binary older than the newest one seen is no update news, and it leaves the newest version
+/// on record, so two hosts whose plugins run two versions never report one update again and
+/// again. Spec 11.9.
 #[test]
-fn a_downgrade_is_not_an_update() {
+fn an_older_binary_is_not_an_update_and_keeps_the_newest_version_on_record() {
     let installed = Installed::new(&answers(NEWER));
     installed.ran_before("release-person.json", "999.0.0");
 
@@ -330,6 +332,9 @@ fn a_downgrade_is_not_an_update() {
 
     assert!(!first.says("klin updated"), "{}", first.out);
     assert!(!second.says("klin updated"), "{}", second.out);
+    let record = fs::read_to_string(installed.home.path("cache/release-person.json"))
+        .expect("the person's record");
+    assert!(record.contains("999.0.0"), "{record}");
 }
 
 /// Two commands at once start one ask, because the child that finds the lock taken does
@@ -659,4 +664,102 @@ fn a_plugin_stop_under_codex_names_the_codex_upgrade_command() {
         run.out
     );
     assert!(!run.says("/plugin"), "{}", run.out);
+}
+
+/// A setting klin cannot write fails, and never claims that auto-update is on. Spec 11.8.
+#[test]
+fn update_auto_on_an_unwritable_cache_fails() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.home.write("not-a-directory", "a file\n");
+    let cache = installed.home.at("not-a-directory/cache");
+
+    let run = installed.run(
+        &[("KLIN_CACHE_DIR", &cache)],
+        &["update", "--auto", "on"],
+        "",
+    );
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("could not be written"), "{}", run.out);
+    assert!(!run.says("auto-update is on"), "{}", run.out);
+}
+
+/// Two Stops at once that both read the same untold release tell it once between them.
+/// Spec 11.9.
+#[test]
+fn two_stops_at_once_tell_a_release_once() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+
+    let (one, two) = std::thread::scope(|both| {
+        let one = both.spawn(|| installed.stop());
+        let two = both.spawn(|| installed.stop());
+        (
+            one.join().expect("first stop"),
+            two.join().expect("second stop"),
+        )
+    });
+
+    let told = [&one, &two]
+        .iter()
+        .filter(|run| run.says("klin 99.0.0 is available"))
+        .count();
+    assert_eq!(told, 1, "{}\n---\n{}", one.out, two.out);
+}
+
+/// Two session starts at once tell the agent once between them. Spec 11.9.
+#[test]
+fn two_session_starts_at_once_tell_the_agent_once() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+
+    let (one, two) = std::thread::scope(|both| {
+        let one = both.spawn(|| installed.session(&[]));
+        let two = both.spawn(|| installed.session(&[]));
+        (
+            one.join().expect("first session"),
+            two.join().expect("second session"),
+        )
+    });
+
+    let told = [&one, &two]
+        .iter()
+        .filter(|run| run.says("klin 99.0.0 is available"))
+        .count();
+    assert_eq!(told, 1, "{}\n---\n{}", one.out, two.out);
+}
+
+/// The plugin marker wins over an updater that happens to sit beside the binary, so a plugin's
+/// binary never runs it, auto-update or not. Spec 11.9.
+#[test]
+fn a_plugin_marker_wins_over_an_updater_beside_the_binary() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let plugin = [("KLIN_PLUGIN", "1"), ("KLIN_AUTO_UPDATE", "1")];
+
+    let status = installed.status(&plugin);
+    installed.session(&plugin);
+    settle();
+
+    assert!(
+        status.says("Update the klin plugin in your host."),
+        "{}",
+        status.out
+    );
+    assert!(!installed.home.path("updated").exists());
+}
+
+/// `auto_update` reports what happens: false under the off switches, whatever the setting.
+/// Spec 11.7.
+#[test]
+fn status_json_reports_auto_update_off_under_the_off_switches() {
+    let installed = Installed::new(&answers(NEWER));
+
+    let run = installed.run(
+        &[("KLIN_AUTO_UPDATE", "1"), ("KLIN_NO_UPDATE_CHECK", "1")],
+        &["status", "--json"],
+        "",
+    );
+
+    assert_eq!(run.json()["klin"]["auto_update"], false, "{}", run.out);
 }
