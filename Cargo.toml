@@ -42,7 +42,7 @@ tree-sitter-python = "0.25.0"
 tree-sitter-ruby = "0.23.1"
 tree-sitter-rust = "0.24.2"
 tree-sitter-swift = "0.7.3"
-tree-sitter-typescript = "0.23.2"
+tree-sitter-typescript = { git = "https://github.com/brajevicm/tree-sitter-typescript", rev = "eab8d47a3389a61595f2a5da93c24e71be5bfbaf" }
 
 [target.'cfg(unix)'.dev-dependencies]
 rustix = { version = "1.1.4", features = ["pty"] }
