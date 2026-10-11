@@ -465,3 +465,25 @@ fn the_action_leaves_a_malformed_expected_version_to_klin_check() {
         );
     }
 }
+
+/// The Action reads the expected version from the configuration `args` names with `--config`,
+/// in both spellings, the one `klin check` reads. Spec 12.3.
+#[test]
+fn the_action_reads_the_expected_version_from_the_config_args_names() {
+    for args in ["--config config/klin.json", "--config=config/klin.json"] {
+        let tree = tree();
+        tree.write("config/klin.json", r#"{"klin": ">=99.0.0"}"#);
+        tree.base();
+
+        let gated = gated(&tree, args);
+
+        assert_eq!(gated.code, 2, "{args}: {}", gated.printed);
+        assert!(
+            gated
+                .printed
+                .contains("::error title=klin::config/klin.json expects klin >=99.0.0"),
+            "{args}: {}",
+            gated.printed
+        );
+    }
+}

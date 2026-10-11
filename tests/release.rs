@@ -105,6 +105,11 @@ impl Installed {
     }
 
     fn run(&self, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
+        self.run_as(&self.home.at("installed/klin"), extra, args, stdin)
+    }
+
+    /// `run` through the copy of klin at `klin`.
+    fn run_as(&self, klin: &str, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
         let path = format!("{}:/usr/bin:/bin", self.home.at("bin"));
         let cache = self.home.at("cache");
         let user = self.home.at("user");
@@ -126,13 +131,7 @@ impl Installed {
             ("KLIN_TEST_REAL", real.as_str()),
         ];
         environment.extend_from_slice(extra);
-        feed_as_with(
-            &self.home.at("installed/klin"),
-            self.tree.root(),
-            &environment,
-            args,
-            stdin,
-        )
+        feed_as_with(klin, self.tree.root(), &environment, args, stdin)
     }
 
     fn status(&self, extra: &[(&str, &str)]) -> Run {
@@ -1392,4 +1391,74 @@ fn update_does_not_name_a_klin_on_path_that_cannot_run() {
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(!run.says("PATH finds another klin"), "{}", run.out);
+}
+
+/// A plugin's binary run by hand, from the cache the plugin wrapper keeps it in, has no
+/// `KLIN_PLUGIN`. Its directory still names the version the plugin pins, so `klin update`
+/// replaces nothing there. Spec 11.8.
+#[test]
+fn update_never_replaces_a_binary_in_the_plugin_cache() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let cached = installed.home.path(&format!("cache/bin/{VERSION}/klin"));
+    fs::create_dir_all(cached.parent().expect("cache bin")).expect("cache bin");
+    fs::copy(harness::binary(), &cached).expect("copy klin");
+
+    let run = installed.run_as(&cached.display().to_string(), &[], &["update"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert!(
+        !fs::read_to_string(&cached).is_ok_and(|text| text.contains("KLIN_TEST_REAL")),
+        "the cached binary was replaced"
+    );
+}
+
+/// A klin that is already the newest still names another klin that PATH finds first.
+/// Spec 11.8.
+#[test]
+fn update_names_another_klin_on_path_when_nothing_is_newer() {
+    let current = format!("https://github.com/brajevicm/klin/releases/tag/v{VERSION}");
+    let installed = Installed::serving(&answers(&current), "klin.tar.xz", "signed");
+    executable(&installed.home, "bin/klin", "#!/bin/sh\nexit 0\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("is the newest release"), "{}", run.out);
+    assert!(run.says("PATH finds another klin first"), "{}", run.out);
+}
+
+/// A relative PATH entry is searched from the working directory, as a shell searches it.
+/// Spec 11.8.
+#[test]
+fn update_names_another_klin_in_a_relative_path_entry() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    executable(&installed.tree, "tools/klin", "#!/bin/sh\nexit 0\n");
+    let path = format!("tools:{}:/usr/bin:/bin", installed.home.at("bin"));
+
+    let run = installed.run(&[("PATH", &path)], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("PATH finds another klin first"), "{}", run.out);
+    assert!(run.says("tools/klin"), "{}", run.out);
+}
+
+/// A plugin's Stop under Cursor never names the expected version as a release to copy, since
+/// no release of that version may exist. Spec 11.9.
+#[test]
+fn a_plugin_stop_never_names_the_expected_version_as_a_release() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed
+        .tree
+        .write("klin.json", "{\"klin\": \">=98.0.0\"}\n");
+    let stop = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
+
+    let run = installed.run(&[], AGENT, stop);
+
+    assert!(
+        run.says("This repository expects klin >=98.0.0"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("v98.0.0"), "{}", run.out);
 }

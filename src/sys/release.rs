@@ -120,9 +120,9 @@ impl Expected {
         Version::current().is_none_or(|own| own >= self.0)
     }
 
-    /// Whether `tag` is a release that meets it.
-    fn met_by(&self, tag: Option<&Version>) -> bool {
-        tag.is_some_and(|tag| *tag >= self.0)
+    /// Whether the release `tag` meets it.
+    pub fn met_by(&self, tag: &Version) -> bool {
+        *tag >= self.0
     }
 
     /// What the person reads when this build does not meet it, with the step that installs a
@@ -308,7 +308,7 @@ impl Latest {
         route == Route::Release
             && auto()
             && !wanted.met()
-            && !wanted.met_by(self.tag.as_ref())
+            && !self.tag.as_ref().is_some_and(|tag| wanted.met_by(tag))
             && self.asked_early.as_ref() != Some(wanted.version())
     }
 
@@ -385,9 +385,11 @@ pub enum Route {
 }
 
 impl Route {
-    /// The wrapper's marker comes first, because a plugin runs a release build too.
+    /// The wrapper's marker comes first, because a plugin runs a release build too. A binary in
+    /// the cache the wrapper keeps the plugin's releases in is a plugin's, even when a person
+    /// runs it without the marker, because its directory names the version the plugin pins.
     fn here() -> Route {
-        if set("KLIN_PLUGIN") {
+        if set("KLIN_PLUGIN") || in_plugin_cache() {
             Route::Plugin
         } else if RELEASE_BUILD || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD")) {
             Route::Release
@@ -706,12 +708,13 @@ fn writable(exe: &Path) -> Result<(), String> {
 
 /// The first other `klin` PATH finds before the binary `klin update` replaced, which a shell
 /// and klin's hooks run instead of it. None when PATH finds this one first, or none at all. Like
-/// a shell, it skips a relative entry and a file that is not executable.
+/// a shell, it searches a relative or empty entry from the working directory, and skips a file
+/// that is not executable.
 pub fn shadowed() -> Option<PathBuf> {
     let exe = installed().ok()?.canonicalize().ok()?;
+    let here = std::env::current_dir().ok()?;
     let first = std::env::split_paths(&std::env::var_os("PATH")?)
-        .filter(|dir| dir.is_absolute())
-        .map(|dir| dir.join("klin"))
+        .map(|dir| here.join(dir).join("klin"))
         .find(|path| {
             std::fs::metadata(path).is_ok_and(|held| held.is_file() && held.mode() & 0o111 != 0)
         })?;
@@ -747,6 +750,18 @@ pub fn installed() -> io::Result<PathBuf> {
             None => exe,
         },
     )
+}
+
+/// Whether this binary sits in the plugin wrapper's cache of releases, `CACHE/bin/VERSION/klin`.
+fn in_plugin_cache() -> bool {
+    let held = |path: PathBuf| path.canonicalize().ok();
+    match (
+        installed().ok().and_then(held),
+        cache_dir().map(|dir| dir.join("bin")).and_then(held),
+    ) {
+        (Some(exe), Some(cache)) => exe.starts_with(cache),
+        _ => false,
+    }
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.

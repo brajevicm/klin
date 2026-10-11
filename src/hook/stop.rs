@@ -508,7 +508,9 @@ fn expected_part(
     if std::fs::read_to_string(at.join(EXPECTED_TOLD)).is_ok_and(|told| told == record) {
         return None;
     }
-    let step = plugin_step(host, expected.version());
+    let step = release::known()
+        .filter(|tag| expected.met_by(tag))
+        .and_then(|tag| plugin_step(host, &tag));
     parts.push((EXPECTED, expected.note(release::route(), step)));
     Some(record)
 }

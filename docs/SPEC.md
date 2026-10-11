@@ -2000,11 +2000,13 @@ and than the klin on disk, which an install in between may have replaced
 (on Linux the running binary's path then ends in ` (deleted)`, and klin
 reads and replaces the path without it),
 klin installs it as section 11.9 says, through the signature check, prints `klin updated to TAG. Release notes: LINK` and exits
-0. When `PATH` finds another executable `klin` first, which a shell and klin's
-hooks run instead, it adds `klin: NOTE: PATH finds another klin first, at
-FILE, and a shell and klin's hooks run that one. Run FILE update, or remove
-it.` A binary reached through a link is replaced where the link points. When the
-binary is the newest, it says so and exits 0. A lock still held
+0. When the binary is the newest, it says so and exits 0. After either, when
+`PATH` finds another executable `klin` first, which a shell and klin's hooks
+run instead, it adds `klin: NOTE: PATH finds another klin first, at FILE, and
+a shell and klin's hooks run that one. Run FILE update, or remove it.` It
+searches a relative or empty `PATH` entry from the working directory, as a
+shell does. A binary reached through a link is replaced where the link
+points. A lock still held
 after the wait, or a failed ask, download or signature check, installs
 nothing, prints why and exits 2. A
 plugin's binary says that its host updates the plugin, exits 2 and installs
@@ -2090,7 +2092,11 @@ names its host's own update step in place of `klin update`. ADR 0069.
   saw klin run as and the release it was last told of.
 - **Routes.** A binary the plugin wrapper runs carries `KLIN_PLUGIN=1` and is
   a plugin's, on every call the wrapper makes, its first hook event
-  included. Otherwise a release build is a standalone release, from the
+  included. A binary in the wrapper's cache of releases,
+  `${KLIN_CACHE_DIR:-~/.cache/klin}/bin/VERSION/klin`, is a plugin's too when
+  a person runs it without the marker, because its directory names the
+  version the plugin pins, so neither `klin update` nor auto-update replaces
+  it. Otherwise a release build is a standalone release, from the
   installer or from an archive. The release workflow marks its builds with
   `KLIN_RELEASE_BUILD=1` at compile time, and a build from source has no
   mark, so it never asks or tells. The plugin marker comes first, because a
@@ -2148,7 +2154,10 @@ names its host's own update step in place of `klin update`. ADR 0069.
   newer than the binary, `klin status` prints `This repository expects klin
   >=VERSION (you have OWN). STEP`, with the STEP of the person's line above,
   and `Run klin update.` on a binary on neither route. `klin status --json`
-  carries `expected` and `expected_met` under `klin`. A Stop that blocks
+  carries `expected` and `expected_met` under `klin`. On a plugin's route the
+  step names a release only when the cached release meets the expected
+  version, because no release of that version may exist, and otherwise it is
+  `Update the klin plugin in your host.` A Stop that blocks
   nothing tells the same line once as an `expected` part of its notice, and
   records the expected version and the binary's version in `expected-told`
   in the state directory, so a new expected version or another binary tells
@@ -2197,10 +2206,11 @@ the project's commands ran. No message, document or hook text may claim that
   non-zero exit fails the job. When the run prints no JSON document, the
   Action prints what the run printed. The Action adds `--json` itself, so
   `args` holds selectors and flags other than `--json`.
-- Before it runs `klin check`, the Action reads the `klin` key of the
-  `klin.json` in the working directory with `jq`. When the klin it installed
-  is older than that version, it writes one `error` annotation, `klin.json
-  expects klin >=VERSION, and the Action installed klin OWN. Pin a newer
+- Before it runs `klin check`, the Action reads the `klin` key with `jq` from
+  the configuration `klin check` reads: the file `--config PATH` or
+  `--config=PATH` in `args` names, else `klin.json` in the working directory.
+  When the klin it installed is older than that version, it writes one
+  `error` annotation, `CONFIG expects klin >=VERSION, and the Action installed klin OWN. Pin a newer
   version in the Action.`, and fails the job with 2. When it cannot read the
   installed version, it says so and fails with 2. Absent the key, with a
   value of another shape, which `klin check` then refuses, or without `jq`,

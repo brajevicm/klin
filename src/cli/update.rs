@@ -37,24 +37,31 @@ fn install() -> u8 {
     match release::update() {
         Ok(Some(tag)) => {
             println!("klin updated to {tag}. Release notes: {}", tag.notes());
-            if let Some(other) = release::shadowed() {
-                let other = other.display();
-                println!(
-                    "klin: NOTE: PATH finds another klin first, at {other}, and a shell and \
-                     klin's hooks run that one. Run {other} update, or remove it."
-                );
-            }
+            shadowed_hint();
             reconcile_hint();
             0
         }
         Ok(None) => {
             println!("klin {} is the newest release.", env!("CARGO_PKG_VERSION"));
+            shadowed_hint();
             0
         }
         Err(why) => {
             eprintln!("FAIL: {why}");
             2
         }
+    }
+}
+
+/// Another klin that PATH finds first, which a shell and klin's hooks run instead of this one,
+/// whether or not this one changed. Spec 11.8.
+fn shadowed_hint() {
+    if let Some(other) = release::shadowed() {
+        let other = other.display();
+        println!(
+            "klin: NOTE: PATH finds another klin first, at {other}, and a shell and klin's hooks \
+             run that one. Run {other} update, or remove it."
+        );
     }
 }
 
