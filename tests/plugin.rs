@@ -147,7 +147,7 @@ fn the_release_names_the_unreleased_notes_after_the_new_tag() {
 
     assert_eq!(
         cargo_release_rewrite(CHANGELOG, written, "9.9.9"),
-        written.replacen("## Unreleased\n", "## 9.9.9\n", 1)
+        "# Changelog\n\n## 9.9.9\n\n### What changes for you\n\n- A note.\n\n## 0.5.3\n\n- Older.\n"
     );
 }
 
@@ -315,7 +315,7 @@ fn the_readme_names_the_codex_hook_trust_step() {
 /// The README tells a CI user how Dependabot raises a PR for each new klin Action version.
 /// #626.
 #[test]
-fn the_readme_tells_ci_users_how_to_get_a_pr_for_each_release() {
+fn the_readme_tells_ci_users_how_to_get_a_pr_for_each_action_version() {
     assert!(
         text(README).contains("package-ecosystem: github-actions"),
         "the README omits Dependabot's github-actions ecosystem"
@@ -1227,13 +1227,13 @@ fn after_cargo_release(relative: &str, version: &str) -> String {
     cargo_release_rewrite(relative, &text(relative), version)
 }
 
-fn cargo_release_rewrite(relative: &str, held: &str, version: &str) -> String {
-    let rewrites: Vec<cargo_toml::Value> = cargo_release_config()
+fn cargo_release_rewrite(relative: &str, before: &str, version: &str) -> String {
+    let config = cargo_release_config();
+    let rewrites: Vec<&cargo_toml::Value> = config
         .get("pre-release-replacements")
         .and_then(cargo_toml::Value::as_array)
-        .cloned()
-        .unwrap_or_default()
         .into_iter()
+        .flatten()
         .filter(|rewrite| rewrite.get("file").and_then(cargo_toml::Value::as_str) == Some(relative))
         .collect();
     assert!(
@@ -1241,7 +1241,7 @@ fn cargo_release_rewrite(relative: &str, held: &str, version: &str) -> String {
         "the release does not rewrite {relative}"
     );
 
-    rewrites.iter().fold(held.to_string(), |held, rewrite| {
+    rewrites.iter().fold(before.to_string(), |held, rewrite| {
         let field = |key: &str| {
             rewrite
                 .get(key)
