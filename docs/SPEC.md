@@ -468,8 +468,13 @@ tree holds none, `klin check` adds a note that names the deleted file.
 ### 5.3 Top-level keys
 
 The keys of B.5.2 carry forward: `build`, `accepted`, `radius`, `journal`,
-and one key per gate section. vNext adds no key and retires no key. A
-configuration that 0.x accepted is valid in vNext.
+and one key per gate section. vNext adds `klin` (ADR 0071) and retires no
+key. A configuration that 0.x accepted is valid in vNext.
+
+- `klin` names the lowest klin the repository expects, as `>=` and a
+  version of three dot-separated numbers, such as `">=0.5.4"`. Any other value is a
+  configuration error naming the key. It changes no verdict: an older klin
+  says so (section 11.9), and the GitHub Action fails (section 12.3).
 
 - `build` is local Stop feedback policy (section 6.4). It never affects
   `klin check`.
@@ -1933,7 +1938,7 @@ and `last_stop {time, verdict, historical: true}` or null.
 11.9 tells nothing. `update_available` is true when that release is newer
 than the binary. `updated_from` is the version the person last saw klin run
 as when this binary is newer, and null otherwise. `auto_update` is true when
-this binary installs a newer release on its own now: the installer's route,
+this binary installs a newer release on its own now: a release build that is not a plugin's,
 outside `CI`, without `KLIN_NO_UPDATE_CHECK`, and with auto-update on
 (section 11.9).
 
@@ -1979,19 +1984,33 @@ Any other error, such as a configuration klin cannot read, is a
 
 ### 11.8 `klin update`
 
-B.19.6 holds, except how the release is installed. On the installer's
-route, `klin update` first takes `release-ask.lock`, the lock the detached
+B.19.6 holds, except how the release is installed and which binary
+updates. Every binary but a plugin's updates, one built from source
+included (ADR 0072). `klin update` first checks that it can create a file in
+the directory that holds the binary. When it cannot, it prints `klin cannot
+write DIR, where this klin is installed: REASON. Install klin where you can
+write with the installer, and remove this klin: COMMAND`, asks nothing and
+exits 2. It names no `sudo`: klin as root would write root's files into the
+person's cache. The install extracts the checked archive into a directory
+beside the binary, so only whoever may already replace the binary can change
+what it installs between the check and the rename. It then takes `release-ask.lock`, the lock the detached
 child holds, and waits up to 60 seconds while an ask or an install runs. It
 then asks GitHub for the newest release. When it is newer than the binary
 and than the klin on disk, which an install in between may have replaced
 (on Linux the running binary's path then ends in ` (deleted)`, and klin
 reads and replaces the path without it),
 klin installs it as section 11.9 says, through the signature check, prints `klin updated to TAG. Release notes: LINK` and exits
-0. When the binary is the newest, it says so and exits 0. A lock still held
+0. When the binary is the newest, it says so and exits 0. After either, when
+`PATH` finds another executable `klin` first, which a shell and klin's hooks
+run instead, it adds `klin: NOTE: PATH finds another klin first, at FILE, and
+a shell and klin's hooks run that one. Run FILE update, or remove it.` It
+searches a relative or empty `PATH` entry from the working directory, as a
+shell does. A binary reached through a link is replaced where the link
+points. A lock still held
 after the wait, or a failed ask, download or signature check, installs
 nothing, prints why and exits 2. A
-plugin's binary says that its host updates the plugin, and a binary on
-neither route names the installer. Both exit 2 and install nothing. It uses the network to fetch the release. When
+plugin's binary says that its host updates the plugin, exits 2 and installs
+nothing. It uses the network to fetch the release. When
 repository integration needs reconciliation after an update, it says to run
 `klin setup`. For a copy in one person's home it names
 `klin setup --user --host HOST`, because a plain `klin setup` writes the
@@ -2007,8 +2026,7 @@ asked.
 
 `klin update --auto on` and `klin update --auto off` write the person's
 auto-update setting (section 11.9) and install nothing. A plugin's binary,
-or one with no `klin-update` beside it, writes nothing, says why, and exits
-2. A setting klin cannot write is an error with exit 2, never a report that
+or one built from source, writes nothing, says why, and exits 2. A setting klin cannot write is an error with exit 2, never a report that
 the switch moved. `--auto` and `--check` do not combine.
 
 The guard denies `--check` and `--auto` to an agent with the rest of `klin update`,
@@ -2016,7 +2034,7 @@ and its refusal names `klin status`, which shows the same release.
 
 ### 11.9 Keeping klin current
 
-A binary the installer placed keeps itself current, and tells the person and
+A release build keeps itself current, and tells the person and
 the agent what changed. A plugin's binary asks and tells the same way, and
 names its host's own update step in place of `klin update`. ADR 0069.
 
@@ -2065,8 +2083,7 @@ names its host's own update step in place of `klin update`. ADR 0069.
   comment names that tag and this machine's target. Then they extract the archive with `tar` and
   rename its `klin` over the running binary, so the binary is the old one or
   the new one and never part of either. A failed check installs nothing and
-  says `the signature of klin TAG REASON, so nothing was installed.` klin
-  does not run `klin-update`, which cannot check a signature. The release
+  says `the signature of klin TAG REASON, so nothing was installed.` The release
   workflow publishes only after the signing job succeeded.
 - **The cache.** `latest.json` under `KLIN_CACHE_DIR`, or under
   `~/.cache/klin` when that is unset, holds the tag, the time of the last
@@ -2075,9 +2092,17 @@ names its host's own update step in place of `klin update`. ADR 0069.
   saw klin run as and the release it was last told of.
 - **Routes.** A binary the plugin wrapper runs carries `KLIN_PLUGIN=1` and is
   a plugin's, on every call the wrapper makes, its first hook event
-  included. Otherwise a binary with `klin-update` beside it is the
-  installer's. The marker comes first, so a plugin's binary never runs an
-  updater that happens to sit beside it.
+  included. A binary at a path of the shape of the wrapper's cache of
+  releases, `.../bin/VERSION/klin`, is a plugin's too when a person runs it
+  without the marker, because its directory names the version the plugin
+  pins, so neither `klin update` nor auto-update replaces it. The path alone
+  decides, never the caller's `HOME` or `KLIN_CACHE_DIR`. Otherwise a release build is a standalone release, from the
+  installer or from an archive. The release workflow marks its builds with
+  `KLIN_RELEASE_BUILD=1` at compile time, and a build from source has no
+  mark, so it never asks or tells. The plugin marker comes first, because a
+  plugin runs a release build too. The installer no longer installs
+  `klin-update`, which checks no signature, and klin ignores one that an
+  earlier installer left (ADR 0072).
   A plugin's binary never updates itself, because its host owns the plugin.
   Each route keeps its own audience records (`release-plugin-person.json`
   and `release-plugin-agent.json` for a plugin), so a machine with both
@@ -2105,7 +2130,7 @@ names its host's own update step in place of `klin update`. ADR 0069.
   is news once for both.
 - **The person.** `klin status` prints `klin TAG is available (you have
   VERSION). STEP` when the cached tag is newer. STEP is `Run klin update.` on
-  the installer's route. On a plugin's route it names the host the hook event
+  a standalone release. On a plugin's route it names the host the hook event
   came from: under Claude Code, `/plugin`, Marketplaces, klin, Update
   marketplace, and the switch that enables auto-update, which Claude Code
   leaves off for a marketplace that is not its own; under Cursor, a fresh
@@ -2125,6 +2150,29 @@ names its host's own update step in place of `klin update`. ADR 0069.
   up and asks for nothing. The notice never blocks and never makes the
   window red. A turn that changed nothing does not tell it, and a later Stop
   does.
+- **The expected klin.** When the `klin` key of `klin.json` names a version
+  newer than the binary, where a pre-release comes before its release as in
+  SemVer, so `0.5.4-rc.1` does not meet `>=0.5.4`, `klin status` prints `This repository expects klin
+  >=VERSION (you have OWN). STEP`, with the STEP of the person's line above,
+  and `Run klin update.` on a binary on neither route. `klin status --json`
+  carries `expected` and `expected_met` under `klin`. On a plugin's route the
+  step names a release only when the cached release meets the expected
+  version, because no release of that version may exist, and otherwise it is
+  `Update the klin plugin in your host.` A Stop that blocks
+  nothing tells the same line once as an `expected` part of its notice, and
+  records the expected version and the binary's version in `expected-told`
+  in the state directory, so a new expected version or another binary tells
+  it again. `klin status` reads the key before it judges the rest of the
+  file, so a configuration that names a key this binary does not know still
+  tells it there. A Stop under such a configuration ends unjudged before it
+  tells anything.
+  These lines are local: they read no network and work outside both routes
+  and in CI. With auto-update on, when neither the binary nor the cached
+  release meets the expected version, the command that starts the child
+  starts it at once, without waiting for the day's ask, and the child asks
+  and installs as above. It asks early once for each expected version, and
+  `latest.json` keeps that version, so a version no release meets yet costs
+  one ask, and the day's ask finds it later.
 - **The agent.** A session start tells the agent's news in the session-start
   text: `klin TAG is available. Tell the person to run klin update. Do not run
   it yourself.` (on a plugin's route, `Tell the person to update the klin
@@ -2159,6 +2207,16 @@ the project's commands ran. No message, document or hook text may claim that
   non-zero exit fails the job. When the run prints no JSON document, the
   Action prints what the run printed. The Action adds `--json` itself, so
   `args` holds selectors and flags other than `--json`.
+- Before it runs `klin check`, the Action reads the `klin` key with `jq` from
+  the configuration `klin check` reads: the file `--config PATH` or
+  `--config=PATH` in `args` names, else `klin.json` in the working directory.
+  When the klin it installed is older than that version, a pre-release of
+  that version included, it writes one
+  `error` annotation, `CONFIG expects klin >=VERSION, and the Action installed klin OWN. Pin a newer
+  version in the Action.`, and fails the job with 2. When it cannot read the
+  installed version, it says so and fails with 2. Absent the key, with a
+  value of another shape, which `klin check` then refuses, or without `jq`,
+  the Action goes on.
 - When the Action cannot report, because `jq` is missing or broken, the run printed no
   JSON document, or writing the annotations or the summary failed, it writes
   one `error` annotation that says so and fails the job: with the exit of
@@ -3201,7 +3259,9 @@ A key klin does not know MUST be an error naming the key. `project` and
 `version` are no longer keys, and a configuration that names either MUST be an
 error saying to delete it: the repository's identity is a fact, and a binary
 version freezes no semantics. A configuration schema epoch, should klin need
-one, is a decision of its own (ADR 0040). A section with a `baseline` key MUST
+one, is a decision of its own (ADR 0040). The vNext `klin` key names the
+lowest klin a repository expects and freezes no semantics either (section
+5.3, ADR 0071). A section with a `baseline` key MUST
 be an error saying the key is gone (ADR 0009). Every section, and every
 `radius`, `journal` and `build` entry, MUST reject every field its reader does
 not read, including retired topology fields, with an actionable migration
@@ -7266,7 +7326,7 @@ Two routes ship:
 
 1. The install script the release carries, `klin-installer.sh`, run through
    `sh`. It detects the platform, verifies the checksum it was generated
-   with, and puts `klin` and `klin-update` in `~/.local/bin`, or in the
+   with, and puts `klin` in `~/.local/bin`, or in the
    directory `KLIN_INSTALL_DIR` names. Each release carries the script that
    installs that release, so a URL under a tag pins a version.
 2. A GitHub Action, `action.yml` at the root of this repository, that

@@ -23,6 +23,8 @@ pub enum Shape {
     Accepted,
     Radius,
     Journal,
+    /// `>=` and a version of dot-separated digits.
+    Expected,
     /// A non-empty map of named path sets, each with the names it may use, judged by the
     /// reader of the check that declares it.
     PathGraph(Reader),

@@ -39,6 +39,29 @@ runs:
         ARGS: ${{ inputs.args }}
       run: |
         set -fuo pipefail
+        config=klin.json
+        set -- $ARGS
+        while [ "$#" -gt 0 ]; do
+          case "$1" in
+            --config) config="${2:-}"; shift ;;
+            --config=*) config="${1#--config=}" ;;
+          esac
+          shift
+        done
+        expected="$(jq -r '.klin | strings | select(test("^>=[0-9]+\\.[0-9]+\\.[0-9]+$"))' "$config" 2>/dev/null || true)"
+        if [ -n "$expected" ]; then
+          full="$(klin --version 2>/dev/null | sed 's/^klin //')"
+          installed="${full%%-*}"
+          if [ -z "$installed" ]; then
+            echo "::error title=klin::$config expects klin $expected, and the Action could not read the version of the klin it installed."
+            exit 2
+          fi
+          lowest="$(printf '%s\n%s\n' "${expected#>=}" "$installed" | sort -s -t. -k1,1n -k2,2n -k3,3n | head -1)"
+          if [ "$lowest" != "${expected#>=}" ] || { [ "$installed" = "${expected#>=}" ] && [ "$full" != "$installed" ]; }; then
+            echo "::error title=klin::$config expects klin $expected, and the Action installed klin $full. Pin a newer version in the Action."
+            exit 2
+          fi
+        fi
         report="$RUNNER_TEMP/klin-check.json"
         code=0
         klin check --json $ARGS > "$report" || code=$?

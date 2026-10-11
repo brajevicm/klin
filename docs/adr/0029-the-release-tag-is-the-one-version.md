@@ -39,8 +39,8 @@ Each route updates with the tool the person already uses:
   auto-update. The new plugin pins the new version and the wrapper fetches it
   on the next run, then drops the versions before it from the cache.
 - The installer, through `klin update`, which installs the newest signed
-  archive over the binary (ADR 0070). A hand download has no `klin-update`
-  beside it, so `klin update` names the installer.
+  archive over the binary (ADR 0070). A hand download and a build from
+  source update the same way (ADR 0072).
 - CI, by moving the tag in `uses: brajevicm/klin@vX.Y.Z`, which Renovate and
   Dependabot do.
 

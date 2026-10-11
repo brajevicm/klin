@@ -8,6 +8,7 @@
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
+| `klin` | the lowest klin the repository expects, as `>=` and a version such as `>=0.5.4`. An older klin says so in `klin status` and at a Stop, and the GitHub Action fails | no | pinned only | — | any klin |
 | `build` | a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing | no | derived when absent | one command per standard manifest, from the fixed table of ADR 0012 | — |
 | `accepted` | the debt a person accepted, each entry a site and a reason. Only a person writes it | no | pinned only | — | nothing is accepted |
 | `radius` | the change radius a turn may not pass, as `lines` and `directories` | no | derived when absent | the 90th percentile over the last 200 non-merge commits, and no section below 50 commits | — |

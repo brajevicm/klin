@@ -2,17 +2,20 @@
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
 //! in a detached child, so nothing waits on the network. When the person turned auto-update
 //! on, the child also installs a newer release whose signature checks out. Every other command, a Stop among
-//! them, reads only the cache. Only a binary the installer placed, with its `klin-update`
-//! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
-//! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
+//! them, reads only the cache. Only a binary the release workflow built asks, updates on its own
+//! or tells, and so does a plugin's binary, which the plugin wrapper marks with `KLIN_PLUGIN`.
+//! `klin update` installs over any binary but a plugin's, whose host owns it. Spec 11.8, 11.9.
 
 use std::ffi::OsStr;
 use std::fmt;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::fs::MetadataExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -41,6 +44,20 @@ const CACHE_WAIT: Duration = Duration::from_millis(500);
 const AUTO_FILE: &str = "auto-update";
 /// The hidden argument the detached child runs under. It is not a public command.
 pub const CHILD: &str = "__release";
+/// This binary's route. See `Route::compute`.
+static ROUTE: LazyLock<Route> = LazyLock::new(Route::compute);
+/// The child's flag that names the expected version it asks early for.
+const EARLY: &str = "--expected";
+/// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
+/// compile time. A debug build reads `KLIN_TEST_RELEASE_BUILD` at run time instead, so a test
+/// stands for one.
+const RELEASE_BUILD: bool =
+    matches!(option_env!("KLIN_RELEASE_BUILD"), Some(value) if !value.is_empty());
+/// The shape of the `klin` key, which the schema and the Action read too.
+pub const EXPECTED_PATTERN: &str = r"^>=[0-9]+\.[0-9]+\.[0-9]+$";
+/// The words a configuration error uses for that shape.
+pub const EXPECTED_SHAPE: &str =
+    "\">=\" and a version of three dot-separated numbers, such as \">=0.5.4\"";
 
 /// A release version as numbers. Only dot-separated digits parse, so a version never carries
 /// text klin did not expect into a message.
@@ -57,8 +74,7 @@ impl Version {
 
     /// This build's version, without a pre-release suffix such as `-beta.1`.
     fn current() -> Option<Version> {
-        let own = env!("CARGO_PKG_VERSION");
-        Version::parse(own.split('-').next().unwrap_or(own))
+        Build::current().map(|build| build.numbers)
     }
 
     /// Whether this release is newer than the build. False when the build's own version does
@@ -73,6 +89,99 @@ impl Version {
 
     pub fn notes(&self) -> String {
         format!("{TAGGED}{self}")
+    }
+}
+
+/// A klin build's version as `--version` prints it: its release numbers, and whether a
+/// pre-release suffix such as `-rc.1` follows them. A pre-release comes before its release, as
+/// in SemVer.
+struct Build {
+    numbers: Version,
+    pre_release: bool,
+}
+
+impl FromStr for Build {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Build, ()> {
+        let (numbers, pre_release) = text
+            .split_once('-')
+            .map_or((text, false), |(numbers, _)| (numbers, true));
+        Version::parse(numbers)
+            .map(|numbers| Build {
+                numbers,
+                pre_release,
+            })
+            .ok_or(())
+    }
+}
+
+impl Build {
+    /// This build, or none when its version does not parse.
+    fn current() -> Option<Build> {
+        own_version().parse().ok()
+    }
+
+    /// Whether this build is at least `floor`.
+    fn meets(&self, floor: &Version) -> bool {
+        self.numbers > *floor || (self.numbers == *floor && !self.pre_release)
+    }
+}
+
+/// The lowest klin a repository expects, as its `klin.json` states it under `klin`: `>=` and a
+/// release version of three dot-separated numbers. Spec 5.3, 11.9.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Expected(Version);
+
+impl FromStr for Expected {
+    type Err = &'static str;
+
+    /// `>=` and three dot-separated numbers, or the shape it should have.
+    fn from_str(text: &str) -> Result<Expected, &'static str> {
+        text.strip_prefix(">=")
+            .filter(|version| {
+                version
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || byte == b'.')
+            })
+            .and_then(Version::parse)
+            .filter(|version| version.0.len() == 3)
+            .map(Expected)
+            .ok_or(EXPECTED_SHAPE)
+    }
+}
+
+impl Expected {
+    /// Whether this build meets it. A pre-release comes before its release, as in SemVer, so
+    /// `0.5.4-rc.1` does not meet `>=0.5.4`. True when the build's own version does not parse,
+    /// so an unknown build is never told to update.
+    pub fn met(&self) -> bool {
+        Build::current().is_none_or(|own| own.meets(&self.0))
+    }
+
+    /// Whether the release `tag` meets it.
+    pub fn met_by(&self, tag: &Version) -> bool {
+        *tag >= self.0
+    }
+
+    /// What the person reads when this build does not meet it, with the step that installs a
+    /// newer klin on `route`.
+    pub fn note(&self, route: Route, host_step: Option<String>) -> String {
+        format!(
+            "This repository expects klin {self} (you have {}). {}",
+            own_version(),
+            route.step(host_step)
+        )
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.0
+    }
+}
+
+impl fmt::Display for Expected {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, ">={}", self.0)
     }
 }
 
@@ -100,14 +209,15 @@ pub enum Audience {
 }
 
 impl Audience {
-    /// Each route keeps its own records, so a machine with both an installer's klin and a
-    /// plugin's klin at two versions never reads the switch between them as an update.
+    /// Each route keeps its own records, so a machine with both a release build and a
+    /// plugin's klin at two versions never reads the switch between them as an update. A build
+    /// from source keeps no record, because it never tells, and names the release build's.
     fn record(self, route: Route) -> &'static str {
         match (route, self) {
             (Route::Plugin, Audience::Person) => "release-plugin-person.json",
             (Route::Plugin, Audience::Agent) => "release-plugin-agent.json",
-            (Route::Installer, Audience::Person) => "release-person.json",
-            (Route::Installer, Audience::Agent) => "release-agent.json",
+            (Route::Release | Route::Source, Audience::Person) => "release-person.json",
+            (Route::Release | Route::Source, Audience::Agent) => "release-agent.json",
         }
     }
 
@@ -124,7 +234,7 @@ impl Audience {
         match (self, news) {
             (Audience::Person, News::Available(tag)) => format!(
                 "klin {tag} is available (you have {}). {}",
-                env!("CARGO_PKG_VERSION"),
+                own_version(),
                 route.step(host_step)
             ),
             (Audience::Agent, News::Available(tag)) if route == Route::Plugin => format!(
@@ -156,8 +266,8 @@ struct Releases {
 
 impl Releases {
     fn here() -> Option<Releases> {
-        let route = Route::here()?;
-        let on = !set("CI") && !set("KLIN_NO_UPDATE_CHECK");
+        let route = Route::here();
+        let on = route != Route::Source && !set("CI") && !set("KLIN_NO_UPDATE_CHECK");
         cache_dir()
             .filter(|_| on)
             .map(|dir| Releases { dir, route })
@@ -170,8 +280,8 @@ impl Releases {
 }
 
 /// What `latest.json` holds: the newest tag GitHub named, when klin last asked, the release
-/// auto-update last tried, why that release was not installed, and whether a later try may
-/// pass.
+/// auto-update last tried, why that release was not installed, whether a later try may pass,
+/// and the expected version klin last asked early for.
 #[derive(Default)]
 struct Latest {
     tag: Option<Version>,
@@ -179,6 +289,7 @@ struct Latest {
     tried: Option<Version>,
     refused: Option<String>,
     retry: bool,
+    asked_early: Option<Version>,
 }
 
 impl Latest {
@@ -190,6 +301,7 @@ impl Latest {
             tried: version(&held["tried"]),
             refused: held["refused"].as_str().map(str::to_string),
             retry: held["retry"].as_bool().unwrap_or_default(),
+            asked_early: version(&held["asked_early"]),
         }
     }
 
@@ -200,6 +312,7 @@ impl Latest {
             "tried": self.tried.as_ref().map(ToString::to_string),
             "refused": self.refused,
             "retry": self.retry,
+            "asked_early": self.asked_early.as_ref().map(ToString::to_string),
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -226,13 +339,25 @@ impl Latest {
         }
     }
 
+    /// Whether auto-update asks now, without waiting for the day's ask: the repository expects
+    /// a klin newer than this build and than the cached release, and klin has not asked early
+    /// for that version yet. A version no release meets is asked for once, and the day's ask
+    /// finds it later.
+    fn early(&self, route: Route, wanted: &Expected) -> bool {
+        route == Route::Release
+            && auto()
+            && !wanted.met()
+            && self.tag.as_ref().is_none_or(|tag| !wanted.met_by(tag))
+            && self.asked_early.as_ref() != Some(wanted.version())
+    }
+
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
-    /// Only the installer's route updates itself.
+    /// Only a release build that is not a plugin's updates itself.
     fn untried(&self, route: Route) -> Option<&Version> {
-        let installer = route == Route::Installer;
+        let release = route == Route::Release;
         self.tag
             .as_ref()
-            .filter(|tag| installer && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
+            .filter(|tag| release && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
     }
 }
 
@@ -290,23 +415,30 @@ impl Record {
 }
 
 /// How this binary reached the machine: through a host's plugin, whose wrapper sets
-/// `KLIN_PLUGIN`, or through the installer, with `klin-update` beside it.
+/// `KLIN_PLUGIN`, as a release build, from the installer or an archive, or built from source.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Route {
-    Installer,
+    Release,
     Plugin,
+    Source,
 }
 
 impl Route {
-    /// The wrapper's marker comes first, so a plugin's binary never runs an updater that
-    /// happens to sit beside it.
-    fn here() -> Option<Route> {
-        if set("KLIN_PLUGIN") {
-            Some(Route::Plugin)
-        } else if updater_path().is_some() {
-            Some(Route::Installer)
+    /// This binary's route, worked out once: nothing it reads changes while klin runs.
+    fn here() -> Route {
+        *ROUTE
+    }
+
+    /// The wrapper's marker comes first, because a plugin runs a release build too. A binary in
+    /// the cache the wrapper keeps the plugin's releases in is a plugin's, even when a person
+    /// runs it without the marker, because its directory names the version the plugin pins.
+    fn compute() -> Route {
+        if set("KLIN_PLUGIN") || in_plugin_cache() {
+            Route::Plugin
+        } else if RELEASE_BUILD || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD")) {
+            Route::Release
         } else {
-            None
+            Route::Source
         }
     }
 
@@ -314,7 +446,7 @@ impl Route {
     /// step of the host a hook event came from.
     fn step(self, host_step: Option<String>) -> String {
         match self {
-            Route::Installer => "Run klin update.".to_string(),
+            Route::Release | Route::Source => "Run klin update.".to_string(),
             Route::Plugin => {
                 host_step.unwrap_or_else(|| "Update the klin plugin in your host.".to_string())
             }
@@ -322,36 +454,44 @@ impl Route {
     }
 }
 
-/// The route of this binary, or none when it may not ask, update or tell.
-pub fn route() -> Option<Route> {
+/// The route of this binary.
+pub fn route() -> Route {
     Route::here()
 }
 
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
-/// ask is a day old, or when auto-update holds a newer release it has not tried. The child
+/// ask is a day old, when auto-update holds a newer release it has not tried, or when
+/// auto-update asks early for the klin the repository `expected`. The child
 /// decides under its own lock, so two commands at once start at most one ask and one update.
 /// Before it starts, each audience's record holds this binary's version, so an update the child
 /// runs before any hook still tells which version it replaced.
-pub fn refresh() {
+pub fn refresh(expected: Option<&Expected>) {
     let Some(releases) = Releases::here() else {
         return;
     };
     let latest = Latest::read(&releases.dir);
-    if !latest.stale() && latest.untried(releases.route).is_none() {
+    let early = expected.filter(|wanted| latest.early(releases.route, wanted));
+    if !latest.stale() && latest.untried(releases.route).is_none() && early.is_none() {
         return;
     }
     for who in [Audience::Person, Audience::Agent] {
         first_sight(&releases, who);
     }
     if let Ok(exe) = installed() {
-        let _ = silent(Command::new(exe).arg(CHILD))
-            .process_group(0)
-            .spawn();
+        let mut child = Command::new(exe);
+        child.arg(CHILD).args(
+            early
+                .map(|wanted| [EARLY.to_string(), wanted.version().to_string()])
+                .into_iter()
+                .flatten(),
+        );
+        let _ = silent(&mut child).process_group(0).spawn();
     }
 }
 
 /// The detached child, under the ask lock: the day's ask, which counts from its start so a
-/// failed or slow ask is the day's ask, then under auto-update the signed install, once for each
+/// failed or slow ask is the day's ask, or the early ask for the expected version its argument
+/// names, then under auto-update the signed install, once for each
 /// newer release. A refused install keeps its reason for `klin status`. A child that finds the
 /// ask lock taken does nothing. Every change to the cache takes the cache lock for that change
 /// alone.
@@ -363,17 +503,28 @@ pub fn child() {
     let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
-    ask_today(dir);
+    let early = std::env::args()
+        .skip_while(|arg| arg != EARLY)
+        .nth(1)
+        .as_deref()
+        .and_then(Version::parse);
+    ask_today(dir, early);
     install_untried(dir, releases.route);
 }
 
 /// The day's ask, which counts from its start. A release whose last try failed in a way that
 /// may pass is tried again with the day's ask, so a failure that passes costs a day, and one
-/// that does not pass is tried once a day at most.
-fn ask_today(dir: &Path) {
-    if Latest::read(dir).stale()
+/// that does not pass is tried once a day at most. An `early` ask for an expected version runs
+/// once for that version, whatever the day's ask did.
+fn ask_today(dir: &Path, early: Option<Version>) {
+    let latest = Latest::read(dir);
+    let early = early.filter(|wanted| latest.asked_early.as_ref() != Some(wanted));
+    if (latest.stale() || early.is_some())
         && Latest::change(dir, |latest| {
             latest.checked = now();
+            if early.is_some() {
+                latest.asked_early.clone_from(&early);
+            }
             if latest.retry {
                 latest.tried = None;
                 latest.retry = false;
@@ -408,7 +559,7 @@ fn install_untried(dir: &Path, route: Route) {
     let Some(tag) = claimed.filter(|tag| older_on_disk(&exe, tag)) else {
         return;
     };
-    if let Err(failure) = signed::install(&tag.to_string(), &exe, dir) {
+    if let Err(failure) = signed::install(&tag.to_string(), &exe) {
         Latest::change(dir, |latest| {
             latest.refused = Some(failure.to_string());
             latest.retry = failure.retry();
@@ -428,11 +579,8 @@ fn older_on_disk(exe: &Path, tag: &Version) -> bool {
         .output()
         .ok()
         .and_then(|output| String::from_utf8(output.stdout).ok())
-        .and_then(|text| {
-            let own = text.trim().strip_prefix("klin ")?;
-            Version::parse(own.split('-').next().unwrap_or(own))
-        })
-        .is_none_or(|on_disk| on_disk < *tag)
+        .and_then(|text| text.trim().strip_prefix("klin ")?.parse::<Build>().ok())
+        .is_none_or(|on_disk| on_disk.numbers < *tag)
 }
 
 /// Why auto-update did not install `tag`, when it tried and was refused.
@@ -445,17 +593,22 @@ pub fn refused(tag: &Version) -> Option<String> {
 
 /// `klin update`: ask GitHub now, and install the newest release when it is newer than this
 /// binary and its signature checks out. The release installed, or none when this build is the
-/// newest. Only the installer's binary updates itself, so any other says why and installs
-/// nothing.
+/// newest. Any binary but a plugin's updates, a build from source too. One in a directory klin
+/// cannot write says so before it asks.
 pub fn update() -> Result<Option<Version>, String> {
-    installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
-    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
-    let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
-    let exe = installed().map_err(|why| format!("klin could not find itself: {why}"))?;
+    if Route::here() == Route::Plugin {
+        return Err(PLUGIN_UPDATE.to_string());
+    }
+    let exe = installed()
+        .and_then(|exe| exe.canonicalize())
+        .map_err(|why| format!("klin could not find itself: {why}"))?;
+    writable(&exe)?;
+    let cache = cache_dir().ok_or("klin found no cache directory to hold its install lock.")?;
+    let _install = locked(&cache, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
     let Some(tag) = newer_than(&exe)? else {
         return Ok(None);
     };
-    signed::install(&tag.to_string(), &exe, &scratch).map_err(|failure| failure.to_string())?;
+    signed::install(&tag.to_string(), &exe).map_err(|failure| failure.to_string())?;
     Ok(Some(tag))
 }
 
@@ -564,40 +717,60 @@ fn auto() -> bool {
     }
 }
 
-/// Whether this binary installs a newer release on its own now: the installer's, with the
+/// Whether this binary installs a newer release on its own now: a release build, with the
 /// check on, outside CI, and with auto-update on.
 pub fn auto_update() -> bool {
-    Releases::here().is_some_and(|releases| releases.route == Route::Installer) && auto()
+    Releases::here().is_some_and(|releases| releases.route == Route::Release) && auto()
 }
 
 const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates the plugin. Turn \
                               on the host's own plugin auto-update instead.";
-const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
-                          itself, and none is there.";
+const SOURCE_BUILD: &str = "this klin was built from source, and only a release build asks for \
+                            releases or installs one on its own. Run klin update by hand.";
 const BUSY: &str = "another klin is still asking for or installing a release after a minute. Run \
                     klin update again when it ends.";
 const PLUGIN_UPDATE: &str = "this klin came with a plugin, and its host updates the plugin.";
-const NO_INSTALLER: &str = "klin-update was not found beside klin, so the installer did not \
-                            place this klin. The installer: curl --proto '=https' --tlsv1.2 \
-                            -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
-                            klin-installer.sh | sh. A plugin install updates with its plugin \
-                            instead.";
+const INSTALLER: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
+                         https://github.com/brajevicm/klin/releases/latest/download/\
+                         klin-installer.sh | sh";
 
-/// Pass only on the installer's route, the one route whose binary changes itself. A plugin's
-/// binary fails with `plugin`, and a binary on neither route with `none`.
-fn installer_only(plugin: &str, none: &str) -> Result<(), String> {
-    match Route::here() {
-        Some(Route::Installer) => Ok(()),
-        Some(Route::Plugin) => Err(plugin.to_string()),
-        None => Err(none.to_string()),
-    }
+/// Whether klin may put a new binary beside `exe`. The error names the installer, which
+/// installs where the person can write. It names no `sudo`: a root klin would write root's files
+/// into the person's cache.
+fn writable(exe: &Path) -> Result<(), String> {
+    signed::writable(exe).map_err(|why| {
+        format!(
+            "klin cannot write {}, where this klin is installed: {why}. Install klin where you \
+             can write with the installer, and remove this klin: {INSTALLER}",
+            exe.parent().unwrap_or(Path::new("/")).display()
+        )
+    })
 }
 
-/// Write the person's auto-update setting. Only the installer's binary updates itself, so a
-/// plugin's binary or one with no updater beside it says why the setting would change nothing.
+/// The first other `klin` PATH finds before the binary `klin update` replaced, which a shell
+/// and klin's hooks run instead of it. None when PATH finds this one first, or none at all. Like
+/// a shell, it searches a relative or empty entry from the working directory, and skips a file
+/// that is not executable.
+pub fn shadowed() -> Option<PathBuf> {
+    let exe = installed().ok()?.canonicalize().ok()?;
+    let here = std::env::current_dir().ok()?;
+    let first = std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| here.join(dir).join("klin"))
+        .find(|path| {
+            std::fs::metadata(path).is_ok_and(|held| held.is_file() && held.mode() & 0o111 != 0)
+        })?;
+    (first.canonicalize().ok()? != exe).then_some(first)
+}
+
+/// Write the person's auto-update setting. Only a release build asks for releases, and a
+/// plugin's host owns the plugin, so any other binary says why the setting would change nothing.
 /// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
-    installer_only(PLUGIN_SETTING, NO_UPDATER)?;
+    match Route::here() {
+        Route::Release => {}
+        Route::Plugin => return Err(PLUGIN_SETTING.to_string()),
+        Route::Source => return Err(SOURCE_BUILD.to_string()),
+    }
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
     let file = dir.join(AUTO_FILE);
     write(&file, if on { b"on\n" } else { b"off\n" })
@@ -620,11 +793,35 @@ pub fn installed() -> io::Result<PathBuf> {
     )
 }
 
-fn updater_path() -> Option<PathBuf> {
-    installed()
+/// Whether this binary sits where the plugin wrapper keeps a pinned release,
+/// `CACHE/bin/VERSION/klin`. The path alone answers, never the caller's `HOME` or
+/// `KLIN_CACHE_DIR`, which a person running the binary by hand may have changed.
+fn in_plugin_cache() -> bool {
+    let Some(exe) = installed().ok().and_then(|exe| exe.canonicalize().ok()) else {
+        return false;
+    };
+    let mut up = exe.ancestors().skip(1).map(Path::file_name);
+    let (Some(Some(pinned)), Some(Some(bin))) = (up.next(), up.next()) else {
+        return false;
+    };
+    bin == "bin"
+        && pinned
+            .to_str()
+            .and_then(|pinned| pinned.parse::<Build>().ok())
+            .is_some_and(|build| build.numbers.0.len() == 3)
+}
+
+/// This build's version as `--version` prints it. A debug build reads `KLIN_TEST_VERSION`
+/// instead, so a test stands for another release.
+fn own_version() -> String {
+    #[cfg(debug_assertions)]
+    if let Some(version) = std::env::var("KLIN_TEST_VERSION")
         .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
-        .filter(|path| path.is_file())
+        .filter(|version| !version.is_empty())
+    {
+        return version;
+    }
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.

@@ -406,3 +406,117 @@ fn a_jq_that_cannot_format_the_report_fails_the_job_and_names_the_write() {
         gated.printed
     );
 }
+
+/// The Action fails the job, and says why, when the klin it installed is older than the version
+/// `klin.json` expects. A version it meets runs `klin check` as before. Spec 12.3.
+#[test]
+fn the_action_fails_when_its_klin_is_older_than_klin_json_expects() {
+    let older = tree();
+    older.write("klin.json", r#"{"klin": ">=99.0.0"}"#);
+    older.base();
+    let met = tree();
+    met.write("klin.json", r#"{"klin": ">=0.0.1"}"#);
+    met.base();
+
+    let failed = gated(&older, "");
+    let passed = gated(&met, "");
+
+    assert_eq!(failed.code, 2, "{}", failed.printed);
+    assert_eq!(failed.annotations("error").len(), 1, "{}", failed.printed);
+    assert!(
+        failed.printed.contains(&format!(
+            "::error title=klin::klin.json expects klin >=99.0.0, and the Action installed klin {}",
+            env!("CARGO_PKG_VERSION")
+        )),
+        "{}",
+        failed.printed
+    );
+    assert_eq!(passed.code, 0, "{}", passed.printed);
+}
+
+/// A `klin` value of another shape is not compared: `klin check` refuses it as a configuration
+/// error, and the Action reports that run. The values are the ones klin's reader refuses, so the
+/// Action's copy of the shape agrees with klin's. Spec 12.3.
+#[test]
+fn the_action_leaves_a_malformed_expected_version_to_klin_check() {
+    for written in [
+        "99.0.0",
+        ">=99.0",
+        ">=99.0.0.1",
+        ">= 99.0.0",
+        ">=99.0.0-beta",
+    ] {
+        let tree = tree();
+        tree.write("klin.json", &format!(r#"{{"klin": "{written}"}}"#));
+        tree.base();
+
+        let gated = gated(&tree, "");
+
+        assert_eq!(gated.code, 2, "{written}: {}", gated.printed);
+        assert!(
+            !gated.printed.contains("expects klin"),
+            "{written}: {}",
+            gated.printed
+        );
+        assert!(
+            gated.summary.contains("\"klin\""),
+            "{written}: {}",
+            gated.summary
+        );
+    }
+}
+
+/// The Action reads the expected version from the configuration `args` names with `--config`,
+/// in both spellings, the one `klin check` reads. Spec 12.3.
+#[test]
+fn the_action_reads_the_expected_version_from_the_config_args_names() {
+    for args in ["--config config/klin.json", "--config=config/klin.json"] {
+        let tree = tree();
+        tree.write("config/klin.json", r#"{"klin": ">=99.0.0"}"#);
+        tree.base();
+
+        let gated = gated(&tree, args);
+
+        assert_eq!(gated.code, 2, "{args}: {}", gated.printed);
+        assert!(
+            gated
+                .printed
+                .contains("::error title=klin::config/klin.json expects klin >=99.0.0"),
+            "{args}: {}",
+            gated.printed
+        );
+    }
+}
+
+/// The Action orders a pre-release before its release: `0.5.4-rc.1` fails `>=0.5.4`, and
+/// `0.5.4` and `0.5.5` pass. Spec 12.3.
+#[test]
+fn the_action_fails_a_pre_release_of_the_expected_version() {
+    for (version, code) in [("0.5.4-rc.1", 2), ("0.5.4", 0), ("0.5.5", 0)] {
+        let tree = tree();
+        tree.write("klin.json", r#"{"klin": ">=0.5.4"}"#);
+        tree.base();
+        let klin = format!(
+            "#!/bin/sh\n[ \"$1\" = --version ] && {{ echo 'klin {version}'; exit 0; }}\nexec '{}' \"$@\"\n",
+            harness::binary()
+        );
+        let path = bin(
+            &tree,
+            &["cat", "git", "tee", "jq", "sed", "sort", "head"],
+            &[("klin", &klin)],
+        );
+
+        let gated = gated_on(&tree, "", &path);
+
+        assert_eq!(gated.code, code, "{version}: {}", gated.printed);
+        if code == 2 {
+            assert!(
+                gated
+                    .printed
+                    .contains("expects klin >=0.5.4, and the Action installed klin 0.5.4-rc.1"),
+                "{}",
+                gated.printed
+            );
+        }
+    }
+}

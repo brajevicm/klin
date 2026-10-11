@@ -178,14 +178,17 @@ klin does not sandbox the coding agent, harden the developer machine, manage
 secrets, or automate organization policy. It reads no secrets. No native check
 or recipe reads the network, and no measurement sends anything anywhere.
 `klin update` uses the network to fetch a release, and the guard denies it to
-an agent. On a binary the installer placed, or a plugin's, a session start, `klin status` and
+an agent. On a release build, or a plugin's, a session start, `klin status` and
 `klin setup` ask GitHub for the newest release tag at most once a day, in a
 detached child, and send nothing about the repository. With auto-update on
-(`klin update --auto on`, or `KLIN_AUTO_UPDATE=1`), the installer's child
-also installs a newer release. It and `klin update` install only an archive
+(`klin update --auto on`, or `KLIN_AUTO_UPDATE=1`), a release build's child
+also installs a newer release. A build from source asks nothing on its own,
+and `klin update` installs over it too (ADR 0072). It and `klin update` install only an archive
 whose minisign signature matches the key built into klin and names that
 release, so a release that the release workflow did not sign installs nothing
-(ADR 0070). Anyone who can read the repository's `KLIN_RELEASE_SIGNING_KEY`
+(ADR 0070). klin extracts the checked archive beside the binary it replaces,
+so only whoever may already replace that binary can change it before the
+rename, and klin never asks for `sudo`. Anyone who can read the repository's `KLIN_RELEASE_SIGNING_KEY`
 secret can sign a release. The
 guard denies `klin update` and `klin __release` to an agent.
 `KLIN_NO_UPDATE_CHECK=1` or `CI` turns the ask and the update off (SPEC

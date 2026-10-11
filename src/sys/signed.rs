@@ -7,7 +7,7 @@
 use std::fmt;
 use std::fs;
 use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -38,15 +38,16 @@ impl fmt::Display for Failure {
 }
 
 /// Download the archive of `tag` for this machine, check its signature, and put its `klin` in
-/// place of `exe`. On an error, `exe` is as it was and the failure says why.
-pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), Failure> {
+/// place of `exe`. On an error, `exe` is as it was and the failure says why. The work directory
+/// sits beside `exe`, so only whoever may already replace `exe` can change the checked binary
+/// between its extraction and the rename.
+pub fn install(tag: &str, exe: &Path) -> Result<(), Failure> {
     let target = target().map_err(Failure::Refused)?;
     let archive = format!("klin-{target}.tar.xz");
     let url = format!("{DOWNLOAD}{tag}/{archive}");
-    let work = Scratch(scratch.join(format!("update-{}", std::process::id())));
-    let _ = fs::remove_dir_all(&work.0);
-    fs::create_dir_all(&work.0)
-        .map_err(|why| Failure::Transient(format!("{}: {why}", work.0.display())))?;
+    let work =
+        Scratch::directory(exe.with_file_name(format!(".klin-update-{}", std::process::id())))
+            .map_err(Failure::Transient)?;
     let bytes = download(&url, &work.0.join(&archive)).map_err(Failure::Transient)?;
     let signature =
         download(&format!("{url}.minisig"), &work.0.join("minisig")).map_err(Failure::Transient)?;
@@ -55,8 +56,28 @@ pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), Failure> {
     replace(&binary, exe).map_err(Failure::Transient)
 }
 
+/// Whether klin may create a file beside `exe`, tried with a probe it removes at once.
+pub fn writable(exe: &Path) -> std::io::Result<()> {
+    let probe = exe.with_file_name(format!(".klin-probe-{}", std::process::id()));
+    fs::File::create_new(&probe)?;
+    let _probe = Scratch(probe);
+    Ok(())
+}
+
 /// A path klin made for one install, removed when the install ends, whatever way it ends.
 struct Scratch(PathBuf);
+
+impl Scratch {
+    /// A new directory only this user can enter, at `path`. A directory or a link already there
+    /// is an error, so klin never works in a place someone else prepared.
+    fn directory(path: PathBuf) -> Result<Scratch, String> {
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&path)
+            .map_err(|why| format!("{}: {why}", path.display()))?;
+        Ok(Scratch(path))
+    }
+}
 
 impl Drop for Scratch {
     fn drop(&mut self) {
@@ -159,11 +180,20 @@ fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, Failure> {
 }
 
 /// Copy `binary` beside `exe` and rename it over `exe`, so `exe` is either the old klin or the
-/// new one, never part of either.
+/// new one, never part of either. The copy is a file klin creates, never one that was there, so
+/// a link someone left at its name is not followed.
 fn replace(binary: &Path, exe: &Path) -> Result<(), String> {
-    let beside = Scratch(exe.with_file_name(format!(".klin-new-{}", std::process::id())));
+    let path = exe.with_file_name(format!(".klin-new-{}", std::process::id()));
     let failed = |why: std::io::Error| format!("{}: {why}", exe.display());
-    fs::copy(binary, &beside.0).map_err(failed)?;
-    fs::set_permissions(&beside.0, fs::Permissions::from_mode(0o755)).map_err(failed)?;
+    let mut copy = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o700)
+        .open(&path)
+        .map_err(failed)?;
+    let beside = Scratch(path);
+    std::io::copy(&mut fs::File::open(binary).map_err(failed)?, &mut copy).map_err(failed)?;
+    copy.set_permissions(fs::Permissions::from_mode(0o755))
+        .map_err(failed)?;
     fs::rename(&beside.0, exe).map_err(failed)
 }

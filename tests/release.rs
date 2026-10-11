@@ -39,8 +39,8 @@ ANSWER
 /// for as long as its `curl` runs, and a timing test would read that as klin waiting.
 static ALONE: Mutex<()> = Mutex::new(());
 
-/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it,
-/// a `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
+/// A klin from a release: a copy of the binary under test that stands for a release build, a
+/// `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
 /// download of a release archive is recorded in `updated`, and `curl` serves the fixture archive
 /// and signature directory `Installed::serving` names. By default the archive was changed after it was
 /// signed, so no install succeeds and the binary under test stays in place.
@@ -48,6 +48,7 @@ struct Installed {
     home: Tree,
     tree: Tree,
     plugin: bool,
+    release: bool,
     _alone: MutexGuard<'static, ()>,
 }
 
@@ -67,7 +68,6 @@ impl Installed {
         if fs::hard_link(harness::binary(), &klin).is_err() {
             fs::copy(harness::binary(), &klin).expect("copy klin");
         }
-        executable(&home, "installed/klin-update", "#!/bin/sh\nexit 9\n");
         let script = CURL
             .replace("UPDATED", &home.at("updated"))
             .replace("CALLS", &home.at("calls"))
@@ -83,21 +83,33 @@ impl Installed {
             home,
             tree,
             plugin: false,
+            release: true,
             _alone: alone,
         }
     }
 
-    /// The same binary as a plugin's wrapper runs it: no updater beside it, and `KLIN_PLUGIN`.
+    /// The same binary as a plugin's wrapper runs it, with `KLIN_PLUGIN`.
     fn plugin(answer: &str) -> Installed {
-        let installed = Installed::new(answer);
-        installed.home.remove("installed/klin-update");
         Installed {
             plugin: true,
-            ..installed
+            ..Installed::new(answer)
+        }
+    }
+
+    /// The same binary built from source, which the release workflow never marked.
+    fn source(answer: &str, archive: &str) -> Installed {
+        Installed {
+            release: false,
+            ..Installed::serving(answer, archive, "signed")
         }
     }
 
     fn run(&self, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
+        self.run_as(&self.home.at("installed/klin"), extra, args, stdin)
+    }
+
+    /// `run` through the copy of klin at `klin`.
+    fn run_as(&self, klin: &str, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
         let path = format!("{}:/usr/bin:/bin", self.home.at("bin"));
         let cache = self.home.at("cache");
         let user = self.home.at("user");
@@ -111,17 +123,15 @@ impl Installed {
             ("KLIN_NO_UPDATE_CHECK", ""),
             ("KLIN_AUTO_UPDATE", ""),
             ("KLIN_PLUGIN", if self.plugin { "1" } else { "" }),
+            (
+                "KLIN_TEST_RELEASE_BUILD",
+                if self.release { "1" } else { "" },
+            ),
             ("KLIN_RELEASE_KEY", key.as_str()),
             ("KLIN_TEST_REAL", real.as_str()),
         ];
         environment.extend_from_slice(extra);
-        feed_as_with(
-            &self.home.at("installed/klin"),
-            self.tree.root(),
-            &environment,
-            args,
-            stdin,
-        )
+        feed_as_with(klin, self.tree.root(), &environment, args, stdin)
     }
 
     fn status(&self, extra: &[(&str, &str)]) -> Run {
@@ -492,11 +502,11 @@ fn nothing_asks_updates_or_tells_when_the_check_is_off_or_in_ci() {
     }
 }
 
-/// A plugin's binary has no updater beside it, so it neither asks nor tells. Spec 11.9.
+/// A binary built from source neither asks nor tells, so a developer's own build never reaches
+/// the network. Spec 11.9.
 #[test]
-fn a_binary_without_an_updater_beside_it_does_not_ask() {
-    let installed = Installed::new(&answers(NEWER));
-    installed.home.remove("installed/klin-update");
+fn a_binary_built_from_source_does_not_ask() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
 
     let run = installed.status(&[]);
     settle();
@@ -611,20 +621,12 @@ fn a_plugin_session_start_tells_the_agent_to_ask_for_a_plugin_update() {
     );
 }
 
-/// A plugin's binary never runs an updater, auto-update or not, because its host owns the
+/// A plugin's binary never updates itself, auto-update or not, because its host owns the
 /// plugin. Spec 11.9.
 #[test]
 fn a_plugin_never_updates_itself() {
     let installed = Installed::plugin(&answers(NEWER));
     installed.warmed();
-    executable(
-        &installed.home,
-        "bin/klin-update",
-        &format!(
-            "#!/bin/sh\necho updated >> '{}'\n",
-            installed.home.at("updated")
-        ),
-    );
 
     installed.session(&[("KLIN_AUTO_UPDATE", "1")]);
     settle();
@@ -1167,4 +1169,341 @@ fn update_after_another_install_replaced_klin_installs_nothing() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("is the newest release"), "{}", run.out);
     assert_eq!(lines(&installed.home.path("updated")), 0);
+}
+
+/// A tree whose `klin.json` expects the klin `expected`, with nothing else to measure.
+fn expecting(expected: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", &format!("{{\"klin\": \"{expected}\"}}\n"));
+    tree.write("README.md", "# readme\n");
+    tree.base();
+    tree
+}
+
+/// A repository that expects a newer klin says so in `klin status`, with the command that
+/// installs one, and in `klin status --json`. Spec 5.3, 11.9.
+#[test]
+fn status_says_the_repository_expects_a_newer_klin_and_names_klin_update() {
+    let tree = expecting(">=99.0.0");
+
+    let run = tree.run(&["status"]);
+    let json = tree.run(&["status", "--json"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "This repository expects klin >=99.0.0 (you have {VERSION}). Run klin update."
+        )),
+        "{}",
+        run.out
+    );
+    assert_eq!(json.json()["klin"]["expected"], ">=99.0.0", "{}", json.out);
+    assert_eq!(json.json()["klin"]["expected_met"], false, "{}", json.out);
+}
+
+/// A Stop that blocks nothing tells the person once that the repository expects a newer klin.
+/// Spec 10.7, 11.9.
+#[test]
+fn a_stop_tells_the_person_once_that_the_repository_expects_a_newer_klin() {
+    let tree = expecting(">=99.0.0");
+
+    let first = tree.stop();
+    let second = tree.stop();
+
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(first.says(r#"{"systemMessage":"#), "{}", first.out);
+    assert!(
+        first.says("This repository expects klin >=99.0.0"),
+        "{}",
+        first.out
+    );
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("expects klin"), "{}", second.out);
+}
+
+/// A version the binary meets, or no `klin` key, changes nothing that status or a Stop says.
+/// Spec 11.9.
+#[test]
+fn a_met_or_absent_expected_version_changes_nothing() {
+    let met = expecting(">=0.0.1");
+    let absent = Tree::new();
+    absent.write("klin.json", "{}\n");
+    absent.write("README.md", "# readme\n");
+    absent.base();
+
+    for tree in [&met, &absent] {
+        let status = tree.run(&["status"]);
+        let stop = tree.stop();
+
+        assert_eq!(status.code, 0, "{}", status.out);
+        assert!(!status.says("expects klin"), "{}", status.out);
+        assert_eq!(stop.code, 0, "{}", stop.out);
+        assert!(!stop.says("expects klin"), "{}", stop.out);
+    }
+    assert_eq!(
+        met.run(&["status", "--json"]).json()["klin"]["expected_met"],
+        true
+    );
+}
+
+/// The `klin` key holds `>=` and a version of dot-separated digits, and anything else is a
+/// configuration error naming the key. Spec 5.3, 14.
+#[test]
+fn an_expected_version_klin_cannot_read_is_a_config_error() {
+    for written in [
+        "\"0.5.4\"",
+        "\">=0..5\"",
+        "\">=0.5\"",
+        "\">=0.5.4.1\"",
+        "\">= 1.0.0\"",
+        "\">=1.0.0-beta\"",
+        "5",
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", &format!("{{\"klin\": {written}}}\n"));
+        tree.base();
+
+        let run = tree.run(&["check"]);
+
+        assert_eq!(run.code, 2, "{written}: {}", run.out);
+        assert!(run.says("\"klin\""), "{written}: {}", run.out);
+    }
+}
+
+/// Under auto-update, a repository that expects a newer klin than the cached release asks now,
+/// without waiting for the day's ask. Spec 11.9.
+#[test]
+fn auto_update_asks_now_when_the_repository_expects_a_newer_klin() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let asked = installed.fetched();
+    installed.home.write(
+        "cache/latest.json",
+        &fs::read_to_string(installed.home.path("cache/latest.json"))
+            .expect("latest.json")
+            .replace("99.0.0", "0.0.1"),
+    );
+    let auto = [("KLIN_AUTO_UPDATE", "1")];
+
+    installed.status(&auto);
+    settle();
+    assert_eq!(installed.fetched(), asked, "no key, no early ask");
+
+    installed
+        .tree
+        .write("klin.json", "{\"klin\": \">=99.0.0\"}\n");
+    installed.status(&[]);
+    settle();
+    assert_eq!(installed.fetched(), asked, "no auto-update, no early ask");
+
+    installed.status(&auto);
+    until(|| installed.fetched() == asked + 1);
+    assert_eq!(installed.fetched(), asked + 1);
+}
+
+/// `klin update` installs the signed release over a binary built from source too, so every
+/// klin that is not a plugin's can update. Spec 11.8.
+#[test]
+fn update_installs_a_signed_release_over_a_binary_built_from_source() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin updated to 99.0.0."), "{}", run.out);
+    assert!(installed.replaced());
+}
+
+/// A klin in a directory the person cannot write names the installer, and asks GitHub for
+/// nothing. Spec 11.8.
+#[test]
+fn update_in_a_directory_it_cannot_write_names_the_installer() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let directory = installed.home.path("installed");
+    fs::set_permissions(&directory, fs::Permissions::from_mode(0o555)).expect("read-only");
+
+    let run = installed.run(&[], &["update"], "");
+    fs::set_permissions(&directory, fs::Permissions::from_mode(0o755)).expect("writable");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("klin-installer.sh"), "{}", run.out);
+    assert!(!run.says("sudo"), "{}", run.out);
+    assert_eq!(installed.fetched(), 0);
+    assert!(!installed.replaced());
+}
+
+/// After an update, a different klin that PATH finds first is named, because a shell and klin's
+/// hooks still run that one. Spec 11.8.
+#[test]
+fn update_names_another_klin_that_path_finds_first() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    executable(&installed.home, "bin/klin", "#!/bin/sh\nexit 0\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "PATH finds another klin first, at {}",
+            installed.home.at("bin/klin")
+        )),
+        "{}",
+        run.out
+    );
+}
+
+/// Auto-update needs a release build, because only a release build asks for releases.
+/// Spec 11.9.
+#[test]
+fn update_auto_on_a_source_build_says_why_it_would_change_nothing() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
+
+    let run = installed.run(&[], &["update", "--auto", "on"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("built from source"), "{}", run.out);
+}
+
+/// A `klin update` that could not ask GitHub installs nothing and says why. Spec 11.8.
+#[test]
+fn update_that_cannot_ask_github_says_so_and_installs_nothing() {
+    let installed = Installed::serving("exit 7", "klin.tar.xz", "signed");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("could not ask GitHub for the newest release"),
+        "{}",
+        run.out
+    );
+    assert!(!installed.replaced());
+}
+
+/// A `klin` that PATH finds first but that is not executable is not named, as a shell skips it.
+/// Spec 11.8.
+#[test]
+fn update_does_not_name_a_klin_on_path_that_cannot_run() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    installed.home.write("bin/klin", "not a program\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("PATH finds another klin"), "{}", run.out);
+}
+
+/// A plugin's binary run by hand, from the cache the plugin wrapper keeps it in, has no
+/// `KLIN_PLUGIN`. Its directory still names the version the plugin pins, so `klin update`
+/// replaces nothing there. Spec 11.8.
+#[test]
+fn update_never_replaces_a_binary_in_the_plugin_cache() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let cached = installed.home.path(&format!("cache/bin/{VERSION}/klin"));
+    fs::create_dir_all(cached.parent().expect("cache bin")).expect("cache bin");
+    fs::copy(harness::binary(), &cached).expect("copy klin");
+
+    let run = installed.run_as(&cached.display().to_string(), &[], &["update"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert!(
+        !fs::read_to_string(&cached).is_ok_and(|text| text.contains("KLIN_TEST_REAL")),
+        "the cached binary was replaced"
+    );
+}
+
+/// A klin that is already the newest still names another klin that PATH finds first.
+/// Spec 11.8.
+#[test]
+fn update_names_another_klin_on_path_when_nothing_is_newer() {
+    let current = format!("https://github.com/brajevicm/klin/releases/tag/v{VERSION}");
+    let installed = Installed::serving(&answers(&current), "klin.tar.xz", "signed");
+    executable(&installed.home, "bin/klin", "#!/bin/sh\nexit 0\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("is the newest release"), "{}", run.out);
+    assert!(run.says("PATH finds another klin first"), "{}", run.out);
+}
+
+/// A relative PATH entry is searched from the working directory, as a shell searches it.
+/// Spec 11.8.
+#[test]
+fn update_names_another_klin_in_a_relative_path_entry() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    executable(&installed.tree, "tools/klin", "#!/bin/sh\nexit 0\n");
+    let path = format!("tools:{}:/usr/bin:/bin", installed.home.at("bin"));
+
+    let run = installed.run(&[("PATH", &path)], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("PATH finds another klin first"), "{}", run.out);
+    assert!(run.says("tools/klin"), "{}", run.out);
+}
+
+/// A plugin's Stop under Cursor never names the expected version as a release to copy, since
+/// no release of that version may exist. Spec 11.9.
+#[test]
+fn a_plugin_stop_never_names_the_expected_version_as_a_release() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed
+        .tree
+        .write("klin.json", "{\"klin\": \">=98.0.0\"}\n");
+    let stop = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
+
+    let run = installed.run(&[], AGENT, stop);
+
+    assert!(
+        run.says("This repository expects klin >=98.0.0"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("v98.0.0"), "{}", run.out);
+}
+
+/// A pre-release of the expected version is older than it, so it does not meet the floor, and
+/// the release itself and a later one do. Spec 11.9.
+#[test]
+fn a_pre_release_of_the_expected_version_does_not_meet_it() {
+    let tree = expecting(">=0.5.4");
+
+    for (version, met) in [("0.5.4-rc.1", false), ("0.5.4", true), ("0.5.5", true)] {
+        let run = tree.run_with(&[("KLIN_TEST_VERSION", version)], &["status", "--json"]);
+
+        assert_eq!(
+            run.json()["klin"]["expected_met"],
+            met,
+            "{version}: {}",
+            run.out
+        );
+    }
+}
+
+/// A plugin's cached binary run by hand under another HOME and cache directory is still a
+/// plugin's, because its path names the version the plugin pins. Spec 11.8.
+#[test]
+fn update_never_replaces_a_plugin_cache_binary_under_another_home() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let cached = installed
+        .home
+        .path(&format!("pinned/.cache/klin/bin/{VERSION}/klin"));
+    fs::create_dir_all(cached.parent().expect("cache bin")).expect("cache bin");
+    fs::copy(harness::binary(), &cached).expect("copy klin");
+    let elsewhere = installed.home.at("elsewhere");
+
+    let run = installed.run_as(
+        &cached.display().to_string(),
+        &[("HOME", &elsewhere), ("KLIN_CACHE_DIR", &elsewhere)],
+        &["update"],
+        "",
+    );
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("its host updates the plugin"), "{}", run.out);
+    assert!(
+        !fs::read_to_string(&cached).is_ok_and(|text| text.contains("KLIN_TEST_REAL")),
+        "the cached binary was replaced"
+    );
 }

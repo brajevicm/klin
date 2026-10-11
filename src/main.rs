@@ -44,7 +44,7 @@ enum Command {
     Policy(policy::Policy),
     /// Show what klin caught, what was resolved, and what still needs attention
     Report(report::Args),
-    /// Install the newest release over this binary, through the klin-update beside it
+    /// Install the newest signed release over this binary
     Update(update::Args),
 }
 
