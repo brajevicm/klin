@@ -624,3 +624,34 @@ fn update_auto_on_a_plugin_names_the_hosts_switch() {
     assert!(run.says("its host updates the plugin"), "{}", run.out);
     assert!(!installed.home.path("cache/auto-update").exists());
 }
+
+/// Under Cursor, a plugin's Stop names a fresh copy of the plugin from the release tag.
+/// Spec 11.9.
+#[test]
+fn a_plugin_stop_under_cursor_names_a_fresh_copy_from_the_tag() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+    let stop = r#"{"hook_event_name":"stop","cursor_version":"3.20.21","conversation_id":"s1","session_id":"s1","loop_count":0}"#;
+
+    let run = installed.run(&[], AGENT, stop);
+
+    assert!(
+        run.says("Copy the klin plugin again from the v99.0.0 release"),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("/plugin"), "{}", run.out);
+}
+
+/// Under Codex, a plugin's Stop names the Codex plugin. Spec 11.9.
+#[test]
+fn a_plugin_stop_under_codex_names_the_codex_plugin() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+    let stop = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
+
+    let run = installed.run(&[], AGENT, stop);
+
+    assert!(run.says("Update the klin plugin in Codex."), "{}", run.out);
+    assert!(!run.says("/plugin"), "{}", run.out);
+}
