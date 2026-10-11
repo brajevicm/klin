@@ -11,6 +11,7 @@ import tomllib
 EXPECTED = [
     ".agents/plugins/marketplace.json",
     ".claude-plugin/marketplace.json",
+    "CHANGELOG.md",
     "Cargo.lock",
     "Cargo.toml",
     "README.md",
@@ -138,6 +139,12 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
             f'"ref": "v{previous}"'.encode(),
             path,
         )
+    if path == "CHANGELOG.md":
+        heading = re.compile(rb"^## " + re.escape(current.encode()) + rb"$", re.MULTILINE)
+        renamed, count = heading.subn(b"## Unreleased", data)
+        if count != 1:
+            fail(f"{path}: expected exactly one '## {current}' heading, found {count}")
+        return renamed
     if path == "README.md":
         data = replace_once(
             data,
@@ -152,6 +159,22 @@ def normalize(path: str, data: bytes, current: str, previous: str) -> bytes:
             path,
         )
     fail(f"no release normalizer for {path}")
+
+
+def has_user_notes(changelog: bytes, version: str) -> bool:
+    try:
+        text = changelog.decode("utf-8")
+    except UnicodeDecodeError as why:
+        fail(f"CHANGELOG.md is not UTF-8: {why}")
+    section = re.search(
+        rf"^## {re.escape(version)}\n\n### What changes for you\n(.*?)(?=^#{{2,3}} |\Z)",
+        text,
+        re.MULTILINE | re.DOTALL,
+    )
+    if section is None:
+        return False
+    visible = re.sub(r"<!--.*?-->", "", section.group(1), flags=re.DOTALL)
+    return re.search(r"\w", visible) is not None
 
 
 def changed_files(base: str, head: str) -> list[str]:
@@ -199,6 +222,12 @@ def main() -> None:
                 f"{path}: release PR changes bytes beyond the expected "
                 f"{previous} -> {current} version substitution"
             )
+
+    if not has_user_notes(show(head, "CHANGELOG.md"), current):
+        fail(
+            f"CHANGELOG.md: the {current} section must open with a filled "
+            "'### What changes for you' section, which the GitHub release shows first"
+        )
 
     print(f"release diff is exactly the {previous} -> {current} version transformation")
 

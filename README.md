@@ -64,7 +64,7 @@ If `klin` isn't found, open a new terminal. Update with `klin update`, or `klin 
 
 Use your coding agent as usual. You don't need to run anything.
 
-When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened problems go back to the agent while the change is still in its context.
+When the agent tries to finish a turn, klin compares the code with how it was when the turn started. New or worsened problems go back to the agent.
 
 ### 3. See what happened
 
@@ -82,7 +82,7 @@ Add `--details` for individual findings, `--since 7d` for the last seven days, o
 
 ## Native plugins
 
-Instead of the CLI setup above, you can run klin through the native plugin system of Claude Code, Codex, or Cursor.
+Instead of the CLI setup, you can run klin as a Claude Code, Codex, or Cursor plugin.
 
 A plugin does not add a `klin` command to your shell. Install the CLI as well if you want `klin report`. If the plugin and the repository hooks are both present, only one of them handles each event.
 
@@ -134,8 +134,6 @@ echo '{}' > klin.json
 `{}` is a complete configuration. klin derives everything else from the repository.
 
 ## Why klin
-
-A coding agent can finish the task you asked for and make something else worse.
 
 Most deterministic tools tell you what is wrong **now**. klin asks:
 
@@ -246,6 +244,18 @@ GitHub Actions, as its own job:
 ```
 
 It fails on any non-zero exit and annotates findings and review items in pull requests.
+
+This Dependabot config opens a PR for each new klin Action version:
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+```
 
 Other CI: install klin, fetch full history, run `klin check`.
 
