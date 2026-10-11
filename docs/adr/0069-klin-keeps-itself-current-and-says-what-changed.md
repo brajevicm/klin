@@ -2,7 +2,8 @@
 
 > Amends the line of SPEC section 1 that said klin runs offline. Recorded for
 > #625, 2026-10-11. ADR 0070 amends item 2: klin installs a signed release
-> itself. Auto-update stays opt-in (item 3) by owner decision.
+> itself. Auto-update stays opt-in (item 3) by owner decision. ADR 0072
+> amends item 4: a release build, not `klin-update`, marks the route.
 
 A person who installed klin with the installer never learned that a newer
 release was out, and an update is routine work that SPEC section 2, goal 1

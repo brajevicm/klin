@@ -1,5 +1,5 @@
-//! `klin update` installs the newest release over the binary the installer placed, after its
-//! signature checks out. Spec 11.8.
+//! `klin update` installs the newest release over this binary, after its signature checks out.
+//! Spec 11.8.
 
 use std::process::Command;
 
@@ -32,11 +32,19 @@ pub fn run(args: &Args) -> u8 {
     install()
 }
 
-/// Install the newest release over the binary the installer placed. Spec 11.8.
+/// Install the newest release over this binary. Spec 11.8.
 fn install() -> u8 {
     match release::update() {
         Ok(Some(tag)) => {
             println!("klin updated to {tag}. Release notes: {}", tag.notes());
+            if let Some(other) = release::shadowed() {
+                println!(
+                    "klin: NOTE: PATH finds another klin first, at {}, and a shell and klin's \
+                     hooks run that one. Run {} update, or remove it.",
+                    other.display(),
+                    other.display()
+                );
+            }
             reconcile_hint();
             0
         }
@@ -90,7 +98,7 @@ fn check() -> u8 {
         true => println!(
             "{}",
             release::Audience::Person.note(
-                release::route().unwrap_or(release::Route::Installer),
+                release::route().unwrap_or(release::Route::Release),
                 &release::News::Available(tag.clone()),
                 None
             )

@@ -1,7 +1,8 @@
 # klin installs only a release signed by its workflow
 
 > Amends ADR 0069, item 2, and ADR 0029 for the installer's route.
-> Recorded for #627, 2026-10-11.
+> Recorded for #627, 2026-10-11. ADR 0072 amends item 4: the installer no
+> longer installs `klin-update`, and a release build marks the route.
 
 The installer and `klin-update` checked an archive against a SHA-256 from
 the same release. A bad release carries a matching checksum, so that check

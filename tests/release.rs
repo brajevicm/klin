@@ -39,8 +39,8 @@ ANSWER
 /// for as long as its `curl` runs, and a timing test would read that as klin waiting.
 static ALONE: Mutex<()> = Mutex::new(());
 
-/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it,
-/// a `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
+/// A klin from a release: a copy of the binary under test that stands for a release build, a
+/// `curl` on PATH that answers `answer` and records each ask, and a cache of its own. Each
 /// download of a release archive is recorded in `updated`, and `curl` serves the fixture archive
 /// and signature directory `Installed::serving` names. By default the archive was changed after it was
 /// signed, so no install succeeds and the binary under test stays in place.
@@ -48,6 +48,7 @@ struct Installed {
     home: Tree,
     tree: Tree,
     plugin: bool,
+    release: bool,
     _alone: MutexGuard<'static, ()>,
 }
 
@@ -67,7 +68,6 @@ impl Installed {
         if fs::hard_link(harness::binary(), &klin).is_err() {
             fs::copy(harness::binary(), &klin).expect("copy klin");
         }
-        executable(&home, "installed/klin-update", "#!/bin/sh\nexit 9\n");
         let script = CURL
             .replace("UPDATED", &home.at("updated"))
             .replace("CALLS", &home.at("calls"))
@@ -83,17 +83,24 @@ impl Installed {
             home,
             tree,
             plugin: false,
+            release: true,
             _alone: alone,
         }
     }
 
-    /// The same binary as a plugin's wrapper runs it: no updater beside it, and `KLIN_PLUGIN`.
+    /// The same binary as a plugin's wrapper runs it, with `KLIN_PLUGIN`.
     fn plugin(answer: &str) -> Installed {
-        let installed = Installed::new(answer);
-        installed.home.remove("installed/klin-update");
         Installed {
             plugin: true,
-            ..installed
+            ..Installed::new(answer)
+        }
+    }
+
+    /// The same binary built from source, which the release workflow never marked.
+    fn source(answer: &str, archive: &str) -> Installed {
+        Installed {
+            release: false,
+            ..Installed::serving(answer, archive, "signed")
         }
     }
 
@@ -111,6 +118,10 @@ impl Installed {
             ("KLIN_NO_UPDATE_CHECK", ""),
             ("KLIN_AUTO_UPDATE", ""),
             ("KLIN_PLUGIN", if self.plugin { "1" } else { "" }),
+            (
+                "KLIN_TEST_RELEASE_BUILD",
+                if self.release { "1" } else { "" },
+            ),
             ("KLIN_RELEASE_KEY", key.as_str()),
             ("KLIN_TEST_REAL", real.as_str()),
         ];
@@ -492,11 +503,11 @@ fn nothing_asks_updates_or_tells_when_the_check_is_off_or_in_ci() {
     }
 }
 
-/// A plugin's binary has no updater beside it, so it neither asks nor tells. Spec 11.9.
+/// A binary built from source neither asks nor tells, so a developer's own build never reaches
+/// the network. Spec 11.9.
 #[test]
-fn a_binary_without_an_updater_beside_it_does_not_ask() {
-    let installed = Installed::new(&answers(NEWER));
-    installed.home.remove("installed/klin-update");
+fn a_binary_built_from_source_does_not_ask() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
 
     let run = installed.status(&[]);
     settle();
@@ -611,20 +622,12 @@ fn a_plugin_session_start_tells_the_agent_to_ask_for_a_plugin_update() {
     );
 }
 
-/// A plugin's binary never runs an updater, auto-update or not, because its host owns the
+/// A plugin's binary never updates itself, auto-update or not, because its host owns the
 /// plugin. Spec 11.9.
 #[test]
 fn a_plugin_never_updates_itself() {
     let installed = Installed::plugin(&answers(NEWER));
     installed.warmed();
-    executable(
-        &installed.home,
-        "bin/klin-update",
-        &format!(
-            "#!/bin/sh\necho updated >> '{}'\n",
-            installed.home.at("updated")
-        ),
-    );
 
     installed.session(&[("KLIN_AUTO_UPDATE", "1")]);
     settle();
@@ -1297,4 +1300,66 @@ fn auto_update_asks_now_when_the_repository_expects_a_newer_klin() {
     installed.status(&auto);
     until(|| installed.fetched() == asked + 1);
     assert_eq!(installed.fetched(), asked + 1);
+}
+
+/// `klin update` installs the signed release over a binary built from source too, so every
+/// klin that is not a plugin's can update. Spec 11.8.
+#[test]
+fn update_installs_a_signed_release_over_a_binary_built_from_source() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("klin updated to 99.0.0."), "{}", run.out);
+    assert!(installed.replaced());
+}
+
+/// A klin in a directory the person cannot write names `sudo klin update`, and asks GitHub for
+/// nothing. Spec 11.8.
+#[test]
+fn update_in_a_directory_it_cannot_write_names_sudo() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    let directory = installed.home.path("installed");
+    fs::set_permissions(&directory, fs::Permissions::from_mode(0o555)).expect("read-only");
+
+    let run = installed.run(&[], &["update"], "");
+    fs::set_permissions(&directory, fs::Permissions::from_mode(0o755)).expect("writable");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("Run sudo klin update"), "{}", run.out);
+    assert_eq!(installed.fetched(), 0);
+    assert!(!installed.replaced());
+}
+
+/// After an update, a different klin that PATH finds first is named, because a shell and klin's
+/// hooks still run that one. Spec 11.8.
+#[test]
+fn update_names_another_klin_that_path_finds_first() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    executable(&installed.home, "bin/klin", "#!/bin/sh\nexit 0\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "PATH finds another klin first, at {}",
+            installed.home.at("bin/klin")
+        )),
+        "{}",
+        run.out
+    );
+}
+
+/// Auto-update needs a release build, because only a release build asks for releases.
+/// Spec 11.9.
+#[test]
+fn update_auto_on_a_source_build_says_why_it_would_change_nothing() {
+    let installed = Installed::source(&answers(NEWER), "klin.tar.xz");
+
+    let run = installed.run(&[], &["update", "--auto", "on"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(run.says("built from source"), "{}", run.out);
 }

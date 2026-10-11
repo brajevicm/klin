@@ -2,9 +2,9 @@
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
 //! in a detached child, so nothing waits on the network. When the person turned auto-update
 //! on, the child also installs a newer release whose signature checks out. Every other command, a Stop among
-//! them, reads only the cache. Only a binary the installer placed, with its `klin-update`
-//! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
-//! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
+//! them, reads only the cache. Only a binary the release workflow built asks, updates on its own
+//! or tells, and so does a plugin's binary, which the plugin wrapper marks with `KLIN_PLUGIN`.
+//! `klin update` installs over any binary but a plugin's, whose host owns it. Spec 11.8, 11.9.
 
 use std::ffi::OsStr;
 use std::fmt;
@@ -111,7 +111,7 @@ impl Expected {
         format!(
             "This repository expects klin {self} (you have {}). {}",
             env!("CARGO_PKG_VERSION"),
-            route.unwrap_or(Route::Installer).step(host_step)
+            route.unwrap_or(Route::Release).step(host_step)
         )
     }
 
@@ -150,14 +150,14 @@ pub enum Audience {
 }
 
 impl Audience {
-    /// Each route keeps its own records, so a machine with both an installer's klin and a
+    /// Each route keeps its own records, so a machine with both a release build and a
     /// plugin's klin at two versions never reads the switch between them as an update.
     fn record(self, route: Route) -> &'static str {
         match (route, self) {
             (Route::Plugin, Audience::Person) => "release-plugin-person.json",
             (Route::Plugin, Audience::Agent) => "release-plugin-agent.json",
-            (Route::Installer, Audience::Person) => "release-person.json",
-            (Route::Installer, Audience::Agent) => "release-agent.json",
+            (Route::Release, Audience::Person) => "release-person.json",
+            (Route::Release, Audience::Agent) => "release-agent.json",
         }
     }
 
@@ -284,7 +284,7 @@ impl Latest {
     /// for that version yet. A version no release meets is asked for once, and the day's ask
     /// finds it later.
     fn early(&self, route: Route, wanted: &Expected) -> bool {
-        route == Route::Installer
+        route == Route::Release
             && auto()
             && !wanted.met()
             && !wanted.met_by(self.tag.as_ref())
@@ -292,12 +292,12 @@ impl Latest {
     }
 
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
-    /// Only the installer's route updates itself.
+    /// Only a release build that is not a plugin's updates itself.
     fn untried(&self, route: Route) -> Option<&Version> {
-        let installer = route == Route::Installer;
+        let release = route == Route::Release;
         self.tag
             .as_ref()
-            .filter(|tag| installer && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
+            .filter(|tag| release && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
     }
 }
 
@@ -355,21 +355,21 @@ impl Record {
 }
 
 /// How this binary reached the machine: through a host's plugin, whose wrapper sets
-/// `KLIN_PLUGIN`, or through the installer, with `klin-update` beside it.
+/// `KLIN_PLUGIN`, or as a release build, from the installer or an archive.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Route {
-    Installer,
+    Release,
     Plugin,
 }
 
 impl Route {
-    /// The wrapper's marker comes first, so a plugin's binary never runs an updater that
-    /// happens to sit beside it.
+    /// The wrapper's marker comes first, because a plugin runs a release build too. A binary
+    /// built from source is on neither route.
     fn here() -> Option<Route> {
         if set("KLIN_PLUGIN") {
             Some(Route::Plugin)
-        } else if updater_path().is_some() {
-            Some(Route::Installer)
+        } else if release_build() {
+            Some(Route::Release)
         } else {
             None
         }
@@ -379,7 +379,7 @@ impl Route {
     /// step of the host a hook event came from.
     fn step(self, host_step: Option<String>) -> String {
         match self {
-            Route::Installer => "Run klin update.".to_string(),
+            Route::Release => "Run klin update.".to_string(),
             Route::Plugin => {
                 host_step.unwrap_or_else(|| "Update the klin plugin in your host.".to_string())
             }
@@ -522,13 +522,16 @@ pub fn refused(tag: &Version) -> Option<String> {
 
 /// `klin update`: ask GitHub now, and install the newest release when it is newer than this
 /// binary and its signature checks out. The release installed, or none when this build is the
-/// newest. Only the installer's binary updates itself, so any other says why and installs
-/// nothing.
+/// newest. Any binary but a plugin's updates, a build from source too. One in a directory klin
+/// cannot write says so before it asks.
 pub fn update() -> Result<Option<Version>, String> {
-    installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
+    if Route::here() == Some(Route::Plugin) {
+        return Err(PLUGIN_UPDATE.to_string());
+    }
     let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
     let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
     let exe = installed().map_err(|why| format!("klin could not find itself: {why}"))?;
+    writable(&exe)?;
     let Some(tag) = newer_than(&exe)? else {
         return Ok(None);
     };
@@ -641,40 +644,61 @@ fn auto() -> bool {
     }
 }
 
-/// Whether this binary installs a newer release on its own now: the installer's, with the
+/// Whether this binary installs a newer release on its own now: a release build, with the
 /// check on, outside CI, and with auto-update on.
 pub fn auto_update() -> bool {
-    Releases::here().is_some_and(|releases| releases.route == Route::Installer) && auto()
+    Releases::here().is_some_and(|releases| releases.route == Route::Release) && auto()
 }
 
 const PLUGIN_SETTING: &str = "this klin came with a plugin, and its host updates the plugin. Turn \
                               on the host's own plugin auto-update instead.";
-const NO_UPDATER: &str = "only a klin the installer placed, with klin-update beside it, updates \
-                          itself, and none is there.";
+const SOURCE_BUILD: &str = "this klin was built from source, and only a release build asks for \
+                            releases or installs one on its own. Run klin update by hand.";
 const BUSY: &str = "another klin is still asking for or installing a release after a minute. Run \
                     klin update again when it ends.";
 const PLUGIN_UPDATE: &str = "this klin came with a plugin, and its host updates the plugin.";
-const NO_INSTALLER: &str = "klin-update was not found beside klin, so the installer did not \
-                            place this klin. The installer: curl --proto '=https' --tlsv1.2 \
-                            -LsSf https://github.com/brajevicm/klin/releases/latest/download/\
-                            klin-installer.sh | sh. A plugin install updates with its plugin \
-                            instead.";
+const INSTALLER: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
+                         https://github.com/brajevicm/klin/releases/latest/download/\
+                         klin-installer.sh | sh";
 
-/// Pass only on the installer's route, the one route whose binary changes itself. A plugin's
-/// binary fails with `plugin`, and a binary on neither route with `none`.
-fn installer_only(plugin: &str, none: &str) -> Result<(), String> {
-    match Route::here() {
-        Some(Route::Installer) => Ok(()),
-        Some(Route::Plugin) => Err(plugin.to_string()),
-        None => Err(none.to_string()),
+/// Whether klin may put a new binary in the directory that holds `exe`, tried by creating a file
+/// there. The error names `sudo klin update` and the installer, which installs where the person
+/// can write.
+fn writable(exe: &Path) -> Result<(), String> {
+    let dir = exe.parent().unwrap_or(Path::new("/"));
+    let probe = dir.join(format!(".klin-probe-{}", std::process::id()));
+    match std::fs::File::create_new(&probe) {
+        Ok(_) => {
+            let _ = std::fs::remove_file(&probe);
+            Ok(())
+        }
+        Err(why) => Err(format!(
+            "klin cannot write {}, where this klin is installed: {why}. Run sudo klin update, or \
+             install klin where you can write with the installer: {INSTALLER}",
+            dir.display()
+        )),
     }
 }
 
-/// Write the person's auto-update setting. Only the installer's binary updates itself, so a
-/// plugin's binary or one with no updater beside it says why the setting would change nothing.
+/// The first other `klin` PATH finds before the binary `klin update` replaced, which a shell
+/// and klin's hooks run instead of it. None when PATH finds this one first, or none at all.
+pub fn shadowed() -> Option<PathBuf> {
+    let exe = installed().ok()?.canonicalize().ok()?;
+    let first = std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| dir.join("klin"))
+        .find(|path| path.is_file())?;
+    (first.canonicalize().ok()? != exe).then_some(first)
+}
+
+/// Write the person's auto-update setting. Only a release build asks for releases, and a
+/// plugin's host owns the plugin, so any other binary says why the setting would change nothing.
 /// A setting klin could not write is an error, never a claim that the switch moved.
 pub fn set_auto(on: bool) -> Result<(), String> {
-    installer_only(PLUGIN_SETTING, NO_UPDATER)?;
+    match Route::here() {
+        Some(Route::Release) => {}
+        Some(Route::Plugin) => return Err(PLUGIN_SETTING.to_string()),
+        None => return Err(SOURCE_BUILD.to_string()),
+    }
     let dir = cache_dir().ok_or("klin found no cache directory, so nothing was written.")?;
     let file = dir.join(AUTO_FILE);
     write(&file, if on { b"on\n" } else { b"off\n" })
@@ -697,11 +721,11 @@ pub fn installed() -> io::Result<PathBuf> {
     )
 }
 
-fn updater_path() -> Option<PathBuf> {
-    installed()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
-        .filter(|path| path.is_file())
+/// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
+/// compile time. A debug build reads `KLIN_TEST_RELEASE_BUILD` instead, so a test stands for one.
+fn release_build() -> bool {
+    option_env!("KLIN_RELEASE_BUILD").is_some()
+        || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD"))
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.

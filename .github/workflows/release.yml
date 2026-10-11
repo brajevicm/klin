@@ -147,6 +147,8 @@ jobs:
           ./target/debug/klin check
         env:
           "GH_TOKEN": ""
+      - name: "Mark the build as a release build"
+        run: "echo \"KLIN_RELEASE_BUILD=1\" >> \"$GITHUB_ENV\""
       - name: Install dist
         run: ${{ matrix.install_dist.run }}
       # Get the dist-manifest
