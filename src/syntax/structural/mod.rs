@@ -5,7 +5,6 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::Add;
 use std::path::Path;
 use std::rc::Rc;
@@ -29,11 +28,12 @@ mod rust;
 mod typescript;
 
 pub use cache::Cache;
+use cache::ReadCost;
 
 use adapter::{Adapter, above, text_of};
 use facts::{
-    Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name, Names,
-    Outcome, QualifiedPath, Reference, ReferenceSite,
+    Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name,
+    NameHash, Names, Outcome, QualifiedPath, Reference, ReferenceSite,
 };
 
 /// What a name-resolving gate's evidence cost: the base it laid out, each tree's part, and the
@@ -148,7 +148,7 @@ impl Extracted {
         };
         let mut cost = ExtractionCost::default();
         let started = Instant::now();
-        let outcomes = cache.read(&mut cost);
+        let outcomes = cache.read(&mut cost.cache_steps);
         self.held_from(cache, outcomes, changes, ExtractionCost::default());
         cost.cache_read = started.elapsed();
         cost
@@ -235,9 +235,7 @@ pub struct ExtractionCost {
     pub cached: usize,
     pub time: Duration,
     pub cache_read: Duration,
-    pub cache_file: Duration,
-    pub cache_checksum: Duration,
-    pub cache_decode: Duration,
+    pub cache_steps: ReadCost,
     pub cache_write: Duration,
 }
 
@@ -253,9 +251,7 @@ impl Add for ExtractionCost {
             cached: self.cached + other.cached,
             time: self.time + other.time,
             cache_read: self.cache_read + other.cache_read,
-            cache_file: self.cache_file + other.cache_file,
-            cache_checksum: self.cache_checksum + other.cache_checksum,
-            cache_decode: self.cache_decode + other.cache_decode,
+            cache_steps: self.cache_steps + other.cache_steps,
             cache_write: self.cache_write + other.cache_write,
         }
     }
@@ -760,36 +756,6 @@ pub fn file_at<'a>(files: &'a [Rc<FileFacts>], path: &str) -> Option<&'a FileFac
 
 /// Names grouped by logical language, the set a filtered `SourceIndex` records.
 pub type NameSet = HashMap<LanguageId, HashSet<Name, NameHash>, NameHash>;
-
-/// The hash of the name maps: Fx-style with a fixed seed, since the input is the user's own
-/// repository and no consumer sees a map's order.
-pub type NameHash = BuildHasherDefault<FxHasher>;
-
-/// A fixed-seed hasher in the style of rustc's FxHash.
-#[derive(Default)]
-pub struct FxHasher(u64);
-
-impl FxHasher {
-    fn add(&mut self, word: u64) {
-        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
-    }
-}
-
-impl Hasher for FxHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        let (words, rest) = bytes.as_chunks::<8>();
-        for word in words {
-            self.add(u64::from_le_bytes(*word));
-        }
-        for byte in rest {
-            self.add(u64::from(*byte));
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.0
-    }
-}
 
 /// One declaration as the index reports it, with the file that holds it.
 #[derive(Clone, Copy)]

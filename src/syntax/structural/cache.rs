@@ -5,11 +5,11 @@
 //! if no cache were there. Spec 8.4.
 
 use std::collections::HashMap;
+use std::ops::Add;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::{Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
-use super::ExtractionCost;
 use super::facts::{
     Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
     Names, Outcome, QualifiedPath, Reference, Visibility,
@@ -62,19 +62,19 @@ impl Cache {
 
     /// The outcomes this file holds, with the time its read, checksum and decode each took
     /// added to `cost`. Spec 11.2.
-    pub fn read(&self, cost: &mut ExtractionCost) -> Option<HashMap<String, Outcome>> {
+    pub fn read(&self, cost: &mut ReadCost) -> Option<HashMap<String, Outcome>> {
         let started = Instant::now();
         let bytes = std::fs::read(&self.file);
-        cost.cache_file += started.elapsed();
+        cost.file += started.elapsed();
         let started = Instant::now();
         let body = bytes
             .as_deref()
             .ok()
             .and_then(|bytes| checked(bytes, &self.identity));
-        cost.cache_checksum += started.elapsed();
+        cost.checksum += started.elapsed();
         let started = Instant::now();
         let outcomes = body.and_then(decoded_body);
-        cost.cache_decode += started.elapsed();
+        cost.decode += started.elapsed();
         outcomes
     }
 
@@ -112,6 +112,26 @@ impl Cache {
         });
         for (_, path) in older.into_iter().skip(KEPT - 1) {
             let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+/// What reading one cache file cost, step by step: the file read, its checksum and its decode.
+#[derive(Default, Clone, Copy)]
+pub struct ReadCost {
+    pub file: Duration,
+    pub checksum: Duration,
+    pub decode: Duration,
+}
+
+impl Add for ReadCost {
+    type Output = ReadCost;
+
+    fn add(self, other: ReadCost) -> ReadCost {
+        ReadCost {
+            file: self.file + other.file,
+            checksum: self.checksum + other.checksum,
+            decode: self.decode + other.decode,
         }
     }
 }
