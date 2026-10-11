@@ -341,30 +341,38 @@ fn now() -> u64 {
         .unwrap_or_default()
 }
 
-/// Every line of this worktree's journal, newest last, and how many the reader skipped. A line
-/// it cannot parse is a truncated last write, and a line of another `schema` is a record an
-/// older or a newer klin wrote: both are skipped and counted, so a report can say its numbers
-/// are short. Spec 13.1.
-pub fn read(root: &Path) -> (Vec<Value>, u64) {
+/// The lines a reader skipped. A line it cannot parse is a truncated last write and carries no
+/// time a scope could place it by. A line of another `schema` is a record an older or a newer
+/// klin wrote, and its `time` and `session` place it. Spec 13.1.
+#[derive(Default)]
+pub struct Skipped {
+    pub unparsed: u64,
+    pub foreign: Vec<Value>,
+}
+
+/// Every line of this worktree's journal, newest last, and the lines the reader skipped, so a
+/// report can say its numbers are short. Spec 13.1.
+pub fn read(root: &Path) -> (Vec<Value>, Skipped) {
+    let mut skipped = Skipped::default();
     let Some(at) = state::dir(root) else {
-        return (Vec::new(), 0);
+        return (Vec::new(), skipped);
     };
     let Ok(file) = std::fs::File::open(at.join(FILE)) else {
-        return (Vec::new(), 0);
+        return (Vec::new(), skipped);
     };
     let mut lines = Vec::new();
-    let mut skipped = 0;
     for read in BufReader::new(file).lines() {
         let Ok(text) = read else {
-            skipped += 1;
+            skipped.unparsed += 1;
             continue;
         };
         if text.trim().is_empty() {
             continue;
         }
-        match understood(text.as_bytes()) {
-            Some(line) => lines.push(line),
-            None => skipped += 1,
+        match serde_json::from_str::<Value>(&text) {
+            Ok(line) if known(&line) => lines.push(line),
+            Ok(line) if line.get("time").is_some_and(Value::is_u64) => skipped.foreign.push(line),
+            _ => skipped.unparsed += 1,
         }
     }
     (lines, skipped)

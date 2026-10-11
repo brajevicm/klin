@@ -9,7 +9,7 @@ use crate::config::file::MEASUREMENT_LOST;
 use crate::engine::catalogue;
 use crate::hook::journal::{self, Dated};
 use crate::hook::stats::{
-    Counts, DAY, Outcome, Regression, Scope, at, clock, counted, held, kind, list, mended,
+    Counts, DAY, Outcome, Regression, Scope, Window, at, clock, counted, held, kind, list, mended,
     regressions, scoped, word,
 };
 use crate::sys::error::Error;
@@ -43,9 +43,12 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = scope(args)?;
     let (lines, skipped) = journal::read(start);
     let now = clock();
+    let window = Window::of(&lines, scope, start, now);
     let held = scoped(&lines, scope, start, now);
     let notices = journal::open_notices(&lines, turn::stamp_commit(start).as_deref());
-    let empty = lines.is_empty() && skipped == 0;
+    let empty = lines.is_empty() && skipped.unparsed == 0 && skipped.foreign.is_empty();
+    let foreign = skipped.foreign.iter().filter(|line| window.holds(line));
+    let skipped = skipped.unparsed + foreign.count() as u64;
     let mut report = Report::read(&held, scope, now, skipped, notices, empty);
     report.confidence.unscoped = unscoped(&lines, scope, start);
     if !args.json && report.confidence.unscoped.is_some() && matches!(scope, Scope::Session) {

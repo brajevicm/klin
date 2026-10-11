@@ -2279,7 +2279,9 @@ only the journal holds the notice, and `stamp` is the stamp commit the Stop
 left, which names the window the notice belongs to (section 10.7).
 
 klin is not released, so a reader reads schema 2 lines only. A line of
-another schema counts in `skipped_lines`.
+another schema counts in `skipped_lines` when its `time` and `session` put it
+in the report's scope. A line that does not parse has no time to place it, so
+it counts under every scope.
 
 ### 13.2 `klin report`
 
@@ -2317,7 +2319,7 @@ another schema counts in `skipped_lines`.
 | `not_measured` | `[{check, reason, file, last_seen}]` |
 | `notices` | `[{time, message, delivered}]` |
 | `advisory` | `[{time, reason}]` |
-| `skipped_lines` | Lines of a schema this reader does not know. |
+| `skipped_lines` | Lines in the scope of a schema this reader does not know, and every line that does not parse. |
 
 A regression's `state` is `fixed` also when the configuration changed before
 the site went, and `config_changed` says so (section 8.3). The document also
