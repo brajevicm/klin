@@ -1988,7 +1988,8 @@ repository's files and leaves that copy as it was.
 `klin update --check` asks GitHub for the newest release now, whatever the
 release cache holds, and writes the answer to it. It prints the installed
 version, the newest release and its release notes link, and installs
-nothing. It exits 0 when GitHub answered, and 2 when it did not. The rules of
+nothing. It exits 0 when GitHub answered, and 2 when it did not. When the
+answer cannot be saved in the cache, it says so in a note and still exits 0. The rules of
 section 11.9 that keep a command from asking do not apply, because a person
 asked.
 
@@ -2016,7 +2017,12 @@ names its host's own update step in place of `klin update`. ADR 0069.
   nothing. Every read and rewrite of a cache file, by the child, by `klin
   update --check` or by a hook, takes the short lock `release-cache.lock`,
   which is never held across the network or a host's delivery, so no klin
-  process loses another's change. The child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
+  process loses another's change. The cached tag only moves forward: an
+  answer older than the cached tag, such as a slow ask that a later `klin
+  update --check` overtook, leaves the cache as it was. Before it starts the
+  child, a command records the running version for each audience that has
+  none, so an update the child runs before any hook still reads as an update
+  from that version. The child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
   through `curl`, with a timeout of 10 seconds, and does not follow it. No
   command and no hook waits for the child. The ask counts from the moment
   the child starts, so a failed or slow ask, or no `curl`, is the day's ask

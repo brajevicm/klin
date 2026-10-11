@@ -763,3 +763,69 @@ fn status_json_reports_auto_update_off_under_the_off_switches() {
 
     assert_eq!(run.json()["klin"]["auto_update"], false, "{}", run.out);
 }
+
+/// A background answer that arrives late never replaces a newer release that `klin update
+/// --check` saved in the meantime. Spec 11.9.
+#[test]
+fn a_late_background_answer_never_replaces_a_newer_release() {
+    let installed = Installed::new("");
+    let answer = installed.home.at("answer");
+    let delay = installed.home.at("delay");
+    executable(
+        &installed.home,
+        "bin/curl",
+        &format!(
+            "#!/bin/sh\necho called >> '{}'\nanswer=$(cat '{answer}')\nsleep $(cat '{delay}')\nprintf '%s' \"https://github.com/brajevicm/klin/releases/tag/v$answer\"\n",
+            installed.home.at("calls")
+        ),
+    );
+    installed.home.write("answer", "98.0.0\n");
+    installed.home.write("delay", "2\n");
+
+    installed.status(&[]);
+    until(|| installed.fetched() == 1);
+    installed.home.write("answer", "99.0.0\n");
+    installed.home.write("delay", "0\n");
+    let check = installed.run(&[], &["update", "--check"], "");
+    std::thread::sleep(Duration::from_millis(2500));
+    let status = installed.run(&[], &["status", "--json"], "");
+
+    assert!(check.says("99.0.0"), "{}", check.out);
+    assert_eq!(
+        status.json()["klin"]["latest_known"],
+        "99.0.0",
+        "{}",
+        status.out
+    );
+}
+
+/// `klin status` records the running version for both audiences before it starts the child,
+/// so an update the child runs before any hook still reads as an update from this version.
+/// Spec 11.9.
+#[test]
+fn status_records_the_running_version_before_the_child_can_update() {
+    let installed = Installed::new(&answers(NEWER));
+
+    installed.status(&[]);
+
+    for record in ["release-person.json", "release-agent.json"] {
+        let held =
+            fs::read_to_string(installed.home.path(&format!("cache/{record}"))).unwrap_or_default();
+        assert!(held.contains(VERSION), "{record}: {held}");
+    }
+}
+
+/// `klin update --check` still answers when klin cannot save the answer, and says so.
+/// Spec 11.8.
+#[test]
+fn update_check_says_when_it_could_not_save_the_answer() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.home.write("not-a-directory", "a file\n");
+    let cache = installed.home.at("not-a-directory/cache");
+
+    let run = installed.run(&[("KLIN_CACHE_DIR", &cache)], &["update", "--check"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("99.0.0"), "{}", run.out);
+    assert!(run.says("could not save this answer"), "{}", run.out);
+}

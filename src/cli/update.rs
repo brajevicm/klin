@@ -80,10 +80,16 @@ fn auto(switch: Switch) -> u8 {
 /// The installed version and the newest release, which GitHub is asked for now. Spec 11.8.
 fn check() -> u8 {
     let version = env!("CARGO_PKG_VERSION");
-    let Some(tag) = release::fetch() else {
+    let Some((tag, saved)) = release::fetch() else {
         eprintln!("FAIL: klin {version} could not ask GitHub for the newest release.");
         return 2;
     };
+    if !saved {
+        eprintln!(
+            "klin: NOTE: klin could not save this answer in its cache, so klin status still \
+             shows the earlier one."
+        );
+    }
     match tag.is_newer() {
         true => println!(
             "{}",

@@ -198,6 +198,14 @@ impl Latest {
         now().saturating_sub(self.checked) >= DAY
     }
 
+    /// Keep `tag` when it is newer than the tag already cached. An answer that arrives late,
+    /// after a newer one was saved, never moves the cache back.
+    fn learn(&mut self, tag: Version) {
+        if self.tag.as_ref().is_none_or(|known| *known < tag) {
+            self.tag = Some(tag);
+        }
+    }
+
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
     /// Only the installer's route updates itself.
     fn untried(&self, route: Route) -> Option<&Version> {
@@ -293,6 +301,8 @@ pub fn route() -> Option<Route> {
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
 /// ask is a day old, or when auto-update holds a newer release it has not tried. The child
 /// decides under its own lock, so two commands at once start at most one ask and one update.
+/// Before it starts, each audience's record holds this binary's version, so an update the child
+/// runs before any hook still tells which version it replaced.
 pub fn refresh() {
     let Some(releases) = Releases::here() else {
         return;
@@ -300,6 +310,9 @@ pub fn refresh() {
     let latest = Latest::read(&releases.dir);
     if !latest.stale() && latest.untried(releases.route).is_none() {
         return;
+    }
+    for who in [Audience::Person, Audience::Agent] {
+        first_sight(&releases, who);
     }
     if let Ok(exe) = std::env::current_exe() {
         let _ = silent(Command::new(exe).arg(CHILD))
@@ -329,7 +342,7 @@ pub fn child() {
         && let Some(tag) = asked()
     {
         Latest::change(dir, |latest| {
-            latest.tag = Some(tag);
+            latest.learn(tag);
             Some(())
         });
     }
@@ -344,18 +357,20 @@ pub fn child() {
     }
 }
 
-/// Ask GitHub now and wait, whatever the cache holds, and keep the answer. `klin update
-/// --check`.
-pub fn fetch() -> Option<Version> {
-    let tag = asked();
-    if let (Some(dir), Some(tag)) = (cache_dir(), &tag) {
-        Latest::change(&dir, |latest| {
-            latest.tag = Some(tag.clone());
-            latest.checked = now();
-            Some(())
-        });
-    }
-    tag
+/// Ask GitHub now and wait, whatever the cache holds, and keep the answer: the tag GitHub
+/// named, and whether the cache saved it. `klin update --check`.
+pub fn fetch() -> Option<(Version, bool)> {
+    let tag = asked()?;
+    let saved = cache_dir()
+        .and_then(|dir| {
+            Latest::change(&dir, |latest| {
+                latest.learn(tag.clone());
+                latest.checked = now();
+                Some(())
+            })
+        })
+        .is_some();
+    Some((tag, saved))
 }
 
 /// The newest release the cache holds, on a binary that may tell of one.
@@ -380,10 +395,7 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
     let current = Version::current()?;
     let record = Record::read(&releases, who);
     if record.seen.is_none() {
-        let _lock = releases.cache_lock()?;
-        let mut first = Record::read(&releases, who);
-        first.seen.get_or_insert(current.clone());
-        let _ = first.write(&releases, who);
+        first_sight(&releases, who)?;
     }
     let updated = record
         .seen
@@ -397,6 +409,19 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
             .map(News::Available)
     })?;
     record.clone().hear(&news).then_some((releases.route, news))
+}
+
+/// Record this binary's version for `who` when its record holds none, so an update that runs
+/// before any hook still reads as an update from this version. None when the lock failed.
+fn first_sight(releases: &Releases, who: Audience) -> Option<()> {
+    let current = Version::current()?;
+    let _lock = releases.cache_lock()?;
+    let mut record = Record::read(releases, who);
+    if record.seen.is_none() {
+        record.seen = Some(current);
+        let _ = record.write(releases, who);
+    }
+    Some(())
 }
 
 /// Make `news` the audience's own, at the moment it is told: under the cache lock, record it,
