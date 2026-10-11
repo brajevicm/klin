@@ -55,7 +55,7 @@ Then commit `klin.json` and the generated integration files.
 
 klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, add `--host claude`, `codex`, or `cursor`.
 
-If `klin` isn't found, open a new terminal. klin installs signed updates itself; `klin update --auto off` stops that.
+If `klin` isn't found, open a new terminal. Update with `klin update`, or `klin update --auto on` to automate.
 
 > [!NOTE]
 > **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.

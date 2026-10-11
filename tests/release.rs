@@ -275,18 +275,21 @@ fn auto_update_tries_a_newer_release_once() {
     assert_eq!(lines(&updated), 1);
 }
 
-/// With auto-update turned off, nothing installs a release on its own. Spec 11.9.
+/// Auto-update is opt-in: unless the person turns it on, nothing installs a release on its own,
+/// and `klin status` names the command that does. Spec 11.9.
 #[test]
 fn without_auto_update_nothing_installs() {
-    let installed = Installed::new(&answers(NEWER));
-    let off = [("KLIN_AUTO_UPDATE", "0")];
-    installed.warmed_with(&off);
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
+    installed.warmed();
 
-    let status = installed.status(&off);
-    installed.session(&off);
+    let status = installed.status(&[]);
+    let json = installed.run(&[], &["status", "--json"], "");
+    installed.session(&[]);
     settle();
 
     assert!(status.says("Run klin update."), "{}", status.out);
+    assert_eq!(json.json()["klin"]["auto_update"], false, "{}", json.out);
+    assert!(!installed.replaced());
 
     assert!(!installed.home.path("updated").exists());
 }
@@ -918,13 +921,13 @@ fn the_person_hears_of_an_available_release_once() {
     assert!(!run.says("99.0.0"), "{}", run.out);
 }
 
-/// Without `KLIN_AUTO_UPDATE`, the child installs a newer release whose signature names it, in
-/// place of the binary. Spec 11.9.
+/// Under auto-update, the child installs a newer release whose signature names it, in place of
+/// the binary. Spec 11.9.
 #[test]
-fn auto_update_is_on_by_default_and_installs_a_signed_release() {
+fn auto_update_installs_a_signed_release() {
     let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "klin.tar.xz.minisig");
 
-    installed.status(&[]);
+    installed.status(&[("KLIN_AUTO_UPDATE", "1")]);
     until(|| installed.replaced());
 
     assert!(installed.replaced());
@@ -937,7 +940,7 @@ fn auto_update_installs_nothing_when_the_signature_fails_and_status_says_why() {
     let installed = Installed::new(&answers(NEWER));
     let cache = installed.home.path("cache/latest.json");
 
-    installed.status(&[]);
+    installed.status(&[("KLIN_AUTO_UPDATE", "1")]);
     until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("\"refused\":\"")));
     let status = installed.status(&[]);
 

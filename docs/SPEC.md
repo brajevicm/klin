@@ -2039,7 +2039,7 @@ names its host's own update step in place of `klin update`. ADR 0069.
   release that fails is not downloaded again. Auto-update is on when
   `KLIN_AUTO_UPDATE=1`, off when `KLIN_AUTO_UPDATE=0`, and otherwise as the
   `auto-update` file in the cache says, which `klin update --auto` writes,
-  and on when there is no file. A
+  and off when there is no file, so a person opts in. A
   file reaches a hook whatever environment its host passes, which a shell
   profile does not for a host started outside a shell. When the child could
   not install a release, it keeps the reason in the cache, and `klin status`

@@ -1,18 +1,17 @@
 # klin installs only a release signed by its workflow
 
-> Amends ADR 0069, items 2 and 3, and ADR 0029 for the installer's route.
+> Amends ADR 0069, item 2, and ADR 0029 for the installer's route.
 > Recorded for #627, 2026-10-11.
 
 The installer and `klin-update` checked an archive against a SHA-256 from
 the same release. A bad release carries a matching checksum, so that check
-does not stop it. ADR 0069 kept auto-update opt-in for this reason, because
-auto-update would deliver a bad release to every machine within a day.
+does not stop it, and auto-update would deliver a bad release to every machine
+that turned it on within a day.
 
 ## The decision
 
 **The release workflow signs each archive, and klin installs an archive only
-after it checks that signature. With that check in place, auto-update is on
-by default.**
+after it checks that signature. Auto-update stays opt-in.**
 
 1. cargo-dist attests every release artifact in the host job (GitHub artifact
    attestations). Each attestation names this repository's release workflow,
@@ -33,14 +32,17 @@ by default.**
 4. klin installs itself and no longer runs `klin-update`, which cannot check
    a signature. `klin-update` beside the binary stays the mark of the
    installer's route.
-5. Auto-update is on unless `KLIN_AUTO_UPDATE=0` or `klin update --auto off`
-   turns it off. Off keeps the notice of ADR 0069.
+5. Auto-update stays off until the person turns it on with
+   `klin update --auto on` or `KLIN_AUTO_UPDATE=1` (owner decision,
+   2026-10-11, which departs from #627's plan to turn it on by default). A
+   binary that replaces itself is a choice a person makes, and the signature
+   makes that choice safer. Off keeps the notice of ADR 0069.
 
 ## Rejected options
 
 - Attestations alone, checked with `gh attestation verify`. It is the least
   work for the author, but a machine without a logged-in `gh` could not
-  update on its own, so the default would reach few people.
+  update on its own, so auto-update would reach few people.
 - Attestations alone, checked inside klin. Sigstore needs the Fulcio chain,
   the workflow identity and a Rekor entry, which brings large crypto
   dependencies into the binary.

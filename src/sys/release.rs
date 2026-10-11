@@ -1,7 +1,7 @@
 //! klin keeps itself current, or says how to update the plugin that carries it. A session
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
-//! in a detached child, so nothing waits on the network. Unless auto-update is off, the child
-//! also installs a newer release whose signature checks out. Every other command, a Stop among
+//! in a detached child, so nothing waits on the network. When the person turned auto-update
+//! on, the child also installs a newer release whose signature checks out. Every other command, a Stop among
 //! them, reads only the cache. Only a binary the installer placed, with its `klin-update`
 //! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
 //! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
@@ -496,14 +496,14 @@ pub fn claim(who: Audience, route: Route, news: &News) -> bool {
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
-/// `klin update --auto` wrote, else on, because an install checks the release's signature.
+/// `klin update --auto` wrote, else off: a person opts in to a binary that replaces itself.
 fn auto() -> bool {
     match std::env::var_os("KLIN_AUTO_UPDATE") {
         Some(value) if value == "1" => true,
         Some(value) if value == "0" => false,
         _ => cache_dir()
             .and_then(|dir| std::fs::read_to_string(dir.join(AUTO_FILE)).ok())
-            .is_none_or(|held| held.trim() != "off"),
+            .is_some_and(|held| held.trim() == "on"),
     }
 }
 
