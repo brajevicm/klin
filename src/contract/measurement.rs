@@ -89,7 +89,7 @@ impl<'a> Unchanged<'a> {
     /// `cache_read`, however the base was laid out: a light layout read it before this view
     /// existed, and a checkout reads it here. The base's own cost leaves it out. Spec B.13.
     pub fn cache_read(&self) -> Duration {
-        self.cost.cache_read
+        self.cost.cache_read.total
     }
 
     /// The base's outcomes written to its cache once both trees are measured, and what reading

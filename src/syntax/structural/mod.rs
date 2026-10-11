@@ -21,7 +21,7 @@ use crate::sys::changed::Change;
 use crate::sys::error::Error;
 
 mod adapter;
-mod cache;
+pub mod cache;
 pub mod facts;
 pub mod footprint;
 mod rust;
@@ -89,7 +89,7 @@ struct Kept {
     stale: Cell<bool>,
     /// What reading the cache cost, when a caller read it before this tree held it, handed over
     /// once to the view that would otherwise have read it. Spec 11.2.
-    read: Cell<ExtractionCost>,
+    read: Cell<ReadCost>,
 }
 
 impl Extracted {
@@ -141,17 +141,23 @@ impl Extracted {
         changes: &[Change],
     ) -> ExtractionCost {
         if let Some(kept) = self.kept.get() {
-            return kept.read.take();
+            return ExtractionCost {
+                cache_read: kept.read.take(),
+                ..ExtractionCost::default()
+            };
         }
         let Some(cache) = cache() else {
             return ExtractionCost::default();
         };
-        let mut cost = ExtractionCost::default();
+        let mut read = ReadCost::default();
         let started = Instant::now();
-        let outcomes = cache.read(&mut cost.cache_read_steps);
-        self.held_from(cache, outcomes, changes, ExtractionCost::default());
-        cost.cache_read = started.elapsed();
-        cost
+        let outcomes = cache.read(&mut read);
+        self.held_from(cache, outcomes, changes, ReadCost::default());
+        read.total = started.elapsed();
+        ExtractionCost {
+            cache_read: read,
+            ..ExtractionCost::default()
+        }
     }
 
     /// The same, for a caller that named and read the cache itself, because it needed the
@@ -163,7 +169,7 @@ impl Extracted {
         cache: Cache,
         outcomes: HashMap<String, Outcome>,
         changes: &[Change],
-        read: ExtractionCost,
+        read: ReadCost,
     ) {
         if self.kept.get().is_some() {
             return;
@@ -176,7 +182,7 @@ impl Extracted {
         cache: Cache,
         outcomes: Option<HashMap<String, Outcome>>,
         changes: &[Change],
-        read: ExtractionCost,
+        read: ReadCost,
     ) {
         let changed: HashSet<String> = changes
             .iter()
@@ -234,8 +240,7 @@ pub struct ExtractionCost {
     pub shared: usize,
     pub cached: usize,
     pub time: Duration,
-    pub cache_read: Duration,
-    pub cache_read_steps: ReadCost,
+    pub cache_read: ReadCost,
     pub cache_write: Duration,
 }
 
@@ -251,7 +256,6 @@ impl Add for ExtractionCost {
             cached: self.cached + other.cached,
             time: self.time + other.time,
             cache_read: self.cache_read + other.cache_read,
-            cache_read_steps: self.cache_read_steps + other.cache_read_steps,
             cache_write: self.cache_write + other.cache_write,
         }
     }

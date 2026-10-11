@@ -7,8 +7,9 @@ use std::time::{Duration, Instant};
 use serde_json::{Map, Value};
 
 use crate::facts::tree::{self, Tree};
+use crate::syntax::structural::cache::ReadCost;
 use crate::syntax::structural::facts::Outcome;
-use crate::syntax::structural::{Cache, ExtractionCost, selected_extensions};
+use crate::syntax::structural::{Cache, selected_extensions};
 use crate::sys::changed::{self, Change, blobs};
 use crate::sys::error::Error;
 use crate::sys::git::{Boolean, Repo, Staged};
@@ -289,10 +290,10 @@ fn lightly(
     let started = Instant::now();
     let cache = structural_cache(run.state(), run.root(), before)?;
     layout.cache_name = started.elapsed();
-    let mut read = ExtractionCost::default();
+    let mut read = ReadCost::default();
     let started = Instant::now();
-    let outcomes = cache.read(&mut read.cache_read_steps)?;
-    read.cache_read = started.elapsed();
+    let outcomes = cache.read(&mut read)?;
+    read.total = started.elapsed();
 
     let root = dir.join(inside);
     let started = Instant::now();
@@ -339,7 +340,7 @@ struct Laid {
     files: Vec<String>,
     cache: Cache,
     outcomes: HashMap<String, Outcome>,
-    read: ExtractionCost,
+    read: ReadCost,
     layout: Layout,
 }
 

@@ -116,9 +116,11 @@ impl Cache {
     }
 }
 
-/// What reading one cache file cost, step by step: the file read, its checksum and its decode.
+/// What reading one cache file cost: the whole read as its reader timed it, and within it the
+/// file read, its checksum and its decode.
 #[derive(Default, Clone, Copy)]
 pub struct ReadCost {
+    pub total: Duration,
     pub file: Duration,
     pub checksum: Duration,
     pub decode: Duration,
@@ -129,6 +131,7 @@ impl Add for ReadCost {
 
     fn add(self, other: ReadCost) -> ReadCost {
         ReadCost {
+            total: self.total + other.total,
             file: self.file + other.file,
             checksum: self.checksum + other.checksum,
             decode: self.decode + other.decode,
