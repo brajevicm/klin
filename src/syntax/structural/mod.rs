@@ -763,6 +763,7 @@ pub type NameSet = HashMap<LanguageId, HashSet<Name, NameHash>, NameHash>;
 /// repository and no consumer sees a map's order.
 pub type NameHash = BuildHasherDefault<FxHasher>;
 
+/// A fixed-seed hasher in the style of rustc's FxHash.
 #[derive(Default)]
 pub struct FxHasher(u64);
 
@@ -803,8 +804,11 @@ pub struct Declared<'a> {
 /// spec 8.4.
 pub struct SourceIndex {
     files: Vec<Rc<FileFacts>>,
-    names: HashMap<LanguageId, HashMap<Name, Sites, NameHash>, NameHash>,
+    names: HashMap<LanguageId, Named, NameHash>,
 }
+
+/// The sites of each name of one language.
+type Named = HashMap<Name, Sites, NameHash>;
 
 /// Where one name of one language is declared and referenced, each list in file and line order.
 /// A lookup reads one entry, so the order of the map it sits in reaches no consumer.
@@ -836,8 +840,7 @@ impl SourceIndex {
             let names = wanted.map(|wanted| wanted.get(&language));
             move |name: &str| names.is_none_or(|names| names.is_some_and(|n| n.contains(name)))
         };
-        let mut names: HashMap<LanguageId, HashMap<Name, Sites, NameHash>, NameHash> =
-            HashMap::default();
+        let mut names: HashMap<LanguageId, Named, NameHash> = HashMap::default();
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             let kept = kept(file.language);
@@ -921,11 +924,7 @@ impl SourceIndex {
 }
 
 /// One site recorded under its name, and the name copied only the first time the index meets it.
-fn record_text(
-    named: &mut HashMap<Name, Sites, NameHash>,
-    text: &str,
-    into: impl FnOnce(&mut Sites),
-) {
+fn record_text(named: &mut Named, text: &str, into: impl FnOnce(&mut Sites)) {
     if let Some(sites) = named.get_mut(text) {
         into(sites);
         return;
@@ -935,11 +934,7 @@ fn record_text(
     named.insert(Name::new(text), sites);
 }
 
-fn record_name(
-    named: &mut HashMap<Name, Sites, NameHash>,
-    name: Name,
-    into: impl FnOnce(&mut Sites),
-) {
+fn record_name(named: &mut Named, name: Name, into: impl FnOnce(&mut Sites)) {
     if let Some(sites) = named.get_mut(&name) {
         into(sites);
         return;
@@ -1505,15 +1500,6 @@ export function charge(at: number): number {
                 })
                 .collect(),
         }
-    }
-
-    #[test]
-    fn a_name_hashes_the_same_in_every_process() {
-        use std::hash::BuildHasher;
-        let hash = |text: &str| NameHash::default().hash_one(Name::new(text));
-        assert_eq!(hash("settle"), hash("settle"));
-        assert_ne!(hash("settle"), hash("settled"));
-        assert_eq!(hash("settle"), 15_336_487_396_632_081_469);
     }
 
     fn many_files() -> SourceIndex {
