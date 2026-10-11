@@ -231,7 +231,8 @@ Boundaries:
 - PostTool quality hooks, ask-tool interception, an MCP lifecycle API, a web
   UI or a service.
 - Preventing a determined person or agent from working around a local hook.
-- Forcing an agent to pay down debt it did not add.
+- Blocking an agent to pay down debt it did not add. klin may tell about
+  held debt in code the turn touched (ADR 0073).
 - Matching another tool's numbers. A ratchet needs self-consistency only
   (ADR 0001).
 
@@ -2591,8 +2592,10 @@ A capability earns a place by the whole loop, not by detector accuracy alone:
 ### 18.2 Placement admission
 
 - A blocking capability needs deterministic evidence at blocking strength,
-  strong product value, a low rate of harmful intervention, a
-  behavior-preserving repair path and resistance to cheap appeasement.
+  strong product value and a not-appropriate rate inside its tier of ADR
+  0073. A remedy that deletes code or changes behavior takes the stricter
+  tier. A row that catches the reflexive form of a shortcut may block even
+  when a cheap rewording passes it (ADR 0073).
 - A contextual capability is a review item or stays out.
 - `{stop, check}` additionally needs the Stop rules of section 14.3 and a
   measured incremental cost at 1M/20. The proposal states why the capability
@@ -4061,10 +4064,12 @@ A check earns a place when all four hold:
 1. **Deterministic and offline.** Same inputs, same output, no network, no
    clock except a pinned dated ceiling.
 2. **Additive remedy.** The fix adds or improves code. A check whose only
-   remedy is undoing work is a report, not a gate (ADR 0014).
+   remedy is undoing work is a report, not a gate (ADR 0014). ADR 0073
+   lifts this for a row in a tier that allows a remedy that deletes code.
 3. **Not a linter's job.** Either it needs git, a second tree, a second
    artifact such as a document or a lockfile, or knowledge across files. Or
-   it ratchets a linter's own output.
+   it ratchets a linter's own output. Or it duplicates a linter rule that
+   is off by default in its ecosystem (ADR 0073).
 4. **Names an agent failure.** Something an agent does when it wants green
    cheaply.
 
