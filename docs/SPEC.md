@@ -231,7 +231,7 @@ Boundaries:
 - PostTool quality hooks, ask-tool interception, an MCP lifecycle API, a web
   UI or a service.
 - Preventing a determined person or agent from working around a local hook.
-- Blocking an agent to pay down debt it did not add. klin may tell about
+- Blocking an agent until it pays down debt it did not add. klin may tell about
   held debt in code the turn touched (ADR 0073).
 - Matching another tool's numbers. A ratchet needs self-consistency only
   (ADR 0001).
@@ -4065,7 +4065,8 @@ A check earns a place when all four hold:
    clock except a pinned dated ceiling.
 2. **Additive remedy.** The fix adds or improves code. A check whose only
    remedy is undoing work is a report, not a gate (ADR 0014). ADR 0073
-   lifts this for a row in a tier that allows a remedy that deletes code.
+   lifts this for a row in a tier that allows a remedy that deletes code
+   or changes behavior.
 3. **Not a linter's job.** Either it needs git, a second tree, a second
    artifact such as a document or a lockfile, or knowledge across files. Or
    it ratchets a linter's own output. Or it duplicates a linter rule that

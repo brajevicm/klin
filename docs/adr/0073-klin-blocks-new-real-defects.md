@@ -1,22 +1,24 @@
 # klin blocks new real defects
 
-> Amends SPEC 2.2, SPEC 18.2, SPEC B.8.1 rules 2 and 3, and ADR 0014 for
+> Amends spec 2.2, spec 18.2, spec B.8.1 rules 2 and 3, and ADR 0014 for
 > rows whose remedy deletes code. Recorded for #571, 2026-10-11, from the
 > owner's stance of 2026-10-10.
 
 The research after 2026-10-02 judged each candidate row on a strict bar: N of
 1 or less for a block, no cheap rewording, and "not a linter's job". No
-candidate passed it. Under `{}`, klin found 0 valid regressions on 30 real
-agent pull requests (`docs/phenotype-pilot-2026-10-02.md`).
+candidate passed it. The owner's count in #571 is 0 valid regressions under
+`{}` on the 30 real agent pull requests of the pilot
+(`docs/phenotype-pilot-2026-10-02.md`).
 
-That bar was never applied to the gates klin ships. On the replay of #343,
+That bar was never applied to the gates klin ships. By the owner's count in
+#571, on the replay of #343,
 `complexity` measured about 25 not-appropriate findings per 100 changes, and
 `escapes` about 9. The old bar would have rejected every shipped check.
 
 ## The decision
 
 **klin may be nosy about real issues, and it improves the code a little over
-time.** Five rules carry this:
+time.** These rules carry this:
 
 1. A check may duplicate a linter rule when that rule is off by default in
    its ecosystem. Under `{}` no linter runs, so today nothing catches a
@@ -33,7 +35,8 @@ time.** Five rules carry this:
    changes behavior, such as deleting an orphan file. This reverses SPEC
    B.8.1 rule 2 ("additive remedy"), the "behavior-preserving repair path"
    bar of SPEC 18.2, and the matching part of ADR 0014, for those rows only.
-5. Every row passes the admission bar below.
+5. Every row passes the admission bar below. Its N bar replaces the "low
+   rate of harmful intervention" of SPEC 18.2.
 
 ## The admission bar
 
