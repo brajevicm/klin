@@ -110,7 +110,10 @@ fn evaluate(at: &Context, report: bool, out: &mut Sink) -> Result<u8, Error> {
         records.states = Some(built);
         records.names = Some(names);
         records.layout = layout;
-        records.footprint = Some(structural::footprint::of([before.facts(), after.facts()]));
+        records.footprint = Some(structural::footprint::recorded(
+            at.footprint,
+            [before.facts(), after.facts()],
+        ));
     });
     let judged = after_states
         .iter()

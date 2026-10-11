@@ -6,6 +6,7 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::contract::check::{Context, Sink};
 use crate::contract::coverage::Files;
@@ -82,6 +83,13 @@ impl<'a> Unchanged<'a> {
             changed: changes.iter().map(|change| change.path.as_str()).collect(),
             cost,
         })
+    }
+
+    /// The time reading and decoding the base's cache took, which this view reports as its
+    /// `cache_read`, however the base was laid out: a light layout read it before this view
+    /// existed, and a checkout reads it here. The base's own cost leaves it out. Spec B.13.
+    pub fn cache_read(&self) -> Duration {
+        self.cost.cache_read
     }
 
     /// The base's outcomes written to its cache once both trees are measured, and what reading
@@ -268,6 +276,11 @@ fn sides<'a, T>(
     let unchanged = timed(&mut names.base, || {
         unchanged(at.project, at.changes, prior, commit)
     })?;
+    names.base = names.base.saturating_sub(
+        unchanged
+            .as_ref()
+            .map_or(Duration::ZERO, Unchanged::cache_read),
+    );
     if let Some(layout) = layout {
         *layout = prior.layout();
     }

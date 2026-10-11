@@ -6,10 +6,10 @@ use serde_json::json;
 use crate::config::file::{FILENAME, ignored, located, notes};
 use crate::contract::project::Project;
 use crate::engine::against::against;
-use crate::engine::catalogue;
 use crate::engine::document::{Args, CheckDocument, View};
 use crate::engine::plan::{Gate, Plan};
 use crate::engine::render::{Note, Slot};
+use crate::engine::{catalogue, diagnostics};
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
 use crate::window::base::{self, Window};
 
@@ -38,6 +38,7 @@ pub fn check(check: &Check, start: &Path, out: &mut String) -> Result<u8, Error>
             true => View::Json,
             false => View::Text,
         },
+        footprint: diagnostics::footprint_requested(),
     };
     run(&args, start, out)
 }

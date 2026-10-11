@@ -97,6 +97,23 @@ impl Footprint {
     }
 }
 
+/// What a gate records of the footprint: the type sizes, which cost nothing, and the counters of
+/// the facts it held only when the run requested them. Issue #538.
+pub enum Recorded {
+    Sizes,
+    Counted(Box<Footprint>),
+}
+
+/// What a gate records of the facts of both trees: their counters when the run `requested` them,
+/// and the sizes alone otherwise, because the walk hashes every reference name and a run that
+/// does not request it does not pay for it.
+pub fn recorded(requested: bool, trees: [&[Rc<FileFacts>]; 2]) -> Recorded {
+    match requested {
+        true => Recorded::Counted(Box::new(of(trees))),
+        false => Recorded::Sizes,
+    }
+}
+
 /// The facts of both trees, each file counted once however many trees hold the same extraction.
 pub fn of(trees: [&[Rc<FileFacts>]; 2]) -> Footprint {
     let mut held = HashSet::new();

@@ -15,6 +15,8 @@ pub const AGENT: &[&str] = &["__agent", "event"];
 /// either one and every run answers it.
 pub const SESSION_START: &str = r#"{"hook_event_name":"SessionStart"}"#;
 pub const STOP: &str = r#"{"hook_event_name":"Stop"}"#;
+/// The variable that requests the footprint's counters. Spec B.13.
+pub const FOOTPRINT: &str = "KLIN_FOOTPRINT";
 
 pub struct Run {
     pub code: i32,
@@ -428,12 +430,14 @@ fn spawn_binary(
     ran(child.wait_with_output().expect("wait for klin"))
 }
 
-/// klin run from `cwd` with an empty home and no CI variables, its output captured.
+/// klin run from `cwd` with an empty home, no CI variables and no footprint request a test
+/// does not name, its output captured.
 fn command(klin: &str, cwd: &Path, args: &[&str]) -> Command {
     let mut command = Command::new(klin);
     command
         .args(args)
         .env("HOME", empty_home())
+        .env_remove(FOOTPRINT)
         .current_dir(cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

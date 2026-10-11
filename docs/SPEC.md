@@ -6558,7 +6558,10 @@ and `reachability` rows also print the `names` group of 11.2 as
 `names_base_ms`, `names_lost_ms`, and each tree's values under
 `names_before_` and `names_after_`, so a warm row separates the base layout,
 each tree's measurement, index build and name queries, and the lost
-references from the rest of the gate's time. The row that laid the base out
+references from the rest of the gate's time. `names_base_ms` leaves out reading
+and decoding the structural cache, whether a light base layout or the base
+checked out whole reads it, because `cache_read_ms` reports that read, so a
+warm row counts it once. The row that laid the base out
 also prints the parts of `names.layout` as `names_layout_<name>`, and a warm
 hook row prints the stop's `timing` values as `stop_<name>`, so the worktree
 checkout, the base file list, the cache and the worktree removal are told
@@ -6568,10 +6571,20 @@ each with the median printed as `worktree_<name>_ms`: a whole detached
 `worktree add`, its `worktree remove --force`, a `worktree add --no-checkout`,
 a `read-tree` into it, an `ls-files --stage` listing of it, a `checkout-index`
 of the changed files' base paths into it, its removal, and `worktree prune`.
-Those medians are an estimate of a candidate, not a measurement of klin. The `dead-symbols` row also
-prints the `footprint` group of 11.2, each counter as `footprint_<name>` and
-each type size as `footprint_size_<name>`, so one row carries the population,
-sparsity and byte proxies of the facts that run held. `KLIN_PERF_CASE=warm20` or `warm100` runs
+Those medians are an estimate of a candidate, not a measurement of klin.
+The `dead-symbols` row prints each type size of the `footprint` group of
+11.2 as `footprint_size_<name>`. A run MAY take `KLIN_FOOTPRINT` for the
+performance rows. When it is set and not empty, `dead-symbols` counts the
+group's other fields. The run reads it once, when it starts, and a run
+without it records `sizes` alone, because that walk hashes every reference
+name. No
+timed stop of the rows sets it, and the rows remove an inherited value from
+every run they time, so each timed stop runs the program users run. One untimed stop after the timed ones sets it: the stop that writes the
+structural cache again in a full row, and one more warm hook after the peak
+RSS hook in a targeted warm row. The output prints that stop's
+`dead-symbols` footprint on a `footprint:` line, each counter as
+`dead-symbols_footprint_<name>`, so the row carries the population, sparsity
+and byte proxies of the facts that stop held. `KLIN_PERF_CASE=warm20` or `warm100` runs
 one targeted warm scenario of either dense row, so a 1M warm row needs no cold
 or strict run. A row that runs one
 targeted warm scenario prints the structural cache's file count and bytes

@@ -18,7 +18,7 @@ use crate::config::scope::Scope;
 use crate::contract::coverage::{Coverage, Left};
 use crate::contract::project::Project;
 use crate::facts::files::Form;
-use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Footprint};
+use crate::syntax::structural::{ExtractionCost, NameCost, footprint::Recorded};
 use crate::sys::changed::Change;
 use crate::sys::error::{Error, Fault};
 use crate::sys::record::Values;
@@ -124,9 +124,10 @@ pub struct Records {
     /// The parts of laying the whole base out, on the row of the gate that laid it out. `None`
     /// for every other gate. Spec 11.2.
     pub layout: Option<base::Layout>,
-    /// What the facts `dead-symbols` held over both trees cost in population and bytes. `None`
-    /// for a gate that records none. Spec 11.2.
-    pub footprint: Option<Footprint>,
+    /// What one of each structural value costs, with what the facts `dead-symbols` held over
+    /// both trees cost in population and bytes when the run requested it. `None` for a gate
+    /// that records none. Spec 11.2.
+    pub footprint: Option<Recorded>,
     /// The module graphs the gate built over both trees. `None` for a gate that builds none.
     pub graph: Option<modules::GraphCost>,
     /// The public surfaces the gate derived over both trees. `None` for a gate that derives
@@ -270,6 +271,9 @@ pub struct Context<'a> {
     /// scope. Direct checks and unscoped runs have no changed-run context.
     pub changes: Option<&'a [Change]>,
     pub caller: Caller,
+    /// Whether the run requested the footprint's counters, which `dead-symbols` walks only then.
+    /// Spec B.13.
+    pub footprint: bool,
 }
 
 impl Context<'_> {
@@ -290,15 +294,7 @@ impl Context<'_> {
     where
         Self: 'b,
     {
-        Context {
-            only,
-            gate: self.gate,
-            project: self.project,
-            prior: self.prior,
-            base: self.base,
-            changes: self.changes,
-            caller: self.caller,
-        }
+        Context { only, ..*self }
     }
 }
 

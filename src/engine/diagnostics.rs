@@ -5,9 +5,16 @@ use serde_json::{Map, Value, json};
 
 use crate::contract::check::Records;
 use crate::contract::coverage::Coverage;
+use crate::syntax::structural::footprint::Recorded;
 use crate::syntax::{LanguageId, structural};
 use crate::sys::clock;
 use crate::window::base;
+
+/// Whether this run requested the footprint's counters, through `KLIN_FOOTPRINT`, which only the
+/// performance rows set. Read once where a run starts. Spec B.13.
+pub fn footprint_requested() -> bool {
+    std::env::var_os("KLIN_FOOTPRINT").is_some_and(|value| !value.is_empty())
+}
 
 /// What one gate's structural work came to, with the declaration states of the gate that builds
 /// them. A gate that reads no structural facts records none. Spec 11.2.
@@ -70,17 +77,21 @@ fn name_evidence(
     Value::Object(out)
 }
 
-/// What the facts one gate held cost, and what one of each structural value costs. Spec 11.2.
-fn footprint(held: &crate::syntax::structural::footprint::Footprint) -> Value {
+/// What one of each structural value costs, and what the facts one gate held cost when the run
+/// requested them. Spec 11.2.
+fn footprint(recorded: &Recorded) -> Value {
     let mut out = Map::new();
-    for (name, value) in held.rows() {
-        out.insert(name.into(), value.into());
-    }
     let mut sizes = Map::new();
-    for (name, value) in crate::syntax::structural::footprint::sizes() {
+    for (name, value) in structural::footprint::sizes() {
         sizes.insert(name.into(), value.into());
     }
     out.insert("sizes".into(), Value::Object(sizes));
+    let Recorded::Counted(held) = recorded else {
+        return Value::Object(out);
+    };
+    for (name, value) in held.rows() {
+        out.insert(name.into(), value.into());
+    }
     out.insert(
         "reference_canonical_allocation_ratio".into(),
         json!(if held.reference_distinct_names == 0 {
