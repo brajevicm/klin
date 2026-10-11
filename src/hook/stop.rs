@@ -26,7 +26,7 @@ use crate::{
     hook::{build, handoff, journal, stats, turn},
     sys::{
         clock, release,
-        release::{Audience, News},
+        release::{Audience, News, Route},
         state,
     },
     window::stamp,
@@ -458,11 +458,22 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
         && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
 }
 
-/// The release news the person has not heard, as a part of the notice. Spec 11.9.
-fn release_part(parts: &mut Vec<(&'static str, String)>, host: Option<&str>) -> Option<News> {
-    let news = release::news(Audience::Person)?;
-    parts.push(("release", Audience::Person.note(&news, host)));
-    Some(news)
+/// The release news the person has not heard, as a part of the notice, with the plugin update
+/// step of the host the event came from. Spec 11.9.
+fn release_part(
+    parts: &mut Vec<(&'static str, String)>,
+    host: Option<&str>,
+) -> Option<(Route, News)> {
+    let (route, news) = release::news(Audience::Person)?;
+    let step = match (&news, host) {
+        (News::Available(tag), Some(name)) => host::ADAPTERS
+            .iter()
+            .find(|adapter| adapter.name() == name)
+            .map(|adapter| adapter.plugin_update(&tag.to_string())),
+        _ => None,
+    };
+    parts.push(("release", Audience::Person.note(route, &news, step)));
+    Some((route, news))
 }
 
 /// The parts a Stop tells, once a quiet turn dropped what it drops. A release part still told
@@ -471,10 +482,10 @@ fn release_part(parts: &mut Vec<(&'static str, String)>, host: Option<&str>) -> 
 fn released(
     behind: Behind,
     root: &Path,
-    untold: Option<News>,
+    untold: Option<(Route, News)>,
     mut parts: Vec<(&'static str, String)>,
 ) -> Vec<(&'static str, String)> {
-    let Some(news) = untold else {
+    let Some((route, news)) = untold else {
         return parts;
     };
     let Some((_, said)) = parts.iter_mut().find(|(part, _)| *part == "release") else {
@@ -487,7 +498,7 @@ fn released(
         said.push(' ');
         said.push_str(&step);
     }
-    release::heard(Audience::Person, &news);
+    release::heard(Audience::Person, route, &news);
     parts
 }
 

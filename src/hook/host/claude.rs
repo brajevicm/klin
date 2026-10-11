@@ -40,6 +40,14 @@ impl Adapter for Claude {
         super::adapter::CLAUDE_CODE_AND_CODEX_MATCHER
     }
 
+    /// Claude Code turns plugin auto-update off for a marketplace that is not its own, so the
+    /// step also names the switch.
+    fn plugin_update(&self, _tag: &str) -> String {
+        "In Claude Code, run /plugin, open Marketplaces, select klin and choose Update \
+         marketplace. Enable auto-update there to get the next release on its own."
+            .to_string()
+    }
+
     /// A write into a tree is covered by that tree's settings, the local settings beside them
     /// and the user's. A write into the home directory is covered by the user's alone, because
     /// a plugin one repository enables gates that repository and not the machine.

@@ -148,9 +148,13 @@ fn last_stop(lines: &[Value]) -> Value {
 
 fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, out: &mut String) {
     let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
-    if let Some(tag) = newer {
+    if let (Some(tag), Some(route)) = (newer, release::route()) {
         let news = release::News::Available(tag.clone());
-        let _ = writeln!(out, "{}", release::Audience::Person.note(&news, None));
+        let _ = writeln!(
+            out,
+            "{}",
+            release::Audience::Person.note(route, &news, None)
+        );
     }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {

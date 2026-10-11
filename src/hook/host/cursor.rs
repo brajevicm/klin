@@ -34,6 +34,14 @@ const SHELL_EVENT: &str = "beforeShellExecution";
 pub struct Cursor;
 
 impl Adapter for Cursor {
+    /// Cursor runs a local copy of the plugin, which a person makes again from the release tag.
+    fn plugin_update(&self, tag: &str) -> String {
+        format!(
+            "Copy the klin plugin again from the v{tag} release, as the README's Cursor steps \
+             show, and reload Cursor."
+        )
+    }
+
     fn name(&self) -> &'static str {
         "cursor"
     }

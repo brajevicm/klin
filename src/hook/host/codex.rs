@@ -23,6 +23,11 @@ const CONFIG: &str = ".codex/config.toml";
 pub struct Codex;
 
 impl Adapter for Codex {
+    /// Codex's own plugin update action is not verified, so the step names only the host.
+    fn plugin_update(&self, _tag: &str) -> String {
+        "Update the klin plugin in Codex.".to_string()
+    }
+
     fn name(&self) -> &'static str {
         "codex"
     }

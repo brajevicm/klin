@@ -90,26 +90,25 @@ pub enum Audience {
 impl Audience {
     /// Each route keeps its own records, so a machine with both an installer's klin and a
     /// plugin's klin at two versions never reads the switch between them as an update.
-    fn record(self) -> &'static str {
-        match (Route::here(), self) {
-            (Some(Route::Plugin), Audience::Person) => "release-plugin-person.json",
-            (Some(Route::Plugin), Audience::Agent) => "release-plugin-agent.json",
-            (_, Audience::Person) => "release-person.json",
-            (_, Audience::Agent) => "release-agent.json",
+    fn record(self, route: Route) -> &'static str {
+        match (route, self) {
+            (Route::Plugin, Audience::Person) => "release-plugin-person.json",
+            (Route::Plugin, Audience::Agent) => "release-plugin-agent.json",
+            (Route::Installer, Audience::Person) => "release-person.json",
+            (Route::Installer, Audience::Agent) => "release-agent.json",
         }
     }
 
-    /// The text for this audience. `host` names the host a hook event came from, so a
-    /// plugin's update step names that host's own action.
-    pub fn note(self, news: &News, host: Option<&str>) -> String {
-        let plugin = Route::here() == Some(Route::Plugin);
+    /// The text for this audience on `route`. On a plugin's route, `host_step` is the step the
+    /// host a hook event came from takes to update the plugin.
+    pub fn note(self, route: Route, news: &News, host_step: Option<String>) -> String {
         match (self, news) {
             (Audience::Person, News::Available(tag)) => format!(
                 "klin {tag} is available (you have {}). {}",
                 env!("CARGO_PKG_VERSION"),
-                Route::step(plugin, host, tag)
+                route.step(host_step)
             ),
-            (Audience::Agent, News::Available(tag)) if plugin => format!(
+            (Audience::Agent, News::Available(tag)) if route == Route::Plugin => format!(
                 "klin {tag} is available. Tell the person to update the klin plugin. Do not do \
                  it yourself."
             ),
@@ -133,16 +132,16 @@ impl Audience {
 /// place.
 struct Releases {
     dir: PathBuf,
+    route: Route,
 }
 
 impl Releases {
     fn here() -> Option<Releases> {
-        Releases::any().filter(|_| enabled())
-    }
-
-    /// The cache directory whatever the rule says, for a person's `klin update --check`.
-    fn any() -> Option<Releases> {
-        cache_dir().map(|dir| Releases { dir })
+        let route = Route::here()?;
+        let on = !set("CI") && !set("KLIN_NO_UPDATE_CHECK");
+        cache_dir()
+            .filter(|_| on)
+            .map(|dir| Releases { dir, route })
     }
 }
 
@@ -180,8 +179,8 @@ impl Latest {
 
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
     /// Only the installer's route updates itself.
-    fn untried(&self) -> Option<&Version> {
-        let installer = Route::here() == Some(Route::Installer);
+    fn untried(&self, route: Route) -> Option<&Version> {
+        let installer = route == Route::Installer;
         self.tag
             .as_ref()
             .filter(|tag| installer && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
@@ -197,27 +196,28 @@ struct Record {
 }
 
 impl Record {
-    fn read(dir: &Path, who: Audience) -> Record {
-        let held = read_json(&dir.join(who.record()));
+    fn read(releases: &Releases, who: Audience) -> Record {
+        let held = read_json(&releases.dir.join(who.record(releases.route)));
         Record {
             seen: version(&held["seen"]),
             told: version(&held["told"]),
         }
     }
 
-    fn write(&self, dir: &Path, who: Audience) {
+    fn write(&self, releases: &Releases, who: Audience) {
         let held = json!({
             "seen": self.seen.as_ref().map(ToString::to_string),
             "told": self.told.as_ref().map(ToString::to_string),
         });
-        write(&dir.join(who.record()), held.to_string().as_bytes());
+        let file = releases.dir.join(who.record(releases.route));
+        write(&file, held.to_string().as_bytes());
     }
 }
 
 /// How this binary reached the machine: through the installer, with `klin-update` beside it, or
 /// through a host's plugin, whose wrapper sets `KLIN_PLUGIN`.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Route {
+pub enum Route {
     Installer,
     Plugin,
 }
@@ -233,23 +233,21 @@ impl Route {
         }
     }
 
-    /// The one step that installs `tag` on this route and host. Claude Code turns plugin
-    /// auto-update off for a marketplace that is not its own, so the step also names the switch.
-    fn step(plugin: bool, host: Option<&str>, tag: &Version) -> String {
-        match (plugin, host) {
-            (false, _) => "Run klin update.".to_string(),
-            (true, Some("claude")) => "In Claude Code, run /plugin, open Marketplaces, select \
-                 klin and choose Update marketplace. Enable auto-update there to get the next \
-                 release on its own."
-                .to_string(),
-            (true, Some("cursor")) => format!(
-                "Copy the klin plugin again from the v{tag} release, as the README's Cursor \
-                 steps show, and reload Cursor."
-            ),
-            (true, Some("codex")) => "Update the klin plugin in Codex.".to_string(),
-            (true, _) => "Update the klin plugin in your host.".to_string(),
+    /// The one step that installs a newer release on this route: `klin update`, or the plugin
+    /// step of the host a hook event came from.
+    fn step(self, host_step: Option<String>) -> String {
+        match self {
+            Route::Installer => "Run klin update.".to_string(),
+            Route::Plugin => {
+                host_step.unwrap_or_else(|| "Update the klin plugin in your host.".to_string())
+            }
         }
     }
+}
+
+/// The route of this binary, or none when it may not ask, update or tell.
+pub fn route() -> Option<Route> {
+    Route::here()
 }
 
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
@@ -260,7 +258,7 @@ pub fn refresh() {
         return;
     };
     let latest = Latest::read(&releases.dir);
-    if !latest.stale() && latest.untried().is_none() {
+    if !latest.stale() && latest.untried(releases.route).is_none() {
         return;
     }
     if let Ok(exe) = std::env::current_exe() {
@@ -288,7 +286,7 @@ pub fn child() {
         latest.tag = asked().or(latest.tag);
         latest.write(dir);
     }
-    if let (Some(tag), Some(updater)) = (latest.untried().cloned(), updater_path()) {
+    if let (Some(tag), Some(updater)) = (latest.untried(releases.route).cloned(), updater_path()) {
         latest.tried = Some(tag);
         latest.write(dir);
         let _ = silent(&mut Command::new(updater)).status();
@@ -334,11 +332,11 @@ impl Drop for Lock {
 /// --check`.
 pub fn fetch() -> Option<Version> {
     let tag = asked();
-    if let (Some(releases), Some(tag)) = (Releases::any(), &tag) {
-        let mut latest = Latest::read(&releases.dir);
+    if let (Some(dir), Some(tag)) = (cache_dir(), &tag) {
+        let mut latest = Latest::read(&dir);
         latest.tag = Some(tag.clone());
         latest.checked = now();
-        latest.write(&releases.dir);
+        latest.write(&dir);
     }
     tag
 }
@@ -351,52 +349,50 @@ pub fn known() -> Option<Version> {
 /// The version the person saw before this binary replaced it, read without consuming it.
 pub fn updated_from() -> Option<Version> {
     let releases = Releases::here()?;
-    Record::read(&releases.dir, Audience::Person)
+    Record::read(&releases, Audience::Person)
         .seen
         .filter(Version::is_older)
 }
 
-/// The news `who` has not heard: an update first, else a newer release. The first sight of a
-/// binary, and a binary older than the one last seen, records its version, so neither a fresh
-/// install nor a downgrade is an update.
-pub fn news(who: Audience) -> Option<News> {
-    let dir = Releases::here()?.dir;
+/// The news `who` has not heard, and the route it reads it on: an update first, else a newer
+/// release. The first sight of a binary, and a binary older than the one last seen, records its
+/// version, so neither a fresh install nor a downgrade is an update.
+pub fn news(who: Audience) -> Option<(Route, News)> {
+    let releases = Releases::here()?;
     let current = Version::current()?;
-    let mut record = Record::read(&dir, who);
+    let mut record = Record::read(&releases, who);
     match record.seen.take() {
         Some(seen) if seen < current => {
-            return Some(News::Updated {
+            let news = News::Updated {
                 from: seen,
                 to: current,
-            });
+            };
+            return Some((releases.route, news));
         }
         Some(seen) if seen == current => record.seen = Some(seen),
         _ => {
             record.seen = Some(current);
-            record.write(&dir, who);
+            record.write(&releases, who);
         }
     }
-    Latest::read(&dir)
+    Latest::read(&releases.dir)
         .tag
         .filter(|tag| tag.is_newer() && record.told.as_ref() != Some(tag))
-        .map(News::Available)
+        .map(|tag| (releases.route, News::Available(tag)))
 }
 
-/// Record that `who` heard `news`.
-pub fn heard(who: Audience, news: &News) {
-    let Some(releases) = Releases::any() else {
+/// Record that `who` heard `news` on `route`.
+pub fn heard(who: Audience, route: Route, news: &News) {
+    let Some(dir) = cache_dir() else {
         return;
     };
-    let mut record = Record::read(&releases.dir, who);
+    let releases = Releases { dir, route };
+    let mut record = Record::read(&releases, who);
     match news {
         News::Updated { to, .. } => record.seen = Some(to.clone()),
         News::Available(tag) => record.told = Some(tag.clone()),
     }
-    record.write(&releases.dir, who);
-}
-
-fn enabled() -> bool {
-    !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && Route::here().is_some()
+    record.write(&releases, who);
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
