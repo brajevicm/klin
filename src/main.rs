@@ -56,9 +56,11 @@ fn main() -> ExitCode {
     if agent::called() {
         return agent::run();
     }
-    let mut args = std::env::args();
-    if args.nth(1).as_deref() == Some(release::CHILD) {
-        return ExitCode::from(release::child(&args.next().unwrap_or_default()));
+    if std::env::args_os()
+        .nth(1)
+        .is_some_and(|word| word == release::CHILD)
+    {
+        return ExitCode::from(release::child());
     }
     match Cli::parse().command {
         Command::Update(args) => ExitCode::from(update::run(&args)),

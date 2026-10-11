@@ -1761,7 +1761,8 @@ Text output:
 
 - It runs no check, takes no lock that a Stop waits on, and writes nothing in
   the repository. It MAY ask GitHub for the newest release and write the
-  release cache, and it starts the detached ask of section 11.9.
+  release cache, and it may start the detached ask of section 11.9, which it
+  never waits for.
 - Reports:
   - whether a `klin.json` resolves and whether it is valid;
   - each host integration, with host, scope, route and state;
@@ -1995,8 +1996,11 @@ A binary the installer placed keeps itself current, and tells the person and
 the agent what changed. ADR 0069.
 
 - **The ask.** A session start, `klin status` and `klin setup` start a
-  detached child (`klin __release`) when the last ask is 24 hours old. The
-  child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
+  detached child (`klin __release`) when the last ask is 24 hours old, or
+  when auto-update holds a release it has not tried. The child takes a lock
+  file beside the cache, made new, and does nothing when another child holds
+  it, so two commands at once start one ask. A lock older than 10 minutes
+  belongs to a child that died. The child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
   through `curl`, with a timeout of 10 seconds, and does not follow it. No
   command and no hook waits for the child. The ask counts from the moment
   the child starts, so a failed or slow ask, or no `curl`, is the day's ask
@@ -2013,7 +2017,8 @@ the agent what changed. ADR 0069.
   ask and the release auto-update tried. `release-person.json` and
   `release-agent.json` beside it hold, for each audience, the version it last
   saw klin run as and the release it was last told of.
-- **Off.** Nothing asks, updates or tells when `CI` or `KLIN_NO_UPDATE_CHECK`
+- **Off.** Nothing asks, updates or tells, the child run by hand included,
+  when `CI` or `KLIN_NO_UPDATE_CHECK`
   is set to a value that is not empty, or when no `klin-update` sits beside
   the binary. The last rule leaves out a plugin's binary, which updates with
   its plugin.
@@ -2021,8 +2026,9 @@ the agent what changed. ADR 0069.
   only the cache. A cached tag that is not dot-separated digits is never
   shown. A build whose version has a pre-release suffix, such as `-beta.1`,
   compares its numbers without the suffix.
-- **News.** The first sight of a binary records its version for each
-  audience. When the binary's version is newer than the version an audience
+- **News.** The first sight of a binary, and a binary older than the version
+  an audience last saw, records its version for that audience, so neither a
+  fresh install nor a downgrade is news. When the binary's version is newer than the version an audience
   last saw, by auto-update or by `klin update`, the news is an update.
   Otherwise, a cached release newer than the binary that the audience was not
   told of is news. Each audience hears each piece of news once.
@@ -2030,8 +2036,9 @@ the agent what changed. ADR 0069.
   VERSION). Run klin update.` when the cached tag is newer. A Stop that
   blocks nothing tells the person's news as a `release` part of its notice
   (section 10.7): the same line, or `klin updated to VERSION (from OLD).
-  Release notes: LINK`. When an integration of the repository is not
-  `current` under the new binary, the update line adds `Run klin setup and
+  Release notes: LINK`. When a copy of klin's integration in the
+  repository is in `conflict` under the new binary, which is how an earlier
+  klin's hook lines or skill read, the update line adds `Run klin setup and
   commit the changed hook files.` The notice never blocks and never makes the
   window red. A turn that changed nothing does not tell it, and a later Stop
   does.

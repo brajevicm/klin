@@ -5,9 +5,11 @@
 //! with its `klin-update` beside it, asks, updates or tells. Spec 11.9.
 
 use std::fmt;
+use std::fs::OpenOptions;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -18,6 +20,9 @@ const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
+const LOCK_FILE: &str = "release.lock";
+/// A lock older than this belongs to a child that died, and the next child takes it.
+const LOCK_STALE: u64 = 10 * 60;
 /// The hidden argument the detached child runs under. It is not a public command.
 pub const CHILD: &str = "__release";
 
@@ -108,24 +113,19 @@ impl Audience {
 }
 
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
-/// ask is a day old, or when auto-update holds a newer release it has not tried. The ask counts
-/// from the moment the child starts, so a failed or slow ask is the day's ask.
+/// ask is a day old, or when auto-update holds a newer release it has not tried. The child
+/// decides under its lock, so two commands at once start at most one ask and one update.
 pub fn refresh() {
     let Some(dir) = cache_dir().filter(|_| enabled()) else {
         return;
     };
-    let mut cached = read(&dir);
-    let stale = now().saturating_sub(cached["checked"].as_u64().unwrap_or_default()) >= DAY;
-    if !stale && untried(&cached).is_none() {
+    let cached = read(&dir);
+    if !stale(&cached) && untried(&cached).is_none() {
         return;
-    }
-    if stale {
-        cached["checked"] = now().into();
-        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
     }
     if let Ok(exe) = std::env::current_exe() {
         let _ = Command::new(exe)
-            .args([CHILD, if stale { "ask" } else { "update" }])
+            .arg(CHILD)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -134,16 +134,23 @@ pub fn refresh() {
     }
 }
 
-/// The detached child: ask GitHub when told to, then under auto-update run the updater once for
-/// a newer release. Its exit code is never read.
-pub fn child(mode: &str) -> u8 {
-    let Some(dir) = cache_dir() else {
+/// The detached child, under the cache's lock: the day's ask, which counts from its start so a
+/// failed or slow ask is the day's ask, then under auto-update the updater, once for each newer
+/// release. A child that finds the lock taken does nothing. Its exit code is never read.
+pub fn child() -> u8 {
+    let Some(dir) = cache_dir().filter(|_| enabled()) else {
         return 0;
     };
-    if mode == "ask" {
-        let _ = fetched(&dir);
-    }
+    let Some(_lock) = Lock::take(&dir) else {
+        return 0;
+    };
     let mut cached = read(&dir);
+    if stale(&cached) {
+        cached["checked"] = now().into();
+        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
+        let _ = fetched(&dir);
+        cached = read(&dir);
+    }
     if let (Some(tag), Some(updater)) = (untried(&cached), updater_path()) {
         cached["tried"] = tag.to_string().into();
         write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
@@ -154,6 +161,48 @@ pub fn child(mode: &str) -> u8 {
             .status();
     }
     0
+}
+
+/// The cache's lock file, made new so only one child holds it, and removed when it drops.
+struct Lock(PathBuf);
+
+impl Lock {
+    fn take(dir: &Path) -> Option<Lock> {
+        let file = dir.join(LOCK_FILE);
+        let _ = std::fs::create_dir_all(dir);
+        let old = std::fs::metadata(&file)
+            .and_then(|held| held.modified())
+            .ok()
+            .and_then(|at| at.elapsed().ok())
+            .is_some_and(|age| age.as_secs() >= LOCK_STALE);
+        if old {
+            let _ = std::fs::remove_file(&file);
+        }
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&file)
+            .ok()
+            .map(|_| Lock(file))
+    }
+}
+
+impl Drop for Lock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
+/// Whether an integration of the repository at a root is behind this binary. The integration
+/// scan lives in the command layer, which registers it here at start.
+static BEHIND: OnceLock<fn(&Path) -> bool> = OnceLock::new();
+
+pub fn register_behind(behind: fn(&Path) -> bool) {
+    let _ = BEHIND.set(behind);
+}
+
+pub fn behind(root: &Path) -> bool {
+    BEHIND.get().is_some_and(|behind| behind(root))
 }
 
 /// Ask GitHub now and wait, whatever the cache holds, and keep the answer. `klin update
@@ -175,7 +224,8 @@ pub fn updated_from() -> Option<Version> {
 }
 
 /// The news `who` has not heard: an update first, else a newer release. The first sight of a
-/// binary records its version, so a fresh install is not an update.
+/// binary, and a binary older than the one last seen, records its version, so neither a fresh
+/// install nor a downgrade is an update.
 pub fn news(who: Audience) -> Option<News> {
     let dir = cache_dir().filter(|_| enabled())?;
     let current = Version::current()?;
@@ -186,8 +236,8 @@ pub fn news(who: Audience) -> Option<News> {
                 to: current,
             });
         }
-        Some(_) => {}
-        None => record(&dir, who, |held| held["seen"] = current.to_string().into()),
+        Some(seen) if seen == current => {}
+        _ => record(&dir, who, |held| held["seen"] = current.to_string().into()),
     }
     let told = read_record(&dir, who)["told"]
         .as_str()
@@ -239,6 +289,10 @@ fn cache_dir() -> Option<PathBuf> {
         .filter(|dir| !dir.is_empty())
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))
+}
+
+fn stale(cached: &Value) -> bool {
+    now().saturating_sub(cached["checked"].as_u64().unwrap_or_default()) >= DAY
 }
 
 fn fetched(dir: &Path) -> Option<Version> {

@@ -956,6 +956,15 @@ impl State {
     }
 }
 
+/// Whether this binary would rewrite a copy of klin's integration in the repository at `root`:
+/// a project copy in conflict, which is what an earlier klin's hook lines or skill read as. A
+/// host that has no copy, or a copy in the person's home, asks for nothing to commit.
+pub fn behind(root: &Path) -> bool {
+    integrations(root)
+        .iter()
+        .any(|row| row.scope == Owner::Project && row.state == State::Conflict)
+}
+
 /// Every copy of klin's integration the repository at `root` and the person's home hold, and a
 /// `missing` row for each host the repository proves where no copy is installed. It reads the
 /// host files and writes nothing. Spec 11.4.

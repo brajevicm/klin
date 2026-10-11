@@ -267,11 +267,16 @@ fn stop_tells_the_person_once_that_klin_updated() {
     assert!(!second.says("klin updated"), "{}", second.out);
 }
 
-/// An update that left an integration behind names `klin setup` in that notice. Spec 11.9.
+/// An update that left a repository copy of klin's integration behind names `klin setup` in
+/// that notice. Spec 11.9.
 #[test]
-fn the_update_notice_names_setup_when_an_integration_is_behind() {
+fn the_update_notice_names_setup_when_a_repository_copy_is_behind() {
     let installed = Installed::new(&answers(NEWER));
-    fs::create_dir_all(installed.tree.path(".claude")).expect("claude directory");
+    let setup = installed.run(&[], &["setup", "--host", "claude"], "");
+    assert_eq!(setup.code, 0, "{}", setup.out);
+    installed
+        .tree
+        .write(".claude/skills/klin/SKILL.md", "an earlier klin's skill\n");
     installed.ran_before("release-person.json", "0.0.1");
 
     let run = installed.stop();
@@ -282,6 +287,62 @@ fn the_update_notice_names_setup_when_an_integration_is_behind() {
         "{}",
         run.out
     );
+}
+
+/// A host the repository proves but never installed asks for nothing to commit after an
+/// update. Spec 11.9.
+#[test]
+fn the_update_notice_does_not_name_setup_for_a_host_with_no_copy() {
+    let installed = Installed::new(&answers(NEWER));
+    fs::create_dir_all(installed.tree.path(".claude")).expect("claude directory");
+    installed.ran_before("release-person.json", "0.0.1");
+
+    let run = installed.stop();
+
+    assert!(run.says("klin updated to"), "{}", run.out);
+    assert!(!run.says("klin setup"), "{}", run.out);
+}
+
+/// A binary older than the one last seen is a downgrade, which is no update news. Spec 11.9.
+#[test]
+fn a_downgrade_is_not_an_update() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.ran_before("release-person.json", "999.0.0");
+
+    let first = installed.stop();
+    let second = installed.stop();
+
+    assert!(!first.says("klin updated"), "{}", first.out);
+    assert!(!second.says("klin updated"), "{}", second.out);
+}
+
+/// Two commands at once start one ask, because the child that finds the lock taken does
+/// nothing. Spec 11.9.
+#[test]
+fn two_commands_at_once_ask_once() {
+    let installed = Installed::new(&format!("sleep 1\n{}", answers(NEWER)));
+
+    installed.status(&[]);
+    installed.status(&[]);
+    until(|| installed.fetched() == 1);
+    std::thread::sleep(Duration::from_millis(1500));
+
+    assert_eq!(installed.fetched(), 1);
+}
+
+/// The hidden child keeps the off switches too, when a person runs it by hand. Spec 11.9.
+#[test]
+fn the_child_asks_and_updates_nothing_in_ci() {
+    let installed = Installed::new(&answers(NEWER));
+
+    installed.run(
+        &[("CI", "true"), ("KLIN_AUTO_UPDATE", "1")],
+        &["__release"],
+        "",
+    );
+
+    assert_eq!(installed.fetched(), 0);
+    assert!(!installed.home.path("updated").exists());
 }
 
 /// After the binary replaced an older one, the next session start tells the agent once which

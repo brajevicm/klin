@@ -8,11 +8,13 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use crate::cli::setup;
 use crate::config::file::Discovered;
 use crate::engine::catalogue;
 use crate::hook::host;
 use crate::hook::host::adapter::{Decision, Event, Kind};
 use crate::hook::{guard, journal, stop, turn};
+use crate::sys::release;
 
 const WORD: &str = "__agent";
 const EVENT: &str = "event";
@@ -26,6 +28,7 @@ pub fn called() -> bool {
 /// Every answer runs under one unwind guard, so a panic anywhere is no decision either: exit 0
 /// before the kind is known and at an informing hook, and exit 1 at a Stop. Spec 10.10.
 pub fn run() -> ExitCode {
+    release::register_behind(setup::behind);
     let placed = Placed::default();
     match catch_unwind(AssertUnwindSafe(|| answer(&placed))) {
         Ok(code) => code,

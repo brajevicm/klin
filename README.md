@@ -55,7 +55,7 @@ Then commit `klin.json` and the generated integration files.
 
 klin sets up the hosts your repository already uses. If it finds none, it sets up Claude Code, Codex, and Cursor. To set up only one, add `--host claude`, `codex`, or `cursor`.
 
-If your shell can't find `klin` afterwards, open a new terminal. To update later, run `klin update`, then `klin setup`.
+If your shell can't find `klin`, open a new terminal. To update later, run `klin update`, or set `KLIN_AUTO_UPDATE=1` for automatic updates.
 
 > [!NOTE]
 > **Codex:** run `/hooks`, review and trust the klin hooks, then start a fresh session.
@@ -218,7 +218,7 @@ Only a person changes the policy. klin refuses the agent's edits to `klin.json`.
 
 ## Privacy and trust
 
-- **No telemetry.** klin reads no secrets and sends nothing but a daily update check.
+- **No telemetry.** klin reads no secrets and sends only a daily update check.
 - **You control the Stop build commands.** The agent Stop hook may run the configured or derived build command before the quality gates. It prints a derived command before it runs it. Set `"build": false` to disable this feedback build.
 - **State stays in your repository.** klin keeps its working state under `.git/klin`. By default this includes up to 80 characters of the prompt's first line. Set `"journal": { "prompt": false }` to leave the prompt text out.
 - **Downloaded binaries are verified.** The plugin checks the pinned release's SHA-256 before it caches and runs the binary. The installer also verifies what it downloads.
