@@ -3716,9 +3716,7 @@ inherited debt, which is the route to green this section exists to close.
 In 0.x, a person who abandoned the work had a third route: a reset command
 moved the stamp to the current working tree. vNext drops that command. A
 history move makes one Stop advisory, and that Stop takes a fresh stamp
-(section 6.6). Without
-this command a red window that nobody acts on degrades into a report that
-everyone learns to ignore.
+(section 6.6).
 
 A stamp describes the current turn only while current HEAD history still holds
 the commit it was taken over. That commit is the stamp's parent, HEAD at
@@ -6010,9 +6008,9 @@ Every check MUST:
   this run took away. Every other rule is today's on both trees. A scoped run reports the
   loss among the files in its scope. The JSON carries the loss as a `lost`
   record under the gate's notes (11.2).
-- name a file it could not measure. Outside the hook that is exit 2
-  (ADR 0021), when the base could measure the file or did
-  not hold it, because the change opened that hole. A file the base held and
+- name a file it could not measure. Outside the hook that is a `measurement-lost`
+  finding or a review item (section 7.2), when the base could measure the file
+  or did not hold it, because the change opened that hole. A file the base held and
   could not measure either is a NOTE in every run. It is not a hole the work
   opened, and no run could ever end green around it, so a tree that holds one
   is green the day klin arrives (5.1). The rule covers a file no grammar reads
@@ -6611,8 +6609,7 @@ tells a reader nothing.
   the way it proves the first two (ADR 0033), and `init` and `turn-reset`
   for one of klin's own subcommands that only a person runs.
 
-The `reset` line is what the 0.x reset command wrote. vNext writes none, and a
-reader still reads one:
+The `reset` line is what the 0.x reset command wrote. vNext writes none:
 
 - `prompt`, the counter the stamp carried over. A reset does not end the
   turn, so the counter is unchanged by it (6.2).
@@ -7354,7 +7351,7 @@ the one on the runner that built the binary, which is 2.35 on `ubuntu-22.04`.
 klin ships no musl build. Native Windows is not a supported target: klin
 builds no Windows binary and ships none. WSL is not a documented supported route
 either, because klin has no compatibility evidence for it. A person on Windows
-has no shipped klin build today.
+has no shipped way to install klin today.
 
 #### B.19.2 The first-class plugins: Claude Code, Codex CLI and Cursor
 
@@ -7752,8 +7749,7 @@ is missing rather than claiming equivalence with a native one.
   (9.7).
 - **Gate** — an end-of-turn check that reports a failure, missing one or more
   of the pre-tool and turn-feedback capabilities. The missing ones are named.
-- **Manual / CI** — no reliable lifecycle hook. A person runs `klin check`, and
-  CI runs `klin check`. There is no same-turn feedback contract, and
+- **Manual / CI** — no reliable lifecycle hook. A person or CI runs `klin check`. There is no same-turn feedback contract, and
   none is claimed.
 
 #### B.19.5 CI
