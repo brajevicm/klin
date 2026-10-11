@@ -721,8 +721,7 @@ fn tell_release(start: &Path, out: &mut String) {
     {
         let _ = writeln!(out, "{}", Audience::Agent.note(route, &news, None));
     }
-    let expected = file::located(None, start).and_then(|config| file::expected(&config));
-    release::refresh(expected.as_ref());
+    release::refresh(file::expected(start).as_ref());
 }
 
 fn note(out: &mut String, why: &str) {

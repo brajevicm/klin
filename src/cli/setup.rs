@@ -79,11 +79,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         starter::inert(root, out);
     }
     let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
-    let expected = scope
-        .repository
-        .as_deref()
-        .and_then(|root| config::file::located(None, root))
-        .and_then(|file| config::file::expected(&file));
+    let expected = scope.repository.as_deref().and_then(config::file::expected);
     release::refresh(expected.as_ref());
     Ok(0)
 }

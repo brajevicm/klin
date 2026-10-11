@@ -474,7 +474,7 @@ fn string_rule_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Re
     let (holds, expected) = match key.shape {
         Shape::Expected => (
             value.as_str().and_then(Expected::parse).is_some(),
-            "\">=\" and a version of dot-separated digits, such as \">=0.5.4\"",
+            "\">=\" and a version of three dot-separated numbers, such as \">=0.5.4\"",
         ),
         _ => (is_text(value), "a string that is not blank"),
     };
@@ -916,9 +916,11 @@ pub fn notes(explicit: Option<&Path>, start: &Path) -> Vec<String> {
     }
 }
 
-/// The lowest klin the file at `file` expects, read without judging the rest of the file, so a
-/// klin that cannot read the rest still names the version the repository expects. Spec 11.9.
-pub fn expected(file: &Path) -> Option<Expected> {
+/// The lowest klin the configuration a run from `start` finds expects, read without judging the
+/// rest of the file, so a klin that cannot read the rest still names the version the repository
+/// expects. Spec 11.9.
+pub fn expected(start: &Path) -> Option<Expected> {
+    let file = find(start)?;
     let data: Value = serde_json::from_slice(&std::fs::read(file).ok()?).ok()?;
     Expected::parse(data.get(KLIN.name)?.as_str()?)
 }

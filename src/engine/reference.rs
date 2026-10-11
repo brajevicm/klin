@@ -203,7 +203,7 @@ fn schema_for_shape(shape: Shape) -> Value {
 
 fn string_rule_schema(shape: Shape) -> Value {
     let pattern = match shape {
-        Shape::Expected => "^>=[0-9]+(\\.[0-9]+)*$",
+        Shape::Expected => "^>=[0-9]+\\.[0-9]+\\.[0-9]+$",
         _ => NOT_BLANK,
     };
     json!({"type": "string", "pattern": pattern})

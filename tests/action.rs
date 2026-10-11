@@ -433,3 +433,18 @@ fn the_action_fails_when_its_klin_is_older_than_klin_json_expects() {
     );
     assert_eq!(passed.code, 0, "{}", passed.printed);
 }
+
+/// A `klin` value of another shape is not compared: `klin check` refuses it as a configuration
+/// error, and the Action reports that run. Spec 12.3.
+#[test]
+fn the_action_leaves_a_malformed_expected_version_to_klin_check() {
+    let tree = tree();
+    tree.write("klin.json", r#"{"klin": "99.0.0"}"#);
+    tree.base();
+
+    let gated = gated(&tree, "");
+
+    assert_eq!(gated.code, 2, "{}", gated.printed);
+    assert!(!gated.printed.contains("expects klin"), "{}", gated.printed);
+    assert!(gated.summary.contains("\"klin\""), "{}", gated.summary);
+}

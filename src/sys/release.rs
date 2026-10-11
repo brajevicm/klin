@@ -77,7 +77,7 @@ impl Version {
 }
 
 /// The lowest klin a repository expects, as its `klin.json` states it under `klin`: `>=` and a
-/// version of dot-separated digits. Spec 5.3, 11.9.
+/// release version of three dot-separated numbers. Spec 5.3, 11.9.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Expected(Version);
 
@@ -90,6 +90,7 @@ impl Expected {
                     .all(|byte| byte.is_ascii_digit() || byte == b'.')
             })
             .and_then(Version::parse)
+            .filter(|version| version.0.len() == 3)
             .map(Expected)
     }
 

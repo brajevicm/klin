@@ -1251,6 +1251,8 @@ fn an_expected_version_klin_cannot_read_is_a_config_error() {
     for written in [
         "\"0.5.4\"",
         "\">=0..5\"",
+        "\">=0.5\"",
+        "\">=0.5.4.1\"",
         "\">= 1.0.0\"",
         "\">=1.0.0-beta\"",
         "5",

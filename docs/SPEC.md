@@ -472,7 +472,7 @@ and one key per gate section. vNext adds `klin` (ADR 0071) and retires no
 key. A configuration that 0.x accepted is valid in vNext.
 
 - `klin` names the lowest klin the repository expects, as `>=` and a
-  version of dot-separated digits, such as `">=0.5.4"`. Any other value is a
+  version of three dot-separated numbers, such as `">=0.5.4"`. Any other value is a
   configuration error naming the key. It changes no verdict: an older klin
   says so (section 11.9), and the GitHub Action fails (section 12.3).
 
@@ -2138,8 +2138,10 @@ names its host's own update step in place of `klin update`. ADR 0069.
   nothing tells the same line once as an `expected` part of its notice, and
   records the expected version and the binary's version in `expected-told`
   in the state directory, so a new expected version or another binary tells
-  it again. klin reads the key before it judges the rest of the file, so a
-  configuration that names a key this binary does not know still tells it.
+  it again. `klin status` reads the key before it judges the rest of the
+  file, so a configuration that names a key this binary does not know still
+  tells it there. A Stop under such a configuration ends unjudged before it
+  tells anything.
   These lines are local: they read no network and work outside both routes
   and in CI. With auto-update on, when neither the binary nor the cached
   release meets the expected version, the command that starts the child
@@ -2185,8 +2187,10 @@ the project's commands ran. No message, document or hook text may claim that
   `klin.json` in the working directory with `jq`. When the klin it installed
   is older than that version, it writes one `error` annotation, `klin.json
   expects klin >=VERSION, and the Action installed klin OWN. Pin a newer
-  version in the Action.`, and fails the job with 2. Absent the key, or
-  without `jq`, the Action goes on.
+  version in the Action.`, and fails the job with 2. When it cannot read the
+  installed version, it says so and fails with 2. Absent the key, with a
+  value of another shape, which `klin check` then refuses, or without `jq`,
+  the Action goes on.
 - When the Action cannot report, because `jq` is missing or broken, the run printed no
   JSON document, or writing the annotations or the summary failed, it writes
   one `error` annotation that says so and fails the job: with the exit of

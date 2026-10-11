@@ -36,6 +36,8 @@ use crate::{
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 /// The expected klin and the build a Stop last told the person of, in the state directory.
 const EXPECTED_TOLD: &str = "expected-told";
+/// The notice part that tells the expected klin.
+const EXPECTED: &str = "expected";
 
 /// The step that brings klin's integration copies up to date with this binary, or none.
 pub type Behind = fn(&Path) -> Option<String>;
@@ -475,15 +477,21 @@ fn release_part(
     host: Option<&str>,
 ) -> Option<(Route, News)> {
     let (route, news) = release::news(Audience::Person)?;
-    let step = match (&news, host) {
-        (News::Available(tag), Some(name)) => host::ADAPTERS
-            .iter()
-            .find(|adapter| adapter.name() == name)
-            .map(|adapter| adapter.plugin_update(&tag.to_string())),
-        _ => None,
+    let step = match &news {
+        News::Available(tag) => plugin_step(host, tag),
+        News::Updated { .. } => None,
     };
     parts.push(("release", Audience::Person.note(route, &news, step)));
     Some((route, news))
+}
+
+/// The step the host the event came from takes to update the klin plugin to `tag`.
+fn plugin_step(host: Option<&str>, tag: &release::Version) -> Option<String> {
+    let name = host?;
+    host::ADAPTERS
+        .iter()
+        .find(|adapter| adapter.name() == name)
+        .map(|adapter| adapter.plugin_update(&tag.to_string()))
 }
 
 /// The klin the repository expects when this build does not meet it, as a part of the notice,
@@ -494,27 +502,20 @@ fn expected_part(
     root: &Path,
     host: Option<&str>,
 ) -> Option<String> {
-    let expected = located(None, root)
-        .and_then(|config| file::expected(&config))
-        .filter(|expected| !expected.met())?;
+    let expected = file::expected(root).filter(|expected| !expected.met())?;
     let record = format!("{expected} {}", env!("CARGO_PKG_VERSION"));
     let at = state::dir(root)?;
     if std::fs::read_to_string(at.join(EXPECTED_TOLD)).is_ok_and(|told| told == record) {
         return None;
     }
-    let step = host.and_then(|name| {
-        host::ADAPTERS
-            .iter()
-            .find(|adapter| adapter.name() == name)
-            .map(|adapter| adapter.plugin_update(&expected.version().to_string()))
-    });
-    parts.push(("expected", expected.note(release::route(), step)));
+    let step = plugin_step(host, expected.version());
+    parts.push((EXPECTED, expected.note(release::route(), step)));
     Some(record)
 }
 
 /// Record that the Stop told the expected klin, when its part survived to the notice.
 fn told_expected(root: &Path, record: Option<String>, parts: &[(&'static str, String)]) {
-    let told = parts.iter().any(|(part, _)| *part == "expected");
+    let told = parts.iter().any(|(part, _)| *part == EXPECTED);
     if let (Some(record), true, Ok(at)) = (record, told, state::ready(root)) {
         let _ = atomic_write(AtomicWrite {
             target: &at.join(EXPECTED_TOLD),

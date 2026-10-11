@@ -537,7 +537,7 @@
     },
     "klin": {
       "description": "the lowest klin the repository expects, as `>=` and a version such as `>=0.5.4`. An older klin says so in `klin status` and at a Stop, and the GitHub Action fails. Source: pinned only. Default: any klin.",
-      "pattern": "^>=[0-9]+(\\.[0-9]+)*$",
+      "pattern": "^>=[0-9]+\\.[0-9]+\\.[0-9]+$",
       "type": "string"
     },
     "layering": {

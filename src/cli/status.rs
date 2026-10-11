@@ -29,7 +29,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(root) = found.root.as_deref() else {
         return Err(Error(NO_REPOSITORY.to_string()));
     };
-    let expected = found.config.as_deref().and_then(file::expected);
+    let expected = file::expected(start);
     release::refresh(expected.as_ref());
     let latest = release::known();
     let document = document(&found, root, start, latest.as_ref(), expected.as_ref());

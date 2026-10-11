@@ -19,9 +19,11 @@ expects. It is a floor, not a pin, and it changes no verdict.**
   release at once instead of at the day's ask (SPEC 11.9).
 - The GitHub Action fails the job when the klin it installed is older
   (SPEC 12.3). CI is where two versions most often meet.
-- klin reads the key before it judges the rest of the file, so an older klin
-  that does not know a newer key still names the version to install.
-- Only `>=` is accepted. A range or an exact pin would freeze the binary,
+- `klin status` reads the key before it judges the rest of the file, so an
+  older klin that does not know a newer key still names the version to
+  install.
+- Only `>=` and a three-part version are accepted, so klin and the
+  Action's shell compare the same way. A range or an exact pin would freeze the binary,
   which ADR 0040 rejected.
 
 `version` stays retired. Its error now names `klin` as the key to use.
