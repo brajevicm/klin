@@ -90,39 +90,55 @@ fn located(
         Some(found) => Some(found.map(|base| (base, Lookup::Named))),
         None => scope
             .under_base_url(specifier)
-            .map(|(base, unproved)| Ok((base, Lookup::BaseUrl { unproved }))),
+            .map(|(base, proved)| Ok((base, Lookup::BaseUrl { proved }))),
     }
 }
 
 /// How a path was named. A relative or paths name that reaches no held file is judged by its
 /// form. A `baseUrl` name that reaches none is external, as TypeScript then tries packages, and
 /// one that reaches a held file is a hole where klin cannot prove the config.
+#[derive(Clone, Copy)]
 enum Lookup {
     Named,
-    BaseUrl { unproved: Option<String> },
+    BaseUrl { proved: bool },
 }
 
 impl Lookup {
     /// Why one held target is not proved: an unproved `baseUrl` config, or a directory whose
     /// `package.json` may name another entry point than its index file.
     fn doubt(
-        self,
+        &self,
         topology: &Topology,
         specifier: &str,
         base: &str,
         target: &str,
     ) -> Option<String> {
-        let Lookup::BaseUrl { unproved } = self else {
+        let Lookup::BaseUrl { proved } = self else {
             return None;
         };
+        if !proved {
+            return Some(format!(
+                "{specifier} may be a baseUrl import whose configuration klin cannot prove"
+            ));
+        }
         let manifest = format!("{base}/package.json");
-        unproved.or_else(|| {
-            (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
-                format!(
-                    "{specifier} names a directory whose {manifest} may choose another entry point"
-                )
-            })
+        (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
+            format!("{specifier} names a directory whose {manifest} may choose another entry point")
         })
+    }
+
+    /// Whether a name that reaches no held TypeScript file is external: any `baseUrl` miss, as
+    /// TypeScript then tries packages, a file of another kind, or a bare name that may be a package.
+    fn misses_outside(
+        &self,
+        topology: &Topology,
+        specifier: &str,
+        base: &str,
+        candidates: &[String],
+    ) -> bool {
+        matches!(self, Lookup::BaseUrl { .. })
+            || another_kind(topology, base, candidates)
+            || !relative(specifier) && package_name(specifier)
     }
 }
 
@@ -144,8 +160,6 @@ fn dependency(
         .iter()
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
-    let by_base_url = matches!(lookup, Lookup::BaseUrl { .. });
-    let outside = || by_base_url || outside(topology, specifier, base, &candidates);
     match held.as_slice() {
         [target] => match lookup.doubt(topology, specifier, base, target) {
             Some(why) => hole(builder, site, why),
@@ -157,7 +171,9 @@ fn dependency(
                 site.start_byte,
             ),
         },
-        [] if outside() => builder.external += 1,
+        [] if lookup.misses_outside(topology, specifier, base, &candidates) => {
+            builder.external += 1
+        }
         [] => hole(
             builder,
             site,
@@ -178,12 +194,6 @@ fn dependency(
             ),
         ),
     }
-}
-
-/// Whether a name that reaches no held TypeScript file is external: a file of another kind, or a
-/// bare name that may be a package.
-fn outside(topology: &Topology, specifier: &str, base: &str, candidates: &[String]) -> bool {
-    another_kind(topology, base, candidates) || !relative(specifier) && package_name(specifier)
 }
 
 fn source(file: &str) -> bool {
