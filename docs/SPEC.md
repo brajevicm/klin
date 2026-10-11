@@ -2287,9 +2287,10 @@ it counts under every scope.
 
 - Read-only. It reads the journal, re-runs no check and reads no working
   tree.
-- Default scope: the newest session the journal holds. When the journal holds
-  no session, it says so and suggests `--since 7d`. It never widens the scope
-  silently.
+- Default scope: the newest session the journal holds. Only schema 2 lines
+  name that session, so a line of another schema with a newer session is
+  outside the scope. When the journal holds no session, it says so and
+  suggests `--since 7d`. It never widens the scope silently.
 - Flags: `--since Nd`, `--details`, `--json`.
 - It shows: regressions caught, regressions fixed after klin flagged them,
   regressions still open, review items, holes, files not measured,
