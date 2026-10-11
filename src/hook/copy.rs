@@ -5,7 +5,8 @@
 use std::path::Path;
 
 /// The options one of the two commands takes, as GNU and BSD both spell them. A letter the two
-/// spell differently is in neither list, so it gives the destination up.
+/// spell differently is in neither list, so it gives the destination up, and so does an option
+/// that may leave the destination unwritten, such as `-n` and `-u`.
 pub struct Spec {
     flags: &'static str,
     valued: &'static str,
@@ -16,7 +17,7 @@ pub struct Spec {
 }
 
 pub const CP: Spec = Spec {
-    flags: "abcdfHilLnNPpRrsTuvxXZ",
+    flags: "abcdfHilLNPpRrsTvxXZ",
     valued: "t",
     long: &[
         "archive",
@@ -28,7 +29,6 @@ pub const CP: Spec = Spec {
         "force",
         "interactive",
         "link",
-        "no-clobber",
         "no-dereference",
         "preserve",
         "parents",
@@ -38,7 +38,6 @@ pub const CP: Spec = Spec {
         "strip-trailing-slashes",
         "symbolic-link",
         "no-target-directory",
-        "update",
         "verbose",
         "one-file-system",
         "context",
@@ -100,7 +99,7 @@ impl Spec {
 /// The paths the command writes, each spelled from its destination so a reason can quote it.
 /// `is_dir` says whether a destination names a directory that exists.
 pub fn destinations(spec: &Spec, args: &[String], is_dir: impl Fn(&str) -> bool) -> Vec<String> {
-    let Some(read) = Read::of(spec, args) else {
+    let Some(read) = Operands::of(spec, args) else {
         return Vec::new();
     };
     if read.directories {
@@ -130,7 +129,7 @@ fn inside(dir: &str, sources: &[&str]) -> Vec<String> {
 }
 
 #[derive(Default)]
-struct Read<'a> {
+struct Operands<'a> {
     operands: Vec<&'a str>,
     /// The directory `-t` names, which takes every operand as a source.
     into: Option<&'a str>,
@@ -139,9 +138,9 @@ struct Read<'a> {
     directories: bool,
 }
 
-impl<'a> Read<'a> {
-    fn of(spec: &Spec, args: &'a [String]) -> Option<Read<'a>> {
-        let mut read = Read::default();
+impl<'a> Operands<'a> {
+    fn of(spec: &Spec, args: &'a [String]) -> Option<Operands<'a>> {
+        let mut read = Operands::default();
         let mut words = args.iter().map(String::as_str);
         while let Some(word) = words.next() {
             match word {
@@ -166,7 +165,7 @@ impl<'a> Read<'a> {
         match name {
             "target-directory" => self.into = value,
             "no-target-directory" => self.file = true,
-            "directory" => self.directories = spec.directories.is_some(),
+            "directory" => self.directories = true,
             _ => {}
         }
         Some(())

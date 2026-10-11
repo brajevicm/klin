@@ -1592,22 +1592,27 @@ find a target.
 - **Directory.** A relative path resolves from the event's directory, moved by
   each static `cd` before it. A `cd` moves it only when all of these hold: it
   has one operand without `$`, `~` or a wildcard, the operand names a
-  directory that exists, nothing pipes into it, and `&&`, `;` or a newline
-  follows it. And the command holds no subshell, group or function. After any
+  directory that exists, `;`, `&` or a newline comes before it (or it is
+  first), and `&&`, `;` or a newline follows it. And the command holds no
+  subshell, group or function. A `cd` behind `&&` moves it only when the
+  segment before is a `cd` the guard placed. The same rules apply to an
+  `eval` that runs a `cd`. After any
   other `cd`, `pushd`, `popd`, `source` or `.`, and after a `||` that follows
   a `cd`, a relative path proves nothing. An absolute path stays proven.
 - **Copies.** `cp` and `install` are writers of their destination alone, at
   the `ask` level of B.9.4. The destination is the last operand, or each
   source's name inside a destination directory that exists or that `-t`
   names. `install -d` writes every operand. An option the guard does not
-  know, a letter GNU and BSD spell differently, or an abbreviated long option
-  leaves the command unproven.
+  know, a letter GNU and BSD spell differently, an abbreviated long option,
+  or an option that may leave the destination unwritten (`-n`, `-u`) leaves
+  the command unproven.
 - **Nested shell.** `sh`, `bash`, `zsh`, `dash` or `ksh` with `-c` runs the
   next word in a child shell, and one with no script operand runs its heredoc
   in a child shell. `eval` runs its words in this shell. The guard reads that
   text as it reads a command. A `cd` in `eval` reaches the commands after it,
   and a `cd` in a child shell does not. An option that takes an argument
-  leaves the text unread.
+  leaves the text unread, and so does nested text that holds a `$`, because
+  the outer shell may expand it before the nested text splits.
 - **Text.** A heredoc body that no shell runs is data, and the rest of its
   command line is read, so a redirect after `<<'EOF'` is proven. An unquoted
   `#` at the start of a word starts a comment. A quoted path keeps its spaces.
@@ -1615,8 +1620,9 @@ find a target.
   argument is not a write.
 - **Unread shell.** `$(`, `${`, a backtick, a backslash, a here-string, a
   process substitution and a heredoc left open suppress path matching, as
-  B.9.4 says for the list it names. `<<` and `cd` leave that list. A token
-  holding `$` proves nothing about its file.
+  B.9.4 says for the list it names. `<<` and `cd` leave that list. A shell
+  token holding `$` proves nothing about its file. An edit tool's path is no
+  shell token, so a `$` in it is a character.
 
 `tests/guard.rs` holds the adversarial matrix of #426.
 

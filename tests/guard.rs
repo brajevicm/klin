@@ -542,6 +542,10 @@ fn allows_a_copy_whose_destination_it_cannot_place() {
         "cp -Q source klin.json",
         "cp -T /tmp/klin.json .",
         "cp a b klin.json",
+        "cp -n source klin.json",
+        "cp --no-clobber source klin.json",
+        "cp -u source klin.json",
+        "cp --update source klin.json",
     ] {
         allowed(&bash(command), command);
     }
@@ -582,6 +586,10 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
         ". ./env.sh && rm klin.json",
         "f() { cd sub; }; f; rm ../klin.json",
         "cd missing && rm ../klin.json",
+        "false && cd sub; echo x > ../klin.json",
+        "eval 'cd sub' | echo x > ../klin.json",
+        "eval 'cd sub' & echo x > ../klin.json",
+        "false && eval 'cd sub'; echo x > ../klin.json",
     ] {
         allowed(&bash_in(&tree, command), command);
     }
@@ -638,6 +646,9 @@ fn reads_a_literal_nested_command() {
         "cat <<'EOF'\nrm klin.json\nEOF",
         "sh script.sh klin.json",
         "sh -o errexit -c 'rm klin.json'",
+        "sh -c \"echo y $X > klin.json\"",
+        "eval \"echo y $X > klin.json\"",
+        "bash <<EOF\necho y $X > klin.json\nEOF",
         "echo 'sh -c \"rm klin.json\"'",
     ] {
         allowed(&bash_in(&tree, command), command);
@@ -689,4 +700,19 @@ fn allows_ordinary_source_writes() {
     ] {
         allowed(&bash_in(&tree, command), command);
     }
+}
+
+/// A tool's own path is not shell text, so a `$` in it is a character and the path still
+/// resolves. ADR 0068.
+#[test]
+fn an_edit_path_holding_a_dollar_still_resolves() {
+    let tree = Tree::new();
+    denied(
+        &edit_in(
+            &tree,
+            "Write",
+            &format!("{}/$x/../klin.json", tree.root().display()),
+        ),
+        "a literal dollar directory",
+    );
 }

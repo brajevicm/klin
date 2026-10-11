@@ -23,9 +23,10 @@ destination wherever the text proves it. It never runs a shell.**
 
 1. A `cd` with one static operand moves the directory that later relative
    paths resolve from. The operand must name a directory that exists. The
-   `cd` must run in this shell: no pipe or `&` after it, no `|` before it, no
-   subshell, group or function in the command. And the next command must run
-   after it, so `&&`, `;` or a newline follows it. A `||` after a `cd` leaves
+   `cd` must surely run in this shell: `;`, `&` or a newline before it, or
+   `&&` after a `cd` the guard placed, and no pipe, background job, subshell,
+   group or function. And the next command must run after it, so `&&`, `;` or
+   a newline follows it. A `||` after a `cd` leaves
    every later relative path unproven. Any other `cd`, `pushd`, `popd`,
    `source` or `.` leaves them unproven too. An absolute path stays proven.
 2. `cp` and `install` write their destination and never their sources. The
@@ -33,20 +34,25 @@ destination wherever the text proves it. It never runs a shell.**
    or `-t` names one, each source's name inside it is written. `install -d`
    writes every operand. An option the reader does not know, a letter GNU
    and BSD spell differently, or an abbreviated long option gives the
-   destination up.
+   destination up. So does `-n` or `-u`, which may leave the destination as
+   it is.
 3. `sh`, `bash`, `zsh`, `dash` and `ksh` with `-c` run the word after the
    flag in a child shell. With no script operand, they run the heredoc they
    read in a child shell. `eval` runs its words, joined, in this shell. The
    guard reads that text the way it reads the command, so a `cd` in `eval`
    reaches the next command, and a `cd` in a child does not. An option that
-   takes an argument, such as `-o`, leaves the text unread.
+   takes an argument, such as `-o`, leaves the text unread. Nested text that
+   holds a `$` is unread too, because the outer shell may expand it into a
+   comment or a separator before the nested text splits. An `eval` that runs
+   a `cd` moves the directory under the placement rules of rule 1.
 4. A heredoc body is data unless rule 3 runs it, so the rest of its command
    line is read. `cat <<'EOF' > klin.json` is a redirect onto the
    configuration.
 5. A comment, which an unquoted `#` at the start of a word begins, is text.
    A quoted path keeps its spaces as one path.
-6. A token holding a `$` proves nothing about the file it names, as a
-   wildcard proves nothing.
+6. A shell token holding a `$` proves nothing about the file it names, as a
+   wildcard proves nothing. An edit tool's path is not shell text, so a `$`
+   in it is a character of the path.
 
 The levels do not change. A redirect is `deny`. A writer, now with `cp` and
 `install`, is `ask`. The guarded set does not change.

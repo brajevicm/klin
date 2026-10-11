@@ -7,15 +7,20 @@ use crate::hook::journal;
 use crate::hook::lexer::{self, Op, Segment};
 use crate::sys::state;
 
-/// Every wildcard a shell expands, and the `$` of a parameter. A token holding one proves
-/// nothing about the file it stands for, so the guard matches no path against it. ADR 0033.
-const EXPANDED: &[char] = &['*', '?', '[', '$'];
+/// Every wildcard a shell expands. A token holding one proves nothing about the file it stands
+/// for, so the guard matches no path against it. ADR 0033.
+const WILDCARDS: &[char] = &['*', '?', '['];
+/// The mark of a parameter the shell expands. A shell token holding one proves nothing about
+/// its file, while a tool's own path holds it as a character. ADR 0068.
+const PARAMETER: char = '$';
 /// The command word that moves the ground every relative path stands on.
 const CD: &str = "cd";
 /// Words that move the directory in a way the guard does not follow, wherever they stand.
 const MOVERS: &[&str] = &["cd", "pushd", "popd"];
 /// Command words that run another file's shell in this one, which may move the directory.
 const SOURCES: &[&str] = &[".", "source"];
+/// The command word that runs its words as shell text in this shell.
+const EVAL: &str = "eval";
 /// The shells whose `-c` text, or whose heredoc, the guard reads as the command they run.
 const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
@@ -221,7 +226,7 @@ impl Paths {
 /// The file a token names from `base`, and `None` for a token that proves nothing about any
 /// file: one a shell expands, or a relative one where the guard cannot place the directory.
 fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
-    if token.is_empty() || token.contains(EXPANDED) {
+    if token.is_empty() || token.contains(WILDCARDS) {
         return None;
     }
     let named = Path::new(token);
@@ -268,33 +273,35 @@ fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str
     let mut cwd = Cwd {
         at: guarded.here().map(Path::to_path_buf),
         moved: false,
+        placed: false,
     };
-    walk(guarded, command, &mut cwd)
+    walk(guarded, command, &mut cwd, false)
 }
 
 /// The strictest decision over every segment of a command, with the directory a static `cd`
 /// moves carried from one segment to the next. Shell the guard does not read suppresses path
-/// matching alone, and an open quote allows the whole command. ADR 0033, ADR 0068.
-fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd) -> (Decision, &'static str) {
+/// matching alone, and an open quote allows the whole command. Nested text the outer shell
+/// expanded is unread wherever it holds a `$`, because the expansion may change how it splits.
+/// ADR 0033, ADR 0068.
+fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, nested: bool) -> (Decision, &'static str) {
     let Some(lexed) = lexer::lexed(command) else {
         cwd.at = None;
         return (Decision::Allow, "");
     };
-    let proven = !lexed.unreadable;
+    let proven = !lexed.unreadable && !(nested && command.contains('$'));
     let mut decisions = Vec::new();
     let mut before = Op::List;
     for segment in &lexed.segments {
         cwd.enter(before);
-        decisions.push(segment_decision(
-            guarded,
-            segment,
-            cwd.at.as_deref(),
-            proven,
-        ));
+        let at = cwd.at.as_deref();
+        decisions.push(segment_decision(guarded, segment, at, proven));
+        let start = cwd.at.clone();
+        let alone = cwd.alone(segment, before, lexed.grouped);
         if proven {
-            decisions.extend(nested(guarded, segment, cwd));
+            decisions.extend(nested_decision(guarded, segment, cwd));
         }
-        cwd.leave(segment, before, lexed.grouped);
+        let evaled = cwd.at != start;
+        cwd.leave(segment, alone, evaled);
         before = segment.after;
     }
     if !proven {
@@ -303,12 +310,13 @@ fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd) -> (Decision, &'static 
     strictest(decisions)
 }
 
-/// The directory relative paths resolve from, `None` once the guard cannot place it, and
-/// whether a command has moved it.
+/// The directory relative paths resolve from, `None` once the guard cannot place it, whether a
+/// command has moved it, and whether the last segment was a `cd` the guard placed.
 #[derive(Clone)]
 struct Cwd {
     at: Option<PathBuf>,
     moved: bool,
+    placed: bool,
 }
 
 impl Cwd {
@@ -319,21 +327,30 @@ impl Cwd {
         }
     }
 
-    /// A `cd` moves the directory only when it runs in this shell and the next command runs
-    /// after it: not in a pipe, a background job, a group, or before `||`. A directory that is
-    /// not there leaves the `cd` failing, so the guard cannot place what runs next.
-    fn leave(&mut self, segment: &Segment, before: Op, grouped: bool) {
-        let Some(target) = moves(&segment.words) else {
-            return;
+    /// A `cd`, or an `eval` that ran one, moves the directory only when it surely runs in this
+    /// shell and the next command runs after it. A directory that is not there leaves the `cd`
+    /// failing, so the guard cannot place what runs next.
+    fn leave(&mut self, segment: &Segment, alone: bool, evaled: bool) {
+        let target = match moves(&segment.words) {
+            Move::Stays if !evaled => {
+                self.placed = false;
+                return;
+            }
+            Move::Stays => self.at.clone(),
+            Move::To(dir) => resolved(self.at.as_deref(), dir).filter(|at| at.is_dir()),
+            Move::Lost => None,
         };
         self.moved = true;
-        let alone = !grouped
-            && matches!(before, Op::List | Op::And | Op::Background)
-            && matches!(segment.after, Op::List | Op::And);
-        self.at = target
-            .filter(|_| alone)
-            .and_then(|dir| resolved(self.at.as_deref(), dir))
-            .filter(|at| at.is_dir());
+        self.at = target.filter(|_| alone);
+        self.placed = self.at.is_some();
+    }
+
+    /// The segment runs in this shell whenever the command reaches it: not behind an `&&` whose
+    /// left side may fail, not in a pipe, a background job or a group, and not before `||`.
+    fn alone(&self, segment: &Segment, before: Op, grouped: bool) -> bool {
+        let runs =
+            matches!(before, Op::List | Op::Background) || (before == Op::And && self.placed);
+        !grouped && runs && matches!(segment.after, Op::List | Op::And)
     }
 
     /// A child shell starts where this one stands, and its `cd` stays its own.
@@ -341,20 +358,38 @@ impl Cwd {
         Cwd {
             at: self.at.clone(),
             moved: false,
+            placed: false,
         }
     }
 }
 
-/// `None` for a segment that does not move the directory, and otherwise the one directory a
-/// static `cd` names, or `None` inside when the guard cannot read where it goes.
-fn moves(words: &[String]) -> Option<Option<&str>> {
-    let at = words.iter().position(|word| !a_prefix(word))?;
-    if words[at] == CD {
-        return Some(cd_target(&words[at + 1..]));
+/// What a segment does to the directory.
+enum Move<'a> {
+    Stays,
+    /// A static `cd` to the directory it names.
+    To(&'a str),
+    /// A move the guard does not follow.
+    Lost,
+}
+
+fn moves(words: &[String]) -> Move<'_> {
+    let Some((command, args)) = command(words) else {
+        return Move::Stays;
+    };
+    if command == CD {
+        return cd_target(args).map_or(Move::Lost, Move::To);
     }
-    let moving = SOURCES.contains(&words[at].as_str())
-        || words.iter().any(|word| MOVERS.contains(&word.as_str()));
-    moving.then_some(None)
+    match SOURCES.contains(&command) || words.iter().any(|word| MOVERS.contains(&word.as_str())) {
+        true => Move::Lost,
+        false => Move::Stays,
+    }
+}
+
+/// The command word by its basename, found behind the prefixes of `a_prefix`, and the words
+/// after it.
+fn command(words: &[String]) -> Option<(&str, &[String])> {
+    let at = words.iter().position(|word| !a_prefix(word))?;
+    Some((basename(&words[at]), &words[at + 1..]))
 }
 
 fn cd_target(args: &[String]) -> Option<&str> {
@@ -364,7 +399,7 @@ fn cd_target(args: &[String]) -> Option<&str> {
         .skip_while(|arg| matches!(*arg, "-L" | "-P" | "-e" | "-@" | "--"))
         .collect();
     match operands.as_slice() {
-        [dir] if !dir.starts_with(['-', '~']) => Some(dir),
+        [dir] if !dir.starts_with(['-', '~']) && !dir.contains(PARAMETER) => Some(dir),
         _ => None,
     }
 }
@@ -386,8 +421,14 @@ fn segment_decision(
         segment
             .targets
             .iter()
+            .filter(|target| !target.contains(PARAMETER))
             .flat_map(|target| guarded.denied(cwd, target))
-            .chain(written.iter().flat_map(|word| guarded.asked(cwd, word))),
+            .chain(
+                written
+                    .iter()
+                    .filter(|word| !word.contains(PARAMETER))
+                    .flat_map(|word| guarded.asked(cwd, word)),
+            ),
     )
 }
 
@@ -395,12 +436,11 @@ fn segment_decision(
 /// same prefixes klin's own name is found behind, so a script of the tree's own named `rm` is
 /// read as `rm`. ADR 0033, ADR 0068.
 fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
-    let Some(at) = words.iter().position(|word| !a_prefix(word)) else {
+    let Some((command, args)) = command(words) else {
         return Vec::new();
     };
-    let args = &words[at + 1..];
     let is_dir = |path: &str| resolved(cwd, path).is_some_and(|at| at.is_dir());
-    match basename(&words[at]) {
+    match command {
         "cp" => copy::destinations(&copy::CP, args, is_dir),
         "install" => copy::destinations(&copy::INSTALL, args, is_dir),
         command if IN_PLACE.contains(&command) => match args.iter().any(|w| w.starts_with("-i")) {
@@ -414,14 +454,17 @@ fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
 
 /// The decision over shell text a segment runs: `eval`'s words in this shell, and a shell's
 /// `-c` text or heredoc in a child. ADR 0068.
-fn nested(guarded: &Guarded, segment: &Segment, cwd: &mut Cwd) -> Option<(Decision, &'static str)> {
-    let at = segment.words.iter().position(|word| !a_prefix(word))?;
-    let args = &segment.words[at + 1..];
-    match basename(&segment.words[at]) {
-        "eval" => Some(walk(guarded, &args.join(" "), cwd)),
+fn nested_decision(
+    guarded: &Guarded,
+    segment: &Segment,
+    cwd: &mut Cwd,
+) -> Option<(Decision, &'static str)> {
+    let (command, args) = command(&segment.words)?;
+    match command {
+        EVAL => Some(walk(guarded, &args.join(" "), cwd, true)),
         command if SHELLS.contains(&command) => {
             let text = shell_text(args, segment.body.as_deref())?;
-            Some(walk(guarded, &text, &mut cwd.child()))
+            Some(walk(guarded, &text, &mut cwd.child(), true))
         }
         _ => None,
     }
