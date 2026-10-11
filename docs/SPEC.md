@@ -1988,18 +1988,22 @@ B.19.6 holds, except how the release is installed and which binary
 updates. Every binary but a plugin's updates, one built from source
 included (ADR 0072). `klin update` first checks that it can create a file in
 the directory that holds the binary. When it cannot, it prints `klin cannot
-write DIR, where this klin is installed: REASON. Run sudo klin update, or
-install klin where you can write with the installer: COMMAND`, asks nothing
-and exits 2. It then takes `release-ask.lock`, the lock the detached
+write DIR, where this klin is installed: REASON. Install klin where you can
+write with the installer, and remove this klin: COMMAND`, asks nothing and
+exits 2. It names no `sudo`: klin as root would write root's files into the
+person's cache. The install extracts the checked archive into a directory
+beside the binary, so only whoever may already replace the binary can change
+what it installs between the check and the rename. It then takes `release-ask.lock`, the lock the detached
 child holds, and waits up to 60 seconds while an ask or an install runs. It
 then asks GitHub for the newest release. When it is newer than the binary
 and than the klin on disk, which an install in between may have replaced
 (on Linux the running binary's path then ends in ` (deleted)`, and klin
 reads and replaces the path without it),
 klin installs it as section 11.9 says, through the signature check, prints `klin updated to TAG. Release notes: LINK` and exits
-0. When `PATH` finds another `klin` first, which a shell and klin's hooks run
-instead, it adds `klin: NOTE: PATH finds another klin first, at PATH, and a
-shell and klin's hooks run that one. Run PATH update, or remove it.` When the
+0. When `PATH` finds another executable `klin` first, which a shell and klin's
+hooks run instead, it adds `klin: NOTE: PATH finds another klin first, at
+FILE, and a shell and klin's hooks run that one. Run FILE update, or remove
+it.` A binary reached through a link is replaced where the link points. When the
 binary is the newest, it says so and exits 0. A lock still held
 after the wait, or a failed ask, download or signature check, installs
 nothing, prints why and exits 2. A
@@ -2077,8 +2081,7 @@ names its host's own update step in place of `klin update`. ADR 0069.
   comment names that tag and this machine's target. Then they extract the archive with `tar` and
   rename its `klin` over the running binary, so the binary is the old one or
   the new one and never part of either. A failed check installs nothing and
-  says `the signature of klin TAG REASON, so nothing was installed.` klin
-  does not run `klin-update`, which cannot check a signature. The release
+  says `the signature of klin TAG REASON, so nothing was installed.` The release
   workflow publishes only after the signing job succeeded.
 - **The cache.** `latest.json` under `KLIN_CACHE_DIR`, or under
   `~/.cache/klin` when that is unset, holds the tag, the time of the last

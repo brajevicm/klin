@@ -20,8 +20,10 @@ workflow marks its own builds in place of `klin-update`.**
 
 1. `klin update` installs the signed release over any binary that is not a
    plugin's, a build from source included. A binary in a directory klin
-   cannot write names `sudo klin update` and the installer before it asks
-   GitHub anything. After an install, it names another `klin` that `PATH`
+   cannot write names the installer before it asks GitHub anything. It names
+   no `sudo`. The install extracts the checked archive beside the binary,
+   not in the person's cache, so a process of the person cannot swap the
+   binary between the check and the rename of a root install. After an install, it names another `klin` that `PATH`
    finds first, because a shell and klin's hooks run that one.
 2. The installer no longer installs `klin-update` (`install-updater =
    false`). klin ignores one an earlier installer left.

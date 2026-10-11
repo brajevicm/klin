@@ -10,6 +10,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::io;
 use std::os::unix::ffi::OsStrExt;
+use std::os::unix::fs::MetadataExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -485,7 +486,7 @@ fn install_untried(dir: &Path, route: Route) {
     let Some(tag) = claimed.filter(|tag| older_on_disk(&exe, tag)) else {
         return;
     };
-    if let Err(failure) = signed::install(&tag.to_string(), &exe, dir) {
+    if let Err(failure) = signed::install(&tag.to_string(), &exe) {
         Latest::change(dir, |latest| {
             latest.refused = Some(failure.to_string());
             latest.retry = failure.retry();
@@ -528,14 +529,16 @@ pub fn update() -> Result<Option<Version>, String> {
     if Route::here() == Some(Route::Plugin) {
         return Err(PLUGIN_UPDATE.to_string());
     }
-    let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
-    let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
-    let exe = installed().map_err(|why| format!("klin could not find itself: {why}"))?;
+    let exe = installed()
+        .and_then(|exe| exe.canonicalize())
+        .map_err(|why| format!("klin could not find itself: {why}"))?;
     writable(&exe)?;
+    let cache = cache_dir().ok_or("klin found no cache directory to hold its install lock.")?;
+    let _install = locked(&cache, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
     let Some(tag) = newer_than(&exe)? else {
         return Ok(None);
     };
-    signed::install(&tag.to_string(), &exe, &scratch).map_err(|failure| failure.to_string())?;
+    signed::install(&tag.to_string(), &exe).map_err(|failure| failure.to_string())?;
     Ok(Some(tag))
 }
 
@@ -662,8 +665,8 @@ const INSTALLER: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                          klin-installer.sh | sh";
 
 /// Whether klin may put a new binary in the directory that holds `exe`, tried by creating a file
-/// there. The error names `sudo klin update` and the installer, which installs where the person
-/// can write.
+/// there. The error names the installer, which installs where the person can write. It names no
+/// `sudo`: a root klin would write root's files into the person's cache.
 fn writable(exe: &Path) -> Result<(), String> {
     let dir = exe.parent().unwrap_or(Path::new("/"));
     let probe = dir.join(format!(".klin-probe-{}", std::process::id()));
@@ -673,20 +676,24 @@ fn writable(exe: &Path) -> Result<(), String> {
             Ok(())
         }
         Err(why) => Err(format!(
-            "klin cannot write {}, where this klin is installed: {why}. Run sudo klin update, or \
-             install klin where you can write with the installer: {INSTALLER}",
+            "klin cannot write {}, where this klin is installed: {why}. Install klin where you \
+             can write with the installer, and remove this klin: {INSTALLER}",
             dir.display()
         )),
     }
 }
 
 /// The first other `klin` PATH finds before the binary `klin update` replaced, which a shell
-/// and klin's hooks run instead of it. None when PATH finds this one first, or none at all.
+/// and klin's hooks run instead of it. None when PATH finds this one first, or none at all. Like
+/// a shell, it skips a relative entry and a file that is not executable.
 pub fn shadowed() -> Option<PathBuf> {
     let exe = installed().ok()?.canonicalize().ok()?;
     let first = std::env::split_paths(&std::env::var_os("PATH")?)
+        .filter(|dir| dir.is_absolute())
         .map(|dir| dir.join("klin"))
-        .find(|path| path.is_file())?;
+        .find(|path| {
+            std::fs::metadata(path).is_ok_and(|held| held.is_file() && held.mode() & 0o111 != 0)
+        })?;
     (first.canonicalize().ok()? != exe).then_some(first)
 }
 
@@ -724,7 +731,7 @@ pub fn installed() -> io::Result<PathBuf> {
 /// Whether the release workflow built this binary, which it marks with `KLIN_RELEASE_BUILD` at
 /// compile time. A debug build reads `KLIN_TEST_RELEASE_BUILD` instead, so a test stands for one.
 fn release_build() -> bool {
-    option_env!("KLIN_RELEASE_BUILD").is_some()
+    option_env!("KLIN_RELEASE_BUILD").is_some_and(|value| !value.is_empty())
         || (cfg!(debug_assertions) && set("KLIN_TEST_RELEASE_BUILD"))
 }
 

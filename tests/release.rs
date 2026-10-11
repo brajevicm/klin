@@ -1315,10 +1315,10 @@ fn update_installs_a_signed_release_over_a_binary_built_from_source() {
     assert!(installed.replaced());
 }
 
-/// A klin in a directory the person cannot write names `sudo klin update`, and asks GitHub for
+/// A klin in a directory the person cannot write names the installer, and asks GitHub for
 /// nothing. Spec 11.8.
 #[test]
-fn update_in_a_directory_it_cannot_write_names_sudo() {
+fn update_in_a_directory_it_cannot_write_names_the_installer() {
     let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
     let directory = installed.home.path("installed");
     fs::set_permissions(&directory, fs::Permissions::from_mode(0o555)).expect("read-only");
@@ -1327,7 +1327,8 @@ fn update_in_a_directory_it_cannot_write_names_sudo() {
     fs::set_permissions(&directory, fs::Permissions::from_mode(0o755)).expect("writable");
 
     assert_eq!(run.code, 2, "{}", run.out);
-    assert!(run.says("Run sudo klin update"), "{}", run.out);
+    assert!(run.says("klin-installer.sh"), "{}", run.out);
+    assert!(!run.says("sudo"), "{}", run.out);
     assert_eq!(installed.fetched(), 0);
     assert!(!installed.replaced());
 }
@@ -1362,4 +1363,33 @@ fn update_auto_on_a_source_build_says_why_it_would_change_nothing() {
 
     assert_eq!(run.code, 2, "{}", run.out);
     assert!(run.says("built from source"), "{}", run.out);
+}
+
+/// A `klin update` that could not ask GitHub installs nothing and says why. Spec 11.8.
+#[test]
+fn update_that_cannot_ask_github_says_so_and_installs_nothing() {
+    let installed = Installed::serving("exit 7", "klin.tar.xz", "signed");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 2, "{}", run.out);
+    assert!(
+        run.says("could not ask GitHub for the newest release"),
+        "{}",
+        run.out
+    );
+    assert!(!installed.replaced());
+}
+
+/// A `klin` that PATH finds first but that is not executable is not named, as a shell skips it.
+/// Spec 11.8.
+#[test]
+fn update_does_not_name_a_klin_on_path_that_cannot_run() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    installed.home.write("bin/klin", "not a program\n");
+
+    let run = installed.run(&[], &["update"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("PATH finds another klin"), "{}", run.out);
 }

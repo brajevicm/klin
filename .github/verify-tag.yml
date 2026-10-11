@@ -1,6 +1,6 @@
 # dist inserts these steps into every build-local-artifacts job of release.yml. The checks run in
-# the x86_64 Linux job only, and the last step marks every job's build as a release build. A failure there fails build-local-artifacts, so host and announce never
-# publish the tag. The checkout takes the full history, because `klin check` on a tag
+# the x86_64 Linux job only. A failed check fails build-local-artifacts, so host and announce
+# never publish the tag. The last step marks every job's build as a release build (ADR 0072). The checkout takes the full history, because `klin check` on a tag
 # compares against the merge-base with origin/main. The empty GH_TOKEN keeps the job's release
 # token away from the tests, as in quality.yml.
 - name: Check out the tag with its history

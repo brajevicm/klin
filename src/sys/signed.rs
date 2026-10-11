@@ -38,12 +38,14 @@ impl fmt::Display for Failure {
 }
 
 /// Download the archive of `tag` for this machine, check its signature, and put its `klin` in
-/// place of `exe`. On an error, `exe` is as it was and the failure says why.
-pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), Failure> {
+/// place of `exe`. On an error, `exe` is as it was and the failure says why. The work directory
+/// sits beside `exe`, so only whoever may already replace `exe` can change the checked binary
+/// between its extraction and the rename.
+pub fn install(tag: &str, exe: &Path) -> Result<(), Failure> {
     let target = target().map_err(Failure::Refused)?;
     let archive = format!("klin-{target}.tar.xz");
     let url = format!("{DOWNLOAD}{tag}/{archive}");
-    let work = Scratch(scratch.join(format!("update-{}", std::process::id())));
+    let work = Scratch(exe.with_file_name(format!(".klin-update-{}", std::process::id())));
     let _ = fs::remove_dir_all(&work.0);
     fs::create_dir_all(&work.0)
         .map_err(|why| Failure::Transient(format!("{}: {why}", work.0.display())))?;
