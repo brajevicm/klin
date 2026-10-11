@@ -8,6 +8,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use crate::cli::setup;
 use crate::config::file::Discovered;
 use crate::engine::catalogue;
 use crate::hook::host;
@@ -151,7 +152,7 @@ fn answered(event: Event, kind: Kind, start: &Path, root: &Path) -> u8 {
         Kind::Session | Kind::Prompt => {
             turn::opened(event, start, &catalogue::sections(), &mut out)
         }
-        Kind::Stop => stop::stop(event, start, &mut out),
+        Kind::Stop => stop::stop(event, start, setup::behind, &mut out),
     };
     print!("{out}");
     code

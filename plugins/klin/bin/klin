@@ -111,7 +111,7 @@ if [ "${1:-}" = __agent ]; then
 	touch "$CACHE/$VERSION" 2>/dev/null
 	if [ ! -e "$HINTED" ] && [ -z "${CURSOR_VERSION:-}" ] &&
 		! { on_path=$(command -v klin) && ! [ "$on_path" -ef "$0" ]; } && opted_in; then
-		printed=$("$BINARY" "$@")
+		printed=$(KLIN_PLUGIN=1 "$BINARY" "$@")
 		outcome=$?
 		if [ -n "$printed" ] || [ "$outcome" -ne 0 ]; then
 			[ -z "$printed" ] || printf '%s\n' "$printed"
@@ -122,4 +122,5 @@ if [ "${1:-}" = __agent ]; then
 	fi
 fi
 
-exec "$BINARY" "$@"
+# The binary tells a plugin user how to update the plugin, and never updates itself. Spec 11.9.
+KLIN_PLUGIN=1 exec "$BINARY" "$@"

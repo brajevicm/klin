@@ -11,6 +11,7 @@ use crate::cli::setup::{self, Integration};
 use crate::config::file::{Config, Discovered};
 use crate::engine::catalogue;
 use crate::sys::error::Error;
+use crate::sys::release;
 use crate::window::stamp::{Here, Verdict};
 use crate::{hook::journal, sys::state, window::stamp};
 
@@ -28,17 +29,27 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(root) = found.root.as_deref() else {
         return Err(Error(NO_REPOSITORY.to_string()));
     };
-    let document = document(&found, root, start);
+    release::refresh();
+    let latest = release::known();
+    let document = document(&found, root, start, latest.as_ref());
     match args.json {
         true => {
             let _ = writeln!(out, "{document}");
         }
-        false => text(&document, &found.said(), out),
+        false => {
+            let newer = latest.filter(release::Version::is_newer);
+            text(&document, &found.said(), newer.as_ref(), out);
+        }
     }
     Ok(0)
 }
 
-fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
+fn document(
+    found: &Discovered,
+    root: &Path,
+    start: &Path,
+    latest: Option<&release::Version>,
+) -> Value {
     let error = found
         .config
         .as_ref()
@@ -48,7 +59,11 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
     json!({
         "schema_version": 1,
         "command": "status",
-        "klin": {"version": env!("CARGO_PKG_VERSION")},
+        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": latest.map(ToString::to_string),
+            "update_available": latest.is_some_and(release::Version::is_newer),
+            "auto_update": release::auto_update(),
+            "updated_from": release::updated_from().map(|from| from.to_string()),
+        },
         "config": {
             "path": found.config.as_ref().map(|file| file.display().to_string()),
             "present": found.config.is_some(),
@@ -131,8 +146,16 @@ fn last_stop(lines: &[Value]) -> Value {
         )
 }
 
-fn text(document: &Value, notes: &[String], out: &mut String) {
+fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, out: &mut String) {
     let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
+    if let (Some(tag), Some(route)) = (newer, release::route()) {
+        let news = release::News::Available(tag.clone());
+        let _ = writeln!(
+            out,
+            "{}",
+            release::Audience::Person.note(route, &news, None)
+        );
+    }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {
         (Some(path), None) => {

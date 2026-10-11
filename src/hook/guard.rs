@@ -5,7 +5,7 @@ use crate::hook::copy;
 use crate::hook::host::adapter::{Decision, Event};
 use crate::hook::journal;
 use crate::hook::lexer::{self, Op, Segment};
-use crate::sys::state;
+use crate::sys::{release, state};
 
 /// Every wildcard a shell expands. A token holding one proves nothing about the file it stands
 /// for, so the guard matches no path against it. ADR 0033.
@@ -39,7 +39,7 @@ const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the 
 const SETUP_REFUSAL: &str = "klin: refused — `klin setup` writes the configuration and \
     the host's hook files. Only a person runs it, in a reviewed commit.";
 const UPDATE_REFUSAL: &str = "klin: refused — `klin update` replaces the binary that judges \
-    this work. Only a person runs it.";
+    this work. Only a person runs it. `klin status` names a newer release.";
 const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's own hook \
     events, and the host runs it. Only the host runs it.";
 
@@ -48,6 +48,7 @@ const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's
 const KLIN_REFUSED: &[(&[&str], &str, &str)] = &[
     (&["setup"], SETUP_REFUSAL, "setup"),
     (&["update"], UPDATE_REFUSAL, "update"),
+    (&[release::CHILD], UPDATE_REFUSAL, "update"),
     (&["__agent"], AGENT_REFUSAL, "agent"),
 ];
 

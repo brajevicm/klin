@@ -85,11 +85,17 @@ const WAITED: Duration = Duration::from_millis(25);
 
 /// The lock, or `None` when it could not be acquired within the caller's budget.
 pub fn lock(at: &Path, budget: Duration) -> Option<Lock> {
+    lock_file(&at.join(LOCK), budget)
+}
+
+/// The advisory lock on `file`, made when missing, or `None` when it could not be acquired
+/// within the budget. The system drops it with its process, so a lock never outlives its owner.
+pub fn lock_file(file: &Path, budget: Duration) -> Option<Lock> {
     let file = std::fs::OpenOptions::new()
         .create(true)
         .truncate(false)
         .write(true)
-        .open(at.join(LOCK))
+        .open(file)
         .ok()?;
     let until = Instant::now() + budget;
     loop {

@@ -122,6 +122,10 @@ pub trait Adapter: Sync {
     fn hook_file_kind(&self) -> HookFile {
         HookFile::Nested
     }
+    /// The one step that updates klin's plugin on this host to release `tag`. Spec 11.9.
+    fn plugin_update(&self, _tag: &str) -> String {
+        "Update the klin plugin in your host.".to_string()
+    }
     /// The settings file that enables klin's plugin for a write into `root`, or into the home
     /// directory when `shared`. The plugin carries the hooks itself, so on this machine one of
     /// the two copies yields on each event. Section 19.3, 9.8.

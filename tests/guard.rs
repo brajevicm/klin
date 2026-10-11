@@ -121,6 +121,7 @@ fn refuses_the_commands_only_a_person_runs() {
         "klin setup --user --host claude",
         "klin update",
         "env klin update",
+        "KLIN_AUTO_UPDATE=1 klin __release update",
         "klin __agent event",
         "echo '{}' | klin __agent event --host claude",
         "target/debug/klin __agent",

@@ -7,11 +7,34 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::cli::setup;
+use crate::sys::release;
 
 const INSTALL: &str = "curl --proto '=https' --tlsv1.2 -LsSf \
                        https://github.com/brajevicm/klin/releases/latest/download/klin-installer.sh | sh";
 
-pub fn run() -> u8 {
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum Switch {
+    On,
+    Off,
+}
+
+#[derive(clap::Args)]
+pub struct Args {
+    /// Install each newer release on its own at a session start, or stop doing so
+    #[arg(long, value_enum, conflicts_with = "check")]
+    auto: Option<Switch>,
+    /// Ask GitHub for the newest release and name it, without installing anything
+    #[arg(long)]
+    check: bool,
+}
+
+pub fn run(args: &Args) -> u8 {
+    if args.check {
+        return check();
+    }
+    if let Some(switch) = args.auto {
+        return auto(switch);
+    }
     let beside = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
@@ -31,6 +54,55 @@ pub fn run() -> u8 {
             2
         }
     }
+}
+
+/// Write the person's auto-update setting. Spec 11.8, 11.9.
+fn auto(switch: Switch) -> u8 {
+    let on = matches!(switch, Switch::On);
+    match release::set_auto(on) {
+        Ok(()) if on => {
+            println!(
+                "klin: auto-update is on. A session start installs a newer release on its own."
+            );
+            0
+        }
+        Ok(()) => {
+            println!("klin: auto-update is off. klin tells you when a newer release is out.");
+            0
+        }
+        Err(why) => {
+            eprintln!("FAIL: {why}");
+            2
+        }
+    }
+}
+
+/// The installed version and the newest release, which GitHub is asked for now. Spec 11.8.
+fn check() -> u8 {
+    let version = env!("CARGO_PKG_VERSION");
+    let Some((tag, saved)) = release::fetch() else {
+        eprintln!("FAIL: klin {version} could not ask GitHub for the newest release.");
+        return 2;
+    };
+    if !saved {
+        eprintln!(
+            "klin: NOTE: klin could not save this answer in its cache, so klin status still \
+             shows the earlier one."
+        );
+    }
+    match tag.is_newer() {
+        true => println!(
+            "{}",
+            release::Audience::Person.note(
+                release::route().unwrap_or(release::Route::Installer),
+                &release::News::Available(tag.clone()),
+                None
+            )
+        ),
+        false => println!("klin {version} is the newest release."),
+    }
+    println!("Release notes: {}", tag.notes());
+    0
 }
 
 /// After an update, the new binary reads this repository's integrations, and any that is not
