@@ -1670,3 +1670,48 @@ fn a_bare_import_under_the_base_url_is_a_local_edge() {
         }
     }
 }
+
+#[test]
+fn a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external() {
+    let price = ("components/price.tsx", "export const price = 1;\n");
+    let extended = r#"{"extends":"./base.json","compilerOptions":{"baseUrl":"."}}"#;
+    let not_a_root = r#"{"compilerOptions":{"baseUrl":"."},"files":["components/price.tsx"]}"#;
+    let plain = ("tsconfig.json", r#"{"compilerOptions":{"baseUrl":"."}}"#);
+    let index = ("components/index.ts", "export const price = 1;\n");
+    let manifest = ("components/package.json", r#"{"types":"./safe.ts"}"#);
+    let safe = ("components/safe.ts", "export const price = 1;\n");
+    let file = ("components/price.ts", "export const price = 1;\n");
+    let directory = ("components/price/index.ts", "export const price = 1;\n");
+
+    a_base_url_hole(
+        &[("tsconfig.json", extended), ("base.json", "{}"), price],
+        "components/price",
+    );
+    a_base_url_hole(&[("tsconfig.json", not_a_root), price], "components/price");
+    a_base_url_hole(&[plain, index, manifest, safe], "components");
+    a_base_url_hole(&[plain, file, directory], "components/price");
+}
+
+fn a_base_url_hole(files: &[(&str, &str)], import: &str) {
+    let tree = Tree::new();
+    tree.write(
+        "klin.json",
+        r#"{"layering":{"layers":{"ui":{"in":"components","can_use":["lib"]},"lib":{"in":"lib","can_use":[]}}}}"#,
+    );
+    for (path, text) in files {
+        tree.write(path, text);
+    }
+    tree.write(
+        "lib/bad.ts",
+        &format!("import {{ price }} from \"{import}\";\nexport const bad = price;\n"),
+    );
+
+    let run = tree.run(&["check", "layering"]);
+
+    assert_eq!(run.code, 0, "{files:?}: {}", run.out);
+    assert!(
+        run.says("REVIEW:") && run.says("lib/bad.ts:1") && !run.says("lib → ui"),
+        "{files:?}: {}",
+        run.out
+    );
+}

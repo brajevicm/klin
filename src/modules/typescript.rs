@@ -64,8 +64,8 @@ fn resolved(
 ) {
     let before = builder.holes.len();
     match located(paths, site.file, specifier) {
-        Some(Ok((base, missing))) => dependency(builder, modules, site, specifier, &base, missing),
-        Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
+        Some(Ok((base, lookup))) => dependency(builder, modules, site, specifier, &base, lookup),
+        Some(Err(why)) => hole(builder, site, why),
         None => builder.external += 1,
     }
     if !relative(specifier) {
@@ -81,25 +81,53 @@ fn located(
     paths: Option<super::typescript_paths::FilePaths<'_>>,
     file: &str,
     specifier: &str,
-) -> Option<Result<(String, Missing), String>> {
+) -> Option<Result<(String, Lookup), String>> {
     if relative(specifier) {
-        return joined(directory(file), specifier).map(|base| Ok((base, Missing::Judged)));
+        return joined(directory(file), specifier).map(|base| Ok((base, Lookup::Named)));
     }
     let scope = paths?;
     match scope.resolve(specifier) {
-        Some(found) => Some(found.map(|base| (base, Missing::Judged))),
+        Some(found) => Some(found.map(|base| (base, Lookup::Named))),
         None => scope
             .under_base_url(specifier)
-            .map(|base| Ok((base, Missing::External))),
+            .map(|(base, unproved)| Ok((base, Lookup::BaseUrl { unproved }))),
     }
 }
 
-/// What a specifier that names no held TypeScript file is: judged by its form, or external,
-/// as a `baseUrl` miss is because TypeScript then tries packages.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Missing {
-    Judged,
-    External,
+/// How a path was named. A relative or paths name that reaches no held file is judged by its
+/// form. A `baseUrl` name that reaches none is external, as TypeScript then tries packages, and
+/// one that reaches a held file is a hole where klin cannot prove the config.
+enum Lookup {
+    Named,
+    BaseUrl { unproved: Option<String> },
+}
+
+impl Lookup {
+    /// Why one held target is not proved: an unproved `baseUrl` config, or a directory whose
+    /// `package.json` may name another entry point than its index file.
+    fn doubt(
+        self,
+        topology: &Topology,
+        specifier: &str,
+        base: &str,
+        target: &str,
+    ) -> Option<String> {
+        let Lookup::BaseUrl { unproved } = self else {
+            return None;
+        };
+        let manifest = format!("{base}/package.json");
+        unproved.or_else(|| {
+            (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
+                format!(
+                    "{specifier} names a directory whose {manifest} may choose another entry point"
+                )
+            })
+        })
+    }
+}
+
+fn hole(builder: &mut Builder, site: &Site, why: String) {
+    builder.hole_at(site.file, site.line, site.start_byte, site.text, why);
 }
 
 fn dependency(
@@ -108,7 +136,7 @@ fn dependency(
     site: &Site,
     specifier: &str,
     base: &str,
-    missing: Missing,
+    lookup: Lookup,
 ) {
     let topology = builder.topology;
     let candidates = candidates(base);
@@ -116,32 +144,31 @@ fn dependency(
         .iter()
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
+    let by_base_url = matches!(lookup, Lookup::BaseUrl { .. });
+    let outside = || by_base_url || outside(topology, specifier, base, &candidates);
     match held.as_slice() {
-        [target] => builder.depend_at(
-            site.from,
-            modules[target.as_str()],
-            site.file,
-            site.line,
-            site.start_byte,
-        ),
-        [] if missing == Missing::External => builder.external += 1,
-        [] if another_kind(topology, base, &candidates) => builder.external += 1,
-        [] if !relative(specifier) && package_name(specifier) => builder.external += 1,
-        [] => builder.hole_at(
-            site.file,
-            site.line,
-            site.start_byte,
-            site.text,
+        [target] => match lookup.doubt(topology, specifier, base, target) {
+            Some(why) => hole(builder, site, why),
+            None => builder.depend_at(
+                site.from,
+                modules[target.as_str()],
+                site.file,
+                site.line,
+                site.start_byte,
+            ),
+        },
+        [] if outside() => builder.external += 1,
+        [] => hole(
+            builder,
+            site,
             format!(
                 "{specifier} names no TypeScript file the tree holds: {}",
                 candidates.join(", ")
             ),
         ),
-        _ => builder.hole_at(
-            site.file,
-            site.line,
-            site.start_byte,
-            site.text,
+        _ => hole(
+            builder,
+            site,
             format!(
                 "{specifier} names more than one TypeScript file: {}",
                 held.iter()
@@ -151,6 +178,12 @@ fn dependency(
             ),
         ),
     }
+}
+
+/// Whether a name that reaches no held TypeScript file is external: a file of another kind, or a
+/// bare name that may be a package.
+fn outside(topology: &Topology, specifier: &str, base: &str, candidates: &[String]) -> bool {
+    another_kind(topology, base, candidates) || !relative(specifier) && package_name(specifier)
 }
 
 fn source(file: &str) -> bool {

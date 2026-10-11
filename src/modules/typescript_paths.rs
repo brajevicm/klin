@@ -108,15 +108,19 @@ impl FilePaths<'_> {
         self.scope.resolve(specifier, self.root)
     }
 
-    /// The path a bare specifier names under a written `baseUrl`, where the config is proved.
-    pub(super) fn under_base_url(self, specifier: &str) -> Option<String> {
+    /// The path a bare specifier names under a written `baseUrl`, and why klin cannot prove it
+    /// where the config or the file's root membership is unproved.
+    pub(super) fn under_base_url(self, specifier: &str) -> Option<(String, Option<String>)> {
         let Some(Anchor::BaseUrl(base)) = &self.scope.anchor else {
             return None;
         };
-        if self.scope.uncertain || !self.root || absolute(specifier) {
+        if absolute(specifier) {
             return None;
         }
-        joined(base, specifier)
+        let unproved = (self.scope.uncertain || !self.root).then(|| {
+            format!("{specifier} may be a baseUrl import whose configuration klin cannot prove")
+        });
+        Some((joined(base, specifier)?, unproved))
     }
 }
 

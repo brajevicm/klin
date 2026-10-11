@@ -356,10 +356,12 @@ impl Side {
 }
 
 fn policy(config: &Config, moves: &Moves) -> Result<Policy, Error> {
-    let fields = config
-        .required(SECTION)?
-        .as_object()
-        .ok_or_else(|| refused(config, "must be an object with \"layers\", or false"))?;
+    let fields = config.required(SECTION)?.as_object().ok_or_else(|| {
+        refused(
+            config,
+            "must be an object with \"layers\" or \"acyclic\": true, or false",
+        )
+    })?;
     let names: Vec<&str> = KEYS.iter().map(|key| key.name).collect();
     config::file::known_fields(&config.file, SECTION, fields, &names)?;
     let layers = layers(config, fields)?;

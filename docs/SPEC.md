@@ -5151,14 +5151,22 @@ outside an import that writes it is not read. Every TypeScript file is a
 module. A relative specifier resolves when exactly one of these files exists:
 the specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a
 `.js` specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after
-it. A bare specifier with no recognized paths rule resolves under a written
-`compilerOptions.baseUrl` when the config that owns its file is proved for
-paths aliases below and the file is one of its roots: where the candidate rule
-finds a held TypeScript file under the `baseUrl` directory, the import is a
-local dependency, and where it finds none, the import is external, as
-TypeScript then tries packages. Any other bare specifier and a specifier that
-names a file of another kind are counted as external. Pinned by
-`a_bare_import_under_the_base_url_is_a_local_edge` in `tests/layering.rs`. Explicit paths aliases
+it. A bare specifier with no recognized paths rule is looked up under a
+`compilerOptions.baseUrl` that the config owning its file writes. This models
+TypeScript 5 and earlier: TypeScript 6.0 deprecates `baseUrl` and no longer
+looks modules up under it, and TypeScript 7.0 removes the option. Where the
+candidate rule finds no held TypeScript file under the `baseUrl` directory,
+the import is external, as TypeScript then tries packages. Where it finds
+exactly one, the import is a local dependency when that config is proved for
+paths aliases below, the file is one of its roots, and the target is not an
+index file of a directory that holds a `package.json`, whose `types` or
+`main` may name another entry point. Otherwise, and where it finds two, such
+as `price.ts` and `price/index.ts`, the import is a located local hole, never
+external. Any other bare specifier and a specifier that names a file of
+another kind are counted as external. Pinned by
+`a_bare_import_under_the_base_url_is_a_local_edge` and
+`a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
+in `tests/layering.rs`. Explicit paths aliases
 resolve or produce local incompleteness under the rule below. A `mod` declaration is containment and
 never a dependency.
 
@@ -5266,8 +5274,8 @@ empty or malformed object supplies no parent keys. Array-form extends
 supplies no inherited names, though direct child paths remain recognized.
 Package extends, unreadable configs
 and bundler-specific configuration supply no unobserved names. A `baseUrl`
-an unproved config writes is not used for bare lookup, so its bare imports
-stay external. Node/package resolution remains outside V1. Aliased targets
+a config inherits through `extends` is not read, so a bare import under it
+stays external. Node/package resolution remains outside V1. Aliased targets
 of another kind or ignored source retain the existing outside-V1 behavior.
 Layering consumes every relevant local hole under the held/new semantics
 below. Public-api consumes alias holes at re-export source sites only:
@@ -5370,9 +5378,11 @@ unit tests
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
-declares, a TypeScript `import()` or `require()`, a bare import under a `baseUrl`
-that an unproved config writes, and package exports are not dependencies in
-V1. A name a block or a function binds in the
+declares, a TypeScript `import()` or `require()`, a bare import under a
+`baseUrl` a config inherits through `extends`, and package exports are not
+dependencies in V1. A bare `baseUrl` import klin cannot prove, under an
+unproved config, from a file outside its roots, into a directory that holds a
+`package.json` or with two candidates, is a located hole, not a dependency. A name a block or a function binds in the
 type namespace, such as a local `use`, a local type alias or a generic type
 parameter, shadows a declared child module of the same name in Rust, and klin
 still reads a bare path through that name as a dependency on the child.
