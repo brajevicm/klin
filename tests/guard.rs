@@ -174,14 +174,14 @@ fn asks_about_a_command_that_writes_every_argument_it_takes() {
     asked(&bash_in(&tree, "rm -f ./klin.json"), "./klin.json", "a dot");
 }
 
-/// `cp` and `install` read their first argument, so a backup of klin's own state through one of
-/// them is not a write. ADR 0033.
+/// `cp` and `install` read their sources, so a backup of klin's own state through one of them is
+/// not a write. ADR 0033, ADR 0068.
 #[test]
 fn allows_a_command_that_reads_the_argument_it_is_given() {
     for command in [
         "cp .git/klin/turn /tmp/backup",
-        "cp /tmp/loose.json klin.json",
-        "install -m 644 /tmp/loose.json klin.json",
+        "cp klin.json ordinary-copy.json",
+        "install -m 644 klin.json /tmp/copy.json",
         "ed klin.json",
         "patch -p1 klin.json < fix.diff",
         "git apply klin.json",
@@ -261,9 +261,14 @@ fn allows_a_command_it_cannot_read_in_full() {
         "rm `echo klin.json`",
         "rm ${CONFIG}",
         "rm klin.json\\",
-        "cat <<'EOF' > klin.json\nnothing to see\nEOF",
+        "cat <<< x > klin.json",
+        "cat <<'EOF' > klin.json\nnever closed",
         "cd /elsewhere && rm klin.json",
         "cd sub; rm klin.json",
+        "rm $DIR/../klin.json",
+        "sh -c \"$CMD\"",
+        "eval \"$CMD\"",
+        "sh -c 'rm $(echo klin).json'",
     ] {
         allowed(&bash(command), command);
     }
@@ -493,5 +498,195 @@ fn asks_about_a_writer_behind_a_prefix() {
         "KLIN_STATE_DIR=/tmp/x rm klin.json",
     ] {
         asked(&bash_in(&tree, command), "klin.json", command);
+    }
+}
+
+/// `cp` and `install` write their destination, and a destination that is a directory takes each
+/// source's name. ADR 0068.
+#[test]
+fn asks_about_the_destination_of_a_copy() {
+    let tree = Tree::new();
+    for (command, named) in [
+        ("cp source klin.json", "klin.json"),
+        ("cp -p source ./klin.json", "./klin.json"),
+        ("install source klin.json", "klin.json"),
+        ("install -m 644 /tmp/loose.json klin.json", "klin.json"),
+        ("install -pm644 /tmp/loose.json klin.json", "klin.json"),
+        ("cp --suffix .bak source klin.json", "klin.json"),
+        ("cp /tmp/klin.json .", "./klin.json"),
+        ("cp -t . /tmp/klin.json", "./klin.json"),
+        (
+            "cp --target-directory=.git/klin notes.md",
+            ".git/klin/notes.md",
+        ),
+        ("install -d .git/klin/extra", ".git/klin/extra"),
+    ] {
+        asked(&bash_in(&tree, command), named, command);
+    }
+    let absolute = format!("cp source {}", tree.at("klin.json"));
+    asked(
+        &bash_in(&tree, &absolute),
+        &tree.at("klin.json"),
+        "an absolute destination",
+    );
+}
+
+/// An option the guard cannot read leaves the destination unproven, so the guard does not guess.
+/// ADR 0068.
+#[test]
+fn allows_a_copy_whose_destination_it_cannot_place() {
+    for command in [
+        "install -S .bak source klin.json",
+        "install -T source klin.json",
+        "cp --target=. /tmp/klin.json",
+        "cp -Q source klin.json",
+        "cp -T /tmp/klin.json .",
+        "cp a b klin.json",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// A `cd` the guard can place moves the directory every later relative path resolves from. ADR
+/// 0068.
+#[test]
+fn a_static_cd_moves_where_a_relative_path_resolves() {
+    let tree = Tree::new();
+    tree.write("sub/notes.md", "one\n");
+    for (command, named) in [
+        ("cd sub && sed -i s/a/b/ ../klin.json", "../klin.json"),
+        ("cd sub\nrm ../klin.json", "../klin.json"),
+        ("cd -P sub && cd .. && rm klin.json", "klin.json"),
+        ("cd sub && make | tee ../klin.json", "../klin.json"),
+    ] {
+        asked(&bash_in(&tree, command), named, command);
+    }
+    denied(
+        &bash_in(&tree, "cd sub; echo x > ../klin.json"),
+        "a redirect after a cd",
+    );
+    let absolute = format!("cd {} && rm ../klin.json", tree.at("sub"));
+    asked(&bash_in(&tree, &absolute), "../klin.json", "an absolute cd");
+    for command in [
+        "cd sub && rm klin.json",
+        "cd \"$DIR\" && rm ../klin.json",
+        "cd $DIR; echo x > ../klin.json",
+        "cd ~ && rm ../klin.json",
+        "cd - && rm ../klin.json",
+        "cd sub || exit 1; rm ../klin.json",
+        "cd sub && make || rm ../klin.json",
+        "cd sub & rm ../klin.json",
+        "echo | cd sub && rm ../klin.json",
+        "(cd sub); rm ../klin.json",
+        "pushd sub && rm ../klin.json",
+        ". ./env.sh && rm klin.json",
+        "f() { cd sub; }; f; rm ../klin.json",
+        "cd missing && rm ../klin.json",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
+/// A command that runs in a child shell cannot move the directory of the one that started it.
+/// ADR 0068.
+#[test]
+fn a_child_shell_keeps_its_cd_to_itself() {
+    let tree = Tree::new();
+    tree.write("sub/notes.md", "one\n");
+    asked(
+        &bash_in(&tree, "sh -c 'cd sub && rm ../klin.json'"),
+        "../klin.json",
+        "a cd inside the child",
+    );
+    allowed(
+        &bash_in(&tree, "sh -c 'cd sub'; rm ../klin.json"),
+        "a cd that stayed in the child",
+    );
+    asked(
+        &bash_in(&tree, "eval 'cd sub'; rm ../klin.json"),
+        "../klin.json",
+        "eval runs in the same shell",
+    );
+}
+
+/// Shell text the guard can read in full is read again as the command it runs. ADR 0068.
+#[test]
+fn reads_a_literal_nested_command() {
+    let tree = Tree::new();
+    for command in [
+        "sh -c 'rm klin.json'",
+        "sudo bash -lc 'rm -f klin.json'",
+        "eval 'rm klin.json'",
+        "eval rm klin.json",
+        "sh <<'EOF'\nrm klin.json\nEOF",
+        "bash -s <<EOF\ntrue\nrm klin.json\nEOF",
+    ] {
+        asked(&bash_in(&tree, command), "klin.json", command);
+    }
+    for command in [
+        "bash -c \"echo x > klin.json\"",
+        "eval echo x '>' klin.json",
+        "cat <<'EOF' > klin.json\nnothing to see\nEOF",
+    ] {
+        denied(&bash_in(&tree, command), command);
+    }
+    denied(
+        &bash_in(&tree, "sh -c 'klin setup'"),
+        "klin's own command nested",
+    );
+    for command in [
+        "cat <<'EOF'\nrm klin.json\nEOF",
+        "sh script.sh klin.json",
+        "sh -o errexit -c 'rm klin.json'",
+        "echo 'sh -c \"rm klin.json\"'",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
+/// A guarded name inside a script, a comment or a quoted argument is text, not a write. ADR 0068.
+#[test]
+fn a_mention_of_the_configuration_is_not_a_write() {
+    for command in [
+        "sed -i 's/a/b/; s/ klin.json /x/' notes.md",
+        "perl -i -pe 's/ klin.json /x/' notes.md",
+        "rm notes.txt # klin.json",
+        "rm \"klin.json backup\"",
+        "echo x > notes.md # > klin.json",
+    ] {
+        allowed(&bash(command), command);
+    }
+}
+
+/// A quoted path holds its spaces, and resolves as the shell would. ADR 0068.
+#[test]
+fn a_quoted_path_with_spaces_resolves_as_one_path() {
+    let tree = Tree::new();
+    tree.write("my dir/notes.md", "one\n");
+    denied(
+        &bash_in(&tree, "echo x > \"my dir/../klin.json\""),
+        "a quoted redirect target",
+    );
+    asked(
+        &bash_in(&tree, "cd 'my dir' && cp ../notes.md ../klin.json"),
+        "../klin.json",
+        "a quoted cd",
+    );
+}
+
+/// Ordinary writes to the source tree stay ordinary work. ADR 0068.
+#[test]
+fn allows_ordinary_source_writes() {
+    let tree = Tree::new();
+    tree.write("src/main.rs", "fn main() {}\n");
+    for command in [
+        "echo x > src/main.rs",
+        "cp src/main.rs src/copy.rs",
+        "install -m 644 src/main.rs /tmp/main.rs",
+        "cd src && rm main.rs",
+        "sh -c 'cp src/main.rs src/b.rs'",
+        "cp klin.json src/",
+    ] {
+        allowed(&bash_in(&tree, command), command);
     }
 }

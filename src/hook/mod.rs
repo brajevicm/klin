@@ -1,9 +1,11 @@
 pub mod budget;
 pub mod build;
+mod copy;
 pub mod guard;
 pub mod handoff;
 pub mod host;
 pub mod journal;
+mod lexer;
 pub mod radius;
 pub mod stats;
 pub mod stop;
