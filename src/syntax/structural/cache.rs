@@ -158,7 +158,7 @@ fn decoded_body(body: &[u8]) -> Option<HashMap<String, Outcome>> {
     let mut names = Names::default();
     let mut reader = Reader(body, &mut names);
     let outcomes = reader.list(Reader::entry)?;
-    reader.0.is_empty().then_some(outcomes)
+    reader.0.is_empty().then(|| outcomes.into_iter().collect())
 }
 
 /// A word-at-a-time FNV-1a sum. It finds a torn or interleaved write, and it is no defence
@@ -332,7 +332,8 @@ impl Reader<'_, '_> {
         None
     }
 
-    /// A count, never more than the bytes left could hold, so a corrupt one allocates nothing.
+    /// A count, never more than the bytes left could hold, so a corrupt one reserves no more
+    /// items than those bytes.
     fn count(&mut self) -> Option<usize> {
         usize::try_from(self.number()?)
             .ok()
@@ -340,9 +341,13 @@ impl Reader<'_, '_> {
     }
 
     /// A counted run of items, and `None` when any one of them does not read.
-    fn list<T, C: FromIterator<T>>(&mut self, each: fn(&mut Self) -> Option<T>) -> Option<C> {
+    fn list<T>(&mut self, each: fn(&mut Self) -> Option<T>) -> Option<Vec<T>> {
         let count = self.count()?;
-        (0..count).map(|_| each(self)).collect()
+        let mut items = Vec::with_capacity(count);
+        for _ in 0..count {
+            items.push(each(self)?);
+        }
+        Some(items)
     }
 
     fn text(&mut self) -> Option<String> {
@@ -406,7 +411,7 @@ impl Reader<'_, '_> {
     fn declaration(&mut self) -> Option<Declaration> {
         let (name, kind, line, end, text) = self.site()?;
         let flags = self.number().filter(|flags| *flags <= 7)?;
-        let bindings = self.list(Reader::text)?;
+        let bindings = self.list(Reader::text)?.into();
         self.contract(Declaration {
             name,
             bindings,

@@ -291,6 +291,30 @@ only narrows which names that index records, and the `distinct_names` counter
 of each tree counts the names it recorded. #550 asks the same question for
 `reachability`, whose families read names outside the changed scope.
 
+## Follow-up: where reading the structural cache spends its time (#549)
+
+A warm Stop read the base's cache in 37 ms at 300k/20, and no counter told
+the file read, the checksum and the decode apart. The facts row now prints
+them as `cache_file_ms`, `cache_checksum_ms` and `cache_decode_ms` beside
+`cache_read_ms`. On the warm 300k/20 row (median of five Stops, load average
+about 5) the file read took 1 ms, the checksum 1 ms and the decode 33 ms. The
+decode is the cost, so the whole-file read and the checksum stay.
+
+The decode collected each counted list through `Option`, which cannot size
+the `Vec` ahead, so every list grew by reallocation. Each list now reserves
+its count, which the count's bound already limits to the bytes left. The pool
+that interns reference names now hashes with the fixed-seed `NameHash` of
+#548. The pool is never iterated, so its order reaches no result. On the same
+row the decode fell to 26 ms with the reserved lists alone and to 24 ms with
+both, and the warm hook's peak RSS fell from 133,104 kB to 124,976 kB. Every
+count the row prints is unchanged.
+
+The 24 ms left builds one `String` for each path, name and text in the
+cache. A lazy format still does not help a changed Stop, which decodes every
+base file for `dead-symbols` and `reachability`. Cutting the rest needs facts
+that borrow from the read bytes or share their strings, which changes
+`FileFacts` for every consumer and waits for its own ticket.
+
 ## Final self-enforcement
 
 The self-hosted `layering` section assigns the runner, checks, syntax, project

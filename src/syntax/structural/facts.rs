@@ -229,7 +229,7 @@ impl PartialEq<&str> for Name {
 /// One tree or cache decode's local canonicalization pool.
 #[derive(Default)]
 pub(crate) struct Names {
-    held: HashSet<Name>,
+    held: HashSet<Name, super::NameHash>,
 }
 
 impl Names {

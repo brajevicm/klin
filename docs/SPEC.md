@@ -6553,7 +6553,10 @@ Each dense row runs warm hook, cold survey and whole-tree strict five times
 and prints the median total and every gate's median `ms`. Where available it
 also prints deterministic content-work and structural-fact counters:
 `work_reads`, `work_parses`, `facts_reads`, `facts_parses`, `extracted`,
-`shared`, `cached`, `cache_read_ms` and `cache_write_ms`. The `dead-symbols`
+`shared`, `cached`, `cache_read_ms`, `cache_file_ms`, `cache_checksum_ms`,
+`cache_decode_ms` and `cache_write_ms`. `cache_file_ms`, `cache_checksum_ms`
+and `cache_decode_ms` split `cache_read_ms` into the file read, its checksum
+and its decode. The `dead-symbols`
 and `reachability` rows also print the `names` group of 11.2 as
 `names_base_ms`, `names_lost_ms`, and each tree's values under
 `names_before_` and `names_after_`, so a warm row separates the base layout,
