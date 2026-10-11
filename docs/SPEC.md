@@ -2279,15 +2279,18 @@ only the journal holds the notice, and `stamp` is the stamp commit the Stop
 left, which names the window the notice belongs to (section 10.7).
 
 klin is not released, so a reader reads schema 2 lines only. A line of
-another schema counts in `skipped_lines`.
+another schema counts in `skipped_lines` when its `time` and `session` put it
+in the report's scope. A line that does not parse has no time to place it, so
+it counts under every scope.
 
 ### 13.2 `klin report`
 
 - Read-only. It reads the journal, re-runs no check and reads no working
   tree.
-- Default scope: the newest session the journal holds. When the journal holds
-  no session, it says so and suggests `--since 7d`. It never widens the scope
-  silently.
+- Default scope: the newest session the journal holds. Only schema 2 lines
+  name that session, so a line of another schema with a newer session is
+  outside the scope. When the journal holds no session, it says so and
+  suggests `--since 7d`. It never widens the scope silently.
 - Flags: `--since Nd`, `--details`, `--json`.
 - It shows: regressions caught, regressions fixed after klin flagged them,
   regressions still open, review items, holes, files not measured,
@@ -2317,7 +2320,7 @@ another schema counts in `skipped_lines`.
 | `not_measured` | `[{check, reason, file, last_seen}]` |
 | `notices` | `[{time, message, delivered}]` |
 | `advisory` | `[{time, reason}]` |
-| `skipped_lines` | Lines of a schema this reader does not know. |
+| `skipped_lines` | Lines in the scope of a schema this reader does not know, and every line that does not parse. |
 
 A regression's `state` is `fixed` also when the configuration changed before
 the site went, and `config_changed` says so (section 8.3). The document also
@@ -2911,7 +2914,8 @@ Evidence:
 - an incompatible cache is rebuilt;
 - a regression flagged under one semantics version and absent under another
   is "not compared" in `klin report`;
-- a journal line of another schema counts in `skipped_lines`.
+- a journal line of another schema inside the report's scope counts in
+  `skipped_lines`.
 
 ### 19.3 Performance evidence
 

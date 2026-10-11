@@ -210,52 +210,46 @@ fn gate_blocked(line: &Value) -> bool {
 
 /// The lines a scope holds, oldest first. Spec 11.5.
 pub fn scoped(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Vec<Value> {
-    match scope {
-        Scope::Since(days) => {
-            let since = now.saturating_sub(days.saturating_mul(DAY));
-            lines
+    Span::of(lines, scope, root, now).keep(lines)
+}
+
+/// Where a scope begins: at a time, at the newest session id the lines carry, or nowhere where
+/// no turn stamp or session id is readable. Spec 6.2, 13.2.
+pub enum Span {
+    Since(u64),
+    Session(String),
+    Nowhere,
+}
+
+impl Span {
+    pub fn of(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Span {
+        match scope {
+            Scope::Since(days) => Span::Since(now.saturating_sub(days.saturating_mul(DAY))),
+            Scope::Turn => turn::taken_at(root).map_or(Span::Nowhere, Span::Since),
+            Scope::Session => lines
                 .iter()
-                .filter(|line| at(line) >= since)
-                .cloned()
-                .collect()
+                .rev()
+                .map(|line| word(line, "session"))
+                .find(|session| !session.is_empty())
+                .map_or(Span::Nowhere, |newest| Span::Session(newest.to_string())),
         }
-        Scope::Turn => this_turn(lines, turn::taken_at(root)),
-        Scope::Session => this_session(lines),
     }
-}
 
-/// The lines at or after the time the turn stamp was taken, and none where no stamp is readable.
-/// Spec 6.2, 13.2.
-fn this_turn(lines: &[Value], since: Option<u64>) -> Vec<Value> {
-    let Some(since) = since else {
-        return Vec::new();
-    };
-    lines
-        .iter()
-        .filter(|line| at(line) >= since)
-        .cloned()
-        .collect()
-}
+    pub fn keep(&self, lines: &[Value]) -> Vec<Value> {
+        lines
+            .iter()
+            .filter(|line| self.holds(line))
+            .cloned()
+            .collect()
+    }
 
-/// The lines carrying the newest session id. Spec 13.2.
-fn this_session(lines: &[Value]) -> Vec<Value> {
-    let Some(newest) = lines
-        .iter()
-        .rev()
-        .map(|line| word(line, "session"))
-        .find(|session| !session.is_empty())
-    else {
-        return Vec::new();
-    };
-    let first = lines
-        .iter()
-        .position(|line| word(line, "session") == newest)
-        .unwrap_or_default();
-    lines[first..]
-        .iter()
-        .filter(|line| word(line, "session") == newest)
-        .cloned()
-        .collect()
+    pub fn holds(&self, line: &Value) -> bool {
+        match self {
+            Span::Since(since) => at(line) >= *since,
+            Span::Session(newest) => word(line, "session") == newest,
+            Span::Nowhere => false,
+        }
+    }
 }
 
 /// One pass over the window's lines: the regressions it has opened, the slots of those no later

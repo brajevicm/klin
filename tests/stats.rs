@@ -747,6 +747,66 @@ fn a_journal_line_the_reader_cannot_take_lowers_confidence_and_fails_nothing() {
 }
 
 #[test]
+fn a_line_of_another_schema_outside_the_scope_does_not_lower_confidence() {
+    let mut older = stop(30 * DAY, false, vec![], vec![]);
+    older["schema"] = json!(1);
+    older["session"] = json!("s-0");
+    let tree = tree(&[older, stop(100, false, vec![], vec![])]);
+
+    for args in [&["report", "--since", "7d"][..], &["report"][..]] {
+        let run = tree.run(args);
+        assert!(!run.says("couldn't be read"), "{}", run.out);
+        let json = tree.run(&[args, &["--json"][..]].concat()).json();
+        assert_eq!(json["skipped_lines"], 0, "{json}");
+    }
+}
+
+#[test]
+fn a_line_of_another_schema_in_the_scope_counts() {
+    let mut newer = stop(100, false, vec![], vec![]);
+    newer["schema"] = json!(99);
+    let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
+
+    for args in [&["report", "--since", "1d"][..], &["report"][..]] {
+        let run = tree.run(args);
+        assert!(
+            run.says("Stats may be incomplete: 1 journal record couldn't be read."),
+            "{}",
+            run.out
+        );
+        let json = tree.run(&[args, &["--json"][..]].concat()).json();
+        assert_eq!(json["skipped_lines"], 1, "{json}");
+    }
+}
+
+#[test]
+fn a_line_of_another_schema_does_not_name_the_newest_session() {
+    let mut newer = stop(100, false, vec![], vec![]);
+    newer["schema"] = json!(99);
+    newer["session"] = json!("s-2");
+    let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
+
+    let json = tree.run(&["report", "--json"]).json();
+    assert_eq!(json["skipped_lines"], 0, "{json}");
+}
+
+#[test]
+fn a_line_that_does_not_parse_counts_under_every_scope() {
+    let tree = tree(&[stop(100, false, vec![], vec![])]);
+    let at = tree.state("journal.jsonl");
+    let text = std::fs::read_to_string(&at).unwrap_or_default();
+    assert!(std::fs::write(&at, format!("{{\"schema\": 1, \"ti\n{text}")).is_ok());
+
+    for args in [
+        &["report", "--since", "1d", "--json"][..],
+        &["report", "--json"][..],
+    ] {
+        let json = tree.run(args).json();
+        assert_eq!(json["skipped_lines"], 1, "{json}");
+    }
+}
+
+#[test]
 fn a_measured_window_with_no_regression_says_none_were_found_and_nothing_else() {
     let quiet = tree(&[
         stop(200, false, vec![], vec![]),
