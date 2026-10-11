@@ -500,6 +500,22 @@ fn a_new_private_typescript_function_fails() {
 }
 
 #[test]
+fn a_declaration_in_a_global_augmentation_is_not_judged() {
+    let tree = Tree::new();
+    tree.write("klin.json", TYPESCRIPT);
+    tree.write(
+        "src/globals.d.ts",
+        "export {};\n\ndeclare global {\n  interface Window { klinX: number }\n  function helper(): void;\n}\n\ninterface Unused {}\n",
+    );
+
+    let run = tree.run(&["check", "dead-symbols"]);
+
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(run.says("1 new dead symbol(s)"), "{}", run.out);
+    assert!(run.says("src/globals.d.ts:8"), "{}", run.out);
+}
+
+#[test]
 fn a_typescript_function_that_loses_its_last_reference_fails_as_worsened() {
     let tree = Tree::new();
     tree.write("klin.json", TYPESCRIPT);
