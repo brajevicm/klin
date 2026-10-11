@@ -5151,12 +5151,17 @@ outside an import that writes it is not read. Every TypeScript file is a
 module. A relative specifier resolves when exactly one of these files exists:
 the specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a
 `.js` specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after
-it. A bare specifier with no recognized paths rule is looked up under a
-`compilerOptions.baseUrl` that the config owning its file writes. This models
+it. A bare specifier with no recognized paths rule is looked up under each
+`compilerOptions.baseUrl` that a config owning its file writes, sibling and
+ancestor configs alike, and the first that reaches a held file or a held
+`package.json` is judged. This models
 TypeScript 5 and earlier: TypeScript 6.0 deprecates `baseUrl` and no longer
 looks modules up under it, and TypeScript 7.0 removes the option. Where the
-candidate rule finds no held TypeScript file under the `baseUrl` directory,
-the import is external, as TypeScript then tries packages. Where it finds
+candidate rule finds no held TypeScript file under the `baseUrl` directory
+and the directory it names holds no `package.json`, the import is external,
+as TypeScript then tries packages. Where that directory holds a
+`package.json`, whose `types` or `main` may name the entry point, the import
+is a located local hole. Where it finds
 exactly one, the import is a local dependency when that config is proved for
 paths aliases below, the file is one of its roots, and the target is not an
 index file of a directory that holds a `package.json`, whose `types` or
@@ -5381,8 +5386,9 @@ inside a macro's tokens, a bare Rust path that names no module its file
 declares, a TypeScript `import()` or `require()`, a bare import under a
 `baseUrl` a config inherits through `extends`, and package exports are not
 dependencies in V1. A bare `baseUrl` import klin cannot prove, under an
-unproved config, from a file outside its roots, into a directory that holds a
-`package.json` or with two candidates, is a located hole, not a dependency. A name a block or a function binds in the
+unproved config such as one of two sibling or nested configs, from a file
+outside its roots, into a directory that holds a `package.json` or with two
+candidates, is a located hole, not a dependency. A name a block or a function binds in the
 type namespace, such as a local `use`, a local type alias or a generic type
 parameter, shadows a declared child module of the same name in Rust, and klin
 still reads a bare path through that name as a dependency on the child.

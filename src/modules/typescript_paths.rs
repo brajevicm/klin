@@ -21,6 +21,13 @@ impl Anchor {
             Anchor::Config(path) | Anchor::BaseUrl(path) => path,
         }
     }
+
+    fn base_url(&self) -> Option<&str> {
+        match self {
+            Anchor::BaseUrl(path) => Some(path),
+            Anchor::Config(_) => None,
+        }
+    }
 }
 
 struct Config {
@@ -64,7 +71,7 @@ impl Paths {
             if let Some(scope) = self.scopes.get(ancestor) {
                 if scope.exact.is_empty()
                     && scope.wildcards.is_empty()
-                    && !matches!(scope.anchor, Some(Anchor::BaseUrl(_)))
+                    && scope.base_urls.is_empty()
                 {
                     return None;
                 }
@@ -92,6 +99,8 @@ fn contains(directory: &str, file: &str) -> bool {
 struct Scope {
     roots: Option<Roots>,
     anchor: Option<Anchor>,
+    /// Every `baseUrl` an owning config writes, so an ambiguous owner still looks under each.
+    base_urls: Vec<String>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
@@ -108,16 +117,19 @@ impl FilePaths<'_> {
         self.scope.resolve(specifier, self.root)
     }
 
-    /// The path a bare specifier names under a written `baseUrl`, and whether klin proves the
-    /// config and the file's root membership.
-    pub(super) fn under_base_url(self, specifier: &str) -> Option<(String, bool)> {
-        let Some(Anchor::BaseUrl(base)) = &self.scope.anchor else {
-            return None;
-        };
+    /// The paths a bare specifier names under each `baseUrl` an owning config writes, and
+    /// whether klin proves the one config and the file's root membership.
+    pub(super) fn under_base_url(self, specifier: &str) -> Option<(Vec<String>, bool)> {
         if absolute(specifier) {
             return None;
         }
-        Some((joined(base, specifier)?, !self.scope.uncertain && self.root))
+        let bases: Vec<String> = self
+            .scope
+            .base_urls
+            .iter()
+            .filter_map(|base| joined(base, specifier))
+            .collect();
+        (!bases.is_empty()).then_some((bases, !self.scope.uncertain && self.root))
     }
 }
 
@@ -138,6 +150,10 @@ impl Scope {
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
+            base_urls: owners
+                .iter()
+                .filter_map(|config| config.anchor.as_ref()?.base_url().map(str::to_string))
+                .collect(),
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),

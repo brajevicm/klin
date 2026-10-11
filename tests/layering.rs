@@ -1690,6 +1690,15 @@ fn a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external() {
     a_base_url_hole(&[("tsconfig.json", not_a_root), price], "components/price");
     a_base_url_hole(&[plain, index, manifest, safe], "components");
     a_base_url_hole(&[plain, file, directory], "components/price");
+    a_base_url_hole(&[manifest, safe, plain], "components");
+    let build = ("tsconfig.build.json", r#"{"compilerOptions":{}}"#);
+    a_base_url_hole(&[plain, build, price], "components/price");
+    let root = ("tsconfig.json", r#"{"compilerOptions":{}}"#);
+    let nested = (
+        "lib/tsconfig.json",
+        r#"{"compilerOptions":{"baseUrl":".."}}"#,
+    );
+    a_base_url_hole(&[root, nested, price], "components/price");
 }
 
 fn a_base_url_hole(files: &[(&str, &str)], import: &str) {

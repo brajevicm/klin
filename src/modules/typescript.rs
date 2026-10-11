@@ -63,7 +63,13 @@ fn resolved(
     specifier: &str,
 ) {
     let before = builder.holes.len();
-    match located(paths, site.file, specifier) {
+    let reaches = |base: &str| {
+        candidates(base)
+            .iter()
+            .any(|file| modules.contains_key(file.as_str()))
+            || builder.topology.holds(&manifest(base))
+    };
+    match located(paths, site.file, specifier, reaches) {
         Some(Ok((base, lookup))) => dependency(builder, modules, site, specifier, &base, lookup),
         Some(Err(why)) => hole(builder, site, why),
         None => builder.external += 1,
@@ -76,11 +82,13 @@ fn resolved(
 }
 
 /// The path a specifier names before the candidate rule, in TypeScript's order: relative, then
-/// a paths rule, then a written `baseUrl`. None is external; Err is a local name klin cannot prove.
+/// a paths rule, then a written `baseUrl`, where the first `baseUrl` that `reaches` a held file
+/// wins. None is external; Err is a local name klin cannot prove.
 fn located(
     paths: Option<super::typescript_paths::FilePaths<'_>>,
     file: &str,
     specifier: &str,
+    reaches: impl Fn(&str) -> bool,
 ) -> Option<Result<(String, Lookup), String>> {
     if relative(specifier) {
         return joined(directory(file), specifier).map(|base| Ok((base, Lookup::Named)));
@@ -88,9 +96,14 @@ fn located(
     let scope = paths?;
     match scope.resolve(specifier) {
         Some(found) => Some(found.map(|base| (base, Lookup::Named))),
-        None => scope
-            .under_base_url(specifier)
-            .map(|(base, proved)| Ok((base, Lookup::BaseUrl { proved }))),
+        None => {
+            let (mut bases, proved) = scope.under_base_url(specifier)?;
+            let chosen = match bases.len() {
+                1 => 0,
+                _ => bases.iter().position(|base| reaches(base)).unwrap_or(0),
+            };
+            Some(Ok((bases.swap_remove(chosen), Lookup::BaseUrl { proved })))
+        }
     }
 }
 
@@ -121,14 +134,15 @@ impl Lookup {
                 "{specifier} may be a baseUrl import whose configuration klin cannot prove"
             ));
         }
-        let manifest = format!("{base}/package.json");
+        let manifest = manifest(base);
         (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
             format!("{specifier} names a directory whose {manifest} may choose another entry point")
         })
     }
 
-    /// Whether a name that reaches no held TypeScript file is external: any `baseUrl` miss, as
-    /// TypeScript then tries packages, a file of another kind, or a bare name that may be a package.
+    /// Whether a name that reaches no held TypeScript file is external: a `baseUrl` miss with no
+    /// `package.json` that may name an entry point, as TypeScript then tries packages, a file of
+    /// another kind, or a bare name that may be a package.
     fn misses_outside(
         &self,
         topology: &Topology,
@@ -136,10 +150,19 @@ impl Lookup {
         base: &str,
         candidates: &[String],
     ) -> bool {
-        matches!(self, Lookup::BaseUrl { .. })
-            || another_kind(topology, base, candidates)
-            || !relative(specifier) && package_name(specifier)
+        match self {
+            Lookup::BaseUrl { .. } => !topology.holds(&manifest(base)),
+            Lookup::Named => {
+                another_kind(topology, base, candidates)
+                    || !relative(specifier) && package_name(specifier)
+            }
+        }
     }
+}
+
+/// The `package.json` of the directory a path names, which may name its entry point.
+fn manifest(base: &str) -> String {
+    format!("{base}/package.json")
 }
 
 fn hole(builder: &mut Builder, site: &Site, why: String) {
