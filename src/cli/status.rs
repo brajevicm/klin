@@ -149,7 +149,7 @@ fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, ou
     let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
     if let Some(tag) = newer {
         let news = release::News::Available(tag.clone());
-        let _ = writeln!(out, "{}", release::Audience::Person.note(&news));
+        let _ = writeln!(out, "{}", release::Audience::Person.note(&news, None));
     }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {

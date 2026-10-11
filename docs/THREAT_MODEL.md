@@ -178,10 +178,10 @@ klin does not sandbox the coding agent, harden the developer machine, manage
 secrets, or automate organization policy. It reads no secrets. No native check
 or recipe reads the network, and no measurement sends anything anywhere.
 `klin update` uses the network to fetch a release, and the guard denies it to
-an agent. On a binary the installer placed, a session start, `klin status` and
+an agent. On a binary the installer placed, or a plugin's, a session start, `klin status` and
 `klin setup` ask GitHub for the newest release tag at most once a day, in a
 detached child, and send nothing about the repository. Under
-`KLIN_AUTO_UPDATE=1` the child also runs `klin-update`, which verifies the
+`KLIN_AUTO_UPDATE=1` the installer's child also runs `klin-update`, which verifies the
 release's checksums. A checksum from the same release does not stop a bad
 release, so auto-update stays opt-in until releases are signed (#627). The
 guard denies `klin update` and `klin __release` to an agent.

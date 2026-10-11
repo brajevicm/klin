@@ -535,6 +535,19 @@ fn the_first_run_fetches_the_pinned_release_and_the_second_fetches_nothing() {
     );
 }
 
+/// The wrapper marks the binary it runs as a plugin's, so klin tells the person to update the
+/// plugin and never updates itself. Spec 11.9.
+#[test]
+fn the_wrapper_marks_the_binary_it_runs_as_a_plugins() {
+    let tree = Tree::bare();
+    release_running(&tree, "echo \"plugin=$KLIN_PLUGIN\"");
+
+    let run = fetch(&tree, &["status"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.printed.contains("plugin=1"), "{}", run.out);
+}
+
 #[test]
 fn a_checksum_that_does_not_match_installs_nothing_and_lets_the_turn_end() {
     let tree = Tree::bare();

@@ -1,8 +1,10 @@
-//! klin keeps itself current. A session start, `klin status` and `klin setup` ask GitHub for the
-//! newest release at most once a day, in a detached child, so nothing waits on the network.
-//! Under `KLIN_AUTO_UPDATE=1` the child also runs the `klin-update` beside the binary. Every
-//! other command, a Stop among them, reads only the cache. Only a binary the installer placed,
-//! with its `klin-update` beside it, asks, updates or tells. Spec 11.9.
+//! klin keeps itself current, or says how to update the plugin that carries it. A session
+//! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
+//! in a detached child, so nothing waits on the network. Under `KLIN_AUTO_UPDATE=1` the child
+//! also runs the `klin-update` beside the binary. Every other command, a Stop among them, reads
+//! only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
+//! updates or tells, and so does a plugin's binary, which the plugin wrapper marks with
+//! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
 use std::fmt;
 use std::fs::OpenOptions;
@@ -83,18 +85,30 @@ pub enum Audience {
 }
 
 impl Audience {
+    /// Each route keeps its own records, so a machine with both an installer's klin and a
+    /// plugin's klin at two versions never reads the switch between them as an update.
     fn record(self) -> &'static str {
-        match self {
-            Audience::Person => "release-person.json",
-            Audience::Agent => "release-agent.json",
+        match (Route::here(), self) {
+            (Some(Route::Plugin), Audience::Person) => "release-plugin-person.json",
+            (Some(Route::Plugin), Audience::Agent) => "release-plugin-agent.json",
+            (_, Audience::Person) => "release-person.json",
+            (_, Audience::Agent) => "release-agent.json",
         }
     }
 
-    pub fn note(self, news: &News) -> String {
+    /// The text for this audience. `host` names the host a hook event came from, so a
+    /// plugin's update step names that host's own action.
+    pub fn note(self, news: &News, host: Option<&str>) -> String {
+        let plugin = Route::here() == Some(Route::Plugin);
         match (self, news) {
             (Audience::Person, News::Available(tag)) => format!(
-                "klin {tag} is available (you have {}). Run klin update.",
-                env!("CARGO_PKG_VERSION")
+                "klin {tag} is available (you have {}). {}",
+                env!("CARGO_PKG_VERSION"),
+                Route::step(plugin, host, tag)
+            ),
+            (Audience::Agent, News::Available(tag)) if plugin => format!(
+                "klin {tag} is available. Tell the person to update the klin plugin. Do not do \
+                 it yourself."
             ),
             (Audience::Agent, News::Available(tag)) => format!(
                 "klin {tag} is available. Tell the person to run klin update. Do not run it \
@@ -162,10 +176,12 @@ impl Latest {
     }
 
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
+    /// Only the installer's route updates itself.
     fn untried(&self) -> Option<&Version> {
+        let installer = Route::here() == Some(Route::Installer);
         self.tag
             .as_ref()
-            .filter(|tag| auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
+            .filter(|tag| installer && auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
     }
 }
 
@@ -192,6 +208,44 @@ impl Record {
             "told": self.told.as_ref().map(ToString::to_string),
         });
         write(&dir.join(who.record()), held.to_string().as_bytes());
+    }
+}
+
+/// How this binary reached the machine: through the installer, with `klin-update` beside it, or
+/// through a host's plugin, whose wrapper sets `KLIN_PLUGIN`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Route {
+    Installer,
+    Plugin,
+}
+
+impl Route {
+    fn here() -> Option<Route> {
+        if updater_path().is_some() {
+            Some(Route::Installer)
+        } else if set("KLIN_PLUGIN") {
+            Some(Route::Plugin)
+        } else {
+            None
+        }
+    }
+
+    /// The one step that installs `tag` on this route and host. Claude Code turns plugin
+    /// auto-update off for a marketplace that is not its own, so the step also names the switch.
+    fn step(plugin: bool, host: Option<&str>, tag: &Version) -> String {
+        match (plugin, host) {
+            (false, _) => "Run klin update.".to_string(),
+            (true, Some("claude")) => "In Claude Code, run /plugin, open Marketplaces, select \
+                 klin and choose Update marketplace. Enable auto-update there to get the next \
+                 release on its own."
+                .to_string(),
+            (true, Some("cursor")) => format!(
+                "Copy the klin plugin again from the v{tag} release, as the README's Cursor \
+                 steps show, and reload Cursor."
+            ),
+            (true, Some("codex")) => "Update the klin plugin in Codex.".to_string(),
+            (true, _) => "Update the klin plugin in your host.".to_string(),
+        }
     }
 }
 
@@ -339,7 +393,7 @@ pub fn heard(who: Audience, news: &News) {
 }
 
 fn enabled() -> bool {
-    !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && updater_path().is_some()
+    !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && Route::here().is_some()
 }
 
 fn auto() -> bool {

@@ -122,4 +122,5 @@ if [ "${1:-}" = __agent ]; then
 	fi
 fi
 
-exec "$BINARY" "$@"
+# The binary tells a plugin user how to update the plugin, and never updates itself. Spec 11.9.
+KLIN_PLUGIN=1 exec "$BINARY" "$@"

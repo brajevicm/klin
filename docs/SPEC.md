@@ -1993,7 +1993,8 @@ and its refusal names `klin status`, which shows the same release.
 ### 11.9 Keeping klin current
 
 A binary the installer placed keeps itself current, and tells the person and
-the agent what changed. ADR 0069.
+the agent what changed. A plugin's binary asks and tells the same way, and
+names its host's own update step in place of `klin update`. ADR 0069.
 
 - **The ask.** A session start, `klin status` and `klin setup` start a
   detached child (`klin __release`) when the last ask is 24 hours old, or
@@ -2017,11 +2018,15 @@ the agent what changed. ADR 0069.
   ask and the release auto-update tried. `release-person.json` and
   `release-agent.json` beside it hold, for each audience, the version it last
   saw klin run as and the release it was last told of.
+- **Routes.** A binary with `klin-update` beside it is the installer's. A
+  binary the plugin wrapper runs carries `KLIN_PLUGIN=1` and is a plugin's.
+  A plugin's binary never runs an updater, because its host owns the plugin.
+  Each route keeps its own audience records (`release-plugin-person.json`
+  and `release-plugin-agent.json` for a plugin), so a machine with both
+  routes at two versions never reads a switch between them as an update.
 - **Off.** Nothing asks, updates or tells, the child run by hand included,
-  when `CI` or `KLIN_NO_UPDATE_CHECK`
-  is set to a value that is not empty, or when no `klin-update` sits beside
-  the binary. The last rule leaves out a plugin's binary, which updates with
-  its plugin.
+  when `CI` or `KLIN_NO_UPDATE_CHECK` is set to a value that is not empty, or
+  when the binary is on neither route.
 - A Stop, `klin check`, `klin report` and `klin policy` never ask. They read
   only the cache. A cached tag that is not dot-separated digits is never
   shown. A build whose version has a pre-release suffix, such as `-beta.1`,
@@ -2033,7 +2038,13 @@ the agent what changed. ADR 0069.
   Otherwise, a cached release newer than the binary that the audience was not
   told of is news. Each audience hears each piece of news once.
 - **The person.** `klin status` prints `klin TAG is available (you have
-  VERSION). Run klin update.` when the cached tag is newer. A Stop that
+  VERSION). STEP` when the cached tag is newer. STEP is `Run klin update.` on
+  the installer's route. On a plugin's route it names the host the hook event
+  came from: under Claude Code, `/plugin`, Marketplaces, klin, Update
+  marketplace, and the switch that enables auto-update, which Claude Code
+  leaves off for a marketplace that is not its own; under Cursor, a fresh
+  copy of the plugin from the release tag; under Codex, or with no event,
+  `Update the klin plugin` in the host. A Stop that
   blocks nothing tells the person's news as a `release` part of its notice
   (section 10.7): the same line, or `klin updated to VERSION (from OLD).
   Release notes: LINK`. When a copy of klin's integration in the
@@ -2044,7 +2055,8 @@ the agent what changed. ADR 0069.
   does.
 - **The agent.** A session start tells the agent's news in the session-start
   text: `klin TAG is available. Tell the person to run klin update. Do not run
-  it yourself.`, or `klin VERSION judges this repository now (it was OLD).`
+  it yourself.` (on a plugin's route, `Tell the person to update the klin
+  plugin. Do not do it yourself.`), or `klin VERSION judges this repository now (it was OLD).`
   The guard denies `klin update` and `klin __release` to an agent (section
   10.8). When a release carries a list of its changes (#626), the update note
   names them.

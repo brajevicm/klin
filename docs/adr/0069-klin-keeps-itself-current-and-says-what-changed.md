@@ -27,8 +27,11 @@ and no hook waits on the network.**
    the signature (#627). A checksum from the same release does not protect
    against a bad release, and auto-update would deliver one to every machine
    within a day.
-4. Only a binary with `klin-update` beside it asks, updates or tells, because
-   only the installer route can update itself. `CI` and
+4. A binary with `klin-update` beside it asks, updates and tells. A plugin's
+   binary, which the wrapper marks with `KLIN_PLUGIN=1`, asks and tells, and
+   names its host's update step. It never updates itself, because the host
+   owns the plugin. Claude Code leaves auto-update off for a marketplace that
+   is not its own, so the Claude Code step also names that switch. `CI` and
    `KLIN_NO_UPDATE_CHECK` turn everything off.
 5. The person hears the news in a Stop's notice: a newer release with the one
    command that installs it, or the update that happened, with `klin setup`
@@ -54,4 +57,5 @@ and no hook waits on the network.**
 ## Consequences
 
 The ask sends no data of the repository. A person without `curl` gets no
-notice. A Cursor plugin, which a person copies by hand, still gets no notice.
+notice. The Codex step names no exact command, because its update action
+was not verified.

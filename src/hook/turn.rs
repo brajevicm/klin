@@ -29,7 +29,7 @@ pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String
     };
     let prompted = event.kind == Some(adapter::Kind::Prompt);
     if event.kind == Some(adapter::Kind::Session) {
-        tell_release(out);
+        tell_release(event.host.name(), out);
     }
     let opened = stamp::mark(start, &at);
     let capture = stamp::capture(start, &at.join(stamp::INDEX));
@@ -714,9 +714,9 @@ fn now() -> u64 {
 /// The release news the agent has not heard, in the session-start text the host hands the
 /// agent, and then the day's ask, which never waits. The guard denies `klin update` to the
 /// agent, so news of a release asks it to tell the person. Spec 10.8, 11.9.
-fn tell_release(out: &mut String) {
+fn tell_release(host: &str, out: &mut String) {
     if let Some(news) = release::news(Audience::Agent) {
-        let _ = writeln!(out, "{}", Audience::Agent.note(&news));
+        let _ = writeln!(out, "{}", Audience::Agent.note(&news, Some(host)));
         release::heard(Audience::Agent, &news);
     }
     release::refresh();

@@ -416,7 +416,9 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    let untold = telling.then(|| release_part(&mut parts)).flatten();
+    let untold = telling
+        .then(|| release_part(&mut parts, log.host.as_deref()))
+        .flatten();
     let (parts, noted) = kept(parts, noting, quiet);
     if parts.is_empty() {
         return (None, noted);
@@ -457,9 +459,9 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
 }
 
 /// The release news the person has not heard, as a part of the notice. Spec 11.9.
-fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<News> {
+fn release_part(parts: &mut Vec<(&'static str, String)>, host: Option<&str>) -> Option<News> {
     let news = release::news(Audience::Person)?;
-    parts.push(("release", Audience::Person.note(&news)));
+    parts.push(("release", Audience::Person.note(&news, host)));
     Some(news)
 }
 

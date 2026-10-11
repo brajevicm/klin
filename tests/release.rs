@@ -22,6 +22,7 @@ static ALONE: Mutex<()> = Mutex::new(());
 struct Installed {
     home: Tree,
     tree: Tree,
+    plugin: bool,
     _alone: MutexGuard<'static, ()>,
 }
 
@@ -53,7 +54,18 @@ impl Installed {
         Installed {
             home,
             tree,
+            plugin: false,
             _alone: alone,
+        }
+    }
+
+    /// The same binary as a plugin's wrapper runs it: no updater beside it, and `KLIN_PLUGIN`.
+    fn plugin(answer: &str) -> Installed {
+        let installed = Installed::new(answer);
+        installed.home.remove("installed/klin-update");
+        Installed {
+            plugin: true,
+            ..installed
         }
     }
 
@@ -66,6 +78,7 @@ impl Installed {
             ("CI", ""),
             ("KLIN_NO_UPDATE_CHECK", ""),
             ("KLIN_AUTO_UPDATE", ""),
+            ("KLIN_PLUGIN", if self.plugin { "1" } else { "" }),
         ];
         environment.extend_from_slice(extra);
         feed_as_with(
@@ -463,5 +476,85 @@ fn update_check_names_both_versions_and_installs_nothing() {
     assert!(first.says("99.0.0"), "{}", first.out);
     assert!(first.says(NEWER), "{}", first.out);
     assert_eq!(installed.fetched(), 2);
+    assert!(!installed.home.path("updated").exists());
+}
+
+/// A plugin's binary tells the person to update the plugin, not to run `klin update`, which a
+/// plugin does not carry. Spec 11.9.
+#[test]
+fn a_plugin_status_names_the_plugin_update() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+
+    let run = installed.status(&[]);
+
+    assert!(
+        run.says("klin 99.0.0 is available (you have"),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("Update the klin plugin in your host."),
+        "{}",
+        run.out
+    );
+    assert!(!run.says("Run klin update"), "{}", run.out);
+}
+
+/// Under Claude Code, the Stop names the plugin step and the auto-update switch, once.
+/// Spec 11.9.
+#[test]
+fn a_plugin_stop_names_the_claude_code_plugin_step_once() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+
+    let first = installed.stop();
+    let second = installed.stop();
+
+    assert!(
+        first.says("In Claude Code, run /plugin, open Marketplaces, select klin"),
+        "{}",
+        first.out
+    );
+    assert!(first.says("Enable auto-update there"), "{}", first.out);
+    assert!(!second.says("99.0.0"), "{}", second.out);
+}
+
+/// The agent hears that the person updates the plugin. Spec 10.8, 11.9.
+#[test]
+fn a_plugin_session_start_tells_the_agent_to_ask_for_a_plugin_update() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+
+    let run = installed.session(&[]);
+
+    assert!(
+        run.says(
+            "klin 99.0.0 is available. Tell the person to update the klin plugin. Do not do it \
+             yourself."
+        ),
+        "{}",
+        run.out
+    );
+}
+
+/// A plugin's binary never runs an updater, auto-update or not, because its host owns the
+/// plugin. Spec 11.9.
+#[test]
+fn a_plugin_never_updates_itself() {
+    let installed = Installed::plugin(&answers(NEWER));
+    installed.warmed();
+    executable(
+        &installed.home,
+        "bin/klin-update",
+        &format!(
+            "#!/bin/sh\necho updated >> '{}'\n",
+            installed.home.at("updated")
+        ),
+    );
+
+    installed.session(&[("KLIN_AUTO_UPDATE", "1")]);
+    settle();
+
     assert!(!installed.home.path("updated").exists());
 }

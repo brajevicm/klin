@@ -54,7 +54,7 @@ fn check() -> u8 {
     match tag.is_newer() {
         true => println!(
             "{}",
-            release::Audience::Person.note(&release::News::Available(tag.clone()))
+            release::Audience::Person.note(&release::News::Available(tag.clone()), None)
         ),
         false => println!("klin {version} is the newest release."),
     }
