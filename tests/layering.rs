@@ -867,7 +867,14 @@ fn a_repeated_stop_reads_and_parses_only_the_changed_file() {
         .map(|row| &row["facts"])
         .find(|facts| facts.is_object())
         .expect("one row carries the extraction facts");
-    for timing in ["ms", "cache_read_ms", "cache_write_ms"] {
+    for timing in [
+        "ms",
+        "cache_read_ms",
+        "cache_file_ms",
+        "cache_checksum_ms",
+        "cache_decode_ms",
+        "cache_write_ms",
+    ] {
         assert!(facts[timing].is_u64(), "{timing}: {again_report}");
     }
 }

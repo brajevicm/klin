@@ -7,8 +7,9 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
+use super::ExtractionCost;
 use super::facts::{
     Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
     Names, Outcome, QualifiedPath, Reference, Visibility,
@@ -59,8 +60,22 @@ impl Cache {
         })
     }
 
-    pub fn read(&self) -> Option<HashMap<String, Outcome>> {
-        decoded(&std::fs::read(&self.file).ok()?, &self.identity)
+    /// The outcomes this file holds, with the time its read, checksum and decode each took
+    /// added to `cost`. Spec 11.2.
+    pub fn read(&self, cost: &mut ExtractionCost) -> Option<HashMap<String, Outcome>> {
+        let started = Instant::now();
+        let bytes = std::fs::read(&self.file);
+        cost.cache_file += started.elapsed();
+        let started = Instant::now();
+        let body = bytes
+            .as_deref()
+            .ok()
+            .and_then(|bytes| checked(bytes, &self.identity));
+        cost.cache_checksum += started.elapsed();
+        let started = Instant::now();
+        let outcomes = body.and_then(decoded_body);
+        cost.cache_decode += started.elapsed();
+        outcomes
     }
 
     /// The outcomes written whole over whatever the file held. A cache klin cannot write costs
@@ -128,11 +143,18 @@ fn encoded(identity: &[u8], outcomes: &[(&str, &Outcome)]) -> Vec<u8> {
     out
 }
 
+#[cfg(test)]
 fn decoded(bytes: &[u8], identity: &[u8]) -> Option<HashMap<String, Outcome>> {
+    checked(bytes, identity).and_then(decoded_body)
+}
+
+/// The body of a file that carries this identity and whose checksum matches it.
+fn checked<'a>(bytes: &'a [u8], identity: &[u8]) -> Option<&'a [u8]> {
     let (sum, body) = bytes.strip_prefix(identity)?.split_first_chunk::<8>()?;
-    if u64::from_le_bytes(*sum) != checksum(BASIS, body) {
-        return None;
-    }
+    (u64::from_le_bytes(*sum) == checksum(BASIS, body)).then_some(body)
+}
+
+fn decoded_body(body: &[u8]) -> Option<HashMap<String, Outcome>> {
     let mut names = Names::default();
     let mut reader = Reader(body, &mut names);
     let outcomes = reader.list(Reader::entry)?;

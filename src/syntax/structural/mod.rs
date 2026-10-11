@@ -89,7 +89,7 @@ struct Kept {
     stale: Cell<bool>,
     /// What reading the cache cost, when a caller read it before this tree held it, handed over
     /// once to the view that would otherwise have read it. Spec 11.2.
-    read: Cell<Duration>,
+    read: Cell<ExtractionCost>,
 }
 
 impl Extracted {
@@ -141,21 +141,17 @@ impl Extracted {
         changes: &[Change],
     ) -> ExtractionCost {
         if let Some(kept) = self.kept.get() {
-            return ExtractionCost {
-                cache_read: kept.read.take(),
-                ..ExtractionCost::default()
-            };
+            return kept.read.take();
         }
         let Some(cache) = cache() else {
             return ExtractionCost::default();
         };
+        let mut cost = ExtractionCost::default();
         let started = Instant::now();
-        let outcomes = cache.read();
-        self.held_from(cache, outcomes, changes, Duration::ZERO);
-        ExtractionCost {
-            cache_read: started.elapsed(),
-            ..ExtractionCost::default()
-        }
+        let outcomes = cache.read(&mut cost);
+        self.held_from(cache, outcomes, changes, ExtractionCost::default());
+        cost.cache_read = started.elapsed();
+        cost
     }
 
     /// The same, for a caller that named and read the cache itself, because it needed the
@@ -167,7 +163,7 @@ impl Extracted {
         cache: Cache,
         outcomes: HashMap<String, Outcome>,
         changes: &[Change],
-        read: Duration,
+        read: ExtractionCost,
     ) {
         if self.kept.get().is_some() {
             return;
@@ -180,7 +176,7 @@ impl Extracted {
         cache: Cache,
         outcomes: Option<HashMap<String, Outcome>>,
         changes: &[Change],
-        read: Duration,
+        read: ExtractionCost,
     ) {
         let changed: HashSet<String> = changes
             .iter()
@@ -239,6 +235,9 @@ pub struct ExtractionCost {
     pub cached: usize,
     pub time: Duration,
     pub cache_read: Duration,
+    pub cache_file: Duration,
+    pub cache_checksum: Duration,
+    pub cache_decode: Duration,
     pub cache_write: Duration,
 }
 
@@ -254,6 +253,9 @@ impl Add for ExtractionCost {
             cached: self.cached + other.cached,
             time: self.time + other.time,
             cache_read: self.cache_read + other.cache_read,
+            cache_file: self.cache_file + other.cache_file,
+            cache_checksum: self.cache_checksum + other.cache_checksum,
+            cache_decode: self.cache_decode + other.cache_decode,
             cache_write: self.cache_write + other.cache_write,
         }
     }
