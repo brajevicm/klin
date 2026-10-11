@@ -107,7 +107,7 @@ section is not in Appendix B.
 | 15 | Trust model | Replaced by section 16. |
 | 16.1 | The hook's window | Carried forward. Section 6.6 amends it: no `turn_reset`, no forced RED, the verdict table, advisory windows, and the fallback kept only without a remote. |
 | 16.4, 16.5 | Reference algorithms | Carried forward. Section 8.4 amends 16.5. |
-| 16.2 | `klin gate` and CI window | Carried forward. Section 6.5 amends it. |
+| 16.2 | `klin check` and CI window | Carried forward. Section 6.5 amends it. |
 | 16.3 | The hook run | Carried forward. Section 10.4 amends it. |
 | 17, 18 | Test matrix, checklist | Replaced by section 19. |
 | 19.0 to 19.5 | Installation and distribution | Carried forward. Section 17 amends the command names, and B.19.5 names the Action of section 12.3. |
@@ -3221,7 +3221,7 @@ the base either is a NOTE (8.6), so it keeps this promise too. A build that
 already fails is judged under the failure model of section 15 and is not part
 of this promise.
 
-Under `--hook` the file is the marker that the repository opted in. When no
+For the hooks, the file is the marker that the repository opted in. When no
 `klin.json` resolves, the Stop hook MUST exit 0, print nothing and write
 no state, before it surveys the tree. A `--config PATH` that names no file
 reads the same way. `klin check` runs under `{}` instead, because a person or
@@ -3541,14 +3541,14 @@ date it used on the `derived:` line for that ceiling. This is the shape issue
 A gate is excluded by setting its section to `false`. Naming an excluded gate
 on the command line is exit 2.
 
-#### B.5.7 What `init` does now
+#### B.5.7 What `klin setup` writes to the configuration
 
-`init` writes `{}` when no configuration exists, which is the repository's
+`setup` writes `{}` when no configuration exists, which is the repository's
 opt-in marker (5.1, ADR 0028), and says so. It reads no tree and derives
 nothing, because a run derives what the file leaves out. It MUST NOT change an
 existing configuration.
 
-`init --pin` writes today's suggested guardrails as policy a person reviews:
+`setup --pin` writes today's suggested guardrails as policy a person reviews:
 the complexity `cc` and `lines` the derivation commit gives, and no
 `test_lines`, which nothing derives (pinned by
 `pin_writes_no_test_lines_because_klin_never_derives_it` in `tests/init.rs`), a `doc_size`
@@ -3564,15 +3564,14 @@ roots, languages, document entries, manifests, test roots, reachability
 families, build commands or package structure (ADR 0040). The snapshot flags
 `--add` and `--force` are gone.
 
-`init` MUST write only the config. The guard denies `init` in every form from
-an agent. `init` MUST NOT edit `.gitignore`, because klin writes nothing that
-git could see.
+`setup` MUST write only the config and the host integration of 19.3. The
+guard denies `setup` in every form from an agent. `setup` MUST NOT edit
+`.gitignore`, because klin writes nothing that git could see.
 
-`init` carries no host integration. `klin setup` owns it, and the `--hooks`,
-`--host` and `--global` flags of `init` are gone (19.3, ADR 0046). A command
+The 0.x `--hooks` and `--global` flags are gone (19.3, ADR 0046). A command
 line that names one is a usage error.
 
-`init` is a convenience, not a step. A tree with no `klin.json` is fully
+`setup` is a convenience, not a step. A tree with no `klin.json` is fully
 gated.
 
 #### B.5.8 The configuration reference
@@ -3680,7 +3679,7 @@ that drifted. A person regenerates it with `klin reference > docs/REFERENCE.md`.
 
 #### B.6.1 The hook uses the turn window
 
-In `--hook` mode `before` is the turn stamp. The stamp is a git tree object of
+In the Stop hook, `before` is the turn stamp. The stamp is a git tree object of
 the working tree, including uncommitted and untracked files that `.gitignore`
 does not exclude. `after` is the working tree. Committing inside the turn does
 not move either.
@@ -4001,14 +4000,14 @@ The invariant that makes tightening safe:
 Because of it, lowering a ceiling affects new code only. What tightens, in
 order of how much work it does:
 
-1. A person pins a dated schedule once (5.5). This is the mechanism. `init`
+1. A person pins a dated schedule once (5.5). This is the mechanism. `setup`
    MAY offer to write one from the derived ceiling to a target over a period,
    under a flag such as `--tighten 18m`, and MUST NOT write one unasked.
 2. A person pins a lower number.
 
 The derived ceiling tightens nothing. It can rise when simple code leaves the
 tree (5.4). A pinned number or schedule is the only ceiling that cannot
-loosen, and `init` writes one from today's derived value in one command.
+loosen, and `setup --pin` writes one from today's derived value in one command.
 
 Forced paydown, where a touched file must leave with less debt, is NOT
 RECOMMENDED. Its only remedy is a refactor nobody asked for, which the radius
@@ -4016,7 +4015,7 @@ report exists to discourage.
 
 #### B.7.4 What the tool writes, and where
 
-Nothing into the working tree. `init` writes `klin.json` and hook files, and
+Nothing into the working tree. `setup` writes `klin.json` and hook files, and
 only when a person runs it.
 
 klin's own state is six things: the turn stamp with the prompt mark of
@@ -4051,7 +4050,7 @@ as a matter of routine and does not empty `.git/` or a home cache. ADR 0015's
 reason for `.klin/` was one `.gitignore` line, and neither location needs one.
 
 Anyone already running klin has `.klin-build-blocked` or `.klin/` in
-`.gitignore`. Those lines become inert. `init` MAY say so when it sees one.
+`.gitignore`. Those lines become inert. `setup` MAY say so when it sees one.
 
 ### B.8 Check Catalogue
 
@@ -4105,7 +4104,7 @@ Removing a test is ordinary work, and deleting a failing one is the
 cheapest route to green that section 1 names. klin cannot tell which it was, so it
 asks once and does not judge the answer (ADR 0031):
 
-- Under `--hook`, a vanished site is `worsened` and blocks the stop, and the
+- In the Stop hook, a vanished site is `worsened` and blocks the stop, and the
   remedy asks the agent to restore the test and fix the code if the test
   failed, or to say why the removal is intended and stop again. A stop that
   blocks records the site id (11.2) of every finding it reported in the
@@ -4114,7 +4113,7 @@ asks once and does not judge the answer (ADR 0031):
   holds it, and the run lists it in a NOTE. The report names every finding
   it records, so nothing reaches that record unasked. The record goes when
   the stamp moves, and the guard refuses an agent's write to the file that
-  holds it (9.4). The rule keys on `--hook` and not on the window kind,
+  holds it (9.4). The rule keys on the Stop hook and not on the window kind,
   because a stop whose stamp was deleted judges a branch window (6.2), and a
   stamp that went takes the record with it, so such a stop asks again.
 - Everywhere else, every vanished site is let through the same way and is a
@@ -6339,11 +6338,10 @@ path. Everything else is `allow`, and a write the guard misses costs nothing,
 because ADR 0009 makes CI authoritative. ADR 0033 records the reversal.
 
 - `deny`: an edit tool whose path is the configuration or reaches inside the
-  state directory, a redirect onto either, `init` in any form, `install` in
-  any form, and `turn reset`. The reason names the file and says a person changes it in a
-  reviewed commit, or names the command a person runs instead: `klin turn
-  reset` for the stamp, and `klin cache clean`, which stays open to an agent,
-  for the cache. Nothing else denies.
+  state directory, a redirect onto either, and `klin setup`, `klin update`
+  or `klin __agent` in any form. The reason names the file and says a person
+  changes it in a reviewed commit, or says that only a person, or only the
+  host, runs the command. Nothing else denies.
 - `ask`: a command that writes every argument it takes, with a guarded path
   among its arguments. The writers are `rm`, `rmdir`, `unlink`, `shred`,
   `mv`, `truncate` and `tee`, and `sed` or `perl` carrying `-i`. `cp` and
@@ -6364,7 +6362,7 @@ unbalanced quote, `$(`, a backtick, `${`, `<<`, a backslash, or a `cd`
 command word. Section 10.8.1 amends this list and the split below (ADR
 0068). An unbalanced quote allows the whole command, because the
 command then does not say where its arguments end. The other six suppress
-path matching alone. `init`, `install` and `turn reset` name no path, so their `deny`
+path matching alone. `setup`, `update` and `__agent` name no path, so their `deny`
 stands behind any of them, and a command substitution in command position is
 a prefix in front of klin's own name.
 
@@ -6606,8 +6604,8 @@ tells a reader nothing.
   `config-write` and `state-write` for a proven write an edit tool's path or
   a redirect names, `config-mention` and `state-mention` for a command that
   only names a guarded path as a writer's argument, which klin cannot prove
-  the way it proves the first two (ADR 0033), and `init` and `turn-reset`
-  for one of klin's own subcommands that only a person runs.
+  the way it proves the first two (ADR 0033), and `setup`, `update` and `agent`
+  for one of klin's own subcommands that only a person or the host runs.
 
 The `reset` line is what the 0.x reset command wrote. vNext writes none:
 
@@ -6996,7 +6994,7 @@ hook_window():
   return Window(TURN, stamp.commit, WORKING, "since " + stamp.time)
 
 branch_stamp(stamp, mark):             # the base this stop judges, written back red
-  before = choose_window(strict=False).before or HEAD      # 16.2
+  before = choose_window().before or HEAD      # 16.2
   write_atomic(state/turn, commit=before, parent=before, time=now, last_verdict=RED,
                prompt=prompt_of(stamp), mark=mark,
                asked=[], intervened=False, followup=None)
@@ -7040,7 +7038,7 @@ roots(window):
 #### B.16.2 `klin check` and CI window
 
 ```
-choose_window(strict):
+choose_window():
   for (ref, kind, source) in candidates():
     before = resolve(ref)
     if before is None: continue
@@ -7048,7 +7046,6 @@ choose_window(strict):
       if source == Remote: return Window(kind, before, WORKING, "same, remote agrees")
       tip = remote_default_tip()
       if tip is None:
-        if strict: fail("cannot tell whether history is hidden")
         return Window(kind, before, WORKING, "same, no remote to ask")
       if commits_between(tip, HEAD) > 0: fail("unpushed commits hidden")
       return Window(kind, before, WORKING, "same, remote holds HEAD")
@@ -7131,7 +7128,7 @@ counts the notes a person needs even when nothing blocks: a file no grammar
 read, a file measured in `before` only, and a deleted test the run let
 through. Only a stop that blocks on a gate adds to `asked`, so a question the
 agent never saw is asked again at the next stop that blocks. `inventory`
-reads `asked` under `--hook` (8.2).
+reads `asked` in the Stop hook (8.2).
 
 The build stamp is one record per prompt: the prompt counter it belongs to,
 the number of build blocks and the tree the last build block was taken over,
@@ -7285,7 +7282,7 @@ command, and it MUST NOT install one: the wrapper names the command that does,
 once (19.2). A custom harness integration uses the binary of 19.1 and not this
 route (19.4).
 
-No route gates a repository by itself. Under `--hook` a `klin.json` at the
+No route gates a repository by itself. For the hooks, a `klin.json` at the
 repository root is the marker that the repository opted in, and a tree without
 one stays silent (5.1, ADR 0028). Installing a plugin makes klin available to
 every repository the host opens. It opts none of them in.
@@ -7520,7 +7517,7 @@ and the failure that installs nothing.
 
 Installing the plugin is the whole install of the hooks for the host. It is
 not an install of the `klin` command, and it is not the install for a
-repository: no `init` runs, and the repository opts in through its own
+repository: no `setup` runs, and the repository opts in through its own
 `klin.json` (5.1). Once it has one, the first stop is gated.
 
 This reverses ADR 0002. Its first reason, a version pin beside committed
