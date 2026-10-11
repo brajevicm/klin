@@ -118,6 +118,16 @@ def main() -> None:
             b"What changes for you",
         ),
         (
+            "notes that hold only a comment",
+            fixture(notes="### What changes for you\n\n<!-- TODO: write release notes -->\n\n"),
+            b"What changes for you",
+        ),
+        (
+            "notes that hold only an empty bullet",
+            fixture(notes="### What changes for you\n\n- \n\n"),
+            b"What changes for you",
+        ),
+        (
             "a release that keeps the Unreleased heading",
             fixture(heading="Unreleased"),
             b"unexpected files",
@@ -125,6 +135,12 @@ def main() -> None:
     ]:
         if reason not in validate(*case).stderr:
             raise SystemExit(f"{label} was not rejected for its notes")
+
+    grouped = fixture(
+        notes="### What changes for you\n\n#### New checks\n\n- `stubs` starts green.\n\n"
+    )
+    if validate(*grouped).returncode != 0:
+        raise SystemExit("notes grouped under H4 headings were rejected")
 
     print("release validator rejects byte and mode drift and silent release notes")
 

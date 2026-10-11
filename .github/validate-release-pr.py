@@ -167,11 +167,14 @@ def has_user_notes(changelog: bytes, version: str) -> bool:
     except UnicodeDecodeError as why:
         fail(f"CHANGELOG.md is not UTF-8: {why}")
     section = re.search(
-        rf"^## {re.escape(version)}\n\n### What changes for you\n(.*?)(?=^##|\Z)",
+        rf"^## {re.escape(version)}\n\n### What changes for you\n(.*?)(?=^#{{2,3}} |\Z)",
         text,
         re.MULTILINE | re.DOTALL,
     )
-    return section is not None and section.group(1).strip() != ""
+    if section is None:
+        return False
+    visible = re.sub(r"<!--.*?-->", "", section.group(1), flags=re.DOTALL)
+    return re.search(r"\w", visible) is not None
 
 
 def changed_files(base: str, head: str) -> list[str]:
