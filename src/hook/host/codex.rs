@@ -23,9 +23,12 @@ const CONFIG: &str = ".codex/config.toml";
 pub struct Codex;
 
 impl Adapter for Codex {
-    /// Codex's own plugin update action is not verified, so the step names only the host.
+    /// `codex plugin marketplace upgrade` refreshes the marketplace snapshot, and adding the
+    /// plugin again installs the release it now names. Codex documents no plugin auto-update.
     fn plugin_update(&self, _tag: &str) -> String {
-        "Update the klin plugin in Codex.".to_string()
+        "Run codex plugin marketplace upgrade klin, then codex plugin add klin@klin, and start a \
+         new Codex session."
+            .to_string()
     }
 
     fn name(&self) -> &'static str {

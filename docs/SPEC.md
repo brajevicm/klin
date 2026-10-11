@@ -2055,8 +2055,11 @@ names its host's own update step in place of `klin update`. ADR 0069.
   came from: under Claude Code, `/plugin`, Marketplaces, klin, Update
   marketplace, and the switch that enables auto-update, which Claude Code
   leaves off for a marketplace that is not its own; under Cursor, a fresh
-  copy of the plugin from the release tag; under Codex, or with no event,
-  `Update the klin plugin` in the host. A Stop that
+  copy of the plugin from the release tag; under Codex, `codex plugin
+  marketplace upgrade klin`, then `codex plugin add klin@klin` and a new
+  session, because Codex documents no plugin auto-update and its marketplace
+  refresh alone may leave the installed copy as it was; with no event,
+  `Update the klin plugin` in the host. Each host adapter owns its step. A Stop that
   blocks nothing tells the person's news as a `release` part of its notice
   (section 10.7): the same line, or `klin updated to VERSION (from OLD).
   Release notes: LINK`. When a copy of klin's integration is in
