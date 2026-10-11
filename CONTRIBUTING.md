@@ -57,12 +57,12 @@ Changing a check? Read `AGENTS.md` first.
 
 A new check touches these places:
 
-- [ ] `src/checks/<check>.rs`, the check itself.
+- [ ] The check itself, one file in `src/checks/` named after the check.
 - [ ] A `pub mod` line in `src/checks/mod.rs`.
 - [ ] A `Row` in `CATALOGUE` in `src/engine/catalogue.rs`. Fill all sixteen fields.
 - [ ] `src/engine/reference.rs`, when the check's keys need a shape it does not print yet.
 - [ ] `docs/REFERENCE.md`, regenerated with `klin policy --reference > docs/REFERENCE.md`.
-- [ ] `tests/<check>.rs`, CLI tests through the binary.
+- [ ] CLI tests through the binary, one file in `tests/` named after the check.
 - [ ] A row in SPEC section 9.1.
 - [ ] A paragraph in SPEC section B.8.2.1 with its measurement rules.
 
