@@ -2007,7 +2007,8 @@ and the agent. ADR 0069.
   binary, which updates with its plugin.
 - A Stop, `klin check`, `klin report`, `klin policy` and every hook never ask.
   They read only the release cache. A cached tag that is not dot-separated
-  digits is never shown.
+  digits is never shown. A build whose version has a pre-release suffix,
+  such as `-beta.1`, compares its numbers without the suffix.
 - `klin status` prints `klin TAG is available (you have VERSION). Run klin
   update, then klin setup.` when the cached tag is newer than the binary.
 - A Stop that blocks nothing tells the person once for each newer release,

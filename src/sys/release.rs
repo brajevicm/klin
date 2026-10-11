@@ -3,6 +3,7 @@
 //! installer placed, with its `klin-update` beside it, asks or tells, because only that route
 //! can act on the answer. Spec 11.9.
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,6 +16,43 @@ const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
+
+/// A release version as numbers. Only dot-separated digits parse, so a version never carries
+/// text klin did not expect into a message.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Version(Vec<u64>);
+
+impl Version {
+    fn parse(text: &str) -> Option<Version> {
+        text.split('.')
+            .map(|part| part.parse().ok())
+            .collect::<Option<_>>()
+            .map(Version)
+    }
+
+    /// This build's version, without a pre-release suffix such as `-beta.1`.
+    fn current() -> Option<Version> {
+        let own = env!("CARGO_PKG_VERSION");
+        Version::parse(own.split('-').next().unwrap_or(own))
+    }
+
+    /// Whether this release is newer than the build. False when the build's own version does
+    /// not parse, so an unknown build never hears of an older release.
+    pub fn is_newer(&self) -> bool {
+        Version::current().is_some_and(|own| *self > own)
+    }
+
+    pub fn notes(&self) -> String {
+        format!("{TAGGED}{self}")
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts: Vec<String> = self.0.iter().map(u64::to_string).collect();
+        out.write_str(&parts.join("."))
+    }
+}
 
 /// Who hears of a newer release: the person through a Stop's notice, the agent through the
 /// session-start text. Each keeps its own record, so each hears of a release once.
@@ -32,7 +70,7 @@ impl Audience {
         }
     }
 
-    pub fn note(self, tag: &str) -> String {
+    pub fn note(self, tag: &Version) -> String {
         let version = env!("CARGO_PKG_VERSION");
         match self {
             Audience::Person => format!(
@@ -60,39 +98,28 @@ pub fn refresh() {
 }
 
 /// Ask GitHub now, whatever the cache holds, and keep the answer. `klin update --check`.
-pub fn fetch() -> Option<String> {
+pub fn fetch() -> Option<Version> {
     cache_dir().map_or_else(asked, |dir| fetched(&dir))
 }
 
 /// The newest release the cache holds, on a binary that may tell of one.
-pub fn known() -> Option<String> {
+pub fn known() -> Option<Version> {
     let dir = cache_dir().filter(|_| enabled())?;
-    read(&dir)["tag"]
-        .as_str()
-        .filter(|tag| parsed(tag).is_some())
-        .map(str::to_string)
+    read(&dir)["tag"].as_str().and_then(Version::parse)
 }
 
 /// The newer release `who` has not yet heard of.
-pub fn untold(who: Audience) -> Option<String> {
+pub fn untold(who: Audience) -> Option<Version> {
     let dir = cache_dir()?;
     let told = std::fs::read_to_string(dir.join(who.record())).unwrap_or_default();
-    known().filter(|tag| is_newer(tag) && *tag != told)
+    known().filter(|tag| tag.is_newer() && Version::parse(&told).as_ref() != Some(tag))
 }
 
 /// Record that `who` heard of `tag`, in a file of its own, so it never races the ask's write.
-pub fn heard(who: Audience, tag: &str) {
+pub fn heard(who: Audience, tag: &Version) {
     if let Some(dir) = cache_dir() {
-        write(&dir.join(who.record()), tag.as_bytes());
+        write(&dir.join(who.record()), tag.to_string().as_bytes());
     }
-}
-
-pub fn notes(tag: &str) -> String {
-    format!("{TAGGED}{tag}")
-}
-
-pub fn is_newer(tag: &str) -> bool {
-    parsed(tag) > parsed(env!("CARGO_PKG_VERSION"))
 }
 
 fn enabled() -> bool {
@@ -115,11 +142,11 @@ fn cache_dir() -> Option<PathBuf> {
         .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))
 }
 
-fn fetched(dir: &Path) -> Option<String> {
+fn fetched(dir: &Path) -> Option<Version> {
     let tag = asked();
     let mut cached = read(dir);
     if let Some(tag) = &tag {
-        cached["tag"] = tag.clone().into();
+        cached["tag"] = tag.to_string().into();
     }
     cached["checked"] = now().into();
     write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
@@ -128,7 +155,7 @@ fn fetched(dir: &Path) -> Option<String> {
 
 /// The tag GitHub's latest-release page redirects to, through `curl`, so klin carries no HTTP
 /// client. The redirect is read and not followed, which spends no API rate limit.
-fn asked() -> Option<String> {
+fn asked() -> Option<Version> {
     let output = Command::new("curl")
         .args([
             "-sS",
@@ -146,14 +173,7 @@ fn asked() -> Option<String> {
         .ok()
         .filter(|output| output.status.success())?;
     let url = String::from_utf8(output.stdout).ok()?;
-    let tag = url.trim().strip_prefix(TAGGED)?;
-    parsed(tag).map(|_| tag.to_string())
-}
-
-/// A release version as numbers, and none for anything but dot-separated digits, so a tag
-/// never carries text klin did not expect into a message.
-fn parsed(version: &str) -> Option<Vec<u64>> {
-    version.split('.').map(|part| part.parse().ok()).collect()
+    Version::parse(url.trim().strip_prefix(TAGGED)?)
 }
 
 fn read(dir: &Path) -> Value {

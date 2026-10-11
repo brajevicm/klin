@@ -30,17 +30,26 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         return Err(Error(NO_REPOSITORY.to_string()));
     };
     release::refresh();
-    let document = document(&found, root, start);
+    let latest = release::known();
+    let document = document(&found, root, start, latest.as_ref());
     match args.json {
         true => {
             let _ = writeln!(out, "{document}");
         }
-        false => text(&document, &found.said(), out),
+        false => {
+            let newer = latest.filter(release::Version::is_newer);
+            text(&document, &found.said(), newer.as_ref(), out);
+        }
     }
     Ok(0)
 }
 
-fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
+fn document(
+    found: &Discovered,
+    root: &Path,
+    start: &Path,
+    latest: Option<&release::Version>,
+) -> Value {
     let error = found
         .config
         .as_ref()
@@ -50,7 +59,7 @@ fn document(found: &Discovered, root: &Path, start: &Path) -> Value {
     json!({
         "schema_version": 1,
         "command": "status",
-        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": release::known()},
+        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": latest.map(ToString::to_string)},
         "config": {
             "path": found.config.as_ref().map(|file| file.display().to_string()),
             "present": found.config.is_some(),
@@ -133,13 +142,9 @@ fn last_stop(lines: &[Value]) -> Value {
         )
 }
 
-fn text(document: &Value, notes: &[String], out: &mut String) {
-    let version = word(&document["klin"], "version");
-    let _ = writeln!(out, "klin {version}");
-    if let Some(tag) = document["klin"]["latest_known"]
-        .as_str()
-        .filter(|tag| release::is_newer(tag))
-    {
+fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, out: &mut String) {
+    let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
+    if let Some(tag) = newer {
         let _ = writeln!(out, "{}", release::Audience::Person.note(tag));
     }
     let config = &document["config"];

@@ -435,7 +435,7 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
 
 /// The notice of a newer release the person has not heard of, and its tag, which the Stop
 /// records as heard once it tells the notice. Spec 11.9.
-fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<String> {
+fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<release::Version> {
     let tag = release::untold(Audience::Person)?;
     parts.push(("release", Audience::Person.note(&tag)));
     Some(tag)

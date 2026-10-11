@@ -51,16 +51,11 @@ fn check() -> u8 {
         eprintln!("FAIL: klin {version} could not ask GitHub for the newest release.");
         return 2;
     };
-    match release::is_newer(&tag) {
-        true => println!(
-            "klin {tag} is available (you have {version}): {}. Run klin update, then klin setup.",
-            release::notes(&tag)
-        ),
-        false => println!(
-            "klin {version} is the newest release: {}.",
-            release::notes(&tag)
-        ),
+    match tag.is_newer() {
+        true => println!("{}", release::Audience::Person.note(&tag)),
+        false => println!("klin {version} is the newest release."),
     }
+    println!("Release notes: {}", tag.notes());
     0
 }
 
