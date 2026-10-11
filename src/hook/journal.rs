@@ -350,6 +350,12 @@ pub struct Skipped {
     pub foreign: Vec<Value>,
 }
 
+impl Skipped {
+    pub fn is_empty(&self) -> bool {
+        self.unparsed == 0 && self.foreign.is_empty()
+    }
+}
+
 /// Every line of this worktree's journal, newest last, and the lines the reader skipped, so a
 /// report can say its numbers are short. Spec 13.1.
 pub fn read(root: &Path) -> (Vec<Value>, Skipped) {

@@ -46,7 +46,7 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let span = Span::of(&lines, scope, start, now);
     let held = span.keep(&lines);
     let notices = journal::open_notices(&lines, turn::stamp_commit(start).as_deref());
-    let empty = lines.is_empty() && skipped.unparsed + skipped.foreign.len() as u64 == 0;
+    let empty = lines.is_empty() && skipped.is_empty();
     let skipped = unread(&skipped, &span);
     let mut report = Report::read(&held, scope, now, skipped, notices, empty);
     report.confidence.unscoped = unscoped(&lines, scope, start);
