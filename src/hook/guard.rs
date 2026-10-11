@@ -439,10 +439,10 @@ fn written_by(words: &[String], cwd: Option<&Path>) -> Vec<String> {
     let Some((command, args)) = command(words) else {
         return Vec::new();
     };
-    let is_dir = |path: &str| resolved(cwd, path).is_some_and(|at| at.is_dir());
+    let look = |path: &str| resolved(cwd, path).and_then(|at| at.metadata().ok());
     match command {
-        "cp" => copy::destinations(&copy::CP, args, is_dir),
-        "install" => copy::destinations(&copy::INSTALL, args, is_dir),
+        "cp" => copy::destinations(&copy::CP, args, look),
+        "install" => copy::destinations(&copy::INSTALL, args, look),
         command if IN_PLACE.contains(&command) => match args.iter().any(|w| w.starts_with("-i")) {
             true => args.to_vec(),
             false => Vec::new(),

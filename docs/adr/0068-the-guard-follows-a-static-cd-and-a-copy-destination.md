@@ -34,8 +34,9 @@ destination wherever the text proves it. It never runs a shell.**
    or `-t` names one, each source's name inside it is written. `install -d`
    writes every operand. An option the reader does not know, a letter GNU
    and BSD spell differently, or an abbreviated long option gives the
-   destination up. So does `-n` or `-u`, which may leave the destination as
-   it is.
+   destination up. Under `-n` or `-u`, which may leave an existing
+   destination as it is, only a destination that does not exist yet is
+   written. So `cp -n x klin.json` passes, and `cp -n x .git/klin/new` asks.
 3. `sh`, `bash`, `zsh`, `dash` and `ksh` with `-c` run the word after the
    flag in a child shell. With no script operand, they run the heredoc they
    read in a child shell. `eval` runs its words, joined, in this shell. The

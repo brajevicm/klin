@@ -2,11 +2,11 @@
 //! reader does not know leaves the destination unproven, so it gives up rather than guess.
 //! ADR 0068.
 
+use std::fs::Metadata;
 use std::path::Path;
 
 /// The options one of the two commands takes, as GNU and BSD both spell them. A letter the two
-/// spell differently is in neither list, so it gives the destination up, and so does an option
-/// that may leave the destination unwritten, such as `-n` and `-u`.
+/// spell differently is in neither list, so it gives the destination up.
 pub struct Spec {
     flags: &'static str,
     valued: &'static str,
@@ -14,10 +14,12 @@ pub struct Spec {
     long_valued: &'static [&'static str],
     /// The letter that makes every operand a directory to create, which `install` has.
     directories: Option<char>,
+    /// The letters that may leave an existing destination as it is.
+    only_new: &'static str,
 }
 
 pub const CP: Spec = Spec {
-    flags: "abcdfHilLNPpRrsTvxXZ",
+    flags: "abcdfHilLnNPpRrsTuvxXZ",
     valued: "t",
     long: &[
         "archive",
@@ -29,6 +31,7 @@ pub const CP: Spec = Spec {
         "force",
         "interactive",
         "link",
+        "no-clobber",
         "no-dereference",
         "preserve",
         "parents",
@@ -37,6 +40,7 @@ pub const CP: Spec = Spec {
         "remove-destination",
         "strip-trailing-slashes",
         "symbolic-link",
+        "update",
         "no-target-directory",
         "verbose",
         "one-file-system",
@@ -45,6 +49,7 @@ pub const CP: Spec = Spec {
     ],
     long_valued: &["no-preserve", "sparse", "suffix", "target-directory"],
     directories: None,
+    only_new: "nu",
 };
 
 pub const INSTALL: Spec = Spec {
@@ -71,6 +76,7 @@ pub const INSTALL: Spec = Spec {
         "target-directory",
     ],
     directories: Some('d'),
+    only_new: "",
 };
 
 impl Spec {
@@ -97,11 +103,24 @@ impl Spec {
 }
 
 /// The paths the command writes, each spelled from its destination so a reason can quote it.
-/// `is_dir` says whether a destination names a directory that exists.
-pub fn destinations(spec: &Spec, args: &[String], is_dir: impl Fn(&str) -> bool) -> Vec<String> {
+/// `look` finds what a path names on disk. Under `-n` or `-u` an existing destination may be
+/// left as it is, so only one that is not there yet is a proven write.
+pub fn destinations(
+    spec: &Spec,
+    args: &[String],
+    look: impl Fn(&str) -> Option<Metadata>,
+) -> Vec<String> {
     let Some(read) = Operands::of(spec, args) else {
         return Vec::new();
     };
+    let mut written = named(&read, |path| look(path).is_some_and(|found| found.is_dir()));
+    if read.only_new {
+        written.retain(|path| look(path).is_none());
+    }
+    written
+}
+
+fn named(read: &Operands, is_dir: impl Fn(&str) -> bool) -> Vec<String> {
     if read.directories {
         return read.operands.iter().map(|path| path.to_string()).collect();
     }
@@ -136,6 +155,8 @@ struct Operands<'a> {
     /// `-T`: the destination is a file even when a directory of that name exists.
     file: bool,
     directories: bool,
+    /// `-n` or `-u`: an existing destination may be left as it is.
+    only_new: bool,
 }
 
 impl<'a> Operands<'a> {
@@ -165,6 +186,7 @@ impl<'a> Operands<'a> {
         match name {
             "target-directory" => self.into = value,
             "no-target-directory" => self.file = true,
+            "no-clobber" | "update" => self.only_new = true,
             "directory" => self.directories = true,
             _ => {}
         }
@@ -190,6 +212,7 @@ impl<'a> Operands<'a> {
                 return None;
             }
             self.file |= letter == 'T';
+            self.only_new |= spec.only_new.contains(letter);
             self.directories |= spec.directories == Some(letter);
         }
         Some(())

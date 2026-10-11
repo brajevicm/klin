@@ -520,6 +520,8 @@ fn asks_about_the_destination_of_a_copy() {
             ".git/klin/notes.md",
         ),
         ("install -d .git/klin/extra", ".git/klin/extra"),
+        ("cp -n source .git/klin/new", ".git/klin/new"),
+        ("cp --update source .git/klin/new", ".git/klin/new"),
     ] {
         asked(&bash_in(&tree, command), named, command);
     }
@@ -542,10 +544,6 @@ fn allows_a_copy_whose_destination_it_cannot_place() {
         "cp -Q source klin.json",
         "cp -T /tmp/klin.json .",
         "cp a b klin.json",
-        "cp -n source klin.json",
-        "cp --no-clobber source klin.json",
-        "cp -u source klin.json",
-        "cp --update source klin.json",
     ] {
         allowed(&bash(command), command);
     }
@@ -715,4 +713,18 @@ fn an_edit_path_holding_a_dollar_still_resolves() {
         ),
         "a literal dollar directory",
     );
+}
+
+/// `-n` and `-u` may leave an existing destination as it is, so only a destination that is not
+/// there yet is a proven write. ADR 0068.
+#[test]
+fn a_copy_that_may_keep_the_destination_proves_only_a_new_one() {
+    for command in [
+        "cp -n source klin.json",
+        "cp --no-clobber source klin.json",
+        "cp -u source klin.json",
+        "cp --update source klin.json",
+    ] {
+        allowed(&bash(command), command);
+    }
 }

@@ -1603,9 +1603,10 @@ find a target.
   the `ask` level of B.9.4. The destination is the last operand, or each
   source's name inside a destination directory that exists or that `-t`
   names. `install -d` writes every operand. An option the guard does not
-  know, a letter GNU and BSD spell differently, an abbreviated long option,
-  or an option that may leave the destination unwritten (`-n`, `-u`) leaves
-  the command unproven.
+  know, a letter GNU and BSD spell differently, or an abbreviated long
+  option leaves the command unproven. Under `-n` or `-u`, which may leave an
+  existing destination as it is, only a destination that does not exist yet
+  is written.
 - **Nested shell.** `sh`, `bash`, `zsh`, `dash` or `ksh` with `-c` runs the
   next word in a child shell, and one with no script operand runs its heredoc
   in a child shell. `eval` runs its words in this shell. The guard reads that
