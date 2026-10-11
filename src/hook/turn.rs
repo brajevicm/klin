@@ -12,6 +12,7 @@ use crate::hook::journal;
 use crate::hook::radius;
 use crate::sys::error::Error;
 use crate::sys::git::Repo;
+use crate::sys::release::{self, Audience};
 use crate::sys::state;
 use crate::sys::write::{AtomicWrite, atomic_write};
 use crate::window::base::{self, Kind, Window};
@@ -27,6 +28,9 @@ pub fn opened(event: Event, start: &Path, sections: &[Section], out: &mut String
         return 0;
     };
     let prompted = event.kind == Some(adapter::Kind::Prompt);
+    if event.kind == Some(adapter::Kind::Session) {
+        tell_release(out);
+    }
     let opened = stamp::mark(start, &at);
     let capture = stamp::capture(start, &at.join(stamp::INDEX));
     let tree = capture.as_ref().map(|capture| capture.tree.as_str());
@@ -705,6 +709,16 @@ fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|since| since.as_secs())
         .unwrap_or_default()
+}
+
+/// A newer release the agent has not heard of, in the session-start text the host hands the
+/// agent. The guard denies `klin update` to the agent, so the text asks it to tell the person.
+/// Spec 10.8, 11.9.
+fn tell_release(out: &mut String) {
+    if let Some(tag) = release::untold(Audience::Agent) {
+        let _ = writeln!(out, "{}", Audience::Agent.note(&tag));
+        release::heard(Audience::Agent, &tag);
+    }
 }
 
 fn note(out: &mut String, why: &str) {

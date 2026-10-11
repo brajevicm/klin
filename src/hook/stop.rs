@@ -24,7 +24,7 @@ use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
     hook::{build, handoff, journal, stats, turn},
-    sys::{clock, release, state},
+    sys::{clock, release, release::Audience, state},
     window::stamp,
 };
 
@@ -391,13 +391,13 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    let heard = telling.then(|| release_part(&mut parts)).flatten();
+    let untold = telling.then(|| release_part(&mut parts)).flatten();
     let (parts, noted) = kept(parts, noting, quiet);
     if parts.is_empty() {
         return (None, noted);
     }
-    if let Some(heard) = heard.filter(|_| parts.iter().any(|(part, _)| *part == "release")) {
-        heard();
+    if let Some(tag) = untold.filter(|_| parts.iter().any(|(part, _)| *part == "release")) {
+        release::heard(Audience::Person, &tag);
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
@@ -433,21 +433,12 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
         && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
 }
 
-/// The note of a newer release the agent has not heard of, and what records it as heard once
-/// the Stop tells it. Spec 11.9.
-fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<impl FnOnce() + use<>> {
-    let (tag, heard) = release::untold()?;
-    parts.push(("release", release_note(&tag)));
-    Some(heard)
-}
-
-/// What a Stop tells the agent of a newer release, which only a person installs, because the
-/// guard denies `klin update` to an agent. Spec 10.8, 11.9.
-fn release_note(tag: &str) -> String {
-    format!(
-        "klin {tag} is available. Tell the person to run klin update, then klin setup. Do not \
-         run it yourself."
-    )
+/// The notice of a newer release the person has not heard of, and its tag, which the Stop
+/// records as heard once it tells the notice. Spec 11.9.
+fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<String> {
+    let tag = release::untold(Audience::Person)?;
+    parts.push(("release", Audience::Person.note(&tag)));
+    Some(tag)
 }
 
 fn add_prompt_note(

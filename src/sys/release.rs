@@ -14,47 +14,77 @@ use crate::sys::write::{AtomicWrite, atomic_write};
 const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
+const LATEST_FILE: &str = "latest.json";
 
-/// Ask GitHub when the cache is older than a day, from a person command on an installer's
-/// binary outside CI. A failed ask changes nothing.
+/// Who hears of a newer release: the person through a Stop's notice, the agent through the
+/// session-start text. Each keeps its own record, so each hears of a release once.
+#[derive(Clone, Copy)]
+pub enum Audience {
+    Person,
+    Agent,
+}
+
+impl Audience {
+    fn record(self) -> &'static str {
+        match self {
+            Audience::Person => "release-told",
+            Audience::Agent => "release-told-agent",
+        }
+    }
+
+    pub fn note(self, tag: &str) -> String {
+        let version = env!("CARGO_PKG_VERSION");
+        match self {
+            Audience::Person => format!(
+                "klin {tag} is available (you have {version}). Run klin update, then klin setup."
+            ),
+            Audience::Agent => format!(
+                "klin {tag} is available. Tell the person to run klin update, then klin setup. \
+                 Do not run it yourself."
+            ),
+        }
+    }
+}
+
+/// Ask GitHub when the last ask is a day old, from a person command on an installer's binary
+/// outside CI. A failed ask still counts as the day's ask, so an offline machine waits on
+/// `curl` once a day and not on every command.
 pub fn refresh() {
-    let Some(file) = cache_file().filter(|_| enabled()) else {
+    let Some(dir) = cache_dir().filter(|_| enabled()) else {
         return;
     };
-    let checked = read(&file)["checked"].as_u64().unwrap_or_default();
+    let checked = read(&dir)["checked"].as_u64().unwrap_or_default();
     if now().saturating_sub(checked) >= DAY {
-        let _ = fetched(&file);
+        let _ = fetched(&dir);
     }
 }
 
 /// Ask GitHub now, whatever the cache holds, and keep the answer. `klin update --check`.
 pub fn fetch() -> Option<String> {
-    cache_file().map_or_else(asked, |file| fetched(&file))
+    cache_dir().map_or_else(asked, |dir| fetched(&dir))
 }
 
 /// The newest release the cache holds, on a binary that may tell of one.
 pub fn known() -> Option<String> {
-    enabled()
-        .then(cache_file)
-        .flatten()
-        .and_then(|file| read(&file)["tag"].as_str().map(str::to_string))
+    let dir = cache_dir().filter(|_| enabled())?;
+    read(&dir)["tag"]
+        .as_str()
+        .filter(|tag| parsed(tag).is_some())
+        .map(str::to_string)
 }
 
-/// The newest release when it is newer than this binary.
-pub fn newer() -> Option<String> {
-    known().filter(|tag| is_newer(tag))
+/// The newer release `who` has not yet heard of.
+pub fn untold(who: Audience) -> Option<String> {
+    let dir = cache_dir()?;
+    let told = std::fs::read_to_string(dir.join(who.record())).unwrap_or_default();
+    known().filter(|tag| is_newer(tag) && *tag != told)
 }
 
-/// The newer release the agent has not yet heard of, and the record that it heard. A Stop.
-pub fn untold() -> Option<(String, impl FnOnce())> {
-    let file = cache_file()?;
-    let tag = newer().filter(|tag| read(&file)["told"].as_str() != Some(tag))?;
-    let heard = tag.clone();
-    Some((tag, move || {
-        let mut cached = read(&file);
-        cached["told"] = heard.into();
-        write(&file, &cached);
-    }))
+/// Record that `who` heard of `tag`, in a file of its own, so it never races the ask's write.
+pub fn heard(who: Audience, tag: &str) {
+    if let Some(dir) = cache_dir() {
+        write(&dir.join(who.record()), tag.as_bytes());
+    }
 }
 
 pub fn notes(tag: &str) -> String {
@@ -77,22 +107,23 @@ fn beside_updater() -> bool {
         .is_some_and(|path| path.is_file())
 }
 
-/// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}/latest.json`, the directory the plugin wrapper uses.
-fn cache_file() -> Option<PathBuf> {
-    let dir = std::env::var_os("KLIN_CACHE_DIR")
+/// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.
+fn cache_dir() -> Option<PathBuf> {
+    std::env::var_os("KLIN_CACHE_DIR")
         .filter(|dir| !dir.is_empty())
         .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))?;
-    Some(dir.join("latest.json"))
+        .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))
 }
 
-fn fetched(file: &Path) -> Option<String> {
-    let tag = asked()?;
-    let mut cached = read(file);
-    cached["tag"] = tag.clone().into();
+fn fetched(dir: &Path) -> Option<String> {
+    let tag = asked();
+    let mut cached = read(dir);
+    if let Some(tag) = &tag {
+        cached["tag"] = tag.clone().into();
+    }
     cached["checked"] = now().into();
-    write(file, &cached);
-    Some(tag)
+    write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
+    tag
 }
 
 /// The tag GitHub's latest-release page redirects to, through `curl`, so klin carries no HTTP
@@ -125,21 +156,21 @@ fn parsed(version: &str) -> Option<Vec<u64>> {
     version.split('.').map(|part| part.parse().ok()).collect()
 }
 
-fn read(file: &Path) -> Value {
-    std::fs::read(file)
+fn read(dir: &Path) -> Value {
+    std::fs::read(dir.join(LATEST_FILE))
         .ok()
         .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
         .filter(Value::is_object)
         .unwrap_or_else(|| json!({}))
 }
 
-fn write(file: &Path, cached: &Value) {
+fn write(file: &Path, bytes: &[u8]) {
     if let Some(dir) = file.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
     let _ = atomic_write(AtomicWrite {
         target: file,
-        bytes: cached.to_string().as_bytes(),
+        bytes,
         keep_mode_from: None,
     });
 }

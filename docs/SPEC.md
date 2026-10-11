@@ -185,8 +185,8 @@ independent CI checkout enforce the same policy. It solves these problems:
   fixes the problem, not one that hides the metric.
 - It keeps missing evidence and tool failure visible. It never reports them as
   clean code, and it never reports them as a code failure.
-- It measures offline, in the time budget of a hook. Only a person command
-  may ask GitHub for the newest release (section 11.9).
+- It measures offline, in the time budget of a hook. Only `klin status` and
+  `klin setup` may ask GitHub for the newest release (section 11.9).
 
 Boundaries:
 
@@ -536,8 +536,8 @@ Rules:
 
 | Path | Reads | Writes |
 | --- | --- | --- |
-| Stop | config, facts, window, caches, state, HEAD, its reflog, the default-branch ref, the release cache | turn verdict, told record, the release cache's told record, build stamp, handoff records, claims, journal, caches, the merge-base cache, the records of a stamp that had none, and on an advisory Stop a fresh stamp, its ref and the prompt mark |
-| session, prompt | state, working tree, HEAD, its reflog, the default-branch ref | stamp with its records, prompt mark, prompt counter, handoff records, claims, journal |
+| Stop | config, facts, window, caches, state, HEAD, its reflog, the default-branch ref, the release cache | turn verdict, told record, the release cache's person record, build stamp, handoff records, claims, journal, caches, the merge-base cache, the records of a stamp that had none, and on an advisory Stop a fresh stamp, its ref and the prompt mark |
+| session, prompt | state, working tree, HEAD, its reflog, the default-branch ref, and on a session the release cache | the release cache's agent record on a session, stamp with its records, prompt mark, prompt counter, handoff records, claims, journal |
 | pre_tool | event, state directory path | journal line for `ask` and `deny` only |
 | `klin check` | config, facts, window, caches | caches, and a temporary base worktree that it removes |
 | `klin status` | state, journal, config, facts, the release cache, the network (section 11.9) | the release cache |
@@ -1983,7 +1983,8 @@ release cache holds, and writes the answer to it. It prints the installed
 version, the newest release and its release notes link, and installs
 nothing. It exits 0 when GitHub answered, and 2 when it did not. The rules of
 section 11.9 that keep a command from asking do not apply, because a person
-asked.
+asked. The guard denies `--check` to an agent with the rest of `klin update`,
+and its refusal names `klin status`, which shows the same release.
 
 ### 11.9 The newest release
 
@@ -1996,22 +1997,28 @@ and the agent. ADR 0069.
   not follow it. A failed or slow ask, or no `curl`, changes nothing that the
   command prints or returns.
 - The release cache is `latest.json` under `KLIN_CACHE_DIR`, or under
-  `~/.cache/klin` when that is unset. It holds the tag, the time of the last
-  ask, and the release the agent was told of.
+  `~/.cache/klin` when that is unset. It holds the tag and the time of the
+  last ask. A failed ask also counts as the day's ask, so an offline machine
+  waits on `curl` once a day. The release told to the person and the release
+  told to the agent each have a file of their own beside it.
 - No command asks, and the cache tells nothing, when `CI` or
   `KLIN_NO_UPDATE_CHECK` is set to a value that is not empty, or when no
   `klin-update` sits beside the binary. The last rule leaves out a plugin's
   binary, which updates with its plugin.
 - A Stop, `klin check`, `klin report`, `klin policy` and every hook never ask.
-  They read only the release cache.
+  They read only the release cache. A cached tag that is not dot-separated
+  digits is never shown.
 - `klin status` prints `klin TAG is available (you have VERSION). Run klin
   update, then klin setup.` when the cached tag is newer than the binary.
-- A Stop that blocks nothing tells the agent once for each newer release, not
-  once per stamp: `klin TAG is available. Tell the person to run klin update,
-  then klin setup. Do not run it yourself.` The guard denies `klin update` to
-  an agent (section 10.8). The note never blocks and never makes the window
-  red. A turn that changed nothing (section 10.7) does not tell it, and a
-  later Stop does.
+- A Stop that blocks nothing tells the person once for each newer release,
+  not once per stamp, with the line `klin status` prints, as a `release` part
+  of its notice (section 10.7). The notice never blocks and never makes the
+  window red. A turn that changed nothing does not tell it, and a later Stop
+  does.
+- A session start tells the agent once for each newer release, in the
+  session-start text: `klin TAG is available. Tell the person to run klin
+  update, then klin setup. Do not run it yourself.` The guard denies
+  `klin update` to an agent (section 10.8).
 
 ## 12. CI and Enforcement
 
@@ -6393,7 +6400,7 @@ failure, or an error alike — plus what only the hook knew:
   spent a gate block found no prompt line for the stop's session).
 - `told`, the parts of the `systemMessage` this stop printed for the person,
   empty where it printed none: `note` (8.2, 14, 16.3), `turn` and `weekly`
-  (9.5). A reader finds the last weekly line from it.
+  (9.5), and `release` (11.9). A reader finds the last weekly line from it.
 - `window`, the window the stop judged, which the line carries even where its
   run compared nothing against a base, so a reader knows which turn stamp
   each stop judged against (11.5).

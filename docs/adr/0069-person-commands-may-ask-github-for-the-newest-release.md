@@ -21,10 +21,13 @@ once a day. Every other command reads only the cached answer.**
 3. Only a binary with `klin-update` beside it asks or tells, because only the
    installer route can act on the answer.
 4. `CI` and `KLIN_NO_UPDATE_CHECK` turn the ask and the notice off.
-5. A Stop tells the agent once for each newer release, and tells it that the
-   person runs `klin update`, because the guard denies that command to an
-   agent.
-6. `klin update --check` asks every time, because a person asked.
+5. A Stop's notice tells the person once for each newer release. A session
+   start tells the agent once, in the text the host hands it, and asks it to
+   tell the person, because the guard denies `klin update` to an agent. A
+   Stop's notice reaches only the person, so the agent needs its own channel.
+6. A failed ask counts as the day's ask, so an offline machine does not wait
+   on `curl` for every command.
+7. `klin update --check` asks every time, because a person asked.
 
 ## Rejected options
 

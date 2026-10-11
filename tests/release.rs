@@ -3,7 +3,7 @@ mod harness;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
-use harness::{AGENT, Run, STOP, Tree, feed_as_with};
+use harness::{AGENT, Run, SESSION_START, STOP, Tree, feed_as_with};
 
 const NEWER: &str = "https://github.com/brajevicm/klin/releases/tag/v99.0.0";
 
@@ -61,6 +61,10 @@ impl Installed {
 
     fn stop(&self) -> Run {
         self.run(&[], AGENT, STOP)
+    }
+
+    fn session(&self) -> Run {
+        self.run(&[], AGENT, SESSION_START)
     }
 
     fn fetched(&self) -> usize {
@@ -122,9 +126,9 @@ fn status_fetches_at_most_once_a_day() {
     assert!(again.says("klin 99.0.0 is available"), "{}", again.out);
 }
 
-/// The agent hears of a newer release once, and is told not to install it itself. Spec 11.9.
+/// The person hears of a newer release once, through a Stop's notice. Spec 10.7, 11.9.
 #[test]
-fn stop_tells_the_agent_of_a_newer_release_once() {
+fn stop_tells_the_person_of_a_newer_release_once() {
     let installed = Installed::new(&answers(NEWER));
     installed.status(&[]);
 
@@ -132,8 +136,9 @@ fn stop_tells_the_agent_of_a_newer_release_once() {
     let second = installed.stop();
 
     assert_eq!(first.code, 0, "{}", first.out);
+    assert!(first.says(r#"{"systemMessage":"#), "{}", first.out);
     assert!(
-        first.says("klin 99.0.0 is available. Tell the person to run klin update, then klin setup. Do not run it yourself."),
+        first.says("klin 99.0.0 is available (you have"),
         "{}",
         first.out
     );
@@ -141,16 +146,40 @@ fn stop_tells_the_agent_of_a_newer_release_once() {
     assert!(!second.says("99.0.0"), "{}", second.out);
 }
 
-/// A Stop never uses the network, even with no cache. Spec 1, 11.9.
+/// The agent hears of a newer release once, at a session start, and is told not to install it
+/// itself, because the guard denies `klin update` to it. Spec 10.8, 11.9.
 #[test]
-fn stop_never_fetches() {
+fn session_start_tells_the_agent_of_a_newer_release_once() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.status(&[]);
+
+    let first = installed.session();
+    let second = installed.session();
+
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(
+        first.says(
+            "klin 99.0.0 is available. Tell the person to run klin update, then klin setup. \
+             Do not run it yourself."
+        ),
+        "{}",
+        first.out
+    );
+    assert!(!second.says("99.0.0"), "{}", second.out);
+}
+
+/// A hook never uses the network, even with no cache. Spec 1, 11.9.
+#[test]
+fn hooks_never_fetch() {
     let installed = Installed::new(&answers(NEWER));
 
-    let run = installed.stop();
+    let session = installed.session();
+    let stop = installed.stop();
 
-    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(session.code, 0, "{}", session.out);
+    assert_eq!(stop.code, 0, "{}", stop.out);
     assert_eq!(installed.fetched(), 0);
-    assert!(!run.says("99.0.0"), "{}", run.out);
+    assert!(!stop.says("99.0.0"), "{}", stop.out);
 }
 
 /// A person who turned the check off, and a CI job, see no fetch and no notice. Spec 11.9.
@@ -215,4 +244,27 @@ fn update_check_names_both_versions_and_installs_nothing() {
     assert!(first.says(NEWER), "{}", first.out);
     assert_eq!(installed.fetched(), 2);
     assert!(!installed.home.path("updated").exists());
+}
+
+/// `klin setup` also asks, so the cache is warm before the first Stop. Spec 11.9.
+#[test]
+fn setup_asks_for_the_newest_release() {
+    let installed = Installed::new(&answers(NEWER));
+
+    let run = installed.run(&[], &["setup", "--host", "claude"], "");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(installed.fetched(), 1);
+}
+
+/// A failed ask counts as the day's ask, so an offline machine does not wait on every command.
+/// Spec 11.9.
+#[test]
+fn a_failed_fetch_is_not_retried_the_same_day() {
+    let installed = Installed::new("exit 6");
+
+    installed.status(&[]);
+    installed.status(&[]);
+
+    assert_eq!(installed.fetched(), 1);
 }

@@ -39,7 +39,7 @@ const STATE_REFUSAL: &str = "klin: refused — this is klin's own record of the 
 const SETUP_REFUSAL: &str = "klin: refused — `klin setup` writes the configuration and \
     the host's hook files. Only a person runs it, in a reviewed commit.";
 const UPDATE_REFUSAL: &str = "klin: refused — `klin update` replaces the binary that judges \
-    this work. Only a person runs it.";
+    this work. Only a person runs it. `klin status` names a newer release.";
 const AGENT_REFUSAL: &str = "klin: refused — `klin __agent` answers the host's own hook \
     events, and the host runs it. Only the host runs it.";
 

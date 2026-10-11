@@ -140,10 +140,7 @@ fn text(document: &Value, notes: &[String], out: &mut String) {
         .as_str()
         .filter(|tag| release::is_newer(tag))
     {
-        let _ = writeln!(
-            out,
-            "klin {tag} is available (you have {version}). Run klin update, then klin setup."
-        );
+        let _ = writeln!(out, "{}", release::Audience::Person.note(tag));
     }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {
