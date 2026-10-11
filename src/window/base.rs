@@ -291,7 +291,7 @@ fn lightly(
     layout.cache_name = started.elapsed();
     let mut read = ExtractionCost::default();
     let started = Instant::now();
-    let outcomes = cache.read(&mut read.cache_steps)?;
+    let outcomes = cache.read(&mut read.cache_read_steps)?;
     read.cache_read = started.elapsed();
 
     let root = dir.join(inside);

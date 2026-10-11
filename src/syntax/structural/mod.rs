@@ -148,7 +148,7 @@ impl Extracted {
         };
         let mut cost = ExtractionCost::default();
         let started = Instant::now();
-        let outcomes = cache.read(&mut cost.cache_steps);
+        let outcomes = cache.read(&mut cost.cache_read_steps);
         self.held_from(cache, outcomes, changes, ExtractionCost::default());
         cost.cache_read = started.elapsed();
         cost
@@ -235,7 +235,7 @@ pub struct ExtractionCost {
     pub cached: usize,
     pub time: Duration,
     pub cache_read: Duration,
-    pub cache_steps: ReadCost,
+    pub cache_read_steps: ReadCost,
     pub cache_write: Duration,
 }
 
@@ -251,7 +251,7 @@ impl Add for ExtractionCost {
             cached: self.cached + other.cached,
             time: self.time + other.time,
             cache_read: self.cache_read + other.cache_read,
-            cache_steps: self.cache_steps + other.cache_steps,
+            cache_read_steps: self.cache_read_steps + other.cache_read_steps,
             cache_write: self.cache_write + other.cache_write,
         }
     }

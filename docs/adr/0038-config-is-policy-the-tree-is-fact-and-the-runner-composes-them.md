@@ -313,7 +313,8 @@ The 24 ms left builds one `String` for each path, name and text in the
 cache. A lazy format still does not help a changed Stop, which decodes every
 base file for `dead-symbols` and `reachability`. Cutting the rest needs facts
 that borrow from the read bytes or share their strings, which changes
-`FileFacts` for every consumer and waits for its own ticket.
+`FileFacts` for every consumer, so it is a ticket of its own, which no one has
+filed yet.
 
 ## Final self-enforcement
 
