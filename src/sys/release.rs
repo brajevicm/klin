@@ -9,7 +9,6 @@ use std::fs::OpenOptions;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
@@ -112,23 +111,103 @@ impl Audience {
     }
 }
 
+/// The cache directory of a binary that may ask, update or tell: one the installer placed,
+/// outside CI, with the check on. Every public entry builds it first, so the rule is in one
+/// place.
+struct Releases {
+    dir: PathBuf,
+}
+
+impl Releases {
+    fn here() -> Option<Releases> {
+        Releases::any().filter(|_| enabled())
+    }
+
+    /// The cache directory whatever the rule says, for a person's `klin update --check`.
+    fn any() -> Option<Releases> {
+        cache_dir().map(|dir| Releases { dir })
+    }
+}
+
+/// What `latest.json` holds: the newest tag GitHub named, when klin last asked, and the release
+/// auto-update last tried.
+#[derive(Default)]
+struct Latest {
+    tag: Option<Version>,
+    checked: u64,
+    tried: Option<Version>,
+}
+
+impl Latest {
+    fn read(dir: &Path) -> Latest {
+        let held = read_json(&dir.join(LATEST_FILE));
+        Latest {
+            tag: version(&held["tag"]),
+            checked: held["checked"].as_u64().unwrap_or_default(),
+            tried: version(&held["tried"]),
+        }
+    }
+
+    fn write(&self, dir: &Path) {
+        let held = json!({
+            "tag": self.tag.as_ref().map(ToString::to_string),
+            "checked": self.checked,
+            "tried": self.tried.as_ref().map(ToString::to_string),
+        });
+        write(&dir.join(LATEST_FILE), held.to_string().as_bytes());
+    }
+
+    fn stale(&self) -> bool {
+        now().saturating_sub(self.checked) >= DAY
+    }
+
+    /// The newer release auto-update has not tried, so a failing updater runs once per release.
+    fn untried(&self) -> Option<&Version> {
+        self.tag
+            .as_ref()
+            .filter(|tag| auto() && tag.is_newer() && self.tried.as_ref() != Some(tag))
+    }
+}
+
+/// What one audience's record holds: the version it last saw klin run as, and the release it
+/// was last told of.
+#[derive(Default)]
+struct Record {
+    seen: Option<Version>,
+    told: Option<Version>,
+}
+
+impl Record {
+    fn read(dir: &Path, who: Audience) -> Record {
+        let held = read_json(&dir.join(who.record()));
+        Record {
+            seen: version(&held["seen"]),
+            told: version(&held["told"]),
+        }
+    }
+
+    fn write(&self, dir: &Path, who: Audience) {
+        let held = json!({
+            "seen": self.seen.as_ref().map(ToString::to_string),
+            "told": self.told.as_ref().map(ToString::to_string),
+        });
+        write(&dir.join(who.record()), held.to_string().as_bytes());
+    }
+}
+
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
 /// ask is a day old, or when auto-update holds a newer release it has not tried. The child
 /// decides under its lock, so two commands at once start at most one ask and one update.
 pub fn refresh() {
-    let Some(dir) = cache_dir().filter(|_| enabled()) else {
+    let Some(releases) = Releases::here() else {
         return;
     };
-    let cached = read(&dir);
-    if !stale(&cached) && untried(&cached).is_none() {
+    let latest = Latest::read(&releases.dir);
+    if !latest.stale() && latest.untried().is_none() {
         return;
     }
     if let Ok(exe) = std::env::current_exe() {
-        let _ = Command::new(exe)
-            .arg(CHILD)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+        let _ = silent(Command::new(exe).arg(CHILD))
             .process_group(0)
             .spawn();
     }
@@ -136,37 +215,35 @@ pub fn refresh() {
 
 /// The detached child, under the cache's lock: the day's ask, which counts from its start so a
 /// failed or slow ask is the day's ask, then under auto-update the updater, once for each newer
-/// release. A child that finds the lock taken does nothing. Its exit code is never read.
-pub fn child() -> u8 {
-    let Some(dir) = cache_dir().filter(|_| enabled()) else {
-        return 0;
+/// release. A child that finds the lock taken does nothing.
+pub fn child() {
+    let Some(releases) = Releases::here() else {
+        return;
     };
-    let Some(_lock) = Lock::take(&dir) else {
-        return 0;
+    let dir = &releases.dir;
+    let Some(_lock) = Lock::take(dir) else {
+        return;
     };
-    let mut cached = read(&dir);
-    if stale(&cached) {
-        cached["checked"] = now().into();
-        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
-        let _ = fetched(&dir);
-        cached = read(&dir);
+    let mut latest = Latest::read(dir);
+    if latest.stale() {
+        latest.checked = now();
+        latest.write(dir);
+        latest.tag = asked().or(latest.tag);
+        latest.write(dir);
     }
-    if let (Some(tag), Some(updater)) = (untried(&cached), updater_path()) {
-        cached["tried"] = tag.to_string().into();
-        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
-        let _ = Command::new(updater)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
+    if let (Some(tag), Some(updater)) = (latest.untried().cloned(), updater_path()) {
+        latest.tried = Some(tag);
+        latest.write(dir);
+        let _ = silent(&mut Command::new(updater)).status();
     }
-    0
 }
 
 /// The cache's lock file, made new so only one child holds it, and removed when it drops.
 struct Lock(PathBuf);
 
 impl Lock {
+    /// A lock older than `LOCK_STALE` belongs to a child that died. Only one child can rename
+    /// it away, so two children never both take over the same stale lock.
     fn take(dir: &Path) -> Option<Lock> {
         let file = dir.join(LOCK_FILE);
         let _ = std::fs::create_dir_all(dir);
@@ -176,7 +253,10 @@ impl Lock {
             .and_then(|at| at.elapsed().ok())
             .is_some_and(|age| age.as_secs() >= LOCK_STALE);
         if old {
-            let _ = std::fs::remove_file(&file);
+            let away = dir.join(format!("{LOCK_FILE}.{}", std::process::id()));
+            if std::fs::rename(&file, &away).is_ok() {
+                let _ = std::fs::remove_file(&away);
+            }
         }
         OpenOptions::new()
             .write(true)
@@ -193,69 +273,69 @@ impl Drop for Lock {
     }
 }
 
-/// Whether an integration of the repository at a root is behind this binary. The integration
-/// scan lives in the command layer, which registers it here at start.
-static BEHIND: OnceLock<fn(&Path) -> bool> = OnceLock::new();
-
-pub fn register_behind(behind: fn(&Path) -> bool) {
-    let _ = BEHIND.set(behind);
-}
-
-pub fn behind(root: &Path) -> bool {
-    BEHIND.get().is_some_and(|behind| behind(root))
-}
-
 /// Ask GitHub now and wait, whatever the cache holds, and keep the answer. `klin update
 /// --check`.
 pub fn fetch() -> Option<Version> {
-    cache_dir().map_or_else(asked, |dir| fetched(&dir))
+    let tag = asked();
+    if let (Some(releases), Some(tag)) = (Releases::any(), &tag) {
+        let mut latest = Latest::read(&releases.dir);
+        latest.tag = Some(tag.clone());
+        latest.checked = now();
+        latest.write(&releases.dir);
+    }
+    tag
 }
 
 /// The newest release the cache holds, on a binary that may tell of one.
 pub fn known() -> Option<Version> {
-    let dir = cache_dir().filter(|_| enabled())?;
-    tag_of(&read(&dir))
+    Latest::read(&Releases::here()?.dir).tag
 }
 
 /// The version the person saw before this binary replaced it, read without consuming it.
 pub fn updated_from() -> Option<Version> {
-    let dir = cache_dir().filter(|_| enabled())?;
-    seen(&dir, Audience::Person).filter(Version::is_older)
+    let releases = Releases::here()?;
+    Record::read(&releases.dir, Audience::Person)
+        .seen
+        .filter(Version::is_older)
 }
 
 /// The news `who` has not heard: an update first, else a newer release. The first sight of a
 /// binary, and a binary older than the one last seen, records its version, so neither a fresh
 /// install nor a downgrade is an update.
 pub fn news(who: Audience) -> Option<News> {
-    let dir = cache_dir().filter(|_| enabled())?;
+    let dir = Releases::here()?.dir;
     let current = Version::current()?;
-    match seen(&dir, who) {
+    let mut record = Record::read(&dir, who);
+    match record.seen.take() {
         Some(seen) if seen < current => {
             return Some(News::Updated {
                 from: seen,
                 to: current,
             });
         }
-        Some(seen) if seen == current => {}
-        _ => record(&dir, who, |held| held["seen"] = current.to_string().into()),
+        Some(seen) if seen == current => record.seen = Some(seen),
+        _ => {
+            record.seen = Some(current);
+            record.write(&dir, who);
+        }
     }
-    let told = read_record(&dir, who)["told"]
-        .as_str()
-        .and_then(Version::parse);
-    tag_of(&read(&dir))
-        .filter(|tag| tag.is_newer() && told.as_ref() != Some(tag))
+    Latest::read(&dir)
+        .tag
+        .filter(|tag| tag.is_newer() && record.told.as_ref() != Some(tag))
         .map(News::Available)
 }
 
 /// Record that `who` heard `news`.
 pub fn heard(who: Audience, news: &News) {
-    let Some(dir) = cache_dir() else {
+    let Some(releases) = Releases::any() else {
         return;
     };
-    record(&dir, who, |held| match news {
-        News::Updated { to, .. } => held["seen"] = to.to_string().into(),
-        News::Available(tag) => held["told"] = tag.to_string().into(),
-    });
+    let mut record = Record::read(&releases.dir, who);
+    match news {
+        News::Updated { to, .. } => record.seen = Some(to.clone()),
+        News::Available(tag) => record.told = Some(tag.clone()),
+    }
+    record.write(&releases.dir, who);
 }
 
 fn enabled() -> bool {
@@ -277,12 +357,6 @@ fn updater_path() -> Option<PathBuf> {
         .filter(|path| path.is_file())
 }
 
-/// The newer release auto-update has not tried, so a failing updater runs once per release.
-fn untried(cached: &Value) -> Option<Version> {
-    let tried = cached["tried"].as_str().and_then(Version::parse);
-    tag_of(cached).filter(|tag| auto() && tag.is_newer() && tried.as_ref() != Some(tag))
-}
-
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.
 fn cache_dir() -> Option<PathBuf> {
     std::env::var_os("KLIN_CACHE_DIR")
@@ -291,19 +365,12 @@ fn cache_dir() -> Option<PathBuf> {
         .or_else(|| std::env::var_os("HOME").map(|home| Path::new(&home).join(".cache/klin")))
 }
 
-fn stale(cached: &Value) -> bool {
-    now().saturating_sub(cached["checked"].as_u64().unwrap_or_default()) >= DAY
-}
-
-fn fetched(dir: &Path) -> Option<Version> {
-    let tag = asked();
-    let mut cached = read(dir);
-    if let Some(tag) = &tag {
-        cached["tag"] = tag.to_string().into();
-    }
-    cached["checked"] = now().into();
-    write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
-    tag
+/// A process with no terminal of its own: nothing in, nothing out.
+fn silent(command: &mut Command) -> &mut Command {
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
 }
 
 /// The tag GitHub's latest-release page redirects to, through `curl`, so klin carries no HTTP
@@ -329,28 +396,8 @@ fn asked() -> Option<Version> {
     Version::parse(url.trim().strip_prefix(TAGGED)?)
 }
 
-fn tag_of(cached: &Value) -> Option<Version> {
-    cached["tag"].as_str().and_then(Version::parse)
-}
-
-fn seen(dir: &Path, who: Audience) -> Option<Version> {
-    read_record(dir, who)["seen"]
-        .as_str()
-        .and_then(Version::parse)
-}
-
-fn record(dir: &Path, who: Audience, change: impl FnOnce(&mut Value)) {
-    let mut held = read_record(dir, who);
-    change(&mut held);
-    write(&dir.join(who.record()), held.to_string().as_bytes());
-}
-
-fn read_record(dir: &Path, who: Audience) -> Value {
-    read_json(&dir.join(who.record()))
-}
-
-fn read(dir: &Path) -> Value {
-    read_json(&dir.join(LATEST_FILE))
+fn version(held: &Value) -> Option<Version> {
+    held.as_str().and_then(Version::parse)
 }
 
 fn read_json(file: &Path) -> Value {

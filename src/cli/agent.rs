@@ -14,7 +14,6 @@ use crate::engine::catalogue;
 use crate::hook::host;
 use crate::hook::host::adapter::{Decision, Event, Kind};
 use crate::hook::{guard, journal, stop, turn};
-use crate::sys::release;
 
 const WORD: &str = "__agent";
 const EVENT: &str = "event";
@@ -28,7 +27,6 @@ pub fn called() -> bool {
 /// Every answer runs under one unwind guard, so a panic anywhere is no decision either: exit 0
 /// before the kind is known and at an informing hook, and exit 1 at a Stop. Spec 10.10.
 pub fn run() -> ExitCode {
-    release::register_behind(setup::behind);
     let placed = Placed::default();
     match catch_unwind(AssertUnwindSafe(|| answer(&placed))) {
         Ok(code) => code,
@@ -154,7 +152,7 @@ fn answered(event: Event, kind: Kind, start: &Path, root: &Path) -> u8 {
         Kind::Session | Kind::Prompt => {
             turn::opened(event, start, &catalogue::sections(), &mut out)
         }
-        Kind::Stop => stop::stop(event, start, &mut out),
+        Kind::Stop => stop::stop(event, start, setup::behind, &mut out),
     };
     print!("{out}");
     code

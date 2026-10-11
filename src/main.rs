@@ -60,7 +60,8 @@ fn main() -> ExitCode {
         .nth(1)
         .is_some_and(|word| word == release::CHILD)
     {
-        return ExitCode::from(release::child());
+        release::child();
+        return ExitCode::SUCCESS;
     }
     match Cli::parse().command {
         Command::Update(args) => ExitCode::from(update::run(&args)),

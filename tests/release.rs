@@ -93,7 +93,7 @@ impl Installed {
     fn warmed(&self) {
         self.status(&[]);
         let cache = self.home.path("cache/latest.json");
-        until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("\"tag\"")));
+        until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
     }
 
     fn fetched(&self) -> usize {

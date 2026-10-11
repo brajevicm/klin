@@ -34,13 +34,18 @@ use crate::{
 
 const HOOK_REPORT: &str = "KLIN_HOOK_REPORT";
 
+/// Whether a repository copy of klin's integration is behind this binary.
+pub type Behind = fn(&Path) -> bool;
+
 /// A stop's run decided to block. The host's own exit code for a block is `block_exit`, which
 /// the stop ends with. Spec 9.1.
 const BLOCKED: u8 = 2;
 
 /// One Stop of the agent ingress, over the tree the event names, after the opt-in walk found
 /// the worktree root's `klin.json`. Spec 10.2, 10.3.
-pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
+/// `behind` says whether a repository copy of klin's integration is behind this binary, a scan
+/// the command layer owns. Spec 11.9.
+pub fn stop(event: Event, start: &Path, behind: Behind, out: &mut String) -> u8 {
     let args = Args {
         changed: true,
         view: View::Stop,
@@ -51,7 +56,7 @@ pub fn stop(event: Event, start: &Path, out: &mut String) -> u8 {
         return 0;
     };
     match Project::load(None, start, &catalogue::sections()) {
-        Ok(mut project) => stopped(&args, &mut project, Some(event), out),
+        Ok(mut project) => stopped(&args, &mut project, Some(event), behind, out),
         Err(problem) => unjudged(&event, start, &problem),
     }
 }
@@ -115,7 +120,13 @@ const BUDGET: Duration = Duration::from_secs(1);
 /// One stop in the hook: the lock, the turn window, the build, the gates, and the verdict the
 /// next prompt reads. The lock is held from before the run measures until after the verdict is
 /// written, so an older stop cannot leave green over a newer red. Spec 6.5, 16.3.
-fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut String) -> u8 {
+fn stopped(
+    args: &Args,
+    project: &mut Project,
+    event: Option<Event>,
+    behind: Behind,
+    out: &mut String,
+) -> u8 {
     let begun = std::time::Instant::now();
     let root = &project.root().to_path_buf();
     let mut log = journal::Stop::begun(event.as_ref(), config_hash(project));
@@ -137,9 +148,7 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         &mut log,
         out,
     );
-    let teardown = project.teardown_base();
-    log.timing.base_remove_ms = clock::millis(teardown.remove);
-    log.timing.base_prune_ms = clock::millis(teardown.prune);
+    torn_down(project, &mut log);
     let exit = exit_code(code, event.as_ref());
     log.blocked = code == BLOCKED;
     let moved = log.advisory.is_some();
@@ -153,15 +162,9 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
     };
     let (note, told) = leave(root, (lost, fresh), note, left, &mut log);
     log.asked = asked.unwrap_or_default();
-    let mut seen = None;
-    if let Some(spent) = budgeted(root, lost, &mut log, |budget, _| budget.spent()) {
-        log.gate_blocks = spent.gate_blocks;
-        log.build_blocks = spent.builds;
-        log.prompt = spent.prompt;
-        seen = spent.trees;
-    }
+    let seen = spent(root, lost, &mut log);
     let quiet = || !moved && unchanged(root, mark.as_deref(), seen.as_ref());
-    let (said, noted) = tell(args, root, code, note, &mut log, quiet);
+    let (said, noted) = tell(args, root, code, note, &mut log, quiet, behind);
     log.notice = noticed(root, said.as_deref(), event.as_ref());
     if !lost && (log.blocked || noted) {
         turn::heard(root, &told);
@@ -173,6 +176,23 @@ fn stopped(args: &Args, project: &mut Project, event: Option<Event>, out: &mut S
         host::answering(event.as_ref()).stop(&Stop::Tell(said));
     }
     exit
+}
+
+/// Remove the base worktree the run measured against, and record how long it took.
+fn torn_down(project: &Project, log: &mut journal::Stop) {
+    let teardown = project.teardown_base();
+    log.timing.base_remove_ms = clock::millis(teardown.remove);
+    log.timing.base_prune_ms = clock::millis(teardown.prune);
+}
+
+/// The blocks this prompt spent, recorded in the stop's line, and the trees those blocks were
+/// taken over, which tell whether the turn changed nothing.
+fn spent(root: &Path, lost: bool, log: &mut journal::Stop) -> Option<BTreeSet<String>> {
+    let spent = budgeted(root, lost, log, |budget, _| budget.spent())?;
+    log.gate_blocks = spent.gate_blocks;
+    log.build_blocks = spent.builds;
+    log.prompt = spent.prompt;
+    spent.trees
 }
 
 /// The window this stop judges, bound to the project, and why the stop is advisory when the
@@ -384,6 +404,7 @@ fn tell(
     note: Option<String>,
     log: &mut journal::Stop,
     quiet: impl FnOnce() -> bool,
+    behind: Behind,
 ) -> (Option<String>, bool) {
     let noting = note.is_some();
     let mut parts: Vec<(&'static str, String)> =
@@ -400,7 +421,7 @@ fn tell(
     if parts.is_empty() {
         return (None, noted);
     }
-    let parts = released(root, untold, parts);
+    let parts = released(behind, root, untold, parts);
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
     (Some(said.join("\n")), noted)
@@ -446,6 +467,7 @@ fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<News> {
 /// is recorded as heard, and after an update that left a repository integration behind it also
 /// names `klin setup`, which only this Stop pays to find out. Spec 11.9.
 fn released(
+    behind: Behind,
     root: &Path,
     untold: Option<News>,
     mut parts: Vec<(&'static str, String)>,
@@ -456,7 +478,7 @@ fn released(
     let Some((_, said)) = parts.iter_mut().find(|(part, _)| *part == "release") else {
         return parts;
     };
-    if matches!(news, News::Updated { .. }) && release::behind(root) {
+    if matches!(news, News::Updated { .. }) && behind(root) {
         said.push_str(" Run klin setup and commit the changed hook files.");
     }
     release::heard(Audience::Person, &news);
