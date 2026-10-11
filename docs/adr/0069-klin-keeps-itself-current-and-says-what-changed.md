@@ -62,7 +62,8 @@ and no hook waits on the network.**
 ## Consequences
 
 The ask sends no data of the repository. A person without `curl` gets no
-notice. The Codex step runs `codex plugin marketplace upgrade klin` and
-then `codex plugin add klin@klin`. Codex CLI 0.162.1's help and OpenAI's
-plugin page name the upgrade command but do not say whether it alone
-replaces an installed plugin, so the step also adds the plugin again.
+notice. The Codex step is `codex plugin marketplace upgrade klin`. Codex
+CLI 0.162.1 was run against a Git marketplace that pins its plugin to a
+tag: after a release moved the pin, the upgrade alone replaced the
+installed plugin with the new version and dropped the old one from the
+cache, and `codex plugin add` afterwards changed nothing.

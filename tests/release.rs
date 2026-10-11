@@ -643,10 +643,10 @@ fn a_plugin_stop_under_cursor_names_a_fresh_copy_from_the_tag() {
     assert!(!run.says("/plugin"), "{}", run.out);
 }
 
-/// Under Codex, a plugin's Stop names the two Codex commands that update the plugin.
+/// Under Codex, a plugin's Stop names the Codex command that updates the plugin.
 /// Spec 11.9.
 #[test]
-fn a_plugin_stop_under_codex_names_the_codex_update_commands() {
+fn a_plugin_stop_under_codex_names_the_codex_upgrade_command() {
     let installed = Installed::plugin(&answers(NEWER));
     installed.warmed();
     let stop = r#"{"hook_event_name":"Stop","session_id":"s1","turn_id":"t1","permission_mode":"default","stop_hook_active":false}"#;
@@ -654,7 +654,7 @@ fn a_plugin_stop_under_codex_names_the_codex_update_commands() {
     let run = installed.run(&[], AGENT, stop);
 
     assert!(
-        run.says("Run codex plugin marketplace upgrade klin, then codex plugin add klin@klin"),
+        run.says("Run codex plugin marketplace upgrade klin, and start a new Codex session."),
         "{}",
         run.out
     );
