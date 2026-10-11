@@ -563,10 +563,12 @@ fn a_static_cd_moves_where_a_relative_path_resolves() {
     ] {
         asked(&bash_in(&tree, command), named, command);
     }
-    denied(
-        &bash_in(&tree, "cd sub; echo x > ../klin.json"),
-        "a redirect after a cd",
-    );
+    for command in [
+        "cd sub; echo x > ../klin.json",
+        "cd sub && echo x > ../klin.json",
+    ] {
+        denied(&bash_in(&tree, command), command);
+    }
     let absolute = format!("cd {} && rm ../klin.json", tree.at("sub"));
     asked(&bash_in(&tree, &absolute), "../klin.json", "an absolute cd");
     for command in [
