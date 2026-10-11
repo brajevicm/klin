@@ -6,8 +6,10 @@
 //! beside it, asks, updates or tells, and so does a plugin's binary, which the plugin wrapper
 //! marks with `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
+use std::ffi::OsStr;
 use std::fmt;
 use std::io;
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -341,7 +343,7 @@ pub fn refresh() {
     for who in [Audience::Person, Audience::Agent] {
         first_sight(&releases, who);
     }
-    if let Ok(exe) = std::env::current_exe() {
+    if let Ok(exe) = installed() {
         let _ = silent(Command::new(exe).arg(CHILD))
             .process_group(0)
             .spawn();
@@ -390,15 +392,17 @@ fn ask_today(dir: &Path) {
 
 /// Under auto-update, install the newer release not tried yet, unless the binary on disk is
 /// already that release or newer, and keep why it failed.
+/// The attempt counts as one that may pass until it ends, so a child killed during it leaves
+/// the release to the next day's ask.
 fn install_untried(dir: &Path, route: Route) {
-    let Ok(exe) = std::env::current_exe() else {
+    let Ok(exe) = installed() else {
         return;
     };
     let claimed = Latest::change(dir, |latest| {
         let tag = latest.untried(route).cloned()?;
         latest.tried = Some(tag.clone());
         latest.refused = None;
-        latest.retry = false;
+        latest.retry = true;
         Some(tag)
     });
     let Some(tag) = claimed.filter(|tag| older_on_disk(&exe, tag)) else {
@@ -447,8 +451,7 @@ pub fn update() -> Result<Option<Version>, String> {
     installer_only(PLUGIN_UPDATE, NO_INSTALLER)?;
     let scratch = cache_dir().ok_or("klin found no cache directory to download into.")?;
     let _install = locked(&scratch, ASK_LOCK, INSTALL_WAIT).ok_or(BUSY)?;
-    let exe =
-        std::env::current_exe().map_err(|why| format!("klin could not find itself: {why}"))?;
+    let exe = installed().map_err(|why| format!("klin could not find itself: {why}"))?;
     let Some(tag) = newer_than(&exe)? else {
         return Ok(None);
     };
@@ -605,8 +608,20 @@ fn set(name: &str) -> bool {
     std::env::var_os(name).is_some_and(|value| !value.is_empty())
 }
 
+/// Where this binary is installed. Linux names a running binary that another process replaced
+/// on disk with a ` (deleted)` suffix, and the klin now installed is at the path without it.
+pub fn installed() -> io::Result<PathBuf> {
+    let exe = std::env::current_exe()?;
+    Ok(
+        match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
+            Some(path) => PathBuf::from(OsStr::from_bytes(path)),
+            None => exe,
+        },
+    )
+}
+
 fn updater_path() -> Option<PathBuf> {
-    std::env::current_exe()
+    installed()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
         .filter(|path| path.is_file())

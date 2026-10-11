@@ -13,7 +13,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The `curl` of an installed klin. A download (`-o FILE`) of an archive copies the ARCHIVE
 /// fixture and is recorded in UPDATED, and a download of a signature copies the one of that name
-/// from the SIGNATURES fixture directory. Any other call is an ask, which is
+/// from the SIGNATURES fixture directory. An ARCHIVE named `interrupt` kills the klin that
+/// downloads it, as a crash or a restart would. Any other call is an ask, which is
 /// recorded in CALLS and answered by ANSWER.
 const CURL: &str = r#"#!/bin/sh
 out=
@@ -25,7 +26,9 @@ done
 case "$out:$previous" in
   /dev/null:* | :*) ;;
   *.minisig) cp "SIGNATURES/$(basename "$previous")" "$out"; exit 0 ;;
-  *) echo "$previous" >> 'UPDATED'; cp 'ARCHIVE' "$out"; exit 0 ;;
+  *) echo "$previous" >> 'UPDATED'
+     case 'ARCHIVE' in */interrupt) kill -9 "$PPID" ;; esac
+     cp 'ARCHIVE' "$out"; exit 0 ;;
 esac
 echo called >> 'CALLS'
 ANSWER
@@ -1118,4 +1121,50 @@ fn update_waits_for_another_install_to_end() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(took >= Duration::from_secs(1), "{took:?}");
     assert!(installed.replaced());
+}
+
+/// A child killed during an install leaves the release to the next day's ask, so a crash or a
+/// restart never stops auto-update for that release. Spec 11.9.
+#[test]
+fn an_install_the_child_did_not_finish_is_tried_a_day_later() {
+    let on = [("KLIN_AUTO_UPDATE", "1")];
+    let installed = Installed::serving(&answers(NEWER), "interrupt", "signed");
+    let updated = installed.home.path("updated");
+
+    installed.status(&on);
+    until(|| lines(&updated) == 1);
+    settle();
+    installed.a_day_later();
+    installed.status(&on);
+    until(|| lines(&updated) == 2);
+
+    assert_eq!(lines(&updated), 2);
+    assert!(!installed.replaced());
+}
+
+/// A `klin update` that waited while another install replaced klin reads the klin now on disk,
+/// and installs nothing over a klin that is already the newest. Linux names the replaced running
+/// binary with a ` (deleted)` suffix, which klin strips. Spec 11.8.
+#[test]
+fn update_after_another_install_replaced_klin_installs_nothing() {
+    let installed = Installed::serving(&answers(NEWER), "klin.tar.xz", "signed");
+    fs::create_dir_all(installed.home.path("cache")).expect("cache directory");
+    let held = fs::File::create(installed.home.path("cache/release-ask.lock")).expect("lock file");
+    held.lock().expect("lock");
+    let home = installed.home.path("installed");
+    let other = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(1));
+        let newer = home.join(".klin-other");
+        fs::write(&newer, "#!/bin/sh\necho 'klin 99.0.0'\n").expect("newer klin");
+        fs::set_permissions(&newer, fs::Permissions::from_mode(0o755)).expect("chmod");
+        fs::rename(&newer, home.join("klin")).expect("replace klin");
+        drop(held);
+    });
+
+    let run = installed.run(&[("KLIN_AUTO_UPDATE", "0")], &["update"], "");
+    other.join().expect("other install");
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("is the newest release"), "{}", run.out);
+    assert_eq!(lines(&installed.home.path("updated")), 0);
 }

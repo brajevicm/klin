@@ -1983,7 +1983,9 @@ B.19.6 holds, except how the release is installed. On the installer's
 route, `klin update` first takes `release-ask.lock`, the lock the detached
 child holds, and waits up to 60 seconds while an ask or an install runs. It
 then asks GitHub for the newest release. When it is newer than the binary
-and than the klin on disk, which an install in between may have replaced,
+and than the klin on disk, which an install in between may have replaced
+(on Linux the running binary's path then ends in ` (deleted)`, and klin
+reads and replaces the path without it),
 klin installs it as section 11.9 says, through the signature check, prints `klin updated to TAG. Release notes: LINK` and exits
 0. When the binary is the newest, it says so and exits 0. A lock still held
 after the wait, or a failed ask, download or signature check, installs
@@ -2041,6 +2043,7 @@ names its host's own update step in place of `klin update`. ADR 0069.
   than the binary and than the klin on disk, the child installs it, once for
   each release. A release whose install failed in a way that may pass, such
   as a download that did not finish, is tried again with the next day's ask.
+  So is an attempt whose child was killed before it ended.
   A refused release, whose signature or archive failed the check, is not
   tried again. Auto-update is on when
   `KLIN_AUTO_UPDATE=1`, off when `KLIN_AUTO_UPDATE=0`, and otherwise as the

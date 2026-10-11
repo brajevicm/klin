@@ -1,9 +1,6 @@
 //! `klin update` installs the newest release over the binary the installer placed, after its
 //! signature checks out. Spec 11.8.
 
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
-use std::path::PathBuf;
 use std::process::Command;
 
 use crate::cli::setup;
@@ -107,9 +104,8 @@ fn check() -> u8 {
 /// After an update, the new binary reads this repository's integrations, and any that is not
 /// `current` is named with the command that reconciles it. Spec 11.8.
 fn reconcile_hint() {
-    let Some(read) = std::env::current_exe()
+    let Some(read) = release::installed()
         .ok()
-        .map(replaced)
         .and_then(|exe| Command::new(exe).args(["status", "--json"]).output().ok())
         .filter(|read| read.status.success())
     else {
@@ -157,13 +153,4 @@ fn described(rows: &[&serde_json::Value]) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
-}
-
-/// The path the updated binary sits at. Linux names a running binary that was replaced on disk
-/// with a ` (deleted)` suffix, and the new binary is at the path without it.
-fn replaced(exe: PathBuf) -> PathBuf {
-    match exe.as_os_str().as_bytes().strip_suffix(b" (deleted)") {
-        Some(path) => PathBuf::from(OsStr::from_bytes(path)),
-        None => exe,
-    }
 }
