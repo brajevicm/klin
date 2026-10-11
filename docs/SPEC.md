@@ -4173,7 +4173,8 @@ shared test convention recognizes are not judged. A TypeScript declaration
 inside a global augmentation, `declare global { ... }` or a `global { ... }`
 block a `declare module` holds, is externally visible, because it adds a name
 to the global scope that code reads without an import. The grammar parses the
-nested `global` block only once the #390 fork lands. Pinned by
+nested `global` block only once the #390 fork lands, so no test pins that
+form yet. The `declare global` form is pinned by
 `a_declaration_in_a_global_augmentation_is_not_judged` in
 `tests/dead_symbols.rs`. The `ignore` list adds name
 globs. A glob is matched against each name a declaration binds, so a

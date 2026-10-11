@@ -119,16 +119,10 @@ fn visible(node: Node) -> bool {
 /// Whether `declare global { ... }`, or a `global { ... }` block a module declaration holds,
 /// encloses this node.
 fn in_a_global_augmentation(node: Node) -> bool {
-    let mut holder = node.parent();
-    while let Some(found) = holder {
-        if found.kind() == "global_namespace"
+    std::iter::successors(node.parent(), Node::parent).any(|found| {
+        found.kind() == "global_namespace"
             || (found.kind() == "ambient_declaration" && has_token(found, "global"))
-        {
-            return true;
-        }
-        holder = found.parent();
-    }
-    false
+    })
 }
 
 /// The module specifier an import or a re-export names, without its quotes, and the names it
