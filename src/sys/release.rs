@@ -184,15 +184,14 @@ impl Latest {
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
 
-    /// Read, change and rewrite `latest.json` under the cache lock, so a change another klin
-    /// made in between is never lost. False when the lock or the write failed.
-    fn change(dir: &Path, change: impl FnOnce(&mut Latest)) -> bool {
-        let Some(_lock) = locked(dir, CACHE_LOCK, CACHE_WAIT) else {
-            return false;
-        };
+    /// Read and change `latest.json` under the cache lock, so a change another klin made in
+    /// between is never lost, and rewrite it when `change` returns a value. That value, or none
+    /// when the change made nothing, or the lock or the write failed.
+    fn change<T>(dir: &Path, change: impl FnOnce(&mut Latest) -> Option<T>) -> Option<T> {
+        let _lock = locked(dir, CACHE_LOCK, CACHE_WAIT)?;
         let mut latest = Latest::read(dir);
-        change(&mut latest);
-        latest.write(dir).is_ok()
+        let changed = change(&mut latest)?;
+        latest.write(dir).ok().map(|()| changed)
     }
 
     fn stale(&self) -> bool {
@@ -211,7 +210,7 @@ impl Latest {
 
 /// What one audience's record holds: the newest version it saw klin run as, and the release it
 /// was last told of.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Record {
     seen: Option<Version>,
     told: Option<Version>,
@@ -223,6 +222,23 @@ impl Record {
         Record {
             seen: version(&held["seen"]),
             told: version(&held["told"]),
+        }
+    }
+
+    /// Record `news` as heard, and say whether it was new to this audience: an update to a
+    /// version newer than any it saw, or a release it was not told of. The one place the rule
+    /// lives, for the hook that reads the news and the hook that claims it.
+    fn hear(&mut self, news: &News) -> bool {
+        match news {
+            News::Updated { to, .. } if self.seen.as_ref().is_none_or(|seen| seen < to) => {
+                self.seen = Some(to.clone());
+                true
+            }
+            News::Available(tag) if self.told.as_ref() != Some(tag) => {
+                self.told = Some(tag.clone());
+                true
+            }
+            _ => false,
         }
     }
 
@@ -305,20 +321,25 @@ pub fn child() {
         return;
     };
     if Latest::read(dir).stale()
-        && Latest::change(dir, |latest| latest.checked = now())
+        && Latest::change(dir, |latest| {
+            latest.checked = now();
+            Some(())
+        })
+        .is_some()
         && let Some(tag) = asked()
     {
-        Latest::change(dir, |latest| latest.tag = Some(tag));
+        Latest::change(dir, |latest| {
+            latest.tag = Some(tag);
+            Some(())
+        });
     }
     let route = releases.route;
-    let mut claimed = None;
-    let tried = Latest::change(dir, |latest| {
-        claimed = latest.untried(route).cloned();
-        if claimed.is_some() {
-            latest.tried.clone_from(&claimed);
-        }
+    let claimed = Latest::change(dir, |latest| {
+        let tag = latest.untried(route).cloned()?;
+        latest.tried = Some(tag.clone());
+        Some(tag)
     });
-    if let (true, Some(_), Some(updater)) = (tried, claimed, updater_path()) {
+    if let (Some(_), Some(updater)) = (claimed, updater_path()) {
         let _ = silent(&mut Command::new(updater)).status();
     }
 }
@@ -331,6 +352,7 @@ pub fn fetch() -> Option<Version> {
         Latest::change(&dir, |latest| {
             latest.tag = Some(tag.clone());
             latest.checked = now();
+            Some(())
         });
     }
     tag
@@ -357,26 +379,24 @@ pub fn news(who: Audience) -> Option<(Route, News)> {
     let releases = Releases::here()?;
     let current = Version::current()?;
     let record = Record::read(&releases, who);
-    match record.seen {
-        Some(seen) if seen < current => {
-            let news = News::Updated {
-                from: seen,
-                to: current,
-            };
-            return Some((releases.route, news));
-        }
-        Some(_) => {}
-        None => {
-            let _lock = releases.cache_lock()?;
-            let mut first = Record::read(&releases, who);
-            first.seen.get_or_insert(current);
-            let _ = first.write(&releases, who);
-        }
+    if record.seen.is_none() {
+        let _lock = releases.cache_lock()?;
+        let mut first = Record::read(&releases, who);
+        first.seen.get_or_insert(current.clone());
+        let _ = first.write(&releases, who);
     }
-    Latest::read(&releases.dir)
-        .tag
-        .filter(|tag| tag.is_newer() && record.told.as_ref() != Some(tag))
-        .map(|tag| (releases.route, News::Available(tag)))
+    let updated = record
+        .seen
+        .clone()
+        .filter(|seen| *seen < current)
+        .map(|from| News::Updated { from, to: current });
+    let news = updated.or_else(|| {
+        Latest::read(&releases.dir)
+            .tag
+            .filter(Version::is_newer)
+            .map(News::Available)
+    })?;
+    record.clone().hear(&news).then_some((releases.route, news))
 }
 
 /// Make `news` the audience's own, at the moment it is told: under the cache lock, record it,
@@ -392,18 +412,7 @@ pub fn claim(who: Audience, route: Route, news: &News) -> bool {
         return false;
     };
     let mut record = Record::read(&releases, who);
-    let fresh = match news {
-        News::Updated { to, .. } => record.seen.as_ref().is_none_or(|seen| seen < to),
-        News::Available(tag) => record.told.as_ref() != Some(tag),
-    };
-    if !fresh {
-        return false;
-    }
-    match news {
-        News::Updated { to, .. } => record.seen = Some(to.clone()),
-        News::Available(tag) => record.told = Some(tag.clone()),
-    }
-    record.write(&releases, who).is_ok()
+    record.hear(news) && record.write(&releases, who).is_ok()
 }
 
 /// Whether auto-update is on: `KLIN_AUTO_UPDATE=1` or `0` when set, else the setting
