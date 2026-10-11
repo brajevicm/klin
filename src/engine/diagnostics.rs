@@ -29,7 +29,10 @@ fn facts(records: &Records) -> Value {
         "shared": facts.shared,
         "cached": facts.cached,
         "ms": clock::millis(facts.time),
-        "cache_read_ms": clock::millis(facts.cache_read),
+        "cache_read_ms": clock::millis(facts.cache_read.total),
+        "cache_file_ms": clock::millis(facts.cache_read.file),
+        "cache_checksum_ms": clock::millis(facts.cache_read.checksum),
+        "cache_decode_ms": clock::millis(facts.cache_read.decode),
         "cache_write_ms": clock::millis(facts.cache_write),
     });
     if let (Some(fields), Some(states)) = (out.as_object_mut(), records.states) {

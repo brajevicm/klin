@@ -5,7 +5,6 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::Add;
 use std::path::Path;
 use std::rc::Rc;
@@ -22,18 +21,19 @@ use crate::sys::changed::Change;
 use crate::sys::error::Error;
 
 mod adapter;
-mod cache;
+pub mod cache;
 pub mod facts;
 pub mod footprint;
 mod rust;
 mod typescript;
 
 pub use cache::Cache;
+use cache::ReadCost;
 
 use adapter::{Adapter, above, text_of};
 use facts::{
-    Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name, Names,
-    Outcome, QualifiedPath, Reference, ReferenceSite,
+    Declaration, DeclarationKind, Export, ExternCrate, FileFacts, Import, ModuleDecl, Name,
+    NameHash, Names, Outcome, QualifiedPath, Reference, ReferenceSite,
 };
 
 /// What a name-resolving gate's evidence cost: the base it laid out, each tree's part, and the
@@ -89,7 +89,7 @@ struct Kept {
     stale: Cell<bool>,
     /// What reading the cache cost, when a caller read it before this tree held it, handed over
     /// once to the view that would otherwise have read it. Spec 11.2.
-    read: Cell<Duration>,
+    read: Cell<ReadCost>,
 }
 
 impl Extracted {
@@ -149,11 +149,13 @@ impl Extracted {
         let Some(cache) = cache() else {
             return ExtractionCost::default();
         };
+        let mut read = ReadCost::default();
         let started = Instant::now();
-        let outcomes = cache.read();
-        self.held_from(cache, outcomes, changes, Duration::ZERO);
+        let outcomes = cache.read(&mut read);
+        self.held_from(cache, outcomes, changes, ReadCost::default());
+        read.total = started.elapsed();
         ExtractionCost {
-            cache_read: started.elapsed(),
+            cache_read: read,
             ..ExtractionCost::default()
         }
     }
@@ -167,7 +169,7 @@ impl Extracted {
         cache: Cache,
         outcomes: HashMap<String, Outcome>,
         changes: &[Change],
-        read: Duration,
+        read: ReadCost,
     ) {
         if self.kept.get().is_some() {
             return;
@@ -180,7 +182,7 @@ impl Extracted {
         cache: Cache,
         outcomes: Option<HashMap<String, Outcome>>,
         changes: &[Change],
-        read: Duration,
+        read: ReadCost,
     ) {
         let changed: HashSet<String> = changes
             .iter()
@@ -238,7 +240,7 @@ pub struct ExtractionCost {
     pub shared: usize,
     pub cached: usize,
     pub time: Duration,
-    pub cache_read: Duration,
+    pub cache_read: ReadCost,
     pub cache_write: Duration,
 }
 
@@ -758,36 +760,6 @@ pub fn file_at<'a>(files: &'a [Rc<FileFacts>], path: &str) -> Option<&'a FileFac
 
 /// Names grouped by logical language, the set a filtered `SourceIndex` records.
 pub type NameSet = HashMap<LanguageId, HashSet<Name, NameHash>, NameHash>;
-
-/// The hash of the name maps: Fx-style with a fixed seed, since the input is the user's own
-/// repository and no consumer sees a map's order.
-pub type NameHash = BuildHasherDefault<FxHasher>;
-
-/// A fixed-seed hasher in the style of rustc's FxHash.
-#[derive(Default)]
-pub struct FxHasher(u64);
-
-impl FxHasher {
-    fn add(&mut self, word: u64) {
-        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
-    }
-}
-
-impl Hasher for FxHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        let (words, rest) = bytes.as_chunks::<8>();
-        for word in words {
-            self.add(u64::from_le_bytes(*word));
-        }
-        for byte in rest {
-            self.add(u64::from(*byte));
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        self.0
-    }
-}
 
 /// One declaration as the index reports it, with the file that holds it.
 #[derive(Clone, Copy)]
