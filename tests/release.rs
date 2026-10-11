@@ -133,7 +133,12 @@ impl Installed {
 
     /// A `klin status` that starts the day's ask, and the wait until its child cached an answer.
     fn warmed(&self) {
-        self.status(&[]);
+        self.warmed_with(&[]);
+    }
+
+    /// `warmed` under `extra`, such as a plugin's marker or auto-update turned off.
+    fn warmed_with(&self, extra: &[(&str, &str)]) {
+        self.status(extra);
         let cache = self.home.path("cache/latest.json");
         until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
     }
@@ -275,9 +280,7 @@ fn auto_update_tries_a_newer_release_once() {
 fn without_auto_update_nothing_installs() {
     let installed = Installed::new(&answers(NEWER));
     let off = [("KLIN_AUTO_UPDATE", "0")];
-    installed.status(&off);
-    let cache = installed.home.path("cache/latest.json");
-    until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
+    installed.warmed_with(&off);
 
     let status = installed.status(&off);
     installed.session(&off);
@@ -780,9 +783,7 @@ fn two_session_starts_at_once_tell_the_agent_once() {
 fn a_plugin_marker_wins_over_an_updater_beside_the_binary() {
     let installed = Installed::new(&answers(NEWER));
     let plugin = [("KLIN_PLUGIN", "1"), ("KLIN_AUTO_UPDATE", "1")];
-    installed.status(&plugin);
-    let cache = installed.home.path("cache/latest.json");
-    until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("99.0.0")));
+    installed.warmed_with(&plugin);
 
     let status = installed.status(&plugin);
     installed.session(&plugin);

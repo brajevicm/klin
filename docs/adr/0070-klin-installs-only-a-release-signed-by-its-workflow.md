@@ -19,8 +19,9 @@ by default.**
    and `gh attestation verify` checks it for a person who wants to.
 2. The `sign-release` job, between the builds and the host job, signs each
    `klin-TARGET.tar.xz` with minisign. The secret key is the repository
-   secret `KLIN_RELEASE_SIGNING_KEY`. The trusted comment is `klin VERSION`.
-   The job checks each signature against the public key in the tree, so a
+   secret `KLIN_RELEASE_SIGNING_KEY`, made with `minisign -G -W`, so it has
+   no password and the job signs without a prompt. The trusted comment is
+   `klin VERSION`. The job checks each signature against the public key in the tree, so a
    key that does not match fails the release before anything publishes.
 3. klin carries the public key (`src/sys/release.pub`). `klin update` and the
    auto-update child download the archive and its `.minisig` for the exact

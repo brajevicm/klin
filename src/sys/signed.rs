@@ -4,6 +4,7 @@
 //! newer one. Nothing is replaced before the check passes. Spec 11.9, ADR 0070.
 
 use std::fs;
+use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -24,9 +25,9 @@ pub fn install(tag: &str, exe: &Path, scratch: &Path) -> Result<(), String> {
     let installed = download(&url, &work.join(&archive))
         .and_then(|bytes| {
             let signature = download(&format!("{url}.minisig"), &work.join("minisig"))?;
-            check(&bytes, &signature, tag)
+            check(&bytes, &signature, tag)?;
+            unpack(&bytes, &work)
         })
-        .and_then(|()| unpack(&work.join(&archive), &work))
         .and_then(|binary| replace(&binary, exe));
     let _ = fs::remove_dir_all(&work);
     installed
@@ -86,20 +87,25 @@ fn key() -> String {
     KEY.to_string()
 }
 
-/// Extract `archive` into `work` and return the path of the one `klin` it holds.
-fn unpack(archive: &Path, work: &Path) -> Result<PathBuf, String> {
+/// Extract the checked `archive` bytes into `work`, through `tar`'s standard input so nothing
+/// can change them on disk after the check, and return the path of the one `klin` they hold.
+fn unpack(archive: &[u8], work: &Path) -> Result<PathBuf, String> {
     let unpacked = work.join("unpacked");
     fs::create_dir_all(&unpacked).map_err(|why| format!("{}: {why}", unpacked.display()))?;
     let extracted = Command::new("tar")
-        .arg("-xJf")
-        .arg(archive)
-        .arg("-C")
+        .args(["-xJf", "-", "-C"])
         .arg(&unpacked)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|status| status.success());
+        .spawn()
+        .is_ok_and(|mut tar| {
+            let fed = tar
+                .stdin
+                .take()
+                .is_some_and(|mut input| input.write_all(archive).is_ok());
+            tar.wait().is_ok_and(|status| status.success()) && fed
+        });
     let found = fs::read_dir(&unpacked)
         .into_iter()
         .flatten()
@@ -108,14 +114,14 @@ fn unpack(archive: &Path, work: &Path) -> Result<PathBuf, String> {
         .find(|binary| binary.is_file());
     match (extracted, found) {
         (true, Some(binary)) => Ok(binary),
-        _ => Err(format!("{} holds no klin.", archive.display())),
+        _ => Err("the release archive holds no klin, so nothing was installed.".to_string()),
     }
 }
 
 /// Copy `binary` beside `exe` and rename it over `exe`, so `exe` is either the old klin or the
 /// new one, never part of either.
 fn replace(binary: &Path, exe: &Path) -> Result<(), String> {
-    let beside = exe.with_file_name(".klin-update.new");
+    let beside = exe.with_file_name(format!(".klin-new-{}", std::process::id()));
     let failed = |why: std::io::Error| format!("{}: {why}", exe.display());
     fs::copy(binary, &beside).map_err(failed)?;
     fs::set_permissions(&beside, fs::Permissions::from_mode(0o755)).map_err(failed)?;

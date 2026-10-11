@@ -1,8 +1,8 @@
 //! klin keeps itself current, or says how to update the plugin that carries it. A session
 //! start, `klin status` and `klin setup` ask GitHub for the newest release at most once a day,
 //! in a detached child, so nothing waits on the network. Unless auto-update is off, the child
-//! also installs a newer release whose signature checks out. Every other command, a Stop among them, reads
-//! only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
+//! also installs a newer release whose signature checks out. Every other command, a Stop among
+//! them, reads only the cache. Only a binary the installer placed, with its `klin-update` beside it, asks,
 //! updates or tells, and so does a plugin's binary, which the plugin wrapper marks with
 //! `KLIN_PLUGIN`. A plugin's binary never updates itself: its host owns the plugin. Spec 11.9.
 
@@ -343,8 +343,9 @@ pub fn refresh() {
 
 /// The detached child, under the ask lock: the day's ask, which counts from its start so a
 /// failed or slow ask is the day's ask, then under auto-update the signed install, once for each
-/// newer release. A refused install keeps its reason for `klin status`. A child that finds the ask lock taken does nothing. Every change to the cache takes
-/// the cache lock for that change alone.
+/// newer release. A refused install keeps its reason for `klin status`. A child that finds the
+/// ask lock taken does nothing. Every change to the cache takes the cache lock for that change
+/// alone.
 pub fn child() {
     let Some(releases) = Releases::here() else {
         return;
