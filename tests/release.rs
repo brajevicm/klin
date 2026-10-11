@@ -2,27 +2,44 @@ mod harness;
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
+use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::time::{Duration, Instant};
 
 use harness::{AGENT, Run, SESSION_START, STOP, Tree, feed_as_with};
 
 const NEWER: &str = "https://github.com/brajevicm/klin/releases/tag/v99.0.0";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it,
-/// a `curl` on PATH that answers `answer` and records each call, and a cache of its own.
+/// One test at a time in this file. A pipe the harness opens while another thread starts a
+/// process can leak into that process and its detached child, which then holds the pipe open
+/// for as long as its `curl` runs, and a timing test would read that as klin waiting.
+static ALONE: Mutex<()> = Mutex::new(());
+
+/// A klin the installer placed: a copy of the binary under test with a `klin-update` beside it
+/// that records each run, a `curl` on PATH that answers `answer` and records each call, and a
+/// cache of its own.
 struct Installed {
     home: Tree,
     tree: Tree,
+    _alone: MutexGuard<'static, ()>,
 }
 
 impl Installed {
     fn new(answer: &str) -> Installed {
+        let alone = ALONE.lock().unwrap_or_else(PoisonError::into_inner);
         let home = Tree::bare();
         let klin = home.path("installed/klin");
         fs::create_dir_all(home.path("installed")).expect("installed directory");
         if fs::hard_link(harness::binary(), &klin).is_err() {
             fs::copy(harness::binary(), &klin).expect("copy klin");
         }
-        executable(&home, "installed/klin-update", "#!/bin/sh\nexit 0\n");
+        let updated = home.at("updated");
+        executable(
+            &home,
+            "installed/klin-update",
+            &format!("#!/bin/sh\necho updated >> '{updated}'\n"),
+        );
         let calls = home.at("calls");
         executable(
             &home,
@@ -33,7 +50,11 @@ impl Installed {
         tree.write("klin.json", "{}\n");
         tree.write("README.md", "# readme\n");
         tree.base();
-        Installed { home, tree }
+        Installed {
+            home,
+            tree,
+            _alone: alone,
+        }
     }
 
     fn run(&self, extra: &[(&str, &str)], args: &[&str], stdin: &str) -> Run {
@@ -44,6 +65,7 @@ impl Installed {
             ("KLIN_CACHE_DIR", cache.as_str()),
             ("CI", ""),
             ("KLIN_NO_UPDATE_CHECK", ""),
+            ("KLIN_AUTO_UPDATE", ""),
         ];
         environment.extend_from_slice(extra);
         feed_as_with(
@@ -63,12 +85,27 @@ impl Installed {
         self.run(&[], AGENT, STOP)
     }
 
-    fn session(&self) -> Run {
-        self.run(&[], AGENT, SESSION_START)
+    fn session(&self, extra: &[(&str, &str)]) -> Run {
+        self.run(extra, AGENT, SESSION_START)
+    }
+
+    /// A `klin status` that starts the day's ask, and the wait until its child cached an answer.
+    fn warmed(&self) {
+        self.status(&[]);
+        let cache = self.home.path("cache/latest.json");
+        until(|| fs::read_to_string(&cache).is_ok_and(|text| text.contains("\"tag\"")));
     }
 
     fn fetched(&self) -> usize {
-        fs::read_to_string(self.home.path("calls")).map_or(0, |calls| calls.lines().count())
+        lines(&self.home.path("calls"))
+    }
+
+    /// A record left by a klin that ran as `version` before this one, as an update leaves it.
+    fn ran_before(&self, record: &str, version: &str) {
+        self.home.write(
+            &format!("cache/{record}"),
+            &format!("{{\"seen\":\"{version}\"}}"),
+        );
     }
 }
 
@@ -83,54 +120,118 @@ fn answers(url: &str) -> String {
     format!("printf '%s' '{url}'")
 }
 
-/// A newer release names itself in `klin status`, with the two commands that install it.
+fn lines(file: &Path) -> usize {
+    fs::read_to_string(file).map_or(0, |text| text.lines().count())
+}
+
+/// Wait up to five seconds for a detached child to do its work.
+fn until(done: impl Fn() -> bool) {
+    let start = Instant::now();
+    while !done() && start.elapsed() < Duration::from_secs(5) {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// Long enough for a detached child that should not run to have run.
+fn settle() {
+    std::thread::sleep(Duration::from_millis(500));
+}
+
+/// A newer release names itself in `klin status` with the one command that installs it.
 /// Spec 11.9.
 #[test]
-fn status_names_a_newer_release_and_the_commands_that_install_it() {
+fn status_names_a_newer_release_and_klin_update() {
     let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
 
     let run = installed.status(&[]);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(
         run.says(&format!(
-            "klin 99.0.0 is available (you have {}). Run klin update, then klin setup.",
-            env!("CARGO_PKG_VERSION")
+            "klin 99.0.0 is available (you have {VERSION}). Run klin update."
         )),
         "{}",
         run.out
     );
+    assert!(!run.says("klin setup"), "{}", run.out);
 }
 
-/// The status document carries the newest release klin knows of. Spec 11.7, 11.9.
+/// The status document carries the newest release and whether it is newer, so no reader
+/// compares versions. Spec 11.7, 11.9.
 #[test]
-fn status_json_reports_the_latest_known_release() {
+fn status_json_reports_the_latest_release_and_that_it_is_newer() {
     let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
 
     let run = installed.run(&[], &["status", "--json"], "");
 
     assert_eq!(run.code, 0, "{}", run.out);
-    assert_eq!(run.json()["klin"]["latest_known"], "99.0.0", "{}", run.out);
+    let klin = &run.json()["klin"];
+    assert_eq!(klin["latest_known"], "99.0.0", "{}", run.out);
+    assert_eq!(klin["update_available"], true, "{}", run.out);
 }
 
-/// A person command asks GitHub at most once a day, and the next one reads the cache.
-/// Spec 11.9.
+/// A session start starts the day's ask and returns before a slow `curl` answers. Spec 11.9.
 #[test]
-fn status_fetches_at_most_once_a_day() {
+fn session_start_asks_without_waiting_for_the_network() {
+    let installed = Installed::new(&format!("sleep 3\n{}", answers(NEWER)));
+
+    let start = Instant::now();
+    let run = installed.session(&[]);
+    let took = start.elapsed();
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(took < Duration::from_secs(2), "{took:?}");
+    until(|| installed.fetched() == 1);
+    assert_eq!(installed.fetched(), 1);
+}
+
+/// A Stop never runs `curl`, even with no cache. Spec 1, 11.9.
+#[test]
+fn stop_never_asks() {
     let installed = Installed::new(&answers(NEWER));
 
-    installed.status(&[]);
-    let again = installed.status(&[]);
+    let run = installed.stop();
+    settle();
 
-    assert_eq!(installed.fetched(), 1);
-    assert!(again.says("klin 99.0.0 is available"), "{}", again.out);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert_eq!(installed.fetched(), 0);
+}
+
+/// Under auto-update, a session start runs the updater beside the binary for a newer release,
+/// once. Spec 11.9.
+#[test]
+fn auto_update_runs_the_updater_once_for_a_newer_release() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let updated = installed.home.path("updated");
+
+    installed.session(&[("KLIN_AUTO_UPDATE", "1")]);
+    until(|| lines(&updated) == 1);
+    installed.session(&[("KLIN_AUTO_UPDATE", "1")]);
+    settle();
+
+    assert_eq!(lines(&updated), 1);
+}
+
+/// Without auto-update, nothing installs a release on its own. Spec 11.9.
+#[test]
+fn without_auto_update_nothing_installs() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+
+    installed.session(&[]);
+    settle();
+
+    assert!(!installed.home.path("updated").exists());
 }
 
 /// The person hears of a newer release once, through a Stop's notice. Spec 10.7, 11.9.
 #[test]
 fn stop_tells_the_person_of_a_newer_release_once() {
     let installed = Installed::new(&answers(NEWER));
-    installed.status(&[]);
+    installed.warmed();
 
     let first = installed.stop();
     let second = installed.stop();
@@ -146,21 +247,78 @@ fn stop_tells_the_person_of_a_newer_release_once() {
     assert!(!second.says("99.0.0"), "{}", second.out);
 }
 
+/// After the binary replaced an older one, the next Stop tells the person once, with the
+/// versions and the release notes. Spec 11.9.
+#[test]
+fn stop_tells_the_person_once_that_klin_updated() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.ran_before("release-person.json", "0.0.1");
+
+    let first = installed.stop();
+    let second = installed.stop();
+
+    assert!(
+        first.says(&format!("klin updated to {VERSION} (from 0.0.1).")),
+        "{}",
+        first.out
+    );
+    assert!(first.says("Release notes: "), "{}", first.out);
+    assert!(!first.says("klin setup"), "{}", first.out);
+    assert!(!second.says("klin updated"), "{}", second.out);
+}
+
+/// An update that left an integration behind names `klin setup` in that notice. Spec 11.9.
+#[test]
+fn the_update_notice_names_setup_when_an_integration_is_behind() {
+    let installed = Installed::new(&answers(NEWER));
+    fs::create_dir_all(installed.tree.path(".claude")).expect("claude directory");
+    installed.ran_before("release-person.json", "0.0.1");
+
+    let run = installed.stop();
+
+    assert!(run.says("klin updated to"), "{}", run.out);
+    assert!(
+        run.says("Run klin setup and commit the changed hook files."),
+        "{}",
+        run.out
+    );
+}
+
+/// After the binary replaced an older one, the next session start tells the agent once which
+/// version judges the repository now. Spec 11.9.
+#[test]
+fn session_start_tells_the_agent_once_that_klin_updated() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.ran_before("release-agent.json", "0.0.1");
+
+    let first = installed.session(&[]);
+    let second = installed.session(&[]);
+
+    assert!(
+        first.says(&format!(
+            "klin {VERSION} judges this repository now (it was 0.0.1)."
+        )),
+        "{}",
+        first.out
+    );
+    assert!(!second.says("judges this repository"), "{}", second.out);
+}
+
 /// The agent hears of a newer release once, at a session start, and is told not to install it
 /// itself, because the guard denies `klin update` to it. Spec 10.8, 11.9.
 #[test]
 fn session_start_tells_the_agent_of_a_newer_release_once() {
     let installed = Installed::new(&answers(NEWER));
-    installed.status(&[]);
+    installed.warmed();
 
-    let first = installed.session();
-    let second = installed.session();
+    let first = installed.session(&[]);
+    let second = installed.session(&[]);
 
     assert_eq!(first.code, 0, "{}", first.out);
     assert!(
         first.says(
-            "klin 99.0.0 is available. Tell the person to run klin update, then klin setup. \
-             Do not run it yourself."
+            "klin 99.0.0 is available. Tell the person to run klin update. Do not run it \
+             yourself."
         ),
         "{}",
         first.out
@@ -168,103 +326,81 @@ fn session_start_tells_the_agent_of_a_newer_release_once() {
     assert!(!second.says("99.0.0"), "{}", second.out);
 }
 
-/// A hook never uses the network, even with no cache. Spec 1, 11.9.
+/// A person who turned the check off, and a CI job, see no ask, no update and no notice.
+/// Spec 11.9.
 #[test]
-fn hooks_never_fetch() {
-    let installed = Installed::new(&answers(NEWER));
-
-    let session = installed.session();
-    let stop = installed.stop();
-
-    assert_eq!(session.code, 0, "{}", session.out);
-    assert_eq!(stop.code, 0, "{}", stop.out);
-    assert_eq!(installed.fetched(), 0);
-    assert!(!stop.says("99.0.0"), "{}", stop.out);
-}
-
-/// A person who turned the check off, and a CI job, see no fetch and no notice. Spec 11.9.
-#[test]
-fn status_does_not_fetch_when_the_check_is_off_or_in_ci() {
+fn nothing_asks_updates_or_tells_when_the_check_is_off_or_in_ci() {
     for off in [("KLIN_NO_UPDATE_CHECK", "1"), ("CI", "true")] {
         let installed = Installed::new(&answers(NEWER));
 
-        let run = installed.status(&[off]);
+        let status = installed.status(&[off]);
+        let session = installed.session(&[off, ("KLIN_AUTO_UPDATE", "1")]);
+        settle();
 
-        assert_eq!(run.code, 0, "{}", run.out);
+        assert_eq!(status.code, 0, "{}", status.out);
         assert_eq!(installed.fetched(), 0, "{off:?}");
-        assert!(!run.says("is available"), "{off:?}: {}", run.out);
+        assert!(!installed.home.path("updated").exists(), "{off:?}");
+        assert!(!status.says("is available"), "{off:?}: {}", status.out);
+        assert!(!session.says("klin"), "{off:?}: {}", session.out);
     }
 }
 
-/// A plugin's binary has no updater beside it, so it neither fetches nor tells. Spec 11.9.
+/// A plugin's binary has no updater beside it, so it neither asks nor tells. Spec 11.9.
 #[test]
-fn a_binary_without_an_updater_beside_it_does_not_fetch() {
+fn a_binary_without_an_updater_beside_it_does_not_ask() {
     let installed = Installed::new(&answers(NEWER));
     installed.home.remove("installed/klin-update");
 
     let run = installed.status(&[]);
+    settle();
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(installed.fetched(), 0);
 }
 
-/// A failed fetch changes nothing that `klin status` prints or returns. Spec 11.9.
+/// A failed ask changes nothing that `klin status` prints or returns, and counts as the day's
+/// ask, so an offline machine does not ask on every command. Spec 11.9.
 #[test]
-fn a_failed_fetch_leaves_status_as_it_was() {
+fn a_failed_ask_leaves_status_as_it_was_and_is_not_retried_the_same_day() {
     let installed = Installed::new("echo 'curl: (6) Could not resolve host' >&2; exit 6");
 
     let failed = installed.status(&[]);
+    until(|| installed.fetched() == 1);
+    let again = installed.status(&[]);
     let off = installed.status(&[("KLIN_NO_UPDATE_CHECK", "1")]);
+    settle();
 
     assert_eq!(installed.fetched(), 1);
     assert_eq!(failed.code, off.code, "{}", failed.out);
     assert_eq!(failed.out, off.out);
+    assert_eq!(again.out, off.out);
 }
 
-/// `klin update --check` asks GitHub every time, names both versions and installs nothing.
-/// Spec 11.8.
-#[test]
-fn update_check_names_both_versions_and_installs_nothing() {
-    let installed = Installed::new(&answers(NEWER));
-    executable(
-        &installed.home,
-        "installed/klin-update",
-        &format!(
-            "#!/bin/sh\necho installed >> '{}'\n",
-            installed.home.at("updated")
-        ),
-    );
-
-    let first = installed.run(&[("CI", "true")], &["update", "--check"], "");
-    installed.run(&[], &["update", "--check"], "");
-
-    assert_eq!(first.code, 0, "{}", first.out);
-    assert!(first.says(env!("CARGO_PKG_VERSION")), "{}", first.out);
-    assert!(first.says("99.0.0"), "{}", first.out);
-    assert!(first.says(NEWER), "{}", first.out);
-    assert_eq!(installed.fetched(), 2);
-    assert!(!installed.home.path("updated").exists());
-}
-
-/// `klin setup` also asks, so the cache is warm before the first Stop. Spec 11.9.
+/// `klin setup` also starts the day's ask. Spec 11.9.
 #[test]
 fn setup_asks_for_the_newest_release() {
     let installed = Installed::new(&answers(NEWER));
 
     let run = installed.run(&[], &["setup", "--host", "claude"], "");
+    until(|| installed.fetched() == 1);
 
     assert_eq!(run.code, 0, "{}", run.out);
     assert_eq!(installed.fetched(), 1);
 }
 
-/// A failed ask counts as the day's ask, so an offline machine does not wait on every command.
-/// Spec 11.9.
+/// `klin update --check` asks GitHub every time and waits, names both versions and installs
+/// nothing. Spec 11.8.
 #[test]
-fn a_failed_fetch_is_not_retried_the_same_day() {
-    let installed = Installed::new("exit 6");
+fn update_check_names_both_versions_and_installs_nothing() {
+    let installed = Installed::new(&answers(NEWER));
 
-    installed.status(&[]);
-    installed.status(&[]);
+    let first = installed.run(&[("CI", "true")], &["update", "--check"], "");
+    installed.run(&[], &["update", "--check"], "");
 
-    assert_eq!(installed.fetched(), 1);
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(first.says(VERSION), "{}", first.out);
+    assert!(first.says("99.0.0"), "{}", first.out);
+    assert!(first.says(NEWER), "{}", first.out);
+    assert_eq!(installed.fetched(), 2);
+    assert!(!installed.home.path("updated").exists());
 }

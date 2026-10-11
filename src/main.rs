@@ -18,7 +18,7 @@ use std::sync::LazyLock;
 use clap::{Parser, Subcommand};
 
 use crate::cli::{agent, check, policy, report, setup, status, update};
-use crate::sys::{error::Error, shell};
+use crate::sys::{error::Error, release, shell};
 
 #[derive(Parser)]
 #[command(
@@ -55,6 +55,10 @@ fn main() -> ExitCode {
     LazyLock::force(&shell::STARTED);
     if agent::called() {
         return agent::run();
+    }
+    let mut args = std::env::args();
+    if args.nth(1).as_deref() == Some(release::CHILD) {
+        return ExitCode::from(release::child(&args.next().unwrap_or_default()));
     }
     match Cli::parse().command {
         Command::Update(args) => ExitCode::from(update::run(&args)),

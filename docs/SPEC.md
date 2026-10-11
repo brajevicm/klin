@@ -185,8 +185,9 @@ independent CI checkout enforce the same policy. It solves these problems:
   fixes the problem, not one that hides the metric.
 - It keeps missing evidence and tool failure visible. It never reports them as
   clean code, and it never reports them as a code failure.
-- It measures offline, in the time budget of a hook. Only `klin status` and
-  `klin setup` may ask GitHub for the newest release (section 11.9).
+- It measures offline, in the time budget of a hook. A hook never waits on the
+  network. Section 11.9 starts the daily ask for the newest release in a
+  detached child.
 
 Boundaries:
 
@@ -537,12 +538,12 @@ Rules:
 | Path | Reads | Writes |
 | --- | --- | --- |
 | Stop | config, facts, window, caches, state, HEAD, its reflog, the default-branch ref, the release cache | turn verdict, told record, the release cache's person record, build stamp, handoff records, claims, journal, caches, the merge-base cache, the records of a stamp that had none, and on an advisory Stop a fresh stamp, its ref and the prompt mark |
-| session, prompt | state, working tree, HEAD, its reflog, the default-branch ref, and on a session the release cache | the release cache's agent record on a session, stamp with its records, prompt mark, prompt counter, handoff records, claims, journal |
+| session, prompt | state, working tree, HEAD, its reflog, the default-branch ref, and on a session the release cache | on a session the release cache's agent record and the detached ask of section 11.9, stamp with its records, prompt mark, prompt counter, handoff records, claims, journal |
 | pre_tool | event, state directory path | journal line for `ask` and `deny` only |
 | `klin check` | config, facts, window, caches | caches, and a temporary base worktree that it removes |
-| `klin status` | state, journal, config, facts, the release cache, the network (section 11.9) | the release cache |
+| `klin status` | state, journal, config, facts, the release cache | the release cache, and the detached ask of section 11.9 |
 | `klin report`, `klin policy` | state, journal, config, facts | nothing |
-| `klin setup` | config, host files, the release cache, the network (section 11.9) | `klin.json` (only when absent, or under `--pin`), host integration files, the release cache |
+| `klin setup` | config, host files, the release cache | `klin.json` (only when absent, or under `--pin`), host integration files, the release cache, and the detached ask of section 11.9 |
 | `klin update` | the installed binary, the network | the installed binary, and under `--check` the release cache |
 
 Rules for `klin check`:
@@ -1760,13 +1761,13 @@ Text output:
 
 - It runs no check, takes no lock that a Stop waits on, and writes nothing in
   the repository. It MAY ask GitHub for the newest release and write the
-  release cache (section 11.9).
+  release cache, and it starts the detached ask of section 11.9.
 - Reports:
   - whether a `klin.json` resolves and whether it is valid;
   - each host integration, with host, scope, route and state;
   - the klin version, the state directory and the cache path;
-  - a newer release that the release cache holds, with the commands that
-    install it (section 11.9);
+  - a newer release that the release cache holds, with the command that
+    installs it (section 11.9);
   - the local window: the stamp's verdict, its age, why it is red or
     unjudged or aborted (the open findings, any unasked deleted test, or the
     error),
@@ -1919,7 +1920,7 @@ into a `measurement-lost` finding, a review item or a coverage note.
 
 #### The `status` document
 
-`schema_version`, `command`, `klin {version, latest_known}`, `config {path, present,
+`schema_version`, `command`, `klin {version, latest_known, update_available, updated_from}`, `config {path, present,
 valid, error}`, `integrations [{host, scope, route, state, detail}]`,
 `state_dir`, `cache_dir`, `window {verdict, age_seconds, open [finding
 ids], unasked [deleted-test sites], error, aborted_since,
@@ -1928,7 +1929,9 @@ message}]}` or null,
 and `last_stop {time, verdict, historical: true}` or null.
 
 `latest_known` is the release the release cache holds, or null where section
-11.9 tells nothing.
+11.9 tells nothing. `update_available` is true when that release is newer
+than the binary. `updated_from` is the version the person last saw klin run
+as when this binary is newer, and null otherwise.
 
 The window `verdict` is one of `pending`, `aborted`, `red`, `unjudged` and
 `green` (section 6.6). `open` and `unasked` are empty unless the verdict is
@@ -1986,40 +1989,58 @@ section 11.9 that keep a command from asking do not apply, because a person
 asked. The guard denies `--check` to an agent with the rest of `klin update`,
 and its refusal names `klin status`, which shows the same release.
 
-### 11.9 The newest release
+### 11.9 Keeping klin current
 
-A binary the installer placed learns of a newer release and tells the person
-and the agent. ADR 0069.
+A binary the installer placed keeps itself current, and tells the person and
+the agent what changed. ADR 0069.
 
-- Only `klin status` and `klin setup` ask GitHub on their own, at most once
-  every 24 hours, with a timeout of 2 seconds. They read the redirect of
-  `https://github.com/brajevicm/klin/releases/latest` through `curl` and do
-  not follow it. A failed or slow ask, or no `curl`, changes nothing that the
-  command prints or returns.
-- The release cache is `latest.json` under `KLIN_CACHE_DIR`, or under
-  `~/.cache/klin` when that is unset. It holds the tag and the time of the
-  last ask. A failed ask also counts as the day's ask, so an offline machine
-  waits on `curl` once a day. The release told to the person and the release
-  told to the agent each have a file of their own beside it.
-- No command asks, and the cache tells nothing, when `CI` or
-  `KLIN_NO_UPDATE_CHECK` is set to a value that is not empty, or when no
-  `klin-update` sits beside the binary. The last rule leaves out a plugin's
-  binary, which updates with its plugin.
-- A Stop, `klin check`, `klin report`, `klin policy` and every hook never ask.
-  They read only the release cache. A cached tag that is not dot-separated
-  digits is never shown. A build whose version has a pre-release suffix,
-  such as `-beta.1`, compares its numbers without the suffix.
-- `klin status` prints `klin TAG is available (you have VERSION). Run klin
-  update, then klin setup.` when the cached tag is newer than the binary.
-- A Stop that blocks nothing tells the person once for each newer release,
-  not once per stamp, with the line `klin status` prints, as a `release` part
-  of its notice (section 10.7). The notice never blocks and never makes the
+- **The ask.** A session start, `klin status` and `klin setup` start a
+  detached child (`klin __release`) when the last ask is 24 hours old. The
+  child reads the redirect of `https://github.com/brajevicm/klin/releases/latest`
+  through `curl`, with a timeout of 10 seconds, and does not follow it. No
+  command and no hook waits for the child. The ask counts from the moment
+  the child starts, so a failed or slow ask, or no `curl`, is the day's ask
+  and changes nothing that the command prints or returns.
+- **Auto-update.** Under `KLIN_AUTO_UPDATE=1`, when the cached release is
+  newer than the binary, the child runs the `klin-update` beside the binary,
+  once for each release, so a failing updater does not run again. The
+  updater verifies the release's checksums. Auto-update is opt-in until
+  releases are signed (#627). One binary measures both trees at a Stop
+  (ADR 0001), so a binary replaced between two events of a turn changes no
+  verdict.
+- **The cache.** `latest.json` under `KLIN_CACHE_DIR`, or under
+  `~/.cache/klin` when that is unset, holds the tag, the time of the last
+  ask and the release auto-update tried. `release-person.json` and
+  `release-agent.json` beside it hold, for each audience, the version it last
+  saw klin run as and the release it was last told of.
+- **Off.** Nothing asks, updates or tells when `CI` or `KLIN_NO_UPDATE_CHECK`
+  is set to a value that is not empty, or when no `klin-update` sits beside
+  the binary. The last rule leaves out a plugin's binary, which updates with
+  its plugin.
+- A Stop, `klin check`, `klin report` and `klin policy` never ask. They read
+  only the cache. A cached tag that is not dot-separated digits is never
+  shown. A build whose version has a pre-release suffix, such as `-beta.1`,
+  compares its numbers without the suffix.
+- **News.** The first sight of a binary records its version for each
+  audience. When the binary's version is newer than the version an audience
+  last saw, by auto-update or by `klin update`, the news is an update.
+  Otherwise, a cached release newer than the binary that the audience was not
+  told of is news. Each audience hears each piece of news once.
+- **The person.** `klin status` prints `klin TAG is available (you have
+  VERSION). Run klin update.` when the cached tag is newer. A Stop that
+  blocks nothing tells the person's news as a `release` part of its notice
+  (section 10.7): the same line, or `klin updated to VERSION (from OLD).
+  Release notes: LINK`. When an integration of the repository is not
+  `current` under the new binary, the update line adds `Run klin setup and
+  commit the changed hook files.` The notice never blocks and never makes the
   window red. A turn that changed nothing does not tell it, and a later Stop
   does.
-- A session start tells the agent once for each newer release, in the
-  session-start text: `klin TAG is available. Tell the person to run klin
-  update, then klin setup. Do not run it yourself.` The guard denies
-  `klin update` to an agent (section 10.8).
+- **The agent.** A session start tells the agent's news in the session-start
+  text: `klin TAG is available. Tell the person to run klin update. Do not run
+  it yourself.`, or `klin VERSION judges this repository now (it was OLD).`
+  The guard denies `klin update` and `klin __release` to an agent (section
+  10.8). When a release carries a list of its changes (#626), the update note
+  names them.
 
 ## 12. CI and Enforcement
 
@@ -2314,8 +2335,10 @@ The README MUST name both levels and say which one a setup reaches.
 klin reads no secrets. No native check or recipe reads the network, and no
 measurement sends anything anywhere. `klin update` uses the network to fetch
 a release, and the guard denies it to an agent. `klin status` and `klin setup`
-may ask GitHub for the newest release (section 11.9). The ask sends no data of
-the repository, and `KLIN_NO_UPDATE_CHECK` turns it off. A user-owned integration
+and a session start ask GitHub for the newest release once a day, in a
+detached child (section 11.9). The ask sends no data of the repository.
+`KLIN_AUTO_UPDATE=1` also installs a newer release. `KLIN_NO_UPDATE_CHECK`
+turns both off. A user-owned integration
 command may use the network as the project's own choice (section 9.4). The
 `build` and `run` commands execute a project's own shell lines, which the
 configuration owner wrote, under bounded execution. A derived build command

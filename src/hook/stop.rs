@@ -24,7 +24,11 @@ use crate::window::base::{Kind, Window};
 use crate::window::stamp::Verdict;
 use crate::{
     hook::{build, handoff, journal, stats, turn},
-    sys::{clock, release, release::Audience, state},
+    sys::{
+        clock, release,
+        release::{Audience, News},
+        state,
+    },
     window::stamp,
 };
 
@@ -391,13 +395,13 @@ fn tell(
         add_prompt_note(&tail, log, &mut parts);
         parts.extend(stats::turn_end(root, tail, journal::line(log)));
     }
-    let untold = telling.then(|| release_part(&mut parts)).flatten();
+    let untold = telling.then(|| release_part(root, &mut parts)).flatten();
     let (parts, noted) = kept(parts, noting, quiet);
     if parts.is_empty() {
         return (None, noted);
     }
-    if let Some(tag) = untold.filter(|_| parts.iter().any(|(part, _)| *part == "release")) {
-        release::heard(Audience::Person, &tag);
+    if let Some(news) = untold.filter(|_| parts.iter().any(|(part, _)| *part == "release")) {
+        release::heard(Audience::Person, &news);
     }
     log.told = parts.iter().map(|(part, _)| *part).collect();
     let said: Vec<String> = parts.into_iter().map(|(_, text)| text).collect();
@@ -433,12 +437,39 @@ fn unchanged(root: &Path, mark: Option<&str>, seen: Option<&BTreeSet<String>>) -
         && budget::working_tree(root, &at).as_deref() == Some(prompted.as_str())
 }
 
-/// The notice of a newer release the person has not heard of, and its tag, which the Stop
-/// records as heard once it tells the notice. Spec 11.9.
-fn release_part(parts: &mut Vec<(&'static str, String)>) -> Option<release::Version> {
-    let tag = release::untold(Audience::Person)?;
-    parts.push(("release", Audience::Person.note(&tag)));
-    Some(tag)
+/// The release news the person has not heard, which the Stop records as heard once it tells
+/// it. After an update that left an integration behind, it also names `klin setup`. Spec 11.9.
+fn release_part(root: &Path, parts: &mut Vec<(&'static str, String)>) -> Option<News> {
+    let news = release::news(Audience::Person)?;
+    let mut said = Audience::Person.note(&news);
+    if matches!(news, News::Updated { .. }) && integration_behind(root) {
+        said.push_str(" Run klin setup and commit the changed hook files.");
+    }
+    parts.push(("release", said));
+    Some(news)
+}
+
+/// Whether an integration of this repository is not `current` under this binary, which only
+/// `klin status --json` knows. Asked once, on the Stop that tells of an update.
+fn integration_behind(root: &Path) -> bool {
+    let Some(read) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| {
+            std::process::Command::new(exe)
+                .args(["status", "--json"])
+                .env("KLIN_NO_UPDATE_CHECK", "1")
+                .current_dir(root)
+                .output()
+                .ok()
+        })
+        .filter(|read| read.status.success())
+    else {
+        return false;
+    };
+    serde_json::from_slice::<Value>(&read.stdout)
+        .ok()
+        .and_then(|document| document["integrations"].as_array().cloned())
+        .is_some_and(|rows| rows.iter().any(|row| row["state"] != "current"))
 }
 
 fn add_prompt_note(

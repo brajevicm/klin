@@ -59,7 +59,10 @@ fn document(
     json!({
         "schema_version": 1,
         "command": "status",
-        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": latest.map(ToString::to_string)},
+        "klin": {"version": env!("CARGO_PKG_VERSION"), "latest_known": latest.map(ToString::to_string),
+            "update_available": latest.is_some_and(release::Version::is_newer),
+            "updated_from": release::updated_from().map(|from| from.to_string()),
+        },
         "config": {
             "path": found.config.as_ref().map(|file| file.display().to_string()),
             "present": found.config.is_some(),
@@ -145,7 +148,8 @@ fn last_stop(lines: &[Value]) -> Value {
 fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, out: &mut String) {
     let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
     if let Some(tag) = newer {
-        let _ = writeln!(out, "{}", release::Audience::Person.note(tag));
+        let news = release::News::Available(tag.clone());
+        let _ = writeln!(out, "{}", release::Audience::Person.note(&news));
     }
     let config = &document["config"];
     match (config["path"].as_str(), config["error"].as_str()) {

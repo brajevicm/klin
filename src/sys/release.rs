@@ -1,9 +1,11 @@
-//! The newest klin release. A person command asks GitHub for it at most once a day, and every
-//! other command, a Stop among them, reads only the answer the cache holds. Only a binary the
-//! installer placed, with its `klin-update` beside it, asks or tells, because only that route
-//! can act on the answer. Spec 11.9.
+//! klin keeps itself current. A session start, `klin status` and `klin setup` ask GitHub for the
+//! newest release at most once a day, in a detached child, so nothing waits on the network.
+//! Under `KLIN_AUTO_UPDATE=1` the child also runs the `klin-update` beside the binary. Every
+//! other command, a Stop among them, reads only the cache. Only a binary the installer placed,
+//! with its `klin-update` beside it, asks, updates or tells. Spec 11.9.
 
 use std::fmt;
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,6 +18,8 @@ const LATEST: &str = "https://github.com/brajevicm/klin/releases/latest";
 const TAGGED: &str = "https://github.com/brajevicm/klin/releases/tag/v";
 const DAY: u64 = 24 * 60 * 60;
 const LATEST_FILE: &str = "latest.json";
+/// The hidden argument the detached child runs under. It is not a public command.
+pub const CHILD: &str = "__release";
 
 /// A release version as numbers. Only dot-separated digits parse, so a version never carries
 /// text klin did not expect into a message.
@@ -42,6 +46,10 @@ impl Version {
         Version::current().is_some_and(|own| *self > own)
     }
 
+    fn is_older(&self) -> bool {
+        Version::current().is_some_and(|own| *self < own)
+    }
+
     pub fn notes(&self) -> String {
         format!("{TAGGED}{self}")
     }
@@ -54,8 +62,16 @@ impl fmt::Display for Version {
     }
 }
 
-/// Who hears of a newer release: the person through a Stop's notice, the agent through the
-/// session-start text. Each keeps its own record, so each hears of a release once.
+/// What one audience has not heard yet: that this binary replaced an older one, or that a
+/// newer release exists.
+pub enum News {
+    Updated { from: Version, to: Version },
+    Available(Version),
+}
+
+/// Who hears the news: the person through a Stop's notice, the agent through the
+/// session-start text. Each keeps its own record of the version it last saw and the release
+/// it was last told of, so each hears every piece of news once.
 #[derive(Clone, Copy)]
 pub enum Audience {
     Person,
@@ -65,39 +81,83 @@ pub enum Audience {
 impl Audience {
     fn record(self) -> &'static str {
         match self {
-            Audience::Person => "release-told",
-            Audience::Agent => "release-told-agent",
+            Audience::Person => "release-person.json",
+            Audience::Agent => "release-agent.json",
         }
     }
 
-    pub fn note(self, tag: &Version) -> String {
-        let version = env!("CARGO_PKG_VERSION");
-        match self {
-            Audience::Person => format!(
-                "klin {tag} is available (you have {version}). Run klin update, then klin setup."
+    pub fn note(self, news: &News) -> String {
+        match (self, news) {
+            (Audience::Person, News::Available(tag)) => format!(
+                "klin {tag} is available (you have {}). Run klin update.",
+                env!("CARGO_PKG_VERSION")
             ),
-            Audience::Agent => format!(
-                "klin {tag} is available. Tell the person to run klin update, then klin setup. \
-                 Do not run it yourself."
+            (Audience::Agent, News::Available(tag)) => format!(
+                "klin {tag} is available. Tell the person to run klin update. Do not run it \
+                 yourself."
             ),
+            (Audience::Person, News::Updated { from, to }) => format!(
+                "klin updated to {to} (from {from}). Release notes: {}",
+                to.notes()
+            ),
+            (Audience::Agent, News::Updated { from, to }) => {
+                format!("klin {to} judges this repository now (it was {from}).")
+            }
         }
     }
 }
 
-/// Ask GitHub when the last ask is a day old, from a person command on an installer's binary
-/// outside CI. A failed ask still counts as the day's ask, so an offline machine waits on
-/// `curl` once a day and not on every command.
+/// From a session start, `klin status` or `klin setup`: start the detached child when the last
+/// ask is a day old, or when auto-update holds a newer release it has not tried. The ask counts
+/// from the moment the child starts, so a failed or slow ask is the day's ask.
 pub fn refresh() {
     let Some(dir) = cache_dir().filter(|_| enabled()) else {
         return;
     };
-    let checked = read(&dir)["checked"].as_u64().unwrap_or_default();
-    if now().saturating_sub(checked) >= DAY {
-        let _ = fetched(&dir);
+    let mut cached = read(&dir);
+    let stale = now().saturating_sub(cached["checked"].as_u64().unwrap_or_default()) >= DAY;
+    if !stale && untried(&cached).is_none() {
+        return;
+    }
+    if stale {
+        cached["checked"] = now().into();
+        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = Command::new(exe)
+            .args([CHILD, if stale { "ask" } else { "update" }])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0)
+            .spawn();
     }
 }
 
-/// Ask GitHub now, whatever the cache holds, and keep the answer. `klin update --check`.
+/// The detached child: ask GitHub when told to, then under auto-update run the updater once for
+/// a newer release. Its exit code is never read.
+pub fn child(mode: &str) -> u8 {
+    let Some(dir) = cache_dir() else {
+        return 0;
+    };
+    if mode == "ask" {
+        let _ = fetched(&dir);
+    }
+    let mut cached = read(&dir);
+    if let (Some(tag), Some(updater)) = (untried(&cached), updater_path()) {
+        cached["tried"] = tag.to_string().into();
+        write(&dir.join(LATEST_FILE), cached.to_string().as_bytes());
+        let _ = Command::new(updater)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    0
+}
+
+/// Ask GitHub now and wait, whatever the cache holds, and keep the answer. `klin update
+/// --check`.
 pub fn fetch() -> Option<Version> {
     cache_dir().map_or_else(asked, |dir| fetched(&dir))
 }
@@ -105,33 +165,72 @@ pub fn fetch() -> Option<Version> {
 /// The newest release the cache holds, on a binary that may tell of one.
 pub fn known() -> Option<Version> {
     let dir = cache_dir().filter(|_| enabled())?;
-    read(&dir)["tag"].as_str().and_then(Version::parse)
+    tag_of(&read(&dir))
 }
 
-/// The newer release `who` has not yet heard of.
-pub fn untold(who: Audience) -> Option<Version> {
-    let dir = cache_dir()?;
-    let told = std::fs::read_to_string(dir.join(who.record())).unwrap_or_default();
-    known().filter(|tag| tag.is_newer() && Version::parse(&told).as_ref() != Some(tag))
+/// The version the person saw before this binary replaced it, read without consuming it.
+pub fn updated_from() -> Option<Version> {
+    let dir = cache_dir().filter(|_| enabled())?;
+    seen(&dir, Audience::Person).filter(Version::is_older)
 }
 
-/// Record that `who` heard of `tag`, in a file of its own, so it never races the ask's write.
-pub fn heard(who: Audience, tag: &Version) {
-    if let Some(dir) = cache_dir() {
-        write(&dir.join(who.record()), tag.to_string().as_bytes());
+/// The news `who` has not heard: an update first, else a newer release. The first sight of a
+/// binary records its version, so a fresh install is not an update.
+pub fn news(who: Audience) -> Option<News> {
+    let dir = cache_dir().filter(|_| enabled())?;
+    let current = Version::current()?;
+    match seen(&dir, who) {
+        Some(seen) if seen < current => {
+            return Some(News::Updated {
+                from: seen,
+                to: current,
+            });
+        }
+        Some(_) => {}
+        None => record(&dir, who, |held| held["seen"] = current.to_string().into()),
     }
+    let told = read_record(&dir, who)["told"]
+        .as_str()
+        .and_then(Version::parse);
+    tag_of(&read(&dir))
+        .filter(|tag| tag.is_newer() && told.as_ref() != Some(tag))
+        .map(News::Available)
+}
+
+/// Record that `who` heard `news`.
+pub fn heard(who: Audience, news: &News) {
+    let Some(dir) = cache_dir() else {
+        return;
+    };
+    record(&dir, who, |held| match news {
+        News::Updated { to, .. } => held["seen"] = to.to_string().into(),
+        News::Available(tag) => held["told"] = tag.to_string().into(),
+    });
 }
 
 fn enabled() -> bool {
-    let set = |name| std::env::var_os(name).is_some_and(|value| !value.is_empty());
-    !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && beside_updater()
+    !set("CI") && !set("KLIN_NO_UPDATE_CHECK") && updater_path().is_some()
 }
 
-fn beside_updater() -> bool {
+fn auto() -> bool {
+    std::env::var_os("KLIN_AUTO_UPDATE").is_some_and(|value| value == "1")
+}
+
+fn set(name: &str) -> bool {
+    std::env::var_os(name).is_some_and(|value| !value.is_empty())
+}
+
+fn updater_path() -> Option<PathBuf> {
     std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("klin-update")))
-        .is_some_and(|path| path.is_file())
+        .filter(|path| path.is_file())
+}
+
+/// The newer release auto-update has not tried, so a failing updater runs once per release.
+fn untried(cached: &Value) -> Option<Version> {
+    let tried = cached["tried"].as_str().and_then(Version::parse);
+    tag_of(cached).filter(|tag| auto() && tag.is_newer() && tried.as_ref() != Some(tag))
 }
 
 /// `${KLIN_CACHE_DIR:-$HOME/.cache/klin}`, the directory the plugin wrapper uses.
@@ -160,7 +259,7 @@ fn asked() -> Option<Version> {
         .args([
             "-sS",
             "--max-time",
-            "2",
+            "10",
             "-o",
             "/dev/null",
             "-w",
@@ -176,8 +275,32 @@ fn asked() -> Option<Version> {
     Version::parse(url.trim().strip_prefix(TAGGED)?)
 }
 
+fn tag_of(cached: &Value) -> Option<Version> {
+    cached["tag"].as_str().and_then(Version::parse)
+}
+
+fn seen(dir: &Path, who: Audience) -> Option<Version> {
+    read_record(dir, who)["seen"]
+        .as_str()
+        .and_then(Version::parse)
+}
+
+fn record(dir: &Path, who: Audience, change: impl FnOnce(&mut Value)) {
+    let mut held = read_record(dir, who);
+    change(&mut held);
+    write(&dir.join(who.record()), held.to_string().as_bytes());
+}
+
+fn read_record(dir: &Path, who: Audience) -> Value {
+    read_json(&dir.join(who.record()))
+}
+
 fn read(dir: &Path) -> Value {
-    std::fs::read(dir.join(LATEST_FILE))
+    read_json(&dir.join(LATEST_FILE))
+}
+
+fn read_json(file: &Path) -> Value {
+    std::fs::read(file)
         .ok()
         .and_then(|bytes| serde_json::from_slice::<Value>(&bytes).ok())
         .filter(Value::is_object)
