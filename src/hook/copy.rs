@@ -101,16 +101,19 @@ impl Spec {
 /// The paths the command writes, each spelled from its destination so a reason can quote it.
 /// `look` finds what a path names on disk. Under `-n` or `-u` an existing destination may be
 /// left as it is, so only one that is not there yet is a proven write. A source that names a
-/// directory's contents (`dir/.`, `dir/`) writes names the command does not show, so the
-/// destination is given up.
+/// directory's contents (`dir/.`, `dir/`) writes names the command does not show, so the one
+/// path it proves is the destination directory that every one of them lands under.
 pub fn destinations(
     spec: &Spec,
     args: &[String],
     look: impl Fn(&str) -> Option<Metadata>,
 ) -> Vec<String> {
-    let Some(read) = Operands::of(spec, args).filter(|read| !read.contents()) else {
+    let Some(read) = Operands::of(spec, args) else {
         return Vec::new();
     };
+    if read.contents() {
+        return read.destination().map(str::to_owned).into_iter().collect();
+    }
     let mut written = named(&read, |path| look(path).is_some_and(|found| found.is_dir()));
     if read.no_clobber || read.update {
         written.retain(|path| look(path).is_none());
@@ -180,6 +183,11 @@ impl<'a> Operands<'a> {
         !self.parents && (self.file || !destination_is_dir)
     }
 
+    /// The directory `-t` names, or else the last operand.
+    fn destination(&self) -> Option<&'a str> {
+        self.into.or_else(|| self.operands.last().copied())
+    }
+
     fn contents(&self) -> bool {
         let sources = match self.into {
             Some(_) => &self.operands[..],
@@ -219,13 +227,12 @@ impl<'a> Operands<'a> {
         words: &mut impl Iterator<Item = &'a str>,
     ) -> Option<()> {
         let (name, value) = spec.long_option(option, words)?;
-        let letter = LONG_LETTERS.iter().find(|(long, _)| *long == name);
         match name {
             "target-directory" => self.into = value,
             "directory" => self.directories = true,
             "parents" => self.parents = true,
             "update" => self.update = keeps_existing(value)?,
-            _ => self.flag(letter.map_or(' ', |(_, letter)| *letter))?,
+            _ => short_form(name).map_or(Some(()), |letter| self.flag(letter))?,
         }
         Some(())
     }
@@ -277,4 +284,12 @@ fn keeps_existing(value: Option<&str>) -> Option<bool> {
         Some("all") => Some(false),
         Some(_) => None,
     }
+}
+
+/// The short letter a long option means, when it has one.
+fn short_form(name: &str) -> Option<char> {
+    LONG_LETTERS
+        .iter()
+        .find(|(long, _)| *long == name)
+        .map(|&(_, letter)| letter)
 }

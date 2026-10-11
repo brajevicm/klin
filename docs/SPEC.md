@@ -1608,8 +1608,9 @@ find a target.
   source's name inside a destination directory that exists or that `-t`
   names. `install -d` writes every operand. An option the guard does not
   know, a letter GNU and BSD spell differently, or an abbreviated long
-  option leaves the command unproven, and so does a source that names a
-  directory's contents (`dir/.`, `dir/`, `.`). Under `--parents` each
+  option leaves the command unproven. A source that names a directory's
+  contents (`dir/.`, `dir/`, `.`) proves only its destination directory,
+  which every copied name lands under. Under `--parents` each
   source's path is kept under the destination. Under `-n`, or `-u` and an
   `--update` value other than `all`, an existing destination may stay as it
   is, so only a destination that does not exist yet is written. `-n` and `-i`

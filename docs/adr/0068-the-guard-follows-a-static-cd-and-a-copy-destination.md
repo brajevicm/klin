@@ -45,7 +45,9 @@ destination wherever the text proves it. It never runs a shell.**
    one before, and `-f` after `-n` gives up, because GNU ignores it and BSD
    obeys it. `--parents` keeps each source's path under the destination. A
    source that names a directory's contents, such as `dir/.` or `dir/`,
-   writes names the command does not show, so it gives up.
+   writes names the command does not show, so it proves only the
+   destination directory they all land under: `cp -a x/. .git/klin` asks,
+   and `cp -a x/. .` passes.
 3. `sh`, `bash`, `zsh`, `dash` and `ksh` with `-c` run the word after the
    flag in a child shell. With no script operand, they run the heredoc they
    read in a child shell. `eval` runs its words, joined, in this shell. The

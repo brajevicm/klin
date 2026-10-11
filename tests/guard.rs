@@ -746,9 +746,9 @@ fn reads_nested_text_to_a_bounded_depth() {
 }
 
 /// A copy of a directory's contents writes names the guard does not read from the command, so
-/// it gives the destination up. ADR 0068.
+/// it proves only that the destination directory is written under. ADR 0068.
 #[test]
-fn a_copy_of_directory_contents_is_unproven() {
+fn a_copy_of_directory_contents_proves_only_its_destination() {
     let tree = Tree::new();
     tree.write("staging/klin.json", "{}\n");
     for command in [
@@ -757,6 +757,12 @@ fn a_copy_of_directory_contents_is_unproven() {
         "cp -r . ../elsewhere",
     ] {
         allowed(&bash_in(&tree, command), command);
+    }
+    for (command, named) in [
+        ("cp -a staging/. .git/klin", ".git/klin"),
+        ("cp -R -t .git/klin/backup staging/", ".git/klin/backup"),
+    ] {
+        asked(&bash_in(&tree, command), named, command);
     }
 }
 
@@ -825,4 +831,16 @@ fn a_sourced_script_leaves_the_directory_unproven() {
     ] {
         allowed(&bash_in(&tree, command), command);
     }
+}
+
+/// An absolute `cd` places the directory even after a `cd` the guard could not follow. ADR 0068.
+#[test]
+fn an_absolute_cd_places_the_directory_again() {
+    let tree = Tree::new();
+    let command = format!("cd \"$DIR\"; cd {} && rm klin.json", tree.root().display());
+    asked(
+        &bash_in(&tree, &command),
+        "klin.json",
+        "an absolute cd after a lost one",
+    );
 }

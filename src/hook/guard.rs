@@ -280,8 +280,7 @@ fn basename(path: &str) -> &str {
 
 fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str) {
     let mut cwd = Cwd {
-        at: guarded.here().map(Path::to_path_buf),
-        logical: guarded.here().map(Path::to_path_buf),
+        at: guarded.here().map(Place::at),
         ..Cwd::default()
     };
     walk(guarded, command, &mut cwd, 0)
@@ -303,7 +302,7 @@ fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, depth: u8) -> (Decision
     let mut before = Op::List;
     for segment in &lexed.segments {
         cwd.enter(before);
-        let at = cwd.at.as_deref();
+        let at = cwd.physical();
         decisions.push(segment_decision(guarded, segment, at, proven));
         let changes = cwd.changes;
         let alone = cwd.alone(segment, before, lexed.grouped);
@@ -322,34 +321,56 @@ fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, depth: u8) -> (Decision
 
 /// The directory relative paths resolve from, `None` once the guard cannot place it, whether a
 /// command has moved it, whether the last segment was a `cd` the guard placed, and how many
-/// times it was set, so a caller sees whether nested text changed it. `at` is where a process
-/// stands, with every link followed. `logical` is the shell's own name for it, which a `cd`
-/// without `-P` moves from, so `..` leaves a link the way the `cd` came in.
+/// times it was set, so a caller sees whether nested text changed it.
 #[derive(Default)]
 struct Cwd {
-    at: Option<PathBuf>,
-    logical: Option<PathBuf>,
+    at: Option<Place>,
     moved: bool,
     placed: bool,
     changes: u32,
 }
 
+/// One directory under its two names. `physical` is where a process stands, with every link
+/// followed. `logical` is the shell's own name for it, which a `cd` without `-P` moves from, so
+/// `..` leaves a link the way the `cd` came in.
+#[derive(Clone)]
+struct Place {
+    physical: PathBuf,
+    logical: PathBuf,
+}
+
+impl Place {
+    /// A directory whose name holds no link.
+    fn at(path: &Path) -> Place {
+        Place {
+            physical: path.to_path_buf(),
+            logical: path.to_path_buf(),
+        }
+    }
+
+    /// Where a `cd` from `from` lands: from the logical name by default, from the physical one
+    /// under `-P`, and only at a directory that exists. An absolute `dir` needs no `from`.
+    fn landing(from: Option<&Place>, dir: &str, physical: bool) -> Option<Place> {
+        if physical {
+            let base = from.map(|place| place.physical.as_path());
+            let found = joined(base, dir)?.canonicalize().ok()?;
+            return found.is_dir().then(|| Place::at(&found));
+        }
+        let base = from.map(|place| place.logical.as_path());
+        let logical = plain(&joined(base, dir)?);
+        let physical = logical.canonicalize().ok().filter(|at| at.is_dir())?;
+        Some(Place { physical, logical })
+    }
+}
+
 impl Cwd {
-    fn set(&mut self, place: Option<(PathBuf, PathBuf)>) {
-        (self.logical, self.at) = place.unzip();
+    fn set(&mut self, at: Option<Place>) {
+        self.at = at;
         self.changes += 1;
     }
 
-    /// Where a `cd` lands: from the logical directory by default, from the physical one under
-    /// `-P`, and only at a directory that exists.
-    fn landing(&self, dir: &str, physical: bool) -> Option<(PathBuf, PathBuf)> {
-        if physical {
-            let found = joined(self.at.as_deref(), dir)?.canonicalize().ok()?;
-            return found.is_dir().then(|| (found.clone(), found));
-        }
-        let logical = plain(&joined(self.logical.as_deref(), dir)?);
-        let found = logical.canonicalize().ok().filter(|at| at.is_dir())?;
-        Some((logical, found))
+    fn physical(&self) -> Option<&Path> {
+        self.at.as_ref().map(|place| place.physical.as_path())
     }
 
     /// A command after `||` runs when the one before failed, which may be the `cd`.
@@ -370,7 +391,7 @@ impl Cwd {
             }
             Move::Stays => {}
             Move::To { dir, physical } => {
-                let place = self.landing(dir, physical);
+                let place = Place::landing(self.at.as_ref(), dir, physical);
                 self.set(place);
             }
             Move::Lost => self.set(None),
@@ -394,7 +415,6 @@ impl Cwd {
     fn child(&self) -> Cwd {
         Cwd {
             at: self.at.clone(),
-            logical: self.logical.clone(),
             ..Cwd::default()
         }
     }
