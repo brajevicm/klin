@@ -5,9 +5,10 @@
 //! if no cache were there. Spec 8.4.
 
 use std::collections::HashMap;
+use std::ops::Add;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 
 use super::facts::{
     Declaration, DeclarationKind, Export, ExportLeaf, ExternCrate, FileFacts, Import, ModuleDecl,
@@ -59,8 +60,22 @@ impl Cache {
         })
     }
 
-    pub fn read(&self) -> Option<HashMap<String, Outcome>> {
-        decoded(&std::fs::read(&self.file).ok()?, &self.identity)
+    /// The outcomes this file holds, with the time its read, checksum and decode each took
+    /// added to `cost`. Spec 11.2.
+    pub fn read(&self, cost: &mut ReadCost) -> Option<HashMap<String, Outcome>> {
+        let started = Instant::now();
+        let bytes = std::fs::read(&self.file);
+        cost.file += started.elapsed();
+        let started = Instant::now();
+        let body = bytes
+            .as_deref()
+            .ok()
+            .and_then(|bytes| checked(bytes, &self.identity));
+        cost.checksum += started.elapsed();
+        let started = Instant::now();
+        let outcomes = body.and_then(decoded_body);
+        cost.decode += started.elapsed();
+        outcomes
     }
 
     /// The outcomes written whole over whatever the file held. A cache klin cannot write costs
@@ -101,6 +116,29 @@ impl Cache {
     }
 }
 
+/// What reading one cache file cost: the whole read as its reader timed it, and within it the
+/// file read, its checksum and its decode.
+#[derive(Default, Clone, Copy)]
+pub struct ReadCost {
+    pub total: Duration,
+    pub file: Duration,
+    pub checksum: Duration,
+    pub decode: Duration,
+}
+
+impl Add for ReadCost {
+    type Output = ReadCost;
+
+    fn add(self, other: ReadCost) -> ReadCost {
+        ReadCost {
+            total: self.total + other.total,
+            file: self.file + other.file,
+            checksum: self.checksum + other.checksum,
+            decode: self.decode + other.decode,
+        }
+    }
+}
+
 fn identity(epoch: u64, version: &str, commit: &str, checkout: &[u8]) -> Vec<u8> {
     let mut identity = Writer(MAGIC.to_vec());
     identity.number(epoch);
@@ -128,15 +166,22 @@ fn encoded(identity: &[u8], outcomes: &[(&str, &Outcome)]) -> Vec<u8> {
     out
 }
 
+#[cfg(test)]
 fn decoded(bytes: &[u8], identity: &[u8]) -> Option<HashMap<String, Outcome>> {
+    checked(bytes, identity).and_then(decoded_body)
+}
+
+/// The body of a file that carries this identity and whose checksum matches it.
+fn checked<'a>(bytes: &'a [u8], identity: &[u8]) -> Option<&'a [u8]> {
     let (sum, body) = bytes.strip_prefix(identity)?.split_first_chunk::<8>()?;
-    if u64::from_le_bytes(*sum) != checksum(BASIS, body) {
-        return None;
-    }
+    (u64::from_le_bytes(*sum) == checksum(BASIS, body)).then_some(body)
+}
+
+fn decoded_body(body: &[u8]) -> Option<HashMap<String, Outcome>> {
     let mut names = Names::default();
     let mut reader = Reader(body, &mut names);
     let outcomes = reader.list(Reader::entry)?;
-    reader.0.is_empty().then_some(outcomes)
+    reader.0.is_empty().then(|| outcomes.into_iter().collect())
 }
 
 /// A word-at-a-time FNV-1a sum. It finds a torn or interleaved write, and it is no defence
@@ -310,17 +355,22 @@ impl Reader<'_, '_> {
         None
     }
 
-    /// A count, never more than the bytes left could hold, so a corrupt one allocates nothing.
+    /// A count, never more than the bytes left could hold.
     fn count(&mut self) -> Option<usize> {
         usize::try_from(self.number()?)
             .ok()
             .filter(|count| *count <= self.0.len())
     }
 
-    /// A counted run of items, and `None` when any one of them does not read.
-    fn list<T, C: FromIterator<T>>(&mut self, each: fn(&mut Self) -> Option<T>) -> Option<C> {
+    /// A counted run of items, and `None` when any one of them does not read. It reserves no more
+    /// memory than the bytes left, so a forged count cannot reserve many times the file's size.
+    fn list<T>(&mut self, each: fn(&mut Self) -> Option<T>) -> Option<Vec<T>> {
         let count = self.count()?;
-        (0..count).map(|_| each(self)).collect()
+        let mut items = Vec::with_capacity(count.min(self.0.len() / size_of::<T>().max(1)));
+        for _ in 0..count {
+            items.push(each(self)?);
+        }
+        Some(items)
     }
 
     fn text(&mut self) -> Option<String> {
@@ -384,7 +434,7 @@ impl Reader<'_, '_> {
     fn declaration(&mut self) -> Option<Declaration> {
         let (name, kind, line, end, text) = self.site()?;
         let flags = self.number().filter(|flags| *flags <= 7)?;
-        let bindings = self.list(Reader::text)?;
+        let bindings = self.list(Reader::text)?.into();
         self.contract(Declaration {
             name,
             bindings,
