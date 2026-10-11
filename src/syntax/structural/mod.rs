@@ -5,6 +5,7 @@
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::hash::{BuildHasherDefault, Hasher};
 use std::ops::Add;
 use std::path::Path;
 use std::rc::Rc;
@@ -756,7 +757,37 @@ pub fn file_at<'a>(files: &'a [Rc<FileFacts>], path: &str) -> Option<&'a FileFac
 }
 
 /// Names grouped by logical language, the set a filtered `SourceIndex` records.
-pub type NameSet = HashMap<LanguageId, HashSet<Name>>;
+pub type NameSet = HashMap<LanguageId, HashSet<Name, NameHash>, NameHash>;
+
+/// The hash of the name maps: Fx-style with a fixed seed, since the input is the user's own
+/// repository and no consumer sees a map's order.
+pub type NameHash = BuildHasherDefault<FxHasher>;
+
+/// A fixed-seed hasher in the style of rustc's FxHash.
+#[derive(Default)]
+pub struct FxHasher(u64);
+
+impl FxHasher {
+    fn add(&mut self, word: u64) {
+        self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+}
+
+impl Hasher for FxHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        let (words, rest) = bytes.as_chunks::<8>();
+        for word in words {
+            self.add(u64::from_le_bytes(*word));
+        }
+        for byte in rest {
+            self.add(u64::from(*byte));
+        }
+    }
+
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
 
 /// One declaration as the index reports it, with the file that holds it.
 #[derive(Clone, Copy)]
@@ -773,8 +804,11 @@ pub struct Declared<'a> {
 /// spec 8.4.
 pub struct SourceIndex {
     files: Vec<Rc<FileFacts>>,
-    names: HashMap<LanguageId, HashMap<Name, Sites>>,
+    names: HashMap<LanguageId, Named, NameHash>,
 }
+
+/// The sites of each name of one language.
+type Named = HashMap<Name, Sites, NameHash>;
 
 /// Where one name of one language is declared and referenced, each list in file and line order.
 /// A lookup reads one entry, so the order of the map it sits in reaches no consumer.
@@ -806,7 +840,7 @@ impl SourceIndex {
             let names = wanted.map(|wanted| wanted.get(&language));
             move |name: &str| names.is_none_or(|names| names.is_some_and(|n| n.contains(name)))
         };
-        let mut names: HashMap<LanguageId, HashMap<Name, Sites>> = HashMap::new();
+        let mut names: HashMap<LanguageId, Named, NameHash> = HashMap::default();
         for (at, file) in files.iter().enumerate() {
             let named = names.entry(file.language).or_default();
             let kept = kept(file.language);
@@ -890,7 +924,7 @@ impl SourceIndex {
 }
 
 /// One site recorded under its name, and the name copied only the first time the index meets it.
-fn record_text(named: &mut HashMap<Name, Sites>, text: &str, into: impl FnOnce(&mut Sites)) {
+fn record_text(named: &mut Named, text: &str, into: impl FnOnce(&mut Sites)) {
     if let Some(sites) = named.get_mut(text) {
         into(sites);
         return;
@@ -900,7 +934,7 @@ fn record_text(named: &mut HashMap<Name, Sites>, text: &str, into: impl FnOnce(&
     named.insert(Name::new(text), sites);
 }
 
-fn record_name(named: &mut HashMap<Name, Sites>, name: Name, into: impl FnOnce(&mut Sites)) {
+fn record_name(named: &mut Named, name: Name, into: impl FnOnce(&mut Sites)) {
     if let Some(sites) = named.get_mut(&name) {
         into(sites);
         return;

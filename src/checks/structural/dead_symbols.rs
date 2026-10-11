@@ -173,7 +173,7 @@ fn impact(
     after: &measurement::Measurement,
 ) -> Option<Impact> {
     let only = at.only.filter(|_| at.changes.is_some())?;
-    let mut affected = structural::NameSet::new();
+    let mut affected = structural::NameSet::default();
     for change in at.changes? {
         if !measured_after(after, &change.path) {
             continue;
