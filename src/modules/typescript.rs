@@ -63,23 +63,34 @@ fn resolved(
     specifier: &str,
 ) {
     let before = builder.holes.len();
-    let base = if relative(specifier) {
-        joined(directory(site.file), specifier).map(Ok)
-    } else {
-        paths.and_then(|scope| scope.resolve(specifier))
-    };
-    match base {
-        Some(Ok(base)) => dependency(builder, modules, site, specifier, &base, Missing::Judged),
+    match located(paths, site.file, specifier) {
+        Some(Ok((base, missing))) => dependency(builder, modules, site, specifier, &base, missing),
         Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
-        None => match paths.and_then(|scope| scope.under_base_url(specifier)) {
-            Some(base) => dependency(builder, modules, site, specifier, &base, Missing::External),
-            None => builder.external += 1,
-        },
+        None => builder.external += 1,
     }
     if !relative(specifier) {
         for hole in &mut builder.holes[before..] {
             hole.local_alias = true;
         }
+    }
+}
+
+/// The path a specifier names before the candidate rule, in TypeScript's order: relative, then
+/// a paths rule, then a written `baseUrl`. None is external; Err is a local name klin cannot prove.
+fn located(
+    paths: Option<super::typescript_paths::FilePaths<'_>>,
+    file: &str,
+    specifier: &str,
+) -> Option<Result<(String, Missing), String>> {
+    if relative(specifier) {
+        return joined(directory(file), specifier).map(|base| Ok((base, Missing::Judged)));
+    }
+    let scope = paths?;
+    match scope.resolve(specifier) {
+        Some(found) => Some(found.map(|base| (base, Missing::Judged))),
+        None => scope
+            .under_base_url(specifier)
+            .map(|base| Ok((base, Missing::External))),
     }
 }
 
