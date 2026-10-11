@@ -1596,17 +1596,25 @@ find a target.
   first), and `&&`, `;` or a newline follows it. And the command holds no
   subshell, group or function. A `cd` behind `&&` moves it only when the
   segment before is a `cd` the guard placed. The same rules apply to an
-  `eval` that runs a `cd`. After any
-  other `cd`, `pushd`, `popd`, `source` or `.`, and after a `||` that follows
+  `eval` that runs a `cd`. A `cd` resolves its operand as the shell does: by
+  name from the shell's own directory name by default, so `..` leaves a link
+  the way the `cd` came in, and through every link under `-P`. A file path
+  resolves from the directory the process stands in. After any
+  other `cd`, `pushd`, `popd`, `source` or `.`, also behind `builtin` or
+  `command`, and after a `||` that follows
   a `cd`, a relative path proves nothing. An absolute path stays proven.
 - **Copies.** `cp` and `install` are writers of their destination alone, at
   the `ask` level of B.9.4. The destination is the last operand, or each
   source's name inside a destination directory that exists or that `-t`
   names. `install -d` writes every operand. An option the guard does not
   know, a letter GNU and BSD spell differently, or an abbreviated long
-  option leaves the command unproven. Under `-n` or `-u`, which may leave an
-  existing destination as it is, only a destination that does not exist yet
-  is written.
+  option leaves the command unproven, and so does a source that names a
+  directory's contents (`dir/.`, `dir/`, `.`). Under `--parents` each
+  source's path is kept under the destination. Under `-n`, or `-u` and an
+  `--update` value other than `all`, an existing destination may stay as it
+  is, so only a destination that does not exist yet is written. `-n` and `-i`
+  each override the one before, and `-f` after `-n` leaves the command
+  unproven, because GNU ignores it and BSD obeys it.
 - **Nested shell.** `sh`, `bash`, `zsh`, `dash` or `ksh` with `-c` runs the
   next word in a child shell, and one with no script operand runs its heredoc
   in a child shell. `eval` runs its words in this shell. The guard reads that

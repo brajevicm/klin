@@ -744,3 +744,85 @@ fn reads_nested_text_to_a_bounded_depth() {
     let chain = format!("{}rm klin.json", "eval ".repeat(20_000));
     allowed(&bash_in(&tree, &chain), "a chain of twenty thousand evals");
 }
+
+/// A copy of a directory's contents writes names the guard does not read from the command, so
+/// it gives the destination up. ADR 0068.
+#[test]
+fn a_copy_of_directory_contents_is_unproven() {
+    let tree = Tree::new();
+    tree.write("staging/klin.json", "{}\n");
+    for command in [
+        "cp -a staging/. .",
+        "cp -R staging/ .",
+        "cp -r . ../elsewhere",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
+/// `--parents` keeps each source's path under the destination directory. ADR 0068.
+#[test]
+fn a_copy_with_parents_writes_the_source_path_under_the_destination() {
+    let tree = Tree::new();
+    tree.write("staging/.git/klin/turn", "x\n");
+    asked(
+        &bash_in(&tree, "cd staging && cp --parents .git/klin/turn .."),
+        "../.git/klin/turn",
+        "a state path rebuilt under the root",
+    );
+}
+
+/// Overwrite options settle in order, and `--update=all` overwrites. ADR 0068.
+#[test]
+fn the_overwrite_options_of_a_copy_settle_in_order() {
+    let tree = Tree::new();
+    for command in [
+        "cp --update=all source klin.json",
+        "cp -n -i source klin.json",
+        "cp --no-clobber --interactive source klin.json",
+    ] {
+        asked(&bash_in(&tree, command), "klin.json", command);
+    }
+    for command in [
+        "cp --update=none source klin.json",
+        "cp --update=older source klin.json",
+        "cp -i -n source klin.json",
+        "cp -n -f source klin.json",
+        "cp --update=sometimes source klin.json",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
+/// A `cd` is logical, as the shell's is by default, so `..` leaves a link the way it came in.
+/// `-P` follows the link. A file path still resolves where the process stands. ADR 0068.
+#[test]
+fn a_cd_through_a_link_comes_back_the_way_it_went() {
+    let tree = Tree::new();
+    tree.write("inner/deep/notes.md", "one\n");
+    std::os::unix::fs::symlink(tree.path("inner/deep"), tree.path("link")).unwrap();
+    denied(
+        &bash_in(&tree, "cd link && cd .. && echo x > klin.json"),
+        "a logical cd back out of a link",
+    );
+    for command in [
+        "cd -P link && cd .. && echo x > klin.json",
+        "cd link && echo x > ../klin.json",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}
+
+/// A sourced script may move the directory however it is spelled. ADR 0068.
+#[test]
+fn a_sourced_script_leaves_the_directory_unproven() {
+    let tree = Tree::new();
+    tree.write("sub/notes.md", "one\n");
+    for command in [
+        "builtin source ./enter-sub.sh; echo x > klin.json",
+        "builtin . ./enter-sub.sh; echo x > klin.json",
+        "command source ./enter-sub.sh; echo x > klin.json",
+    ] {
+        allowed(&bash_in(&tree, command), command);
+    }
+}

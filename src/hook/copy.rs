@@ -14,8 +14,6 @@ pub struct Spec {
     long_valued: &'static [&'static str],
     /// The letter that makes every operand a directory to create, which `install` has.
     directories: Option<char>,
-    /// The letters that may leave an existing destination as it is.
-    only_new: &'static str,
 }
 
 pub const CP: Spec = Spec {
@@ -49,7 +47,6 @@ pub const CP: Spec = Spec {
     ],
     long_valued: &["no-preserve", "sparse", "suffix", "target-directory"],
     directories: None,
-    only_new: "nu",
 };
 
 pub const INSTALL: Spec = Spec {
@@ -76,7 +73,6 @@ pub const INSTALL: Spec = Spec {
         "target-directory",
     ],
     directories: Some('d'),
-    only_new: "",
 };
 
 impl Spec {
@@ -104,17 +100,19 @@ impl Spec {
 
 /// The paths the command writes, each spelled from its destination so a reason can quote it.
 /// `look` finds what a path names on disk. Under `-n` or `-u` an existing destination may be
-/// left as it is, so only one that is not there yet is a proven write.
+/// left as it is, so only one that is not there yet is a proven write. A source that names a
+/// directory's contents (`dir/.`, `dir/`) writes names the command does not show, so the
+/// destination is given up.
 pub fn destinations(
     spec: &Spec,
     args: &[String],
     look: impl Fn(&str) -> Option<Metadata>,
 ) -> Vec<String> {
-    let Some(read) = Operands::of(spec, args) else {
+    let Some(read) = Operands::of(spec, args).filter(|read| !read.contents()) else {
         return Vec::new();
     };
     let mut written = named(&read, |path| look(path).is_some_and(|found| found.is_dir()));
-    if read.only_new {
+    if read.no_clobber || read.update {
         written.retain(|path| look(path).is_none());
     }
     written
@@ -125,24 +123,28 @@ fn named(read: &Operands, is_dir: impl Fn(&str) -> bool) -> Vec<String> {
         return read.operands.iter().map(|path| path.to_string()).collect();
     }
     if let Some(dir) = read.into {
-        return inside(dir, &read.operands);
+        return inside(dir, &read.operands, read.parents);
     }
     let Some((destination, sources)) = read.operands.split_last() else {
         return Vec::new();
     };
     match sources {
         [] => Vec::new(),
-        [_] if read.file || !is_dir(destination) => vec![destination.to_string()],
+        [_] if read.single_file(is_dir(destination)) => vec![destination.to_string()],
         _ if read.file => Vec::new(),
-        _ => inside(destination, sources),
+        _ => inside(destination, sources, read.parents),
     }
 }
 
-fn inside(dir: &str, sources: &[&str]) -> Vec<String> {
+/// Each source's place inside `dir`: its name, or under `--parents` its whole path.
+fn inside(dir: &str, sources: &[&str], parents: bool) -> Vec<String> {
     let dir = dir.trim_end_matches('/');
     sources
         .iter()
-        .filter_map(|source| Path::new(source).file_name()?.to_str())
+        .filter_map(|source| match parents {
+            true => Some(source.trim_start_matches('/')),
+            false => Path::new(source).file_name()?.to_str(),
+        })
         .map(|name| format!("{dir}/{name}"))
         .collect()
 }
@@ -155,11 +157,45 @@ struct Operands<'a> {
     /// `-T`: the destination is a file even when a directory of that name exists.
     file: bool,
     directories: bool,
-    /// `-n` or `-u`: an existing destination may be left as it is.
-    only_new: bool,
+    /// `--parents`: each source keeps its path under the destination directory.
+    parents: bool,
+    /// `-n` after any `-i`: an existing destination is left as it is.
+    no_clobber: bool,
+    /// `-u`, or `--update` short of `all`: an existing destination may be left as it is.
+    update: bool,
 }
 
+/// The long options that mean a letter of the short form.
+const LONG_LETTERS: &[(&str, char)] = &[
+    ("no-target-directory", 'T'),
+    ("no-clobber", 'n'),
+    ("interactive", 'i'),
+    ("force", 'f'),
+];
+
 impl<'a> Operands<'a> {
+    /// A single source is written to the destination itself, unless the destination is a
+    /// directory, `-T` aside, or `--parents` places it inside.
+    fn single_file(&self, destination_is_dir: bool) -> bool {
+        !self.parents && (self.file || !destination_is_dir)
+    }
+
+    fn contents(&self) -> bool {
+        let sources = match self.into {
+            Some(_) => &self.operands[..],
+            None => self
+                .operands
+                .split_last()
+                .map_or(&[][..], |(_, sources)| sources),
+        };
+        sources.iter().any(|source| {
+            matches!(*source, "." | "..")
+                || source.ends_with('/')
+                || source.ends_with("/.")
+                || source.ends_with("/..")
+        })
+    }
+
     fn of(spec: &Spec, args: &'a [String]) -> Option<Operands<'a>> {
         let mut read = Operands::default();
         let mut words = args.iter().map(String::as_str);
@@ -183,11 +219,26 @@ impl<'a> Operands<'a> {
         words: &mut impl Iterator<Item = &'a str>,
     ) -> Option<()> {
         let (name, value) = spec.long_option(option, words)?;
+        let letter = LONG_LETTERS.iter().find(|(long, _)| *long == name);
         match name {
             "target-directory" => self.into = value,
-            "no-target-directory" => self.file = true,
-            "no-clobber" | "update" => self.only_new = true,
             "directory" => self.directories = true,
+            "parents" => self.parents = true,
+            "update" => self.update = keeps_existing(value)?,
+            _ => self.flag(letter.map_or(' ', |(_, letter)| *letter))?,
+        }
+        Some(())
+    }
+
+    /// What one flag letter does. `-n` and `-i` each override the one before. `-f` after `-n`
+    /// is ignored by GNU and wins on BSD, so that pair gives the destination up.
+    fn flag(&mut self, letter: char) -> Option<()> {
+        match letter {
+            'T' => self.file = true,
+            'n' => self.no_clobber = true,
+            'i' => self.no_clobber = false,
+            'f' if self.no_clobber => return None,
+            'u' => self.update = true,
             _ => {}
         }
         Some(())
@@ -211,10 +262,19 @@ impl<'a> Operands<'a> {
             if !spec.flags.contains(letter) {
                 return None;
             }
-            self.file |= letter == 'T';
-            self.only_new |= spec.only_new.contains(letter);
             self.directories |= spec.directories == Some(letter);
+            self.flag(letter)?;
         }
         Some(())
+    }
+}
+
+/// Whether an `--update` value may leave an existing destination as it is, and `None` for a
+/// value the reader does not know.
+fn keeps_existing(value: Option<&str>) -> Option<bool> {
+    match value {
+        None | Some("older" | "none" | "none-fail") => Some(true),
+        Some("all") => Some(false),
+        Some(_) => None,
     }
 }

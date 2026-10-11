@@ -26,9 +26,13 @@ destination wherever the text proves it. It never runs a shell.**
    `cd` must surely run in this shell: `;`, `&` or a newline before it, or
    `&&` after a `cd` the guard placed, and no pipe, background job, subshell,
    group or function. And the next command must run after it, so `&&`, `;` or
-   a newline follows it. A `||` after a `cd` leaves
+   a newline follows it. The `cd` is logical, as the shell's is by default:
+   `cd link && cd ..` comes back to where it started, and `-P` follows the
+   link instead. A file path resolves from where the process stands, through
+   every link. A `||` after a `cd` leaves
    every later relative path unproven. Any other `cd`, `pushd`, `popd`,
-   `source` or `.` leaves them unproven too. An absolute path stays proven.
+   `source` or `.`, also behind `builtin` or `command`, leaves them unproven
+   too. An absolute path stays proven.
 2. `cp` and `install` write their destination and never their sources. The
    destination is the last operand. When it names a directory that exists,
    or `-t` names one, each source's name inside it is written. `install -d`
@@ -37,6 +41,11 @@ destination wherever the text proves it. It never runs a shell.**
    destination up. Under `-n` or `-u`, which may leave an existing
    destination as it is, only a destination that does not exist yet is
    written. So `cp -n x klin.json` passes, and `cp -n x .git/klin/new` asks.
+   `--update=all` overwrites, so it counts. `-n` and `-i` each override the
+   one before, and `-f` after `-n` gives up, because GNU ignores it and BSD
+   obeys it. `--parents` keeps each source's path under the destination. A
+   source that names a directory's contents, such as `dir/.` or `dir/`,
+   writes names the command does not show, so it gives up.
 3. `sh`, `bash`, `zsh`, `dash` and `ksh` with `-c` run the word after the
    flag in a child shell. With no script operand, they run the heredoc they
    read in a child shell. `eval` runs its words, joined, in this shell. The

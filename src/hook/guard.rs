@@ -16,9 +16,11 @@ const PARAMETER: char = '$';
 /// The command word that moves the ground every relative path stands on.
 const CD: &str = "cd";
 /// Words that move the directory in a way the guard does not follow, wherever they stand.
-const MOVERS: &[&str] = &["cd", "pushd", "popd"];
+const MOVERS: &[&str] = &["cd", "pushd", "popd", "source"];
 /// Command words that run another file's shell in this one, which may move the directory.
 const SOURCES: &[&str] = &[".", "source"];
+/// Command words that run the builtin named after them.
+const BUILTINS: &[&str] = &["builtin", "command"];
 /// The command word that runs its words as shell text in this shell.
 const EVAL: &str = "eval";
 /// How deep the guard reads shell text nested in shell text. Text deeper than this is unread,
@@ -232,12 +234,16 @@ fn resolved(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     if token.is_empty() || token.contains(WILDCARDS) {
         return None;
     }
+    Some(real(&plain(&joined(base, token)?)))
+}
+
+/// The path a token names from `base`, and `None` for a relative one with no `base`.
+fn joined(base: Option<&Path>, token: &str) -> Option<PathBuf> {
     let named = Path::new(token);
-    let at = match named.is_absolute() {
-        true => named.to_path_buf(),
-        false => base?.join(named),
-    };
-    Some(real(&plain(&at)))
+    match named.is_absolute() {
+        true => Some(named.to_path_buf()),
+        false => Some(base?.join(named)),
+    }
 }
 
 /// The path with `.` and `..` taken out, which `canonicalize` cannot do for a file that is not
@@ -275,6 +281,7 @@ fn basename(path: &str) -> &str {
 fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str) {
     let mut cwd = Cwd {
         at: guarded.here().map(Path::to_path_buf),
+        logical: guarded.here().map(Path::to_path_buf),
         ..Cwd::default()
     };
     walk(guarded, command, &mut cwd, 0)
@@ -315,19 +322,34 @@ fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, depth: u8) -> (Decision
 
 /// The directory relative paths resolve from, `None` once the guard cannot place it, whether a
 /// command has moved it, whether the last segment was a `cd` the guard placed, and how many
-/// times `at` was set, so a caller sees whether nested text changed it.
+/// times it was set, so a caller sees whether nested text changed it. `at` is where a process
+/// stands, with every link followed. `logical` is the shell's own name for it, which a `cd`
+/// without `-P` moves from, so `..` leaves a link the way the `cd` came in.
 #[derive(Default)]
 struct Cwd {
     at: Option<PathBuf>,
+    logical: Option<PathBuf>,
     moved: bool,
     placed: bool,
     changes: u32,
 }
 
 impl Cwd {
-    fn set(&mut self, at: Option<PathBuf>) {
-        self.at = at;
+    fn set(&mut self, place: Option<(PathBuf, PathBuf)>) {
+        (self.logical, self.at) = place.unzip();
         self.changes += 1;
+    }
+
+    /// Where a `cd` lands: from the logical directory by default, from the physical one under
+    /// `-P`, and only at a directory that exists.
+    fn landing(&self, dir: &str, physical: bool) -> Option<(PathBuf, PathBuf)> {
+        if physical {
+            let found = joined(self.at.as_deref(), dir)?.canonicalize().ok()?;
+            return found.is_dir().then(|| (found.clone(), found));
+        }
+        let logical = plain(&joined(self.logical.as_deref(), dir)?);
+        let found = logical.canonicalize().ok().filter(|at| at.is_dir())?;
+        Some((logical, found))
     }
 
     /// A command after `||` runs when the one before failed, which may be the `cd`.
@@ -347,9 +369,9 @@ impl Cwd {
                 return;
             }
             Move::Stays => {}
-            Move::To(dir) => {
-                let at = resolved(self.at.as_deref(), dir).filter(|at| at.is_dir());
-                self.set(at);
+            Move::To { dir, physical } => {
+                let place = self.landing(dir, physical);
+                self.set(place);
             }
             Move::Lost => self.set(None),
         }
@@ -372,6 +394,7 @@ impl Cwd {
     fn child(&self) -> Cwd {
         Cwd {
             at: self.at.clone(),
+            logical: self.logical.clone(),
             ..Cwd::default()
         }
     }
@@ -380,8 +403,11 @@ impl Cwd {
 /// What a segment does to the directory.
 enum Move<'a> {
     Stays,
-    /// A static `cd` to the directory it names.
-    To(&'a str),
+    /// A static `cd` to the directory it names, under `-P` when `physical`.
+    To {
+        dir: &'a str,
+        physical: bool,
+    },
     /// A move the guard does not follow.
     Lost,
 }
@@ -391,9 +417,12 @@ fn moves(words: &[String]) -> Move<'_> {
         return Move::Stays;
     };
     if command == CD {
-        return cd_target(args).map_or(Move::Lost, Move::To);
+        return cd_target(args).map_or(Move::Lost, |(dir, physical)| Move::To { dir, physical });
     }
-    match SOURCES.contains(&command) || words.iter().any(|word| MOVERS.contains(&word.as_str())) {
+    let builtin = BUILTINS.contains(&command).then(|| args.first()).flatten();
+    let sourced =
+        SOURCES.contains(&command) || builtin.is_some_and(|word| SOURCES.contains(&word.as_str()));
+    match sourced || words.iter().any(|word| MOVERS.contains(&word.as_str())) {
         true => Move::Lost,
         false => Move::Stays,
     }
@@ -406,14 +435,21 @@ fn command(words: &[String]) -> Option<(&str, &[String])> {
     Some((basename(&words[at]), &words[at + 1..]))
 }
 
-fn cd_target(args: &[String]) -> Option<&str> {
-    let operands: Vec<&str> = args
+/// The one directory a `cd` names, and whether `-P` makes it follow links, where the last of
+/// `-L` and `-P` wins.
+fn cd_target(args: &[String]) -> Option<(&str, bool)> {
+    let flags = args
         .iter()
-        .map(String::as_str)
-        .skip_while(|arg| matches!(*arg, "-L" | "-P" | "-e" | "-@" | "--"))
-        .collect();
-    match operands.as_slice() {
-        [dir] if !dir.starts_with(['-', '~']) && !dir.contains(PARAMETER) => Some(dir),
+        .take_while(|arg| matches!(arg.as_str(), "-L" | "-P" | "-e" | "-@" | "--"));
+    let physical = flags
+        .clone()
+        .filter(|arg| matches!(arg.as_str(), "-L" | "-P"))
+        .last()
+        .is_some_and(|arg| arg == "-P");
+    match &args[flags.count()..] {
+        [dir] if !dir.starts_with(['-', '~']) && !dir.contains(PARAMETER) => {
+            Some((dir.as_str(), physical))
+        }
         _ => None,
     }
 }
