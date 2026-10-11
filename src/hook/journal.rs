@@ -371,14 +371,14 @@ pub fn read(root: &Path) -> (Vec<Value>, Skipped) {
         }
         match serde_json::from_str::<Value>(&text) {
             Ok(line) if known(&line) => lines.push(line),
-            Ok(line) if line.get("time").is_some_and(Value::is_u64) => skipped.foreign.push(line),
-            _ => skipped.unparsed += 1,
+            Ok(line) => skipped.foreign.push(line),
+            Err(_) => skipped.unparsed += 1,
         }
     }
     (lines, skipped)
 }
 
-/// The line both readers take, and `None` for the one neither does: a line that will not parse,
+/// The line the tail reader takes, and `None` for the one it does not: a line that will not parse,
 /// which is a truncated last write, or a line of another `schema`. Spec 13.1.
 fn understood(text: &[u8]) -> Option<Value> {
     serde_json::from_slice::<Value>(text).ok().filter(known)

@@ -210,43 +210,44 @@ fn gate_blocked(line: &Value) -> bool {
 
 /// The lines a scope holds, oldest first. Spec 11.5.
 pub fn scoped(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Vec<Value> {
-    let window = Window::of(lines, scope, root, now);
-    lines
-        .iter()
-        .filter(|line| window.holds(line))
-        .cloned()
-        .collect()
+    Span::of(lines, scope, root, now).keep(lines)
 }
 
 /// Where a scope begins: at a time, at the newest session id the lines carry, or nowhere where
 /// no turn stamp or session id is readable. Spec 6.2, 13.2.
-pub enum Window {
+pub enum Span {
     Since(u64),
     Session(String),
     Nowhere,
 }
 
-impl Window {
-    pub fn of(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Window {
+impl Span {
+    pub fn of(lines: &[Value], scope: Scope, root: &Path, now: u64) -> Span {
         match scope {
-            Scope::Since(days) => Window::Since(now.saturating_sub(days.saturating_mul(DAY))),
-            Scope::Turn => turn::taken_at(root).map_or(Window::Nowhere, Window::Since),
+            Scope::Since(days) => Span::Since(now.saturating_sub(days.saturating_mul(DAY))),
+            Scope::Turn => turn::taken_at(root).map_or(Span::Nowhere, Span::Since),
             Scope::Session => lines
                 .iter()
                 .rev()
                 .map(|line| word(line, "session"))
                 .find(|session| !session.is_empty())
-                .map_or(Window::Nowhere, |newest| {
-                    Window::Session(newest.to_string())
-                }),
+                .map_or(Span::Nowhere, |newest| Span::Session(newest.to_string())),
         }
+    }
+
+    pub fn keep(&self, lines: &[Value]) -> Vec<Value> {
+        lines
+            .iter()
+            .filter(|line| self.holds(line))
+            .cloned()
+            .collect()
     }
 
     pub fn holds(&self, line: &Value) -> bool {
         match self {
-            Window::Since(since) => at(line) >= *since,
-            Window::Session(newest) => word(line, "session") == newest,
-            Window::Nowhere => false,
+            Span::Since(since) => at(line) >= *since,
+            Span::Session(newest) => word(line, "session") == newest,
+            Span::Nowhere => false,
         }
     }
 }

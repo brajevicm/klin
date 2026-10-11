@@ -2913,7 +2913,8 @@ Evidence:
 - an incompatible cache is rebuilt;
 - a regression flagged under one semantics version and absent under another
   is "not compared" in `klin report`;
-- a journal line of another schema counts in `skipped_lines`.
+- a journal line of another schema inside the report's scope counts in
+  `skipped_lines`.
 
 ### 19.3 Performance evidence
 

@@ -7,10 +7,10 @@ use serde_json::Value;
 
 use crate::config::file::MEASUREMENT_LOST;
 use crate::engine::catalogue;
-use crate::hook::journal::{self, Dated};
+use crate::hook::journal::{self, Dated, Skipped};
 use crate::hook::stats::{
-    Counts, DAY, Outcome, Regression, Scope, Window, at, clock, counted, held, kind, list, mended,
-    regressions, scoped, word,
+    Counts, DAY, Outcome, Regression, Scope, Span, at, clock, counted, held, kind, list, mended,
+    regressions, word,
 };
 use crate::sys::error::Error;
 use crate::{hook::turn, sys::git::Repo};
@@ -43,12 +43,11 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let scope = scope(args)?;
     let (lines, skipped) = journal::read(start);
     let now = clock();
-    let window = Window::of(&lines, scope, start, now);
-    let held = scoped(&lines, scope, start, now);
+    let span = Span::of(&lines, scope, start, now);
+    let held = span.keep(&lines);
     let notices = journal::open_notices(&lines, turn::stamp_commit(start).as_deref());
-    let empty = lines.is_empty() && skipped.unparsed == 0 && skipped.foreign.is_empty();
-    let foreign = skipped.foreign.iter().filter(|line| window.holds(line));
-    let skipped = skipped.unparsed + foreign.count() as u64;
+    let empty = lines.is_empty() && skipped.unparsed + skipped.foreign.len() as u64 == 0;
+    let skipped = unread(&skipped, &span);
     let mut report = Report::read(&held, scope, now, skipped, notices, empty);
     report.confidence.unscoped = unscoped(&lines, scope, start);
     if !args.json && report.confidence.unscoped.is_some() && matches!(scope, Scope::Session) {
@@ -64,6 +63,13 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         false => text(out, args, start, &report),
     }
     Ok(0)
+}
+
+/// The skipped lines the report's scope holds: every line that did not parse, and each line of
+/// another schema whose `time` or `session` puts it in the scope. Spec 13.1.
+fn unread(skipped: &Skipped, span: &Span) -> u64 {
+    let foreign = skipped.foreign.iter().filter(|line| span.holds(line));
+    skipped.unparsed + foreign.count() as u64
 }
 
 fn scope(args: &Args) -> Result<Scope, Error> {

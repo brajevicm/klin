@@ -762,19 +762,21 @@ fn a_line_of_another_schema_outside_the_scope_does_not_lower_confidence() {
 }
 
 #[test]
-fn a_line_of_another_schema_in_the_session_counts() {
+fn a_line_of_another_schema_in_the_scope_counts() {
     let mut newer = stop(100, false, vec![], vec![]);
     newer["schema"] = json!(99);
     let tree = tree(&[stop(200, false, vec![], vec![]), newer]);
 
-    let run = tree.run(&["report"]);
-    assert!(
-        run.says("Stats may be incomplete: 1 journal record couldn't be read."),
-        "{}",
-        run.out
-    );
-    let json = tree.run(&["report", "--json"]).json();
-    assert_eq!(json["skipped_lines"], 1, "{json}");
+    for args in [&["report", "--since", "1d"][..], &["report"][..]] {
+        let run = tree.run(args);
+        assert!(
+            run.says("Stats may be incomplete: 1 journal record couldn't be read."),
+            "{}",
+            run.out
+        );
+        let json = tree.run(&[args, &["--json"][..]].concat()).json();
+        assert_eq!(json["skipped_lines"], 1, "{json}");
+    }
 }
 
 #[test]
