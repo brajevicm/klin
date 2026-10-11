@@ -39,6 +39,15 @@ runs:
         ARGS: ${{ inputs.args }}
       run: |
         set -fuo pipefail
+        expected="$(jq -r '.klin | strings' klin.json 2>/dev/null || true)"
+        if [ -n "$expected" ]; then
+          installed="$(klin --version | sed 's/^klin //; s/-.*//')"
+          lowest="$(printf '%s\n%s\n' "${expected#>=}" "$installed" | sort -s -t. -k1,1n -k2,2n -k3,3n -k4,4n | head -1)"
+          if [ "$lowest" != "${expected#>=}" ]; then
+            echo "::error title=klin::klin.json expects klin $expected, and the Action installed klin $installed. Pin a newer version in the Action."
+            exit 2
+          fi
+        fi
         report="$RUNNER_TEMP/klin-check.json"
         code=0
         klin check --json $ARGS > "$report" || code=$?

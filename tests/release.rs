@@ -1168,3 +1168,131 @@ fn update_after_another_install_replaced_klin_installs_nothing() {
     assert!(run.says("is the newest release"), "{}", run.out);
     assert_eq!(lines(&installed.home.path("updated")), 0);
 }
+
+/// A tree whose `klin.json` expects the klin `expected`, with nothing else to measure.
+fn expecting(expected: &str) -> Tree {
+    let tree = Tree::new();
+    tree.write("klin.json", &format!("{{\"klin\": \"{expected}\"}}\n"));
+    tree.write("README.md", "# readme\n");
+    tree.base();
+    tree
+}
+
+/// A repository that expects a newer klin says so in `klin status`, with the command that
+/// installs one, and in `klin status --json`. Spec 5.3, 11.9.
+#[test]
+fn status_says_the_repository_expects_a_newer_klin_and_names_klin_update() {
+    let tree = expecting(">=99.0.0");
+
+    let run = tree.run(&["status"]);
+    let json = tree.run(&["status", "--json"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says(&format!(
+            "This repository expects klin >=99.0.0 (you have {VERSION}). Run klin update."
+        )),
+        "{}",
+        run.out
+    );
+    assert_eq!(json.json()["klin"]["expected"], ">=99.0.0", "{}", json.out);
+    assert_eq!(json.json()["klin"]["expected_met"], false, "{}", json.out);
+}
+
+/// A Stop that blocks nothing tells the person once that the repository expects a newer klin.
+/// Spec 10.7, 11.9.
+#[test]
+fn a_stop_tells_the_person_once_that_the_repository_expects_a_newer_klin() {
+    let tree = expecting(">=99.0.0");
+
+    let first = tree.stop();
+    let second = tree.stop();
+
+    assert_eq!(first.code, 0, "{}", first.out);
+    assert!(first.says(r#"{"systemMessage":"#), "{}", first.out);
+    assert!(
+        first.says("This repository expects klin >=99.0.0"),
+        "{}",
+        first.out
+    );
+    assert_eq!(second.code, 0, "{}", second.out);
+    assert!(!second.says("expects klin"), "{}", second.out);
+}
+
+/// A version the binary meets, or no `klin` key, changes nothing that status or a Stop says.
+/// Spec 11.9.
+#[test]
+fn a_met_or_absent_expected_version_changes_nothing() {
+    let met = expecting(">=0.0.1");
+    let absent = Tree::new();
+    absent.write("klin.json", "{}\n");
+    absent.write("README.md", "# readme\n");
+    absent.base();
+
+    for tree in [&met, &absent] {
+        let status = tree.run(&["status"]);
+        let stop = tree.stop();
+
+        assert_eq!(status.code, 0, "{}", status.out);
+        assert!(!status.says("expects klin"), "{}", status.out);
+        assert_eq!(stop.code, 0, "{}", stop.out);
+        assert!(!stop.says("expects klin"), "{}", stop.out);
+    }
+    assert_eq!(
+        met.run(&["status", "--json"]).json()["klin"]["expected_met"],
+        true
+    );
+}
+
+/// The `klin` key holds `>=` and a version of dot-separated digits, and anything else is a
+/// configuration error naming the key. Spec 5.3, 14.
+#[test]
+fn an_expected_version_klin_cannot_read_is_a_config_error() {
+    for written in [
+        "\"0.5.4\"",
+        "\">=0..5\"",
+        "\">= 1.0.0\"",
+        "\">=1.0.0-beta\"",
+        "5",
+    ] {
+        let tree = Tree::new();
+        tree.write("klin.json", &format!("{{\"klin\": {written}}}\n"));
+        tree.base();
+
+        let run = tree.run(&["check"]);
+
+        assert_eq!(run.code, 2, "{written}: {}", run.out);
+        assert!(run.says("\"klin\""), "{written}: {}", run.out);
+    }
+}
+
+/// Under auto-update, a repository that expects a newer klin than the cached release asks now,
+/// without waiting for the day's ask. Spec 11.9.
+#[test]
+fn auto_update_asks_now_when_the_repository_expects_a_newer_klin() {
+    let installed = Installed::new(&answers(NEWER));
+    installed.warmed();
+    let asked = installed.fetched();
+    installed.home.write(
+        "cache/latest.json",
+        &fs::read_to_string(installed.home.path("cache/latest.json"))
+            .expect("latest.json")
+            .replace("99.0.0", "0.0.1"),
+    );
+    let auto = [("KLIN_AUTO_UPDATE", "1")];
+
+    installed.status(&auto);
+    settle();
+    assert_eq!(installed.fetched(), asked, "no key, no early ask");
+
+    installed
+        .tree
+        .write("klin.json", "{\"klin\": \">=99.0.0\"}\n");
+    installed.status(&[]);
+    settle();
+    assert_eq!(installed.fetched(), asked, "no auto-update, no early ask");
+
+    installed.status(&auto);
+    until(|| installed.fetched() == asked + 1);
+    assert_eq!(installed.fetched(), asked + 1);
+}

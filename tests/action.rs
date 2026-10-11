@@ -406,3 +406,30 @@ fn a_jq_that_cannot_format_the_report_fails_the_job_and_names_the_write() {
         gated.printed
     );
 }
+
+/// The Action fails the job, and says why, when the klin it installed is older than the version
+/// `klin.json` expects. A version it meets runs `klin check` as before. Spec 12.3.
+#[test]
+fn the_action_fails_when_its_klin_is_older_than_klin_json_expects() {
+    let older = tree();
+    older.write("klin.json", r#"{"klin": ">=99.0.0"}"#);
+    older.base();
+    let met = tree();
+    met.write("klin.json", r#"{"klin": ">=0.0.1"}"#);
+    met.base();
+
+    let failed = gated(&older, "");
+    let passed = gated(&met, "");
+
+    assert_eq!(failed.code, 2, "{}", failed.printed);
+    assert_eq!(failed.annotations("error").len(), 1, "{}", failed.printed);
+    assert!(
+        failed.printed.contains(&format!(
+            "::error title=klin::klin.json expects klin >=99.0.0, and the Action installed klin {}",
+            env!("CARGO_PKG_VERSION")
+        )),
+        "{}",
+        failed.printed
+    );
+    assert_eq!(passed.code, 0, "{}", passed.printed);
+}

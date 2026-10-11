@@ -4,12 +4,13 @@ use serde_json::{Map, Value};
 
 use crate::config::key::{Key, Reader, Section, SectionShape, Shape};
 use crate::sys::error::Error;
+use crate::sys::release::Expected;
 
 pub const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin policy --reference` prints them. Spec 5.2, 5.8.
-pub const KEYS: &[Key] = &[BUILD, ACCEPTED, RADIUS, JOURNAL];
+pub const KEYS: &[Key] = &[KLIN, BUILD, ACCEPTED, RADIUS, JOURNAL];
 
 /// The top-level keys klin no longer reads, each with what to do instead. Spec 5.2, ADR 0040.
 const RETIRED: &[(&str, &str)] = &[
@@ -19,7 +20,8 @@ const RETIRED: &[(&str, &str)] = &[
     ),
     (
         "version",
-        "the binary's version changes no gate, and a configuration names none — delete the key",
+        "the binary's version changes no gate — delete the key, or name the lowest klin the \
+         repository expects under \"klin\"",
     ),
 ];
 
@@ -37,6 +39,15 @@ const RETIRED_KEYS: &[(&str, &str)] = &[
          Rename the key, so nothing measures a different set in silence.",
     ),
 ];
+
+pub const KLIN: Key = Key {
+    name: "klin",
+    holds: "the lowest klin the repository expects, as `>=` and a version such as `>=0.5.4`. An older klin says so in `klin status` and at a Stop, and the GitHub Action fails",
+    required: false,
+    rule: None,
+    default: "any klin",
+    shape: Shape::Expected,
+};
 
 pub const BUILD: Key = Key {
     name: "build",
@@ -448,13 +459,7 @@ fn complex_value_shape(
                 .is_some_and(|name| languages().iter().any(|(known, _)| *known == name)),
             "a supported language name",
         ),
-        Shape::Text => require(
-            file,
-            section,
-            key.name,
-            is_text(value),
-            "a string that is not blank",
-        ),
+        Shape::Text | Shape::Expected => string_rule_shape(file, section, key, value),
         Shape::Build => build_shape(file, section, key, value),
         Shape::Accepted => accepted_shape(file, section, key, value),
         Shape::Radius => radius_shape(file, section, key, value),
@@ -462,6 +467,18 @@ fn complex_value_shape(
         Shape::PathGraph(read) => read(value).map_err(|why| Error::at(file, why)),
         _ => Ok(()),
     }
+}
+
+/// A string whose text follows a rule: not blank, or the lowest klin a repository expects.
+fn string_rule_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
+    let (holds, expected) = match key.shape {
+        Shape::Expected => (
+            value.as_str().and_then(Expected::parse).is_some(),
+            "\">=\" and a version of dot-separated digits, such as \">=0.5.4\"",
+        ),
+        _ => (is_text(value), "a string that is not blank"),
+    };
+    require(file, section, key.name, holds, expected)
 }
 
 fn build_shape(file: &Path, section: &str, key: &Key, value: &Value) -> Result<(), Error> {
@@ -897,6 +914,13 @@ pub fn notes(explicit: Option<&Path>, start: &Path) -> Vec<String> {
         Some(_) => Vec::new(),
         None => Discovered::from(start).said(),
     }
+}
+
+/// The lowest klin the file at `file` expects, read without judging the rest of the file, so a
+/// klin that cannot read the rest still names the version the repository expects. Spec 11.9.
+pub fn expected(file: &Path) -> Option<Expected> {
+    let data: Value = serde_json::from_slice(&std::fs::read(file).ok()?).ok()?;
+    Expected::parse(data.get(KLIN.name)?.as_str()?)
 }
 
 /// The paths of every `klin.json` the walk from `start` passed and never read. Spec 5.1.

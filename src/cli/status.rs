@@ -8,10 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Value, json};
 
 use crate::cli::setup::{self, Integration};
-use crate::config::file::{Config, Discovered};
+use crate::config::file::{self, Config, Discovered};
 use crate::engine::catalogue;
 use crate::sys::error::Error;
-use crate::sys::release;
+use crate::sys::release::{self, Expected};
 use crate::window::stamp::{Here, Verdict};
 use crate::{hook::journal, sys::state, window::stamp};
 
@@ -29,16 +29,24 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
     let Some(root) = found.root.as_deref() else {
         return Err(Error(NO_REPOSITORY.to_string()));
     };
-    release::refresh();
+    let expected = found.config.as_deref().and_then(file::expected);
+    release::refresh(expected.as_ref());
     let latest = release::known();
-    let document = document(&found, root, start, latest.as_ref());
+    let document = document(&found, root, start, latest.as_ref(), expected.as_ref());
     match args.json {
         true => {
             let _ = writeln!(out, "{document}");
         }
         false => {
             let newer = latest.filter(release::Version::is_newer);
-            text(&document, &found.said(), newer.as_ref(), out);
+            let unmet = expected.filter(|expected| !expected.met());
+            text(
+                &document,
+                &found.said(),
+                newer.as_ref(),
+                unmet.as_ref(),
+                out,
+            );
         }
     }
     Ok(0)
@@ -49,6 +57,7 @@ fn document(
     root: &Path,
     start: &Path,
     latest: Option<&release::Version>,
+    expected: Option<&Expected>,
 ) -> Value {
     let error = found
         .config
@@ -63,6 +72,8 @@ fn document(
             "update_available": latest.is_some_and(release::Version::is_newer),
             "auto_update": release::auto_update(),
             "updated_from": release::updated_from().map(|from| from.to_string()),
+            "expected": expected.map(ToString::to_string),
+            "expected_met": expected.is_none_or(Expected::met),
         },
         "config": {
             "path": found.config.as_ref().map(|file| file.display().to_string()),
@@ -146,8 +157,17 @@ fn last_stop(lines: &[Value]) -> Value {
         )
 }
 
-fn text(document: &Value, notes: &[String], newer: Option<&release::Version>, out: &mut String) {
+fn text(
+    document: &Value,
+    notes: &[String],
+    newer: Option<&release::Version>,
+    unmet: Option<&Expected>,
+    out: &mut String,
+) {
     let _ = writeln!(out, "klin {}", word(&document["klin"], "version"));
+    if let Some(expected) = unmet {
+        let _ = writeln!(out, "{}", expected.note(release::route(), None));
+    }
     if let (Some(tag), Some(route)) = (newer, release::route()) {
         let news = release::News::Available(tag.clone());
         let _ = writeln!(

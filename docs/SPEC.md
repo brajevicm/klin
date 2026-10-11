@@ -468,8 +468,13 @@ tree holds none, `klin check` adds a note that names the deleted file.
 ### 5.3 Top-level keys
 
 The keys of B.5.2 carry forward: `build`, `accepted`, `radius`, `journal`,
-and one key per gate section. vNext adds no key and retires no key. A
-configuration that 0.x accepted is valid in vNext.
+and one key per gate section. vNext adds `klin` (ADR 0071) and retires no
+key. A configuration that 0.x accepted is valid in vNext.
+
+- `klin` names the lowest klin the repository expects, as `>=` and a
+  version of dot-separated digits, such as `">=0.5.4"`. Any other value is a
+  configuration error naming the key. It changes no verdict: an older klin
+  says so (section 11.9), and the GitHub Action fails (section 12.3).
 
 - `build` is local Stop feedback policy (section 6.4). It never affects
   `klin check`.
@@ -2125,6 +2130,23 @@ names its host's own update step in place of `klin update`. ADR 0069.
   up and asks for nothing. The notice never blocks and never makes the
   window red. A turn that changed nothing does not tell it, and a later Stop
   does.
+- **The expected klin.** When the `klin` key of `klin.json` names a version
+  newer than the binary, `klin status` prints `This repository expects klin
+  >=VERSION (you have OWN). STEP`, with the STEP of the person's line above,
+  and `Run klin update.` on a binary on neither route. `klin status --json`
+  carries `expected` and `expected_met` under `klin`. A Stop that blocks
+  nothing tells the same line once as an `expected` part of its notice, and
+  records the expected version and the binary's version in `expected-told`
+  in the state directory, so a new expected version or another binary tells
+  it again. klin reads the key before it judges the rest of the file, so a
+  configuration that names a key this binary does not know still tells it.
+  These lines are local: they read no network and work outside both routes
+  and in CI. With auto-update on, when neither the binary nor the cached
+  release meets the expected version, the command that starts the child
+  starts it at once, without waiting for the day's ask, and the child asks
+  and installs as above. It asks early once for each expected version, and
+  `latest.json` keeps that version, so a version no release meets yet costs
+  one ask, and the day's ask finds it later.
 - **The agent.** A session start tells the agent's news in the session-start
   text: `klin TAG is available. Tell the person to run klin update. Do not run
   it yourself.` (on a plugin's route, `Tell the person to update the klin
@@ -2159,6 +2181,12 @@ the project's commands ran. No message, document or hook text may claim that
   non-zero exit fails the job. When the run prints no JSON document, the
   Action prints what the run printed. The Action adds `--json` itself, so
   `args` holds selectors and flags other than `--json`.
+- Before it runs `klin check`, the Action reads the `klin` key of the
+  `klin.json` in the working directory with `jq`. When the klin it installed
+  is older than that version, it writes one `error` annotation, `klin.json
+  expects klin >=VERSION, and the Action installed klin OWN. Pin a newer
+  version in the Action.`, and fails the job with 2. Absent the key, or
+  without `jq`, the Action goes on.
 - When the Action cannot report, because `jq` is missing or broken, the run printed no
   JSON document, or writing the annotations or the summary failed, it writes
   one `error` annotation that says so and fails the job: with the exit of
@@ -3201,7 +3229,9 @@ A key klin does not know MUST be an error naming the key. `project` and
 `version` are no longer keys, and a configuration that names either MUST be an
 error saying to delete it: the repository's identity is a fact, and a binary
 version freezes no semantics. A configuration schema epoch, should klin need
-one, is a decision of its own (ADR 0040). A section with a `baseline` key MUST
+one, is a decision of its own (ADR 0040). The vNext `klin` key names the
+lowest klin a repository expects and freezes no semantics either (section
+5.3, ADR 0071). A section with a `baseline` key MUST
 be an error saying the key is gone (ADR 0009). Every section, and every
 `radius`, `journal` and `build` entry, MUST reject every field its reader does
 not read, including retired topology fields, with an actionable migration

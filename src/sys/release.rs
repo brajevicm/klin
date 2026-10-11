@@ -76,6 +76,55 @@ impl Version {
     }
 }
 
+/// The lowest klin a repository expects, as its `klin.json` states it under `klin`: `>=` and a
+/// version of dot-separated digits. Spec 5.3, 11.9.
+#[derive(Clone, PartialEq, Eq)]
+pub struct Expected(Version);
+
+impl Expected {
+    pub fn parse(text: &str) -> Option<Expected> {
+        text.strip_prefix(">=")
+            .filter(|version| {
+                version
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || byte == b'.')
+            })
+            .and_then(Version::parse)
+            .map(Expected)
+    }
+
+    /// Whether this build meets it. True when the build's own version does not parse, so an
+    /// unknown build is never told to update.
+    pub fn met(&self) -> bool {
+        Version::current().is_none_or(|own| own >= self.0)
+    }
+
+    /// Whether `tag` is a release that meets it.
+    fn met_by(&self, tag: Option<&Version>) -> bool {
+        tag.is_some_and(|tag| *tag >= self.0)
+    }
+
+    /// What the person reads when this build does not meet it, with the step that installs a
+    /// newer klin on `route`, `klin update` when the binary is on neither.
+    pub fn note(&self, route: Option<Route>, host_step: Option<String>) -> String {
+        format!(
+            "This repository expects klin {self} (you have {}). {}",
+            env!("CARGO_PKG_VERSION"),
+            route.unwrap_or(Route::Installer).step(host_step)
+        )
+    }
+
+    pub fn version(&self) -> &Version {
+        &self.0
+    }
+}
+
+impl fmt::Display for Expected {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(out, ">={}", self.0)
+    }
+}
+
 impl fmt::Display for Version {
     fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         let parts: Vec<String> = self.0.iter().map(u64::to_string).collect();
@@ -170,8 +219,8 @@ impl Releases {
 }
 
 /// What `latest.json` holds: the newest tag GitHub named, when klin last asked, the release
-/// auto-update last tried, why that release was not installed, and whether a later try may
-/// pass.
+/// auto-update last tried, why that release was not installed, whether a later try may pass,
+/// and the expected version klin last asked early for.
 #[derive(Default)]
 struct Latest {
     tag: Option<Version>,
@@ -179,6 +228,7 @@ struct Latest {
     tried: Option<Version>,
     refused: Option<String>,
     retry: bool,
+    expected: Option<Version>,
 }
 
 impl Latest {
@@ -190,6 +240,7 @@ impl Latest {
             tried: version(&held["tried"]),
             refused: held["refused"].as_str().map(str::to_string),
             retry: held["retry"].as_bool().unwrap_or_default(),
+            expected: version(&held["expected"]),
         }
     }
 
@@ -200,6 +251,7 @@ impl Latest {
             "tried": self.tried.as_ref().map(ToString::to_string),
             "refused": self.refused,
             "retry": self.retry,
+            "expected": self.expected.as_ref().map(ToString::to_string),
         });
         write(&dir.join(LATEST_FILE), held.to_string().as_bytes())
     }
@@ -224,6 +276,18 @@ impl Latest {
         if self.tag.as_ref().is_none_or(|known| *known < tag) {
             self.tag = Some(tag);
         }
+    }
+
+    /// Whether auto-update asks now, without waiting for the day's ask: the repository expects
+    /// a klin newer than this build and than the cached release, and klin has not asked early
+    /// for that version yet. A version no release meets is asked for once, and the day's ask
+    /// finds it later.
+    fn early(&self, route: Route, wanted: &Expected) -> bool {
+        route == Route::Installer
+            && auto()
+            && !wanted.met()
+            && !wanted.met_by(self.tag.as_ref())
+            && self.expected.as_ref() != Some(wanted.version())
     }
 
     /// The newer release auto-update has not tried, so a failing updater runs once per release.
@@ -328,30 +392,35 @@ pub fn route() -> Option<Route> {
 }
 
 /// From a session start, `klin status` or `klin setup`: start the detached child when the last
-/// ask is a day old, or when auto-update holds a newer release it has not tried. The child
+/// ask is a day old, when auto-update holds a newer release it has not tried, or when
+/// auto-update asks early for the klin the repository `expected`. The child
 /// decides under its own lock, so two commands at once start at most one ask and one update.
 /// Before it starts, each audience's record holds this binary's version, so an update the child
 /// runs before any hook still tells which version it replaced.
-pub fn refresh() {
+pub fn refresh(expected: Option<&Expected>) {
     let Some(releases) = Releases::here() else {
         return;
     };
     let latest = Latest::read(&releases.dir);
-    if !latest.stale() && latest.untried(releases.route).is_none() {
+    let early = expected.filter(|wanted| latest.early(releases.route, wanted));
+    if !latest.stale() && latest.untried(releases.route).is_none() && early.is_none() {
         return;
     }
     for who in [Audience::Person, Audience::Agent] {
         first_sight(&releases, who);
     }
     if let Ok(exe) = installed() {
-        let _ = silent(Command::new(exe).arg(CHILD))
-            .process_group(0)
-            .spawn();
+        let mut child = Command::new(exe);
+        child
+            .arg(CHILD)
+            .args(early.map(|wanted| wanted.version().to_string()));
+        let _ = silent(&mut child).process_group(0).spawn();
     }
 }
 
 /// The detached child, under the ask lock: the day's ask, which counts from its start so a
-/// failed or slow ask is the day's ask, then under auto-update the signed install, once for each
+/// failed or slow ask is the day's ask, or the early ask for the expected version its argument
+/// names, then under auto-update the signed install, once for each
 /// newer release. A refused install keeps its reason for `klin status`. A child that finds the
 /// ask lock taken does nothing. Every change to the cache takes the cache lock for that change
 /// alone.
@@ -363,17 +432,24 @@ pub fn child() {
     let Some(_ask) = locked(dir, ASK_LOCK, Duration::ZERO) else {
         return;
     };
-    ask_today(dir);
+    let early = std::env::args().nth(2).as_deref().and_then(Version::parse);
+    ask_today(dir, early);
     install_untried(dir, releases.route);
 }
 
 /// The day's ask, which counts from its start. A release whose last try failed in a way that
 /// may pass is tried again with the day's ask, so a failure that passes costs a day, and one
-/// that does not pass is tried once a day at most.
-fn ask_today(dir: &Path) {
-    if Latest::read(dir).stale()
+/// that does not pass is tried once a day at most. An `early` ask for an expected version runs
+/// once for that version, whatever the day's ask did.
+fn ask_today(dir: &Path, early: Option<Version>) {
+    let latest = Latest::read(dir);
+    let early = early.filter(|wanted| latest.expected.as_ref() != Some(wanted));
+    if (latest.stale() || early.is_some())
         && Latest::change(dir, |latest| {
             latest.checked = now();
+            if early.is_some() {
+                latest.expected.clone_from(&early);
+            }
             if latest.retry {
                 latest.tried = None;
                 latest.retry = false;

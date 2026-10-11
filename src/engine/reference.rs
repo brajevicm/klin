@@ -190,7 +190,7 @@ fn shape(shape: Shape) -> Value {
 
 fn schema_for_shape(shape: Shape) -> Value {
     match shape {
-        Shape::Text => json!({"type": "string", "pattern": NOT_BLANK}),
+        Shape::Text | Shape::Expected => string_rule_schema(shape),
         Shape::Language(languages) => language_schema(languages),
         Shape::Build => build_schema(),
         Shape::Accepted => accepted_schema(),
@@ -199,6 +199,14 @@ fn schema_for_shape(shape: Shape) -> Value {
         Shape::PathGraph(_) => path_graph_schema(),
         _ => Value::Null,
     }
+}
+
+fn string_rule_schema(shape: Shape) -> Value {
+    let pattern = match shape {
+        Shape::Expected => "^>=[0-9]+(\\.[0-9]+)*$",
+        _ => NOT_BLANK,
+    };
+    json!({"type": "string", "pattern": pattern})
 }
 
 fn language_schema(languages: Languages) -> Value {

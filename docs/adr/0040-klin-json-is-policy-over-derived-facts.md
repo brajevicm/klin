@@ -1,5 +1,8 @@
 # klin.json is policy over derived facts
 
+> ADR 0071 amends the retired `version` key: `klin` names the lowest klin
+> a repository expects.
+>
 > ADR 0048 amends this: the derived build line names the manifest each
 > command came from, and the hook prints it when the build fails too.
 >
