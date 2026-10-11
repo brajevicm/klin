@@ -44,7 +44,9 @@ destination wherever the text proves it. It never runs a shell.**
    reaches the next command, and a `cd` in a child does not. An option that
    takes an argument, such as `-o`, leaves the text unread. Nested text that
    holds a `$` is unread too, because the outer shell may expand it into a
-   comment or a separator before the nested text splits. An `eval` that runs
+   comment or a separator before the nested text splits. Text nested more
+   than four levels deep is unread: a chain of 20,000 `eval` words otherwise
+   overflowed the stack, and a crash lets the command through. An `eval` that runs
    a `cd` moves the directory under the placement rules of rule 1.
 4. A heredoc body is data unless rule 3 runs it, so the rest of its command
    line is read. `cat <<'EOF' > klin.json` is a redirect onto the

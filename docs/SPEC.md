@@ -1613,7 +1613,8 @@ find a target.
   text as it reads a command. A `cd` in `eval` reaches the commands after it,
   and a `cd` in a child shell does not. An option that takes an argument
   leaves the text unread, and so does nested text that holds a `$`, because
-  the outer shell may expand it before the nested text splits.
+  the outer shell may expand it before the nested text splits. Text nested
+  more than four levels deep is unread, so the guard's work stays bounded.
 - **Text.** A heredoc body that no shell runs is data, and the rest of its
   command line is read, so a redirect after `<<'EOF'` is proven. An unquoted
   `#` at the start of a word starts a comment. A quoted path keeps its spaces.

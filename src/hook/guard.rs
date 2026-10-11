@@ -21,6 +21,9 @@ const MOVERS: &[&str] = &["cd", "pushd", "popd"];
 const SOURCES: &[&str] = &[".", "source"];
 /// The command word that runs its words as shell text in this shell.
 const EVAL: &str = "eval";
+/// How deep the guard reads shell text nested in shell text. Text deeper than this is unread,
+/// so a long chain of `eval` cannot make the work grow with its square.
+const NESTING: u8 = 4;
 /// The shells whose `-c` text, or whose heredoc, the guard reads as the command they run.
 const SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "ksh"];
 
@@ -272,58 +275,65 @@ fn basename(path: &str) -> &str {
 fn command_decision(guarded: &Guarded, command: &str) -> (Decision, &'static str) {
     let mut cwd = Cwd {
         at: guarded.here().map(Path::to_path_buf),
-        moved: false,
-        placed: false,
+        ..Cwd::default()
     };
-    walk(guarded, command, &mut cwd, false)
+    walk(guarded, command, &mut cwd, 0)
 }
 
 /// The strictest decision over every segment of a command, with the directory a static `cd`
 /// moves carried from one segment to the next. Shell the guard does not read suppresses path
 /// matching alone, and an open quote allows the whole command. Nested text the outer shell
-/// expanded is unread wherever it holds a `$`, because the expansion may change how it splits.
-/// ADR 0033, ADR 0068.
-fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, nested: bool) -> (Decision, &'static str) {
+/// expanded is unread wherever it holds a `$`, because the expansion may change how it splits,
+/// and so is text nested deeper than `NESTING`. ADR 0033, ADR 0068.
+fn walk(guarded: &Guarded, command: &str, cwd: &mut Cwd, depth: u8) -> (Decision, &'static str) {
     let Some(lexed) = lexer::lexed(command) else {
-        cwd.at = None;
+        cwd.set(None);
         return (Decision::Allow, "");
     };
-    let proven = !lexed.unreadable && !(nested && command.contains('$'));
+    let proven =
+        !lexed.unreadable && depth <= NESTING && !(depth > 0 && command.contains(PARAMETER));
     let mut decisions = Vec::new();
     let mut before = Op::List;
     for segment in &lexed.segments {
         cwd.enter(before);
         let at = cwd.at.as_deref();
         decisions.push(segment_decision(guarded, segment, at, proven));
-        let start = cwd.at.clone();
+        let changes = cwd.changes;
         let alone = cwd.alone(segment, before, lexed.grouped);
         if proven {
-            decisions.extend(nested_decision(guarded, segment, cwd));
+            decisions.extend(nested_decision(guarded, segment, cwd, depth));
         }
-        let evaled = cwd.at != start;
+        let evaled = cwd.changes != changes;
         cwd.leave(segment, alone, evaled);
         before = segment.after;
     }
     if !proven {
-        cwd.at = None;
+        cwd.set(None);
     }
     strictest(decisions)
 }
 
 /// The directory relative paths resolve from, `None` once the guard cannot place it, whether a
-/// command has moved it, and whether the last segment was a `cd` the guard placed.
-#[derive(Clone)]
+/// command has moved it, whether the last segment was a `cd` the guard placed, and how many
+/// times `at` was set, so a caller sees whether nested text changed it.
+#[derive(Default)]
 struct Cwd {
     at: Option<PathBuf>,
     moved: bool,
     placed: bool,
+    changes: u32,
 }
 
 impl Cwd {
+    fn set(&mut self, at: Option<PathBuf>) {
+        self.at = at;
+        self.changes += 1;
+    }
+
     /// A command after `||` runs when the one before failed, which may be the `cd`.
     fn enter(&mut self, before: Op) {
         if before == Op::Or && self.moved {
-            self.at = None;
+            self.set(None);
         }
     }
 
@@ -331,17 +341,22 @@ impl Cwd {
     /// shell and the next command runs after it. A directory that is not there leaves the `cd`
     /// failing, so the guard cannot place what runs next.
     fn leave(&mut self, segment: &Segment, alone: bool, evaled: bool) {
-        let target = match moves(&segment.words) {
+        match moves(&segment.words) {
             Move::Stays if !evaled => {
                 self.placed = false;
                 return;
             }
-            Move::Stays => self.at.clone(),
-            Move::To(dir) => resolved(self.at.as_deref(), dir).filter(|at| at.is_dir()),
-            Move::Lost => None,
-        };
+            Move::Stays => {}
+            Move::To(dir) => {
+                let at = resolved(self.at.as_deref(), dir).filter(|at| at.is_dir());
+                self.set(at);
+            }
+            Move::Lost => self.set(None),
+        }
+        if !alone {
+            self.set(None);
+        }
         self.moved = true;
-        self.at = target.filter(|_| alone);
         self.placed = self.at.is_some();
     }
 
@@ -357,8 +372,7 @@ impl Cwd {
     fn child(&self) -> Cwd {
         Cwd {
             at: self.at.clone(),
-            moved: false,
-            placed: false,
+            ..Cwd::default()
         }
     }
 }
@@ -458,13 +472,14 @@ fn nested_decision(
     guarded: &Guarded,
     segment: &Segment,
     cwd: &mut Cwd,
+    depth: u8,
 ) -> Option<(Decision, &'static str)> {
     let (command, args) = command(&segment.words)?;
     match command {
-        EVAL => Some(walk(guarded, &args.join(" "), cwd, true)),
+        EVAL => Some(walk(guarded, &args.join(" "), cwd, depth + 1)),
         command if SHELLS.contains(&command) => {
             let text = shell_text(args, segment.body.as_deref())?;
-            Some(walk(guarded, &text, &mut cwd.child(), true))
+            Some(walk(guarded, text, &mut cwd.child(), depth + 1))
         }
         _ => None,
     }
@@ -472,7 +487,7 @@ fn nested_decision(
 
 /// The text a shell runs: the word after a `-c` flag, or the heredoc it reads when it names no
 /// script. An option that takes an argument, or a long one, leaves the text unread.
-fn shell_text(args: &[String], body: Option<&str>) -> Option<String> {
+fn shell_text<'a>(args: &'a [String], body: Option<&'a str>) -> Option<&'a str> {
     for (at, arg) in args.iter().enumerate() {
         let flags = arg
             .strip_prefix('-')
@@ -481,10 +496,10 @@ fn shell_text(args: &[String], body: Option<&str>) -> Option<String> {
             return None;
         }
         if flags.contains('c') {
-            return args.get(at + 1).cloned();
+            return args.get(at + 1).map(String::as_str);
         }
     }
-    body.map(str::to_owned)
+    body
 }
 
 /// One of klin's own subcommands that only a person runs, whatever flags it carries, paired

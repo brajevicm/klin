@@ -728,3 +728,17 @@ fn a_copy_that_may_keep_the_destination_proves_only_a_new_one() {
         allowed(&bash(command), command);
     }
 }
+
+/// Shell text nested a few levels deep is still read, and a long chain of `eval` stays unread
+/// instead of growing the guard's work with its square. ADR 0068.
+#[test]
+fn reads_nested_text_to_a_bounded_depth() {
+    let tree = Tree::new();
+    asked(
+        &bash_in(&tree, "eval eval eval rm klin.json"),
+        "klin.json",
+        "three nested evals",
+    );
+    let chain = format!("{}rm klin.json", "eval ".repeat(20_000));
+    allowed(&bash_in(&tree, &chain), "a chain of twenty thousand evals");
+}
