@@ -4954,8 +4954,9 @@ version is `unpinned` and is still judged for staleness at its exact version.
 A version is the pin when it equals it. A pin of one or two numbers, such as
 Cargo's `=1.2` or npm's `1.2`, also holds every release that starts with it
 and a dot, so `=1.2` holds `1.2.5` and `1.0.0-alpha` does not hold
-`1.0.0-alpha.1`. A version that names a path, `link:` or `file:`, is a
-workspace package with no registry release to compare, and it holds every pin.
+`1.0.0-alpha.1`. A version that names a path, `link:`, `file:` or bun's
+`workspace:`, is a workspace package with no registry release to compare, and
+it holds every pin.
 A lockfile that records several versions of one name is stale only when none
 of them is the pin. A range is never judged for staleness, because it has no
 single version to compare. Exact means a Cargo requirement that
@@ -5076,6 +5077,7 @@ handful of files. Pinned by
 `a_bun_lockfile_holds_its_dependencies_and_a_missing_one_fails`,
 `a_turn_that_replaces_the_npm_lockfile_with_a_bun_lockfile_fails_nothing`,
 `a_bun_lockfile_is_judged_over_a_stale_npm_lockfile_beside_it`,
+`a_bun_workspace_resolution_holds_an_exact_pin_on_a_sibling`,
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,

@@ -310,6 +310,36 @@ fn a_bun_lockfile_is_judged_over_a_stale_npm_lockfile_beside_it() {
 }
 
 #[test]
+fn a_bun_workspace_resolution_holds_an_exact_pin_on_a_sibling() {
+    let tree = Tree::new();
+    tree.write(
+        "package.json",
+        r#"{"workspaces": ["packages/*"], "dependencies": {"@acme/core": "1.0.0"}}"#,
+    );
+    tree.write(
+        "packages/core/package.json",
+        r#"{"name": "@acme/core", "version": "1.0.0"}"#,
+    );
+    tree.write(
+        "bun.lock",
+        r#"{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": { "dependencies": { "@acme/core": "1.0.0" } },
+    "packages/core": { "name": "@acme/core", "version": "1.0.0" },
+  },
+  "packages": {
+    "@acme/core": ["@acme/core@workspace:packages/core"],
+  }
+}
+"#,
+    );
+    let run = tree.run(&["check", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!run.says("stale 1"), "{}", run.out);
+}
+
+#[test]
 fn a_new_npm_dependency_with_no_lockfile_entry_fails_as_new() {
     for lockfile in [NPM_V3, NPM_V1] {
         let tree = npm_tree(lockfile);

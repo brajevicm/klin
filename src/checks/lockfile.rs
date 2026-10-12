@@ -680,6 +680,7 @@ fn holds(pin: &str, version: &str) -> bool {
     version == pin
         || version.starts_with("link:")
         || version.starts_with("file:")
+        || version.starts_with("workspace:")
         || (partial
             && !version.contains('-')
             && version
