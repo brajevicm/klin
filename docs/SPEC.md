@@ -1855,7 +1855,10 @@ Section 13.2.
   `layering`, it also holds a `layering` section with `"acyclic": true` and a
   layer for each directory the Rust and TypeScript files first divide into:
   below the deepest directory that holds every such file, each subdirectory
-  that holds one, and no layer where fewer than two do. Each layer may use
+  that holds one, and no layer where fewer than two do. A directory that a
+  path of 5.3 cannot name, such as a Next.js `[id]` route, gets no layer.
+  Pinned by `suggest_names_no_layer_for_a_directory_a_path_cannot_name` in
+  `tests/policy.rs`. Each layer may use
   the layers it reaches today, except a layer that the reverse direction
   reaches through more dependency sites. A `held:` line names the forbidden
   and cyclic findings that section would hold today. To count them,

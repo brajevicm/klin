@@ -3,6 +3,7 @@ use std::path::Path;
 
 use serde_json::{Map, Value};
 
+use crate::cli::report::plural;
 use crate::config;
 use crate::config::file::Config;
 use crate::contract::project::Project;
@@ -61,8 +62,8 @@ pub fn suggest(project: &Project, out: &mut String) -> Result<(), Error> {
             format!(
                 "held: {} {} and {}",
                 layering::SECTION,
-                counted(layers.forbidden, "forbidden edge"),
-                counted(layers.cycles, "cycle edge")
+                plural(layers.forbidden, "forbidden edge", "forbidden edges"),
+                plural(layers.cycles, "cycle edge", "cycle edges")
             ),
         );
     }
@@ -74,13 +75,6 @@ pub fn suggest(project: &Project, out: &mut String) -> Result<(), Error> {
         said.join("\n")
     );
     Ok(())
-}
-
-fn counted(count: usize, what: &str) -> String {
-    match count {
-        1 => format!("1 {what}"),
-        _ => format!("{count} {what}s"),
-    }
 }
 
 /// Today's guardrails the configuration does not state yet, by section, with the name and the

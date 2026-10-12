@@ -506,7 +506,8 @@ pub struct Suggested {
     pub cycles: usize,
 }
 
-/// A layer for each directory the tree's Rust and TypeScript files first divide into, each
+/// A layer for each directory the tree's Rust and TypeScript files first divide into and an `in`
+/// can name, each
 /// allowed the layers it reaches today except where the reverse direction has more sites, and
 /// `acyclic`. `None` where the tree holds no such file. Spec 11.6.
 pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
@@ -520,19 +521,21 @@ pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
         acyclic: true,
         layers: directories(&side.files)
             .into_iter()
-            .map(|directory| Layer {
-                name: directory
-                    .rsplit('/')
-                    .next()
-                    .unwrap_or(&directory)
-                    .to_string(),
-                within: Selector::parse(scope::IN, &directory).into_iter().collect(),
-                can_use: Some(Vec::new()),
+            .filter_map(|directory| {
+                Some(Layer {
+                    within: vec![Selector::parse(scope::IN, &directory).ok()?],
+                    name: directory
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or(&directory)
+                        .to_string(),
+                    can_use: Some(Vec::new()),
+                })
             })
             .collect(),
     };
-    allow_today(&mut policy, &side);
     let placed = policy.placed(&side.graph);
+    allow_today(&mut policy, &side, &placed);
     let cycles = policy.cycles(&side, &placed);
     let (edges, _) = edges(&policy, (&side, &placed), cycles.as_ref());
     let physicals = physicals(&edges, &Edges::new());
@@ -551,8 +554,8 @@ pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
 
 /// Each layer allowed the layers it reaches today, except one the reverse direction reaches
 /// through more dependency sites.
-fn allow_today(policy: &mut Policy, side: &Side) {
-    let sites = crossings(policy, side);
+fn allow_today(policy: &mut Policy, side: &Side, placed: &Placed) {
+    let sites = crossings(side, placed);
     let reaches = |from: usize, to: usize| sites.get(&(from, to)).copied().unwrap_or(0);
     let names: Vec<String> = policy
         .layers
@@ -587,7 +590,7 @@ fn suggested_section(policy: &Policy) -> Value {
                 let can_use = layer.can_use.clone().unwrap_or_default();
                 (
                     layer.name.clone(),
-                    serde_json::json!({"in": within, CAN_USE: can_use}),
+                    serde_json::json!({scope::IN.name: within, CAN_USE: can_use}),
                 )
             })
             .collect();
@@ -626,8 +629,7 @@ fn directories(files: &[String]) -> Vec<String> {
 }
 
 /// The dependency sites from each layer to each other layer, keyed by their positions.
-fn crossings(policy: &Policy, side: &Side) -> HashMap<(usize, usize), usize> {
-    let placed = policy.placed(&side.graph);
+fn crossings(side: &Side, placed: &Placed) -> HashMap<(usize, usize), usize> {
     let mut sites = HashMap::new();
     for dependency in &side.graph.dependencies {
         let from = placed.files[side.graph.source(dependency)].layer;

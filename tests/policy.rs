@@ -537,3 +537,46 @@ fn suggest_prints_layers_and_the_held_count_of_each_edge_kind_and_writes_nothing
     assert!(!tree.path("klin.json").exists(), "{}", run.out);
     assert_eq!(tree.status(), "", "{}", run.out);
 }
+
+/// A directory no `in` can name, such as a Next.js dynamic route, gets no layer, so the
+/// suggestion is a configuration klin accepts.
+#[test]
+fn suggest_names_no_layer_for_a_directory_a_path_cannot_name() {
+    let tree = Tree::new();
+    tree.write(
+        "app/[id]/page.ts",
+        "import { util } from \"../lib/util\";\nexport const page = util;\n",
+    );
+    tree.write("app/lib/util.ts", "export const util = 1;\n");
+    tree.write(
+        "app/ui/card.ts",
+        "import { util } from \"../lib/util\";\nexport const card = util;\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    let start = run.out.find("\n{\n").expect("a JSON block");
+    let suggested: Value = serde_json::Deserializer::from_str(&run.out[start..])
+        .into_iter()
+        .next()
+        .expect("one JSON value")
+        .expect("valid JSON");
+    let layers = suggested["layering"]["layers"]
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(
+        layers.keys().collect::<Vec<_>>(),
+        ["lib", "ui"],
+        "{}",
+        run.out
+    );
+    tree.write(
+        "klin.json",
+        &serde_json::json!({"layering": suggested["layering"]}).to_string(),
+    );
+    let accepted = tree.run(&["check", "layering"]);
+    assert_eq!(accepted.code, 0, "{}", accepted.out);
+}
