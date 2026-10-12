@@ -19,6 +19,7 @@ use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::sys::changed;
 use crate::sys::error::Error;
+use crate::sys::jsonc;
 use crate::sys::record::Values;
 
 pub const SECTION: &str = "lockfile";
@@ -63,6 +64,8 @@ struct Dependency {
     registry: bool,
     exact: bool,
     pins: Vec<String>,
+    /// The package an npm `npm:` alias installs under `name`, which the lockfile must record.
+    alias: Option<String>,
 }
 
 impl Dependency {
@@ -73,6 +76,7 @@ impl Dependency {
             registry: true,
             exact: true,
             pins: Vec::new(),
+            alias: None,
         }
     }
 
@@ -164,7 +168,12 @@ const FORMATS: &[Format] = &[
     },
     Format {
         manifest: "package.json",
-        lockfiles: &["package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
+        lockfiles: &[
+            "bun.lock",
+            "package-lock.json",
+            "pnpm-lock.yaml",
+            "yarn.lock",
+        ],
         dependencies: npm_dependencies,
         locked: npm_locked,
     },
@@ -649,12 +658,8 @@ fn taken(deps: Vec<Dependency>, locked: &Locked, importer: &str) -> BTreeMap<Str
     deps.into_iter()
         .map(|dep| {
             let unlocked = dep.registry && !locked.names.contains(&dep.package);
-            let stale = dep.registry
-                && !unlocked
-                && !dep.pins.is_empty()
-                && !locked
-                    .versions(importer, &dep.package)
-                    .is_some_and(|versions| pinned(&dep.pins, versions));
+            let stale =
+                dep.registry && !unlocked && stale(&dep, locked.versions(importer, &dep.package));
             (
                 dep.name,
                 values(unlocked, dep.registry && !dep.exact, stale),
@@ -663,22 +668,59 @@ fn taken(deps: Vec<Dependency>, locked: &Locked, importer: &str) -> BTreeMap<Str
         .collect()
 }
 
-fn pinned(pins: &[String], versions: &HashSet<String>) -> bool {
+/// Whether the lockfile installs something else than the manifest names: another package under
+/// an alias or a plain name, or no version that holds a pin. A lockfile that records no version
+/// for the name gives a range nothing to compare.
+fn stale(dep: &Dependency, versions: Option<&HashSet<String>>) -> bool {
+    let installs: Option<Vec<&str>> = versions.map(|versions| {
+        versions
+            .iter()
+            .filter_map(|version| {
+                let (alias, version) = recorded(version);
+                (alias == dep.alias.as_deref()).then_some(version)
+            })
+            .collect()
+    });
+    let swapped = versions.is_some_and(|versions| !versions.is_empty())
+        && installs.as_ref().is_some_and(Vec::is_empty);
+    swapped
+        || (!dep.pins.is_empty() && !installs.is_some_and(|installs| pinned(&dep.pins, &installs)))
+}
+
+fn pinned(pins: &[String], versions: &[&str]) -> bool {
     pins.iter()
         .all(|pin| versions.iter().any(|version| holds(pin, version)))
+}
+
+/// A recorded version split into the package an `npm:` alias installs, and the version.
+fn recorded(version: &str) -> (Option<&str>, &str) {
+    match version.strip_prefix("npm:").and_then(split_locator) {
+        Some((alias, version)) => (Some(alias), version),
+        None => (None, version),
+    }
+}
+
+fn aliased(alias: &str, version: &str) -> String {
+    format!("npm:{alias}@{version}")
 }
 
 fn holds(pin: &str, version: &str) -> bool {
     let partial =
         pin.split('.').count() < 3 && pin.chars().all(|at| at.is_ascii_digit() || at == '.');
     version == pin
-        || version.starts_with("link:")
-        || version.starts_with("file:")
+        || local(version)
         || (partial
             && !version.contains('-')
             && version
                 .strip_prefix(pin)
                 .is_some_and(|rest| rest.starts_with('.')))
+}
+
+/// A version that resolves to a package in the tree, which has no registry release to compare.
+fn local(version: &str) -> bool {
+    ["link:", "file:", "workspace:"]
+        .iter()
+        .any(|protocol| version.starts_with(protocol))
 }
 
 fn values(unlocked: bool, unpinned: bool, stale: bool) -> Values {
@@ -985,18 +1027,38 @@ fn npm_dependencies(at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
         };
         for (name, held) in named {
             let spec = held.as_str().unwrap_or_default();
-            found.entry(name.clone()).or_insert_with(|| Dependency {
-                registry: npm_registry(spec),
-                exact: npm_exact(spec),
-                pins: npm_exact(spec)
-                    .then(|| spec.to_string())
-                    .into_iter()
-                    .collect(),
-                ..Dependency::named(name)
-            });
+            found
+                .entry(name.clone())
+                .or_insert_with(|| npm_dependency(name, spec));
         }
     }
     Ok(found.into_values().collect())
+}
+
+/// One npm dependency from its specifier. A `catalog:` reference resolves from the registry at
+/// the version its catalog pins, which klin does not read, so it is judged only for `unlocked`.
+/// An `npm:` alias resolves from the registry at the version after the package it names.
+fn npm_dependency(name: &str, spec: &str) -> Dependency {
+    if spec.starts_with("catalog:") {
+        return Dependency::named(name);
+    }
+    let (registry, version, alias) = match spec.strip_prefix("npm:") {
+        Some(target) => match split_locator(target) {
+            Some((alias, version)) => (true, version, Some(alias)),
+            None => (true, "", Some(target)),
+        },
+        None => (npm_registry(spec), spec, None),
+    };
+    Dependency {
+        registry,
+        alias: alias.map(str::to_string),
+        exact: npm_exact(version),
+        pins: npm_exact(version)
+            .then(|| version.to_string())
+            .into_iter()
+            .collect(),
+        ..Dependency::named(name)
+    }
 }
 
 /// Whether an npm specifier names a registry version at all. A `file:`, `link:`, `workspace:`,
@@ -1021,6 +1083,7 @@ fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         "package-lock.json" => package_locked(at, bytes).map(Some),
         "pnpm-lock.yaml" => Ok(pnpm_locked(bytes)),
         "yarn.lock" => Ok(yarn_locked(bytes)),
+        "bun.lock" => bun_locked(at, bytes),
         _ => unreachable!("unsupported npm lockfile: {at}"),
     }
 }
@@ -1040,7 +1103,12 @@ fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<Entry>, Error> {
                 true => Entry::pooled(name, None),
                 false => Entry::resolved(
                     name,
-                    npm_version(entry, packages),
+                    npm_version(entry, packages).map(|version| {
+                        match entry.get("name").and_then(Value::as_str) {
+                            Some(alias) if alias != name => aliased(alias, &version),
+                            _ => version,
+                        }
+                    }),
                     above.trim_end_matches('/'),
                 ),
             })
@@ -1069,6 +1137,29 @@ fn npm_version(entry: &Value, packages: &serde_json::Map<String, Value>) -> Opti
     )
 }
 
+/// Every package a `bun.lock` holds: the `name@version` that leads each entry of its `packages`
+/// mapping, and the entry's key where it differs, which is the install path and so the name an
+/// `npm:` alias installs under. Bun records no resolution per workspace member, so every entry is
+/// pooled.
+fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
+    let data = jsonc::parse(bytes).map_err(|why| invalid(at, why))?;
+    let Some(packages) = data.get("packages").and_then(Value::as_object) else {
+        return Ok(None);
+    };
+    let mut out = Vec::new();
+    for (key, entry) in packages {
+        let Some((name, version)) = entry.get(0).and_then(Value::as_str).and_then(split_locator)
+        else {
+            return Ok(None);
+        };
+        out.push(Entry::pooled(name, Some(version.to_string())));
+        if key != name {
+            out.push(Entry::pooled(key, Some(aliased(name, version))));
+        }
+    }
+    Ok(Some(out))
+}
+
 /// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes, and
 /// what each importer resolves its dependencies to.
 fn pnpm_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
@@ -1092,12 +1183,12 @@ fn pnpm_importers(text: &str) -> Vec<Entry> {
         if let Some(importer) = pnpm_table(&keys)
             && !value.is_empty()
         {
-            out.push(Entry::resolved(key, Some(pnpm_resolved(value)), &importer));
+            out.push(Entry::resolved(key, Some(pnpm_installs(value)), &importer));
         } else if key == "version"
             && let Some((name, above)) = keys.split_last()
             && let Some(importer) = pnpm_table(above)
         {
-            out.push(Entry::resolved(name, Some(pnpm_resolved(value)), &importer));
+            out.push(Entry::resolved(name, Some(pnpm_installs(value)), &importer));
         }
         path.push((indent, key.to_string()));
     }
@@ -1114,6 +1205,24 @@ fn pnpm_table(keys: &[&str]) -> Option<String> {
                 .to_string(),
         ),
         _ => None,
+    }
+}
+
+/// What an importer's entry installs: its version, and the package an alias names before it.
+fn pnpm_installs(value: &str) -> String {
+    let version = pnpm_resolved(value);
+    let head = value.split(['(', '_']).next().unwrap_or(value);
+    let alias = match head.strip_prefix('/') {
+        Some(path) => split_locator(path)
+            .map(|(alias, _)| alias)
+            .or_else(|| path.rsplit_once('/').map(|(alias, _)| alias)),
+        None => split_locator(head)
+            .filter(|_| !local(value))
+            .map(|(alias, _)| alias),
+    };
+    match alias {
+        Some(alias) => aliased(alias, &version),
+        None => version,
     }
 }
 
@@ -1229,18 +1338,20 @@ fn yarn_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
 
 fn yarn_entries(lines: std::str::Lines<'_>, strict: bool) -> Option<Vec<Entry>> {
     let mut out = Vec::new();
-    let mut names: Vec<String> = Vec::new();
+    let mut names: Vec<(String, Option<String>)> = Vec::new();
     for line in lines.filter(|line| !yarn_blank(line.trim())) {
         let trimmed = line.trim();
         if !line.starts_with(char::is_whitespace) {
             names = yarn_top(trimmed, strict)?;
-            out.extend(names.iter().map(|name| Entry::pooled(name, None)));
+            out.extend(names.iter().map(|(name, _)| Entry::pooled(name, None)));
         } else if let Some(version) = yarn_recorded(trimmed) {
-            out.extend(
-                names
-                    .iter()
-                    .map(|name| Entry::pooled(name, Some(version.clone()))),
-            );
+            out.extend(names.iter().map(|(name, alias)| {
+                let version = match alias {
+                    Some(alias) => aliased(alias, &version),
+                    None => version.clone(),
+                };
+                Entry::pooled(name, Some(version))
+            }));
         }
     }
     Some(out)
@@ -1250,7 +1361,7 @@ fn yarn_blank(trimmed: &str) -> bool {
     trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---"
 }
 
-fn yarn_top(trimmed: &str, strict: bool) -> Option<Vec<String>> {
+fn yarn_top(trimmed: &str, strict: bool) -> Option<Vec<(String, Option<String>)>> {
     match yaml_key(trimmed).and_then(yarn_names) {
         Some(found) => Some(found),
         None if strict => None,
@@ -1315,7 +1426,7 @@ fn yarn_locators(text: &str) -> Option<Vec<Entry>> {
     None
 }
 
-fn yarn_names(key: &str) -> Option<Vec<String>> {
+fn yarn_names(key: &str) -> Option<Vec<(String, Option<String>)>> {
     let names = yaml_text(key)
         .split(',')
         .map(yarn_name)
@@ -1323,16 +1434,28 @@ fn yarn_names(key: &str) -> Option<Vec<String>> {
     (!names.is_empty()).then_some(names)
 }
 
-fn yarn_name(selector: &str) -> Option<String> {
-    let selector = yaml_text(selector);
-    let at = if selector.starts_with('@') {
-        let slash = selector.find('/')?;
-        slash + 1 + selector[slash + 1..].find('@')?
+/// The name a selector installs, and the package it installs there when the selector is an
+/// `npm:` alias, which Yarn 2 and later tell apart from `npm:<version>` by the package before it.
+fn yarn_name(selector: &str) -> Option<(String, Option<String>)> {
+    let (name, rest) = split_locator(yaml_text(selector))?;
+    let alias = rest
+        .strip_prefix("npm:")
+        .and_then(split_locator)
+        .map(|(alias, _)| alias.to_string());
+    Some((name.to_string(), alias))
+}
+
+/// A `name@version` locator split at the separator, which follows the scope's `/` in a scoped
+/// name. Neither half may be empty.
+fn split_locator(locator: &str) -> Option<(&str, &str)> {
+    let at = if locator.starts_with('@') {
+        let slash = locator.find('/')?;
+        slash + 1 + locator[slash + 1..].find('@')?
     } else {
-        selector.find('@')?
+        locator.find('@')?
     };
-    let name = &selector[..at];
-    (!name.is_empty() && !selector[at + 1..].is_empty()).then(|| name.to_string())
+    let (name, version) = (&locator[..at], &locator[at + 1..]);
+    (!name.is_empty() && !version.is_empty()).then_some((name, version))
 }
 
 fn yaml_key(line: &str) -> Option<&str> {
@@ -1366,7 +1489,11 @@ fn npm_nested(held: Option<&Value>, importer: Option<&str>, out: &mut Vec<Entry>
 }
 
 fn json(at: &str, bytes: &[u8]) -> Result<Value, Error> {
-    serde_json::from_slice(bytes).map_err(|why| Error(format!("{at} is not valid JSON: {why}")))
+    serde_json::from_slice(bytes).map_err(|why| invalid(at, why))
+}
+
+fn invalid(at: &str, why: impl std::fmt::Display) -> Error {
+    Error(format!("{at} is not valid JSON: {why}"))
 }
 
 /// Every module a `go.mod` requires, in both forms of the directive. A `require` states one

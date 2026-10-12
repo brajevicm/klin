@@ -4,6 +4,7 @@ pub mod clock;
 pub mod error;
 pub mod git;
 pub mod hunks;
+pub mod jsonc;
 pub mod record;
 pub mod release;
 pub mod shell;

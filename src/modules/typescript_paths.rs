@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use super::resolver::{Topology, directory, joined};
+use crate::sys::jsonc;
 
 pub(super) struct Paths {
     scopes: HashMap<String, Scope>,
@@ -248,35 +249,6 @@ fn absolute(path: &str) -> bool {
     path.starts_with('/') || path.contains('\\') || path.contains(':')
 }
 
-/// JSONC tokenization keeps quoted strings intact while removing comments and trailing commas.
-fn json(bytes: &[u8]) -> Option<Value> {
-    use std::sync::OnceLock;
-    static TOKENS: OnceLock<Option<regex::Regex>> = OnceLock::new();
-    let tokens = TOKENS
-        .get_or_init(|| {
-            regex::Regex::new(r#""(?:\\.|[^"\\])*"|//[^\r\n]*|/\*[\s\S]*?\*/|,[ \t\r\n]*([}\]])"#)
-                .ok()
-        })
-        .as_ref()?;
-    let text = std::str::from_utf8(bytes)
-        .ok()?
-        .trim_start_matches('\u{feff}');
-    let clean = tokens.replace_all(text, |found: &regex::Captures| {
-        if found[0].starts_with('"') {
-            found[0].to_string()
-        } else {
-            found.get(1).map_or(" ", |end| end.as_str()).to_string()
-        }
-    });
-    // Removing a comment can expose a trailing comma, so run the same token pass again.
-    let clean = tokens.replace_all(&clean, |found: &regex::Captures| {
-        found
-            .get(1)
-            .map_or_else(|| found[0].to_string(), |end| end.as_str().to_string())
-    });
-    serde_json::from_str(&clean).ok()
-}
-
 fn config_name(file: &str) -> bool {
     let name = file.rsplit('/').next().unwrap_or(file);
     name == "tsconfig.json" || (name.starts_with("tsconfig.") && name.ends_with(".json"))
@@ -293,7 +265,7 @@ fn configurations(topology: &Topology, named: &[&String]) -> BTreeMap<String, Va
         }
         let value = topology
             .read(&file)
-            .and_then(|bytes| json(&bytes))
+            .and_then(|bytes| jsonc::parse(&bytes).ok())
             .unwrap_or(Value::Null);
         for parent in parents(&file, &value) {
             let parent = if topology.holds(&parent) {

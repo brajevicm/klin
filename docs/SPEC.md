@@ -4160,8 +4160,10 @@ implementation-defined and MUST be documented per manifest format, which
 8.2.1 does for the five formats that ship.
 
 The first version covers `Cargo.toml` against `Cargo.lock`, `package.json`
-against `package-lock.json`, `pnpm-lock.yaml` and `yarn.lock` against
-`package.json`, and `go.mod` against `go.sum`. The pnpm reader recognizes a
+against `bun.lock`, `package-lock.json`, `pnpm-lock.yaml` and `yarn.lock`,
+and `go.mod` against `go.sum`. The bun reader parses `bun.lock` as JSONC, with
+comments and trailing commas. `bun.lockb` is binary and stays out. The pnpm
+reader recognizes a
 `lockfileVersion` major of 4 or later and reads package names from the direct
 keys of its `packages` mapping. It accepts the path-shaped keys of older
 lockfiles and the `name@version` keys of newer ones, including peer suffixes.
@@ -4952,8 +4954,9 @@ version is `unpinned` and is still judged for staleness at its exact version.
 A version is the pin when it equals it. A pin of one or two numbers, such as
 Cargo's `=1.2` or npm's `1.2`, also holds every release that starts with it
 and a dot, so `=1.2` holds `1.2.5` and `1.0.0-alpha` does not hold
-`1.0.0-alpha.1`. A version that names a path, `link:` or `file:`, is a
-workspace package with no registry release to compare, and it holds every pin.
+`1.0.0-alpha.1`. A version that names a path, `link:`, `file:` or bun's
+`workspace:`, is a workspace package with no registry release to compare, and
+it holds every pin.
 A lockfile that records several versions of one name is stale only when none
 of them is the pin. A range is never judged for staleness, because it has no
 single version to compare. Exact means a Cargo requirement that
@@ -4961,7 +4964,19 @@ starts with `=`, an npm specifier that starts with a digit and holds no
 operator and no wildcard segment, and every Go `require`, which states one
 version. A path, git or
 workspace dependency has no registry behind it and no version to pin, so it
-carries 0 for every value and can never fail. The manifest tables read are
+carries 0 for every value and can never fail. An npm `catalog:` or
+`catalog:<name>` specifier resolves from the registry at the version its
+catalog states, which klin does not read, so it is judged for `unlocked` only.
+An `npm:<package>@<version>` alias resolves from the registry: its version
+part decides `unpinned` and `stale`, and the lockfile entry is the one for the
+alias, the name the manifest installs it under. That entry must also install
+the package the alias names, so an alias whose package changed while the
+lockfile kept the old one is `stale`, at any version, and so is a plain name
+the lockfile installs as an alias. The lockfile states the aliased package in
+the entry's `name` (npm version 2 and later), its `npm:<package>@<version>`
+version (npm version 1), its `<package>@<version>` or `/<package>/<version>`
+version (pnpm), the `npm:<package>@<version>` part of its selector (Yarn) and
+the locator under its install-path key (`bun.lock`). The manifest tables read are
 Cargo's `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and
 `[workspace.dependencies]`, including the `[dependencies.name]` sub-table
 form, the dotted-key form, an inline table on one line or several, and any
@@ -4979,7 +4994,10 @@ path gives it no registry, and one that sends it to another module or version
 makes klin look up that module and judge that version, because `go.sum`
 records the replacement. The lockfile is the nearest one at or
 above the manifest's own directory, which is how a workspace member finds the
-one lockfile its members share. `Cargo.lock` gives the `name` and `version` of
+one lockfile its members share. In one directory `bun.lock` comes first, then
+`package-lock.json`, `pnpm-lock.yaml` and `yarn.lock`, so a stale npm lockfile
+that a move to bun left behind is not the one judged. `Cargo.lock` gives the
+`name` and `version` of
 each `[[package]]` block, in either order, `package-lock.json` gives the keys of
 `packages` with everything up to the last `node_modules/` stripped and the
 keys of the nested `dependencies` tree that version 1 writes, and `go.sum`
@@ -4994,7 +5012,7 @@ version of the package it links. pnpm writes it under `importers`, or in the
 top-level dependency tables of a lockfile that has no importers. The pnpm
 `packages` mapping and the npm entries nested in another package's
 `node_modules` count only toward `unlocked`, so a pinned name that the
-lockfile holds only there is stale. Cargo and Yarn record no resolution per
+lockfile holds only there is stale. Cargo, Yarn and bun record no resolution per
 manifest, and klin judges a pin against every version they record. A
 dependency the base manifest did not name is a
 site only when it is `unlocked` or `stale`, so a new dependency with a range
@@ -5009,7 +5027,10 @@ version 5. The version in the key is the one it records.
 `yarn.lock` v1 gives names from top-level selectors after
 `# yarn lockfile v1`; Yarn 2 and later gives them from top-level locator keys
 after `__metadata.version`. Both give the version from the `version` line
-under each key. Selectors and locators are split at the
+under each key. `bun.lock` gives the name and version from the
+`name@version` locator that leads each entry of its `packages` mapping,
+because the key is the install path. A `bun.lock` with no `packages` mapping
+is a NOTE and no finding. Selectors and locators are split at the
 package-name separator, preserving scoped names. The line readers recognize
 only those markers and key shapes; an unrecognized shape is a NOTE and no
 finding rather than an empty lockfile. That NOTE is filed under the manifest
@@ -5065,6 +5086,12 @@ handful of files. Pinned by
 `an_unrecognized_lockfile_format_is_a_note_and_judges_no_manifest`,
 `pnpm_lockfile_key_styles_hold_and_missing_dependencies_fail`,
 `both_yarn_lockfile_formats_hold_and_missing_dependencies_fail`,
+`a_bun_lockfile_holds_its_dependencies_and_a_missing_one_fails`,
+`a_turn_that_replaces_the_npm_lockfile_with_a_bun_lockfile_fails_nothing`,
+`a_bun_lockfile_is_judged_over_a_stale_npm_lockfile_beside_it`,
+`a_bun_workspace_resolution_holds_an_exact_pin_on_a_sibling`,
+`an_npm_alias_is_judged_against_the_lockfile_in_every_npm_format`,
+`a_catalog_dependency_must_have_a_lockfile_entry`,
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
@@ -5423,10 +5450,16 @@ checked-in TypeScript, TSX or declaration source file: an `exports` string,
 each `exports` subpath whose target reduces to exactly one such file across
 its conditions, and, without `exports`, the first of `types`, `typings`,
 `main` and `module` that names one. Generated JavaScript is never mapped back
-to source, `src/index.ts` is never guessed, and a package none of whose
-entries names a supported source is not applicable and is said so on a
-`NOTE:` line, not a hole. Publication metadata does not decide a surface: a
-Cargo package with `publish = false` and an npm package with
+to source, and `src/index.ts` is never guessed. A package whose metadata states none of
+`exports`, `types`, `typings`, `main` and `module`, such as an app, is not
+applicable and says nothing (#574). A package that states one of them with no
+path klin can read, such as `"types": 123` or `"exports": {}`, keeps its NOTE. A
+package none of whose named entries is a supported source is not applicable
+and is said so on a `NOTE:` line, not a hole. Pinned by
+`a_package_whose_entries_are_generated_or_absent_is_not_applicable` and
+`a_package_whose_entry_field_is_malformed_is_said`.
+Publication metadata does not decide a surface: a Cargo package with
+`publish = false` and an npm package with
 `"private": true` keep their surfaces, because a workspace sibling, a path
 dependency or a git dependency can still consume them (ADR 0050).
 
