@@ -78,13 +78,13 @@ impl<'a> Derivation<'a> {
             });
             return;
         };
-        if package.entries.is_empty() {
+        let Some(first) = package.entries.first() else {
             return;
-        }
+        };
         if package.entries.iter().all(|entry| entry.target.is_err()) {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package {} ({manifest})", package.name),
-                why: not_applicable(&package),
+                why: not_applicable(first.field, &package),
             });
             return;
         }
@@ -576,10 +576,9 @@ fn own_declarations(facts: &FileFacts) -> Vec<Item> {
 }
 
 /// Why a package whose metadata names entries has no supported surface.
-fn not_applicable(package: &Package) -> String {
+fn not_applicable(field: &str, package: &Package) -> String {
     format!(
-        "its {} names no TypeScript source klin supports: {}",
-        package.entries[0].field,
+        "its {field} names no TypeScript source klin supports: {}",
         package
             .entries
             .iter()

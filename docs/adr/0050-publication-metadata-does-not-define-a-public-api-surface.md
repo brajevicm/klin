@@ -83,6 +83,6 @@ A TypeScript package whose metadata names no entry point at all, with no
 `exports`, `types`, `typings`, `main` or `module`, is not applicable to
 `public-api` and gets no NOTE. The entry point decides this, never
 `"private": true`, so the decision above holds: a private package that names
-a TypeScript entry keeps its surface. App mode in #580 uses the same rule to
-find an app. A package whose named entries reach no supported source keeps
+a TypeScript entry keeps its surface. #580 plans to use the same rule to find
+an app for app mode. A package whose named entries reach no supported source keeps
 its NOTE, because its metadata claims a contract that klin cannot read.

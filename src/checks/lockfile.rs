@@ -1080,8 +1080,7 @@ fn npm_version(entry: &Value, packages: &serde_json::Map<String, Value>) -> Opti
 /// mapping, whose key is the install path and not always the name. Bun records no resolution
 /// per workspace member, so every entry is pooled.
 fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
-    let data =
-        jsonc::parse(bytes).map_err(|why| Error(format!("{at} is not valid JSON: {why}")))?;
+    let data = jsonc::parse(bytes).map_err(|why| invalid(at, why))?;
     let Some(packages) = data.get("packages").and_then(Value::as_object) else {
         return Ok(None);
     };
@@ -1089,11 +1088,9 @@ fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         .values()
         .map(|entry| {
             let locator = entry.get(0).and_then(Value::as_str)?;
-            let at = locator.get(1..)?.find('@')? + 1;
-            Some(Entry::pooled(
-                &locator[..at],
-                Some(locator[at + 1..].to_string()),
-            ))
+            let name = yarn_name(locator)?;
+            let version = locator[name.len() + 1..].to_string();
+            Some(Entry::pooled(&name, Some(version)))
         })
         .collect())
 }
@@ -1395,7 +1392,11 @@ fn npm_nested(held: Option<&Value>, importer: Option<&str>, out: &mut Vec<Entry>
 }
 
 fn json(at: &str, bytes: &[u8]) -> Result<Value, Error> {
-    serde_json::from_slice(bytes).map_err(|why| Error(format!("{at} is not valid JSON: {why}")))
+    serde_json::from_slice(bytes).map_err(|why| invalid(at, why))
+}
+
+fn invalid(at: &str, why: impl std::fmt::Display) -> Error {
+    Error(format!("{at} is not valid JSON: {why}"))
 }
 
 /// Every module a `go.mod` requires, in both forms of the directive. A `require` states one

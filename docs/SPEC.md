@@ -4162,7 +4162,8 @@ implementation-defined and MUST be documented per manifest format, which
 The first version covers `Cargo.toml` against `Cargo.lock`, `package.json`
 against `bun.lock`, `package-lock.json`, `pnpm-lock.yaml` and `yarn.lock`,
 and `go.mod` against `go.sum`. The bun reader parses `bun.lock` as JSONC, with
-comments and trailing commas. `bun.lockb` is binary and stays out. The pnpm reader recognizes a
+comments and trailing commas. `bun.lockb` is binary and stays out. The pnpm
+reader recognizes a
 `lockfileVersion` major of 4 or later and reads package names from the direct
 keys of its `packages` mapping. It accepts the path-shaped keys of older
 lockfiles and the `name@version` keys of newer ones, including peer suffixes.
@@ -4982,7 +4983,8 @@ records the replacement. The lockfile is the nearest one at or
 above the manifest's own directory, which is how a workspace member finds the
 one lockfile its members share. In one directory `bun.lock` comes first, then
 `package-lock.json`, `pnpm-lock.yaml` and `yarn.lock`, so a stale npm lockfile
-that a move to bun left behind is not the one judged. `Cargo.lock` gives the `name` and `version` of
+that a move to bun left behind is not the one judged. `Cargo.lock` gives the
+`name` and `version` of
 each `[[package]]` block, in either order, `package-lock.json` gives the keys of
 `packages` with everything up to the last `node_modules/` stripped and the
 keys of the nested `dependencies` tree that version 1 writes, and `go.sum`
@@ -5432,12 +5434,13 @@ checked-in TypeScript, TSX or declaration source file: an `exports` string,
 each `exports` subpath whose target reduces to exactly one such file across
 its conditions, and, without `exports`, the first of `types`, `typings`,
 `main` and `module` that names one. Generated JavaScript is never mapped back
-to source, `src/index.ts` is never guessed. A package whose metadata names no entry at
-all, such as an app, is not applicable and says nothing (#574). A package
-none of whose named entries is a supported source is not applicable and is
-said so on a `NOTE:` line, not a hole. Pinned by
-`a_package_whose_entries_are_generated_or_absent_is_not_applicable`. Publication metadata does not decide a surface: a
-Cargo package with `publish = false` and an npm package with
+to source, and `src/index.ts` is never guessed. A package whose metadata names
+no entry at all, such as an app, is not applicable and says nothing (#574). A
+package none of whose named entries is a supported source is not applicable
+and is said so on a `NOTE:` line, not a hole. Pinned by
+`a_package_whose_entries_are_generated_or_absent_is_not_applicable`.
+Publication metadata does not decide a surface: a Cargo package with
+`publish = false` and an npm package with
 `"private": true` keep their surfaces, because a workspace sibling, a path
 dependency or a git dependency can still consume them (ADR 0050).
 
