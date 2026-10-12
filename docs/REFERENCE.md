@@ -8,6 +8,7 @@
 
 | Key | Holds | Required | Source | Derivation rule | Default |
 | --- | --- | --- | --- | --- | --- |
+| `$schema` | the JSON Schema an editor completes and checks the file against, such as the one `klin policy --schema` prints. klin reads nothing from it | no | pinned only | — | — |
 | `klin` | the lowest klin the repository expects, as `>=` and a version such as `>=0.5.4`. An older klin says so in `klin status` and at a Stop, and the GitHub Action fails | no | pinned only | — | any klin |
 | `build` | a build command a person chose over the derived one: a command, a list of entries of a `run` and an optional `root`, or `false` to build nothing | no | derived when absent | one command per standard manifest, from the fixed table of ADR 0012 | — |
 | `accepted` | the debt a person accepted, each entry a site and a reason. Only a person writes it | no | pinned only | — | nothing is accepted |

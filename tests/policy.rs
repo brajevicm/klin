@@ -483,3 +483,173 @@ fn policy_json_error_names_the_configuration_the_run_loaded() {
     );
     assert_eq!(refused["config"]["present"], false, "{refused}");
 }
+
+/// `--suggest` derives layers from the tree's directories, lets each layer use the layers it
+/// mostly reaches today, counts what that policy would hold, and writes nothing. Spec 11.6.
+#[test]
+fn suggest_prints_layers_and_the_held_count_of_each_edge_kind_and_writes_nothing() {
+    let tree = Tree::new();
+    tree.write(
+        "app/page.ts",
+        "import { button } from \"../components/button\";\nimport { util } from \"../lib/util\";\nexport const page = button + util;\n",
+    );
+    tree.write(
+        "components/button.ts",
+        "import { util } from \"../lib/util\";\nexport const button = util;\n",
+    );
+    tree.write(
+        "components/card.ts",
+        "import { util } from \"../lib/util\";\nexport const card = util;\n",
+    );
+    tree.write(
+        "lib/util.ts",
+        "import { button } from \"../components/button\";\nexport const util = 1;\nexport const twice = button;\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    let start = run.out.find("\n{\n").expect("a JSON block");
+    let suggested: Value = serde_json::Deserializer::from_str(&run.out[start..])
+        .into_iter()
+        .next()
+        .expect("one JSON value")
+        .expect("valid JSON");
+    assert_eq!(
+        suggested["layering"],
+        serde_json::json!({
+            "acyclic": true,
+            "layers": {
+                "app": {"in": "app", "can_use": ["components", "lib"]},
+                "components": {"in": "components", "can_use": ["lib"]},
+                "lib": {"in": "lib", "can_use": []},
+            }
+        }),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("held: layering 1 forbidden edge and 2 cycle edges"),
+        "{}",
+        run.out
+    );
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+    assert_eq!(tree.status(), "", "{}", run.out);
+}
+
+/// A directory no `in` can name, such as a Next.js dynamic route, gets no layer, so the
+/// suggestion is a configuration klin accepts.
+#[test]
+fn suggest_names_no_layer_for_a_directory_a_path_cannot_name() {
+    let tree = Tree::new();
+    tree.write(
+        "app/[id]/page.ts",
+        "import { util } from \"../lib/util\";\nexport const page = util;\n",
+    );
+    tree.write("app/lib/util.ts", "export const util = 1;\n");
+    tree.write(
+        "app/ui/card.ts",
+        "import { util } from \"../lib/util\";\nexport const card = util;\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    let start = run.out.find("\n{\n").expect("a JSON block");
+    let suggested: Value = serde_json::Deserializer::from_str(&run.out[start..])
+        .into_iter()
+        .next()
+        .expect("one JSON value")
+        .expect("valid JSON");
+    let layers = suggested["layering"]["layers"]
+        .as_object()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(
+        layers.keys().collect::<Vec<_>>(),
+        ["lib", "ui"],
+        "{}",
+        run.out
+    );
+    tree.write(
+        "klin.json",
+        &serde_json::json!({"layering": suggested["layering"]}).to_string(),
+    );
+    let accepted = tree.run(&["check", "layering"]);
+    assert_eq!(accepted.code, 0, "{}", accepted.out);
+}
+
+/// `--suggest` derives the radius from history, and the radius cache it reads stays as it was,
+/// because `policy` writes nothing to the state directory. Spec 11.6.
+#[test]
+fn suggest_writes_nothing_to_the_state_directory() {
+    let tree = harness::history(60, 0);
+    std::fs::create_dir_all(tree.state("")).expect("a state directory");
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: radius lines"), "{}", run.out);
+    let written: Vec<_> = std::fs::read_dir(tree.state(""))
+        .expect("the state directory")
+        .flatten()
+        .map(|entry| entry.file_name())
+        .collect();
+    assert!(written.is_empty(), "{written:?}\n{}", run.out);
+}
+
+/// In a repository klin never ran in, `--suggest` leaves no state directory behind. Spec 11.6.
+#[test]
+fn suggest_creates_no_state_directory() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.state("").exists(), "{}", run.out);
+}
+
+/// Functions of `lines` lines each, under one file per function.
+fn long_functions(tree: &Tree, under: &str, lines: usize) {
+    for at in 0..20 {
+        let body = "    let _ = 1;\n".repeat(lines);
+        tree.write(
+            &format!("src/{under}{at}.rs"),
+            &format!("pub fn f{at}() {{\n{body}}}\n"),
+        );
+    }
+}
+
+/// On a branch whose HEAD holds more functions than its base, `--suggest` derives from the
+/// commit `setup --pin` derives from, so it suggests what `--pin` would write. Spec 11.6.
+#[test]
+fn suggest_derives_from_the_commit_setup_pin_derives_from() {
+    let tree = Tree::new();
+    long_functions(&tree, "short", 5);
+    tree.base();
+    tree.git(&["checkout", "-q", "-b", "feature"]);
+    long_functions(&tree, "long", 40);
+    tree.commit("long functions");
+
+    let suggested = tree.run(&["policy", "--suggest"]);
+    let pinned = tree.run(&["setup", "--pin"]);
+
+    assert_eq!(pinned.code, 0, "{}", pinned.out);
+    let complexity = |out: &str| -> Vec<String> {
+        provenance(out)
+            .into_iter()
+            .filter(|line| line.starts_with("derived: complexity"))
+            .collect()
+    };
+    assert!(!complexity(&pinned.out).is_empty(), "{}", pinned.out);
+    assert_eq!(
+        complexity(&suggested.out),
+        complexity(&pinned.out),
+        "{}",
+        suggested.out
+    );
+}

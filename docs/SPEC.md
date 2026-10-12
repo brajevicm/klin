@@ -469,8 +469,15 @@ tree holds none, `klin check` adds a note that names the deleted file.
 ### 5.3 Top-level keys
 
 The keys of B.5.2 carry forward: `build`, `accepted`, `radius`, `journal`,
-and one key per gate section. vNext adds `klin` (ADR 0071) and retires no
-key. A configuration that 0.x accepted is valid in vNext.
+and one key per gate section. vNext adds `klin` (ADR 0071) and `$schema`, and
+retires no key. A configuration that 0.x accepted is valid in vNext.
+
+- `$schema` (string) names the JSON Schema an editor completes and checks the
+  file against, such as the one `klin policy --schema` prints. klin reads
+  nothing from it. Any value that is not a string is a configuration error.
+  Pinned by the `$schema` rows of
+  `the_schema_accepts_a_configuration_exactly_when_klin_does` in
+  `tests/schema.rs`.
 
 - `klin` names the lowest klin the repository expects, as `>=` and a
   version of three dot-separated numbers, such as `">=0.5.4"`. Any other value is a
@@ -1842,6 +1849,32 @@ Section 13.2.
   configuration and no tree, and exit 0 anywhere, inside or outside a
   repository. `docs/REFERENCE.md` is the output of `--reference`. The flags
   are stable. The content is documentation and follows the catalogue.
+- `--suggest` prints a starter policy computed from the tree, as one JSON
+  object, and writes nothing. It holds the values `setup --pin` would write
+  (B.5.7), each with its `derived:` line. Where the configuration states no
+  `layering`, it also holds a `layering` section with `"acyclic": true` and a
+  layer for each directory the Rust and TypeScript files first divide into:
+  below the deepest directory that holds every such file, each subdirectory
+  that holds one, and no layer where fewer than two do. A directory that a
+  path of 5.3 cannot name, such as a Next.js `[id]` route, gets no layer.
+  Pinned by `suggest_names_no_layer_for_a_directory_a_path_cannot_name` in
+  `tests/policy.rs`. Each layer may use
+  the layers it reaches today, except a layer that the reverse direction
+  reaches through more dependency sites. A `held:` line names the forbidden
+  and cyclic findings that section would hold today. To count them,
+  `--suggest` measures the working tree, so it is the one form of `policy`
+  that parses source outside `public-api`. It derives every value from the
+  commit `setup --pin` derives from, the stamp's parent or HEAD and never a
+  window's base, so it suggests what `--pin` would write. Like every form of
+  `policy`, it writes nothing to the state directory, a cache included, and
+  creates no state directory where none exists. Pinned by
+  `suggest_derives_from_the_commit_setup_pin_derives_from`,
+  `suggest_writes_nothing_to_the_state_directory` and
+  `suggest_creates_no_state_directory` in `tests/policy.rs`. klin
+  computes the suggestion and a person writes the configuration, so 5.2 and
+  5.4 hold. Pinned by
+  `suggest_prints_layers_and_the_held_count_of_each_edge_kind_and_writes_nothing`
+  in `tests/policy.rs`.
 - `--json` prints the document of section 11.7.
 - Exit 0 on success. Exit 2 when the configuration is invalid, with the error
   named, or on an invalid invocation.

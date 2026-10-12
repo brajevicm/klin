@@ -11,7 +11,7 @@ use crate::engine::plan::{Gate, Plan, State};
 use crate::engine::{catalogue, render};
 use crate::sys::error::{Error, ErrorKind, Fault, fault};
 use crate::window::base;
-use crate::{config::ceiling, engine::reference, hook::build, sys::state};
+use crate::{cli::starter, config::ceiling, engine::reference, hook::build, sys::state};
 
 /// What `policy` indents a capability's own lines by, under the row that names it.
 const UNDER: &str = "      ";
@@ -29,6 +29,9 @@ pub struct Policy {
     /// Print the JSON Schema of klin.json
     #[arg(long, conflicts_with_all = ["section", "json", "config"])]
     schema: bool,
+    /// Print a starter policy computed from this tree, with what it would hold today, and write nothing
+    #[arg(long, conflicts_with_all = ["section", "reference", "schema", "json"])]
+    suggest: bool,
     /// Print one JSON object instead of the text
     #[arg(long)]
     json: bool,
@@ -48,6 +51,25 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
             let _ = writeln!(out, "{note}");
         }
     }
+    match args.suggest {
+        true => suggested(args, start, out),
+        false => effective(args, start, out),
+    }
+}
+
+/// One `klin policy --suggest`: a starter policy computed from the tree, written nowhere. It
+/// derives from the commit `setup --pin` derives from, not from a window's base, so it suggests
+/// what `--pin` would write.
+fn suggested(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
+    let config = config::file::Config::load(args.config.as_deref(), start, &catalogue::sections())?;
+    let project = Project::of(config, start).read_only();
+    starter::suggest(&project, out)?;
+    Ok(0)
+}
+
+/// The effective policy, and a refusal as the `FAIL:` line or as the policy document with its
+/// error.
+fn effective(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
     let mut config = None;
     let outcome = loaded(args, start).and_then(|mut project| {
         config = Some(json!({

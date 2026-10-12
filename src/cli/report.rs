@@ -383,7 +383,7 @@ fn upsert<T>(list: &mut Vec<T>, same: impl Fn(&T) -> bool, made: impl FnOnce() -
     &mut list[at]
 }
 
-fn plural(count: usize, one: &str, many: &str) -> String {
+pub fn plural(count: usize, one: &str, many: &str) -> String {
     match count {
         1 => format!("1 {one}"),
         _ => format!("{count} {many}"),

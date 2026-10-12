@@ -10,7 +10,7 @@ pub const FILENAME: &str = "klin.json";
 
 /// The top-level keys, beside one key per gate named for its section. Every module that reads
 /// one reads it through the declaration here, and `klin policy --reference` prints them. Spec 5.2, 5.8.
-pub const KEYS: &[Key] = &[KLIN, BUILD, ACCEPTED, RADIUS, JOURNAL];
+pub const KEYS: &[Key] = &[SCHEMA, KLIN, BUILD, ACCEPTED, RADIUS, JOURNAL];
 
 /// The top-level keys klin no longer reads, each with what to do instead. Spec 5.2, ADR 0040.
 const RETIRED: &[(&str, &str)] = &[
@@ -39,6 +39,15 @@ const RETIRED_KEYS: &[(&str, &str)] = &[
          Rename the key, so nothing measures a different set in silence.",
     ),
 ];
+
+pub const SCHEMA: Key = Key {
+    name: "$schema",
+    holds: "the JSON Schema an editor completes and checks the file against, such as the one `klin policy --schema` prints. klin reads nothing from it",
+    required: false,
+    rule: None,
+    default: "",
+    shape: Shape::String,
+};
 
 pub const KLIN: Key = Key {
     name: "klin",

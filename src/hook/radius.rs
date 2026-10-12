@@ -161,7 +161,8 @@ fn usual(config: &Config, root: &Path, at: Option<&Path>) -> Result<Usual, Error
     if let (Some(lines), Some(directories)) = (lines, directories) {
         return Ok(Usual { lines, directories });
     }
-    let history = history(root, at).map_err(|why| unpinned(config, lines, directories, &why))?;
+    let history =
+        history(root, at, true).map_err(|why| unpinned(config, lines, directories, &why))?;
     Ok(Usual {
         lines: lines.unwrap_or(history.lines),
         directories: directories.unwrap_or(history.directories),
@@ -204,8 +205,9 @@ fn unpinned(config: &Config, lines: Option<u64>, directories: Option<u64>, why: 
 
 /// What history says a commit here usually changes, cached under the derivation commit, or the
 /// reason it says nothing. Below the floor a percentile would fire on almost every turn, so
-/// there is no derived section and the caller says why. ADR 0014, spec 5.4.
-pub fn history(root: &Path, at: Option<&Path>) -> Result<Derived, String> {
+/// there is no derived section and the caller says why. A run that `keeps` no state reads the
+/// cache and writes nothing to it. ADR 0014, spec 5.4, 11.6.
+pub fn history(root: &Path, at: Option<&Path>, keeps: bool) -> Result<Derived, String> {
     let commit = stamp::derivation(root, at)
         .ok_or_else(|| "no commit to derive this project's usual change from".to_string())?;
     if let Some(held) = at
@@ -228,7 +230,7 @@ pub fn history(root: &Path, at: Option<&Path>) -> Result<Derived, String> {
         directories: percentile(sample.iter().map(|(_, under)| *under).collect()),
         commits: sample.len(),
     };
-    if let Some(at) = at {
+    if let Some(at) = at.filter(|_| keeps) {
         cache::write(at, &commit, SECTION, kept(&found));
     }
     Ok(found)

@@ -26,6 +26,7 @@ use crate::contract::check::{
 use crate::contract::coverage;
 use crate::contract::holes;
 use crate::contract::measurement;
+use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::facts::tree::Tree;
 use crate::modules::resolver::{Attachment, Dependency, Hole};
@@ -495,6 +496,150 @@ fn names_layers(config: &Config, layers: &[Layer]) -> Result<(), Error> {
 
 fn refused(config: &Config, why: &str) -> Error {
     Error(format!("{}: \"{SECTION}\" {why}", config.file.display()))
+}
+
+/// The section `policy --suggest` proposes for the working tree, and the forbidden and cyclic
+/// findings it would hold today.
+pub struct Suggested {
+    pub section: Value,
+    pub forbidden: usize,
+    pub cycles: usize,
+}
+
+/// A layer for each directory the tree's Rust and TypeScript files first divide into and an `in`
+/// can name, each
+/// allowed the layers it reaches today except where the reverse direction has more sites, and
+/// `acyclic`. `None` where the tree holds no such file. Spec 11.6.
+pub fn suggested(project: &Project) -> Result<Option<Suggested>, Error> {
+    let measured = measurement::measure_all(project.tree(), None)?;
+    let side = side(project.tree(), &measured, &HashMap::new())?;
+    if side.files.is_empty() {
+        return Ok(None);
+    }
+    let mut policy = Policy {
+        scope: Scope::default(),
+        acyclic: true,
+        layers: directories(&side.files)
+            .into_iter()
+            .filter_map(|directory| {
+                Some(Layer {
+                    within: vec![Selector::parse(scope::IN, &directory).ok()?],
+                    name: directory
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or(&directory)
+                        .to_string(),
+                    can_use: Some(Vec::new()),
+                })
+            })
+            .collect(),
+    };
+    let placed = policy.placed(&side.graph);
+    allow_today(&mut policy, &side, &placed);
+    let cycles = policy.cycles(&side, &placed);
+    let (edges, _) = edges(&policy, (&side, &placed), cycles.as_ref());
+    let physicals = physicals(&edges, &Edges::new());
+    let count = |kind| {
+        physicals
+            .values()
+            .filter(|found| found.kind == kind)
+            .count()
+    };
+    Ok(Some(Suggested {
+        section: suggested_section(&policy),
+        forbidden: count(Kind::Forbidden),
+        cycles: count(Kind::Cycle),
+    }))
+}
+
+/// Each layer allowed the layers it reaches today, except one the reverse direction reaches
+/// through more dependency sites.
+fn allow_today(policy: &mut Policy, side: &Side, placed: &Placed) {
+    let sites = crossings(side, placed);
+    let reaches = |from: usize, to: usize| sites.get(&(from, to)).copied().unwrap_or(0);
+    let names: Vec<String> = policy
+        .layers
+        .iter()
+        .map(|layer| layer.name.clone())
+        .collect();
+    for (from, layer) in policy.layers.iter_mut().enumerate() {
+        layer.can_use = Some(
+            (0..names.len())
+                .filter(|&to| to != from && reaches(from, to) > 0)
+                .filter(|&to| reaches(from, to) >= reaches(to, from))
+                .map(|to| names[to].clone())
+                .collect(),
+        );
+    }
+}
+
+/// The section as a person would write it: `acyclic`, and the layers where there are any.
+fn suggested_section(policy: &Policy) -> Value {
+    let mut section = Map::new();
+    section.insert(ACYCLIC.name.into(), Value::Bool(true));
+    if !policy.layers.is_empty() {
+        let layers = policy
+            .layers
+            .iter()
+            .map(|layer| {
+                let within = layer
+                    .within
+                    .iter()
+                    .map(Selector::as_str)
+                    .collect::<String>();
+                let can_use = layer.can_use.clone().unwrap_or_default();
+                (
+                    layer.name.clone(),
+                    serde_json::json!({scope::IN.name: within, CAN_USE: can_use}),
+                )
+            })
+            .collect();
+        section.insert(LAYERS.name.into(), Value::Object(layers));
+    }
+    Value::Object(section)
+}
+
+/// The directories the files first divide into: below the deepest directory that holds every
+/// file, its subdirectories that hold one, and none where fewer than two do.
+fn directories(files: &[String]) -> Vec<String> {
+    let mut prefix = String::new();
+    loop {
+        let children: BTreeSet<&str> = files
+            .iter()
+            .filter_map(|file| file.strip_prefix(prefix.as_str()))
+            .filter_map(|rest| rest.split_once('/').map(|(child, _)| child))
+            .collect();
+        let every_file_below = files.iter().all(|file| {
+            file.strip_prefix(prefix.as_str())
+                .is_some_and(|rest| rest.contains('/'))
+        });
+        match children.len() {
+            1 if every_file_below => {
+                prefix = format!("{prefix}{}/", children.first().unwrap_or(&""))
+            }
+            0 | 1 => return Vec::new(),
+            _ => {
+                return children
+                    .into_iter()
+                    .map(|child| format!("{prefix}{child}"))
+                    .collect();
+            }
+        }
+    }
+}
+
+/// The dependency sites from each layer to each other layer, keyed by their positions.
+fn crossings(side: &Side, placed: &Placed) -> HashMap<(usize, usize), usize> {
+    let mut sites = HashMap::new();
+    for dependency in &side.graph.dependencies {
+        let from = placed.files[side.graph.source(dependency)].layer;
+        if let (Some(from), (_, Folded::All(Some(to)))) = (from, placed.modules[dependency.to])
+            && from != to
+        {
+            *sites.entry((from, to)).or_insert(0) += 1;
+        }
+    }
+    sites
 }
 
 #[cfg(test)]
