@@ -293,7 +293,7 @@ pub const CATALOGUE: &[Row] = &[
             many: "layering breaches",
         },
         gate_per_entry: false,
-        shape: SectionShape::Object,
+        shape: SectionShape::Asks(layering::ASKS),
     },
     Row {
         name: public_api::NAME,

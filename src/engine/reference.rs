@@ -94,6 +94,7 @@ fn section_description(spec: &catalogue::Row) -> String {
 fn section_shape(spec: &catalogue::Row) -> Value {
     match spec.shape {
         SectionShape::Object => disabled(object(spec.keys, true)),
+        SectionShape::Asks(keys) => disabled(asks(spec.keys, keys)),
         SectionShape::DocumentMap(document) => disabled(document_map(document)),
         SectionShape::FalseOnly(_) => json!({"const": false}),
         SectionShape::Conventions(_) => disabled(conventions(spec.keys)),
@@ -135,6 +136,18 @@ fn conventions(keys: &[Key]) -> Value {
         "propertyNames": {"minLength": 1},
         "additionalProperties": item
     })
+}
+
+fn asks(keys: &[Key], asked: &[&str]) -> Value {
+    let mut out = object(keys, true);
+    if let Value::Object(fields) = &mut out {
+        let one: Vec<Value> = asked
+            .iter()
+            .map(|key| json!({"required": [key], "properties": {*key: {"not": {"const": false}}}}))
+            .collect();
+        fields.insert("anyOf".into(), Value::Array(one));
+    }
+    out
 }
 
 fn object(keys: &[Key], minimum: bool) -> Value {

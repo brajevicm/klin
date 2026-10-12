@@ -266,6 +266,10 @@ fn structure(file: &Path, data: &Value, sections: &[Section]) -> Result<(), Erro
 fn section_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {
     match check.shape {
         SectionShape::Object => object_section_shape(file, check, value),
+        SectionShape::Asks(keys) => {
+            object_section_shape(file, check, value)?;
+            asks(file, check.name, keys, value)
+        }
         SectionShape::DocumentMap(document) => document_map_shape(file, check, document, value),
         SectionShape::FalseOnly(_) => false_only_shape(file, check, value),
         SectionShape::Conventions(read) => dynamic_conventions(file, check, read, value),
@@ -278,6 +282,27 @@ fn object_section_shape(file: &Path, check: &Section, value: &Value) -> Result<(
         return retired_list(file, check);
     }
     disabled_object(file, check.name, value, check.keys)
+}
+
+fn asks(file: &Path, section: &str, keys: &[&str], value: &Value) -> Result<(), Error> {
+    let Value::Object(fields) = value else {
+        return Ok(());
+    };
+    if keys.iter().any(|key| {
+        fields
+            .get(*key)
+            .is_some_and(|value| value.as_bool() != Some(false))
+    }) {
+        return Ok(());
+    }
+    Err(Error(format!(
+        "{}: \"{section}\" must state one of {} with a value other than false",
+        file.display(),
+        keys.iter()
+            .map(|key| format!("\"{key}\""))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )))
 }
 
 fn false_only_shape(file: &Path, check: &Section, value: &Value) -> Result<(), Error> {

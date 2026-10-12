@@ -208,7 +208,8 @@ pub fn moved(
             let of = (section, shape, &pinned);
             out.extend(pins(of, &selectors, &changed, &mut at_base));
         }
-        if let (SectionShape::Object, Ok(scope)) = (shape, Scope::from_fields(fields))
+        if let (SectionShape::Object | SectionShape::Asks(_), Ok(scope)) =
+            (shape, Scope::from_fields(fields))
             && files.iter().any(|file| scope.selects(file))
         {
             out.extend(moved_out(
@@ -227,7 +228,7 @@ pub fn moved(
 /// and each pinned document on its own.
 fn pinned_paths(shape: SectionShape, fields: &Map<String, Value>) -> Vec<(Pinned, Vec<Selector>)> {
     match shape {
-        SectionShape::Object => Scope::from_fields(fields)
+        SectionShape::Object | SectionShape::Asks(_) => Scope::from_fields(fields)
             .map(|scope| vec![(Pinned::In, scope.within)])
             .unwrap_or_default(),
         SectionShape::Conventions(_) => fields

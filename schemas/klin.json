@@ -547,6 +547,32 @@
         },
         {
           "additionalProperties": false,
+          "anyOf": [
+            {
+              "properties": {
+                "layers": {
+                  "not": {
+                    "const": false
+                  }
+                }
+              },
+              "required": [
+                "layers"
+              ]
+            },
+            {
+              "properties": {
+                "acyclic": {
+                  "not": {
+                    "const": false
+                  }
+                }
+              },
+              "required": [
+                "acyclic"
+              ]
+            }
+          ],
           "minProperties": 1,
           "properties": {
             "acyclic": {
@@ -626,14 +652,11 @@
                 ],
                 "type": "object"
               },
-              "description": "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. Source: pinned only.",
+              "description": "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `\"acyclic\": true`, or both. Source: pinned only. Default: no layers, so no edge is forbidden.",
               "minProperties": 1,
               "type": "object"
             }
           },
-          "required": [
-            "layers"
-          ],
           "type": "object"
         }
       ],

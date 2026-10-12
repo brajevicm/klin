@@ -8,9 +8,31 @@ pub(super) struct Paths {
     scopes: HashMap<String, Scope>,
 }
 
+/// The directory paths targets resolve from: a written `baseUrl`, or the config's own directory.
+#[derive(Clone)]
+enum Anchor {
+    Config(String),
+    BaseUrl(String),
+}
+
+impl Anchor {
+    fn path(&self) -> &str {
+        match self {
+            Anchor::Config(path) | Anchor::BaseUrl(path) => path,
+        }
+    }
+
+    fn base_url(&self) -> Option<&str> {
+        match self {
+            Anchor::BaseUrl(path) => Some(path),
+            Anchor::Config(_) => None,
+        }
+    }
+}
+
 struct Config {
     directory: String,
-    anchor: Option<String>,
+    anchor: Option<Anchor>,
     rules: Vec<(String, Value)>,
     roots: Roots,
     uncertain: bool,
@@ -47,7 +69,10 @@ impl Paths {
         let mut ancestor = directory(file);
         loop {
             if let Some(scope) = self.scopes.get(ancestor) {
-                if scope.exact.is_empty() && scope.wildcards.is_empty() {
+                if scope.exact.is_empty()
+                    && scope.wildcards.is_empty()
+                    && scope.base_urls.is_empty()
+                {
                     return None;
                 }
                 let root = scope
@@ -73,7 +98,9 @@ fn contains(directory: &str, file: &str) -> bool {
 
 struct Scope {
     roots: Option<Roots>,
-    anchor: Option<String>,
+    anchor: Option<Anchor>,
+    /// Every `baseUrl` an owning config writes, so an ambiguous owner still looks under each.
+    base_urls: Vec<String>,
     exact: HashMap<String, Option<String>>,
     wildcards: Vec<Wildcard>,
     uncertain: bool,
@@ -88,6 +115,21 @@ pub(super) struct FilePaths<'a> {
 impl FilePaths<'_> {
     pub(super) fn resolve(self, specifier: &str) -> Option<Result<String, String>> {
         self.scope.resolve(specifier, self.root)
+    }
+
+    /// The paths a bare specifier names under each `baseUrl` an owning config writes, and
+    /// whether klin proves the one config and the file's root membership.
+    pub(super) fn under_base_url(self, specifier: &str) -> Option<(Vec<String>, bool)> {
+        if absolute(specifier) {
+            return None;
+        }
+        let bases: Vec<String> = self
+            .scope
+            .base_urls
+            .iter()
+            .filter_map(|base| joined(base, specifier))
+            .collect();
+        (!bases.is_empty()).then_some((bases, !self.scope.uncertain && self.root))
     }
 }
 
@@ -108,6 +150,10 @@ impl Scope {
         let mut scope = Self {
             roots: (owners.len() == 1).then(|| owners[0].roots.clone()),
             anchor: owners.first().and_then(|config| config.anchor.clone()),
+            base_urls: owners
+                .iter()
+                .filter_map(|config| config.anchor.as_ref()?.base_url().map(str::to_string))
+                .collect(),
             exact: HashMap::new(),
             wildcards: Vec::new(),
             uncertain: owners.len() != 1 || owners.iter().any(|config| config.uncertain),
@@ -175,7 +221,7 @@ impl Scope {
                 "{specifier} is a local paths alias whose target klin cannot prove"
             ));
         };
-        joined(anchor, &target.replace('*', wild))
+        joined(anchor.path(), &target.replace('*', wild))
             .ok_or_else(|| format!("{specifier} is a local paths alias that leaves the tree"))
     }
 }
@@ -323,11 +369,12 @@ impl Config {
     fn read(file: &str, parsed: &BTreeMap<String, Value>) -> Self {
         let value = &parsed[file];
         let anchor = match value.pointer("/compilerOptions/baseUrl") {
-            None => Some(directory(file).to_string()),
+            None => Some(Anchor::Config(directory(file).to_string())),
             Some(value) => value
                 .as_str()
                 .filter(|path| !absolute(path))
-                .and_then(|path| joined(directory(file), path)),
+                .and_then(|path| joined(directory(file), path))
+                .map(Anchor::BaseUrl),
         };
         Self {
             directory: directory(file).to_string(),

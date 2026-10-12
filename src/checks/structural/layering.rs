@@ -47,14 +47,17 @@ const ACYCLIC: Key = Key {
 
 const LAYERS: Key = Key {
     name: "layers",
-    holds: "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer",
-    required: true,
+    holds: "a map of layer name to a layer: `in`, a repository-relative path or list of them the layer holds, and `can_use`, the layers it may depend on, or `null` for every layer. A layer may always depend on itself, and a file belongs to at most one layer. The section states `layers`, `\"acyclic\": true`, or both",
+    required: false,
     rule: None,
-    default: "",
+    default: "no layers, so no edge is forbidden",
     shape: crate::config::key::Shape::PathGraph(read),
 };
 
 pub const KEYS: &[Key] = &[scope::IN, scope::EXCEPT, ACYCLIC, LAYERS];
+
+/// The keys one of which a section states, since a section with neither asks for nothing.
+pub const ASKS: &[&str] = &[LAYERS.name, ACYCLIC.name];
 
 const CAN_USE: &str = "can_use";
 const EDGE: &str = "edge";
@@ -353,10 +356,12 @@ impl Side {
 }
 
 fn policy(config: &Config, moves: &Moves) -> Result<Policy, Error> {
-    let fields = config
-        .required(SECTION)?
-        .as_object()
-        .ok_or_else(|| refused(config, "must be an object with \"layers\", or false"))?;
+    let fields = config.required(SECTION)?.as_object().ok_or_else(|| {
+        refused(
+            config,
+            "must be an object with \"layers\" or \"acyclic\": true, or false",
+        )
+    })?;
     let names: Vec<&str> = KEYS.iter().map(|key| key.name).collect();
     config::file::known_fields(&config.file, SECTION, fields, &names)?;
     let layers = layers(config, fields)?;
@@ -380,8 +385,10 @@ fn acyclic(config: &Config, fields: &Map<String, Value>) -> Result<bool, Error> 
 }
 
 fn layers(config: &Config, fields: &Map<String, Value>) -> Result<Vec<Layer>, Error> {
-    let listed = shaped(fields.get(LAYERS.name).unwrap_or(&Value::Null))
-        .map_err(|why| Error::at(&config.file, why))?;
+    let Some(layers) = fields.get(LAYERS.name) else {
+        return Ok(Vec::new());
+    };
+    let listed = shaped(layers).map_err(|why| Error::at(&config.file, why))?;
     listed
         .into_iter()
         .map(|layer| {

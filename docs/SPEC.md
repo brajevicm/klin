@@ -5109,8 +5109,14 @@ and it cannot report staleness that is not there.
 
 **`layering` judges resolved dependencies against a person's layers.** It is a
 Policy check: with no section it does not run. The section holds `layers`, a
-map of layer name to a layer's `in` and `can_use`, and the optional shared
-`in`, `except` and `acyclic`. A layer's `in` is a path or a list of paths of
+map of layer name to a layer's `in` and `can_use`, `acyclic`, and the shared
+`in` and `except`. It states `layers`, `"acyclic": true`, or both. A section
+with neither asks for nothing and is a config error at load. With
+`"acyclic": true` and no `layers`, no file sits in a layer, so no edge is
+forbidden and every judged dependency is judged for cycles. Pinned by
+`acyclic_alone_fails_a_new_cycle_and_holds_the_cycles_the_base_holds` and
+`a_section_that_asks_for_neither_layers_nor_cycles_is_refused` in
+`tests/layering.rs`. A layer's `in` is a path or a list of paths of
 5.3, never a glob. `can_use` lists the layers a layer may depend on, `null`
 lets it depend on every layer, and an absent `can_use` lets it depend only on
 itself. A layer may always depend on itself. A `can_use` that names no layer,
@@ -5145,8 +5151,27 @@ outside an import that writes it is not read. Every TypeScript file is a
 module. A relative specifier resolves when exactly one of these files exists:
 the specifier itself with a TypeScript extension, the `.ts` or `.tsx` file a
 `.js` specifier stands for, or `.ts`, `.tsx`, `index.ts` or `index.tsx` after
-it. A bare specifier with no recognized paths rule and a specifier that
-names a file of another kind are counted as external. Explicit paths aliases
+it. A bare specifier with no recognized paths rule is looked up under each
+`compilerOptions.baseUrl` that a config owning its file writes, sibling and
+ancestor configs alike, and the first that reaches a held file or a held
+`package.json` is judged. This models
+TypeScript 5 and earlier: TypeScript 6.0 deprecates `baseUrl` and no longer
+looks modules up under it, and TypeScript 7.0 removes the option. Where the
+candidate rule finds no held TypeScript file under the `baseUrl` directory
+and the directory it names holds no `package.json`, the import is external,
+as TypeScript then tries packages. Where that directory holds a
+`package.json`, whose `types` or `main` may name the entry point, the import
+is a located local hole. Where it finds
+exactly one, the import is a local dependency when that config is proved for
+paths aliases below, the file is one of its roots, and the target is not an
+index file of a directory that holds a `package.json`, whose `types` or
+`main` may name another entry point. Otherwise, and where it finds two, such
+as `price.ts` and `price/index.ts`, the import is a located local hole, never
+external. Any other bare specifier and a specifier that names a file of
+another kind are counted as external. Pinned by
+`a_bare_import_under_the_base_url_is_a_local_edge` and
+`a_base_url_import_klin_cannot_prove_is_a_located_hole_and_never_external`
+in `tests/layering.rs`. Explicit paths aliases
 resolve or produce local incompleteness under the rule below. A `mod` declaration is containment and
 never a dependency.
 
@@ -5253,8 +5278,9 @@ in a single local extends chain replaces the parent's entire object; an
 empty or malformed object supplies no parent keys. Array-form extends
 supplies no inherited names, though direct child paths remain recognized.
 Package extends, unreadable configs
-and bundler-specific configuration supply no unobserved names. Standalone
-baseUrl lookup and Node/package resolution remain outside V1. Aliased targets
+and bundler-specific configuration supply no unobserved names. A `baseUrl`
+a config inherits through `extends` is not read, so a bare import under it
+stays external. Node/package resolution remains outside V1. Aliased targets
 of another kind or ignored source retain the existing outside-V1 behavior.
 Layering consumes every relevant local hole under the held/new semantics
 below. Public-api consumes alias holes at re-export source sites only:
@@ -5357,8 +5383,12 @@ unit tests
 `a_module_of_many_files_attaches_each_file_and_names_each_site` in
 `src/modules/mod.rs`, pin it over a graph built in memory. Known limit: a path
 inside a macro's tokens, a bare Rust path that names no module its file
-declares, a TypeScript `import()` or `require()`, standalone `baseUrl` lookup and package
-exports are not dependencies in V1. A name a block or a function binds in the
+declares, a TypeScript `import()` or `require()`, a bare import under a
+`baseUrl` a config inherits through `extends`, and package exports are not
+dependencies in V1. A bare `baseUrl` import klin cannot prove, under an
+unproved config such as one of two sibling or nested configs, from a file
+outside its roots, into a directory that holds a `package.json` or with two
+candidates, is a located hole, not a dependency. A name a block or a function binds in the
 type namespace, such as a local `use`, a local type alias or a generic type
 parameter, shadows a declared child module of the same name in Rust, and klin
 still reads a bare path through that name as a dependency on the child.

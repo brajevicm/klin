@@ -63,14 +63,15 @@ fn resolved(
     specifier: &str,
 ) {
     let before = builder.holes.len();
-    let base = if relative(specifier) {
-        joined(directory(site.file), specifier).map(Ok)
-    } else {
-        paths.and_then(|scope| scope.resolve(specifier))
+    let reaches = |base: &str| {
+        candidates(base)
+            .iter()
+            .any(|file| modules.contains_key(file.as_str()))
+            || builder.topology.holds(&manifest(base))
     };
-    match base {
-        Some(Ok(base)) => dependency(builder, modules, site, specifier, &base),
-        Some(Err(why)) => builder.hole_at(site.file, site.line, site.start_byte, site.text, why),
+    match located(paths, site.file, specifier, reaches) {
+        Some(Ok((base, lookup))) => dependency(builder, modules, site, specifier, &base, lookup),
+        Some(Err(why)) => hole(builder, site, why),
         None => builder.external += 1,
     }
     if !relative(specifier) {
@@ -80,12 +81,101 @@ fn resolved(
     }
 }
 
+/// The path a specifier names before the candidate rule, in TypeScript's order: relative, then
+/// a paths rule, then a written `baseUrl`, where the first `baseUrl` that `reaches` a held file
+/// wins. None is external; Err is a local name klin cannot prove.
+fn located(
+    paths: Option<super::typescript_paths::FilePaths<'_>>,
+    file: &str,
+    specifier: &str,
+    reaches: impl Fn(&str) -> bool,
+) -> Option<Result<(String, Lookup), String>> {
+    if relative(specifier) {
+        return joined(directory(file), specifier).map(|base| Ok((base, Lookup::Named)));
+    }
+    let scope = paths?;
+    match scope.resolve(specifier) {
+        Some(found) => Some(found.map(|base| (base, Lookup::Named))),
+        None => {
+            let (mut bases, proved) = scope.under_base_url(specifier)?;
+            let chosen = match bases.len() {
+                1 => 0,
+                _ => bases.iter().position(|base| reaches(base)).unwrap_or(0),
+            };
+            Some(Ok((bases.swap_remove(chosen), Lookup::BaseUrl { proved })))
+        }
+    }
+}
+
+/// How a path was named. A relative or paths name that reaches no held file is judged by its
+/// form. A `baseUrl` name that reaches none is external, as TypeScript then tries packages, and
+/// one that reaches a held file is a hole where klin cannot prove the config.
+#[derive(Clone, Copy)]
+enum Lookup {
+    Named,
+    BaseUrl { proved: bool },
+}
+
+impl Lookup {
+    /// Why one held target is not proved: an unproved `baseUrl` config, or a directory whose
+    /// `package.json` may name another entry point than its index file.
+    fn doubt(
+        &self,
+        topology: &Topology,
+        specifier: &str,
+        base: &str,
+        target: &str,
+    ) -> Option<String> {
+        let Lookup::BaseUrl { proved } = self else {
+            return None;
+        };
+        if !proved {
+            return Some(format!(
+                "{specifier} may be a baseUrl import whose configuration klin cannot prove"
+            ));
+        }
+        let manifest = manifest(base);
+        (target.starts_with(&format!("{base}/")) && topology.holds(&manifest)).then(|| {
+            format!("{specifier} names a directory whose {manifest} may choose another entry point")
+        })
+    }
+
+    /// Whether a name that reaches no held TypeScript file is external: a `baseUrl` miss with no
+    /// `package.json` that may name an entry point, as TypeScript then tries packages, a file of
+    /// another kind, or a bare name that may be a package.
+    fn misses_outside(
+        &self,
+        topology: &Topology,
+        specifier: &str,
+        base: &str,
+        candidates: &[String],
+    ) -> bool {
+        match self {
+            Lookup::BaseUrl { .. } => !topology.holds(&manifest(base)),
+            Lookup::Named => {
+                another_kind(topology, base, candidates)
+                    || !relative(specifier) && package_name(specifier)
+            }
+        }
+    }
+}
+
+/// The `package.json` of the directory a path names, which may name its entry point.
+fn manifest(base: &str) -> String {
+    format!("{base}/package.json")
+}
+
+fn hole(builder: &mut Builder, site: &Site, why: String) {
+    builder.hole_at(site.file, site.line, site.start_byte, site.text, why);
+}
+
 fn dependency(
     builder: &mut Builder,
     modules: &BTreeMap<&str, usize>,
     site: &Site,
     specifier: &str,
     base: &str,
+    lookup: Lookup,
 ) {
     let topology = builder.topology;
     let candidates = candidates(base);
@@ -94,30 +184,30 @@ fn dependency(
         .filter(|file| modules.contains_key(file.as_str()))
         .collect();
     match held.as_slice() {
-        [target] => builder.depend_at(
-            site.from,
-            modules[target.as_str()],
-            site.file,
-            site.line,
-            site.start_byte,
-        ),
-        [] if another_kind(topology, base, &candidates) => builder.external += 1,
-        [] if !relative(specifier) && package_name(specifier) => builder.external += 1,
-        [] => builder.hole_at(
-            site.file,
-            site.line,
-            site.start_byte,
-            site.text,
+        [target] => match lookup.doubt(topology, specifier, base, target) {
+            Some(why) => hole(builder, site, why),
+            None => builder.depend_at(
+                site.from,
+                modules[target.as_str()],
+                site.file,
+                site.line,
+                site.start_byte,
+            ),
+        },
+        [] if lookup.misses_outside(topology, specifier, base, &candidates) => {
+            builder.external += 1
+        }
+        [] => hole(
+            builder,
+            site,
             format!(
                 "{specifier} names no TypeScript file the tree holds: {}",
                 candidates.join(", ")
             ),
         ),
-        _ => builder.hole_at(
-            site.file,
-            site.line,
-            site.start_byte,
-            site.text,
+        _ => hole(
+            builder,
+            site,
             format!(
                 "{specifier} names more than one TypeScript file: {}",
                 held.iter()

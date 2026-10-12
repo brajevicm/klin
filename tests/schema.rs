@@ -99,7 +99,8 @@ fn convention_schema(properties: &serde_json::Map<String, Value>) {
 
 fn layering_schema(properties: &serde_json::Map<String, Value>) {
     let layer = &properties["layering"]["anyOf"][1];
-    assert_eq!(layer["required"][0], "layers");
+    assert_eq!(layer["anyOf"][0]["required"][0], "layers");
+    assert_eq!(layer["anyOf"][1]["required"][0], "acyclic");
     assert_eq!(
         layer["properties"]["layers"]["additionalProperties"]["required"][0],
         "in"
@@ -278,6 +279,13 @@ const AGREED: &[(&str, bool)] = &[
         false,
     ),
     (r#"{"layering": {}}"#, false),
+    (r#"{"layering": {"acyclic": true}}"#, true),
+    (r#"{"layering": {"acyclic": false}}"#, false),
+    (r#"{"layering": {"in": "src"}}"#, false),
+    (
+        r#"{"layering": {"acyclic": false, "layers": {"core": {"in": "src"}}}}"#,
+        true,
+    ),
     (
         r#"{"conventions": {"a": {"text": "x", "remedy": "Do.", "in": "src", "except": ["src/b"]}}}"#,
         true,
