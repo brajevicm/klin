@@ -9,7 +9,7 @@ use crate::contract::project::Project;
 use crate::engine::catalogue;
 use crate::sys::error::Error;
 use crate::{
-    checks::{complexity, doc_size},
+    checks::{complexity, doc_size, structural::layering},
     hook::radius,
     sys::write,
 };
@@ -32,6 +32,61 @@ pub fn pin(file: &Path, out: &mut String) -> Result<(), Error> {
     let held = read(file)?;
     let project = Project::of(loaded(file, root, held.is_some())?, root);
     let mut config = held.unwrap_or_default();
+    let (pins, written, said) = pins(&project);
+    for (section, fields) in pins {
+        if let (Some(Value::Object(held)), Value::Object(fields)) =
+            (config.get_mut(&section), &fields)
+        {
+            held.extend(fields.clone());
+            continue;
+        }
+        config.insert(section, fields);
+    }
+    write(file, &config)?;
+    let _ = writeln!(out, "{}\n{}", pinned(file, &written), said.join("\n"));
+    Ok(())
+}
+
+/// A starter policy for `policy --suggest`: the values `--pin` would write, and layers with
+/// `acyclic` where the configuration states no `layering`, each with what it would hold today.
+/// It writes nothing. Spec 11.6.
+pub fn suggest(project: &Project, out: &mut String) -> Result<(), Error> {
+    let (mut config, _, mut said) = pins(project);
+    if project.config.pinned(layering::SECTION).is_none()
+        && let Some(layers) = layering::suggested(project)?
+    {
+        config.insert(layering::SECTION.to_string(), layers.section);
+        said.insert(
+            0,
+            format!(
+                "held: {} {} and {}",
+                layering::SECTION,
+                counted(layers.forbidden, "forbidden edge"),
+                counted(layers.cycles, "cycle edge")
+            ),
+        );
+    }
+    let text = serde_json::to_string_pretty(&Value::Object(config)).unwrap_or_default();
+    let _ = writeln!(
+        out,
+        "suggested: a starter policy computed from this tree. klin wrote nothing: read it, and \
+         add to klin.json what you choose.\n{text}\n{}",
+        said.join("\n")
+    );
+    Ok(())
+}
+
+fn counted(count: usize, what: &str) -> String {
+    match count {
+        1 => format!("1 {what}"),
+        _ => format!("{count} {what}s"),
+    }
+}
+
+/// Today's guardrails the configuration does not state yet, by section, with the name and the
+/// `derived:` line of each one.
+fn pins(project: &Project) -> (Map<String, Value>, Vec<String>, Vec<String>) {
+    let mut config = Map::new();
     let mut written = Vec::new();
     let mut said = Vec::new();
     let suggested: [(&str, Suggest); 2] = [
@@ -39,23 +94,27 @@ pub fn pin(file: &Path, out: &mut String) -> Result<(), Error> {
         (doc_size::SECTION, document_pins),
     ];
     for (section, pins) in suggested {
-        if !excluded(&config, section) {
+        if !excluded(project, section) {
             added(
+                project,
                 &mut config,
-                section,
-                pins(&project),
+                (section, pins(project)),
                 &mut written,
                 &mut said,
             );
         }
     }
-    match radius_pins(&project) {
-        Ok(pins) => added(&mut config, RADIUS, pins, &mut written, &mut said),
+    match radius_pins(project) {
+        Ok(pins) => added(
+            project,
+            &mut config,
+            (RADIUS, pins),
+            &mut written,
+            &mut said,
+        ),
         Err(why) => said.push(format!("derived: no \"{RADIUS}\" pinned, because {why}")),
     }
-    write(file, &config)?;
-    let _ = writeln!(out, "{}\n{}", pinned(file, &written), said.join("\n"));
-    Ok(())
+    (config, written, said)
 }
 
 /// The configuration `--pin` adds to, validated like any other, or an empty one where the file
@@ -117,25 +176,23 @@ type Suggest = fn(&Project) -> Vec<Pin>;
 
 const RADIUS: &str = config::file::RADIUS.name;
 
-fn excluded(config: &Map<String, Value>, section: &str) -> bool {
-    config.get(section) == Some(&Value::Bool(false))
+fn excluded(project: &Project, section: &str) -> bool {
+    project.config.pinned(section) == Some(&Value::Bool(false))
 }
 
 /// Each suggested value the section does not state yet, and the name and line of each one
-/// written. A section that states nothing gains no empty object.
+/// added. A section that gains nothing gains no empty object.
 fn added(
+    project: &Project,
     config: &mut Map<String, Value>,
-    section: &str,
-    pins: Vec<Pin>,
+    (section, pins): (&str, Vec<Pin>),
     written: &mut Vec<String>,
     said: &mut Vec<String>,
 ) {
-    let mut fields = match config.get(section) {
-        Some(Value::Object(fields)) => fields.clone(),
-        _ => Map::new(),
-    };
+    let held = project.config.pinned(section).and_then(Value::as_object);
+    let mut fields = Map::new();
     for pin in pins {
-        if fields.contains_key(&pin.key) {
+        if held.is_some_and(|held| held.contains_key(&pin.key)) {
             continue;
         }
         fields.insert(pin.key.clone(), pin.value.into());

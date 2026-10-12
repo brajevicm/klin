@@ -237,6 +237,11 @@ fn fits(entry: &Value, item: &Value) {
 /// on its own has a row that fits it and a row that breaks it.
 const AGREED: &[(&str, bool)] = &[
     (r#"{}"#, true),
+    (
+        r#"{"$schema": "https://raw.githubusercontent.com/brajevicm/klin/main/schemas/klin.json"}"#,
+        true,
+    ),
+    (r#"{"$schema": 1}"#, false),
     (r#"{"version": 1}"#, false),
     (r#"{"nope": 1}"#, false),
     (

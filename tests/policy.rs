@@ -483,3 +483,57 @@ fn policy_json_error_names_the_configuration_the_run_loaded() {
     );
     assert_eq!(refused["config"]["present"], false, "{refused}");
 }
+
+/// `--suggest` derives layers from the tree's directories, lets each layer use the layers it
+/// mostly reaches today, counts what that policy would hold, and writes nothing. Spec 11.6.
+#[test]
+fn suggest_prints_layers_and_the_held_count_of_each_edge_kind_and_writes_nothing() {
+    let tree = Tree::new();
+    tree.write(
+        "app/page.ts",
+        "import { button } from \"../components/button\";\nimport { util } from \"../lib/util\";\nexport const page = button + util;\n",
+    );
+    tree.write(
+        "components/button.ts",
+        "import { util } from \"../lib/util\";\nexport const button = util;\n",
+    );
+    tree.write(
+        "components/card.ts",
+        "import { util } from \"../lib/util\";\nexport const card = util;\n",
+    );
+    tree.write(
+        "lib/util.ts",
+        "import { button } from \"../components/button\";\nexport const util = 1;\nexport const twice = button;\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    let start = run.out.find("\n{\n").expect("a JSON block");
+    let suggested: Value = serde_json::Deserializer::from_str(&run.out[start..])
+        .into_iter()
+        .next()
+        .expect("one JSON value")
+        .expect("valid JSON");
+    assert_eq!(
+        suggested["layering"],
+        serde_json::json!({
+            "acyclic": true,
+            "layers": {
+                "app": {"in": "app", "can_use": ["components", "lib"]},
+                "components": {"in": "components", "can_use": ["lib"]},
+                "lib": {"in": "lib", "can_use": []},
+            }
+        }),
+        "{}",
+        run.out
+    );
+    assert!(
+        run.says("held: layering 1 forbidden edge and 2 cycle edges"),
+        "{}",
+        run.out
+    );
+    assert!(!tree.path("klin.json").exists(), "{}", run.out);
+    assert_eq!(tree.status(), "", "{}", run.out);
+}
