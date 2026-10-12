@@ -126,6 +126,35 @@ impl Tree {
     pub fn listing_cost(&self) -> files::Listing {
         self.listing.take()
     }
+
+    /// The files a scoped check selects: every file with one of these extensions that a walk of
+    /// the whole tree reaches, with the ones its scope does not select moved to `excluded`. The
+    /// check's gate and `klin policy` both select through here, so the two counts agree.
+    /// Spec 8.6, 11.6.
+    pub fn scoped(
+        &self,
+        extensions: &[&str],
+        skip_hidden: bool,
+        selects: impl Fn(&str) -> bool,
+    ) -> Result<files::Found, Error> {
+        let skip_dirs = files::default_skip_dirs();
+        let wanted = files::Wanted {
+            extensions,
+            skip_dirs: &skip_dirs,
+            exclude: &[],
+            exclude_except: &[],
+            skip_hidden,
+        };
+        let root = self.root();
+        let mut found = files::found(root, || self.files(), &[root.to_path_buf()], &wanted)?;
+        let (kept, dropped) = found
+            .kept
+            .into_iter()
+            .partition(|file| selects(&files::relative(file, root)));
+        found.kept = kept;
+        found.excluded.extend::<Vec<PathBuf>>(dropped);
+        Ok(found)
+    }
 }
 
 /// Whether a walk of a tree reaches a file at this path: it descends no directory of the

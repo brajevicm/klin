@@ -337,31 +337,20 @@ fn measure(
     selection: &Selection,
     unchanged: Option<&measurement::Unchanged>,
 ) -> Result<measurement::Measurement, Error> {
-    let repo_root = tree.root();
-    let skip_dirs = files::default_skip_dirs();
-    let wanted = files::Wanted {
-        extensions: &selection.extensions,
-        skip_dirs: &skip_dirs,
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let mut found = files::found(
-        tree.root(),
-        || tree.files(),
-        &[repo_root.to_path_buf()],
-        &wanted,
-    )?;
-    let mut excluded = Vec::new();
-    found.kept.retain(|file| {
-        let keep = selection.scope.selects(&files::relative(file, repo_root));
-        if !keep {
-            excluded.push(file.clone());
-        }
-        keep
-    });
-    found.excluded.extend(excluded);
-    measurement::measure(found, tree, unchanged)
+    measurement::measure(selected(tree, selection)?, tree, unchanged)
+}
+
+fn selected(tree: &Tree, selection: &Selection) -> Result<files::Found, Error> {
+    tree.scoped(&selection.extensions, true, |path| {
+        selection.scope.selects(path)
+    })
+}
+
+/// How many files this gate judges in the working tree, which `klin policy` prints. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    Ok(selected(project.tree(), &spec(project)?.selection)?
+        .kept
+        .len())
 }
 
 fn applicable(tree: &Tree, selection: &Selection) -> Result<bool, Error> {

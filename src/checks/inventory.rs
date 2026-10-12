@@ -192,6 +192,22 @@ fn findings(judged: &[Site], functions: &[Function]) -> Vec<Finding> {
         .collect()
 }
 
+/// How many test files this gate judges in the working tree: each one its test convention and
+/// today's scope select. The gate judges the test files the base holds, so a window that
+/// deleted a test judges one more. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    let tests = Tests {
+        roots: Roots::new(&project.facts().found.test_roots),
+        scope: today(project)?,
+    };
+    Ok(project
+        .tree()
+        .files()?
+        .iter()
+        .filter(|path| tests.holds(path))
+        .count())
+}
+
 /// Today's scope, refused when an `in` selects no test the working tree holds.
 fn today(project: &Project) -> Result<Scope, Error> {
     let config = &project.config;

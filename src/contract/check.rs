@@ -851,6 +851,20 @@ impl Sink<'_> {
 
 pub type Run = fn(&Context<'_>, &mut Sink<'_>) -> Result<u8, Error>;
 
+pub type Count = fn(&Project) -> Result<usize, Error>;
+
+/// What one check judges in a tree, counted from its selection with no file read, which
+/// `klin policy` prints beside its state. Spec 11.6.
+#[derive(Clone, Copy)]
+pub struct Judges {
+    /// What the check counts: files, documents, manifests or test files.
+    pub of: &'static str,
+    /// The size of the selection in this tree, and `None` for a check only a run can count.
+    pub count: Option<Count>,
+    /// Why an Automatic check does not apply to a tree that lacks its facts.
+    pub absent: &'static str,
+}
+
 /// The values a check derives from the configuration, the survey and the derivation commit, with
 /// where each came from, and no file of either tree measured. The check's own run tells the same
 /// list, so a run and `klin policy` cannot disagree. Spec 11.6.

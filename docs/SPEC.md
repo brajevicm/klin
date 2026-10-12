@@ -556,7 +556,7 @@ Rules:
 | `klin check` | config, facts, window, caches | caches, and a temporary base worktree that it removes |
 | `klin status` | state, journal, config, facts, the release cache | the release cache, and the detached ask of section 11.9 |
 | `klin report`, `klin policy` | state, journal, config, facts | nothing |
-| `klin setup` | config, host files, the release cache | `klin.json` (only when absent, or under `--pin`), host integration files, the release cache, and the detached ask of section 11.9 |
+| `klin setup` | config, host files, facts, window, caches, the release cache | `klin.json` (only when absent, or under `--pin`), host integration files, caches and a temporary base worktree that it removes, the release cache, and the detached ask of section 11.9 |
 | `klin update` | the installed binary, the network | the installed binary, and under `--check` the release cache |
 
 Rules for `klin check`:
@@ -1724,6 +1724,18 @@ exits 2, also under `--json`.
   the worktree root's `klin.json` (section 5.1), so a `--config PATH` that
   names any other file is an invocation error, and `setup` writes nothing.
 - Prints what it changed and what it left as it was.
+- In a repository, ends with a baseline that a whole `klin check` measures
+  after the writes: one line that counts, by check and in the words of
+  `klin report`, the findings the tree holds, which the Stop holds as its
+  floor, and one line that names each check that judges nothing in this
+  tree. An active check that measured no file prints as
+  `NAME (0 of N files judged)` with the files it found, and a check that
+  does not run prints as `NAME (off)`. A count is of findings, the ratchet's
+  unit, so one file's escapes of one kind count once. A run that stops on an
+  error prints `klin holds no floor yet:` with the error in place of both
+  lines, and the exit code stays 0. Pinned by
+  `setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing` and
+  `setup_says_when_the_floor_holds_nothing` in `tests/install.rs`.
 - Exit 0 on success. Exit 2 on an invalid invocation or a write it could
   not make.
 
@@ -1826,6 +1838,24 @@ Section 13.2.
   `klin check SECTION` run prints it. In the JSON, a pinned dated schedule
   has the step in force as its `value`, with that step's date as `step` and
   the whole schedule as `schedule`.
+- Under each capability, one `judges:` line says what it judges in this
+  tree. A capability that runs prints `judges: N OF in this tree`, where OF is
+  what it counts: `files`, `documents`, `manifests` or `test files`. N is
+  the size of the selection that the check's gate also walks: the files of
+  its languages that its scope, its families or its conventions select, the
+  documents and manifests the survey found, or the test files its test
+  convention and today's scope select. `policy` reads no file to count them,
+  so N includes a file a run later finds unreadable or unattached, and the
+  `measured` count of a whole `klin check` is never larger. `inventory`
+  counts today's tests, so a window that deleted one judges one more.
+  `public-api` counts every structural file it reads, while its coverage
+  counts surfaces. An integration prints
+  `judges: the files its report names, which only a run counts`. A capability
+  that does not run prints `judges: 0 OF, because REASON`: the facts its
+  Automatic activation lacks, `it runs only under a section a person writes`,
+  or `a person set it to false`. Pinned by
+  `policy_names_what_each_check_judges_and_why_one_does_not_apply` and
+  `policy_counts_what_a_check_measures` in `tests/policy.rs`.
 - A tree where no capability runs still has a policy: `klin policy` lists
   each capability with the state that keeps it from running, and exits 0.
 - A whole `policy` also prints the build policy, pinned or derived from the
@@ -1992,8 +2022,12 @@ Section 13.3.
 
 `schema_version`, `command`, `config {path, present}`, `derivation
 {commit}`, `capabilities [{name, section, kind, activation, placement,
-state, values [{key, entry, value, provenance, rule, description}],
-limitations}]`, `build`, `accepted`, `state_dir`.
+state, judges {count, of, reason}, values [{key, entry, value, provenance,
+rule, description}], limitations}]`, `build`, `accepted`, `state_dir`.
+
+`judges` is what the capability judges in this tree, as section 11.6 counts
+it: `count` is null where only a run counts it, `of` names what is counted,
+and `reason` is null for a capability that runs.
 
 A value's `value` is typed as a pinned one would be. A `built-in` value
 carries its words for a person in `description`, and its `value` is null
@@ -3608,7 +3642,9 @@ roots, languages, document entries, manifests, test roots, reachability
 families, build commands or package structure (ADR 0040). The snapshot flags
 `--add` and `--force` are gone.
 
-`setup` MUST write only the config and the host integration of 19.3. The
+`setup` MUST write in the repository only the config and the host
+integration of 19.3. The caches its baseline (11.2) writes sit in the state
+directory, outside the tree git sees. The
 guard denies `setup` in every form from an agent. `setup` MUST NOT edit
 `.gitignore`, because klin writes nothing that git could see.
 

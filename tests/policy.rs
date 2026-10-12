@@ -653,3 +653,76 @@ fn suggest_derives_from_the_commit_setup_pin_derives_from() {
         suggested.out
     );
 }
+
+/// Each capability names how many files it judges in this tree, from the files it selects and
+/// with no check run, and the reason where it does not apply. #587, spec 11.6.
+#[test]
+fn policy_names_what_each_check_judges_and_why_one_does_not_apply() {
+    let tree = tree(r#"{"complexity": {"in": "src"}}"#);
+    tree.write("src/other.rs", CLEAN);
+    tree.write("scripts/tool.rs", CLEAN);
+
+    let run = tree.run(&["policy"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let complexity = block(&run.out, "complexity — runs");
+    assert!(
+        complexity.contains("judges: 2 files in this tree"),
+        "{}",
+        run.out
+    );
+    let escapes = block(&run.out, "escapes — runs");
+    assert!(
+        escapes.contains("judges: 3 files in this tree"),
+        "{}",
+        run.out
+    );
+    let lockfile = block(&run.out, "lockfile — not-applicable");
+    assert!(
+        lockfile.contains(
+            "judges: 0 manifests, because the tree holds no manifest klin reads a lockfile for"
+        ),
+        "{}",
+        run.out
+    );
+    let layering = block(&run.out, "layering — needs a section a person writes");
+    assert!(
+        layering.contains("judges: 0 files, because it runs only under a section a person writes"),
+        "{}",
+        run.out
+    );
+
+    let json = tree.run(&["policy", "--json"]).json();
+    assert_eq!(
+        capability(&json, "complexity")["judges"],
+        serde_json::json!({ "count": 2, "of": "files", "reason": null })
+    );
+    assert_eq!(capability(&json, "lockfile")["judges"]["count"], 0);
+}
+
+/// What `policy` counts for a check is what a whole `klin check` measures, for each check that
+/// runs here, so the two cannot disagree. #587, spec 11.6.
+#[test]
+fn policy_counts_what_a_check_measures() {
+    let tree = tree("{}");
+    tree.write("AGENTS.md", "Read the README.md first.\n");
+    tree.write("tests/one.rs", "#[test]\nfn one() {}\n");
+    tree.write("src/other.rs", CLEAN);
+    tree.base();
+
+    let policy = tree.run(&["policy", "--json"]).json();
+    let check = tree.run(&["check", "--json"]).json();
+    let mut compared = Vec::new();
+    for row in policy["capabilities"].as_array().into_iter().flatten() {
+        let name = row["name"].as_str().unwrap_or_default();
+        if row["state"] != "active" || row["judges"]["count"].is_null() || name == "public-api" {
+            continue;
+        }
+        let measured = &capability(&check, name)["coverage"]["measured"];
+        assert_eq!(
+            &row["judges"]["count"], measured,
+            "{name}: {policy}\n{check}"
+        );
+        compared.push(name.to_string());
+    }
+    assert!(compared.len() >= 6, "{compared:?}");
+}

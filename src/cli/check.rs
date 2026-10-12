@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::config::file::{FILENAME, ignored, located, notes};
 use crate::contract::project::Project;
@@ -50,12 +50,28 @@ fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         }
     }
     let loaded = Project::load(args.config.as_deref(), start, &catalogue::sections());
-    Ok(checked(args, start, loaded, out))
+    Ok(checked(args, start, loaded, out).finish(args, out))
 }
 
-/// One `klin check`: each run-scope step under the kind of error it can raise, every selected
-/// gate, and the check document or its text. Spec 7, 11.3, 11.7.
-fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut String) -> u8 {
+/// The check document of a whole `klin check` from `start`, which `setup` reads its baseline
+/// from. Spec 11.2, 11.7.
+pub fn document(start: &Path) -> Value {
+    let args = Args {
+        view: View::Json,
+        ..Args::default()
+    };
+    let loaded = Project::load(None, start, &catalogue::sections());
+    checked(&args, start, loaded, &mut String::new()).into_json()
+}
+
+/// One `klin check`: each run-scope step under the kind of error it can raise, and every
+/// selected gate, as the check document. Spec 7, 11.3, 11.7.
+fn checked(
+    args: &Args,
+    start: &Path,
+    loaded: Result<Project, Error>,
+    out: &mut String,
+) -> CheckDocument {
     let located = located(args.config.as_deref(), start);
     let named_nothing =
         args.config.is_some() && !located.as_ref().is_some_and(|file| file.exists());
@@ -85,7 +101,7 @@ fn checked(args: &Args, start: &Path, loaded: Result<Project, Error>, out: &mut 
         }
         report.stop(fault);
     }
-    report.finish(args, out)
+    report
 }
 
 fn measured(

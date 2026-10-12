@@ -875,6 +875,24 @@ fn grouped(count: usize) -> String {
     out
 }
 
+/// Every file of the languages complexity reads, split by the section's scope.
+fn selected(tree: &Tree, selection: &Selection) -> Result<files::Found, Error> {
+    let extensions: Vec<&str> = selection
+        .languages
+        .iter()
+        .flat_map(|language| language.extensions)
+        .copied()
+        .collect();
+    tree.scoped(&extensions, true, |path| selection.scope.selects(path))
+}
+
+/// How many files this gate judges in the working tree, which `klin policy` prints. Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    Ok(selected(project.tree(), &spec(project)?.selection)?
+        .kept
+        .len())
+}
+
 fn measure(
     tree: &Tree,
     selection: &Selection,
@@ -882,32 +900,7 @@ fn measure(
     changes: Option<&[Change]>,
     renamed: Option<&HashMap<String, String>>,
 ) -> Result<Sweep, Error> {
-    let extensions: Vec<&str> = selection
-        .languages
-        .iter()
-        .flat_map(|language| language.extensions)
-        .copied()
-        .collect();
-    let wanted = files::Wanted {
-        extensions: &extensions,
-        skip_dirs: &files::default_skip_dirs(),
-        exclude: &[],
-        exclude_except: &[],
-        skip_hidden: true,
-    };
-    let roots = [repo_root.to_path_buf()];
-    let mut found = files::found(tree.root(), || tree.files(), &roots, &wanted)?;
-    let mut scoped_out = Vec::new();
-    found.kept.retain(|file| {
-        let relative = files::relative(file, repo_root);
-        if selection.scope.selects(&relative) {
-            true
-        } else {
-            scoped_out.push(file.clone());
-            false
-        }
-    });
-    found.excluded.extend(scoped_out);
+    let found = selected(tree, selection)?;
     let mut measured: Vec<String> = found
         .kept
         .iter()

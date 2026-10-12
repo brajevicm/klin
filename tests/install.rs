@@ -1548,3 +1548,54 @@ fn setup_refuses_a_config_the_hooks_never_read() {
         "the hooks stayed inactive after setup"
     );
 }
+
+/// A first setup ends with what klin now holds as the floor, by check, and each check that
+/// judges nothing in this tree: an active one with the files it found and judged none of, and
+/// one that does not run as off. Spec 11.2, #587.
+#[test]
+fn setup_ends_with_the_held_debt_and_the_checks_that_judge_nothing() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub mod one;\npub mod two;\n");
+    for module in ["one", "two"] {
+        tree.write(
+            &format!("src/{module}.rs"),
+            "pub fn g(x: Option<i32>) -> i32 {\n    x.unwrap()\n}\n",
+        );
+    }
+    tree.write(
+        "Cargo.toml",
+        "[package]\nname = \"t\"\nversion = \"0.1.0\"\n",
+    );
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    let lines: Vec<&str> = run.out.lines().collect();
+    assert_eq!(
+        lines[lines.len() - 2..],
+        [
+            "klin now holds today's debt as the floor: 2 escape hatches.",
+            "Only new problems block. Blind spots here: lockfile (0 of 1 files judged), \
+             reachability (0 of 0 files judged), doc-size (off), doc-citations (off), \
+             inventory (off), layering (off), conventions (off), sarif (off).",
+        ],
+        "{}",
+        run.out
+    );
+}
+
+/// A tree with no debt says so, rather than naming an empty floor. #587.
+#[test]
+fn setup_says_when_the_floor_holds_nothing() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", "pub fn f() {}\n");
+    tree.base();
+
+    let run = tree.run(&["setup", "--host", "claude"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("klin now holds today's debt as the floor: nothing, no check found a problem."),
+        "{}",
+        run.out
+    );
+}

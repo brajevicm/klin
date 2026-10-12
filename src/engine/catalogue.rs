@@ -4,7 +4,7 @@
 //! no check names the catalogue. ADR 0036.
 
 use crate::config::key::{Key, Languages, Section, SectionShape};
-use crate::contract::check::{Activation, Derivation, Needs, Placement, Run};
+use crate::contract::check::{Activation, Derivation, Judges, Needs, Placement, Run};
 use crate::contract::project::Project;
 use crate::{
     checks::{
@@ -74,6 +74,8 @@ pub struct Row {
     pub run: Run,
     /// What `klin policy` prints for this check without a run. Spec 11.6.
     pub derivation: Derivation,
+    /// What the check judges in this tree, which `klin policy` counts without a run. Spec 11.6.
+    pub judges: Judges,
     pub needs: Needs,
     pub takes_scope: bool,
     /// Whether the section is a list of entries a person writes, each its own gate under its
@@ -97,6 +99,11 @@ pub const CATALOGUE: &[Row] = &[
         available: doc_size::applies,
         run: doc_size::gate,
         derivation: Derivation::Values(doc_size::derive),
+        judges: Judges {
+            of: "documents",
+            count: Some(doc_size::judges),
+            absent: "the tree holds no agent instruction file",
+        },
         needs: Needs::Nothing,
         takes_scope: false,
         labels: Labels {
@@ -118,6 +125,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.facts().found.documents.is_empty(),
         run: doc_citations::gate,
         derivation: Derivation::Values(doc_citations::derive),
+        judges: Judges {
+            of: "documents",
+            count: Some(doc_citations::judges),
+            absent: "the tree holds no document",
+        },
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -139,6 +151,11 @@ pub const CATALOGUE: &[Row] = &[
         available: lockfile::applies,
         run: lockfile::gate,
         derivation: Derivation::Values(lockfile::derive),
+        judges: Judges {
+            of: "manifests",
+            count: Some(lockfile::judges),
+            absent: "the tree holds no manifest klin reads a lockfile for",
+        },
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -160,6 +177,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: escapes::gate,
         derivation: Derivation::Nothing,
+        judges: Judges {
+            of: "files",
+            count: Some(escapes::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -181,6 +203,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: stubs::gate,
         derivation: Derivation::Nothing,
+        judges: Judges {
+            of: "files",
+            count: Some(stubs::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -202,6 +229,11 @@ pub const CATALOGUE: &[Row] = &[
         available: inventory::applies,
         run: inventory::gate,
         derivation: Derivation::Values(inventory::derive),
+        judges: Judges {
+            of: "test files",
+            count: Some(inventory::judges),
+            absent: "the tree holds no test root and no file its test convention marks",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -223,6 +255,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: complexity::gate,
         derivation: Derivation::Values(complexity::derive),
+        judges: Judges {
+            of: "files",
+            count: Some(complexity::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -244,6 +281,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: dead_symbols::gate,
         derivation: Derivation::Nothing,
+        judges: Judges {
+            of: "files",
+            count: Some(dead_symbols::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -265,6 +307,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: reachability::gate,
         derivation: Derivation::Values(reachability::derive),
+        judges: Judges {
+            of: "files",
+            count: Some(reachability::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheTree,
         takes_scope: false,
         labels: Labels {
@@ -286,6 +333,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |_| false,
         run: layering::gate,
         derivation: Derivation::Nothing,
+        judges: Judges {
+            of: "files",
+            count: Some(layering::judges),
+            absent: "it runs only under a section a person writes",
+        },
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -307,6 +359,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |project| !project.found_no_source_root(),
         run: public_api::gate,
         derivation: Derivation::ExplainedWhenNamed(public_api::explain),
+        judges: Judges {
+            of: "files",
+            count: Some(public_api::judges),
+            absent: "the tree holds no source root",
+        },
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {
@@ -328,6 +385,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |_| false,
         run: conventions::gate,
         derivation: Derivation::Explained(conventions::report::explain),
+        judges: Judges {
+            of: "files",
+            count: Some(conventions::judges),
+            absent: "it runs only under a section a person writes",
+        },
         needs: Needs::TheTree,
         takes_scope: true,
         labels: Labels {
@@ -349,6 +411,11 @@ pub const CATALOGUE: &[Row] = &[
         available: |_| false,
         run: sarif::gate,
         derivation: Derivation::Nothing,
+        judges: Judges {
+            of: "files",
+            count: None,
+            absent: "it runs only under a section a person writes",
+        },
         needs: Needs::TheCommit,
         takes_scope: false,
         labels: Labels {

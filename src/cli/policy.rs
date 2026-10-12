@@ -143,9 +143,57 @@ struct Capability<'a> {
     name: &'a str,
     check: &'static catalogue::Row,
     state: State,
+    judges: Judged,
     lines: Vec<String>,
     values: Vec<Value>,
     limitations: Vec<&'static str>,
+}
+
+/// What one capability judges in this tree: how many of what it counts, and why it judges
+/// nothing where it does not run. Spec 11.6.
+struct Judged {
+    count: Option<usize>,
+    of: &'static str,
+    reason: Option<&'static str>,
+}
+
+impl Judged {
+    /// A capability that runs: the size of its selection, or `None` where only a run counts.
+    fn running(check: &catalogue::Row, project: &Project) -> Result<Judged, Fault> {
+        let count = check.judges.count.map(|count| count(project)).transpose();
+        Ok(Judged {
+            count: count.map_err(fault(ErrorKind::Configuration))?,
+            of: check.judges.of,
+            reason: None,
+        })
+    }
+
+    /// A capability that does not run, which judges nothing, and why.
+    fn idle(check: &catalogue::Row, state: State) -> Judged {
+        Judged {
+            count: Some(0),
+            of: check.judges.of,
+            reason: Some(match state {
+                State::Excluded => "a person set it to false",
+                _ => check.judges.absent,
+            }),
+        }
+    }
+
+    fn line(&self) -> String {
+        match (self.count, self.reason) {
+            (Some(count), Some(reason)) => format!("judges: {count} {}, because {reason}", self.of),
+            (Some(count), None) => format!("judges: {count} {} in this tree", self.of),
+            (None, _) => format!(
+                "judges: the {} its report names, which only a run counts",
+                self.of
+            ),
+        }
+    }
+
+    fn json(&self) -> Value {
+        json!({ "count": self.count, "of": self.of, "reason": self.reason })
+    }
 }
 
 impl<'a> Capability<'a> {
@@ -156,6 +204,7 @@ impl<'a> Capability<'a> {
             name,
             check,
             state,
+            judges: Judged::idle(check, state),
             lines: limitation_lines(&limitations),
             values: Vec::new(),
             limitations,
@@ -170,6 +219,7 @@ impl<'a> Capability<'a> {
             "activation": self.check.activation.name(),
             "placement": self.check.placement.names(),
             "state": self.state.name(),
+            "judges": self.judges.json(),
             "values": self.values,
             "limitations": self.limitations,
         })
@@ -183,6 +233,7 @@ impl<'a> Capability<'a> {
             self.check.placement.names().join(", ")
         );
         let _ = writeln!(out, "{UNDER}activation: {}", self.check.activation.name());
+        let _ = writeln!(out, "{UNDER}{}", self.judges.line());
         for line in &self.lines {
             let _ = writeln!(out, "{UNDER}{line}");
         }
@@ -351,6 +402,7 @@ fn capability<'a>(
         name: &gate.name,
         check,
         state: State::Active,
+        judges: Judged::running(check, project)?,
         lines,
         values,
         limitations,

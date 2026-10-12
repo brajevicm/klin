@@ -10,7 +10,7 @@ use crate::hook::host::adapter::{Adapter, Filter, Hook, HookFile, Kind};
 use crate::sys::error::Error;
 use crate::sys::release;
 use crate::{
-    cli::starter,
+    cli::{baseline, starter},
     sys::{state, write},
 };
 
@@ -75,13 +75,22 @@ pub fn run(args: &Args, start: &Path, out: &mut String) -> Result<u8, Error> {
         starter::pin(file, out)?;
     }
     applied(&components, out)?;
-    if let Some(root) = &scope.repository {
-        starter::inert(root, out);
-    }
-    let _ = writeln!(out, "{}", scope.closing(hooks_written(&components)));
+    closed(&scope, hooks_written(&components), out);
     let expected = scope.repository.as_deref().and_then(config::file::expected);
     release::refresh(expected.as_ref());
     Ok(0)
+}
+
+/// What a run ends with: any inert line it saw, the closing line, and in a repository the
+/// baseline of what klin now holds. Spec 11.2.
+fn closed(scope: &Scope, wrote_hooks: bool, out: &mut String) {
+    if let Some(root) = &scope.repository {
+        starter::inert(root, out);
+    }
+    let _ = writeln!(out, "{}", scope.closing(wrote_hooks));
+    if let Some(root) = &scope.repository {
+        baseline::said(root, out);
+    }
 }
 
 /// Whether two paths name one file, through the directories that hold them, so a file that does

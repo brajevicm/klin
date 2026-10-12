@@ -322,6 +322,24 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     structural::language_extensions()
 }
 
+/// How many files this gate judges in the working tree: every structural file its scope
+/// selects. A file no module graph attaches is counted here and not measured by a run.
+/// Spec 11.6.
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    let policy = policy(&project.config, project.moves())?;
+    let found = measurement::every_structural(project.tree())?;
+    let root = project.root();
+    Ok(found
+        .kept
+        .iter()
+        .filter(|file| {
+            policy
+                .scope
+                .selects(&crate::facts::files::relative(file, root))
+        })
+        .count())
+}
+
 impl Side {
     fn current(&self, file: &str) -> String {
         self.current

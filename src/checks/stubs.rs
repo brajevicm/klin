@@ -2,6 +2,7 @@ use crate::checks::markers::{self, Kind, Language};
 use crate::config::key::Key;
 use crate::config::scope;
 use crate::contract::check::{Context, Sink};
+use crate::contract::project::Project;
 use crate::contract::ratchet::{Evaluator, Remedy};
 use crate::syntax::LanguageId;
 use crate::sys::error::Error;
@@ -76,6 +77,10 @@ const LANGUAGES: &[Language] = &[
 /// Every language name this section selects a file set by, with the extensions each selects.
 pub fn language_extensions() -> Vec<(&'static str, String)> {
     markers::language_extensions(&KIND)
+}
+
+pub fn judges(project: &Project) -> Result<usize, Error> {
+    markers::judges(&KIND, project)
 }
 
 pub const KIND: Kind = Kind {
