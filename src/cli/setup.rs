@@ -88,7 +88,11 @@ fn closed(scope: &Scope, wrote_hooks: bool, out: &mut String) {
         starter::inert(root, out);
     }
     let _ = writeln!(out, "{}", scope.closing(wrote_hooks));
-    if let Some(root) = &scope.repository {
+    let opted_in = scope
+        .repository
+        .as_deref()
+        .filter(|root| root.join(MARKER).is_file());
+    if let Some(root) = opted_in {
         baseline::said(root, out);
     }
 }

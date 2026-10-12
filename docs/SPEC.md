@@ -1724,7 +1724,8 @@ exits 2, also under `--json`.
   the worktree root's `klin.json` (section 5.1), so a `--config PATH` that
   names any other file is an invocation error, and `setup` writes nothing.
 - Prints what it changed and what it left as it was.
-- In a repository, ends with a baseline that a whole `klin check` measures
+- In a repository whose root holds a `klin.json` after the writes, ends with
+  a baseline that a whole `klin check` measures
   after the writes: one line that counts, by check and in the words of
   `klin report`, the findings the tree holds, which the Stop holds as its
   floor, and one line that names each check that judges nothing in this
@@ -1840,7 +1841,8 @@ Section 13.2.
   the whole schedule as `schedule`.
 - Under each capability, one `judges:` line says what it judges in this
   tree. A capability that runs prints `judges: N OF in this tree`, where OF is
-  what it counts: `files`, `documents`, `manifests` or `test files`. N is
+  what it counts: `files`, `documents`, `manifests` or `test files`, singular
+  when N is 1. N is
   the size of the selection that the check's gate also walks: the files of
   its languages that its scope, its families or its conventions select, the
   documents and manifests the survey found, or the test files its test

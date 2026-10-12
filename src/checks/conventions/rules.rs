@@ -177,12 +177,12 @@ pub(super) struct Code {
 }
 
 impl Rule<'_> {
-    /// Whether this rule reads the file at all: a code rule reads its own language only.
     /// Whether this rule applies to the file and reads it, which is when a run judges it.
     fn judges(&self, file: &str) -> bool {
         self.convention.applies(file) && self.reads(file)
     }
 
+    /// Whether this rule reads the file at all: a code rule reads its own language only.
     pub(super) fn reads(&self, file: &str) -> bool {
         match &self.code {
             Some(code) => pattern::language_of(file) == Some(code.language),

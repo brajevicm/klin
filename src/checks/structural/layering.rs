@@ -327,17 +327,11 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
 /// Spec 11.6.
 pub fn judges(project: &Project) -> Result<usize, Error> {
     let policy = policy(&project.config, project.moves())?;
-    let found = measurement::every_structural(project.tree())?;
-    let root = project.root();
-    Ok(found
-        .kept
-        .iter()
-        .filter(|file| {
-            policy
-                .scope
-                .selects(&crate::facts::files::relative(file, root))
-        })
-        .count())
+    let extensions = structural::selected_extensions(&[]).unwrap_or_default();
+    let found = project
+        .tree()
+        .scoped(&extensions, true, |path| policy.scope.selects(path))?;
+    Ok(found.kept.len())
 }
 
 impl Side {

@@ -181,9 +181,15 @@ impl Judged {
     }
 
     fn line(&self) -> String {
+        let of = |count| match count {
+            1 => self.of.strip_suffix('s').unwrap_or(self.of),
+            _ => self.of,
+        };
         match (self.count, self.reason) {
-            (Some(count), Some(reason)) => format!("judges: {count} {}, because {reason}", self.of),
-            (Some(count), None) => format!("judges: {count} {} in this tree", self.of),
+            (Some(count), Some(reason)) => {
+                format!("judges: {count} {}, because {reason}", of(count))
+            }
+            (Some(count), None) => format!("judges: {count} {} in this tree", of(count)),
             (None, _) => format!(
                 "judges: the {} its report names, which only a run counts",
                 self.of

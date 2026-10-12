@@ -35,7 +35,7 @@ fn held(document: &Value, capabilities: &[Value]) -> String {
     let mut counted: Vec<(String, u64)> = Vec::new();
     for capability in capabilities {
         let name = capability["name"].as_str().unwrap_or_default();
-        let count = capability["held"].as_u64().unwrap_or_default() + new(document, name);
+        let count = capability["held"].as_u64().unwrap_or_default() + new_findings(document, name);
         if count == 0 {
             continue;
         }
@@ -55,7 +55,7 @@ fn held(document: &Value, capabilities: &[Value]) -> String {
     }
 }
 
-fn new(document: &Value, name: &str) -> u64 {
+fn new_findings(document: &Value, name: &str) -> u64 {
     let findings = document["findings"].as_array().map(Vec::as_slice);
     findings
         .unwrap_or_default()

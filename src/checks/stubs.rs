@@ -79,6 +79,7 @@ pub fn language_extensions() -> Vec<(&'static str, String)> {
     markers::language_extensions(&KIND)
 }
 
+/// How many files the stub gate judges in the working tree. Spec 11.6.
 pub fn judges(project: &Project) -> Result<usize, Error> {
     markers::judges(&KIND, project)
 }
