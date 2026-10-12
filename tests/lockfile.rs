@@ -242,6 +242,73 @@ fn both_yarn_lockfile_formats_hold_and_missing_dependencies_fail() {
     }
 }
 
+const BUN: &str = r#"{
+  // bun writes JSONC
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "t",
+      "dependencies": {
+        "left-pad": "1.0.0",
+      },
+    },
+  },
+  "packages": {
+    "left-pad": ["left-pad@1.0.0", "", {}, "sha512-test"],
+    "@scope/pad": ["@scope/pad@2.0.0", "", {}, "sha512-test"],
+  }
+}
+"#;
+
+#[test]
+fn a_bun_lockfile_holds_its_dependencies_and_a_missing_one_fails() {
+    let tree = npm_tree_at("bun.lock", BUN);
+    tree.write(
+        "package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0", "@scope/pad": "2.0.0"}}"#,
+    );
+    let held = tree.run(&["check", "lockfile"]);
+    assert_eq!(held.code, 0, "{}", held.out);
+    assert!(!held.says("cannot read"), "{}", held.out);
+
+    tree.write(
+        "package.json",
+        r#"{"dependencies": {"left-pad": "1.0.0", "@scope/pad": "3.0.0", "right-pad": "2.0.0"}}"#,
+    );
+    let run = tree.run(&["check", "lockfile"]);
+    assert_eq!(run.code, 1, "{}", run.out);
+    assert!(
+        run.says("package.json:0  unlocked 1, unpinned 0, stale 0  right-pad")
+            && run.says("package.json:0  unlocked 0, unpinned 0, stale 1  @scope/pad"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
+fn a_turn_that_replaces_the_npm_lockfile_with_a_bun_lockfile_fails_nothing() {
+    let tree = npm_tree(NPM_V3);
+    tree.remove("package-lock.json");
+    tree.write("bun.lock", BUN);
+    let run = tree.run(&["check", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
+#[test]
+fn a_bun_lockfile_is_judged_over_a_stale_npm_lockfile_beside_it() {
+    let tree = Tree::new();
+    tree.write("package.json", r#"{"dependencies": {}}"#);
+    tree.write("bun.lock", BUN);
+    tree.write(
+        "package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {}}"#,
+    );
+    tree.base();
+    tree.write("package.json", r#"{"dependencies": {"left-pad": "1.0.0"}}"#);
+    let run = tree.run(&["check", "lockfile"]);
+    assert_eq!(run.code, 0, "{}", run.out);
+}
+
 #[test]
 fn a_new_npm_dependency_with_no_lockfile_entry_fails_as_new() {
     for lockfile in [NPM_V3, NPM_V1] {

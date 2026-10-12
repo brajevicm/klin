@@ -78,6 +78,9 @@ impl<'a> Derivation<'a> {
             });
             return;
         };
+        if package.entries.is_empty() {
+            return;
+        }
         if package.entries.iter().all(|entry| entry.target.is_err()) {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package {} ({manifest})", package.name),
@@ -572,23 +575,19 @@ fn own_declarations(facts: &FileFacts) -> Vec<Item> {
         .collect()
 }
 
-/// Why a package has no supported surface.
+/// Why a package whose metadata names entries has no supported surface.
 fn not_applicable(package: &Package) -> String {
-    match package.entries.first() {
-        None => "names no TypeScript source entry point in exports, types, typings, main or module"
-            .to_string(),
-        Some(entry) => format!(
-            "its {} names no TypeScript source klin supports: {}",
-            entry.field,
-            package
-                .entries
-                .iter()
-                .filter_map(|entry| entry.target.as_ref().err())
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("; ")
-        ),
-    }
+    format!(
+        "its {} names no TypeScript source klin supports: {}",
+        package.entries[0].field,
+        package
+            .entries
+            .iter()
+            .filter_map(|entry| entry.target.as_ref().err())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("; ")
+    )
 }
 
 /// The one source file a target's leaves lead to, or why there is not exactly one.

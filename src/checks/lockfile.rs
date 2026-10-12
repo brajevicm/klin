@@ -19,6 +19,7 @@ use crate::contract::project::Project;
 use crate::contract::ratchet::{self, Evaluator, Finding, Remedy};
 use crate::sys::changed;
 use crate::sys::error::Error;
+use crate::sys::jsonc;
 use crate::sys::record::Values;
 
 pub const SECTION: &str = "lockfile";
@@ -164,7 +165,12 @@ const FORMATS: &[Format] = &[
     },
     Format {
         manifest: "package.json",
-        lockfiles: &["package-lock.json", "pnpm-lock.yaml", "yarn.lock"],
+        lockfiles: &[
+            "bun.lock",
+            "package-lock.json",
+            "pnpm-lock.yaml",
+            "yarn.lock",
+        ],
         dependencies: npm_dependencies,
         locked: npm_locked,
     },
@@ -1021,6 +1027,7 @@ fn npm_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         "package-lock.json" => package_locked(at, bytes).map(Some),
         "pnpm-lock.yaml" => Ok(pnpm_locked(bytes)),
         "yarn.lock" => Ok(yarn_locked(bytes)),
+        "bun.lock" => bun_locked(at, bytes),
         _ => unreachable!("unsupported npm lockfile: {at}"),
     }
 }
@@ -1067,6 +1074,28 @@ fn npm_version(entry: &Value, packages: &serde_json::Map<String, Value>) -> Opti
             .and_then(version)
             .unwrap_or(format!("link:{target}")),
     )
+}
+
+/// Every package a `bun.lock` holds: the `name@version` that leads each entry of its `packages`
+/// mapping, whose key is the install path and not always the name. Bun records no resolution
+/// per workspace member, so every entry is pooled.
+fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
+    let data =
+        jsonc::parse(bytes).map_err(|why| Error(format!("{at} is not valid JSON: {why}")))?;
+    let Some(packages) = data.get("packages").and_then(Value::as_object) else {
+        return Ok(None);
+    };
+    Ok(packages
+        .values()
+        .map(|entry| {
+            let locator = entry.get(0).and_then(Value::as_str)?;
+            let at = locator.get(1..)?.find('@')? + 1;
+            Some(Entry::pooled(
+                &locator[..at],
+                Some(locator[at + 1..].to_string()),
+            ))
+        })
+        .collect())
 }
 
 /// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes, and

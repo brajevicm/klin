@@ -73,3 +73,16 @@ fired. The intentional case follows the reviewed acceptance workflow, and
   under `publish = false` and under `"private": true`.
 - A project that does not want this protection sets `"public_api": false`,
   and an intentional break is an accepted entry that a person writes.
+
+## Amendment: a package with no entry point says nothing (#574)
+
+Every Next.js app printed a permanent NOTE that its `package.json` "names no
+TypeScript source entry point". The NOTE named no action, so it was noise.
+
+A TypeScript package whose metadata names no entry point at all, with no
+`exports`, `types`, `typings`, `main` or `module`, is not applicable to
+`public-api` and gets no NOTE. The entry point decides this, never
+`"private": true`, so the decision above holds: a private package that names
+a TypeScript entry keeps its surface. App mode in #580 uses the same rule to
+find an app. A package whose named entries reach no supported source keeps
+its NOTE, because its metadata claims a contract that klin cannot read.

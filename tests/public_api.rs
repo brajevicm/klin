@@ -1357,11 +1357,11 @@ fn a_package_whose_entries_are_generated_or_absent_is_not_applicable() {
     assert_eq!(run.code, 0, "{}", run.out);
     assert!(run.says("0 TypeScript entry point(s)"), "{}", run.out);
     assert!(
-        run.says("TypeScript package @acme/built (web/package.json): its types names no TypeScript source klin supports: ./dist/index.d.ts names no file the tree holds")
-            && run.says("TypeScript package tools (tools/package.json): names no TypeScript source entry point"),
+        run.says("TypeScript package @acme/built (web/package.json): its types names no TypeScript source klin supports: ./dist/index.d.ts names no file the tree holds"),
         "{}",
         run.out
     );
+    assert!(!run.says("tools/package.json"), "{}", run.out);
 }
 
 #[test]
