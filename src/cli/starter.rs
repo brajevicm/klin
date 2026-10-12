@@ -33,18 +33,22 @@ pub fn pin(file: &Path, out: &mut String) -> Result<(), Error> {
     let held = read(file)?;
     let project = Project::of(loaded(file, root, held.is_some())?, root);
     let mut config = held.unwrap_or_default();
-    let (pins, written, said) = pins(&project);
-    for (section, fields) in pins {
-        if let (Some(Value::Object(held)), Value::Object(fields)) =
-            (config.get_mut(&section), &fields)
-        {
-            held.extend(fields.clone());
-            continue;
+    let pins = Pins::of(&project);
+    for (section, fields) in pins.config {
+        match (config.get_mut(&section), fields) {
+            (Some(Value::Object(held)), Value::Object(fields)) => held.extend(fields),
+            (_, fields) => {
+                config.insert(section, fields);
+            }
         }
-        config.insert(section, fields);
     }
     write(file, &config)?;
-    let _ = writeln!(out, "{}\n{}", pinned(file, &written), said.join("\n"));
+    let _ = writeln!(
+        out,
+        "{}\n{}",
+        pinned(file, &pins.written),
+        pins.said.join("\n")
+    );
     Ok(())
 }
 
@@ -52,7 +56,11 @@ pub fn pin(file: &Path, out: &mut String) -> Result<(), Error> {
 /// `acyclic` where the configuration states no `layering`, each with what it would hold today.
 /// It writes nothing. Spec 11.6.
 pub fn suggest(project: &Project, out: &mut String) -> Result<(), Error> {
-    let (mut config, _, mut said) = pins(project);
+    let Pins {
+        mut config,
+        mut said,
+        ..
+    } = Pins::of(project);
     if project.config.pinned(layering::SECTION).is_none()
         && let Some(layers) = layering::suggested(project)?
     {
@@ -79,36 +87,52 @@ pub fn suggest(project: &Project, out: &mut String) -> Result<(), Error> {
 
 /// Today's guardrails the configuration does not state yet, by section, with the name and the
 /// `derived:` line of each one.
-fn pins(project: &Project) -> (Map<String, Value>, Vec<String>, Vec<String>) {
-    let mut config = Map::new();
-    let mut written = Vec::new();
-    let mut said = Vec::new();
-    let suggested: [(&str, Suggest); 2] = [
-        (complexity::SECTION, complexity_pins),
-        (doc_size::SECTION, document_pins),
-    ];
-    for (section, pins) in suggested {
-        if !excluded(project, section) {
-            added(
-                project,
-                &mut config,
-                (section, pins(project)),
-                &mut written,
-                &mut said,
-            );
+#[derive(Default)]
+struct Pins {
+    config: Map<String, Value>,
+    written: Vec<String>,
+    said: Vec<String>,
+}
+
+impl Pins {
+    fn of(project: &Project) -> Pins {
+        let mut pins = Pins::default();
+        let suggested: [(&str, Suggest); 2] = [
+            (complexity::SECTION, complexity_pins),
+            (doc_size::SECTION, document_pins),
+        ];
+        for (section, suggest) in suggested {
+            if !excluded(project, section) {
+                pins.add(project, section, suggest(project));
+            }
+        }
+        match radius_pins(project) {
+            Ok(radius) => pins.add(project, RADIUS, radius),
+            Err(why) => pins
+                .said
+                .push(format!("derived: no \"{RADIUS}\" pinned, because {why}")),
+        }
+        pins
+    }
+
+    /// Each suggested value the section does not state yet, and the name and line of each one
+    /// added. A section that gains nothing gains no empty object.
+    fn add(&mut self, project: &Project, section: &str, pins: Vec<Pin>) {
+        let held = project.config.pinned(section).and_then(Value::as_object);
+        let mut fields = Map::new();
+        for pin in pins {
+            if held.is_some_and(|held| held.contains_key(&pin.key)) {
+                continue;
+            }
+            fields.insert(pin.key.clone(), pin.value.into());
+            self.written.push(format!("{section} {}", pin.key));
+            self.said.push(pin.line);
+        }
+        if !fields.is_empty() {
+            self.config
+                .insert(section.to_string(), Value::Object(fields));
         }
     }
-    match radius_pins(project) {
-        Ok(pins) => added(
-            project,
-            &mut config,
-            (RADIUS, pins),
-            &mut written,
-            &mut said,
-        ),
-        Err(why) => said.push(format!("derived: no \"{RADIUS}\" pinned, because {why}")),
-    }
-    (config, written, said)
 }
 
 /// The configuration `--pin` adds to, validated like any other, or an empty one where the file
@@ -172,30 +196,6 @@ const RADIUS: &str = config::file::RADIUS.name;
 
 fn excluded(project: &Project, section: &str) -> bool {
     project.config.pinned(section) == Some(&Value::Bool(false))
-}
-
-/// Each suggested value the section does not state yet, and the name and line of each one
-/// added. A section that gains nothing gains no empty object.
-fn added(
-    project: &Project,
-    config: &mut Map<String, Value>,
-    (section, pins): (&str, Vec<Pin>),
-    written: &mut Vec<String>,
-    said: &mut Vec<String>,
-) {
-    let held = project.config.pinned(section).and_then(Value::as_object);
-    let mut fields = Map::new();
-    for pin in pins {
-        if held.is_some_and(|held| held.contains_key(&pin.key)) {
-            continue;
-        }
-        fields.insert(pin.key.clone(), pin.value.into());
-        written.push(format!("{section} {}", pin.key));
-        said.push(pin.line);
-    }
-    if !fields.is_empty() {
-        config.insert(section.to_string(), Value::Object(fields));
-    }
 }
 
 /// klin writes nothing git can see, so an ignore line an older klin asked for does nothing.
