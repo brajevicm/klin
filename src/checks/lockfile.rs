@@ -1088,9 +1088,8 @@ fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         .values()
         .map(|entry| {
             let locator = entry.get(0).and_then(Value::as_str)?;
-            let name = yarn_name(locator)?;
-            let version = locator[name.len() + 1..].to_string();
-            Some(Entry::pooled(&name, Some(version)))
+            let (name, version) = split_locator(locator)?;
+            Some(Entry::pooled(name, Some(version.to_string())))
         })
         .collect())
 }
@@ -1350,15 +1349,20 @@ fn yarn_names(key: &str) -> Option<Vec<String>> {
 }
 
 fn yarn_name(selector: &str) -> Option<String> {
-    let selector = yaml_text(selector);
-    let at = if selector.starts_with('@') {
-        let slash = selector.find('/')?;
-        slash + 1 + selector[slash + 1..].find('@')?
+    split_locator(yaml_text(selector)).map(|(name, _)| name.to_string())
+}
+
+/// A `name@version` locator split at the separator, which follows the scope's `/` in a scoped
+/// name. Neither half may be empty.
+fn split_locator(locator: &str) -> Option<(&str, &str)> {
+    let at = if locator.starts_with('@') {
+        let slash = locator.find('/')?;
+        slash + 1 + locator[slash + 1..].find('@')?
     } else {
-        selector.find('@')?
+        locator.find('@')?
     };
-    let name = &selector[..at];
-    (!name.is_empty() && !selector[at + 1..].is_empty()).then(|| name.to_string())
+    let (name, version) = (&locator[..at], &locator[at + 1..]);
+    (!name.is_empty() && !version.is_empty()).then_some((name, version))
 }
 
 fn yaml_key(line: &str) -> Option<&str> {
