@@ -600,6 +600,19 @@ fn suggest_writes_nothing_to_the_state_directory() {
     assert!(written.is_empty(), "{written:?}\n{}", run.out);
 }
 
+/// In a repository klin never ran in, `--suggest` leaves no state directory behind. Spec 11.6.
+#[test]
+fn suggest_creates_no_state_directory() {
+    let tree = Tree::new();
+    tree.write("src/lib.rs", CLEAN);
+    tree.base();
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(!tree.state("").exists(), "{}", run.out);
+}
+
 /// Functions of `lines` lines each, under one file per function.
 fn long_functions(tree: &Tree, under: &str, lines: usize) {
     for at in 0..20 {

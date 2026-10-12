@@ -432,9 +432,10 @@ pub fn derivation(root: &Path, at: Option<&Path>) -> Option<String> {
 }
 
 /// The derivation commit when no window was chosen: the stamp's parent under the state
-/// directory, and HEAD without one. Spec 6.6.
+/// directory, and HEAD without one. It only reads the stamp, so it creates no state directory,
+/// which a read-only `policy` relies on. Spec 6.6, 11.6.
 pub fn unwindowed(root: &Path) -> Option<String> {
-    derivation(root, state::ready(root).ok().as_deref())
+    derivation(root, state::dir(root).as_deref())
 }
 
 /// The findings a stop's block already put in front of the agent under the current stamp. The

@@ -1866,9 +1866,11 @@ Section 13.2.
   that parses source outside `public-api`. It derives every value from the
   commit `setup --pin` derives from, the stamp's parent or HEAD and never a
   window's base, so it suggests what `--pin` would write. Like every form of
-  `policy`, it writes nothing to the state directory, a cache included.
-  Pinned by `suggest_derives_from_the_commit_setup_pin_derives_from` and
-  `suggest_writes_nothing_to_the_state_directory` in `tests/policy.rs`. klin
+  `policy`, it writes nothing to the state directory, a cache included, and
+  creates no state directory where none exists. Pinned by
+  `suggest_derives_from_the_commit_setup_pin_derives_from`,
+  `suggest_writes_nothing_to_the_state_directory` and
+  `suggest_creates_no_state_directory` in `tests/policy.rs`. klin
   computes the suggestion and a person writes the configuration, so 5.2 and
   5.4 hold. Pinned by
   `suggest_prints_layers_and_the_held_count_of_each_edge_kind_and_writes_nothing`
