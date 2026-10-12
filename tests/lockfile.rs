@@ -360,6 +360,14 @@ packages:\n  zod@3.24.2:\n    resolution: {integrity: sha512-test}\n",
         PNPM_V9,
     ),
     (
+        "pnpm-lock.yaml",
+        "lockfileVersion: 5.4\n\
+specifiers:\n  alias-package: npm:zod@3.24.2\n\
+dependencies:\n  alias-package: /zod/3.24.2\n\
+packages:\n  /zod/3.24.2:\n    resolution: {integrity: sha512-test}\n",
+        PNPM_V5,
+    ),
+    (
         "yarn.lock",
         "# yarn lockfile v1\n\n\"alias-package@npm:zod@3.24.2\":\n  version \"3.24.2\"\n",
         YARN_V1,
@@ -399,6 +407,17 @@ fn an_npm_alias_is_judged_against_the_lockfile_in_every_npm_format() {
             stale.says("unlocked 0, unpinned 0, stale 1  alias-package"),
             "{name}: {}",
             stale.out
+        );
+
+        tree.write(
+            "package.json",
+            r#"{"dependencies": {"alias-package": "npm:another-package@3.24.2"}}"#,
+        );
+        let swapped = tree.run(&["check", "lockfile"]);
+        assert!(
+            swapped.says("unlocked 0, unpinned 0, stale 1  alias-package"),
+            "{name}: {}",
+            swapped.out
         );
 
         tree.write(

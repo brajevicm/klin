@@ -1365,6 +1365,30 @@ fn a_package_whose_entries_are_generated_or_absent_is_not_applicable() {
 }
 
 #[test]
+fn a_package_whose_entry_field_is_malformed_is_said() {
+    let tree = Tree::new();
+    tree.write("klin.json", "{}");
+    tree.write(
+        "web/package.json",
+        r#"{"name":"@acme/library","types":123}"#,
+    );
+    tree.write("web/src/index.ts", "export const shown = 1;\n");
+    tree.write("lib/package.json", r#"{"name":"@acme/empty","exports":{}}"#);
+    tree.write("lib/src/index.ts", "export const shown = 1;\n");
+    tree.base();
+
+    let run = by_hand(&tree);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(
+        run.says("TypeScript package @acme/library (web/package.json): states types with no entry path klin can read")
+            && run.says("TypeScript package @acme/empty (lib/package.json): states exports with no entry path klin can read"),
+        "{}",
+        run.out
+    );
+}
+
+#[test]
 fn a_private_package_with_a_typescript_entry_is_still_a_surface() {
     let tree = Tree::new();
     tree.write("klin.json", "{}");

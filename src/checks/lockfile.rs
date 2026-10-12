@@ -64,6 +64,8 @@ struct Dependency {
     registry: bool,
     exact: bool,
     pins: Vec<String>,
+    /// The package an npm `npm:` alias installs under `name`, which the lockfile must record.
+    alias: Option<String>,
 }
 
 impl Dependency {
@@ -74,6 +76,7 @@ impl Dependency {
             registry: true,
             exact: true,
             pins: Vec::new(),
+            alias: None,
         }
     }
 
@@ -655,12 +658,8 @@ fn taken(deps: Vec<Dependency>, locked: &Locked, importer: &str) -> BTreeMap<Str
     deps.into_iter()
         .map(|dep| {
             let unlocked = dep.registry && !locked.names.contains(&dep.package);
-            let stale = dep.registry
-                && !unlocked
-                && !dep.pins.is_empty()
-                && !locked
-                    .versions(importer, &dep.package)
-                    .is_some_and(|versions| pinned(&dep.pins, versions));
+            let stale =
+                dep.registry && !unlocked && stale(&dep, locked.versions(importer, &dep.package));
             (
                 dep.name,
                 values(unlocked, dep.registry && !dep.exact, stale),
@@ -669,9 +668,40 @@ fn taken(deps: Vec<Dependency>, locked: &Locked, importer: &str) -> BTreeMap<Str
         .collect()
 }
 
-fn pinned(pins: &[String], versions: &HashSet<String>) -> bool {
+/// Whether the lockfile installs something else than the manifest names: another package under
+/// an alias or a plain name, or no version that holds a pin. A lockfile that records no version
+/// for the name gives a range nothing to compare.
+fn stale(dep: &Dependency, versions: Option<&HashSet<String>>) -> bool {
+    let installs: Option<Vec<&str>> = versions.map(|versions| {
+        versions
+            .iter()
+            .filter_map(|version| {
+                let (alias, version) = recorded(version);
+                (alias == dep.alias.as_deref()).then_some(version)
+            })
+            .collect()
+    });
+    let swapped = versions.is_some_and(|versions| !versions.is_empty())
+        && installs.as_ref().is_some_and(Vec::is_empty);
+    swapped
+        || (!dep.pins.is_empty() && !installs.is_some_and(|installs| pinned(&dep.pins, &installs)))
+}
+
+fn pinned(pins: &[String], versions: &[&str]) -> bool {
     pins.iter()
         .all(|pin| versions.iter().any(|version| holds(pin, version)))
+}
+
+/// A recorded version split into the package an `npm:` alias installs, and the version.
+fn recorded(version: &str) -> (Option<&str>, &str) {
+    match version.strip_prefix("npm:").and_then(split_locator) {
+        Some((alias, version)) => (Some(alias), version),
+        None => (None, version),
+    }
+}
+
+fn aliased(alias: &str, version: &str) -> String {
+    format!("npm:{alias}@{version}")
 }
 
 fn holds(pin: &str, version: &str) -> bool {
@@ -1012,15 +1042,16 @@ fn npm_dependency(name: &str, spec: &str) -> Dependency {
     if spec.starts_with("catalog:") {
         return Dependency::named(name);
     }
-    let (registry, version) = match spec.strip_prefix("npm:") {
-        Some(target) => (
-            true,
-            split_locator(target).map_or("", |(_, version)| version),
-        ),
-        None => (npm_registry(spec), spec),
+    let (registry, version, alias) = match spec.strip_prefix("npm:") {
+        Some(target) => match split_locator(target) {
+            Some((alias, version)) => (true, version, Some(alias)),
+            None => (true, "", Some(target)),
+        },
+        None => (npm_registry(spec), spec, None),
     };
     Dependency {
         registry,
+        alias: alias.map(str::to_string),
         exact: npm_exact(version),
         pins: npm_exact(version)
             .then(|| version.to_string())
@@ -1072,7 +1103,12 @@ fn package_locked(at: &str, bytes: &[u8]) -> Result<Vec<Entry>, Error> {
                 true => Entry::pooled(name, None),
                 false => Entry::resolved(
                     name,
-                    npm_version(entry, packages),
+                    npm_version(entry, packages).map(|version| {
+                        match entry.get("name").and_then(Value::as_str) {
+                            Some(alias) if alias != name => aliased(alias, &version),
+                            _ => version,
+                        }
+                    }),
                     above.trim_end_matches('/'),
                 ),
             })
@@ -1118,7 +1154,7 @@ fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
         };
         out.push(Entry::pooled(name, Some(version.to_string())));
         if key != name {
-            out.push(Entry::pooled(key, Some(version.to_string())));
+            out.push(Entry::pooled(key, Some(aliased(name, version))));
         }
     }
     Ok(Some(out))
@@ -1147,12 +1183,12 @@ fn pnpm_importers(text: &str) -> Vec<Entry> {
         if let Some(importer) = pnpm_table(&keys)
             && !value.is_empty()
         {
-            out.push(Entry::resolved(key, Some(pnpm_resolved(value)), &importer));
+            out.push(Entry::resolved(key, Some(pnpm_installs(value)), &importer));
         } else if key == "version"
             && let Some((name, above)) = keys.split_last()
             && let Some(importer) = pnpm_table(above)
         {
-            out.push(Entry::resolved(name, Some(pnpm_resolved(value)), &importer));
+            out.push(Entry::resolved(name, Some(pnpm_installs(value)), &importer));
         }
         path.push((indent, key.to_string()));
     }
@@ -1169,6 +1205,24 @@ fn pnpm_table(keys: &[&str]) -> Option<String> {
                 .to_string(),
         ),
         _ => None,
+    }
+}
+
+/// What an importer's entry installs: its version, and the package an alias names before it.
+fn pnpm_installs(value: &str) -> String {
+    let version = pnpm_resolved(value);
+    let head = value.split(['(', '_']).next().unwrap_or(value);
+    let alias = match head.strip_prefix('/') {
+        Some(path) => split_locator(path)
+            .map(|(alias, _)| alias)
+            .or_else(|| path.rsplit_once('/').map(|(alias, _)| alias)),
+        None => split_locator(head)
+            .filter(|_| !local(value))
+            .map(|(alias, _)| alias),
+    };
+    match alias {
+        Some(alias) => aliased(alias, &version),
+        None => version,
     }
 }
 
@@ -1284,18 +1338,20 @@ fn yarn_locked(bytes: &[u8]) -> Option<Vec<Entry>> {
 
 fn yarn_entries(lines: std::str::Lines<'_>, strict: bool) -> Option<Vec<Entry>> {
     let mut out = Vec::new();
-    let mut names: Vec<String> = Vec::new();
+    let mut names: Vec<(String, Option<String>)> = Vec::new();
     for line in lines.filter(|line| !yarn_blank(line.trim())) {
         let trimmed = line.trim();
         if !line.starts_with(char::is_whitespace) {
             names = yarn_top(trimmed, strict)?;
-            out.extend(names.iter().map(|name| Entry::pooled(name, None)));
+            out.extend(names.iter().map(|(name, _)| Entry::pooled(name, None)));
         } else if let Some(version) = yarn_recorded(trimmed) {
-            out.extend(
-                names
-                    .iter()
-                    .map(|name| Entry::pooled(name, Some(version.clone()))),
-            );
+            out.extend(names.iter().map(|(name, alias)| {
+                let version = match alias {
+                    Some(alias) => aliased(alias, &version),
+                    None => version.clone(),
+                };
+                Entry::pooled(name, Some(version))
+            }));
         }
     }
     Some(out)
@@ -1305,7 +1361,7 @@ fn yarn_blank(trimmed: &str) -> bool {
     trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---"
 }
 
-fn yarn_top(trimmed: &str, strict: bool) -> Option<Vec<String>> {
+fn yarn_top(trimmed: &str, strict: bool) -> Option<Vec<(String, Option<String>)>> {
     match yaml_key(trimmed).and_then(yarn_names) {
         Some(found) => Some(found),
         None if strict => None,
@@ -1370,7 +1426,7 @@ fn yarn_locators(text: &str) -> Option<Vec<Entry>> {
     None
 }
 
-fn yarn_names(key: &str) -> Option<Vec<String>> {
+fn yarn_names(key: &str) -> Option<Vec<(String, Option<String>)>> {
     let names = yaml_text(key)
         .split(',')
         .map(yarn_name)
@@ -1378,8 +1434,15 @@ fn yarn_names(key: &str) -> Option<Vec<String>> {
     (!names.is_empty()).then_some(names)
 }
 
-fn yarn_name(selector: &str) -> Option<String> {
-    split_locator(yaml_text(selector)).map(|(name, _)| name.to_string())
+/// The name a selector installs, and the package it installs there when the selector is an
+/// `npm:` alias, which Yarn 2 and later tell apart from `npm:<version>` by the package before it.
+fn yarn_name(selector: &str) -> Option<(String, Option<String>)> {
+    let (name, rest) = split_locator(yaml_text(selector))?;
+    let alias = rest
+        .strip_prefix("npm:")
+        .and_then(split_locator)
+        .map(|(alias, _)| alias.to_string());
+    Some((name.to_string(), alias))
 }
 
 /// A `name@version` locator split at the separator, which follows the scope's `/` in a scoped
@@ -1416,21 +1479,13 @@ fn npm_nested(held: Option<&Value>, importer: Option<&str>, out: &mut Vec<Entry>
                 entry
                     .get("version")
                     .and_then(Value::as_str)
-                    .map(|version| unaliased(version).to_string()),
+                    .map(str::to_string),
                 importer,
             ),
             None => Entry::pooled(name, None),
         });
         npm_nested(entry.get("dependencies"), None, out);
     }
-}
-
-/// The version an `npm:name@version` alias records, and any other version as it is.
-fn unaliased(version: &str) -> &str {
-    version
-        .strip_prefix("npm:")
-        .and_then(split_locator)
-        .map_or(version, |(_, version)| version)
 }
 
 fn json(at: &str, bytes: &[u8]) -> Result<Value, Error> {

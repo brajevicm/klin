@@ -4969,9 +4969,14 @@ carries 0 for every value and can never fail. An npm `catalog:` or
 catalog states, which klin does not read, so it is judged for `unlocked` only.
 An `npm:<package>@<version>` alias resolves from the registry: its version
 part decides `unpinned` and `stale`, and the lockfile entry is the one for the
-alias, the name the manifest installs it under. npm version 1 records that
-entry's version as `npm:<package>@<version>`, and `bun.lock` records it under
-the install-path key, with the real package in its locator. The manifest tables read are
+alias, the name the manifest installs it under. That entry must also install
+the package the alias names, so an alias whose package changed while the
+lockfile kept the old one is `stale`, at any version, and so is a plain name
+the lockfile installs as an alias. The lockfile states the aliased package in
+the entry's `name` (npm version 2 and later), its `npm:<package>@<version>`
+version (npm version 1), its `<package>@<version>` or `/<package>/<version>`
+version (pnpm), the `npm:<package>@<version>` part of its selector (Yarn) and
+the locator under its install-path key (`bun.lock`). The manifest tables read are
 Cargo's `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and
 `[workspace.dependencies]`, including the `[dependencies.name]` sub-table
 form, the dotted-key form, an inline table on one line or several, and any
@@ -5445,11 +5450,14 @@ checked-in TypeScript, TSX or declaration source file: an `exports` string,
 each `exports` subpath whose target reduces to exactly one such file across
 its conditions, and, without `exports`, the first of `types`, `typings`,
 `main` and `module` that names one. Generated JavaScript is never mapped back
-to source, and `src/index.ts` is never guessed. A package whose metadata names
-no entry at all, such as an app, is not applicable and says nothing (#574). A
+to source, and `src/index.ts` is never guessed. A package whose metadata states none of
+`exports`, `types`, `typings`, `main` and `module`, such as an app, is not
+applicable and says nothing (#574). A package that states one of them with no
+path klin can read, such as `"types": 123` or `"exports": {}`, keeps its NOTE. A
 package none of whose named entries is a supported source is not applicable
 and is said so on a `NOTE:` line, not a hole. Pinned by
-`a_package_whose_entries_are_generated_or_absent_is_not_applicable`.
+`a_package_whose_entries_are_generated_or_absent_is_not_applicable` and
+`a_package_whose_entry_field_is_malformed_is_said`.
 Publication metadata does not decide a surface: a Cargo package with
 `publish = false` and an npm package with
 `"private": true` keep their surfaces, because a workspace sibling, a path

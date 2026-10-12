@@ -50,7 +50,11 @@ pub(super) fn derive(topology: &Topology, graph: &ModuleGraph, out: &mut Found) 
 struct Package {
     name: String,
     entries: Vec<Entry>,
+    /// The entry fields the metadata states, readable or not.
+    declared: Vec<&'static str>,
 }
+
+const ENTRY_FIELDS: &[&str] = &["exports", "types", "typings", "main", "module"];
 
 /// One subpath of a package: where it leads, or why it leads nowhere klin supports.
 struct Entry {
@@ -78,13 +82,13 @@ impl<'a> Derivation<'a> {
             });
             return;
         };
-        let Some(first) = package.entries.first() else {
+        if package.declared.is_empty() {
             return;
-        };
+        }
         if package.entries.iter().all(|entry| entry.target.is_err()) {
             out.inapplicable.push(Inapplicable {
                 what: format!("TypeScript package {} ({manifest})", package.name),
-                why: not_applicable(first.field, &package),
+                why: not_applicable(&package),
             });
             return;
         }
@@ -191,7 +195,16 @@ impl<'a> Derivation<'a> {
             Some(exports) => self.exports(exports, directory, &mut entries),
             None => entries.extend(self.direct(fields, directory)),
         }
-        Some(Package { name, entries })
+        let declared = ENTRY_FIELDS
+            .iter()
+            .copied()
+            .filter(|field| fields.contains_key(*field))
+            .collect();
+        Some(Package {
+            name,
+            entries,
+            declared,
+        })
     }
 
     /// The one root entry a package without `exports` names: the first of `types`, `typings`,
@@ -575,10 +588,17 @@ fn own_declarations(facts: &FileFacts) -> Vec<Item> {
         .collect()
 }
 
-/// Why a package whose metadata names entries has no supported surface.
-fn not_applicable(field: &str, package: &Package) -> String {
+/// Why a package whose metadata states entry fields has no supported surface.
+fn not_applicable(package: &Package) -> String {
+    let Some(first) = package.entries.first() else {
+        return format!(
+            "states {} with no entry path klin can read",
+            package.declared.join(", ")
+        );
+    };
     format!(
-        "its {field} names no TypeScript source klin supports: {}",
+        "its {} names no TypeScript source klin supports: {}",
+        first.field,
         package
             .entries
             .iter()
