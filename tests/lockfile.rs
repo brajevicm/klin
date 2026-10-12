@@ -339,6 +339,127 @@ fn a_bun_workspace_resolution_holds_an_exact_pin_on_a_sibling() {
     assert!(!run.says("stale 1"), "{}", run.out);
 }
 
+const ALIASED: &[(&str, &str, &str)] = &[
+    (
+        "package-lock.json",
+        r#"{"lockfileVersion": 3, "packages": {"": {},
+            "node_modules/alias-package": {"name": "zod", "version": "3.24.2"}}}"#,
+        NPM_V3,
+    ),
+    (
+        "package-lock.json",
+        r#"{"lockfileVersion": 1,
+            "dependencies": {"alias-package": {"version": "npm:zod@3.24.2"}}}"#,
+        NPM_V1,
+    ),
+    (
+        "pnpm-lock.yaml",
+        "lockfileVersion: '9.0'\n\
+importers:\n  .:\n    dependencies:\n      alias-package:\n        specifier: npm:zod@3.24.2\n        version: zod@3.24.2\n\
+packages:\n  zod@3.24.2:\n    resolution: {integrity: sha512-test}\n",
+        PNPM_V9,
+    ),
+    (
+        "yarn.lock",
+        "# yarn lockfile v1\n\n\"alias-package@npm:zod@3.24.2\":\n  version \"3.24.2\"\n",
+        YARN_V1,
+    ),
+    (
+        "yarn.lock",
+        "__metadata:\n  version: 6\n\n\"alias-package@npm:zod@3.24.2\":\n  version: 3.24.2\n  resolution: \"zod@npm:3.24.2\"\n",
+        YARN_V2,
+    ),
+    (
+        "bun.lock",
+        r#"{"lockfileVersion": 1, "packages": {"alias-package": ["zod@3.24.2", "", {}, "sha512-test"]}}"#,
+        BUN,
+    ),
+];
+
+#[test]
+fn an_npm_alias_is_judged_against_the_lockfile_in_every_npm_format() {
+    for (name, locked, without) in ALIASED {
+        let tree = Tree::new();
+        tree.write("package.json", r#"{"dependencies": {}}"#);
+        tree.write(name, locked);
+        tree.base();
+        tree.write(
+            "package.json",
+            r#"{"dependencies": {"alias-package": "npm:zod@3.24.2"}}"#,
+        );
+        let held = tree.run(&["check", "lockfile"]);
+        assert_eq!(held.code, 0, "{name}: {}", held.out);
+
+        tree.write(
+            "package.json",
+            r#"{"dependencies": {"alias-package": "npm:zod@3.25.0"}}"#,
+        );
+        let stale = tree.run(&["check", "lockfile"]);
+        assert!(
+            stale.says("unlocked 0, unpinned 0, stale 1  alias-package"),
+            "{name}: {}",
+            stale.out
+        );
+
+        tree.write(
+            "package.json",
+            r#"{"dependencies": {"alias-package": "npm:zod@3.24.2"}}"#,
+        );
+        tree.write(name, without);
+        let gone = tree.run(&["check", "lockfile"]);
+        assert_eq!(gone.code, 1, "{name}: {}", gone.out);
+        assert!(
+            gone.says("unlocked 1, unpinned 0, stale 0  alias-package"),
+            "{name}: {}",
+            gone.out
+        );
+    }
+}
+
+#[test]
+fn a_catalog_dependency_must_have_a_lockfile_entry() {
+    let catalogs: &[(&str, &str, &str)] = &[
+        (
+            "bun.lock",
+            r#"{"lockfileVersion": 1, "packages": {
+                "react": ["react@19.0.0", "", {}, "sha512-test"],
+                "jest": ["jest@29.0.0", "", {}, "sha512-test"]}}"#,
+            r#"{"lockfileVersion": 1, "packages": {
+                "react": ["react@19.0.0", "", {}, "sha512-test"]}}"#,
+        ),
+        (
+            "pnpm-lock.yaml",
+            "lockfileVersion: '9.0'\n\
+importers:\n  .:\n    dependencies:\n      jest:\n        specifier: 'catalog:testing'\n        version: 29.0.0\n      react:\n        specifier: 'catalog:'\n        version: 19.0.0\n\
+packages:\n  jest@29.0.0:\n    resolution: {integrity: sha512-test}\n  react@19.0.0:\n    resolution: {integrity: sha512-test}\n",
+            "lockfileVersion: '9.0'\n\
+importers:\n  .:\n    dependencies:\n      react:\n        specifier: 'catalog:'\n        version: 19.0.0\n\
+packages:\n  react@19.0.0:\n    resolution: {integrity: sha512-test}\n",
+        ),
+    ];
+    for (name, locked, without) in catalogs {
+        let tree = Tree::new();
+        tree.write("package.json", r#"{"dependencies": {}}"#);
+        tree.write(name, locked);
+        tree.base();
+        tree.write(
+            "package.json",
+            r#"{"dependencies": {"react": "catalog:", "jest": "catalog:testing"}}"#,
+        );
+        let held = tree.run(&["check", "lockfile"]);
+        assert_eq!(held.code, 0, "{name}: {}", held.out);
+
+        tree.write(name, without);
+        let gone = tree.run(&["check", "lockfile"]);
+        assert_eq!(gone.code, 1, "{name}: {}", gone.out);
+        assert!(
+            gone.says("unlocked 1, unpinned 0, stale 0  jest"),
+            "{name}: {}",
+            gone.out
+        );
+    }
+}
+
 #[test]
 fn a_new_npm_dependency_with_no_lockfile_entry_fails_as_new() {
     for lockfile in [NPM_V3, NPM_V1] {

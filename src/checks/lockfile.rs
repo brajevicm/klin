@@ -678,14 +678,19 @@ fn holds(pin: &str, version: &str) -> bool {
     let partial =
         pin.split('.').count() < 3 && pin.chars().all(|at| at.is_ascii_digit() || at == '.');
     version == pin
-        || version.starts_with("link:")
-        || version.starts_with("file:")
-        || version.starts_with("workspace:")
+        || local(version)
         || (partial
             && !version.contains('-')
             && version
                 .strip_prefix(pin)
                 .is_some_and(|rest| rest.starts_with('.')))
+}
+
+/// A version that resolves to a package in the tree, which has no registry release to compare.
+fn local(version: &str) -> bool {
+    ["link:", "file:", "workspace:"]
+        .iter()
+        .any(|protocol| version.starts_with(protocol))
 }
 
 fn values(unlocked: bool, unpinned: bool, stale: bool) -> Values {
@@ -992,18 +997,37 @@ fn npm_dependencies(at: &str, bytes: &[u8]) -> Result<Vec<Dependency>, Error> {
         };
         for (name, held) in named {
             let spec = held.as_str().unwrap_or_default();
-            found.entry(name.clone()).or_insert_with(|| Dependency {
-                registry: npm_registry(spec),
-                exact: npm_exact(spec),
-                pins: npm_exact(spec)
-                    .then(|| spec.to_string())
-                    .into_iter()
-                    .collect(),
-                ..Dependency::named(name)
-            });
+            found
+                .entry(name.clone())
+                .or_insert_with(|| npm_dependency(name, spec));
         }
     }
     Ok(found.into_values().collect())
+}
+
+/// One npm dependency from its specifier. A `catalog:` reference resolves from the registry at
+/// the version its catalog pins, which klin does not read, so it is judged only for `unlocked`.
+/// An `npm:` alias resolves from the registry at the version after the package it names.
+fn npm_dependency(name: &str, spec: &str) -> Dependency {
+    if spec.starts_with("catalog:") {
+        return Dependency::named(name);
+    }
+    let (registry, version) = match spec.strip_prefix("npm:") {
+        Some(target) => (
+            true,
+            split_locator(target).map_or("", |(_, version)| version),
+        ),
+        None => (npm_registry(spec), spec),
+    };
+    Dependency {
+        registry,
+        exact: npm_exact(version),
+        pins: npm_exact(version)
+            .then(|| version.to_string())
+            .into_iter()
+            .collect(),
+        ..Dependency::named(name)
+    }
 }
 
 /// Whether an npm specifier names a registry version at all. A `file:`, `link:`, `workspace:`,
@@ -1078,21 +1102,26 @@ fn npm_version(entry: &Value, packages: &serde_json::Map<String, Value>) -> Opti
 }
 
 /// Every package a `bun.lock` holds: the `name@version` that leads each entry of its `packages`
-/// mapping, whose key is the install path and not always the name. Bun records no resolution
-/// per workspace member, so every entry is pooled.
+/// mapping, and the entry's key where it differs, which is the install path and so the name an
+/// `npm:` alias installs under. Bun records no resolution per workspace member, so every entry is
+/// pooled.
 fn bun_locked(at: &str, bytes: &[u8]) -> Result<Option<Vec<Entry>>, Error> {
     let data = jsonc::parse(bytes).map_err(|why| invalid(at, why))?;
     let Some(packages) = data.get("packages").and_then(Value::as_object) else {
         return Ok(None);
     };
-    Ok(packages
-        .values()
-        .map(|entry| {
-            let locator = entry.get(0).and_then(Value::as_str)?;
-            let (name, version) = split_locator(locator)?;
-            Some(Entry::pooled(name, Some(version.to_string())))
-        })
-        .collect())
+    let mut out = Vec::new();
+    for (key, entry) in packages {
+        let Some((name, version)) = entry.get(0).and_then(Value::as_str).and_then(split_locator)
+        else {
+            return Ok(None);
+        };
+        out.push(Entry::pooled(name, Some(version.to_string())));
+        if key != name {
+            out.push(Entry::pooled(key, Some(version.to_string())));
+        }
+    }
+    Ok(Some(out))
 }
 
 /// Package keys in the `packages` mapping of the pnpm lockfile versions klin recognizes, and
@@ -1387,13 +1416,21 @@ fn npm_nested(held: Option<&Value>, importer: Option<&str>, out: &mut Vec<Entry>
                 entry
                     .get("version")
                     .and_then(Value::as_str)
-                    .map(str::to_string),
+                    .map(|version| unaliased(version).to_string()),
                 importer,
             ),
             None => Entry::pooled(name, None),
         });
         npm_nested(entry.get("dependencies"), None, out);
     }
+}
+
+/// The version an `npm:name@version` alias records, and any other version as it is.
+fn unaliased(version: &str) -> &str {
+    version
+        .strip_prefix("npm:")
+        .and_then(split_locator)
+        .map_or(version, |(_, version)| version)
 }
 
 fn json(at: &str, bytes: &[u8]) -> Result<Value, Error> {

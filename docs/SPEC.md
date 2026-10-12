@@ -4964,7 +4964,14 @@ starts with `=`, an npm specifier that starts with a digit and holds no
 operator and no wildcard segment, and every Go `require`, which states one
 version. A path, git or
 workspace dependency has no registry behind it and no version to pin, so it
-carries 0 for every value and can never fail. The manifest tables read are
+carries 0 for every value and can never fail. An npm `catalog:` or
+`catalog:<name>` specifier resolves from the registry at the version its
+catalog states, which klin does not read, so it is judged for `unlocked` only.
+An `npm:<package>@<version>` alias resolves from the registry: its version
+part decides `unpinned` and `stale`, and the lockfile entry is the one for the
+alias, the name the manifest installs it under. npm version 1 records that
+entry's version as `npm:<package>@<version>`, and `bun.lock` records it under
+the install-path key, with the real package in its locator. The manifest tables read are
 Cargo's `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]` and
 `[workspace.dependencies]`, including the `[dependencies.name]` sub-table
 form, the dotted-key form, an inline table on one line or several, and any
@@ -5078,6 +5085,8 @@ handful of files. Pinned by
 `a_turn_that_replaces_the_npm_lockfile_with_a_bun_lockfile_fails_nothing`,
 `a_bun_lockfile_is_judged_over_a_stale_npm_lockfile_beside_it`,
 `a_bun_workspace_resolution_holds_an_exact_pin_on_a_sibling`,
+`an_npm_alias_is_judged_against_the_lockfile_in_every_npm_format`,
+`a_catalog_dependency_must_have_a_lockfile_entry`,
 `a_malformed_lockfile_is_a_tool_error_naming_the_file`,
 `a_derived_manifest_klin_cannot_parse_is_a_note_and_every_other_manifest_is_judged`,
 `a_derived_manifest_that_parsed_at_the_base_and_does_not_parse_now_is_a_tool_error`,
