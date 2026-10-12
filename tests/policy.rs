@@ -580,3 +580,63 @@ fn suggest_names_no_layer_for_a_directory_a_path_cannot_name() {
     let accepted = tree.run(&["check", "layering"]);
     assert_eq!(accepted.code, 0, "{}", accepted.out);
 }
+
+/// `--suggest` derives the radius from history, and the radius cache it reads stays as it was,
+/// because `policy` writes nothing to the state directory. Spec 11.6.
+#[test]
+fn suggest_writes_nothing_to_the_state_directory() {
+    let tree = harness::history(60, 0);
+    std::fs::create_dir_all(tree.state("")).expect("a state directory");
+
+    let run = tree.run(&["policy", "--suggest"]);
+
+    assert_eq!(run.code, 0, "{}", run.out);
+    assert!(run.says("derived: radius lines"), "{}", run.out);
+    let written: Vec<_> = std::fs::read_dir(tree.state(""))
+        .expect("the state directory")
+        .flatten()
+        .map(|entry| entry.file_name())
+        .collect();
+    assert!(written.is_empty(), "{written:?}\n{}", run.out);
+}
+
+/// Functions of `lines` lines each, under one file per function.
+fn long_functions(tree: &Tree, under: &str, lines: usize) {
+    for at in 0..20 {
+        let body = "    let _ = 1;\n".repeat(lines);
+        tree.write(
+            &format!("src/{under}{at}.rs"),
+            &format!("pub fn f{at}() {{\n{body}}}\n"),
+        );
+    }
+}
+
+/// On a branch whose HEAD holds more functions than its base, `--suggest` derives from the
+/// commit `setup --pin` derives from, so it suggests what `--pin` would write. Spec 11.6.
+#[test]
+fn suggest_derives_from_the_commit_setup_pin_derives_from() {
+    let tree = Tree::new();
+    long_functions(&tree, "short", 5);
+    tree.base();
+    tree.git(&["checkout", "-q", "-b", "feature"]);
+    long_functions(&tree, "long", 40);
+    tree.commit("long functions");
+
+    let suggested = tree.run(&["policy", "--suggest"]);
+    let pinned = tree.run(&["setup", "--pin"]);
+
+    assert_eq!(pinned.code, 0, "{}", pinned.out);
+    let complexity = |out: &str| -> Vec<String> {
+        provenance(out)
+            .into_iter()
+            .filter(|line| line.starts_with("derived: complexity"))
+            .collect()
+    };
+    assert!(!complexity(&pinned.out).is_empty(), "{}", pinned.out);
+    assert_eq!(
+        complexity(&suggested.out),
+        complexity(&pinned.out),
+        "{}",
+        suggested.out
+    );
+}

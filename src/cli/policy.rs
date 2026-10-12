@@ -57,9 +57,12 @@ pub fn run(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
     }
 }
 
-/// One `klin policy --suggest`: a starter policy computed from the tree, written nowhere.
+/// One `klin policy --suggest`: a starter policy computed from the tree, written nowhere. It
+/// derives from the commit `setup --pin` derives from, not from a window's base, so it suggests
+/// what `--pin` would write.
 fn suggested(args: &Policy, start: &Path, out: &mut String) -> Result<u8, Error> {
-    let project = loaded(args, start).map_err(|refused| refused.error)?;
+    let config = config::file::Config::load(args.config.as_deref(), start, &catalogue::sections())?;
+    let project = Project::of(config, start).read_only();
     starter::suggest(&project, out)?;
     Ok(0)
 }

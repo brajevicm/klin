@@ -175,7 +175,8 @@ fn document_pins(project: &Project) -> Vec<Pin> {
 }
 
 fn radius_pins(project: &Project) -> Result<Vec<Pin>, String> {
-    let history = radius::history(project.root(), project.facts().state.as_deref())?;
+    let facts = project.facts();
+    let history = radius::history(project.root(), facts.state.as_deref(), facts.keeps)?;
     Ok([
         ("lines", history.lines),
         ("directories", history.directories),
